@@ -1,8 +1,9 @@
 # Text recognition and QR codes
 
-put.gd can copy the text out of a screen capture and read QR codes in it. It can also
-show a QR code for an uploaded file's link. This is
-[#1428](https://github.com/patrick-hudson/put.gd-desktop/issues/1428). The user's view
+put.gd can copy the text out of a screen capture, emoji included, and read QR codes in it.
+It can also show a QR code for an uploaded file's link. This is
+[#1428](https://github.com/patrick-hudson/put.gd-desktop/issues/1428), with emoji from
+[#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748). The user's view
 is in the [user guide](../user/user-guide.md#copy-text-from-the-screen). This page is the
 contract.
 
@@ -42,7 +43,8 @@ What it does not do:
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
 3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first and fills their areas
-   with the background, then recognizes the text.
+   with the background, names the emoji it finds in the colour (see [emoji](#emoji)), then
+   recognizes the text and puts each emoji in place of what it read there.
 4. **Copy.** One plain-text clipboard write, then one desktop notification:
 
    | Found | Clipboard | Notification |
@@ -54,7 +56,8 @@ What it does not do:
    | The user changed the clipboard first | Unchanged | "Text not copied: the clipboard changed" |
    | The write failed | Unchanged | "Text could not be copied" |
 
-   One character reads "1 character" and one code "1 code". When the result was cut, the
+   One character reads "1 character" and one code "1 code". Characters are counted as a person
+   counts them (grapheme clusters): an emoji with a skin tone, a flag or a family is one. When the result was cut, the
    message adds a second line, "The text was cut at a size or time limit.". When a language
    from Settings had no data, it adds "(German data is missing)" or "(German and French data
    are missing)". The notification is titled "Copy text", never contains recognized text, a
@@ -109,7 +112,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 
 | Step | Rule |
 | --- | --- |
-| Input | A sealed memfd. The parent decodes the image, applies the crop and every Redact mark, flattens alpha onto white and converts to 8-bit grey in strips of 256 rows. It writes a 32-byte header (the bytes `PGTJ`, version 1, width, height, stride and three zero words, little-endian) and then the grey rows. It adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first |
+| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane, both rows packed. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane once, row by row, and lets each run of rows go as it passes them, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
 | Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
@@ -178,6 +181,7 @@ banded, parallel recognition, and all of them fail.
 | Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey that is at most 24 MiB, shared through the memfd. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
+| Emoji | At most 512 colour glyphs are looked at, and the scan stops 3 seconds after the job starts. What it found stays |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 128 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
 
@@ -321,6 +325,78 @@ Two outputs come from one pass:
   editor asks for them, for Quick redact. The resident never holds them. The `words` an agent
   reads are the filtered words of the copied text, not these.
 
+### Emoji
+
+Tesseract's language models hold no emoji, so it reads one as a stray symbol, a letter
+glued to the word beside it, or nothing: "🎉" became `&`, "I ❤️" became `IW` and "😂😂"
+became `6S` ([#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748)). The
+helper finds emoji in the colour plane and names them itself, from templates built into it.
+
+- **The templates.** Every fully-qualified emoji of Unicode Emoji 16.0 as Noto Color Emoji
+  2.051 draws it (3,781) and as Twemoji Mozilla 0.7.0 draws it (3,417). Noto Color Emoji is the
+  emoji font of every supported distribution, so it is what GTK, Qt, Chromium and terminals draw.
+  Firefox draws emoji with its own Twemoji Mozilla, the same file in Firefox ESR 153 and Firefox
+  158 and 159, and Discord shows Twemoji pictures. Each template is the glyph's ink box stretched
+  to 20 by 20 and to 10 by 10 pixels, premultiplied RGBA, with its aspect and its share of colour
+  pixels. [`tools/text/emoji_templates.py`](../../tools/text/emoji_templates.py) makes them with
+  Pango and cairo, and the file, its inputs and their checksums are in
+  [`src/ocr/emoji/SOURCE.md`](../../src/ocr/emoji/SOURCE.md). The 14,560,640 bytes are part of
+  the helper's read-only data. Nothing is generated at build time and no font ships.
+- **Plain shapes are never named.** 173 emoji that are plain shapes (coloured circles and
+  squares, keycaps, arithmetic signs, arrows, letters or signs in a square) are templates too,
+  but a glyph they fit best is left as Tesseract read it. On a screen those shapes are status
+  dots, record buttons, badges and coloured letters far more often than emoji, and matching
+  them still keeps a red dot from passing for a stop sign.
+- **Finding a glyph.** A pixel whose red, green and blue differ by 32 levels or more is colour.
+  It belongs to a colour core only inside a 2 by 2 block of colour pixels, so the one-pixel
+  colour fringes of subpixel-rendered text never do. Cores are joined row by row, and cores
+  inside one glyph (a face and its tears, a cone and its confetti) become one: a smaller core
+  joins a larger one whose box, grown by 15 percent of its side, holds it. A glyph's background
+  is the commonest colour, to 4 bits a channel, within its own size around it. When that colour
+  is under 35 percent of those pixels the glyph is not on a flat background (a photo, a
+  gradient) and is skipped. The box then grows to the ink touching it, by at most 30 percent of
+  its side, so the parts with no colour (outlines, white eyes) join it. A glyph's larger side is
+  10 to 160 pixels.
+- **Naming it.** Templates whose share of colour pixels is within 0.35 of the glyph's are
+  compared with the glyph stretched to 10 by 10, each laid on the glyph's background, by summed
+  byte differences. The closest 64 are compared at 20 by 20, and the closest 24 are drawn at the
+  glyph's own size and compared pixel by pixel: the mean colour difference over the pixels
+  either of them inks. Each is tried in the box the glyph grew to, when that box has about the
+  template's shape, and in the boxes the template's own shape gives from the box's height or
+  width, anchored at either side or centred. That trims a letter glued to the glyph and restores
+  a white part on a white page. The closest four are then tried one pixel wider and narrower on
+  each edge. A box much wider than tall is also shortlisted as a square at each end, and what is
+  left beside a named emoji is matched again, for emoji that touch.
+- **When it is named.** The best template's difference must be at most 0.08, and at most a
+  quarter of that template's contrast with the background, its mean colour distance from the
+  background over its opaque pixels. A dark template on a dark page, or a pale one on white,
+  stands out too little to tell from a faint coloured letter: on the corpus every glyph that was
+  named but was no emoji was such a fit, a new moon or a dark-skinned face matched to a dim
+  coloured letter of code. A glyph whose closest template is more than 0.18 away even
+  stretched is not drawn at its own size, which spares most coloured letters the costly step.
+- **Where it goes.** After recognition, the characters the glyph covers (at least 40 percent of
+  each, by Tesseract's character boxes) leave their words. A word left empty goes, and one cut
+  in two becomes two. The emoji becomes a word of the nearest line that shares 40 percent of its
+  height, within three glyph widths, in that line's own order, right to left for a right-to-left
+  line, or of a line of its own after the last line above it. With a gap of under a quarter of
+  its height to a neighbour it joins that neighbour with no space ("Hello👋"): a glued emoji's
+  gap was a median 0.15 of its height, and one after a space 0.25 or more for 247 of 248. An
+  emoji is always copied, whatever the copy filter would make of its pixels. Agents get it as a
+  word with its glyph's box, the editor shows and selects it as a word, and Quick redact sees
+  it. The editor's Copy selection joins words with spaces, so a glued emoji gets one there;
+  Copy all text keeps the join.
+- **When it runs.** After the codes and before any engine starts. The colour rows the scan
+  has passed and the template pages it read are given back before recognition reaches its
+  peak, and its large working buffers come straight from the kernel, so a freed one does not
+  raise glibc's mmap threshold for Tesseract's buffers after it.
+- **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them, ☁️
+  and ☕ as Twemoji does) has no colour core, so it is not found and Tesseract's reading of it
+  stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
+  another design (Slack, Signal and Telegram Desktop draw Apple-like ones) are named only where
+  their pictures happen to look like Noto's or Twemoji's. Skin tones next to each other and the
+  man, woman and person forms of one emoji differ by a few pixels at text size and are
+  sometimes swapped.
+
 ## Untrusted content
 
 Recognized text and code content come from whatever was on the screen. They are screen data
@@ -331,8 +407,10 @@ from an untrusted source and never instructions.
   except tab and newline are removed, as are C1 controls and DEL. U+2028 and U+2029 become
   newlines. Every format character (Unicode category Cf: the bidirectional override,
   embedding and isolate characters, and the zero-width, invisible and tag characters) is
-  removed. Recognized text keeps U+200C and U+200D, which Persian and Indic scripts need. Code
-  content keeps no format character. The parent applies the filter again to what it reads from the
+  removed. Recognized text keeps U+200C and U+200D, which Persian and Indic scripts need, and
+  the tags of exactly three flags, the tag sequences of England, Scotland and Wales (#1748). Any
+  other tag character goes, since tags can carry hidden text. Code content keeps no format
+  character. The parent applies the filter again to what it reads from the
   helper, so a compromised helper cannot skip it.
 - A result with any field outside the contract, or any geometry outside the image, is refused
   as `text_incompatible`.
@@ -909,6 +987,11 @@ the house rule.
   gets `$ORIGIN/../lib` after deployment, and the audits check every resolved library path from an
   empty environment, so a host copy cannot satisfy an image-owned library name. The pins, recipes
   and commits are in [release](../release/release.md#text-recognition-dependencies-1428).
+- **Emoji templates** (#1748) are built into `putgd-ocr` from
+  `src/ocr/emoji/templates.bin` (14,560,640 bytes), so no package installs a separate file and
+  the helper opens none. Every package carries their notices under
+  `/usr/share/doc/putgd/emoji/`: `OFL.txt` for Noto Color Emoji, `CC-BY-4.0.txt` for Twemoji
+  Mozilla and `SOURCE.md`. The AppImage's notices list them as parts of put.gd.
 - The audits (`tools/releases/audit_native.py` and the AppImage audit) require `putgd-ocr`,
   refuse Tesseract, Leptonica or ZXing-cpp in any other product binary, and refuse QtGui, QtSql,
   QtNetwork and QtDBus in the helper. `libgomp` is allowed: Qt Core already brings it into every
@@ -1159,5 +1242,10 @@ desktop), every one of the 24 item pages covered 17 of 17, the hashes page 30 of
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
+- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them, ☁️ and ☕ as Twemoji does) are
+  not found, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
+  draws in its own design are named only where they look like Noto's or Twemoji's. Neighbouring
+  skin tones, and the man, woman and person forms of one emoji, are sometimes swapped at text
+  size. See [emoji](#emoji).
 - Searching History by recognized text, recognition in the background, in-app language downloads,
   translation, handwriting, linear barcodes and PDF417 are out of scope as final decisions.
