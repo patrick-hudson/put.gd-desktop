@@ -538,21 +538,23 @@ these cells, each judged by an independent check, not the app's own report:
 | Copy text / redact | Copy text of a drawn two-line pattern puts exactly those lines on the clipboard; Quick redact (`name`, `list`) covers the login name and a listed word with solid pixels in the saved copy and leaves the other words alone |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the signed GET returns the file and the same URL unsigned gets 403 |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link. Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
-| Live Proton (live rows) | An upload, its share link and revoking it |
+| Live Proton (live rows) | An upload, its share link and revoking it. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden; the Budgie and Hyprland rows do |
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
 words); it is never red and opens no issue. A cell the harness cannot drive on a
-desktop is ⚪ with the reason, for example Tray menu on Cinnamon, whose tray items have
-no accessible name, and on the stock Fedora GNOME guest, which has no tray host.
+desktop is ⚪ with the reason, for example Tray menu on Cinnamon, Budgie and Hyprland,
+whose tray items have no accessible name, and on the stock Fedora GNOME guest, which has
+no tray host.
 
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
 (AppImage) and f44 Fedora GNOME (RPM) run one each. Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
-builder's copy and in d69's. The new cells add about six minutes to a row; a builder
-with two rows takes about an hour.
+builder's copy and in d69's. The cells added on 2026-11-20 add about nine minutes to a
+live row (Live R2 alone takes about five) and three to a local-only one; a builder with
+two rows takes about an hour.
 
 ### Desktop locks
 
