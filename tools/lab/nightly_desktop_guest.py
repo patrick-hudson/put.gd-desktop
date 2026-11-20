@@ -178,6 +178,82 @@ NIGHTLY_RAM
 ISOLATED_SECRET_SERVICES = ('ksecretd', 'oo7-daemon')
 
 
+LIVE_KEYRING_ROOT = '/dev/shm/nd-keys'
+# One gnome-keyring-daemon for the live keyring. FRESH makes its folders on the guest's
+# tmpfs; a restart reuses them, so the blank collection and its items come back as they were.
+LIVE_KEYRING_DAEMON = '''import json,os,subprocess
+from pathlib import Path
+root=Path(ROOT)
+if FRESH:
+ root.mkdir(mode=0o700)
+ for name in ('config','data','cache','control'):(root/name).mkdir(mode=0o700)
+log=root/'daemon.log'
+for index in range(1,100):
+ if FRESH or not log.exists():break
+ log=root/('daemon-restart-%d.log'%index)
+with log.open('xb') as stream:
+ p=subprocess.Popen(['gnome-keyring-daemon','--foreground','--components=secrets',
+                     '--control-directory='+str(root/'control')],
+  env=dict(os.environ,XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),
+           XDG_CACHE_HOME=str(root/'cache')),stdin=subprocess.DEVNULL,stdout=stream,stderr=stream,start_new_session=True)
+print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rsplit(')',1)[1].split()[19])))
+'''
+# Read only: whether the recorded connection still has an owner, and which daemons still
+# serve this keyring's control folder (none may be running when it is started again).
+LIVE_KEYRING_STATE = '''import json,os
+from pathlib import Path
+from gi.repository import Gio,GLib
+bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+owned=bus.call_sync('org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','NameHasOwner',
+ GLib.Variant('(s)',(NAME,)),GLib.VariantType('(b)'),Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
+control=('--control-directory='+ROOT+'/control').encode()
+daemons=[]
+for entry in Path('/proc').iterdir():
+ try:
+  if entry.name.isdigit() and entry.stat().st_uid==os.getuid() and control in (entry/'cmdline').read_bytes().split(b'\\0'):
+   daemons.append(int(entry.name))
+ except OSError:pass
+print(json.dumps(dict(owned=owned,daemons=daemons,data=(Path(ROOT)/'data/keyrings').is_dir())))
+'''
+
+
+class KeyringRestartRefused(RuntimeError):
+    """The live keyring was not started again; the message is fixed text, safe to record."""
+
+
+def _start_live_keyring(run, fresh):
+    from tools.lab.surface_driver.fixtures.keyring import UNIQUE_SERVICE
+    import time
+    script = LIVE_KEYRING_DAEMON.replace('ROOT', repr(LIVE_KEYRING_ROOT)).replace('FRESH', repr(fresh))
+    identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
+    probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
+    deadline = time.monotonic()+10
+    try:
+        while True:
+            names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
+            if len(names) == 1:
+                return identity, names[0]
+            if len(names) > 1 or time.monotonic() >= deadline:
+                raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
+            time.sleep(.2)
+    except BaseException:
+        _stop_live_keyring(run, identity)  # never a daemon nobody can name
+        raise
+
+
+def _stop_live_keyring(run, identity):
+    """End exactly the daemon this restart started (pid and start time), best effort."""
+    pid, start = int(identity['pid']), str(identity['start'])
+    if not start.isdigit():
+        return
+    try:
+        lab.guest_session(run, f'''p=/proc/{pid}
+[ "$(sed 's/.*) //' $p/stat 2>/dev/null | cut -d' ' -f20)" = {start} ] && kill -TERM {pid} || true
+''')
+    except (lab.LabError, OSError, ValueError):
+        pass
+
+
 def prepare_live_keyring(run, out):
     """Use the local fixture's unique GNOME connection alongside Atomic KWallet.
 
@@ -185,42 +261,21 @@ def prepare_live_keyring(run, out):
     Its unique bus name is shared by the bridge and every private app resident.
     KWallet keeps its original owner, collections and default alias.
     """
-    from tools.lab.surface_driver.fixtures.keyring import OWNER, UNIQUE_SERVICE
+    from tools.lab.surface_driver.fixtures.keyring import OWNER
     lab.verify_owned_guest(run)
     prior = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
     # Atomic's KWallet (ksecretd) and Fedora 45 Budgie's oo7-daemon, whose login
     # collection stays locked after autologin, keep their name and collections.
     if prior['provider'] not in ISOLATED_SECRET_SERVICES:
         return
-    root = '/dev/shm/nd-keys'
+    root = LIVE_KEYRING_ROOT
     from tools.lab.surface_driver.target import checked_socket
     checked_socket(root+'/control/control')
-    script = '''import json,os,subprocess
-from pathlib import Path
-root=Path(ROOT);root.mkdir(mode=0o700)
-for name in ('config','data','cache','control'):(root/name).mkdir(mode=0o700)
-with (root/'daemon.log').open('xb') as log:
- p=subprocess.Popen(['gnome-keyring-daemon','--foreground','--components=secrets',
-                     '--control-directory='+str(root/'control')],
-  env=dict(os.environ,XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),
-           XDG_CACHE_HOME=str(root/'cache')),stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
-print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rsplit(')',1)[1].split()[19])))
-'''.replace('ROOT', repr(root))
-    identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
-    probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
-    import time
-    deadline = time.monotonic()+10
-    while True:
-        names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
-        if len(names) == 1:
-            break
-        if len(names) > 1 or time.monotonic() >= deadline:
-            raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
-        time.sleep(.2)
+    identity, name = _start_live_keyring(run, fresh=True)
     # Establish the collection before importing either real credential.
     lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), root+'/lab_keyring.py')
     info = lab.state(run)
-    info['secret_service'] = names[0]
+    info['secret_service'] = name
     prefix = lab.guest_secret_prefix(info)
     created = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py'))
     status = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py --status'))
@@ -228,8 +283,63 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
     if after != prior or status.get('locked') is not False or status.get('default') != created['collection']:
         raise RuntimeError('isolated live keyring readiness or preserved KWallet owner failed')
     lab.write_json(run/'state.json', info)
-    (out/'live-keyring.json').write_text(json.dumps(dict(identity, busName=names[0],
+    (out/'live-keyring.json').write_text(json.dumps(dict(identity, busName=name,
         root=root, collection=status, desktopServicePreserved=after == prior), indent=2))
+
+
+def restart_live_keyring(run):
+    """Start the guest's live keyring daemon again if it has died; None when the guest has none.
+
+    The recorded unique connection must have no owner and no daemon may still serve the
+    keyring's folder: a daemon that is only slow is never replaced. The desktop's own Secret
+    Service must be up before and unchanged after, so the new daemon never takes its name.
+    The new daemon reads the same tmpfs files, so the blank collection and the lent entry are
+    back once it is opened with its empty password. Only then does the run's state name the
+    new connection for the bridge and every later guest step. One restart per run at a time.
+    Returns only connection names, the process identity and the collection's label and lock state.
+    """
+    import fcntl
+    from tools.lab.surface_driver.fixtures.keyring import OWNER
+    run = Path(run)
+    lab.verify_owned_guest(run)
+    with (run/'live-keyring-restart.lock').open('a') as serial:
+        fcntl.flock(serial, fcntl.LOCK_EX)
+        info = lab.state(run)
+        previous = info.get('secret_service')
+        if previous is None:
+            return None
+        lab.guest_secret_prefix(info)  # the recorded name is a unique connection
+        check = LIVE_KEYRING_STATE.replace('NAME', repr(previous)).replace('ROOT', repr(LIVE_KEYRING_ROOT))
+        found = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+check+'\nPY\n'))
+        if found['owned']:
+            return {'restarted': False, 'busName': previous, 'reason': 'the live keyring daemon still answers'}
+        if found['daemons']:
+            raise KeyringRestartRefused('a daemon still serves the live keyring folder without its connection')
+        if not found['data']:
+            raise KeyringRestartRefused('the live keyring files are missing from the guest')
+        owner = "python3 - <<'PY'\n"+OWNER+'\nPY\n'
+        prior = json.loads(lab.guest_session(run, owner))
+        if prior.get('provider') not in ISOLATED_SECRET_SERVICES:
+            raise KeyringRestartRefused("the desktop's own Secret Service is not running")
+        identity, name = _start_live_keyring(run, fresh=False)
+        try:
+            # A new daemon loads the blank collection locked: open it with its empty password, on
+            # the new connection, before the run's state names it.
+            lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
+            prefix = lab.guest_secret_prefix(dict(info, secret_service=name))
+            status = json.loads(lab.guest_session(run, prefix+'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
+            if status.get('label') != 'putgd lab' or status.get('locked') is not False:
+                raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
+            if json.loads(lab.guest_session(run, owner)) != prior:
+                raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+            info['secret_service'] = name
+            lab.write_json(run/'state.json', info)
+        except BaseException:
+            # Never leave the new daemon behind: it could hold the desktop's name or the folder.
+            _stop_live_keyring(run, identity)
+            raise
+        return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
+                    start=identity['start'], collection=status)
 
 
 # A broken repository stops rpm-ostree from layering anything, and it reads its
