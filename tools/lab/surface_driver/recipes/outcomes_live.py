@@ -119,7 +119,7 @@ def _published(ctx, oid, pending):
     ctx.expect(len(records) == 1, 'one live capture has exactly one durable row')
     detail = ctx.call('history.detail', {'id': records[0]['id']})
     if 'X-Amz-' in urlsplit(detail.get('receipt', {}).get('directUrl') or '').query:
-        # History shows a signed link in full (key ID and signature): no frame until History is closed.
+        # History shows a signed link in full (key ID and signature): no frame for the rest of the recipe.
         ctx._frames_withheld = 'a signed link may be on screen'
     ctx.note('operationId='+oid)
     ctx.note('historyId='+detail['id'])
@@ -327,7 +327,7 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
     Each pass has its own object key, recorded in the cleanup marker before anything is published.
     With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop. A SIGNED link
     carries the access key ID and a working signature, and History shows it in full: no frame is saved
-    from the start of the pass until History is closed again, the runner's after-frame included.
+    from the start of the pass to the end of the recipe, the runner's after-frame included.
     """
     scope = ctx._fixture_manager.scope
     service = ctx._live_service
@@ -355,8 +355,9 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
         if owned:
             failed = sys.exc_info()[0] is not None
             try:
+                # The frame guard stays set to the end of the recipe, after-frame included: closing
+                # History is a click, and the window can still be on screen when the runner's frame comes.
                 _settle_extra(ctx, service, owned[0], gone)
-                ctx._frames_withheld = None  # History is closed: nothing signed is on screen.
             except Exception as error:
                 ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
                 if not failed:
