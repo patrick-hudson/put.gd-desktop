@@ -1608,13 +1608,18 @@ with n.controller_shutdown(workers):
         unit = 'putgd-test-absent-'+uuid.uuid4().hex+'.service'
         with tempfile.TemporaryDirectory() as tmp:
             fake = Path(tmp)/'systemctl'
-            def idle(jobs_exit):
+            listing = Path(tmp)/'ls'
+            def idle(jobs_exit, ls_exit=None):
                 fake.write_text('#!/bin/sh\ncase "$1" in show) echo inactive;; list-jobs) exit %d;; esac\n' % jobs_exit)
                 fake.chmod(0o700)
+                listing.unlink(missing_ok=True)
+                if ls_exit is not None:
+                    listing.write_text('#!/bin/sh\nexit %d\n' % ls_exit)
+                    listing.chmod(0o700)
                 return subprocess.run(['sh', '-c', guest._IDLE+'idle "$1"', 'sh', unit],
                                       env=dict(os.environ, PATH=tmp+':'+os.environ['PATH'])).returncode
-            # A job list that could not be read is not an empty queue.
-            self.assertEqual((idle(0), idle(1)), (0, 1))
+            # A job list or a cgroup listing that could not be read is not an empty queue or cgroup.
+            self.assertEqual((idle(0), idle(1), idle(0, ls_exit=2)), (0, 1, 1))
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

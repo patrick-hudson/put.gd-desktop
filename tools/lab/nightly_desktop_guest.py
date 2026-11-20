@@ -42,15 +42,17 @@ UPDATE_UNITS = UPDATE_TIMERS + UPDATE_SERVICES
 # The timers are stopped and masked, so nothing new starts; then a running or queued updater is left to
 # finish (its unit inactive, no job, an empty cgroup) within the deadline, and only then masked.
 UPDATE_DRAIN_SECONDS = 1200
-# Idle needs positive evidence: a job list that was read, and a unit cgroup that is absent or reports
-# `populated 0`. A failed read counts as busy.
+# Idle needs positive evidence: a job list that was read, and a unit cgroup that a successful listing of
+# system.slice doesn't show or whose cgroup.events reports `populated 0`. A failed read counts as busy.
 _IDLE = r'''idle() {
  [ -e /sys/fs/cgroup/cgroup.controllers ] || return 1
  case "$(systemctl show -P ActiveState "$1" 2>/dev/null)" in inactive|failed) ;; *) return 1 ;; esac
  jobs=$(systemctl list-jobs --no-legend --no-pager 2>/dev/null) || return 1
  printf '%s\n' "$jobs" | awk '{print $2}' | grep -qxF -- "$1" && return 1
- group=/sys/fs/cgroup/system.slice/$1
- if [ -e "$group" ]; then grep -qx 'populated 0' "$group/cgroup.events" 2>/dev/null || return 1; fi
+ groups=$(ls -A /sys/fs/cgroup/system.slice 2>/dev/null) || return 1
+ if printf '%s\n' "$groups" | grep -qxF -- "$1"; then
+  grep -qx 'populated 0' "/sys/fs/cgroup/system.slice/$1/cgroup.events" 2>/dev/null || return 1
+ fi
  return 0
 }
 '''
