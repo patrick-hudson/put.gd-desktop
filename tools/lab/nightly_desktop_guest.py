@@ -24,6 +24,119 @@ FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesse
                 'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
                 'openh264 gstreamer1-plugin-openh264')
 
+# The Debian-family guests' own package updaters. Ubuntu's apt-daily-upgrade fires between 06:00 and 07:00
+# guest time, which is when the nightly runs: on 2026-11-20 it upgraded openssh-server mid-row in the
+# Kubuntu guest, restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
+# Fedora installs no updates by itself (dnf-makecache only refreshes metadata), Aurora's uupd is held by
+# ATOMIC_TOOLS and Omarchy has no updater unit.
+UPDATE_TIMERS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
+                 'mintupdate-automation-autoremove.timer')
+UPDATE_SERVICES = ('apt-daily.service', 'apt-daily-upgrade.service', 'mintupdate-automation-upgrade.service',
+                   'mintupdate-automation-autoremove.service')
+UPDATE_UNITS = UPDATE_TIMERS + UPDATE_SERVICES
+# The apt goldens' only passwordless root command is apt-get, and their lab passwords differ (Mint's is
+# not the standard one), so root steps run from apt-get's Pre-Invoke hook, as lab.py's helper staging
+# does: no sources (nothing is fetched), no package cache written, and no lists lock, which a running
+# apt-daily holds. No updater is ever stopped: apt-daily-upgrade's KillMode=process would leave
+# unattended-upgrade running behind an inactive unit, and Mint's upgrade service would lose dpkg mid-way.
+# The timers are stopped and masked, so nothing new starts; then a running or queued updater is left to
+# finish (its unit inactive, no job, an empty cgroup) within the deadline, and only then masked.
+UPDATE_DRAIN_SECONDS = 1200
+# Idle needs positive evidence: a job list that was read, and a unit cgroup that a successful listing of
+# system.slice doesn't show or whose cgroup.events reports `populated 0`. A failed read counts as busy.
+_IDLE = r'''idle() {
+ [ -e /sys/fs/cgroup/cgroup.controllers ] || return 1
+ case "$(systemctl show -P ActiveState "$1" 2>/dev/null)" in inactive|failed) ;; *) return 1 ;; esac
+ jobs=$(systemctl list-jobs --no-legend --no-pager 2>/dev/null) || return 1
+ printf '%s\n' "$jobs" | awk '{print $2}' | grep -qxF -- "$1" && return 1
+ groups=$(ls -A /sys/fs/cgroup/system.slice 2>/dev/null) || return 1
+ if printf '%s\n' "$groups" | grep -qxF -- "$1"; then
+  grep -qx 'populated 0' "/sys/fs/cgroup/system.slice/$1/cgroup.events" 2>/dev/null || return 1
+ fi
+ return 0
+}
+'''
+HOLD_UPDATES = (r'''set -u
+# The root hooks live in a private directory only lab can write; any failure to make them stops here.
+hold=$(mktemp -d) || exit 1
+''' + _IDLE + r'''as_root() {
+ command -v apt-get >/dev/null 2>&1 || return 0
+ LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
+  -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
+  -o "APT::Update::Pre-Invoke::=sh $1" update >/dev/null 2>&1 < /dev/null || true
+}
+for unit in @TIMERS@ @SERVICES@; do
+ printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)"
+done > "$hold/before" || exit 1
+cat > "$hold/timers" <<'NIGHTLY_TIMERS' || exit 1
+for unit in @TIMERS@; do
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ]; then
+  systemctl stop "$unit" >/dev/null 2>&1 && systemctl mask "$unit" >/dev/null 2>&1
+ fi
+done
+exit 0
+NIGHTLY_TIMERS
+as_root "$hold/timers"
+deadline=$(( $(date +%s) + @DRAIN@ ))
+while :; do
+ busy=
+ for unit in @SERVICES@; do idle "$unit" || busy=1; done
+ [ -z "$busy" ] || [ "$(date +%s)" -ge "$deadline" ] && break
+ sleep 5
+done
+{ cat <<'NIGHTLY_IDLE'
+''' + _IDLE + r'''NIGHTLY_IDLE
+cat <<'NIGHTLY_SERVICES'
+for unit in @SERVICES@; do
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ] && idle "$unit"; then
+  systemctl mask "$unit" >/dev/null 2>&1
+ fi
+done
+exit 0
+NIGHTLY_SERVICES
+} > "$hold/services" || exit 1
+as_root "$hold/services"
+while read -r unit before; do
+ if idle "$unit"; then drained=drained; else drained=busy; fi
+ printf '%s %s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
+  "$(systemctl show -P ActiveState "$unit" 2>/dev/null)" "$drained"
+done < "$hold/before"
+rm -f -- "$hold/before" "$hold/timers" "$hold/services"
+rmdir -- "$hold"
+''').replace('@TIMERS@', ' '.join(UPDATE_TIMERS)).replace(
+    '@SERVICES@', ' '.join(UPDATE_SERVICES)).replace('@DRAIN@', str(UPDATE_DRAIN_SECONDS))
+
+
+def hold_package_updates(run, out):
+    """Hold the guest's own package updaters in this disposable overlay, before anything is installed.
+
+    Every unit must end absent or masked, not running, with no queued job and no process left in its
+    cgroup, or the row stops here: an updater left running can restart sshd or the desktop under a live
+    cell. The report is written whatever happens.
+    """
+    lab.verify_owned_guest(run)
+    report = dict(overlayOnly=True, units={})
+    try:
+        for line in lab.ssh(run, HOLD_UPDATES, timeout=UPDATE_DRAIN_SECONDS+300).splitlines():
+            fields = line.split()
+            if len(fields) == 5 and fields[0] in UPDATE_UNITS:
+                report['units'][fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3],
+                                                  drained=fields[4])
+    except Exception as error:
+        report['error'] = type(error).__name__
+        raise
+    finally:
+        units = report['units']
+        held = {name for name, unit in units.items()
+                if unit['after'] in ('not-found', 'masked') and unit['active'] in ('inactive', 'failed')
+                and unit['drained'] == 'drained'}
+        report.update(held=sorted(name for name in held if units[name]['after'] == 'masked'),
+                      notHeld=sorted(set(UPDATE_UNITS) - held))
+        lab.write_json(Path(out)/'package-updates.json', report)
+    if report['notHeld']:
+        raise RuntimeError('guest package updaters could not be held: '+', '.join(report['notHeld']))
+    return report
+
 
 def install_rpm(run, package, out):
     """Install the published RPM through the golden's authorized package manager.

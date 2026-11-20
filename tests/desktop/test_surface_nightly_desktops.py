@@ -391,6 +391,7 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly, 'preflight', return_value={}), \
                     patch.object(nightly, 'command', side_effect=command), \
                     patch.object(guest, 'prepare', side_effect=prepare), \
+                    patch.object(guest, 'hold_package_updates') as hold, \
                     patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
                     patch.object(lab, 'reset') as reset, \
                     patch.object(nightly, 'retire', side_effect=lambda run, *_:(run/'disk.qcow2').unlink()) as retire, \
@@ -403,6 +404,7 @@ class NightlyTests(unittest.TestCase):
                 records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity,
                                              artifacts, root/'output', 100)
             self.assertEqual(attempts, [40], records[0].get('notRunReason'))
+            self.assertEqual(hold.call_args.args[0], runs[0])
             if not finished:
                 self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
             slot = root/'putgd-lab/locks/tier1-guest.lock.d'
@@ -462,6 +464,7 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly, 'await_host', return_value=0), patch.object(nightly, 'preflight', return_value={}), \
                     patch.object(nightly, 'command', side_effect=command), patch.object(nightly, 'verdict', return_value=observed), \
                     patch.object(guest, 'prepare', return_value=root/'profiles'), \
+                    patch.object(guest, 'hold_package_updates'), \
                     patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
                     patch.object(lab, 'reset') as reset, patch.object(nightly, 'guest_clients_live', return_value=False), \
                     patch.object(nightly, 'retire') as retire, patch('tools.lab.desktop_lock.Desktop') as lock:
@@ -1551,6 +1554,72 @@ with n.controller_shutdown(workers):
             inventory = json.loads((out/'rpm-before.json').read_text())
             self.assertEqual(len(inventory['kernel-core.x86_64']), 2)
             self.assertIn('solver diagnostic', (out/'rpm-install.txt').read_text())
+
+    def test_guest_package_updaters_are_held_or_the_row_stops(self):
+        from tools.lab import nightly_desktop_guest as guest
+        def reply(**override):
+            rows = {unit: 'not-found not-found inactive drained' for unit in guest.UPDATE_UNITS}
+            rows.update({'apt-daily-upgrade.timer': 'loaded masked inactive drained',
+                         'apt-daily-upgrade.service': 'loaded masked inactive drained'}, **override)
+            return ''.join(f'{unit} {value}\n' for unit, value in rows.items())
+        with tempfile.TemporaryDirectory() as tmp, patch.object(guest.lab, 'verify_owned_guest'):
+            out = Path(tmp)
+            with patch.object(guest.lab, 'ssh', return_value=reply()) as ssh:
+                report = guest.hold_package_updates(out, out)
+            self.assertEqual(report['held'], ['apt-daily-upgrade.service', 'apt-daily-upgrade.timer'])
+            self.assertEqual(json.loads((out/'package-updates.json').read_text())['notHeld'], [])
+            script = ssh.call_args.args[1]
+            # Root comes only from the goldens' passwordless apt-get, which must neither fetch, wait for the
+            # lists lock a running apt-daily holds, nor read the script on stdin; no guest password is used.
+            for option in ('sudo -n /usr/bin/apt-get', 'Debug::NoLocking=1', 'Dir::Etc::sourcelist=/dev/null',
+                           'APT::Update::Pre-Invoke::=sh $1', '< /dev/null'):
+                self.assertIn(option, script)
+            self.assertNotIn('putgd-lab', script)
+            # Only timers are stopped. An updater service is never stopped (apt's KillMode=process leaves
+            # unattended-upgrade running; Mint's would lose dpkg mid-way): it is masked once it has drained.
+            services = script[script.index("<<'NIGHTLY_SERVICES'"):]
+            self.assertNotIn('systemctl stop', services)
+            self.assertIn('idle "$unit"; then', services)
+            self.assertIn('hold=$(mktemp -d) || exit 1', script)
+            self.assertNotIn('--now', script)
+            # Whatever the unit looked like before, it must end absent or masked, not running and drained;
+            # a unit the guest did not report stops the row too.
+            for broken in (reply(**{'apt-daily-upgrade.service': 'loaded masked deactivating drained'}),
+                           reply(**{'apt-daily.timer': 'loaded loaded active drained'}),
+                           reply(**{'apt-daily-upgrade.service': 'masked masked activating busy'}),
+                           reply(**{'apt-daily-upgrade.service': 'loaded loaded inactive busy'}),
+                           reply(**{'apt-daily-upgrade.service': 'masked masked inactive busy'}),
+                           reply(**{'apt-daily.service': 'unknown loaded active busy'}),
+                           reply().replace('apt-daily.service not-found not-found inactive drained\n', '')):
+                with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
+                    with self.assertRaisesRegex(RuntimeError, 'could not be held'):
+                        guest.hold_package_updates(out, out)
+            # A lost guest still leaves the report that says why setup stopped.
+            with patch.object(guest.lab, 'ssh', side_effect=guest.lab.LabError('ssh failed (exit 255)')):
+                with self.assertRaises(guest.lab.LabError):
+                    guest.hold_package_updates(out, out)
+            report = json.loads((out/'package-updates.json').read_text())
+            self.assertEqual((report['error'], len(report['notHeld'])), ('LabError', len(guest.UPDATE_UNITS)))
+
+    def test_an_updater_counts_as_idle_only_on_positive_evidence(self):
+        from tools.lab import nightly_desktop_guest as guest
+        if not Path('/sys/fs/cgroup/cgroup.controllers').exists():
+            self.skipTest('needs a cgroup v2 host')
+        unit = 'putgd-test-absent-'+uuid.uuid4().hex+'.service'
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp)/'systemctl'
+            listing = Path(tmp)/'ls'
+            def idle(jobs_exit, ls_exit=None):
+                fake.write_text('#!/bin/sh\ncase "$1" in show) echo inactive;; list-jobs) exit %d;; esac\n' % jobs_exit)
+                fake.chmod(0o700)
+                listing.unlink(missing_ok=True)
+                if ls_exit is not None:
+                    listing.write_text('#!/bin/sh\nexit %d\n' % ls_exit)
+                    listing.chmod(0o700)
+                return subprocess.run(['sh', '-c', guest._IDLE+'idle "$1"', 'sh', unit],
+                                      env=dict(os.environ, PATH=tmp+':'+os.environ['PATH'])).returncode
+            # A job list or a cgroup listing that could not be read is not an empty queue or cgroup.
+            self.assertEqual((idle(0), idle(1), idle(0, ls_exit=2)), (0, 1, 1))
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
