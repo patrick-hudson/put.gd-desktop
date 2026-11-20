@@ -120,6 +120,59 @@ def r2_scoped(text):
                 settings=dict(accountId=accounts.pop(), bucket=bucket[0], publicUrlBase=public[0]))
 
 
+# Omarchy's shell plugin omarchy.clipboard keeps a clipboard history on disk: each copy is captured by
+# wl-paste watchers running its capture.sh into ~/.local/state/omarchy (clipboard-history.json, images under
+# clipboard-images/, and a temporary copy of each text). The nightly guest disables the plugin
+# (nightly_desktop_guest.OMARCHY_CLIPBOARD); this checks that it is off, that no watcher runs, and that a
+# copy of a fresh canary reaches nothing in that folder. Never a link: the canary is random text.
+CLIPBOARD_HISTORY_OFF = r'''python3 - <<'NIGHTLY_CLIPBOARD'
+import json,os,secrets,subprocess,time
+from pathlib import Path
+def report(off,reason=''):
+ print(json.dumps(dict(historyOff=off,reason=reason)));raise SystemExit(0)
+# The shell's own state folders, never this command's (a recipe runs with private XDG roots): the
+# clipboard plugin writes under $HOME/.local/state/omarchy and capture.sh under the shell's
+# XDG_STATE_HOME, which its watchers inherit from quickshell.
+shells=[]
+for p in Path('/proc').iterdir():
+ try:
+  if p.name.isdigit() and p.stat().st_uid==os.getuid() and (p/'comm').read_text().strip()=='quickshell':shells.append(p)
+ except OSError:pass
+if len(shells)!=1:report(False,'quickshell is not running exactly once')
+env=dict(v.split(b'=',1) for v in (shells[0]/'environ').read_bytes().split(b'\0') if b'=' in v)
+home=Path(env.get(b'HOME',b'').decode() or Path.home())
+states={home/'.local/state'/'omarchy'}
+if env.get(b'XDG_STATE_HOME'):states.add(Path(env[b'XDG_STATE_HOME'].decode())/'omarchy')
+try:config=json.loads((Path.home()/'.config/omarchy/shell.json').read_text())
+except (OSError,ValueError):report(False,'shell.json unreadable')
+if 'omarchy.clipboard' not in (config.get('disabledPlugins') or []):report(False,'omarchy.clipboard is not disabled in shell.json')
+def watchers():
+ found=[]
+ for p in Path('/proc').iterdir():
+  try:
+   if p.name.isdigit() and p.stat().st_uid==os.getuid() and b'/shell/plugins/clipboard/capture.sh' in (p/'cmdline').read_bytes():found.append(int(p.name))
+  except OSError:pass
+ return found
+deadline=time.monotonic()+5
+while watchers():
+ if time.monotonic()>=deadline:report(False,'a clipboard history watcher still runs')
+ time.sleep(.2)
+def files():
+ return {str(f):(f.stat().st_size,f.stat().st_mtime_ns) for state in states for f in [state/'clipboard-history.json',
+         *state.glob('clipboard.*'),*(state/'clipboard-images').glob('*')] if f.exists()}
+before=files()
+canary='putgd-canary-'+secrets.token_hex(8)
+subprocess.run(['wl-copy','--',canary],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10,check=True)
+time.sleep(2.5)
+held=subprocess.run(['wl-paste','--no-newline'],capture_output=True,text=True,timeout=10).stdout==canary
+subprocess.run(['wl-copy','--clear'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
+if not held:report(False,'the canary copy did not reach the clipboard')
+if files()!=before or watchers():report(False,'a copy changed the clipboard history folder')
+report(True)
+NIGHTLY_CLIPBOARD
+'''
+
+
 def admit(ctx):
     """Require an approved disposable guest, held leases and private storage before live setup."""
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
@@ -143,12 +196,10 @@ def admit(ctx):
                 'omarchy-hyprland-wayland': 'appimage'}.get(ctx.desktop, 'deb')
     if not appimage_guest and ctx.package != expected:
         raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
-    if ctx.desktop == 'omarchy-hyprland-wayland':
-        # Omarchy's clipboard history writes copied text to its own store on disk, and the app
-        # auto-copies every link, a signed one included. That would outlive the guest's tmpfs.
-        raise RecipeBlocked('Tier 1 live is refused on Omarchy: its clipboard history stores copied links on disk')
     # The VM-only desktops are bound to their one lab golden: its profile and its exact image.
-    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'work/put.gd/work/lab-images/fedora45-budgie/image.qcow2')}.get(ctx.desktop)
+    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'work/put.gd/work/lab-images/fedora45-budgie/image.qcow2'),
+              'omarchy-hyprland-wayland': ('omarchy-hyprland',
+                                           'work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2')}.get(ctx.desktop)
     if golden:
         from tools.lab import lab
         state = lab.state(ctx.target.run)
@@ -172,6 +223,19 @@ def admit(ctx):
         owner_run = None
     if owner_run is None or Path(owner_run).resolve() != Path(ctx.target.run).resolve():
         raise RecipeBlocked('Tier 1 live requires the guest slot held for this exact run')
+    if ctx.desktop == 'omarchy-hyprland-wayland':
+        # After the lease and slot checks: the canary replaces the guest's clipboard.
+        # Omarchy's clipboard history writes copied text to its own store on disk, and the app
+        # auto-copies every link, a signed one included. That would outlive the guest's tmpfs.
+        # The nightly guest turns that history off; live runs only once a copy is seen to stay off disk.
+        result = ctx.shell(CLIPBOARD_HISTORY_OFF, timeout=30)
+        try:
+            report = json.loads(result['stdout'])
+        except (KeyError, ValueError):
+            report = {}
+        if result.get('returncode') or report.get('historyOff') is not True:
+            raise RecipeBlocked('Tier 1 live is refused on Omarchy: its clipboard history is not verified off ('
+                                + str(report.get('reason') or 'no report from the guest')[:200] + ')')
     if ctx.destination == 'proton':
         desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host, resource='proton').heartbeat(session)
         if Path(os.environ.get('PUTGD_LAB_RUN', '/missing')).resolve() != ctx.target.run:

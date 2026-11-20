@@ -554,7 +554,8 @@ fi
 # sync then -S is a partial upgrade. Only packages that are not installed may
 # enter; a transaction that would upgrade, downgrade or remove any installed
 # package (Hyprland, quickshell, Qt, Mesa, PipeWire, portals...) is refused.
-PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base')
+# qtkeychain-qt6: the lab's credential bridge (live S3, R2 and Proton lends) links libqt6keychain, as DEB_TOOLS' libqt6keychain1.
+PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base', 'qtkeychain-qt6')
 PACMAN = r'''set -eu
 before=$(pacman -Q)
 sudo -n pacman -Sy --noconfirm >/dev/null
@@ -598,6 +599,31 @@ NIGHTLY_OMARCHY
 '''
 
 
+# Omarchy's shell keeps a clipboard history on disk, and put.gd auto-copies every link it makes, a signed one
+# included. The disposable overlay turns the history plugin off through Omarchy's own command, which records
+# it in shell.json (so a restarted shell keeps it off) and unloads the plugin with its wl-paste watchers.
+OMARCHY_CLIPBOARD = r'''qs=$(pgrep -u "$(id -un)" -x quickshell | head -n 1)
+[ -n "$qs" ]
+omarchy=$(tr '\0' '\n' < /proc/$qs/environ | sed -n 's/^OMARCHY_PATH=//p')
+[ -n "$omarchy" ]
+# The shell names its IPC socket after the display as it was given (wayland-1), not as an absolute path.
+WAYLAND_DISPLAY=${WAYLAND_DISPLAY##*/} OMARCHY_PATH=$omarchy PATH=$omarchy/bin:$PATH \
+ "$omarchy/bin/omarchy-plugin-disable" omarchy.clipboard < /dev/null > /dev/null
+'''
+
+
+def prepare_omarchy_clipboard(run, out):
+    """Turn Omarchy's clipboard history off in the overlay, and check it the way live admission does."""
+    from tools.lab.surface_driver.fixtures.live_outcomes import CLIPBOARD_HISTORY_OFF
+    lab.verify_owned_guest(run)
+    lab.guest_session(run, OMARCHY_CLIPBOARD, timeout=60)
+    report = json.loads(lab.guest_session(run, CLIPBOARD_HISTORY_OFF, timeout=60))
+    lab.write_json(Path(out)/'omarchy-clipboard.json', report)
+    if report.get('historyOff') is not True:
+        raise RuntimeError('Omarchy clipboard history could not be turned off: '+str(report.get('reason'))[:200])
+    return report
+
+
 def prepare_pacman(run, out):
     """Probe tools for the Omarchy golden: new packages only, nothing installed may move."""
     result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900, input=PACMAN)
@@ -608,6 +634,120 @@ def prepare_pacman(run, out):
     lab.write_json(out/'pacman-transaction.json', report)
     if not report['installedUnchanged']:
         raise RuntimeError('Omarchy probe tools would change an installed package; private transaction retained')
+    return report
+
+
+def merge_labwc_rules(text, rules):
+    """labwc's rc.xml with the lab's window rules, each replacing an earlier rule for the same window.
+
+    A rule turns the window's server-side decoration off and moves it to its position when it
+    first maps, so its content's top left is exactly there (probe.rule_rect reads the same rules).
+    labwc matches titles as globs: a rule title holds no glob characters.
+    """
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(text)
+    section = root.find('windowRules')
+    if section is None:
+        section = ET.SubElement(root, 'windowRules')
+    for rule in rules:
+        if any(c in rule['title'] + rule['app_id'] for c in '*?[]') or len(rule['position']) != 2:
+            raise ValueError('a lab window rule names one exact window and one position')
+        for old in [e for e in section.findall('windowRule')
+                    if (e.get('identifier'), e.get('title')) == (rule['app_id'], rule['title'])]:
+            section.remove(old)
+        element = ET.SubElement(section, 'windowRule', identifier=rule['app_id'], title=rule['title'],
+                                serverDecoration='no')
+        ET.SubElement(element, 'action', name='MoveTo', x=str(int(rule['position'][0])), y=str(int(rule['position'][1])))
+    ET.indent(root, space='\t')
+    return ET.tostring(root, encoding='unicode')
+
+
+# Budgie's labwc bridge loads rc.xml once, when it starts, and writes its own copy back on every
+# change it makes (put.gd's shortcuts reach it as gsettings). Rules written while it runs are
+# dropped at its next write. So: stop the bridge, write the rules, start it again from its own
+# environment, and wait for its first write (it reloads labwc) to still hold them.
+LABWC_RULES = r'''python3 - <<'NIGHTLY_LABWC'
+import json,os,select,signal,subprocess,time
+from pathlib import Path
+MERGE
+RULES=json.loads(RULES_JSON)
+BRIDGE='/usr/libexec/budgie-desktop/labwc-bridge'
+def own(match):
+ found=[]
+ for p in Path('/proc').iterdir():
+  try:
+   if p.name.isdigit() and p.stat().st_uid==os.getuid():
+    args=[v.decode() for v in (p/'cmdline').read_bytes().split(b'\0') if v]
+    if args and match(args):found.append(int(p.name))
+  except (OSError,UnicodeDecodeError):pass
+ return found
+labwc=own(lambda a:Path(a[0]).name=='labwc')
+assert len(labwc)==1,'labwc is not running exactly once'
+args=[v.decode() for v in Path('/proc/%d/cmdline'%labwc[0]).read_bytes().split(b'\0') if v]
+assert '--config-dir' in args,'labwc runs without the Budgie configuration folder'
+rc=Path(args[args.index('--config-dir')+1])/'rc.xml'
+bridge=lambda a:a[1:2]==[BRIDGE]
+old=own(bridge)
+assert len(old)==1,'the Budgie labwc bridge is not running exactly once'
+env=dict(v.split('=',1) for v in Path('/proc/%d/environ'%old[0]).read_bytes().decode().split('\0') if '=' in v)
+original=rc.read_text()
+merged=merge_labwc_rules(original,RULES)  # a bad rule or rc.xml fails here, with the bridge still running
+start=lambda:subprocess.Popen(['/usr/bin/python3',BRIDGE],env=env,cwd=env.get('HOME','/'),stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+# Both files are written before the bridge stops; each later change of rc.xml is one rename.
+staged,kept=rc.with_name('rc.xml.putgd-lab'),rc.with_name('rc.xml.putgd-lab-original')
+staged.write_text(merged)
+kept.write_text(original)
+def stop(pids):
+ for pid in pids:
+  try:fd=os.pidfd_open(pid)
+  except ProcessLookupError:continue
+  try:
+   signal.pidfd_send_signal(fd,signal.SIGTERM)
+   assert select.select([fd],[],[],10)[0],'the labwc bridge did not stop'
+  except ProcessLookupError:pass
+  finally:os.close(fd)
+stop(old)
+try:
+ os.replace(staged,rc)
+ before=rc.stat().st_mtime_ns
+ p=start()
+ deadline=time.monotonic()+30
+ while rc.stat().st_mtime_ns==before:
+  assert p.poll() is None,'the restarted labwc bridge exited'
+  assert time.monotonic()<deadline,'the restarted labwc bridge did not write rc.xml'
+  time.sleep(.2)
+ time.sleep(1)
+ import xml.etree.ElementTree as ET
+ held=[(e.get('identifier'),e.get('title'),e.get('serverDecoration'),[(a.get('name'),a.get('x'),a.get('y')) for a in e])
+       for e in ET.fromstring(rc.read_text()).iter('windowRule')]
+ for r in RULES:
+  assert (r['app_id'],r['title'],'no',[('MoveTo',str(r['position'][0]),str(r['position'][1]))]) in held,'the bridge dropped a lab window rule'
+ assert p.poll() is None and own(bridge)==[p.pid],'the labwc bridge is not running exactly once after the restart'
+except BaseException:
+ # Leave the session as it was: no bridge of ours still writing, its own rc.xml, one bridge running.
+ # A bridge that will not stop is left as the one running, and this setup fails with it.
+ stop(own(bridge))
+ try:
+  os.replace(kept,rc)
+ finally:
+  start()
+ raise
+kept.unlink()
+print(json.dumps(dict(rcXml=str(rc),rules=RULES,bridgeBefore=old[0],bridgeAfter=p.pid,heldAfterBridgeWrite=True)))
+NIGHTLY_LABWC
+'''
+
+
+def prepare_labwc_rules(run, out, rules):
+    """Install the profile's labwc window rules in this disposable guest's Budgie session."""
+    import inspect
+    lab.verify_owned_guest(run)
+    merge_labwc_rules('<labwc_config/>', rules)  # refuse a bad rule before the guest's bridge is touched
+    script = (LABWC_RULES.replace('MERGE', inspect.getsource(merge_labwc_rules))
+              .replace('RULES_JSON', repr(json.dumps(rules))))
+    report = json.loads(lab.guest_session(run, script, timeout=90))
+    lab.write_json(Path(out)/'labwc-rules.json', report)
     return report
 
 
@@ -692,8 +832,13 @@ NIGHTLY_IMAGE_EXTENSION
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
         (out/'accessibility.txt').write_text(stage(run))
     (out/'nag-suppression.json').write_text(lab.guest_session(run, QUIET, timeout=60))
+    from tools.lab.surface_driver.profiles import load_profile
+    rules = load_profile(row['desktop']).get('compositor', {}).get('window_rules')
+    if rules:
+        prepare_labwc_rules(run, out, rules)
     if guest == 'omarchy-hyprland':
         (out/'omarchy-state.json').write_text(lab.guest_session(run, QUIET_OMARCHY, timeout=60))
+        prepare_omarchy_clipboard(run, out)
     (out/'ram-placement.json').write_text(lab.guest_session(run, RAM))
     from tools.lab.stage_firefox import stage
     browser = json.loads(stage(run))

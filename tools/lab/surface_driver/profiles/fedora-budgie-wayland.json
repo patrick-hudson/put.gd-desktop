@@ -46,6 +46,11 @@
     "reason": "Budgie's notification popups are budgie-daemon layer-shell surfaces: AT-SPI shows the showing summary label, and labwc reports no position for a layer surface"
   },
   "windows": {
+    "history": {
+      "accessible": {
+        "application": "putgd*"
+      }
+    },
     "editor.canvas": {
       "owner": "editor",
       "accessible": {
@@ -134,6 +139,19 @@
     "stage": "none: grim (in the golden) and the shipped tools/lab/wayland_toplevels.py witness, read-only per observation",
     "overlay_shells": [
       "budgie-daemon"
+    ],
+    "window_rules_reason": "labwc captures a modal dialog alone as 1x1 and draws it into its parent's capture at the origin: the nightly guest's labwc rules (nightly_desktop_guest.prepare_labwc_rules) put each dialog a cell clicks at a known position with no decoration, and the witness checks the dialog's pixels from that corner there",
+    "window_rules": [
+      {
+        "app_id": "putgd-ui",
+        "title": "Delete from destination",
+        "position": [120, 100]
+      },
+      {
+        "app_id": "putgd-ui",
+        "title": "Revoke share link",
+        "position": [120, 100]
+      }
     ]
   },
   "evidence": {

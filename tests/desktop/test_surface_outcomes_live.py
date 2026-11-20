@@ -318,24 +318,53 @@ class LiveOutcomes(unittest.TestCase):
         for host, desktop, package, actual, image, reason in (
                 ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
                 ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
-                # Omarchy's clipboard history keeps copied links on disk: no live cell there.
-                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'refused on Omarchy'),
+                # Omarchy's clipboard history keeps copied links on disk: live only once a copy is seen to stay off it.
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'synthetic lock denied'),
                 ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'not on an authorized builder'),
                 ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'not on an authorized builder'),
                 ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', budgie, 'requires an approved guest package/profile'),
                 ('d69', 'fedora-budgie-wayland', 'rpm', 'omarchy-hyprland', budgie, "own lab golden"),
                 # The right profile label on another image is still refused.
                 ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'fedora44-budgie', "own lab golden")):
-            with self.subTest(host=host, desktop=desktop, package=package, actual=actual, image=image):
+            image, off = image.split('/')[0], image.endswith('/off')
+            with self.subTest(host=host, desktop=desktop, package=package, actual=actual, image=image, off=off):
+                report = json.dumps(dict(historyOff=off, reason='' if off else 'a clipboard history watcher still runs'))
                 ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop, package=package,
                                       target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
-                                      profile={'guest': actual}, _live_admitted=True)
+                                      profile={'guest': actual}, _live_admitted=True,
+                                      shell=Mock(return_value=dict(returncode=0, stdout=report)))
                 state = {'profile': actual, 'golden': str(Path.home()/'work/put.gd/work/lab-images'/image/'image.qcow2')}
                 with patch('tools.lab.lab.state', return_value=state), \
                      patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
                      patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
                     with self.assertRaisesRegex(RecipeBlocked, reason):
                         admit(ctx)
+
+    def test_omarchy_live_needs_its_clipboard_history_seen_off_after_the_lease_and_slot(self):
+        # Omarchy's clipboard history stores copied links on disk: live starts only once the guest shows
+        # it off, and that check (it replaces the clipboard) runs only after the lease and the exact slot.
+        with tempfile.TemporaryDirectory() as home:
+            run = Path(home)/'run'
+            slot = Path(home)/'putgd-lab/locks/tier1-guest.lock.d'
+            slot.mkdir(parents=True)
+            (slot/'session').write_text('synthetic-session\n')
+            (slot/'owner.json').write_text(json.dumps({'run': str(run)}))
+            image = Path(home)/'work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2'
+            for off, reason in ((False, 'history is not verified off'), (True, 'private app root must be on guest tmpfs')):
+                with self.subTest(off=off):
+                    report = json.dumps(dict(historyOff=off, reason='' if off else 'a clipboard history watcher still runs'))
+                    shell = Mock(side_effect=[dict(returncode=0, stdout=report), dict(returncode=0, stdout='ext4')])
+                    ctx = SimpleNamespace(destination='s3', placement='guest', host='m74', desktop='omarchy-hyprland-wayland',
+                                          package='appimage', profile={'guest': 'omarchy-hyprland'}, _live_admitted=True,
+                                          target=SimpleNamespace(physical=None, run=run, root=str(run/'root')), shell=shell)
+                    with patch('pathlib.Path.home', return_value=Path(home)), \
+                         patch('tools.lab.lab.state', return_value={'profile': 'omarchy-hyprland', 'golden': str(image)}), \
+                         patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                         patch('tools.lab.desktop_lock.Desktop') as lock:
+                        with self.assertRaisesRegex(RecipeBlocked, reason):
+                            admit(ctx)
+                    lock.return_value.heartbeat.assert_called_once_with('synthetic-session')
+                    self.assertIn('clipboard-history.json', shell.call_args_list[0].args[0])
 
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
         """Reject unsupported or misidentified AppImages before any lease or credential access."""
@@ -398,7 +427,7 @@ class LiveOutcomes(unittest.TestCase):
     def test_proton_revoke_uses_message_box_geometry_and_restores_profile(self):
         previous={'confirmAction':{'accessible':{'role':'dialog'}}}
         ctx=SimpleNamespace(destination='proton',profile={'windows':previous},click=Mock(),focus=Mock(),scroll=Mock(),
-                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),note=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),frame=Mock(),note=Mock(),
                             wait=lambda fn,*a,**kw:fn(),call=lambda *a,**kw:{'shareStatus':'revoked','linkAvailable':False},
                             expect=lambda ok,note:self.assertTrue(ok,note))
         def observed(*args):
@@ -423,7 +452,7 @@ class LiveOutcomes(unittest.TestCase):
             if method=='history.detail':return details.pop(0)
             return {}
         ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=Mock(),
-                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
                             wait=wait,call=Mock(side_effect=call),expect=lambda ok,note:self.assertTrue(ok,note))
         with patch.object(outcomes_live.outcomes,'_history'),self.assertRaisesRegex(AssertionError,'object removal'):
             outcomes_live._cleanup(ctx,{'id':'owned'})
@@ -454,13 +483,38 @@ class LiveOutcomes(unittest.TestCase):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
         ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),
-                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),frame=Mock(),
                             call=Mock(),clipboard_text=lambda:json.dumps({'targets':[{'historyId':'foreign'}],
                                                                          'acknowledgement':'synthetic'}),expect=expect)
         with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'),patch.object(outcomes_live.history,'_confirm_button') as confirm:
             with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
         ctx.click.assert_called_once_with('text:Delete from destination…',window='history')
         confirm.assert_not_called()
+
+    def test_s3_delete_below_the_window_goes_through_the_rows_own_menu(self):
+        # labwc: each capture of History puts its details pane back at the top, so the pane's button
+        # can stay below the window; the exact row's menu then deletes, through the same confirmation.
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[]),frame=Mock(),
+                            call=Mock(),clipboard_text=lambda:json.dumps({'targets':[{'historyId':'foreign'}],
+                                                                         'acknowledgement':'synthetic'}),expect=expect)
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live,'_delete_from_row_menu') as menu,patch.object(outcomes_live.history,'_confirm_button') as confirm:
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        menu.assert_called_once_with(ctx,{'id':'owned'})
+        ctx.click.assert_not_called()
+        confirm.assert_not_called()  # a foreign prepared target is still refused
+        # On labwc the button read itself resets the pane: the row menu deletes even when it saw the button.
+        ctx.profile={'compositor':{'kind':'toplevel-pixels'}}
+        ctx.accessible=Mock(return_value=[{'rect':[0,700,100,20]}])
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live,'_delete_from_row_menu') as menu,patch.object(outcomes_live.history,'_confirm_button'):
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        menu.assert_called_once_with(ctx,{'id':'owned'})
+        ctx.accessible.assert_not_called()
+        ctx.click.assert_not_called()
 
     def test_saved_hash_cannot_read_a_foreign_file_or_symlink(self):
         def execute(code):

@@ -1652,6 +1652,34 @@ with n.controller_shutdown(workers):
             # A job list or a cgroup listing that could not be read is not an empty queue or cgroup.
             self.assertEqual((idle(0), idle(1), idle(0, ls_exit=2)), (0, 1, 1))
 
+    def test_budgie_window_rules_put_each_dialog_where_the_witness_looks(self):
+        from tools.lab import nightly_desktop_guest as guest
+        from tools.lab.surface_driver import probe
+        from tools.lab.surface_driver.profiles import load_profile
+        compositor = load_profile('fedora-budgie-wayland')['compositor']
+        rules = compositor['window_rules']
+        text = ('<labwc_config version="5"><windowRules><windowRule identifier="nemo-desktop" title="Desktop">'
+                '<action name="ToggleAlwaysOnBottom" /></windowRule></windowRules></labwc_config>')
+        merged = guest.merge_labwc_rules(text, rules)
+        self.assertEqual(guest.merge_labwc_rules(merged, rules), merged)  # a rerun replaces, never adds
+        import xml.etree.ElementTree as ET
+        written = {(e.get('identifier'), e.get('title')): e for e in ET.fromstring(merged).iter('windowRule')}
+        self.assertIn(('nemo-desktop', 'Desktop'), written)
+        for rule in rules:
+            element = written[(rule['app_id'], rule['title'])]
+            # No decoration, so the rule's position is the content's: the rectangle the witness checks.
+            self.assertEqual(element.get('serverDecoration'), 'no')
+            move = element.find('action')
+            self.assertEqual([move.get('name'), int(move.get('x')), int(move.get('y'))], ['MoveTo', *rule['position']])
+            self.assertEqual(probe.rule_rect(compositor, rule['title'], rule['app_id'], [10, 20]), [*rule['position'], 10, 20])
+        with self.assertRaises(ValueError):
+            guest.merge_labwc_rules(text, [dict(rules[0], title='Delete*')])
+        # A bad rule is refused on the host, before the guest's bridge is stopped.
+        with patch.object(guest.lab, 'verify_owned_guest'), patch.object(guest.lab, 'guest_session') as session:
+            with self.assertRaises(ValueError):
+                guest.prepare_labwc_rules('run', 'out', [dict(rules[0], title='Delete*')])
+        session.assert_not_called()
+
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.rpm_install(Path(tmp))

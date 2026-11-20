@@ -56,14 +56,39 @@ def _retry_deletion(ctx, current):
                              in settled else None), 'retried deletion settled', timeout=90)
 
 
+def _delete_from_row_menu(ctx, detail):
+    """Delete from destination… in the exact row's own menu, as history_delete does.
+
+    On labwc every capture of History (the driver places it by its own pixels) puts its details
+    pane back at the top, so the pane's button, below the window's end, cannot be scrolled to.
+    """
+    history._search(ctx, history._distinct_text(ctx, detail))
+    ctx.wait(lambda: history._state(ctx)['rows'] == 1, 'the live row is the one row shown')
+    node = history._searched_row_node(ctx)
+    history._click_history_node(ctx, {'role': 'list item', 'name': node['name']})
+    ctx.wait(lambda: history._state(ctx)['selectedIds'] == [detail['id']], 'the live row is selected with real input')
+    history._focus_items(ctx)
+    ctx.keys('Shift+F10')
+    history._wait_menu(ctx, 'Delete from destination…')
+    ctx.click('text:Delete from destination…', window='historyRowMenu')
+
+
 def _cleanup(ctx, detail):
     """Reuse #687's exact-row UI deletion; Proton uses its supported revoke UI."""
     outcomes._history(ctx, detail)
     ctx.focus('history', raise_window=ctx.profile.get('session') == 'x11')
     box = ctx.geometry('history')
     # The remote actions live below the preview in the inspector. Scroll its
-    # right side with guarded real input; older Qt does not export its ID.
-    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.6*box['height']), -16, head=box.get('head', 0))
+    # right side with guarded real input; older Qt does not export its ID. Below
+    # the preview: resting on it shows its tooltip over the point (Hyprland).
+    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.85*box['height']), -16, head=box.get('head', 0))
+    button = ({'name': 'Revoke link…', 'role': 'push button'} if ctx.destination == 'proton' else history.DELETE_BUTTON)
+    # On labwc the read below captures History to place it, which puts the pane back at the top:
+    # whatever it saw is gone by the click, so cleanup there always uses the row's own menu.
+    labwc = ctx.profile.get('compositor', {}).get('kind') == 'toplevel-pixels'
+    in_view = not labwc and ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
+                                                within=[box[k] for k in ('x', 'y', 'width', 'height')]))
+    in_view = bool(in_view) and len(in_view) == 1 and bool(in_view[0].get('rect'))
     ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
         # Qt 6.4 does not publish objectName, and the pinned S3 catalog has
@@ -90,9 +115,12 @@ def _cleanup(ctx, detail):
         if current.get('deleteOperationId') and current.get('remoteStatus') in ('failed', 'unknown'):
             final = _retry_deletion(ctx, current)
         else:
-            # Qt 6.4 does not expose this button's objectName. The exact caption
-            # still binds the unique visible owned inspector action.
-            ctx.click('text:Delete from destination…', window='history')
+            if in_view:
+                # Qt 6.4 does not expose this button's objectName. The exact caption
+                # still binds the unique visible owned inspector action.
+                ctx.click('text:Delete from destination…', window='history')
+            else:
+                _delete_from_row_menu(ctx, detail)
             history._wait_window(ctx, 'confirmAction')
             ctx.call('ui.history', {'action': 'copyDeletionDetails'})
             prepared = json.loads(ctx.clipboard_text())
@@ -102,6 +130,9 @@ def _cleanup(ctx, detail):
             history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
             final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
                                      in DELETION_SETTLED else None), 'UI deletion settled', timeout=180)
+            if not in_view:
+                # The search that picked the row would hide the next pass's row from History.
+                history._search(ctx, '')
         ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
                    'History confirms object removal')
         ctx.note('deletion_count=1')

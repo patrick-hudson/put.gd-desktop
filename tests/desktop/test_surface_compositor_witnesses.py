@@ -3,6 +3,7 @@ import random
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -177,12 +178,154 @@ class PixelWitness(unittest.TestCase):
         self.assertIsNone(probe.content_box(shadowed, 82, 50))
         self.assertIsNone(probe.content_box((120, 90, bytes(120 * 90 * 3)), 80, 50))
 
-    def test_a_dialog_is_the_one_change_over_its_parent(self):
-        dialog = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 140, 60)
-        self.assertEqual(probe.difference_box(self.window, dialog, [113, 47, 80, 50]), [140, 60, 30, 20])
-        self.assertIsNone(probe.difference_box(self.window, self.screen, [113, 47, 80, 50]))
-        edge = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 180, 80)  # partly past the parent
-        self.assertEqual(probe.difference_box(self.window, edge, [113, 47, 80, 50]), [180, 80, 13, 17])
+    def test_a_window_rule_position_must_show_the_window(self):
+        rules = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [113, 47]}]}
+        placed = probe.place_pixels(rules, 'Delete', 'putgd-ui', self.window, self.screen)
+        self.assertEqual((placed['rect'], placed['by']), ([113, 47, 80, 50], 'window rule'))
+        moved = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [10, 10]}]}
+        with self.assertRaisesRegex(RuntimeError, 'window-rule position'):
+            probe.place_pixels(moved, 'Delete', 'putgd-ui', self.window, self.screen)
+        # A rule for another app or title does not apply; without one a dialog is refused.
+        self.assertEqual(probe.place_pixels(moved, 'Delete', 'other', self.window, self.screen)['by'], 'pixels')
+        with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
+            probe.place_pixels({}, 'Delete', 'putgd-ui', self.window, self.screen, rule_only=True)
+
+    def test_a_flat_window_is_placed_only_where_it_fills_the_one_output(self):
+        flat = (320, 200, b'\x20' * (320 * 200 * 3))
+        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200]]):
+            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels.*nor does it fill the one output'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen, fullscreen=True)
+            # Only an active fullscreen toplevel: flat pixels alone prove no position.
+            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat)
+            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, fullscreen=True)
+        self.assertEqual((placed['rect'], placed['by']), ([0, 0, 320, 200], 'output'))
+        # A second enabled output, even of another size, leaves the fallback unproven.
+        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200], [320, 0, 640, 480]]):
+            with self.assertRaisesRegex(RuntimeError, r'nor does it fill the one output \(2 enabled'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, fullscreen=True)
+
+    def test_the_display_crop_falls_back_to_grim_when_vnc_or_the_request_limit_fails(self):
+        from tools.lab.surface_driver.context import DriverContext
+        notes = []
+        ctx = SimpleNamespace(profile={'compositor': {'kind': 'toplevel-pixels'}, 'screens': [{}]}, note=notes.append,
+                              DISPLAY_BYTES=DriverContext.DISPLAY_BYTES, target=SimpleNamespace(physical=None))
+        query = {'geometry': {'x': 0, 'y': 0, 'width': 4, 'height': 4, 'window_id': 'w'}, 'point': [1, 1]}
+        ctx.target.display_image = lambda head: None
+        self.assertEqual(DriverContext._with_display(ctx, query), query)
+        self.assertEqual(len(notes), 1)
+        # Only the VNC read itself falls back: a failed endpoint or lease check still stops the run.
+        from tools.lab.surface_driver import target
+        from tools.lab.surface_driver.api import RecipeBlocked
+        for error in (TimeoutError('frame'), RuntimeError('connection closed'), ConnectionRefusedError()):
+            vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lambda force: None)
+            with patch.object(target.rfb, 'RFB', side_effect=error):
+                self.assertIsNone(target.Target.display_image(vnc))
+        def refused():
+            raise RecipeBlocked('QMP endpoint changed')
+        vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lambda force: None, _verify_endpoints=refused)
+        with patch.object(target.rfb, 'RFB') as connect, self.assertRaisesRegex(RecipeBlocked, 'QMP endpoint changed'):
+            target.Target.display_image(vnc)
+        connect.assert_not_called()
+        def lease(force):
+            raise OSError('lease')
+        vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lease)
+        with patch.object(target.rfb, 'RFB'), self.assertRaises(RecipeBlocked):
+            target.Target.display_image(vnc)
+        # The whole serialized request is measured: a crop that fits alone but not with the rest is dropped.
+        sent = {}
+        def probe_(name, q, source, timeout):
+            sent.clear()
+            sent.update(q)
+            return {'ok': True, 'result': {}}
+        ctx = SimpleNamespace(profile={}, note=notes.append, _check_time=lambda: None, _deadline=float('inf'),
+                              PROBE_REQUEST_BYTES=DriverContext.PROBE_REQUEST_BYTES, _observed=lambda value: None,
+                              target=SimpleNamespace(probe=probe_))
+        DriverContext._probe(ctx, 'foreground', dict(query, display={'rgb': 'x' * (1024 * 1024)}))
+        self.assertNotIn('display', sent)
+        DriverContext._probe(ctx, 'foreground', dict(query, display={'rgb': 'x' * 1024}))
+        self.assertIn('display', sent)
+
+    def test_a_placement_retry_places_only_a_fresh_capture_of_the_window_size(self):
+        first, odd, fresh = (80, 40, b'\x01' * 9600), (79, 40, b'\x02' * 9480), (80, 40, b'\x03' * 9600)
+        captures = iter([first, odd, fresh])
+        placed, states = [], []
+        def place(compositor, title, app_id, image, screen, fullscreen=False):
+            placed.append(image)
+            states.append(fullscreen)
+            if len(placed) == 1:
+                raise RuntimeError('still covered')
+            return {'rect': [5, 6, 80, 40]}
+        placement = probe.WaylandPlacement({'kind': 'toplevel-pixels'})
+        placement._windows = [dict(id='k', title='Kiosk', wm_class='kiosk', focus=True, fullscreen=True)]
+        later = [dict(placement._windows[0], focus=False)]  # it lost focus while it repainted
+        with patch.object(probe, 'grim', side_effect=lambda *a: next(captures) if a else (8, 8, b'')), \
+             patch.object(probe, 'app_id_names', return_value=True), patch.object(probe, 'place_pixels', side_effect=place), \
+             patch.object(probe, 'compositor_windows', return_value={'windows': later}), \
+             patch.object(probe.time, 'sleep'):
+            self.assertEqual(placement._pixel_toplevel(7, 'Kiosk', [0, 0, 80, 40])['frame'], [5, 6, 80, 40])
+        self.assertEqual(placed, [first, fresh])  # the 79x40 capture placed nothing
+        self.assertEqual(states, [True, False])  # fresh pixels go with the state read after them
+
+    def test_the_toplevel_list_reports_fullscreen_only_for_a_window_it_names_once(self):
+        module = SimpleNamespace(socket_path=lambda: 'x', snapshot=lambda _: {
+            'active': {'identifier': 'k'},
+            'ext': [{'identifier': 'k', 'app_id': 'firefox', 'title': 'Kiosk'},
+                    {'identifier': 'a', 'app_id': 'putgd-ui', 'title': 'History'},
+                    {'identifier': 'b', 'app_id': 'putgd-ui', 'title': 'History'}],
+            'wlr': [{'app_id': 'firefox', 'title': 'Kiosk', 'fullscreen': True},
+                    {'app_id': 'putgd-ui', 'title': 'History', 'fullscreen': True},
+                    {'app_id': 'putgd-ui', 'title': 'History', 'fullscreen': False}]})
+        with patch.object(probe, 'toplevels_module', return_value=module):
+            windows = {w['id']: w for w in probe.toplevel_pixel_windows({})['windows']}
+        self.assertEqual([(i, windows[i]['fullscreen'], windows[i]['focus']) for i in 'kab'],
+                         [('k', True, True), ('a', False, False), ('b', False, False)])
+
+    def test_a_dialog_shows_its_pixels_in_its_parents_capture_corner(self):
+        # labwc draws the dialog into its parent's capture at the origin and captures it alone as 1x1.
+        dialog = (30, 20, noise(30, 20, 5))
+        screen = paste(self.screen, dialog, 140, 60)
+        parent = paste(self.window, dialog, 0, 0)
+        windows = {'windows': [{'id': 'p', 'wm_class': 'putgd-ui'}, {'id': 'd', 'wm_class': 'putgd-ui'},
+                               {'id': 'o', 'wm_class': 'other'}]}
+        captures = {'p': parent, 'd': (1, 1, b'\0\0\0'), 'o': self.window}
+        rules = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [140, 60]}]}
+        with patch.object(probe, 'toplevel_pixel_windows', return_value=windows), \
+             patch.object(probe, 'grim', side_effect=lambda identifier=None: captures[identifier]), \
+             patch.object(probe, 'app_id_names', side_effect=lambda app_id, pid: app_id == 'putgd-ui'):
+            parent_id, image, rect = probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), screen)
+            self.assertEqual((parent_id, image, rect), ('p', dialog, [140, 60, 30, 20]))
+            with self.assertRaisesRegex(RuntimeError, '0 of its process'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), self.screen)
+            with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
+                probe.dialog_place({}, 7, 'Delete', windows['windows'][1], (30, 20), screen)
+            # A flat corner is no dialog, even where the outputs show the same flat colour.
+            captures['p'] = paste(self.window, (30, 20, b'\x07' * (30 * 20 * 3)), 0, 0)
+            flat = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 140, 60)
+            with self.assertRaisesRegex(RuntimeError, 'detail in the corner of p does not show'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
+            # Mostly flat with a little detail: the flat cells alone matching is not enough.
+            spot = paste((30, 20, b'\x07' * (30 * 20 * 3)), (6, 2, noise(6, 2, 9)), 12, 8)
+            captures['p'] = paste(self.window, spot, 0, 0)
+            self.assertGreaterEqual(probe.pixel_share(spot, flat, 140, 60), probe.KNOWN_SHARE)
+            with self.assertRaisesRegex(RuntimeError, 'detail in the corner of p does not show'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
+
+    def test_short_flat_cells_are_no_detail(self):
+        # 400 wide: the last cell of each row is 16 pixels, too short for compression to call flat.
+        flat = (400, 200, b'\x30' * (400 * 200 * 3))
+        self.assertEqual(probe.pixel_share(flat, flat, 0, 0, detailed=True), 0.0)
+
+    def test_the_display_snapshot_stands_for_the_outputs_over_the_target(self):
+        import base64
+        import zlib
+        crop = probe.crop(self.screen, 113, 47, 80, 50)
+        display = {'size': [320, 200], 'rect': [113, 47, 80, 50], 'rgb': base64.b64encode(zlib.compress(crop[2])).decode()}
+        screen = probe.display_screen(display)
+        self.assertEqual(probe.crop(screen, 113, 47, 80, 50), self.window)
+        self.assertTrue(probe.pixels_at(self.window, screen, [113, 47, 80, 50], (150, 70)))
+        with self.assertRaisesRegex(RuntimeError, 'does not match'):
+            probe.display_screen(dict(display, rect=[300, 47, 80, 50]))
 
     def test_a_cursor_at_the_point_is_not_a_cover(self):
         rect = [113, 47, 80, 50]

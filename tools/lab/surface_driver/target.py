@@ -796,6 +796,16 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 if client is not None:
                     client.close()
 
+    @desktop_transport
+    def display_image(self, head=0):
+        """capture_image after the same endpoint and lease checks, or None when only the VNC read fails."""
+        try:
+            return Target.capture_image.__wrapped__(self, head)
+        except RecipeBlocked:
+            raise
+        except (OSError, RuntimeError):  # tools/lab/rfb.py: connect, handshake and stream errors
+            return None
+
     def screenshot(self, path, head=0):
         from .redact import save_frame
         return save_frame(self.capture_image(head), path)
