@@ -304,8 +304,8 @@ When a guest step of the return fails, `recover` restarts the daemon only if all
 It then starts the daemon with the nightly's own command, on the same files, and opens the blank
 `putgd lab` collection with its empty password. It checks that the collection is unlocked and
 that the desktop's Secret Service kept the same owner. Only then does `state.json` name the new
-connection. If a check, the unlock or the state update fails, it sends the daemon it just
-started a stop signal (checked by pid and start time).
+connection. If a check, the unlock or the state update fails, it tries to send the daemon it
+just started a stop signal (checked by pid and start time).
 
 After a restart, `recover` tries the return once more. If the session was carried back earlier in
 the same call, only the guest's cleanup is retried. A failure while the builder's entry is
