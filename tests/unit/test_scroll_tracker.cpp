@@ -1786,6 +1786,22 @@ void testPlayingVideo() {
            ro.wrong == 0 && oscLost == 0 && ro.totals.pinnedRegions == 0 && oscBad == 0 && oscVidExact && ro.totals.bottom == doc.img.h,
            counts(ro) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", ro.totals.pinnedRegions, oscLost,
                             ro.wrong, ro.firstWrong.c_str(), oscBad, oscFirstBad, oscVid));
+
+    // 3c. Full-width 60% playing video extending past the text margins
+    // (changingX = 0, changingW = W): edge blocks must not pin (#1537 S3).
+    SceneSpec ssFull = ss;
+    ssFull.changingX = 0;
+    ssFull.changingW = W;
+    const Scene sceneFull(doc.img, ssFull);
+    const Played rf = play(sceneFull, oscPos);
+    int fullLost = 0;
+    for (const TrackResult& t : rf.results) fullLost += t.state == TrackState::Lost;
+    int fullFirstBad = 0;
+    const long long fullBad = differing(rf, pageRows(doc.img, 0, doc.img.h, W), {{0, 592, W, 848}}, 0, &fullFirstBad);
+    report("full-width 60% playing video: margin edges never pin",
+           rf.wrong == 0 && fullLost == 0 && rf.totals.pinnedRegions == 0 && fullBad == 0 && rf.totals.bottom == doc.img.h,
+           counts(rf) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d)", rf.totals.pinnedRegions, fullLost,
+                            rf.wrong, rf.firstWrong.c_str(), fullBad, fullFirstBad));
   }
 
   {
@@ -1879,6 +1895,25 @@ void testPlayingVideo() {
                                                    ss.changingX + ss.changingW, ss.changingY + ss.changingH, &matchedVid);
       report("60% playing video on frame 0: pause then scroll recovers, exact",
              r.wrong == 0 && bad == 0 && videoExact && r.totals.bottom == doc.img.h && r.totals.placed >= int(pos.size()) - 7,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+    }
+    // 5c. 240-px playing video at the very top of the capture (changingY = 0)
+    // scrolling immediately in 8-px steps: frame 0 is the only frame showing the
+    // whole video, so the snapshot uses retained frame 0 (#1537 S4).
+    {
+      SceneSpec ssTop = ss;
+      ssTop.changingY = 0;
+      const Scene sceneTop(doc.img, ssTop);
+      std::vector<int> pos{0};
+      while (pos.back() < end) pos.push_back(std::min(end, pos.back() + 8));
+      const Played r = play(sceneTop, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 0, 456, 248}}, 0, &firstBad);
+      int matchedVid = -1;
+      const bool videoExact = matchesOneVideoFrame(r, sceneTop, pos, ssTop.changingX, 0,
+                                                   ssTop.changingX + ssTop.changingW, ssTop.changingH, &matchedVid);
+      report("240-px playing video at top of capture: snapshot keeps frame 0 exact",
+             r.wrong == 0 && bad == 0 && videoExact && matchedVid == 0 && r.totals.bottom == doc.img.h,
              counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
     }
   }
@@ -2000,6 +2035,30 @@ void testPlayingVideo() {
         lost += r.results[i].state == TrackState::Lost;
       }
       report(fmt("jumps past viewport with unpinned sticky chrome (%d-px step) stay Lost", firstStep),
+             setupPlaced && r.wrong == 0 && falseStill == 0 && lost > 0,
+             counts(r) + fmt(", setupPlaced %d, %d false NoMovement, %d Lost frames", int(setupPlaced), falseStill, lost));
+    }
+    // Late sticky chrome appearing at position 32 over previously-scrolling
+    // page content after three clean 8-px steps, followed by jumps to 700 and
+    // 1220: must stay Lost, not NoMovement (#1537 S2).
+    {
+      const Image docLate = columnPage(163, W, 6400, 16, 624, 160, 16, 624);
+      SceneSpec ssLate;
+      ssLate.width = W;
+      ssLate.height = V;
+      ssLate.pinned.push_back(PinnedPart{0, 0, W, 40, 0xD8DCE6, 0x202430, 32, 165});
+      ssLate.pinned.push_back(PinnedPart{0, 40, 112, V - 40, 0xE2E6EE, 0x202430, 32, 167});
+      const Scene sceneLate(docLate, ssLate);
+      std::vector<int> pos{0, 8, 16, 24, 32};
+      for (int p = 700; p + V <= doc.h; p += 520) pos.push_back(p);
+      const Played r = play(sceneLate, pos);
+      const bool setupPlaced = r.results.size() >= 5 && r.results[4].status == TrackStatus::Placed && r.results[4].position == 32;
+      int falseStill = 0, lost = 0;
+      for (size_t i = 5; i < r.results.size(); ++i) {
+        falseStill += r.results[i].status == TrackStatus::NoMovement;
+        lost += r.results[i].state == TrackState::Lost;
+      }
+      report("jumps past viewport after late sticky chrome appears stay Lost",
              setupPlaced && r.wrong == 0 && falseStill == 0 && lost > 0,
              counts(r) + fmt(", setupPlaced %d, %d false NoMovement, %d Lost frames", int(setupPlaced), falseStill, lost));
     }

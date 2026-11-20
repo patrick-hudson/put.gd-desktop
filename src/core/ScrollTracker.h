@@ -522,6 +522,10 @@ class ScrollTracker {
   // cannot build up pinning evidence until the page actually moves a full
   // frame height across it (#1537).
   std::vector<long long> wanderingMinPos_, wanderingMaxPos_;
+  // Whether the current wandering_ episode overlapped a confirmed scrolling
+  // page column (remembered until wandering_ resets so margin edges of a
+  // full-width in-page video keep page membership as the video scrolls past).
+  std::vector<uint8_t> wanderingPage_;
   // Blocks that have shown textured motion with the page (`move >= 3`), never
   // expiring while scrolling back and forth over an in-page video (#1537).
   std::vector<uint8_t> pageMoved_;
