@@ -288,6 +288,38 @@ saw, whether or not that banner covered anything. Add an exception to
 `proton_lab.py recover` quits each resident through its own environment, including
 one in a private runtime folder, then carries the session back.
 
+**A dead guest keyring.** On Aurora and Budgie the nightly runs its own
+`gnome-keyring-daemon` in the guest, on `/dev/shm/nd-keys`. The guest's credential bridge and
+the private put.gd processes reach it by its unique D-Bus name, recorded in the run's
+`state.json`. That daemon does not restart by itself, so a lend return that needs the guest
+keyring fails once it has died.
+
+When a guest step of the return fails, `recover` restarts the daemon only if all of these hold:
+
+- The recorded connection has no owner.
+- No process still serves the keyring's folder.
+- The keyring's data folder is still there.
+- The desktop's own Secret Service (KWallet or oo7) is running.
+
+It then starts the daemon with the nightly's own command, on the same files, and opens the blank
+`putgd lab` collection with its empty password. It checks that the collection is unlocked and
+that the desktop's Secret Service kept the same owner. Only then does `state.json` name the new
+connection. If a check, the unlock or the state update fails, it tries to send the daemon it
+just started a stop signal (checked by pid and start time).
+
+After a restart, `recover` tries the return once more. If the session was carried back earlier in
+the same call, only the guest's cleanup is retried. A failure while the builder's entry is
+read, exported or carried back never triggers a restart, and a conflict there leaves the Proton
+lock blocked as before. So does a second failure.
+
+`lend.json` appends each attempt to `keyringRestarts`, with its time. A restart records both
+connection names, the daemon's pid and start time, and the collection's lock state. A refused or
+failed check records `restarted: false` and its reason, plus the bus name when the daemon still
+answers. None of them records a secret.
+
+A guest on its desktop's own Secret Service (GNOME, Cinnamon, Plasma) has no private keyring: it
+gets no restart and no `keyringRestarts` entry, and a failed return stays failed as before.
+
 ## Recording fixture: consent, retained media and the GTK sink
 
 **ScreenCast consent (#791).** Each profile declares `recording.consent`:
