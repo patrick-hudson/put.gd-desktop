@@ -56,6 +56,7 @@ STATUS_MARK = {'green': '🟢', 'red': '🔴', 'not_run': '⚪', 'unsupported': 
 STABLE_TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+')
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
+MAX_ROWS = 2  # Per builder, run in turn; each row is about half an hour.
 # The worker budget includes checkout verification, await_host and setup. Leave
 # fifteen minutes for retirement/lease cleanup before the controller's limit.
 HOST_TIMEOUT = 18000
@@ -1001,9 +1002,8 @@ def lease(host, session, out, *, reservation=None):
                 raise
 
 
-def preflight(config):
+def preflight(config, row):
     from tools.lab import lab
-    row = config['rows'][0]
     if not Path(row['golden']).is_file():
         if Path(row['golden']+'.partial').is_file():
             raise NotRun('golden copy awaiting checksum verification')
@@ -1032,7 +1032,7 @@ def preflight(config):
                 overlay='sparse qcow2; no preallocation', placement='guest')
 
 
-def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep, worker_deadline=None):
+def await_host(config, out, row, *, clock=time.monotonic, sleep=time.sleep, worker_deadline=None):
     """Wait outside every desktop/Proton lease; other guests are never touched."""
     from tools.lab.desktop_lock import Desktop
     started = clock()
@@ -1044,13 +1044,13 @@ def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep, worker_de
         if worker_deadline is not None and clock() >= worker_deadline:
             raise NotRun('worker deadline exhausted while awaiting host')
         try:
-            for resource in ('desktop', 'proton') if config['rows'][0].get('live') else ('desktop',):
+            for resource in ('desktop', 'proton') if row.get('live') else ('desktop',):
                 state = Desktop(Path.home()/'putgd-lab/locks', config['host'], resource=resource).status()
                 if state['state'] != 'free':
                     raise NotRun(resource+' lease held by another session')
             if (Path.home()/'putgd-lab/locks/tier1-guest.lock.d').exists():
                 raise NotRun('nightly guest slot held by another session')
-            ready = preflight(config)
+            ready = preflight(config, row)
             save(out/'availability.json', dict(attempts=attempts, waitedSeconds=round(clock()-started, 3), ready=ready))
             return clock()-started
         except NotRun as error:
@@ -1143,9 +1143,10 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         raise NotRun('invalid tested source identity')
     command(['git', 'fetch', '--no-tags', 'origin', identity['gitCommit']], log=out/'build-source-fetch.txt')
     host = config['host']
-    if len(config['rows']) != 1:
-        raise NotRun('configure exactly one desktop per builder')
+    if not 1 <= len(config['rows']) <= MAX_ROWS:
+        raise NotRun('configure one to '+str(MAX_ROWS)+' desktops per builder')
     result = []
+    # Rows on one builder run one after another: one guest slot, one set of ports.
     for row in config['rows']:
         started = time.monotonic()
         rowout = out/row['name'].lower().replace(' ', '-')
@@ -1161,12 +1162,12 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         try:
             with recovery_deadline():
                 recover_stale_guest(config, rowout)
-            record['waitSeconds'] = round(await_host(config, rowout, worker_deadline=deadline), 3)
+            record['waitSeconds'] = round(await_host(config, rowout, row, worker_deadline=deadline), 3)
             with lease(host, session, rowout, reservation=reservation) as lease_errors:
                 try:
                     setup_started = time.monotonic()
                     command(['uptime'], log=rowout/'uptime.txt')
-                    save(rowout/'host-preflight.json', preflight(config))
+                    save(rowout/'host-preflight.json', preflight(config, row))
                     command([sys.executable, 'tools/diagnostics/check_socket_paths.py', '--socket',
                              run/'qmp.sock', run/'vnc.sock', '/dev/shm/nd/runtime/putgd/session.sock'],
                             log=rowout/'sockets.json')
@@ -1429,9 +1430,10 @@ def publish(github, result, out, *, previous=None):
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
     markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · ➖ not supported on this desktop (acceptance matrix) · — disabled.\n'
-    markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
+    markdown += '\n| Desktop / host | Row seconds | Host total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: | ---: |\n'
     for row in result['desktops']:
-        markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'
+        markdown += (f'| {row["desktop"]} / {row["host"]} | {row.get("seconds", 0):.1f} | '
+                     f'{row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n')
     markdown += '\nFrames remain evidence attachments; no manual visual review is required.\n'
     github.issue(title, markdown, pinned)
     query = 'query($id:ID!){node(id:$id){... on Repository{pinnedIssues(first:10){nodes{issue{id}}}}}}'
@@ -1450,26 +1452,32 @@ def not_run_rows(host, builder, reason, out):
 
 
 def selected_builders(builders, desktops):
+    """The builders to run, each with only the rows named (a builder ID names all of its rows)."""
     if not desktops:
         return builders
     selected = {}
     for name in desktops:
-        matches = {host: builder for host, builder in builders.items() if
-                   name.casefold() in {host.casefold(), *(r['name'].casefold() for r in builder['rows']),
-                                       *(r['desktop'].casefold() for r in builder['rows'])}}
+        key = name.casefold()
+        matches = {host: [r for r in builder['rows'] if key == host.casefold()
+                          or key in (r['name'].casefold(), r['desktop'].casefold())]
+                   for host, builder in builders.items()}
+        matches = {host: rows for host, rows in matches.items() if rows}
         if len(matches) != 1:
             raise RuntimeError('desktop filter must identify exactly one configured builder: '+name)
-        selected.update(matches)
-    return {host: builder for host, builder in builders.items() if host in selected}
+        for host, rows in matches.items():
+            chosen = selected.setdefault(host, [])
+            chosen += [r for r in rows if r not in chosen]
+    return {host: dict(builder, rows=[r for r in builder['rows'] if r in selected[host]])
+            for host, builder in builders.items() if host in selected}
 
 
 def merge_desktops(previous, result):
     if (previous['release'], previous['build']) != (result['release'], result['build']):
         raise RuntimeError('filtered publication requires the same release and exact build')
-    replacements = {r['host']: r for r in result['desktops']}
-    if not replacements.keys() <= {r['host'] for r in previous['desktops']}:
+    replacements = {(r['host'], r['desktop']): r for r in result['desktops']}
+    if not replacements.keys() <= {(r['host'], r['desktop']) for r in previous['desktops']}:
         raise RuntimeError('filtered publication cannot introduce an unknown desktop')
-    return [replacements.get(r['host'], r) for r in previous['desktops']]
+    return [replacements.get((r['host'], r['desktop']), r) for r in previous['desktops']]
 
 
 def follow_nightly(argv):
@@ -1624,8 +1632,9 @@ def controller(args, config, *, local_workers=None):
         if tested_release(done) and not args.now and not stable_draft:
             print('Already tested '+tag)
             return
-        if set(config['builders']) != set(HOSTS) or any(len(b['rows']) != 1 for b in config['builders'].values()):
-            raise RuntimeError('configure exactly one desktop on each of the five builders')
+        if set(config['builders']) != set(HOSTS) or any(not 1 <= len(b['rows']) <= MAX_ROWS
+                                                        for b in config['builders'].values()):
+            raise RuntimeError('configure one to '+str(MAX_ROWS)+' desktops on each of the five builders')
         builders = selected_builders(config['builders'], args.desktops)
         previous = None
         if args.desktops and not stable_draft:
