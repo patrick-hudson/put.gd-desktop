@@ -86,6 +86,8 @@ public:
  QJsonObject trayTint()const;
  // The glyph the calendar picked, its local date, and whether a lab override set it.
  QJsonObject trayIconState()const;
+ // The StatusNotifier menu's host activity and rows (NativeTray::menuActivity()); {"native": false} for the Qt fallback tray.
+ QJsonObject trayMenuState()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
  // or its folder when no file manager answers. Only put.gd's own package names,
  // unless savedHere: diagnostics.bundle wrote that path in this resident (#223).

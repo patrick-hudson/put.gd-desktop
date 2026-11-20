@@ -499,6 +499,9 @@ void TrayController::retintMenu() {
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
+QJsonObject TrayController::trayMenuState()const {
+ return native_?native_->menuActivity():QJsonObject{{"native",false}};
+}
 QJsonObject TrayController::trayIconState()const {
  const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
  return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()}};

@@ -3,6 +3,7 @@
 #include "IconArt.h"
 #include "TrayMenu.h"
 #include <QDBusConnection>
+#include <QJsonObject>
 #include <QObject>
 #include <QColor>
 #include <QUrl>
@@ -30,6 +31,13 @@ public:
  // The menu's live state (TrayMenu's table): the live block, shortcuts,
  // capture delay, output rows and update label. The host hears what changed.
  void setMenu(const traymenu::State& state);
+ // What tray hosts asked of the menu, for agents and the lab (ui.snapshot
+ // diagnostics.trayMenu): `shows` counts AboutToShow or AboutToShowGroup calls
+ // for the root menu, `opened` and `closed` its "opened" and "closed" events (not
+ // every host sends them), `clicked` the last eight rows a host reported clicked
+ // ({id, name, label}), and `rows` the top-level rows served now, in order,
+ // separators left out ({id, name, label, visible, enabled, submenu}).
+ QJsonObject menuActivity() const;
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
  // Closes every notification this tray sent that its server has not reported
