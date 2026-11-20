@@ -527,10 +527,11 @@ these cells, each judged by an independent check, not the app's own report. Befo
 installs anything, the row holds the apt guests' own package updaters (`apt-daily`,
 `apt-daily-upgrade` and Mint Update's automation) in the overlay, as root through the
 goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no package cache
-and no lists lock). It stops and masks their timers, lets an updater that is already
-running finish (up to 20 minutes; stopping one could kill dpkg or leave
-`unattended-upgrade` running), then masks the services, and records them in
-`package-updates.json`. The row goes on only if the guest reports every listed unit as
+and no lists lock). It stops and masks their timers, then waits up to 20 minutes for the
+updater services to drain: a running or queued updater is left to finish, because
+stopping one could kill dpkg or leave `unattended-upgrade` running. It then masks each
+loaded service only if it is `inactive` or `failed` with no queued job and an empty
+cgroup, and records every unit in `package-updates.json`. The row goes on only if the guest reports every listed unit as
 absent (`not-found`) or `masked`, as `inactive` or `failed`, and with no queued job or
 process left in its cgroup; any other state, or no report for a unit, stops it there. Fedora installs no updates by
 itself and Aurora's `uupd` is held by its tools step. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
