@@ -3,7 +3,9 @@
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
 #include "core/Log.h"
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QDBusArgument>
 #include <QDBusContext>
 #include <QDBusConnectionInterface>
@@ -494,6 +496,47 @@ private slots:
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
   PUTGD_TRY_COMPARE(actions.size(), ids.size()+2); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+ }
+ // diagnostics.trayMenu: what hosts asked of the menu and clicked, and the rows
+ // served, so the lab can open a menu no accessibility tree exports (#1003).
+ void menuActivityRecordsWhatHostsAskedAndClicked() {
+  NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
+  auto activity = tray.menuActivity();
+  QCOMPARE(activity["shows"].toInt(), 0); QCOMPARE(activity["opened"].toInt(), 0); QCOMPARE(activity["closed"].toInt(), 0);
+  QVERIFY(activity["clicked"].toArray().isEmpty());
+  QStringList shown;
+  for (const auto& value : activity["rows"].toArray()) {
+   const auto row = value.toObject(); QVERIFY(!row["name"].toString().isEmpty());
+   if (row["visible"].toBool()) shown << row["label"].toString();
+  }
+  // The agreed idle rows (#1532), separators left out.
+  QCOMPARE(shown, (QStringList{"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop",
+   "Capture scrolling region", "Capture region & edit", "Edit image", "Record screen", "Copy text from region", "Upload clipboard",
+   "Capture delay: none", "Capture output", "Open put.gd", "Settings", "Quit put.gd"}));
+  // Cinnamon's xapp-sn-watcher asks with AboutToShowGroup, other hosts with AboutToShow; a submenu counts nothing.
+  const auto group = [&](const QList<int>& ids) { return call("/Menu", "com.canonical.dbusmenu", "AboutToShowGroup", {QVariant::fromValue(ids)}); };
+  QCOMPARE(group({0}).type(), QDBusMessage::ReplyMessage); QCOMPARE(group({13}).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {13}).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(group({99}).type(), QDBusMessage::ErrorMessage);
+  QCOMPARE(click(0, "opened").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13, "opened").type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(click(0, "closed").type(), QDBusMessage::ReplyMessage);
+  activity = tray.menuActivity();
+  QCOMPARE(activity["shows"].toInt(), 2); QCOMPARE(activity["opened"].toInt(), 1); QCOMPARE(activity["closed"].toInt(), 1);
+  QVERIFY(activity["clicked"].toArray().isEmpty());
+  QVERIFY(actions.isEmpty());
+  // A clicked row is recorded with the label it had; only the last eight are kept.
+  QCOMPARE(click(1).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 1);
+  auto clicked = tray.menuActivity()["clicked"].toArray();
+  QCOMPARE(clicked.size(), 1);
+  QCOMPARE(clicked.at(0).toObject()["name"].toString(), QString("region"));
+  QCOMPARE(clicked.at(0).toObject()["label"].toString(), QString("Capture region"));
+  WireEvents events; for (int i = 0; i < 9; ++i) events.append({7, "clicked", QDBusVariant(0), 0});
+  QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)}).type(), QDBusMessage::ReplyMessage);
+  PUTGD_TRY_COMPARE(actions.size(), 10);
+  clicked = tray.menuActivity()["clicked"].toArray();
+  QCOMPARE(clicked.size(), 8);
+  for (const auto& value : clicked) QCOMPARE(value.toObject()["label"].toString(), QString("Settings"));
  }
  // #657: hosts hand over an xdg-activation token just before the click; it goes
  // with that click's action only, and a malformed one is refused.

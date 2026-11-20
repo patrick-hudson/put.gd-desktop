@@ -257,5 +257,35 @@ class DragGuards(unittest.TestCase):
         self.drag_with_real_guard(True)
 
 
+
+class DrawnTargets(unittest.TestCase):
+    """Input to a tray icon or menu row known only by its pixels (tray_pixels.py)."""
+    def test_nothing_is_sent_unless_the_target_is_still_drawn_and_the_shell_is_healthy(self):
+        ctx, directory = context({'session': 'wayland'})
+        self.addCleanup(directory.cleanup)
+        ctx.target.capture_image = Mock(return_value='capture')
+        ctx.target.events = Mock()
+        ctx.target.key = Mock()
+        ctx.shell_failure = Mock(return_value=None)
+        for call in (lambda: ctx.click_drawn(50, 60, 0, lambda image: False),
+                     lambda: ctx.click_drawn(50, 60, 0, lambda image: False, wheel=-3),
+                     lambda: ctx.key_drawn('Esc', 0, lambda image: False)):
+            with self.assertRaisesRegex(RecipeBlocked, 'moved or was covered|closed or changed'):
+                call()
+        ctx.shell_failure.return_value = 'Cinnamon just crashed'
+        with self.assertRaisesRegex(RecipeBlocked, 'just crashed'):
+            ctx.click_drawn(50, 60, 0, lambda image: True)
+        ctx.shell_failure.return_value = None
+        with self.assertRaisesRegex(RecipeBlocked, 'outside'):
+            ctx.click_drawn(5000, 60, 0, lambda image: True)
+        ctx.target.pointer.assert_not_called()
+        ctx.target.events.assert_not_called()
+        ctx.target.key.assert_not_called()
+        # Drawn and healthy: the check sees the capture taken just before, then the input goes.
+        seen = []
+        ctx.click_drawn(50.4, 60.6, 0, lambda image: seen.append(image) or True, button=None)
+        self.assertEqual(seen, ['capture'])
+        ctx.target.pointer.assert_called_once_with(50, 61, 1920, 1080, head=0)
+
 if __name__=='__main__':
     unittest.main()

@@ -10,6 +10,8 @@
 #include <QCoreApplication>
 #include <QHash>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QPointer>
 #include <QProcess>
 #include <QUuid>
@@ -209,6 +211,17 @@ public:
  // The menu as it now shows; a change tells the host which rows changed.
  const traymenu::State& menuState() const { return menuState_; }
  void setMenu(const traymenu::State& state);
+ // What tray hosts asked of the menu (menuActivity()): a root AboutToShow or
+ // AboutToShowGroup, a root "opened" or "closed" event, and the last clicked rows.
+ int menuShows = 0, menuOpened = 0, menuClosed = 0;
+ QJsonArray menuClicks;
+ void menuEvent(int id, const QString& event) {
+  if (id == 0 && event == "opened") ++menuOpened;
+  if (id == 0 && event == "closed") ++menuClosed;
+  if (event != "clicked" || id == 0) return;
+  menuClicks.append(QJsonObject{{"id", id}, {"name", traymenu::name(id)}, {"label", traymenu::shown(id, menuState_).label}});
+  while (menuClicks.size() > 8) menuClicks.removeFirst();
+ }
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
@@ -734,6 +747,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  }
  if (member == "Event" && sig == "isvu") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
+  owner_->menuEvent(id, args.at(1).toString());
   if (args.at(1).toString() == "clicked") dispatchId(id, owner_->takeActivationToken());
   return reply();
  }
@@ -742,13 +756,14 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   QList<int> missing; bool found = false;
   for (const auto& e : events) {
    if (!knownId(e.id)) missing.append(e.id);
-   else { found = true; if (e.event == "clicked") dispatchId(e.id, owner_->takeActivationToken()); }
+   else { found = true; owner_->menuEvent(e.id, e.event); if (e.event == "clicked") dispatchId(e.id, owner_->takeActivationToken()); }
   }
   if (!events.isEmpty() && !found) return error();
   return reply({QVariant::fromValue(missing)});
  }
  if (member == "AboutToShow" && sig == "i") {
   if (!knownId(args.at(0).toInt())) return error();
+  if (args.at(0).toInt() == 0) ++owner_->menuShows;
   const auto revision=owner_->menuRevision();owner_->aboutToShow();return reply({revision!=owner_->menuRevision()});
  }
  if (member == "AboutToShowGroup" && sig == "ai") {
@@ -756,6 +771,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   QList<int> missing; bool found = false;
   for (int id : ids) { if (knownId(id)) found = true; else missing.append(id); }
   if (!ids.isEmpty() && !found) return error();
+  if (ids.contains(0)) ++owner_->menuShows;
   return reply({QVariant::fromValue(QList<int>{}), QVariant::fromValue(missing)});
  }
  return error("org.freedesktop.DBus.Error.UnknownMethod");
@@ -770,6 +786,16 @@ bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
 void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {d_->setActivity(color,description,percent,recording,title,glyph);}
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
 void NativeTray::setMenu(const traymenu::State& state) {d_->setMenu(state);}
+QJsonObject NativeTray::menuActivity() const {
+ QJsonArray rows;
+ for (int id : traymenu::children(0)) {
+  if (traymenu::kind(id) == traymenu::Kind::Separator) continue;
+  const auto shown = traymenu::shown(id, d_->menuState());
+  rows.append(QJsonObject{{"id", id}, {"name", traymenu::name(id)}, {"label", shown.label}, {"visible", shown.visible},
+   {"enabled", shown.enabled}, {"submenu", traymenu::kind(id) == traymenu::Kind::Submenu}});
+ }
+ return {{"shows", d_->menuShows}, {"opened", d_->menuOpened}, {"closed", d_->menuClosed}, {"clicked", d_->menuClicks}, {"rows", rows}};
+}
 void NativeTrayPrivate::setMenu(const traymenu::State& state) {
  if(state==menuState_)return;
  const auto before=menuState_;menuState_=state;++menuRevision_;

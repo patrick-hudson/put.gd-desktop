@@ -12,7 +12,7 @@ import json
 import glob
 import shlex
 
-from tools.lab.surface_driver.api import RecipeFailed, recipe
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
 
 TERMINAL = {'completed', 'failed', 'partial', 'interrupted', 'cancelled'}
@@ -192,6 +192,381 @@ def _icon(ctx):
         return ctx.wait(drawn, 'uniquely drawn desktop tray icon', timeout=10)
     except RecipeFailed:
         ctx.blocked('Desktop tray icon selector is missing; needs an owned panel rectangle', 670)
+
+
+def _icon_node(ctx, timeout=10):
+    """The tray icon's accessible node, or None where the host exports none (pixel trays)."""
+    selector = _profile(ctx).get('icon')
+    if not selector:
+        return None
+    def drawn():
+        try:
+            found = ctx.accessible(selector)
+        except RecipeBlocked:
+            return None  # No AT-SPI on this desktop: the icon is found by its pixels.
+        nodes = [n for n in found if n.get('visible') and n.get('showing') and n.get('rect')
+                 and (min(n['rect'][k] for k in ('width', 'height')) if isinstance(n['rect'], dict)
+                      else min(n['rect'][2:])) > 0]
+        if len(nodes) > 1:
+            ctx.blocked('Desktop tray icon selector is ambiguous; needs an owned panel rectangle', 670)
+        return nodes[0] if nodes else None
+    try:
+        return ctx.wait(drawn, 'uniquely drawn desktop tray icon', timeout=timeout)
+    except RecipeFailed:
+        return None
+
+
+TRAY_TITLES = ('Uploading', 'Upload complete', 'Needs attention')
+
+
+def _published_glyphs(ctx):
+    """put.gd's tray glyph exactly as the running resident publishes it now, read when it is settled.
+
+    Never a stored image: the StatusNotifierItem's IconPixmap frames (and its IconName PNG on hosts
+    that only read names). Two reads a moment apart must agree, and no upload fill or success tint
+    may be showing.
+    """
+    from tools.lab.surface_driver import tray_pixels
+    import base64
+    import time
+    def read():
+        rows = ctx.tray(pixels=True)
+        if len(rows) != 1 or not rows[0].get('icon_pixmaps'):
+            ctx.blocked('the resident publishes no single StatusNotifier icon to match', 670)
+        return rows[0]
+    first = read()
+    time.sleep(1.5)
+    item = read()
+    if [p['sha256'] for p in item['icon_pixmaps']] != [p['sha256'] for p in first['icon_pixmaps']]:
+        ctx.blocked('put.gd\'s tray icon changed while it was read; it must be idle and settled to match', 670)
+    title = item.get('tooltip', {}).get('title', '')
+    if title.startswith(TRAY_TITLES):
+        ctx.blocked('put.gd\'s tray icon is busy (' + title + '); it must be idle to match', 670)
+    glyphs = [tray_pixels.glyph(tray_pixels.pixmap_image(p['width'], p['height'], base64.b64decode(p['argb'])))
+              for p in item['icon_pixmaps']]
+    if item.get('icon_name'):
+        read_png = ctx.shell('base64 -w0 -- ' + shlex.quote(item['icon_name']))
+        if read_png.get('returncode') != 0:
+            ctx.blocked('the resident names a tray icon file it does not have', 670)
+        glyphs.append(tray_pixels.glyph(tray_pixels.png_image(base64.b64decode(read_png['stdout'].strip()))))
+    state = ctx.call('ui.snapshot')['diagnostics'].get('trayIcon', {})
+    ctx.note('tray_icon_published=' + json.dumps(dict(glyph=state.get('glyph'), shown=state.get('shown'),
+             calendarOverride=state.get('calendarOverride'), title=title,
+             frames=[[p['width'], p['height'], p['sha256'][:12]] for p in item['icon_pixmaps']],
+             icon_name=bool(item.get('icon_name'))), sort_keys=True))
+    return glyphs, item
+
+
+OMARCHY_PIN = r'''python3 - "$1" "$2" <<'PIN'
+import json, os, sys
+from pathlib import Path
+path = Path.home()/'.config/omarchy/shell.json'
+action, value = sys.argv[1], sys.argv[2]
+def tray(document):
+    entries = [e for side in document['bar']['layout'].values() if isinstance(side, list) for e in side
+               if isinstance(e, dict) and e.get('id') == 'omarchy.tray']
+    if len(entries) != 1:
+        sys.exit('no single omarchy.tray bar entry')
+    return entries[0]
+document = json.loads(path.read_text())
+entry = tray(document)
+if action == 'read':
+    print(json.dumps(entry.get('pinned')))
+    sys.exit(0)
+if action == 'pin':
+    entry['pinned'] = list(dict.fromkeys((entry.get('pinned') or []) + [value]))
+else:
+    previous = json.loads(value)
+    if previous is None:
+        entry.pop('pinned', None)
+    else:
+        entry['pinned'] = previous
+temporary = path.with_name(path.name + '.putgd-lab')
+temporary.write_text(json.dumps(document, indent=2) + '\n')
+os.replace(temporary, path)
+print(json.dumps(tray(json.loads(path.read_text())).get('pinned')))
+PIN
+'''
+
+
+@contextmanager
+def _tray_shown(ctx, item):
+    """Keep put.gd's tray icon on the bar while the block runs.
+
+    Omarchy's tray keeps every item in a drawer that opens while the pointer is over its chevron;
+    a user pins an item (the tray's right-click Pin) to keep it on the bar. The lab adds put.gd's
+    item, by its StatusNotifier Id, to the tray's pinned list. The fixture scope puts the earlier
+    value back in its deadline-exempt cleanup, which fails the run's cleanup if it can't.
+    """
+    if (_profile(ctx).get('pixels') or {}).get('reveal') != 'omarchy-pin':
+        yield
+        return
+    read = ctx.shell('set -- read -\n' + OMARCHY_PIN)
+    if read.get('returncode') != 0:
+        ctx.blocked('could not read Omarchy\'s tray pin setting', 670)
+    previous = read['stdout'].strip()
+    def restore():
+        # The value read back from disk after the write must be the one the cell found.
+        result = ctx.shell('set -- restore ' + shlex.quote(previous) + '\n' + OMARCHY_PIN)
+        if result.get('returncode') != 0 or result.get('stdout', '').strip() != previous:
+            raise RecipeBlocked('Omarchy\'s tray pin setting was not put back')
+    # Cleanup is registered before anything is written.
+    ctx._fixture_manager.scope.defer('omarchy tray pin', restore, guest_only=True)
+    if ctx.shell('set -- pin ' + shlex.quote(item['id']) + '\n' + OMARCHY_PIN).get('returncode') != 0:
+        ctx.blocked('could not pin put.gd\'s tray item on Omarchy\'s bar', 670)
+    ctx.note('omarchy_tray_pin=' + item['id'] + ' (was ' + previous + ')')
+    yield
+
+
+def _panel(ctx, image):
+    """The panel strip of the first output, from the profile's tray.pixels {edge, thickness}."""
+    from tools.lab.surface_driver import tray_pixels
+    policy = _profile(ctx)['pixels']
+    scale = next((s.get('scale', 1) for s in ctx.profile.get('screens', []) if s.get('head', 0) == 0), 1)
+    if ctx.profile.get('session') == 'x11':
+        scale = 1
+    return tray_pixels.band(image.size, policy['edge'], round(policy['thickness'] * scale))
+
+
+def _pixel_icon(ctx, glyphs):
+    """put.gd's tray icon found on the panel by its published shape: (found, panel, capture)."""
+    from tools.lab.surface_driver import tray_pixels
+    last = []
+    def attempt():
+        image = ctx.target.capture_image(0)
+        panel = _panel(ctx, image)
+        try:
+            return tray_pixels.locate(image, panel, glyphs), panel, image
+        except tray_pixels.NoMatch as error:
+            last[:] = [str(error)]
+            return None
+    try:
+        # A host may still be drawing a newly shown item.
+        found, panel, image = ctx.wait(attempt, 'put.gd\'s tray icon drawn on the panel', timeout=6, interval=.5)
+    except RecipeFailed:
+        _frame(ctx, 'tray-icon-not-found')
+        ctx.blocked('tray icon found by its pixels: ' + (last[0] if last else 'nothing to match'), 670)
+    ctx.note('tray_icon_pixels=' + json.dumps(found, sort_keys=True))
+    return found, panel, image
+
+
+def _same_icon(image, panel, glyphs, rect):
+    """A fresh capture still shows exactly one copy of the glyph on the panel, where it was found."""
+    from tools.lab.surface_driver import tray_pixels
+    try:
+        again = tray_pixels.locate(image, panel, glyphs)
+    except tray_pixels.NoMatch:
+        return False
+    return all(abs(a - b) <= 1 for a, b in zip(again['rect'], rect))
+
+
+def _menu_activity(ctx):
+    """put.gd's record of what the tray host asked of its menu (ui.snapshot diagnostics.trayMenu)."""
+    menu = ctx.call('ui.snapshot')['diagnostics'].get('trayMenu')
+    if not isinstance(menu, dict) or not isinstance(menu.get('rows'), list):
+        ctx.blocked('the resident reports no tray menu activity (diagnostics.trayMenu); this build predates it', 670)
+    return menu
+
+
+def _asked(menu):
+    return menu.get('shows', 0) + menu.get('opened', 0)
+
+
+def _pixel_menu(ctx, labels, glyphs):
+    """Open put.gd's tray menu with a real right-click on its icon, found by its pixels, and verify it.
+
+    put.gd's own record must show the host asking for the menu after the click; the screen must show
+    a popup by the icon whose lines read as LABELS, in order (tesseract), as a cross-check. Returns
+    the rows put.gd served, the drawn line of each label and the popup's box and capture.
+    """
+    from tools.lab.surface_driver import tray_pixels
+    # A pointer left over the panel (an earlier run's click) draws over the icon and its hover
+    # highlight: move it to the middle of the output, where no tray shape is, before matching.
+    width, height = ctx.target.capture_image(0).size
+    ctx.click_drawn(width // 2, height // 2, 0, lambda image: True, button=None)
+    found, panel, before = _pixel_icon(ctx, glyphs)
+    x, y, w, h = found['rect']
+    showing = lambda image: tray_pixels.menu_box(before, image, panel, found['rect'])
+    box = None
+    # Cinnamon's host sometimes asks put.gd for the menu and then draws nothing, and then takes the
+    # next click as closing that undrawn menu; a user clicks again. Up to three right-clicks, each only
+    # while no popup shows; the popup must follow a click the host asked put.gd's menu for.
+    menu = None
+    for attempt in (1, 2, 3):
+        served = _menu_activity(ctx)
+        ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect'])
+                        and showing(image) is None, button='right')
+        asked = lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None)
+        what = 'the tray host asking put.gd for its menu after the right-click'
+        if attempt == 1:
+            menu = ctx.wait(asked, what, timeout=5)
+        else:
+            try:
+                menu = ctx.wait(asked, what, timeout=5)
+            except RecipeFailed:
+                ctx.note('tray host did not ask for the menu after right-click ' + str(attempt))
+                continue
+        try:
+            box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon', timeout=5)
+            break
+        except RecipeFailed:
+            ctx.note('tray menu not drawn after right-click ' + str(attempt))
+    if box is None:
+        _frame(ctx, 'tray-menu-not-seen')
+        ctx.blocked('tray menu by its pixels: three right-clicks drew no menu next to the icon within 5 s each', 670)
+    rows = [r for r in menu['rows'] if r.get('visible')]
+    ctx.note('tray_menu_served=' + json.dumps(dict(rows=[r.get('label') for r in rows], shows=menu.get('shows'),
+                                                   opened=menu.get('opened')), ensure_ascii=False))
+    opened = dict(rows=rows, icon=found['rect'], glyphs=glyphs, box=box, showing=showing, panel=panel)
+    try:
+        # The pointer still rests on the icon, whose tooltip can cover the first row (Omarchy): park
+        # it beside the popup, over no row (a hovered row reads badly), on whichever side has room.
+        park = (box[0] - 40 if box[0] >= 60 else box[2] + 40, (box[1] + box[3]) // 2)
+        ctx.click_drawn(*park, 0, lambda image: showing(image) is not None, button=None)
+        box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'the menu still drawn with the pointer moved off the icon')
+        image = _settled_menu(ctx, box, showing)
+        opened.update(box=box, image=image)
+        first = _read_menu(ctx, image, box, labels=labels)
+        clickable = tray_pixels.align(labels, first)
+        read, rest = clickable, []
+        if None in read and (_profile(ctx).get('pixels') or {}).get('scroll_menu'):
+            # A host that caps the menu's height scrolls it (Omarchy's card, 420 px): read the rest,
+            # then scroll back to the first view, the one whose rows are clicked.
+            centre = ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2)
+            ctx.click_drawn(*centre, 0, lambda current: _same(image, current, box), wheel=-10)
+            # Off the rows again before reading: a hovered row reads badly.
+            ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
+            scrolled = _settled_menu(ctx, box, showing)
+            # Dismissal compares with the view now drawn, should this read fail.
+            opened.update(image=scrolled)
+            _menu_frame(ctx, 'tray-menu-scrolled')
+            rest = _read_menu(ctx, scrolled, box, labels=labels)
+            # Omarchy's card cuts the row at its top edge once scrolled; that row was read whole in
+            # the first view, which overlaps this one.
+            cut = tray_pixels.clipped_top(labels, rest, box, first)
+            rest = [l for l in rest if l is not cut]
+            ctx.note('tray_menu_scrolled=' + json.dumps(dict(lines=[l['text'] for l in rest],
+                                                             cut_by_edge=cut['text'] if cut else None), ensure_ascii=False))
+            read = tray_pixels.align(labels, first + rest)
+            # Back to the top, then click from a fresh read of that view: rows are clicked only where
+            # they are drawn now.
+            for _ in range(2):
+                ctx.click_drawn(*centre, 0, lambda current: showing(current) is not None, wheel=10)
+                ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
+                image = _settled_menu(ctx, box, showing)
+                opened.update(image=image)
+                top = _read_menu(ctx, image, box, labels=labels)
+                rest += top
+                clickable = tray_pixels.align(labels, top)
+                if clickable[0] is not None:
+                    break
+            opened.update(image=image)
+        unknown = tray_pixels.unknown_lines(labels, first + rest)
+        ctx.note('tray_menu_drawn=' + json.dumps(dict(box=list(box), lines=[l['text'] for l in first],
+                                                      unread=[l for l, m in zip(labels, read) if m is None],
+                                                      unknown=unknown), ensure_ascii=False))
+        if unknown:
+            ctx.blocked('the drawn tray menu shows text that is no agreed row: ' + ', '.join(unknown), 670)
+        _menu_frame(ctx, 'tray-menu-by-pixels')
+    except BaseException:
+        _dismiss_drawn_menu(ctx, opened)
+        raise
+    return dict(opened, lines=dict(zip(labels, clickable)), read=dict(zip(labels, read)))
+
+
+def _read_menu(ctx, image, box, margin=12, labels=()):
+    # The change box leaves out the panel strip, which a menu may overlap by a few pixels (Budgie's
+    # last row): read a margin around it.
+    x0, y0 = max(0, box[0] - margin), max(0, box[1] - margin)
+    lines = _ocr(ctx, image.crop((x0, y0, min(image.width, box[2] + margin), min(image.height, box[3] + margin))))
+    for line in lines:
+        line['rect'][0] += x0
+        line['rect'][1] += y0
+    from tools.lab.surface_driver import tray_pixels
+    twice = tray_pixels.repeated_labels(labels, lines)
+    if twice:
+        ctx.blocked('the drawn tray menu shows a row twice: ' + ', '.join(twice), 670)
+    return lines
+
+
+def _settled_menu(ctx, box, showing):
+    """The capture once the popup's pixels stop changing (fade-in, scrolling), with the popup there."""
+    def settled():
+        first = ctx.target.capture_image(0)
+        return first if showing(first) is not None and _same(first, _stable_menu(ctx, box), box) else None
+    return _seen(ctx, settled, 'the drawn menu settled')
+
+
+def _seen(ctx, predicate, what, timeout=5):
+    """Wait for something only the screen shows; the lab not seeing it is not a failure of put.gd."""
+    try:
+        return ctx.wait(predicate, what, timeout=timeout)
+    except RecipeFailed:
+        _frame(ctx, 'tray-menu-not-seen')
+        ctx.blocked('tray menu by its pixels: no ' + what + ' within ' + str(timeout) + ' s', 670)
+
+
+def _stable_menu(ctx, box):
+    import time
+    time.sleep(.25)
+    return ctx.target.capture_image(0)
+
+
+def _same(first, second, box):
+    from PIL import ImageChops
+    return ImageChops.difference(first.crop(box).convert('RGB'), second.crop(box).convert('RGB')).getbbox() is None
+
+
+def _ocr(ctx, image):
+    """Text lines in IMAGE, read by tesseract in the guest, as for Omarchy's banners (_ocr_notice)."""
+    import base64
+    import io
+    from tools.lab.surface_driver import tray_pixels
+    stream = io.BytesIO()
+    image.convert('RGB').resize((image.width * 2, image.height * 2)).save(stream, format='PNG')
+    read = ctx.shell('printf %s ' + shlex.quote(base64.b64encode(stream.getvalue()).decode())
+                     + ' | base64 -d | tesseract stdin - --psm 4 tsv 2>/dev/null')
+    if read.get('returncode'):
+        ctx.blocked('tesseract could not read the tray menu', 670)
+    lines = tray_pixels.ocr_lines(read['stdout'])
+    for line in lines:
+        line['rect'] = [round(v / 2) for v in line['rect']]
+    return lines
+
+
+def _press_drawn_row(ctx, opened, label):
+    """A real click on the drawn row LABEL of a menu _pixel_menu() verified, while it is unchanged."""
+    line = opened['lines'].get(label)
+    if not line:
+        ctx.blocked('the tray menu row "' + label + '" could not be read on screen', 670)
+    x, y, w, h = line['rect']
+    ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same(opened['image'], image, opened['box']))
+
+
+def _dismiss_drawn_menu(ctx, opened):
+    """Close a menu _pixel_menu() opened: Esc, then a second right-click on the icon (Omarchy keeps its
+    card open on Esc). Quiet when it is already gone or has changed."""
+    from tools.lab.surface_driver import tray_pixels
+    import time
+    box = opened['box']
+    def showing(image):
+        # A popup is still drawn next to the icon, and it is the one the cell read.
+        if opened['showing'](image) is None:
+            return False
+        return 'image' not in opened or _same(opened['image'], image, box)
+    for attempt in ('key', 'icon'):
+        try:
+            if attempt == 'key':
+                ctx.key_drawn('Esc', 0, showing)
+            else:
+                x, y, w, h = opened['icon']
+                ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: showing(image) and _same_icon(
+                    image, opened['panel'], opened['glyphs'], opened['icon']), button='right')
+        except RecipeBlocked:
+            return
+        time.sleep(1)
+        if not showing(ctx.target.capture_image(0)):
+            return
 
 
 def _icon_input(ctx, button='left'):

@@ -1024,8 +1024,61 @@ asyncio.run(main())
                        for e in n.get('action_events',[])[previous:])
         self.wait(invoked, 'real notification action '+action, timeout=5)
 
-    def tray(self):
-        return self._probe('tray', {})
+    def tray(self, pixels=False):
+        """The private resident's StatusNotifier items; with PIXELS, each IconPixmap frame's ARGB bytes too."""
+        return self._probe('tray', {'pixels': True} if pixels else {})
+
+    def click_drawn(self, x, y, head, still_drawn, button='left', *, wheel=0):
+        """Real input to a point known only by its pixels: a tray icon or menu row no API exports.
+
+        STILL_DRAWN gets a capture taken just before the input and must confirm the target is
+        still drawn there, uncovered; otherwise nothing is sent and the run is blocked. BUTTON
+        None only moves the pointer there; WHEEL turns the wheel that many clicks (up when positive).
+        """
+        if self._input_poisoned or self._press_open:
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
+        x, y = round(x), round(y)
+        w, h = self._dimensions(head)
+        if not 0 <= x < w or not 0 <= y < h:
+            raise RecipeBlocked('input point outside selected head')
+        if not still_drawn(self.target.capture_image(head)):
+            raise RecipeBlocked('the drawn target moved or was covered before the input')
+        if wheel:
+            if self.target.physical:
+                raise RecipeBlocked('wheel input on a drawn target is for guests only')
+            self.target.pointer(x, y, w, h, head=head)
+            button = 'wheel-up' if wheel > 0 else 'wheel-down'
+            for _ in range(abs(wheel)):
+                with armed(self.review):
+                    try:
+                        with input_release(self.review, label='a wheel press'):
+                            self._press_open = True
+                            self.target.events([{'type': 'btn', 'data': {'button': button, 'down': True}}], head)
+                    finally:
+                        self._release_events([{'type': 'btn', 'data': {'button': button, 'down': False}}], head)
+        elif button is None:
+            self.target.pointer(x, y, w, h, head=head)
+        else:
+            self._pointer_click(x, y, button, head, guarded=True)
+
+    def key_drawn(self, chord, head, still_drawn):
+        """A key chord for a popup known only by its pixels (a tray menu holding the keyboard grab).
+
+        STILL_DRAWN must confirm, on a capture taken just before, that the popup is still showing.
+        """
+        codes = qcodes(chord)
+        if self._input_poisoned or self._press_open or set(codes) & set(self._held_codes):
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
+        if not still_drawn(self.target.capture_image(head)):
+            raise RecipeBlocked('the drawn popup closed or changed before the key')
+        with input_release(self.review, label='a key chord'):
+            self.target.key(codes)
 
     def _clipboard_reader(self):
         if self.profile['session'] == 'wayland':

@@ -21,7 +21,11 @@
       "edit": "00-tray-edit-submenu"
     },
     "notification_prepare_cli": true,
-    "menu_prepare_background": true
+    "menu_prepare_background": true,
+    "pixels": {
+      "edge": "bottom",
+      "thickness": 40
+    }
   },
   "windows": {
     "trayFixture": {

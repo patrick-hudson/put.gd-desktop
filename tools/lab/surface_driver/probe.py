@@ -2980,7 +2980,12 @@ def tray(query):
         pixmaps = []
         for width,height,data in properties.get('IconPixmap',[]):
             payload = bytes(data)
-            pixmaps.append({'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
+            pixmap = {'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}
+            if query.get('pixels'):
+                # The frames themselves, for matching the drawn icon (tray_pixels.py).
+                import base64
+                pixmap['argb'] = base64.b64encode(payload).decode()
+            pixmaps.append(pixmap)
         tooltip = properties.get('ToolTip',('',[],'',''))
         rows.append({'pid':pid,'start':start,'owner':owner,'service':service,'path':path,'id':str(properties.get('Id','')),
                      'title':str(properties.get('Title','')),'status':str(properties.get('Status','')),
