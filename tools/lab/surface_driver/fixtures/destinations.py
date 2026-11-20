@@ -37,7 +37,7 @@ def fake_keyring(scope):
     label='putgd fixture '+scope.token
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
-    scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
+    scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000,guest_only=True)
     # No default-alias mutation: QtKeychain's libsecret lookup searches the
     # unique reference in unlocked collections. Each item is explicitly owned.
     created=scope.json(program+'''

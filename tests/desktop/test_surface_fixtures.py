@@ -225,6 +225,7 @@ class Fixtures(FixtureCase):
         scope.defer('retain recording media',export,priority=10)
         with patch.object(self.ctx,'shell',side_effect=lost):self.ctx.manager.close()
         self.assertEqual(self.ctx.manager.closed_guest_local,[])
+        self.assertIn(Path(scope.root).name,self.ctx.target.kept_fixture_roots)
         # A setup failure the guest answered, still being handled, is not the finalizers' own.
         scope=self.ctx.manager.scope;scope.initialize()
         try:

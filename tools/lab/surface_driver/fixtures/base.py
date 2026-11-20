@@ -235,9 +235,15 @@ except (ProcessLookupError,FileNotFoundError):pass
         (target.close). The scope's directory stays behind in the private session root; the target
         learns its name, so that refusing the root over it alone is guest-local too.
         """
-        if not errors or len(failures) != len(errors) or not all(failures):
-            return []
         target = getattr(self.ctx, 'target', None)
+        if not errors or len(failures) != len(errors) or not all(failures):
+            if errors and target is not None and self.initialized:
+                # Retiring the guest would lose what this scope kept (target.close reports it).
+                kept = getattr(target, 'kept_fixture_roots', None)
+                if not isinstance(kept, set):
+                    kept = target.kept_fixture_roots = set()
+                kept.add(PurePosixPath(self.root).name)
+            return []
         if target is not None and self.initialized:
             roots = getattr(target, 'guest_local_roots', None)
             if not isinstance(roots, set):

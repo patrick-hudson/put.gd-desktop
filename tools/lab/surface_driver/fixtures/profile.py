@@ -52,7 +52,7 @@ def app_profile(scope, *, first_launch=False):
     if current['metadata']['path']!=expected:
         raise RecipeBlocked('fixture refuses a resident outside its private XDG config')
     baseline=copy.deepcopy(current['document'])
-    scope.defer('accepted settings',lambda:scope.save(baseline),priority=40)
+    scope.defer('accepted settings',lambda:scope.save(baseline),priority=40,guest_only=True)
     if ctx.call('history.list',{'limit':1}).get('total',0):
         raise RecipeBlocked('fixture requires an empty owned history; existing rows are preserved')
     def clean_history():
@@ -60,7 +60,7 @@ def app_profile(scope, *, first_launch=False):
         # private resident. Never clear a user/borrowed history.
         ctx.call('history.clear')
         ctx.call('cache.clear')
-    scope.defer('owned history and cache',clean_history,priority=50)
+    scope.defer('owned history and cache',clean_history,priority=50,guest_only=True)
     scope.patch({'archive':{'root':scope.root+'/out','keepUploads':True},
                  'actions':{name:{'destination':'local','profileId':None} for name in ('region','window','desktop','clipboard','edit')},
                  'preferences':{'launchAtLogin':False,'unlockCredentialsAtStartup':False,

@@ -298,6 +298,11 @@ class Running(unittest.TestCase):
         target=self.closing_target(GuestUnreachable('target session command unavailable: LabError exit 255'))
         self.assertEqual(target.close(),names)
         self.assertEqual(target.guest_local_cleanup,names)
+        # A fixture scope that kept state retiring would lose keeps the guest, though the root was never checked.
+        target=self.closing_target(GuestUnreachable('target session command unavailable: LabError exit 255'))
+        target._created_root=True;target.kept_fixture_roots={'fx-media'}
+        self.assertEqual(target.close(),names+['fixture cleanup incomplete; private session retained'])
+        self.assertEqual(target.guest_local_cleanup,names)
         # The same failures answered by a reachable guest are errors, but not guest-local.
         target=self.closing_target(RecipeBlocked('refused by the guest'))
         self.assertEqual(target.close(),names)

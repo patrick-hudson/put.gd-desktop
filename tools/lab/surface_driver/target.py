@@ -900,4 +900,8 @@ shutil.rmtree(root)
                     self.private_cleanup = 'resident-log-and-state-root-removed'
             except RecipeBlocked as error:
                 record('private session root cleanup unavailable', only_unreachable(error))
+        # A fixture scope whose cleanup failed in a way retiring the guest would not resolve (a copy out of
+        # the guest, say) keeps the guest even when the root was never checked because the guest was lost.
+        if getattr(self, 'kept_fixture_roots', None) and getattr(self, '_created_root', False):
+            errors.append('fixture cleanup incomplete; private session retained')
         return errors
