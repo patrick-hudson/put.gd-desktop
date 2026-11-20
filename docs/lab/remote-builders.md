@@ -532,18 +532,24 @@ these cells, each judged by an independent check, not the app's own report:
 | Window / desktop | Hotkey window and desktop captures equal the pattern |
 | Recording → upload | A moving clip beats a frozen one, then uploads |
 | Edit → upload | Four mouse marks land on the drawn image coordinates |
-| Link → browser, History delete, Upload clipboard, Copy image, Survives exit, Right-click upload | As named |
-| Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11): the exported clip lasts 4 to 30 s, its frames differ and it is the window's size |
-| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order, and a region capture started from it completes at the dragged size |
-| Copy text / redact | Copy text of a drawn two-line pattern puts exactly those lines on the clipboard; Quick redact (`name`, `list`) covers the login name and a listed word with solid pixels in the saved copy and leaves the other words alone |
-| Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the signed GET returns the file and the same URL unsigned gets 403 |
-| Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link. Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
-| Live Proton (live rows) | An upload, its share link and revoking it. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden; the Budgie and Hyprland rows do |
+| Link → browser | Firefox shows the uploaded image from History's copied link |
+| History delete | The deletion from History completes and the object then answers 404 |
+| Upload clipboard | Image pixels, file bytes and text bytes from the clipboard upload unchanged |
+| Copy image | History's Copy image gives the original pixels |
+| Survives exit | The auto-copied link is still on the clipboard after Quit and a restart |
+| Right-click upload | The file manager's upload entry uploads exactly the selected file |
+| Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11); the resident must freeze exactly that identity. The exported clip lasts 4 to 30 s, its frames differ and it is the window's size (one pixel less allowed for encoder alignment) |
+| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order and no other named row in that menu; a region capture started from it uploads at the dragged size and its link is auto-copied |
+| Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
+| Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
+| Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
+| Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden; the Budgie and Hyprland rows do |
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
-words); it is never red and opens no issue. A cell the harness cannot drive on a
-desktop is ⚪ with the reason, for example Tray menu on Cinnamon, Budgie and Hyprland,
+words; empty today); it is never red and opens no issue. ⚪ means not run or no valid
+result: setup or infrastructure failures, checks that could not decide, and cells the
+harness cannot drive on a desktop, each with the reason, for example Tray menu on Cinnamon, Budgie and Hyprland,
 whose tray items have no accessible name, and on the stock Fedora GNOME guest, which has
 no tray host.
 
@@ -706,7 +712,7 @@ acquire, the release check and break rules; it runs in CI's `lab` contracts.
 
 ### A nightly guest kept for live cleanup
 
-A live S3 or Proton cell publishes a real object. Before it publishes, it writes
+A live S3, R2 or Proton cell publishes a real object. Before it publishes, it writes
 `live-cleanup-pending.json` in the run directory
 (`work/lab-runs/n<8 hex>/`), naming the destination, the prefix, the object key
 and the run id. It removes the file once the app's delete is confirmed. If the
@@ -783,6 +789,12 @@ is live, wait until it stops, then start again from step 1.
      for it or anything in it, and **Trash** must hold neither the folder nor
      any of its files (the file can be in Trash on its own). Revoke any link
      that is left, and permanently delete only that folder or its files.
+   - **R2** (marker `destination: cloudflare-r2`): the command only pauses the
+     guest; it does not read R2. Check the R2 test bucket at its origin with the
+     bucket-scoped key, in memory as the cell does: the exact `objectKey` must be
+     gone and the prefix empty. Delete the exact key there if it is still present.
+     The public addresses (`https://cf.ul.gy` and the bucket's r2.dev address) can
+     keep serving a cached copy after the delete, so they don't decide.
 3. **Read the row's receipts.** For each `*/receipt.json` in the evidence
    directory, read `environment.cleanup_errors` and
    `environment.guest_local_cleanup`. Recovery retires the guest only when

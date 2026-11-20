@@ -17,7 +17,7 @@ use the desktop's own services. Tracking issue
 
 Omarchy runs in VMs only in the lab (software rendering, `virtio-vga`); no
 physical Hyprland machine has been tested. Hyprland is an acceptance-matrix VM
-row, not a nightly or release gate.
+row and a nightly desktop check row (AppImage, on m74), not a release gate.
 
 Versions on the accepted golden: Omarchy 4.5.0-3, kernel 7.2.15-1-omarchy,
 Hyprland 0.56.2, quickshell (Omarchy's bar, dock, tray, notifications, lock and
@@ -309,7 +309,8 @@ adapter never writes the user's Hyprland configuration and uses no `hl.unbind` o
   Hyprland drops a selection with its owner. Omarchy's clipboard history records
   copies but doesn't put them back on the clipboard. A crash, `kill -9` or a result
   over 64 MiB isn't kept. See [Clipboard after quitting](../design/clipboard-keeper.md).
-- quickshell is the tray host: put.gd's item and its menu work.
+- quickshell is the tray host: put.gd's item and its menu work. quickshell exports no tray
+  items to AT-SPI, so the nightly's Tray menu cell can't find the icon there and is not run.
 - quickshell is the notification server. It keeps **critical** notifications
   in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,
   across reboots. put.gd's critical notices (failures and warnings) stay

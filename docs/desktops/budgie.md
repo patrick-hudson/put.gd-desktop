@@ -300,9 +300,10 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
 - The nightly desktop check runs a Fedora 45 Budgie row (RPM). labwc gives no window
   geometry, so the lab places a window only where its own pixels show on screen, and a
   click it can't verify that way is not run rather than red. labwc 0.20 captures a modal
-  dialog as a 1×1 surface (a plain PyQt6 dialog does the same), so cells that click inside
-  a dialog are not run there. budgie-panel's tray items have no accessible name, so the
-  Tray menu cell is not run.
+  dialog as a 1×1 surface (a plain PyQt6 dialog does the same); the lab then accepts the
+  dialog only when a rectangle of its expected size is the one change over its parent window,
+  and skips the click (not run) when it can't verify that. budgie-panel's tray items have no
+  accessible name, so the Tray menu cell is not run; the tray itself works for users.
 - Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
   `labwc:wlroots` and `wayland;xcb`.
 - The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).
