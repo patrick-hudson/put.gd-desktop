@@ -237,6 +237,19 @@ def _start_live_keyring(run, fresh):
         time.sleep(.2)
 
 
+def _stop_live_keyring(run, identity):
+    """End exactly the daemon this restart started (pid and start time), best effort."""
+    pid, start = int(identity['pid']), str(identity['start'])
+    if not start.isdigit():
+        return
+    try:
+        lab.guest_session(run, f'''p=/proc/{pid}
+[ "$(sed 's/.*) //' $p/stat 2>/dev/null | cut -d' ' -f20)" = {start} ] && kill -TERM {pid} || true
+''')
+    except (lab.LabError, OSError, ValueError):
+        pass
+
+
 def prepare_live_keyring(run, out):
     """Use the local fixture's unique GNOME connection alongside Atomic KWallet.
 
@@ -305,15 +318,20 @@ def restart_live_keyring(run):
         if prior.get('provider') not in ISOLATED_SECRET_SERVICES:
             raise KeyringRestartRefused("the desktop's own Secret Service is not running")
         identity, name = _start_live_keyring(run, fresh=False)
-        # A new daemon loads the blank collection locked: open it with its empty password, on the
-        # new connection, before the run's state names it.
-        lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
-        prefix = lab.guest_secret_prefix(dict(info, secret_service=name))
-        status = json.loads(lab.guest_session(run, prefix+'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
-        if status.get('label') != 'putgd lab' or status.get('locked') is not False:
-            raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
-        if json.loads(lab.guest_session(run, owner)) != prior:
-            raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+        try:
+            # A new daemon loads the blank collection locked: open it with its empty password, on
+            # the new connection, before the run's state names it.
+            lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
+            prefix = lab.guest_secret_prefix(dict(info, secret_service=name))
+            status = json.loads(lab.guest_session(run, prefix+'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
+            if status.get('label') != 'putgd lab' or status.get('locked') is not False:
+                raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
+            if json.loads(lab.guest_session(run, owner)) != prior:
+                raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+        except BaseException:
+            # Never leave the new daemon behind: it could hold the desktop's name or the folder.
+            _stop_live_keyring(run, identity)
+            raise
         info['secret_service'] = name
         lab.write_json(run/'state.json', info)
         return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],

@@ -32,6 +32,7 @@ class Chain:
 
     def __call__(self, host_broker, reference):
         self.calls.append(('export', reference))
+        self.step('export')
         return self
 
     def step(self, name):
@@ -73,6 +74,7 @@ class Chain:
 
     def cleanup(self, run, broker, reference):
         self.calls.append(('cleanup', reference))
+        self.step('cleanup')
 
     def recover(self, receipt, reference, run, broker):
         self.calls.append(('recover', reference))
@@ -400,6 +402,18 @@ class DeadGuestKeyring(Recovery):
         self.assertEqual((names.count('carry_back'), names.count('cleanup')), (1, 0))
         self.assertEqual(self.lock().status()['state'], 'blocked')
 
+    def test_a_failed_builder_step_is_never_retried(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(RESTARTED, fail=0, chain=Chain(self.calls, fail={'export': 1}))
+        self.assertNotIn('restart_keyring', [call[0] for call in self.calls])
+
+    def test_after_a_carry_back_the_retry_only_cleans_up(self):
+        folder, result = self.recover(RESTARTED, fail=0, chain=Chain(self.calls, fail={'cleanup': 1}))
+        names = [call[0] for call in self.calls]
+        self.assertEqual(names, ['stop_app', 'export', 'recover', 'carry_back', 'cleanup', 'restart_keyring',
+                                 'cleanup', 'remove_brokers'])
+        self.assertTrue(result['recovered'])
+
     def test_a_later_check_never_hides_an_earlier_restart(self):
         folder, _ = self.recover(RESTARTED, fail=1)
         answering = {'restarted': False, 'busName': ':1.77', 'reason': 'the live keyring daemon still answers'}
@@ -478,9 +492,12 @@ class LiveKeyringRestart(unittest.TestCase):
         self.assertIsInstance(record, RuntimeError)
         self.assertEqual((self.started(scripts), written), ([], []))
         taken = {'owner': ':1.77', 'pid': 4242, 'provider': 'gnome-keyring-d'}
-        record, _, written = self.restart({'owned': False, 'daemons': [], 'data': True}, owners=[self.DESKTOP, taken])
+        record, scripts, written = self.restart({'owned': False, 'daemons': [], 'data': True}, owners=[self.DESKTOP, taken])
         self.assertIsInstance(record, RuntimeError)
         self.assertEqual(written, [])
+        # The daemon this restart started is ended, by its pid and start time.
+        self.assertIn('kill -TERM 4242', scripts[-1])
+        self.assertIn('= 991 ]', scripts[-1])
 
     def test_a_guest_on_its_desktop_secret_service_has_nothing_to_restart(self):
         record, scripts, _ = self.restart({}, secret_service=None)

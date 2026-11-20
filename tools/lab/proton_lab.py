@@ -802,21 +802,30 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
     stage = {}
 
     def give_back():
-        stage['name'] = 'guest'
+        if 'carried' in stage:
+            # The carry-back already succeeded in this call: only the guest's cleanup is left.
+            stage['name'] = 'guest'
+            stage['chain'].cleanup(run, guest_broker, reference)
+            return stage['carried']
+        stage['name'] = 'builder'
         provision = folder / 'provision.json'
         _, receipt = bridge._load_receipt(provision)
         if receipt['state'] == 'import_pending' or (receipt['state'] in ('cleanup_pending', 'cleanup_confirmed')
                                                      and receipt['cleanupAllowed']):
             # Nothing used an unconfirmed import, and a started cleanup follows a confirmed carry-back.
+            stage['name'] = 'guest'
             bridge.cleanup({'op': 'cleanup', 'provider': 'proton', 'run': run, 'guestBroker': guest_broker,
                             'reference': reference, 'receipt': str(provision)})
             return None
-        guest.stop_app()
-        chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
-        chain.recover(str(provision), reference, run, guest_broker)
-        stage['name'] = 'carry_back'  # the builder's entry: never retried with a fresh baseline
-        carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
         stage['name'] = 'guest'
+        guest.stop_app()
+        stage['name'] = 'builder'
+        chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
+        stage['name'] = 'guest'
+        chain.recover(str(provision), reference, run, guest_broker)
+        stage['name'] = 'builder'  # the builder's entry: never retried with a fresh baseline
+        carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
+        stage.update(name='guest', carried=carried, chain=chain)
         chain.cleanup(run, guest_broker, reference)
         return carried
 
@@ -830,9 +839,9 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         try:
             carried = give_back()
         except (bridge.ProvisionError, lab.LabError):
-            # Only a guest step is retried. A failed carry-back (a conflict with the builder's
-            # entry) keeps the lock blocked as before: a fresh chain would take the conflicting
-            # entry as its baseline.
+            # Only a guest step is retried. A failed builder step, such as a carry-back conflict,
+            # keeps the lock blocked as before: a fresh chain would take the conflicting entry as
+            # its baseline.
             if stage.get('name') != 'guest':
                 raise
             restarted = restart_dead_keyring(guest, folder)
