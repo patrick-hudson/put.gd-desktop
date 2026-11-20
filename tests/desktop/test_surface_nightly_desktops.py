@@ -218,7 +218,7 @@ class NightlyTests(unittest.TestCase):
             slot, out, owner, desktop, proton = self.stale_fixture(root, lend='carried_back', missing=False)
             folder = root/'putgd-lab/proton/receipts/test'
             def recovered(*args, **kwargs):
-                self.assertEqual(kwargs['timeout'], 300)
+                self.assertEqual(kwargs['timeout'], 120)
                 self.assertIn('recover', args[0])
                 nightly.save(folder/'lend.json', dict(run=owner['run'], session=owner['session'], step='recovered'))
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
