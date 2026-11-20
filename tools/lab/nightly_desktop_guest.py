@@ -29,62 +29,98 @@ FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesse
 # Kubuntu guest, restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
 # Fedora installs no updates by itself (dnf-makecache only refreshes metadata), Aurora's uupd is held by
 # ATOMIC_TOOLS and Omarchy has no updater unit.
-UPDATE_UNITS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
-                'mintupdate-automation-autoremove.timer', 'apt-daily.service', 'apt-daily-upgrade.service',
-                'mintupdate-automation-upgrade.service', 'mintupdate-automation-autoremove.service')
+UPDATE_TIMERS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
+                 'mintupdate-automation-autoremove.timer')
+UPDATE_SERVICES = ('apt-daily.service', 'apt-daily-upgrade.service', 'mintupdate-automation-upgrade.service',
+                   'mintupdate-automation-autoremove.service')
+UPDATE_UNITS = UPDATE_TIMERS + UPDATE_SERVICES
 # The apt goldens' only passwordless root command is apt-get, and their lab passwords differ (Mint's is
-# not the standard one), so the hold runs as root from apt-get's Pre-Invoke hook, as lab.py's helper
-# staging does: no sources (nothing is fetched), no package cache written, and no lists lock, which a
-# running apt-daily holds. The timers come first in UPDATE_UNITS, so nothing starts an updater again once
-# they are held. A running updater is stopped before its unit is masked, and masked only if that stop
-# succeeded: masking first reloads it without its own stop settings (apt's KillMode=process and 900 s
-# TimeoutStopSec, which let unattended-upgrade finish its package).
-HOLD_UPDATES = r'''set -u
+# not the standard one), so root steps run from apt-get's Pre-Invoke hook, as lab.py's helper staging
+# does: no sources (nothing is fetched), no package cache written, and no lists lock, which a running
+# apt-daily holds. No updater is ever stopped: apt-daily-upgrade's KillMode=process would leave
+# unattended-upgrade running behind an inactive unit, and Mint's upgrade service would lose dpkg mid-way.
+# The timers are stopped and masked, so nothing new starts; then a running or queued updater is left to
+# finish (its unit inactive, no job, an empty cgroup) within the deadline, and only then masked.
+UPDATE_DRAIN_SECONDS = 1200
+_IDLE = r'''idle() {
+ [ -e /sys/fs/cgroup/cgroup.controllers ] || return 1
+ case "$(systemctl show -P ActiveState "$1" 2>/dev/null)" in inactive|failed) ;; *) return 1 ;; esac
+ systemctl list-jobs --no-legend 2>/dev/null | awk '{print $2}' | grep -qxF -- "$1" && return 1
+ [ -z "$(cat "/sys/fs/cgroup/system.slice/$1/cgroup.procs" 2>/dev/null)" ]
+}
+'''
+HOLD_UPDATES = (r'''set -u
 hold=$(mktemp)
-cat > "$hold" <<'NIGHTLY_HOLD'
-for unit in UNITS; do
+''' + _IDLE + r'''as_root() {
+ command -v apt-get >/dev/null 2>&1 || return 0
+ LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
+  -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
+  -o "APT::Update::Pre-Invoke::=sh $1" update >/dev/null 2>&1 < /dev/null || true
+}
+for unit in @TIMERS@ @SERVICES@; do
+ printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)"
+done > "$hold.before"
+cat > "$hold.timers" <<'NIGHTLY_TIMERS'
+for unit in @TIMERS@; do
  if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ]; then
-  if timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then systemctl mask "$unit" >/dev/null 2>&1; fi
+  systemctl stop "$unit" >/dev/null 2>&1 && systemctl mask "$unit" >/dev/null 2>&1
  fi
 done
 exit 0
-NIGHTLY_HOLD
-for unit in UNITS; do
- printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" >> "$hold.before"
+NIGHTLY_TIMERS
+as_root "$hold.timers"
+deadline=$(( $(date +%s) + @DRAIN@ ))
+while :; do
+ busy=
+ for unit in @SERVICES@; do idle "$unit" || busy=1; done
+ [ -z "$busy" ] || [ "$(date +%s)" -ge "$deadline" ] && break
+ sleep 5
 done
-if command -v apt-get >/dev/null 2>&1; then
- LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
-  -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
-  -o "APT::Update::Pre-Invoke::=sh $hold" update >/dev/null 2>&1 < /dev/null || true
-fi
+{ cat <<'NIGHTLY_IDLE'
+''' + _IDLE + r'''NIGHTLY_IDLE
+cat <<'NIGHTLY_SERVICES'
+for unit in @SERVICES@; do
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ] && idle "$unit"; then
+  systemctl mask "$unit" >/dev/null 2>&1
+ fi
+done
+exit 0
+NIGHTLY_SERVICES
+} > "$hold.services"
+as_root "$hold.services"
 while read -r unit before; do
- printf '%s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
-  "$(systemctl show -P ActiveState "$unit" 2>/dev/null)"
+ if idle "$unit"; then drained=drained; else drained=busy; fi
+ printf '%s %s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
+  "$(systemctl show -P ActiveState "$unit" 2>/dev/null)" "$drained"
 done < "$hold.before"
-rm -f -- "$hold" "$hold.before"
-'''.replace('UNITS', ' '.join(UPDATE_UNITS))
+rm -f -- "$hold" "$hold.before" "$hold.timers" "$hold.services"
+''').replace('@TIMERS@', ' '.join(UPDATE_TIMERS)).replace(
+    '@SERVICES@', ' '.join(UPDATE_SERVICES)).replace('@DRAIN@', str(UPDATE_DRAIN_SECONDS))
 
 
 def hold_package_updates(run, out):
-    """Stop and mask the guest's own package updaters in this disposable overlay, before anything is installed.
+    """Hold the guest's own package updaters in this disposable overlay, before anything is installed.
 
-    Every unit must end absent or masked, and not running, or the row stops here: an updater left running
-    can restart sshd or the desktop under a live cell. The report is written whatever happens.
+    Every unit must end absent or masked, not running, with no queued job and no process left in its
+    cgroup, or the row stops here: an updater left running can restart sshd or the desktop under a live
+    cell. The report is written whatever happens.
     """
     lab.verify_owned_guest(run)
     report = dict(overlayOnly=True, units={})
     try:
-        for line in lab.ssh(run, HOLD_UPDATES, timeout=1200).splitlines():
+        for line in lab.ssh(run, HOLD_UPDATES, timeout=UPDATE_DRAIN_SECONDS+300).splitlines():
             fields = line.split()
-            if len(fields) == 4 and fields[0] in UPDATE_UNITS:
-                report['units'][fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3])
+            if len(fields) == 5 and fields[0] in UPDATE_UNITS:
+                report['units'][fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3],
+                                                  drained=fields[4])
     except Exception as error:
         report['error'] = type(error).__name__
         raise
     finally:
         units = report['units']
         held = {name for name, unit in units.items()
-                if unit['after'] in ('not-found', 'masked') and unit['active'] in ('inactive', 'failed')}
+                if unit['after'] in ('not-found', 'masked') and unit['active'] in ('inactive', 'failed')
+                and unit['drained'] == 'drained'}
         report.update(held=sorted(name for name in held if units[name]['after'] == 'masked'),
                       notHeld=sorted(set(UPDATE_UNITS) - held))
         lab.write_json(Path(out)/'package-updates.json', report)

@@ -1558,9 +1558,9 @@ with n.controller_shutdown(workers):
     def test_guest_package_updaters_are_held_or_the_row_stops(self):
         from tools.lab import nightly_desktop_guest as guest
         def reply(**override):
-            rows = {unit: 'not-found not-found inactive' for unit in guest.UPDATE_UNITS}
-            rows.update({'apt-daily-upgrade.timer': 'loaded masked inactive',
-                         'apt-daily-upgrade.service': 'loaded masked inactive'}, **override)
+            rows = {unit: 'not-found not-found inactive drained' for unit in guest.UPDATE_UNITS}
+            rows.update({'apt-daily-upgrade.timer': 'loaded masked inactive drained',
+                         'apt-daily-upgrade.service': 'loaded masked inactive drained'}, **override)
             return ''.join(f'{unit} {value}\n' for unit, value in rows.items())
         with tempfile.TemporaryDirectory() as tmp, patch.object(guest.lab, 'verify_owned_guest'):
             out = Path(tmp)
@@ -1572,19 +1572,24 @@ with n.controller_shutdown(workers):
             # Root comes only from the goldens' passwordless apt-get, which must neither fetch, wait for the
             # lists lock a running apt-daily holds, nor read the script on stdin; no guest password is used.
             for option in ('sudo -n /usr/bin/apt-get', 'Debug::NoLocking=1', 'Dir::Etc::sourcelist=/dev/null',
-                           'APT::Update::Pre-Invoke::=sh $hold', '< /dev/null'):
+                           'APT::Update::Pre-Invoke::=sh $1', '< /dev/null'):
                 self.assertIn(option, script)
             self.assertNotIn('putgd-lab', script)
-            # Only a stop that succeeded is followed by the mask, so the unit's own stop settings apply.
-            self.assertIn('if timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then systemctl mask', script)
+            # Only timers are stopped. An updater service is never stopped (apt's KillMode=process leaves
+            # unattended-upgrade running; Mint's would lose dpkg mid-way): it is masked once it has drained.
+            services = script[script.index("<<'NIGHTLY_SERVICES'"):]
+            self.assertNotIn('systemctl stop', services)
+            self.assertIn('idle "$unit"; then', services)
+            self.assertIn('cgroup.procs', script)
             self.assertNotIn('--now', script)
-            # Whatever the unit looked like before, it must end absent or masked and not running;
+            # Whatever the unit looked like before, it must end absent or masked, not running and drained;
             # a unit the guest did not report stops the row too.
-            for broken in (reply(**{'apt-daily-upgrade.service': 'loaded masked deactivating'}),
-                           reply(**{'apt-daily.timer': 'loaded loaded active'}),
-                           reply(**{'apt-daily-upgrade.service': 'masked masked activating'}),
-                           reply(**{'apt-daily.service': 'unknown loaded active'}),
-                           reply().replace('apt-daily.service not-found not-found inactive\n', '')):
+            for broken in (reply(**{'apt-daily-upgrade.service': 'loaded masked deactivating drained'}),
+                           reply(**{'apt-daily.timer': 'loaded loaded active drained'}),
+                           reply(**{'apt-daily-upgrade.service': 'masked masked activating busy'}),
+                           reply(**{'apt-daily-upgrade.service': 'loaded loaded inactive busy'}),
+                           reply(**{'apt-daily.service': 'unknown loaded active busy'}),
+                           reply().replace('apt-daily.service not-found not-found inactive drained\n', '')):
                 with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
                     with self.assertRaisesRegex(RuntimeError, 'could not be held'):
                         guest.hold_package_updates(out, out)
