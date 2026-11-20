@@ -2,8 +2,10 @@
 
 Six workflows cover every event. Jobs that gate one another run in the same
 workflow run and are linked with `needs:`. Nightlies can reuse completed source
-checks for their exact commit; an absent or failed lookup runs the tests again.
-No job waits for another workflow to finish.
+checks, or the whole push-CI run with its packages, for their exact commit; an
+absent or failed lookup runs the tests again. The only wait on another workflow
+is the nightly `plan` job's bounded wait for a push-CI run of its commit that is
+still in progress ([nightly package reuse](#nightly-package-reuse)).
 
 put.gd is Linux-only: DEB, RPM, pacman and AppImage. Native Windows support was
 dropped on 2026-10-31; CI no longer compiles or provisions Windows.
@@ -13,7 +15,7 @@ dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `ci-images.yml` | called first by `ci.yml`; 00:17 UTC daily and manual | check the prebuilt images the container jobs run in and build any whose inputs changed; daily, build the new week's images ([CI images](#ci-images)) |
 | `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
-| `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
+| `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag the commit and publish the packages push CI built for it (testing and packaging here when it can't), then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
 
@@ -33,6 +35,42 @@ and sanitizers skipped. Contracts, tagged packages, AppImage checks, source
 delivery and scans still run. Missing, cancelled, incomplete, unrelated or
 unavailable evidence falls back to the full suite. The producer run, attempt,
 commit and job IDs are saved in `source-ci-provenance` for 90 days.
+
+### Nightly package reuse
+
+Push CI on `nightly` builds its packages under the nightly name the commit will
+get. `ci.yml` passes `planned_nightly` to `package.yml` on `nightly` pushes, and
+each package job runs `tools/releases/nightly.py stamp`. That derives the tag
+exactly as the nightly `plan` job does (the commit's UTC committer date and
+commit count), creates it in the job's own checkout only and sets `RELEASE_TAG`.
+The build, audit, AppImage update information, debug symbols and SBOM scan then
+run as on a tagged build. Nothing pushes the tag: the package jobs hold a
+read-only token. Pull requests and release callers never stamp.
+
+The nightly `plan` job tags HEAD, then runs `tools/ci/reuse_ci.py packages`. It
+accepts only a `ci.yml` run of this repository with event `push`, branch
+`nightly` and exactly this commit, whose successful attempt passed contracts,
+both Linux test jobs, sanitizers, every package job, `appimage-sources`,
+`appimage-pipewire`, `sbom` and `CI`. Each package, SBOM and source artifact must
+exist once, unexpired, in that run. A matching run still in progress is waited for,
+for up to 25 minutes. A missing, cancelled, failed, incomplete or expired run, or a
+lookup error, leaves the run ID empty, and the `ci` job then tests and packages
+everything in the nightly run, as before.
+
+With a reused run, `ci` is skipped. `publish` downloads that run's artifacts once,
+runs `collect.py --installers-only` against the real tag (every package, SBOM and
+source must carry the tag's commit, tree and version) and publishes them with
+`publish.py --nightly --built-by`. The release notes name the push-CI run as the
+build and its debug symbols' home, and the nightly run as the publisher; the
+publication receipt records both. The run's record is the nightly run's
+`source-ci-provenance` artifact, which `surface-map` also reads for the UI catalog.
+
+`gh workflow run ci.yml --ref <branch> -f planned_nightly=true` builds stamped
+packages on any branch, as a test of this path; it creates no tag and publishes
+nothing. `reuse_ci.py packages --rehearse-run <run>` and `publish.py --nightly
+--rehearse` replay the reuse, verification and release notes read-only: the
+rehearsal stops before the first GitHub write, and a real publication refuses a
+rehearsal record.
 
 | Changed paths | contracts | linux | packages |
 | --- | --- | --- | --- |
@@ -193,8 +231,12 @@ part of the required `CI` summary when selected.
 The 2026-10-26 baseline is in [the CI records](../history/ci-records.md#nightly-baseline-2026-10-26).
 
 Package compiler caches are separate per distro/AppImage and dependency
-fingerprint, capped at 256 MiB each (384 MiB on Arch, which also compiles the SDK
-through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit). Arch's key names only the distro, so a restore can cross a dependency update; ccache's own hashing of the compiler and headers keeps stale objects from being reused. The
+fingerprint, capped at 1 GiB each and trimmed to the build's own entries before
+saving, as in the [cache budget](#cache-budget). Arch also compiles the SDK
+through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit.
+Until #1724 the cap was 256 MiB, less than a build plus the restored cache,
+so ccache cleaned up mid-build and rebuilt only 53-79% of native objects from
+cache. Arch's key names only the distro, so a restore can cross a dependency update; ccache's own hashing of the compiler and headers keeps stale objects from being reused. The
 source export compiled on Ubuntu 24.04 has its own compiler cache, saved even when a newer push cancels the compile. Only `nightly` pushes save them; other runs
 restore them. Superseded entries are pruned by the existing cache maintenance.
 No application build directory or version manifest is reused. AppImage's required
@@ -220,6 +262,11 @@ optional GNOME extension have a linked source release; the unchanged 2.5 GB of
 Proton source parts stay at their permanent URLs. Publication checks GitHub's
 SHA-256 asset digest, downloading bytes only when that digest is absent. It still
 rejects missing assets, checksum mismatches, replaced tags and changed metadata.
+
+A nightly that reuses push CI moves no artifact between its own jobs: `publish`
+downloads the push-CI run's packages and sources once and uploads them once.
+Only when it builds them itself does `collect` hand `release-assets` and
+`release-source-assets` to `publish`.
 
 These changes need a new hosted run to establish their actual elapsed-time
 improvement. Cache warm-up, source changes and mirror availability affect it.
@@ -404,9 +451,10 @@ reads the newest one on a ref. Three rules keep the total bounded:
   `ccache --evict-older-than` drops every entry the build neither hit nor stored,
   so the saved cache is one build's working set, not every object since the first
   save. A ccache hit refreshes the entry's time, so the working set survives.
-  `CCACHE_MAXSIZE` caps each job in case the working set grows.
+  `CCACHE_MAXSIZE` caps each job in case the working set grows. The Linux,
+  sanitizer and package jobs and the source-export compile all trim this way.
 - **Pruning after every `nightly` push.** The `prune caches` job in `ci.yml` runs
-  `tools/ci/cache_prune.py` after the Linux and sanitizer jobs, with the run's
+  `tools/ci/cache_prune.py` after the Linux, sanitizer and package jobs, with the run's
   `GITHUB_TOKEN` (`actions: write`, `pull-requests: read`; the nightly and release
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
@@ -433,6 +481,7 @@ compressed archive sizes; the ceiling is
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
 | `grype-db-v6-<sha256>` ([vulnerability database](release.md#sboms-and-vulnerability-scans)) | first `sbom` job to see a new database, per ref | 1 per ref | about 195 MB | one database |
+| `ccache-package-<target>-*` (5 native, AppImage, Arch; measured 2026-11-20, #1724) | `nightly` push | 1 per target | 184–216 MB each, about 1.4 GB | 1 GB each |
 
 The CI images live in the GitHub container registry, not the Actions cache, so
 they count against none of this. The Qt installer and package snapshot caches they
@@ -915,7 +964,8 @@ run time and above its worst bounded install path (four stopped attempts plus
 | Job | Normal run (min) | `timeout-minutes` |
 | --- | --- | --- |
 | `images / build` | 3–20 | 100 |
-| `images / plan`, `prune caches`, nightly `plan`, release `tag` | under 1 | 10–15 |
+| `images / plan`, `prune caches`, release `tag` | under 1 | 10–15 |
+| nightly `plan` | under 1, or up to 25 waiting for push CI of its commit | 40 |
 | `packages / native` (5 targets), `packages / arch` | 3–7 | 90 |
 | `packages / appimage` | 4–5 with a warm compiler cache, 17 cold | 180 |
 | `packages / appimage-sources` | 4 | 45 |
@@ -924,7 +974,7 @@ run time and above its worst bounded install path (four stopped attempts plus
 | `linux` (2 releases) | 4–7 | 60 |
 | `sanitizers` | 3–6, more when QtCore is rebuilt | 90 |
 | `pipewire`, `packages / appimage-pipewire` | 1–2 | 30 |
-| nightly `publish`, release `draft` | 4 / 6 | 60 |
+| nightly `publish`, release `draft` | 7–8 (including collection when it reuses push CI) / 6 | 60 |
 
 The job limits still allow for the old installs; most can come down once the images
 have run for a while.

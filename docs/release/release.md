@@ -47,9 +47,12 @@ asset layouts and remain verifiable.
 this is not a delivery-time guarantee. Its `plan` job derives the nightly tag for
 `nightly` HEAD. When that exact source is already a complete, verified public
 nightly, the run stops there: nothing is built or published. Otherwise it
-creates the immutable tag, reuses passing source CI for that exact commit when
-available (otherwise runs the full suite), builds and checks all tagged packages,
-and publishes the collected installers as a prerelease. [CI coverage](ci.md)
+creates the immutable tag. Push CI on `nightly` has normally already tested and
+packaged that commit under the nightly's name; the run then verifies those
+packages against the tag and publishes them as a prerelease. When no such push-CI
+run is usable, it reuses passing source CI for that exact commit when available
+(otherwise runs the full suite), builds and checks all tagged packages, and
+publishes the collected installers. [CI coverage](ci.md#nightly-package-reuse)
 describes the exact evidence required for reuse. A tag, draft
 or failed run alone is not a published nightly, so unchanged source whose last
 attempt failed is retried.
@@ -203,7 +206,8 @@ when nothing has been published, before retrying.
 
 Plans, tag decisions and publication receipts are retained as Actions artifacts
 for 90 days, package handoffs for 30 days and the collected `release-assets` for
-14 days. The public `release-builds.json`, checksums and release notes remain the
+14 days. A nightly that published push-CI packages has no `release-assets`: its
+packages stay in that push-CI run, which its receipt and notes name. The public `release-builds.json`, checksums and release notes remain the
 source of truth after Actions artifacts expire.
 
 ## Proton experimental production integration
@@ -587,12 +591,14 @@ per version.
 
 Each package job retains its checked debug tar and manifest in the separate
 `debug-symbols-LABEL` Actions artifact for 90 days. Download the artifact from the
-producer run linked in the release notes before it expires; archive it privately
+run the release notes link as "CI artifacts" (for a nightly that reused push CI, that
+push-CI run) before it expires; archive it privately
 when longer retention is needed. [Diagnostics](../design/diagnostics.md#kept-debug-symbols)
 describes extraction and build-ID lookup. Package binaries remain stripped.
 
 The installer and source handoffs are separate Actions artifacts,
-`release-assets` and `release-source-assets`, retained for 14 days. The public
+`release-assets` and `release-source-assets`, retained for 14 days. A nightly that
+reuses push CI collects in its `publish` job and keeps neither. The public
 source release remains available after Actions artifacts expire.
 
 The curated source tarball exports committed files from a positive allowlist:
