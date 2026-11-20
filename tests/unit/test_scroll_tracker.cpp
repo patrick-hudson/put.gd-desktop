@@ -1573,6 +1573,364 @@ void testJumpPastLookAlikes() {
          fmt("%d wrong%s, %d frames past the jump not placed, %d placed right on the way back", wrong, first.c_str(), lostAfterJump, foundBack));
 }
 
+// A playing video in the region (#1537): a part of the page that keeps
+// changing while the rest of the frame agrees must not contradict the image
+// or stall a capture the person scrolls themselves (slow scrolling, pausing,
+// scrolling back over rows already written, a video covering over half the
+// visible article column, a 30 fps video on a 60 fps stream). A one-time
+// layout change (static after it appears) must still be refused as
+// contradicted.
+void testPlayingVideo() {
+  std::printf("\n[playing video] changing content in the region keeps Following (#1537)\n");
+  // Helper: check that the video rectangle in the output image actually has
+  // varied (video) pixels, not blank page background wiped out by pinning.
+  const auto hasVideoPixels = [](const Played& r, int x0, int y0, int x1, int y1) {
+    const long long rows = r.totals.bottom - r.totals.top;
+    long long nonBg = 0, total = 0;
+    for (int y = std::max(0, y0); y < std::min<long long>(rows, y1); ++y)
+      for (int x = std::max(0, x0); x < std::min(r.width, x1); ++x) {
+        uint32_t v;
+        std::memcpy(&v, &r.image[(size_t(y) * r.width + x) * 4], 4);
+        ++total;
+        nonBg += (v & 0xFFFFFFu) != (kBg & 0xFFFFFFu);
+      }
+    return total > 0 && nonBg * 2 >= total;
+  };
+
+  {
+    // 1. News article proportions (Al Jazeera #1537): narrow article column
+    // between blank margins, sticky header and sticky cookie banner leaving
+    // a narrow visible band (~260 rows), and a playing video occupying ~55%
+    // of that band. Scrolled slowly as a person does (4 to 14 px a frame),
+    // with a brief pause and a scroll back up and down over the video.
+    const int W = 640, V = 400;
+    const Image doc = columnPage(137, W, 3200, 140, 500, 160, 140, 500);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart hdrPlain{0, 0, W, 48, 0xD8DCE6, 0x202024, 0, 5};
+    hdrPlain.border = false;
+    hdrPlain.inkRows = 0;
+    ss.pinned.push_back(hdrPlain);
+    PinnedPart hdrText{150, 8, 340, 32, 0xD8DCE6, 0x202024, 0, 6};
+    hdrText.border = false;
+    ss.pinned.push_back(hdrText);
+    PinnedPart banPlain{0, V - 80, W, 80, 0x1E2266, 0xF0F0FF, 0, 9};
+    banPlain.border = false;
+    banPlain.inkRows = 0;
+    ss.pinned.push_back(banPlain);
+    PinnedPart banText{150, V - 72, 340, 64, 0x1E2266, 0xF0F0FF, 0, 10};
+    banText.border = false;
+    ss.pinned.push_back(banText);
+    ss.changingX = 148;
+    ss.changingY = 900;
+    ss.changingW = 344;
+    ss.changingH = 160;
+    const Scene scene(doc, ss);
+    Rng rng(139);
+    std::vector<int> pos{0};
+    // Down past the video in small steps.
+    while (pos.back() < 1200) pos.push_back(std::min(1200, pos.back() + rng.range(4, 14)));
+    // Pause with the video in view, then back up over it, then down to the end.
+    for (int k = 0; k < 10; ++k) pos.push_back(pos.back());
+    while (pos.back() > 750) pos.push_back(std::max(750, pos.back() - rng.range(4, 14)));
+    for (int k = 0; k < 8; ++k) pos.push_back(pos.back());
+    while (pos.back() < doc.h - V) pos.push_back(std::min(doc.h - V, pos.back() + rng.range(4, 16)));
+    const Played r = play(scene, pos);
+    int lostFrames = 0;
+    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+    int firstBad = 0;
+    const Image expected = pageRows(doc, 0, doc.h, W);
+    const long long bad = differing(r, expected, {{0, 0, W, 48}, {0, doc.h - 80, W, doc.h}, {140, 892, 500, 1068}}, 0, &firstBad);
+    const bool videoWritten = hasVideoPixels(r, 156, 908, 484, 1052);
+    report("article with header, banner and playing video: stays Following, rest exact",
+           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 2 && bad == 0 && videoWritten && r.totals.bottom == doc.h,
+           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video written %d, height %lld/%d", lostFrames, r.wrong,
+                           r.firstWrong.c_str(), bad, firstBad, int(videoWritten), r.totals.bottom - r.totals.top, doc.h));
+  }
+
+  {
+    // 2. Scroll down past a video while it is paused (poster written into the
+    // store), then the video starts playing (every 2nd frame, 30 fps on a
+    // 60 fps stream) while the person scrolls back up and down over it.
+    const int W = 480, V = 400;
+    const Document doc = plainPage(141, W, V);
+    const int end = doc.img.h - V;
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.changingX = 60;
+    ss.changingY = 900;
+    ss.changingW = 360;
+    ss.changingH = 180;
+    const Scene scene(doc.img, ss);
+    Rng rng(143);
+    std::vector<int> pos{0};
+    while (pos.back() < 1200) pos.push_back(std::min(1200, pos.back() + rng.range(40, 80)));
+    const size_t playFrom = pos.size();
+    while (pos.back() > 650) pos.push_back(std::max(650, pos.back() - rng.range(6, 18)));
+    while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(6, 18)));
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, lost = 0, skippedAfterStart = 0;
+    std::string firstWrong;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      // Static poster before playFrom; changes every 2nd frame afterwards.
+      const int vidFrame = i < playFrom ? 0 : int((i - playFrom) / 2 + 1);
+      const Image f = scene.frame(pos[i], vidFrame);
+      const TrackResult t = tracker.addFrame(f.view());
+      if (t.state == TrackState::Lost) ++lost;
+      if (i >= playFrom && t.status == TrackStatus::Skipped) ++skippedAfterStart;
+      if (t.status == TrackStatus::Placed && t.position != pos[i]) {
+        ++wrong;
+        if (firstWrong.empty()) firstWrong = fmt(" frame %zu at %lld, page at %d", i, t.position, pos[i]);
+      }
+    }
+    const TrackTotals tot = tracker.finish();
+    Played r;
+    r.totals = tot;
+    r.image = canvas.image(tot.top, tot.bottom);
+    r.width = W;
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{52, 892, 428, 1088}}, 0, &firstBad);
+    report("poster written, then 30 fps video plays on return: recovers fast, exact",
+           wrong == 0 && skippedAfterStart <= 6 && bad == 0 && tot.bottom == doc.img.h,
+           fmt("%d frames, %d placed, %d skipped (%d after play), %d lost, %d wrong%s, %lld px differ (row %d)", tot.frames, tot.placed,
+               tot.skipped, skippedAfterStart, lost, wrong, firstWrong.c_str(), bad, firstBad));
+  }
+
+  {
+    // 3. Large playing video (60% of viewport height) inside a page of text:
+    // user pauses at rest in front of it for 20 frames while it plays, then
+    // scrolls on. Must stay Following (NoMovement while paused) and place
+    // every scroll frame afterwards.
+    const int W = 480, V = 400;
+    DocSpec ds;
+    ds.seed = 145;
+    ds.width = W;
+    ds.viewport = V;
+    ds.flatFactor = 0;
+    ds.tableFactor = 0;
+    ds.noiseFactor = 0.3;
+    ds.gradientFactor = 0.3;
+    ds.blankFactor = 0;
+    ds.paragraphsPerGap = 4;
+    const Document doc = makeDocument(ds);
+    const int end = doc.img.h - V;
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.changingX = 32;
+    ss.changingY = 600;
+    ss.changingW = 416;
+    ss.changingH = 240;  // 60% of the viewport height
+    const Scene scene(doc.img, ss);
+    Rng rng(147);
+    std::vector<int> pos{0};
+    while (pos.back() < 520) pos.push_back(std::min(520, pos.back() + rng.range(12, 32)));
+    for (int k = 0; k < 20; ++k) pos.push_back(520);  // paused with 60% video in view
+    while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
+    const Played r = play(scene, pos);
+    int lostFrames = 0;
+    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 592, 456, 848}}, 0, &firstBad);
+    const bool videoWritten = hasVideoPixels(r, 40, 608, 440, 832);
+    report("60% playing video: pause at rest and scroll past stay Following, exact",
+           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 2 && bad == 0 && videoWritten && r.totals.bottom == doc.img.h,
+           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video written %d", lostFrames, r.wrong, r.firstWrong.c_str(), bad,
+                           firstBad, int(videoWritten)));
+  }
+
+  {
+    // 4. Safety check: a one-time layout change (a static strip inserted into
+    // the page after those rows were already written, shifting the lower half
+    // down by 200 rows) is static, NOT a playing video: frames showing the new
+    // layout over already-written rows must still be refused as contradicted.
+    const int W = 480, V = 400;
+    const Document doc = plainPage(149, W, V);
+    Image shifted(W, doc.img.h + 200, kBg);
+    std::memcpy(shifted.px.data(), doc.img.px.data(), size_t(900) * W * 4);
+    Rng stripRng(151);
+    for (int y = 910; y + 12 < 1090; y += 20) drawTextLine(shifted, y, 30, W - 30, stripRng, 0x803020);
+    std::memcpy(&shifted.px[size_t(1100) * W], &doc.img.px[size_t(900) * W], size_t(doc.img.h - 900) * W * 4);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene before(doc.img, ss);
+    const Scene after(shifted, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    // Scroll down to 1200 under original layout, so rows 0..1600 are written.
+    for (int i = 0, p = 0; p <= 1200; ++i, p += 60) tracker.addFrame(before.frame(p, i).view());
+    // Scroll back up to 600, then insert the static 200 px strip at row 900
+    // and scroll down across 750..1050 (lower 65% of viewport contradicts store).
+    for (int i = 0, p = 1140; p >= 600; ++i, p -= 60) tracker.addFrame(before.frame(p, 100 + i).view());
+    int contradicted = 0, placedShifted = 0;
+    for (int i = 0, p = 780; p <= 1020; ++i, p += 12) {
+      const TrackResult t = tracker.addFrame(after.frame(p, 200 + i).view());
+      contradicted += t.status == TrackStatus::Skipped && t.reason == SkipReason::Contradicted;
+      placedShifted += t.status == TrackStatus::Placed;
+    }
+    report("one-time static layout insertion is still refused as contradicted",
+           contradicted > 0 && placedShifted == 0,
+           fmt("%d contradicted, %d placed of 21 shifted frames", contradicted, placedShifted));
+  }
+
+  {
+    // 5. Capture starts on frame 0 with a 60% playing video already in view:
+    // the person pauses for 6 frames while it plays, then scrolls down to the
+    // end. Must recover from frame 1 (never Lost) and capture the page exact.
+    const int W = 480, V = 400;
+    DocSpec ds;
+    ds.seed = 153;
+    ds.width = W;
+    ds.viewport = V;
+    ds.flatFactor = 0;
+    ds.tableFactor = 0;
+    ds.noiseFactor = 0.2;
+    ds.gradientFactor = 0.2;
+    ds.blankFactor = 0;
+    ds.paragraphsPerGap = 4;
+    const Document doc = makeDocument(ds);
+    const int end = doc.img.h - V;
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.changingX = 32;
+    ss.changingY = 80;
+    ss.changingW = 416;
+    ss.changingH = 240;  // 60% of the first viewport
+    const Scene scene(doc.img, ss);
+    Rng rng(155);
+    std::vector<int> pos{0, 0, 0, 0, 0, 0};
+    while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
+    const Played r = play(scene, pos);
+    int lostFrames = 0;
+    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 72, 456, 328}}, 0, &firstBad);
+    report("60% playing video on frame 0: pause then scroll stays Following, exact",
+           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 1 && bad == 0 && r.totals.bottom == doc.img.h,
+           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+
+  {
+    // 6. A pinned animated ad in a sticky side rail (outside the article's
+    // moving area): wandering_ still pins it so its changing pixels are not
+    // smeared down the margin while the person scrolls slowly past the article.
+    const int W = 640, V = 400;
+    const Image doc = columnPage(157, W, 3200, 140, 480, 160, 140, 480);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    Rng rng(159);
+    const auto pos = steps(0, doc.h - V, [&] { return rng.range(6, 16); });
+    const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+      // Animated ad with non-periodic changing artwork/text pinned in the right margin [500, 620) x [80, 260).
+      Rng adRng(9001 + i * 7919);
+      const uint32_t bg = (uint32_t(adRng.range(20, 90)) << 16) | (uint32_t(adRng.range(20, 90)) << 8) | uint32_t(adRng.range(40, 120));
+      const uint32_t fg = (uint32_t(adRng.range(180, 250)) << 16) | (uint32_t(adRng.range(180, 250)) << 8) | uint32_t(adRng.range(160, 240));
+      for (int y = 80; y < 260; ++y)
+        for (int x = 500; x < 620; ++x) f.at(x, y) = bg;
+      for (int y = 86; y + 8 < 256; y += 14) drawTextLine(f, y, 508, 612, adRng, fg);
+      return false;
+    });
+    // Below the first screen, the right margin must hold no animated ad pixels.
+    long long leaked = 0;
+    for (long long y = V + 32; y < r.totals.bottom - r.totals.top; ++y)
+      for (int x = 500; x < 620; ++x) {
+        uint32_t v;
+        std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
+        leaked += (v & 0xFFFFFFu) != (kBg & 0xFFFFFFu);
+      }
+    int firstBad = 0;
+    const long long badArticle = differing(r, pageRows(doc, 0, doc.h, W), {{492, 0, W, doc.h}}, 0, &firstBad);
+    report("pinned animated ad in sticky rail: pinned, not smeared down margin",
+           r.wrong == 0 && leaked == 0 && badArticle == 0,
+           counts(r) + fmt(", %lld margin px leaked, %lld article px differ (row %d)", leaked, badArticle, firstBad));
+  }
+
+  {
+    // 7. Recovering from Lost onto a playing video whose static poster was
+    // stored earlier: jump past the viewport (Lost), video starts playing,
+    // scroll back over the video -> searchStore recovers and marks it dynamic.
+    const int W = 480, V = 400;
+    const Document doc = plainPage(161, W, V);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.changingX = 60;
+    ss.changingY = 900;
+    ss.changingW = 360;
+    ss.changingH = 180;
+    const Scene scene(doc.img, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, recoveredAfterLost = 0;
+    bool wasLost = false;
+    // Scroll down over static poster (rows 0..1600 stored).
+    for (int p = 0; p <= 1200; p += 60) {
+      const TrackResult t = tracker.addFrame(scene.frame(p, 0).view());
+      if (t.status == TrackStatus::Placed && t.position != p) ++wrong;
+    }
+    // Jump past viewport (3 frames far away -> Lost).
+    for (int k = 0; k < 3; ++k) {
+      const int p = 2400 + k * 500;
+      const TrackResult t = tracker.addFrame(scene.frame(p, 0).view());
+      if (t.state == TrackState::Lost) wasLost = true;
+    }
+    // Return over the video while it plays at every frame.
+    int placedBack = 0;
+    for (int k = 0, p = 820; k < 14; ++k, p += 10) {
+      const TrackResult t = tracker.addFrame(scene.frame(p, 1 + k).view());
+      if (t.status == TrackStatus::Placed) {
+        ++placedBack;
+        if (t.recovered) ++recoveredAfterLost;
+        if (t.position != p) ++wrong;
+      }
+    }
+    const TrackTotals tot = tracker.finish();
+    Played r;
+    r.totals = tot;
+    r.image = canvas.image(tot.top, tot.bottom);
+    r.width = W;
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, int(tot.bottom), W), {{52, 892, 428, 1088}}, 0, &firstBad);
+    report("recovering from Lost onto a playing video over its stored poster",
+           wasLost && recoveredAfterLost > 0 && placedBack >= 10 && wrong == 0 && bad == 0,
+           fmt("wasLost %d, recovered %d, placedBack %d/14, %d wrong, %lld px differ (row %d)", int(wasLost), recoveredAfterLost, placedBack,
+               wrong, bad, firstBad));
+  }
+
+  {
+    // 8. Fast scroll jumps past the viewport with an unpinned sticky header
+    // and sidebar (between minArea and stillFallback of textured cells): after
+    // a single placed scroll step, jumping > viewport every frame must stay
+    // Skipped/Lost, never turning into false NoMovement.
+    const int W = 640, V = 400;
+    const Image doc = columnPage(163, W, 6400, 128, 624, 160, 128, 624);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back(PinnedPart{0, 0, W, 40, 0xD8DCE6, 0x202430, 0, 165});
+    ss.pinned.push_back(PinnedPart{0, 40, 112, V - 40, 0xE2E6EE, 0x202430, 0, 167});
+    const Scene scene(doc, ss);
+    std::vector<int> pos{0, 60};  // 1 placed scroll step (unpinned chrome!)
+    for (int p = 700; p + V <= doc.h; p += 520) pos.push_back(p);
+    const Played r = play(scene, pos);
+    int falseStill = 0, lost = 0;
+    for (size_t i = 2; i < r.results.size(); ++i) {
+      falseStill += r.results[i].status == TrackStatus::NoMovement;
+      lost += r.results[i].state == TrackState::Lost;
+    }
+    report("jumps past viewport with unpinned sticky chrome stay Lost, not NoMovement",
+           r.wrong == 0 && falseStill == 0 && lost > 0,
+           counts(r) + fmt(", %d false NoMovement, %d Lost frames", falseStill, lost));
+  }
+}
+
 int main() {
   testOffsets();
   testPinned();
@@ -1584,6 +1942,7 @@ int main() {
   testLookAlikes();
   testRepeatAtStep();
   testJumpPastLookAlikes();
+  testPlayingVideo();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

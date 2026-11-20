@@ -383,6 +383,7 @@ class ScrollTracker {
   };
 
   void computeExcluded(const Signature& cur, const Signature& ref);
+  void refreshRefIncl();
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
@@ -408,7 +409,10 @@ class ScrollTracker {
   static constexpr long long kSweepRows = 4096;
   long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
-             bool* byExpectation, SkipReason* why) const;
+             bool* byExpectation, SkipReason* why, int* unexplainedPick = nullptr) const;
+  bool observeDynamic(const Signature& cur, const Signature& other, long long curPos, long long otherPos,
+                      const std::vector<Candidate>* cands, int pick, bool verifyAgreement);
+  const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d) const;
@@ -492,6 +496,13 @@ class ScrollTracker {
   int blockRowCount_ = 0;
   std::unique_ptr<Signature> last_;           // the last placed frame's signatures
   std::unique_ptr<Signature> work_;           // the incoming frame's
+  // The immediately preceding incoming frame's signature and its page position
+  // (placed, still, or a strong candidate refused only by contradiction /
+  // unexplained tiles): proves live changing content across consecutive frames
+  // (#1537). When prevIsLast_ is true, last_ already holds that frame.
+  std::unique_ptr<Signature> prev_;
+  long long prevPos_ = 0;
+  bool prevIsLast_ = false, prevHasPos_ = false;
   long long lastPos_ = 0;
   long long top_ = 0, bottom_ = 0;            // extent written
   // Expectation: the last movement per frame, and the hints since the last
@@ -504,6 +515,10 @@ class ScrollTracker {
   int skipRun_ = 0;
   // The pinned mask, per block: steps it stayed, steps it moved, pinned.
   std::vector<uint8_t> stayed_, wandering_, pinned_, closed_, stillNow_;
+  // Cumulative scroll distance while wandering_ > 0, so an in-page playing
+  // video scrolled slowly through the page's area is not mistaken for a pinned
+  // animated rail (#1537).
+  std::vector<uint16_t> wanderingDist_;
   // Colours behind the text that moved with the page, by bin, over every pair learned from.
   std::array<uint64_t, 256> behindSeen_{};
   // What a placed frame does not offer the image: pinned or stood still in
@@ -513,6 +528,9 @@ class ScrollTracker {
   // that vote (not pinned, not standing still since the last placed frame).
   std::vector<int> bandLo_;
   std::vector<uint16_t> bandIncl_, cellIncl_;
+  // For the reference frame (last_, at lastPos_): bandIncl_ and cellIncl_ with
+  // page bands already recognized as dynamic (#1537) masked out.
+  std::vector<uint16_t> refBandIncl_, refCellIncl_;
   // The closed mask as 16-bit lanes: per block row, per cell and per band;
   // the excluded rectangle is in them too.
   std::vector<uint16_t> closed16_, bandPinned16_;
