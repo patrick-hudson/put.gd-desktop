@@ -898,8 +898,10 @@ then start again from step 1.
    lease with a matching lend receipt. When that lend isn't returned and the run
    directory still exists, recovery first runs `proton_lab.py recover` for it
    (bounded to 120 s) and refuses unless that returns the lend. If an earlier
-   recovery retired the guest but its lease release refused, a retry checks
-   that retirement again instead of retiring twice. Its evidence goes to
+   recovery reached guarded cleanup (the run has `overlay-cleanup.json`) and
+   then stopped or had its lease release refused, a retry finishes or
+   re-checks that cleanup against the row's existing `completion-manifest.json`
+   instead of retiring twice. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
    directory. A refusal prints its reason. An unexpected failure after that
    directory exists leaves `stale-recovery-error.json` in
