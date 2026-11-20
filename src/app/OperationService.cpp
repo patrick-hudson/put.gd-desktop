@@ -1156,6 +1156,8 @@ Operation OperationService::run(Job job) {
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
+   // The last attempt has no upload left, so no replacement name is looked for.
+   if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);break;}
    NameCheck check;
    // #1729: a short random name can be taken too; draw again while the check confirms it is.
    for(int draws=0;draws<32;++draws) {
@@ -1167,7 +1169,6 @@ Operation OperationService::run(Job job) {
    if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error=check.status=="present"&&!check.error?Error{"collision_exhausted","Every renamed candidate was taken",{}}:Error{"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::timed_mutex>(*lock);
-   if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
   }
  };
  op.phase="uploading";
