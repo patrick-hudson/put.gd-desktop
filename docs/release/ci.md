@@ -72,8 +72,9 @@ publication receipt records both. The run's record is the nightly run's
 `source-ci-provenance` artifact, which `surface-map` also reads for the UI catalog.
 
 `gh workflow run ci.yml --ref <branch> -f planned_nightly=true` builds stamped
-packages on any branch, as a test of this path. The tag exists only in each job's
-checkout: it pushes no tag and publishes no release. `reuse_ci.py packages --rehearse-run <run>` and `publish.py --nightly
+packages on any branch, as a test of this path. It pushes no tag and publishes no
+release: a tag it creates stays in that job's checkout (when the nightly tag
+already exists on GitHub, it fetches and verifies that one instead). `reuse_ci.py packages --rehearse-run <run>` and `publish.py --nightly
 --rehearse` replay the reuse, verification and release notes read-only: the
 rehearsal stops before the first GitHub write, and a real publication refuses a
 rehearsal record.
