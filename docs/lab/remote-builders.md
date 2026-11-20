@@ -557,7 +557,7 @@ guest and sshd's restart cost the row its guest.
 | Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
-| Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden; the Budgie and Hyprland rows do |
+| Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden |
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
@@ -595,13 +595,71 @@ the cell right-clicks up to three times, each only while no popup shows.
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
-(AppImage) and f44 Fedora GNOME (RPM) run one each. The Budgie row runs no live cells
-(`"live": false` in d69's config since 2026-11-20). Live S3 cleanup deletes the object
-from History, which labwc doesn't let the driver do: on 2026-11-20 the Live S3 cell
-couldn't verify its click on the History window, so its cleanup stayed unresolved and
-the row kept its guest with the object still published. Had that click worked, the
-deletion confirmation would have stopped it: the same row's History delete cell couldn't
-place that dialog, and a click on a dialog labwc captures as 1×1 is never verified. Each builder reads its own
+(AppImage) and f44 Fedora GNOME (RPM) run one each. All seven rows run Live S3, Live R2 and
+Live Proton once d69's and m74's configs set `"live": true` and `"proton": true` for the Budgie
+and Hyprland rows.
+
+labwc reports no window geometry, so the Budgie row places windows by their own pixels,
+and three labwc 0.20 behaviours need care:
+
+- **Dialogs.** labwc captures a modal dialog on its own as 1×1, and draws it into its
+  parent's capture at that capture's origin. The Budgie guest gets labwc window rules
+  for the dialogs the cells click (`window_rules` in the `fedora-budgie-wayland`
+  profile: Delete from destination and Revoke share link). Each rule moves the dialog to a
+  fixed position with no server-side decoration, so its content starts exactly there.
+  The driver takes the dialog's own pixels from the top-left corner of the captures of
+  its process's other windows. Exactly one such corner must match the outputs at the
+  rule's rectangle, both across all sampled cells and across the cells with at least four
+  colours.
+- **The labwc bridge.** Budgie's labwc bridge reads `rc.xml` once, when it starts, and
+  writes its own copy back on every change. put.gd's shortcuts reach it as gsettings,
+  so rules written while it runs are lost. The guest setup stops the bridge, writes
+  the rules, starts it again from its own environment, and checks that the bridge's first
+  write still holds them (`labwc-rules.json` in the row's evidence). budgie-session
+  does not restart the bridge on its own.
+- **Stale captures.** grim's capture of the outputs can show a region's earlier pixels
+  after a window redrew it, while the display shows the new ones. A window's own
+  capture can lag the same way. This happened with History's details pane after its
+  link row laid out, and it left History clicks unverified. A pointer hit-test on a
+  toplevel (not a popup) of a single-output guest therefore compares the window's own
+  capture with the guest's display, read over VNC, inside the target's rectangle. A
+  target that reaches past the display, or a crop too large for the probe request,
+  keeps grim's capture of the outputs. Within one check the window is captured up to
+  three times against that one display read. The display is read again for each later
+  check: after a screen clearing, and for up to two retries of an unverified result. When a
+  check starts by activating the target, it reports unverified, so the next check reads the
+  display again.
+
+Firefox's blank kiosk page has no pixels to place it by. A window with no distinctive pixels
+is placed only when it is the active toplevel and its capture matches exactly one output
+of its size. On labwc, capturing History puts its own details pane back at the top, and the
+driver captures History to place it. That keeps the pane's Delete from destination… button
+below the window. When the button isn't in view, the S3 and R2 cleanup deletes through the
+exact row's own menu instead, the same path the History delete cell uses, and goes through
+the same confirmation. It then clears the History search for the next pass. When an
+accessibility walk runs past its time budget, the driver makes up to three attempts at the
+geometry read. On
+Budgie, History reads skip any application whose executable isn't put.gd's without
+contacting it, because the lab's Firefox stops answering accessibility calls after showing
+a CloudFront page. Live cleanup wheels History's pane below its preview: a pointer resting
+on the preview shows a tooltip over the point.
+
+On Omarchy, quickshell's clipboard plugin (`omarchy.clipboard`) keeps a clipboard
+history on disk: `~/.local/state/omarchy/clipboard-history.json`, copied images under
+`clipboard-images/`, and a temporary copy of each text. Omarchy can record links
+put.gd copies automatically, signed ones included. The Hyprland guest turns the plugin off with
+`omarchy-plugin-disable` before the cells run, and records its check in
+`omarchy-clipboard.json`. Each live cell repeats that check after confirming the desktop lease and
+the guest slot. The plugin must be disabled in `shell.json`, no `capture.sh` watcher may
+run, and a random canary copied to the clipboard must change none of the known clipboard
+files. Those files are checked both in the shell's default state folder and in its
+`XDG_STATE_HOME` when set. The guest also gets `qtkeychain-qt6` as a new package,
+because the lab's credential bridge links it. After a successful request to dismiss
+quickshell's notification cards, screen clearing polls until quickshell reports none. It stops
+earlier if the count can't be read or the deadline passes. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
+the revoked-link check asks Firefox for fullscreen back before it navigates.
+
+Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
 builder's copy and in d69's. The cells added on 2026-11-20 add about nine minutes to a
 live row (Live R2 alone takes about five) and three to a local-only one; a builder with

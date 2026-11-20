@@ -64,6 +64,17 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
   "<summary>"` from the session environment (it needs `OMARCHY_PATH`).
 - Commands from SSH need the session environment: take `WAYLAND_DISPLAY`,
   `HYPRLAND_INSTANCE_SIGNATURE` and `OMARCHY_PATH` from quickshell's `/proc/<pid>/environ`.
+  Keep `WAYLAND_DISPLAY` as quickshell has it (`wayland-1`). `omarchy-shell` names the shell's
+  IPC socket after it, so an absolute path finds no socket and reports "omarchy-shell is not
+  running".
+- quickshell's `omarchy.clipboard` plugin records every copy on disk, through `wl-paste --watch`
+  running its `capture.sh`, in `~/.local/state/omarchy/clipboard-history.json` and
+  `clipboard-images/`. `omarchy-plugin-disable omarchy.clipboard` adds it to `disabledPlugins` in
+  `~/.config/omarchy/shell.json` and stops the watchers. The nightly guest does this for its
+  live cells.
+- The golden's default keyring is gnome-keyring's "Default keyring", and it is locked. The
+  credential bridge's `lab_keyring.py` makes a blank `putgd lab` collection the default in the
+  overlay, as on the other goldens.
 - `sudo -n` works only for `pacman`. Anything else needs `sudo -S` with the lab password on
   stdin. `pacman -Sy` then `-S` in an overlay is a partial upgrade against a moving mirror;
   keep it to overlays you will retire.
@@ -79,7 +90,8 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
   pixels and scrolls the menu card
   ([how](remote-builders.md#what-the-nightly-check-runs)).
 - The nightly guest adds its probe packages (python-atspi, python-pyqt6, python-pillow,
-  gst-plugin-gtk, gst-plugins-base) in the disposable overlay. Before installing it refuses a
+  gst-plugin-gtk, gst-plugins-base) and `qtkeychain-qt6`, which the lab's credential bridge
+  links, in the disposable overlay. Before installing it refuses a
   plan that would change an installed package's version; after installing it compares the
   whole installed inventory and fails the row if any package changed or disappeared.
 

@@ -304,7 +304,12 @@ adapter never writes the user's Hyprland configuration and uses no `hl.unbind` o
 
 - Clipboard import works while put.gd is unfocused; results copy as
   `image/png` with put.gd's private marker. PRIMARY is never written. Omarchy's
-  clipboard history (`wl-paste --watch`) keeps recording in both directions.
+  clipboard history (`wl-paste --watch`) keeps recording in both directions. It stores
+  what it records on disk: text in `~/.local/state/omarchy/clipboard-history.json` and
+  images under `clipboard-images/`. That includes put.gd's auto-copied links, signed ones
+  too. The nightly's Hyprland guest turns this history off (`omarchy-plugin-disable
+  omarchy.clipboard`) and checks that before any live cell
+  ([details](../lab/remote-builders.md#what-the-nightly-check-runs)).
 - A result still on the clipboard stays there after a normal put.gd quit, although
   Hyprland drops a selection with its owner. Omarchy's clipboard history records
   copies but doesn't put them back on the clipboard. A crash, `kill -9` or a result
