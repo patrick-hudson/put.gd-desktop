@@ -554,7 +554,8 @@ fi
 # sync then -S is a partial upgrade. Only packages that are not installed may
 # enter; a transaction that would upgrade, downgrade or remove any installed
 # package (Hyprland, quickshell, Qt, Mesa, PipeWire, portals...) is refused.
-PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base')
+# qtkeychain-qt6: the lab's credential bridge (live S3, R2 and Proton lends) links libqt6keychain, as DEB_TOOLS' libqt6keychain1.
+PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base', 'qtkeychain-qt6')
 PACMAN = r'''set -eu
 before=$(pacman -Q)
 sudo -n pacman -Sy --noconfirm >/dev/null
