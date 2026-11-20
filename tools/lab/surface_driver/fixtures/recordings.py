@@ -1,6 +1,7 @@
 """Fresh production captures of the existing visible cover_player pattern."""
 import json
 from pathlib import Path
+import re
 import shlex
 import time
 
@@ -49,17 +50,36 @@ print(json.dumps({'record_helper':str(helper),'logical':outputs['logical']}))
     return value
 
 
-def pattern(scope):
+def text_overlays(lines):
+    """GStreamer textoverlay elements drawing LINES in black, centred one above the other."""
+    for line in lines:
+        if not re.fullmatch(r'[A-Z0-9 ]{1,24}', line):
+            raise ValueError('text pattern lines are short upper-case words and digits')
+    spacing=80
+    first=-(len(lines)-1)*spacing//2
+    return ''.join('textoverlay text="%s" valignment=center halignment=center deltay=%d font-desc="Sans Bold 30" '
+                   'color=4278190080 draw-outline=false draw-shadow=false shaded-background=false ! '
+                   % (line, first+i*spacing) for i, line in enumerate(lines))
+
+
+def pattern(scope, text=None):
+    """The moving pattern; with TEXT (a few short lines) a still white video with that text instead."""
     scope.ctx.fixture('app-profile')
     # Add a clock to distinguish repeated bar positions across a cut.
     # Reuse the output-pinned cover and add private FIFO controls.
     source=(Path(__file__).resolve().parents[2]/'cover_player.py').read_text()
     bars='framerate=30/1 ! videoconvert ! gtksink name=video'
-    for anchor in (bars, 'def on_stdin(channel, condition):', "if command == 'quit':"):
+    moving='pattern=%s horizontal-speed=6 '
+    for anchor in (bars, moving, 'def on_stdin(channel, condition):', "if command == 'quit':"):
         if source.count(anchor) != 1:
             raise RecipeBlocked('cover_player.py no longer matches pattern-control anchors',issue=672)
-    source=source.replace(bars, 'framerate=30/1 ! timeoverlay font-desc="Sans Bold 40" '
-                               'shaded-background=true ! videoconvert ! gtksink name=video')
+    if text:
+        # A plain white source keeps the text the only thing in the video for recognition.
+        source=source.replace(moving, 'pattern=white %.0s')
+        source=source.replace(bars, 'framerate=30/1 ! '+text_overlays(text)+'videoconvert ! gtksink name=video')
+    else:
+        source=source.replace(bars, 'framerate=30/1 ! timeoverlay font-desc="Sans Bold 40" '
+                                   'shaded-background=true ! videoconvert ! gtksink name=video')
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
     scope.write(scope.root+'/cover.py',source.encode())

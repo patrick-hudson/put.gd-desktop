@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shlex
+import sys
 import time
 from urllib.parse import urlsplit
 
@@ -890,3 +891,282 @@ def history_delete(ctx):
         ctx.note('deleteOperationId=' + final['deleteOperationId'])
         _object(scope, service, detail, absent=True)
         _frame(ctx, 'deleted-object-no-longer-resolves')
+
+
+CLIP = re.compile(r'motion=([\d.]+) compared=(\d+) samples=8 durationMs=(\d+) size=(\d+)x(\d+)')
+
+
+def _clip_facts(ctx, helper, path):
+    """The exported clip as the exact-build analyzer decodes it: motion, frames compared, duration, size."""
+    reply = ctx.shell(shlex.quote(helper) + ' --motion ' + shlex.quote(path) + ' 8')
+    match = CLIP.search(reply.get('stdout', ''))
+    ctx.expect(reply['returncode'] == 0 and match is not None, 'exported clip decoded by the motion analyzer')
+    return dict(motion=float(match[1]), compared=int(match[2]), durationMs=int(match[3]),
+                size=[int(match[4]), int(match[5])])
+
+
+def _pattern_window(ctx, windows):
+    """The one listed window that is the fixture, by its exact title."""
+    found = [w for w in windows if w.get('title') == 'putgd synthetic fixture']
+    ctx.expect(len(found) == 1, 'recording.windows lists the fixture window once')
+    return found[0]
+
+
+@recipe('mcp.recording', desktop_drawn=True, timeout=360)
+def window_recording(ctx):
+    # No consent monitor: since #1278 a window recording never shows the portal's picker on
+    # Plasma or GNOME, and Budgie and Hyprland have none. A picker that came back never gets
+    # answered here, so the recording never becomes ready and the cell fails.
+    with _lane(ctx) as (scope, service):
+        caps = ctx.call('recording.capabilities')
+        ctx.expect(not caps.get('active'), 'private recording session starts idle')
+        ctx.expect('window' in (caps.get('targets') or []),
+                   'window recording offered: ' + str((caps.get('targetReasons') or {}).get('window', '')))
+        scope.defer('owned active recording', lambda: (lambda active: active and selectors._cancel_record(ctx, active))(
+            ctx.call('recording.capabilities').get('active')), priority=100)
+        scene, _ = _pattern(ctx)
+        geometry = ctx.geometry('outcome-pattern')
+        scene.command('resume')
+        target = {'kind': 'window'}
+        if ctx.profile.get('session') == 'wayland':
+            # The desktop's own window list, as an agent or the picker-free bar uses it.
+            target['identity'] = _pattern_window(ctx, ctx.call('recording.windows')['windows'])['identity']
+        else:
+            # X11 takes the window's X id (recording.windows is Wayland only), found independently by its title.
+            found = ctx.shell("xdotool search --onlyvisible --name '^putgd synthetic fixture$'")
+            ids = found.get('stdout', '').split()
+            ctx.expect(found['returncode'] == 0 and len(ids) == 1, 'one visible X window is the fixture')
+            target['identity'] = ids[0]
+        ctx.note('recording window acquisition=' + str(caps.get('windowAcquisition')))
+        opened = ctx.view('recording.prepare', {'target': target, 'format': 'mp4', 'codec': 'h264', 'fps': 15,
+                                                'audio': {'system': False}})
+        rid = opened.get('recordingId')
+        ctx.expect(bool(rid), 'window recording prepare returns an operation identity')
+        try:
+            ready = selectors._state(ctx, rid, 'ready')
+            window = ready.get('window') or {}
+            ctx.note('recording window=' + json.dumps({k: window.get(k) for k in ('appId', 'rect')}, sort_keys=True))
+            # The fixture covers its monitor, so the size alone cannot tell a window from a monitor recording:
+            # the resident must have frozen exactly the identity asked for (and, where it reports one, the title).
+            ctx.expect(ready.get('target', {}).get('kind') == 'window'
+                       and ready['target'].get('identity') == target['identity']
+                       and (not window or (window.get('identity') == target['identity']
+                                           and window.get('title') == 'putgd synthetic fixture'))
+                       and (window or ctx.profile.get('session') == 'x11'),
+                       'the resident froze the fixture window, not another one')
+            ctx.call('recording.start', {'id': rid})
+            selectors._state(ctx, rid, 'recording')
+            started = time.monotonic()
+            ctx.wait(lambda: time.monotonic() - started >= 5, 'five seconds of window recording', timeout=8)
+            ctx.call('recording.stop', {'id': rid})
+            state = selectors._state(ctx, rid, 'reviewing')
+            ctx.expect(4_000_000 <= state['durationUs'] <= 30_000_000, 'window recording duration in declared 4–30 second range')
+            path = scene.output_dir + '/' + rid + '.mp4'
+            ctx.call('recording.saveCopy', {'id': rid, 'path': path, 'overwrite': False})
+            exported = ctx.wait(lambda: (s if (s := selectors._inspect(ctx, rid)).get('lastExport')
+                                        and s['lastExport'].get('path') == path
+                                        and s['lastExport'].get('status') in ('saved', 'failed') else None),
+                                'window clip exported', timeout=60)
+            ctx.expect(exported['lastExport']['status'] == 'saved', 'window clip export succeeded')
+            facts = _clip_facts(ctx, scene.record_helper, path)
+            selectors._retain(ctx, path, 'mp4')
+            ctx.note('window_clip=' + json.dumps(dict(facts, canvas=state.get('canvas'),
+                                                      window=[geometry.get('width'), geometry.get('height')]), sort_keys=True))
+            ctx.expect(facts['compared'] >= 6 and 4000 <= facts['durationMs'] <= 30000,
+                       'exported window clip has its frames and a 4–30 second duration')
+            ctx.expect(facts['motion'] > 1.0, 'exported window clip frames differ: the moving pattern was recorded')
+            scale = geometry.get('scale', 1)
+            wanted = [round(geometry['width'] * scale), round(geometry['height'] * scale)]
+            # Encoders take even dimensions; nothing else may change the window's size.
+            ctx.expect(all(0 <= w - s <= 1 for w, s in zip(wanted, facts['size'])),
+                       'exported clip is the window size ' + 'x'.join(map(str, wanted)) + ', not '
+                       + 'x'.join(map(str, facts['size'])))
+            _frame(ctx, 'window-recording-reviewed')
+        finally:
+            selectors._cancel_record(ctx, rid)
+
+
+# The agreed tray layout (#1532; docs/user/user-guide.md lists it), idle and with no update.
+TRAY_LAYOUT = ('Capture region', 'Repeat last region', 'Capture window', 'Capture monitor', 'Capture desktop',
+               'Capture scrolling region', 'Capture region & edit', 'Edit image', 'Record screen',
+               'Copy text from region', 'Upload clipboard', 'Capture delay: *', 'Capture output: *',
+               'Open put.gd', 'Settings', 'Quit put.gd')
+
+
+def _box(node):
+    rect = node.get('rect', node.get('bounds'))
+    return [rect[k] for k in ('x', 'y', 'width', 'height')] if isinstance(rect, dict) else list(rect)
+
+
+def _top(node):
+    return _box(node)[1]
+
+
+def _menu_chain(node):
+    """The menu a row sits in: its accessible ancestors, leaving out menu-item wrappers (GNOME's labels)."""
+    return json.dumps([[a.get('role'), a.get('name'), a.get('rect')] for a in node.get('ancestors', [])
+                       if a.get('role') != 'menu item'])
+
+
+@recipe('tray.context-menu', 'tray.menu-capture-region', desktop_drawn=True, timeout=300)
+def tray_menu(ctx):
+    with _lane(ctx) as (scope, service):
+        _clipboard_reader(scope)
+        tray._begin(ctx, show_ui=False)
+        before = {o['id'] for o in ctx.call('operation.recent')['operations']}
+        tray._menu(ctx)
+        rows = []
+        for name in TRAY_LAYOUT:
+            found = ctx.wait(lambda: tray._nodes(ctx, name, 'menu item'), 'tray menu row: ' + name, timeout=5)
+            ctx.expect(len(found) == 1, 'tray menu shows one row: ' + name)
+            rows.append(found[0])
+        tops = [_top(n) for n in rows]
+        ctx.note('tray_rows=' + json.dumps([[n['name'], top] for n, top in zip(rows, tops)]))
+        ctx.expect(tops == sorted(tops) and len(set(tops)) == len(tops), 'tray rows are in the agreed order')
+        # Nothing else in the menu: every shown, named row inside the same open menu is an agreed one.
+        menus = {_menu_chain(n) for n in rows}
+        ctx.expect(len(menus) == 1 and next(iter(menus)) != '[]', 'the agreed rows share one open tray menu')
+        role = tray._profile(ctx).get('menu', {}).get('role', 'menu item')
+        inside = [n for n in ctx.accessible({'name': '*', 'role': role,
+                                             'application': tray._profile(ctx)['icon']['application']})
+                  if n.get('name') and n.get('visible', True) and n.get('showing', True) and _menu_chain(n) in menus]
+        extra = sorted({n['name'] for n in inside} - {r['name'] for r in rows})
+        ctx.expect(not extra, 'tray menu shows only the agreed rows; also: ' + ', '.join(extra))
+        tray._menu_frame(ctx, 'tray-menu-agreed-layout')
+        tray._press(ctx, 'region', 'menu item')
+        oid = tray._new_operation(ctx, before, 'region')['id']
+        selectors._focus_selector(ctx, 'region')
+        x, y, w, h = selectors._screen(ctx)
+        rect = (round(x + w / 4), round(y + h / 4), round(x + w / 4) + 400, round(y + h / 4) + 240)
+        ctx.drag(rect[:2], rect[2:])
+        detail, _ = _complete(scope, service, oid, None)
+        selectors._png_dimensions(ctx, detail['local']['path'], 400, 240)
+        _auto_copy(ctx, scope, detail)
+        ctx.note('tray_capture_count=1; region from the tray menu uploaded with the dragged size')
+
+
+TEXT_WORDS = ('QUARTZ', 'HARBOR', 'VIOLET', 'MESA', 'LANTERN', 'COPPER', 'MEADOW', 'TIMBER')
+
+
+def _text_lines(token):
+    """Two lines from fixed words and fresh digits, so an earlier run's text cannot pass."""
+    pick = [TEXT_WORDS[int(token[i], 16) % len(TEXT_WORDS)] for i in range(4)]
+    digits = [str(1000 + int(token[4:8], 16) % 9000), str(1000 + int(token[8:12], 16) % 9000)]
+    return [pick[0]+' '+pick[1]+' '+digits[0], pick[2]+' '+pick[3]+' '+digits[1]]
+
+
+def _normal(text):
+    return [' '.join(line.split()) for line in text.strip().splitlines() if line.strip()]
+
+
+def _copy_text(ctx, scope):
+    from ..fixtures.clipboard import owner
+    caps = ctx.call('capabilities').get('text', {})
+    ctx.expect(caps.get('available') is True, 'text recognition available: ' + str(caps.get('error', '')))
+    lines = _text_lines(scope.token)
+    scene = ctx.fixture('text-desktop', lines=lines)
+    scene.command('freeze')
+    scene.command('raise')
+    previous = ctx.profile.get('windows', {})
+    ctx.profile['windows'] = {**previous, 'outcome-pattern': {'title': '^putgd synthetic fixture$'}}
+    scope.defer('text pattern role', lambda: ctx.profile.__setitem__('windows', previous))
+    ctx.focus('outcome-pattern', raise_window=False)
+    # A known text-only clipboard first: the copy must replace it.
+    sentinel = scope.root + '/copy-text-sentinel'
+    scope.write(sentinel, b'putgd synthetic copy-text sentinel')
+    owner(scope, sentinel, 'text/plain', name='copy-text-sentinel')
+    _frame(ctx, 'text-pattern')
+    with selectors._portal_scope(ctx):
+        opened = ctx.view('action.invoke', {'action': 'text'})
+        oid = opened['operationId']
+        ctx.wait(lambda: selectors._op(ctx, oid)['state'] == 'acquiring', 'text selector acquiring')
+        selectors._focus_selector(ctx, 'region')
+        x, y, w, h = scene.rect
+        ctx.drag((x + 10, y + 10), (x + w - 10, y + h - 10))
+        done = ctx.wait(lambda: (t if (t := ctx.call('text.inspect', {'id': oid}))['state']
+                                 in ('completed', 'failed', 'cancelled') else None), 'text recognition ended', timeout=60)
+    ctx.note('copy_text=' + json.dumps({k: done.get(k) for k in ('state', 'copyStatus', 'characterCount', 'timings')},
+                                       sort_keys=True))
+    ctx.expect(done['state'] == 'completed' and done.get('copyStatus') == 'copied', 'Copy text completed and copied')
+    copied = _clipboard_bytes(scope, 'text/plain')
+    ctx.expect(copied is not None and _normal(copied.decode('utf-8', 'replace')) == lines,
+               'desktop clipboard holds exactly the two pattern lines')
+    ctx.note('copy_text_exact_lines=2; independent desktop clipboard reader')
+    scene.command('quit')
+
+
+QUICK_TERM = 'ZEPHYRINE'
+
+
+def _redact_image(login):
+    """A white image with the login, a listed term and two decoy words; their boxes in image pixels."""
+    Image, _, _ = image_modules()
+    from PIL import ImageDraw, ImageFont
+    try:
+        font = ImageFont.load_default(size=44)
+    except TypeError:
+        raise RecipeBlocked('builder Pillow has no scalable default font (needs Pillow 10.1)') from None
+    image = Image.new('RGB', (960, 330), (255, 255, 255))
+    draw = ImageDraw.Draw(image)
+    boxes = {}
+    for key, (label, value, top) in dict(name=('Owner', login, 40), decoy=('Keep', 'ORCHARD LANTERN', 140),
+                                       term=('Code', QUICK_TERM, 240)).items():
+        draw.text((40, top), label, fill=(0, 0, 0), font=font)
+        left = 40 + draw.textlength(label + ' ', font=font)
+        draw.text((left, top), value, fill=(0, 0, 0), font=font)
+        boxes[key] = [int(v) for v in draw.textbbox((left, top), value, font=font)]
+    stream = io.BytesIO()
+    image.save(stream, format='PNG')
+    return image, stream.getvalue(), boxes
+
+
+def _quick_redact(ctx, scope):
+    login = ctx.shell('id -un')['stdout'].strip()
+    ctx.expect(re.fullmatch(r'[a-z_][a-z0-9_-]{2,31}', login) is not None, 'guest login name readable (3+ characters)')
+    original, png, boxes = _redact_image(login)
+    path = scope.root + '/quick-redact.png'
+    scope.write(path, png)
+    oid = editor._result(ctx.call('editor.open', {'source': 'file', 'path': path}))['operationId']
+    try:
+        def ready():
+            reply = json.loads(ctx.cli('editor.inspect', json.dumps({'id': oid}))['stdout'])
+            if reply.get('ok') is False and reply.get('error', {}).get('code') == 'editor_starting':
+                return None
+            return editor._result(reply)
+        state = ctx.wait(ready, 'editor ready on the quick redact image', timeout=30)
+        ctx.expect([state['width'], state['height']] == [960, 330] and not state['shapes'], 'fresh editor on the 960x330 image')
+        applied = editor._result(ctx.call('editor.apply', {'id': oid, 'commands': [
+            {'op': 'redactText', 'categories': ['name', 'list'], 'terms': [QUICK_TERM]}]}))
+        ctx.note('quick_redact=' + json.dumps({k: v for k, v in applied.items() if k != 'created'}, sort_keys=True))
+        ctx.expect(not applied.get('nameUnchecked'), 'the account name lookup answered')
+        output = scope.root + '/quick-redact-out.png'
+        editor._result(ctx.call('editor.saveCopy', {'id': oid, 'path': output, 'overwrite': False}))
+        data = _payload(ctx, output, 'png', ctx.wait(lambda: (history._local_digest(ctx, output) if ctx.shell(
+            'test -s ' + shlex.quote(output))['returncode'] == 0 else None), 'redacted copy saved', timeout=30))
+        Image, ImageChops, _ = image_modules()
+        actual = Image.open(io.BytesIO(data)).convert('RGB')
+        ctx.expect(actual.size == original.size, 'saved copy keeps the image size')
+        for key in ('name', 'term'):
+            ctx.expect(set(actual.crop(boxes[key]).getdata()) == {(0, 0, 0)},
+                       'output pixels over the ' + {'name': 'login name', 'term': 'listed word'}[key] + ' are solid redaction')
+        ctx.expect(ImageChops.difference(actual.crop(boxes['decoy']), original.crop(boxes['decoy'])).getbbox() is None,
+                   'output pixels over the unlisted words are unchanged')
+        _frame(ctx, 'quick-redact-applied')
+    finally:
+        # A live editor is cancelled here; a resident cleanup call may only touch recordings.
+        failed = sys.exc_info()[0] is not None
+        try:
+            if editor._result(ctx.call('operation.inspect', {'id': oid}))['state'] == 'editing':
+                ctx.call('editor.cancel', {'id': oid})
+        except Exception as error:
+            ctx.note('quick redact editor cleanup unavailable: ' + type(error).__name__)
+            if not failed:
+                raise
+    ctx.note('quick_redact_pixels: login and listed word solid, decoy unchanged')
+
+
+@recipe('mcp.perform-action', 'mcp.editor', desktop_drawn=True, timeout=360)
+def copy_text(ctx):
+    with _lane(ctx) as (scope, service):
+        _copy_text(ctx, scope)
+        _quick_redact(ctx, scope)
