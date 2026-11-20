@@ -1776,10 +1776,10 @@ QJsonObject SettingsWindow::candidate() const {
  // its default, or the draft never matches the file and every action reports unsaved settings.
  // Each is written on its own: a saved edit sends only the field changed, so writing the other
  // too would leave the draft different from the file. Which keys are stored comes from the file
- // as last accepted too (a saved edit can add or empty the object), but only while that file is the
- // one this draft is based on: a restored draft must not take keys someone else just saved and
- // fill them with its own older values. A stored object stays, even empty.
- {const auto accepted=baseRevision_==settings_.revision()?acceptedDocument()["preferences"].toObject():QJsonObject{};
+ // this draft is based on too (a saved edit can add or empty the object): the restored checkpoint's
+ // base, or the file as of this window's last accepted save, never a newer one saved elsewhere,
+ // whose keys a replay would fill with this draft's older values. A stored object stays, even empty.
+ {const auto accepted=(restoredDraft_?restoredBase_:baseDocument_)["preferences"].toObject();
   const bool stored=preferences.contains("updates")||accepted.contains("updates");
   auto updates=preferences.contains("updates")?preferences.value("updates").toObject():accepted.value("updates").toObject();
   if(updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
@@ -2687,7 +2687,8 @@ void SettingsWindow::revealUpdates(){
 // whole, each changed field of the others, each one gone, the order, and each changed setting.
 // Used where nothing is queued yet: Retry saving after a restored checkpoint, or after a conflict.
 void SettingsWindow::queueDraftDifferences(const QJsonObject& base,bool withOrder){
- restoredDraft_=false;storeProfile();const auto draft=candidate();const auto accepted=base.isEmpty()?acceptedDocument():base;
+ // The draft is read while it still counts as restored: its Updates keys come from its own base (#1732).
+ storeProfile();const auto draft=candidate();restoredDraft_=false;const auto accepted=base.isEmpty()?acceptedDocument():base;
  std::function<void(const QJsonValue&,const QJsonValue&,const QString&,QStringList&)> leaves=[&](const QJsonValue& now,const QJsonValue& before,const QString& path,QStringList& out){
   if(now==before)return;
   if(now.isObject()&&before.isObject()){const auto a=now.toObject(),b=before.toObject();auto keys=a.keys();for(const auto& key:b.keys())if(!a.contains(key))keys.append(key);for(const auto& key:std::as_const(keys))leaves(a.value(key),b.value(key),path+"/"+key,out);return;}
