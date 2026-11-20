@@ -765,7 +765,7 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
 def restart_dead_keyring(guest, folder):
     """After a failed lend return: start the guest's keyring daemon again if it has died.
 
-    Records what happened in the receipts (connection names and lock state only, never
+    Appends what happened to the receipts (connection names and lock state only, never
     secrets) and returns the record when a daemon was started again, otherwise None."""
     restart = getattr(guest, 'restart_keyring', None)
     if restart is None:
@@ -778,7 +778,9 @@ def restart_dead_keyring(guest, folder):
         record = {'restarted': False, 'reason': str(error) if refused else 'check failed: ' + type(error).__name__}
     if record is None:
         return None
-    note(folder, keyringRestart=dict(record, at=now_text()))
+    # Appended: a later check never hides an earlier restart.
+    lent = json.loads((folder / 'lend.json').read_text())
+    note(folder, keyringRestarts=lent.get('keyringRestarts', []) + [dict(record, at=now_text())])
     return record if record.get('restarted') else None
 
 
@@ -797,7 +799,10 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
     if lab_app_processes(layout):
         raise LabFailure('The lab profile is running on this builder; close it first')
 
+    stage = {}
+
     def give_back():
+        stage['name'] = 'guest'
         provision = folder / 'provision.json'
         _, receipt = bridge._load_receipt(provision)
         if receipt['state'] == 'import_pending' or (receipt['state'] in ('cleanup_pending', 'cleanup_confirmed')
@@ -809,7 +814,9 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         guest.stop_app()
         chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
         chain.recover(str(provision), reference, run, guest_broker)
+        stage['name'] = 'carry_back'  # the builder's entry: never retried with a fresh baseline
         carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
+        stage['name'] = 'guest'
         chain.cleanup(run, guest_broker, reference)
         return carried
 
@@ -823,6 +830,11 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         try:
             carried = give_back()
         except (bridge.ProvisionError, lab.LabError):
+            # Only a guest step is retried. A failed carry-back (a conflict with the builder's
+            # entry) keeps the lock blocked as before: a fresh chain would take the conflicting
+            # entry as its baseline.
+            if stage.get('name') != 'guest':
+                raise
             restarted = restart_dead_keyring(guest, folder)
             if restarted is None:
                 raise

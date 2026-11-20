@@ -274,37 +274,50 @@ def restart_live_keyring(run):
     """Start the guest's live keyring daemon again if it has died; None when the guest has none.
 
     The recorded unique connection must have no owner and no daemon may still serve the
-    keyring's folder: a daemon that is only slow is never replaced. The new daemon reads the
-    same tmpfs files, so the blank collection and the lent entry are back once it is opened
-    with its empty password; the run's state then names its new connection for the bridge
-    and every later guest step. Returns only
-    connection names, the process identity and the collection's label and lock state.
+    keyring's folder: a daemon that is only slow is never replaced. The desktop's own Secret
+    Service must be up before and unchanged after, so the new daemon never takes its name.
+    The new daemon reads the same tmpfs files, so the blank collection and the lent entry are
+    back once it is opened with its empty password. Only then does the run's state name the
+    new connection for the bridge and every later guest step. One restart per run at a time.
+    Returns only connection names, the process identity and the collection's label and lock state.
     """
+    import fcntl
+    from tools.lab.surface_driver.fixtures.keyring import OWNER
     run = Path(run)
     lab.verify_owned_guest(run)
-    info = lab.state(run)
-    previous = info.get('secret_service')
-    if previous is None:
-        return None
-    lab.guest_secret_prefix(info)  # the recorded name is a unique connection
-    check = LIVE_KEYRING_STATE.replace('NAME', repr(previous)).replace('ROOT', repr(LIVE_KEYRING_ROOT))
-    found = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+check+'\nPY\n'))
-    if found['owned']:
-        return {'restarted': False, 'busName': previous, 'reason': 'the live keyring daemon still answers'}
-    if found['daemons']:
-        raise KeyringRestartRefused('a daemon still serves the live keyring folder without its connection')
-    if not found['data']:
-        raise KeyringRestartRefused('the live keyring files are missing from the guest')
-    identity, name = _start_live_keyring(run, fresh=False)
-    info['secret_service'] = name
-    lab.write_json(run/'state.json', info)
-    # A new daemon loads the blank collection locked: open it with its empty password.
-    lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
-    status = json.loads(lab.guest_session(run, 'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
-    if status.get('label') != 'putgd lab' or status.get('locked') is not False:
-        raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
-    return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
-                start=identity['start'], collection=status)
+    with (run/'live-keyring-restart.lock').open('a') as serial:
+        fcntl.flock(serial, fcntl.LOCK_EX)
+        info = lab.state(run)
+        previous = info.get('secret_service')
+        if previous is None:
+            return None
+        lab.guest_secret_prefix(info)  # the recorded name is a unique connection
+        check = LIVE_KEYRING_STATE.replace('NAME', repr(previous)).replace('ROOT', repr(LIVE_KEYRING_ROOT))
+        found = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+check+'\nPY\n'))
+        if found['owned']:
+            return {'restarted': False, 'busName': previous, 'reason': 'the live keyring daemon still answers'}
+        if found['daemons']:
+            raise KeyringRestartRefused('a daemon still serves the live keyring folder without its connection')
+        if not found['data']:
+            raise KeyringRestartRefused('the live keyring files are missing from the guest')
+        owner = "python3 - <<'PY'\n"+OWNER+'\nPY\n'
+        prior = json.loads(lab.guest_session(run, owner))
+        if prior.get('provider') not in ISOLATED_SECRET_SERVICES:
+            raise KeyringRestartRefused("the desktop's own Secret Service is not running")
+        identity, name = _start_live_keyring(run, fresh=False)
+        # A new daemon loads the blank collection locked: open it with its empty password, on the
+        # new connection, before the run's state names it.
+        lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
+        prefix = lab.guest_secret_prefix(dict(info, secret_service=name))
+        status = json.loads(lab.guest_session(run, prefix+'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
+        if status.get('label') != 'putgd lab' or status.get('locked') is not False:
+            raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
+        if json.loads(lab.guest_session(run, owner)) != prior:
+            raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+        info['secret_service'] = name
+        lab.write_json(run/'state.json', info)
+        return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
+                    start=identity['start'], collection=status)
 
 
 # A broken repository stops rpm-ostree from layering anything, and it reads its
