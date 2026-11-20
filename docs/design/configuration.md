@@ -133,7 +133,10 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `archive.keepUploads` | `false`; enables local saving for every new action, independently of its upload destination |
 | `archive.root` | User Documents folder plus `put.gd`; must be absolute |
 | `archive.folders` | `images`, `videos`, `text`, `other`; each absolute or `null` |
-| `naming.mode` | `original` by default preserves imported basenames; `generated` uses UUIDs; `template` also renames imported files |
+| `naming.mode` | `original` by default preserves imported basenames; `generated` uses random names (see `naming.randomStyle`); `template` also renames imported files |
+| `naming.randomStyle` | Optional, `uuid` by default: Random names are a UUID. `string` makes them a random string of `naming.randomLength` characters, keeping the extension (#1729) |
+| `naming.randomLength` | Optional integer 4 to 64, default 12: characters in a `string` random name before the extension |
+| `naming.randomUppercase` / `naming.randomDigits` | Optional booleans, both `true` by default: a `string` random name may also use `A`–`Z` / `0`–`9`. Lowercase `a`–`z` are always used. The name is drawn once when the file is taken in and stays fixed on retry. When a `string` name is already taken and `collisionPolicy` is `rename`, a new random string of the same shape replaces it, instead of the `-<uuid>` suffix other names get |
 | `naming.fileTemplate` | Optional imported-file pattern, default `{name}.{ext}` |
 | `naming.captureTemplate` | Optional screenshot pattern, default `Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `naming.imageTemplate` / `naming.textTemplate` | Optional clipboard patterns, default timestamped `Image-…` / `Text-…` names |
