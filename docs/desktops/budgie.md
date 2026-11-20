@@ -307,7 +307,7 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
   back its own copy of `rc.xml`, so the rules go in while the bridge is stopped. labwc's
   captures can show a window's earlier pixels after a redraw, so clicks on a toplevel
   (not a popup) are checked against the guest's display read over VNC where the crop fits,
-  read again after any activation ([details](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
+  and read again after the check activates the target ([details](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
   accessible name, so the Tray menu cell finds put.gd's icon by its pixels and reads the menu
   with put.gd's `diagnostics.trayMenu` and tesseract
   ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).

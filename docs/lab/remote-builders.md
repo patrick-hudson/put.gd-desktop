@@ -626,9 +626,9 @@ and three labwc 0.20 behaviours need care:
   target that reaches past the display, or a crop too large for the probe request,
   keeps grim's capture of the outputs. Within one check the window is captured up to
   three times against that one display read. The display is read again for each later
-  check: after a screen clearing, and for up to two retries of an unverified result. An
-  activation of the target after the display was read makes the check unverified, so the
-  next check reads it again.
+  check: after a screen clearing, and for up to two retries of an unverified result. When a
+  check starts by activating the target, it reports unverified, so the next check reads the
+  display again.
 
 Firefox's blank kiosk page has no pixels to place it by. A window with no distinctive pixels
 is placed only when it is the active toplevel and its capture matches exactly one output
