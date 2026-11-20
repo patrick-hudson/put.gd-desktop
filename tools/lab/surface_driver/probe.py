@@ -1108,8 +1108,8 @@ def pixel_share(window, screen, x, y, detailed=False):
     """The share of the window's cells the outputs show exactly, with the window at (x, y).
 
     Every cell counts, flat ones too: at a position known in advance there is no
-    other offset for a flat cell to agree with. With DETAILED only the cells with
-    detail count (none: 0). Cells off the outputs don't count.
+    other offset for a flat cell to agree with. With DETAILED only cells of at least
+    four colours count (none: 0). Cells off the outputs don't count.
     """
     ww, wh, wb = window
     sw, sh, sb = screen
@@ -1120,8 +1120,8 @@ def pixel_share(window, screen, x, y, detailed=False):
             sy, sx = y + r, x + c
             if not 0 <= sy < sh or sx < 0 or sx + n > sw:
                 continue
-            if detailed and _detail(wb[(r * ww + c) * 3:(r * ww + c + n) * 3]) < n * 3 // 4:
-                continue
+            if detailed and len({wb[i:i + 3] for i in range((r * ww + c) * 3, (r * ww + c + n) * 3, 3)}) < 4:
+                continue  # a cell with fewer than four colours is no detail, however short
             total += 1
             at = (r * ww + c) * 3
             equal += sb[(sy * sw + sx) * 3:(sy * sw + sx + n) * 3] == wb[at:at + n * 3]

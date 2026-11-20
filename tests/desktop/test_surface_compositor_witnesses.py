@@ -224,10 +224,16 @@ class PixelWitness(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'detail in the corner of p does not show'):
                 probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
             # Mostly flat with a little detail: the flat cells alone matching is not enough.
-            spot = paste((30, 20, b'\x07' * (30 * 20 * 3)), (6, 4, noise(6, 4, 9)), 12, 8)
+            spot = paste((30, 20, b'\x07' * (30 * 20 * 3)), (6, 2, noise(6, 2, 9)), 12, 8)
             captures['p'] = paste(self.window, spot, 0, 0)
-            with self.assertRaisesRegex(RuntimeError, '0 of its process'):
+            self.assertGreaterEqual(probe.pixel_share(spot, flat, 140, 60), probe.KNOWN_SHARE)
+            with self.assertRaisesRegex(RuntimeError, 'detail in the corner of p does not show'):
                 probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
+
+    def test_short_flat_cells_are_no_detail(self):
+        # 400 wide: the last cell of each row is 16 pixels, too short for compression to call flat.
+        flat = (400, 200, b'\x30' * (400 * 200 * 3))
+        self.assertEqual(probe.pixel_share(flat, flat, 0, 0, detailed=True), 0.0)
 
     def test_the_display_snapshot_stands_for_the_outputs_over_the_target(self):
         import base64
