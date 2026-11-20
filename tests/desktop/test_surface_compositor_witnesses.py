@@ -221,7 +221,12 @@ class PixelWitness(unittest.TestCase):
             # A flat corner is no dialog, even where the outputs show the same flat colour.
             captures['p'] = paste(self.window, (30, 20, b'\x07' * (30 * 20 * 3)), 0, 0)
             flat = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 140, 60)
-            with self.assertRaisesRegex(RuntimeError, 'no detail'):
+            with self.assertRaisesRegex(RuntimeError, 'detail in the corner of p does not show'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
+            # Mostly flat with a little detail: the flat cells alone matching is not enough.
+            spot = paste((30, 20, b'\x07' * (30 * 20 * 3)), (6, 4, noise(6, 4, 9)), 12, 8)
+            captures['p'] = paste(self.window, spot, 0, 0)
+            with self.assertRaisesRegex(RuntimeError, '0 of its process'):
                 probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
 
     def test_the_display_snapshot_stands_for_the_outputs_over_the_target(self):

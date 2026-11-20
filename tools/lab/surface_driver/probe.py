@@ -1104,11 +1104,12 @@ def crop(image, x, y, width, height):
 KNOWN_SHARE = .9
 
 
-def pixel_share(window, screen, x, y):
+def pixel_share(window, screen, x, y, detailed=False):
     """The share of the window's cells the outputs show exactly, with the window at (x, y).
 
     Every cell counts, flat ones too: at a position known in advance there is no
-    other offset for a flat cell to agree with. Cells off the outputs don't count.
+    other offset for a flat cell to agree with. With DETAILED only the cells with
+    detail count (none: 0). Cells off the outputs don't count.
     """
     ww, wh, wb = window
     sw, sh, sb = screen
@@ -1118,6 +1119,8 @@ def pixel_share(window, screen, x, y):
             n = min(64, ww - c)
             sy, sx = y + r, x + c
             if not 0 <= sy < sh or sx < 0 or sx + n > sw:
+                continue
+            if detailed and _detail(wb[(r * ww + c) * 3:(r * ww + c + n) * 3]) < n * 3 // 4:
                 continue
             total += 1
             at = (r * ww + c) * 3
@@ -1185,14 +1188,16 @@ def dialog_place(compositor, pid, title, window, size, screen):
         if image[:2] == (1, 1) or image[0] < size[0] or image[1] < size[1]:
             continue
         corner = crop(image, 0, 0, *size)
-        if _detail(corner[2]) < len(corner[2]) // 64:
-            refused.append('the corner of %s has no detail to be a dialog' % other['id'])
-            continue
         try:
-            placed.append((other['id'], corner, place_pixels(compositor, title, window['wm_class'], corner, screen,
-                                                             rule_only=True)['rect']))
+            rect = place_pixels(compositor, title, window['wm_class'], corner, screen, rule_only=True)['rect']
         except RuntimeError as error:
             refused.append(str(error))
+            continue
+        # The corner's own detail must show there too, not only its flat parts.
+        if pixel_share(corner, screen, rect[0], rect[1], detailed=True) < KNOWN_SHARE:
+            refused.append('the detail in the corner of %s does not show at the rule position' % other['id'])
+            continue
+        placed.append((other['id'], corner, rect))
     if len(placed) != 1:
         raise RuntimeError('labwc captured dialog %r as 1x1 and %d of its process\'s toplevels show it at its '
                            'window-rule position%s' % (title, len(placed), (': ' + '; '.join(refused[:2])) if refused else ''))
@@ -1496,6 +1501,9 @@ class WaylandPlacement:
                     raise
                 time.sleep(.2)
                 self._screen = None
+                # It may have become active meanwhile (the kiosk once a closing window is gone).
+                self._windows = None
+                found = [w for w in self.windows() if w['id'] == found[0]['id']] or found
         return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
 
     def _dialog(self, pid, title, rect, window):
@@ -2791,6 +2799,10 @@ def witness_foreground(query):
         deadline = time.monotonic() + 2.5
         while time.monotonic() < deadline and not any(w['id'] == wid and w.get('focus') for w in compositor_windows(compositor)['windows']):
             time.sleep(.1)
+        if point is not None and query.get('display'):
+            # The driver read the display before this activation: it says nothing about now.
+            return {'ok': False, 'unverified': True, 'backend': 'toplevel-pixels-pick', 'target': wid,
+                    'obscuring_window': 'activated after the display was read; read it again', 'obscuring_window_id': None}
     if point is not None and query.get('popup') and compositor.get('kind') in ('toplevel-pixels', 'hyprctl'):
         # A popup is drawn above its own parent; neither compositor lists or captures it alone.
         popup = query['popup']
