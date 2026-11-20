@@ -211,12 +211,27 @@ class PixelWitness(unittest.TestCase):
         ctx = SimpleNamespace(profile={'compositor': {'kind': 'toplevel-pixels'}, 'screens': [{}]}, note=notes.append,
                               DISPLAY_BYTES=DriverContext.DISPLAY_BYTES, target=SimpleNamespace(physical=None))
         query = {'geometry': {'x': 0, 'y': 0, 'width': 4, 'height': 4, 'window_id': 'w'}, 'point': [1, 1]}
+        ctx.target.display_image = lambda head: None
+        self.assertEqual(DriverContext._with_display(ctx, query), query)
+        self.assertEqual(len(notes), 1)
+        # Only the VNC read itself falls back: a failed endpoint or lease check still stops the run.
+        from tools.lab.surface_driver import target
+        from tools.lab.surface_driver.api import RecipeBlocked
         for error in (TimeoutError('frame'), RuntimeError('connection closed'), ConnectionRefusedError()):
-            def fail(head, error=error):
-                raise error
-            ctx.target.capture_image = fail
-            self.assertEqual(DriverContext._with_display(ctx, query), query)
-        self.assertEqual(len(notes), 3)
+            vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lambda force: None)
+            with patch.object(target.rfb, 'RFB', side_effect=error):
+                self.assertIsNone(target.Target.display_image(vnc))
+        def refused():
+            raise RecipeBlocked('QMP endpoint changed')
+        vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lambda force: None, _verify_endpoints=refused)
+        with patch.object(target.rfb, 'RFB') as connect, self.assertRaisesRegex(RecipeBlocked, 'QMP endpoint changed'):
+            target.Target.display_image(vnc)
+        connect.assert_not_called()
+        def lease(force):
+            raise OSError('lease')
+        vnc = SimpleNamespace(physical=None, info={'vnc_display': 20}, heartbeat=lease)
+        with patch.object(target.rfb, 'RFB'), self.assertRaises(RecipeBlocked):
+            target.Target.display_image(vnc)
         # The whole serialized request is measured: a crop that fits alone but not with the rest is dropped.
         sent = {}
         def probe_(name, q, source, timeout):
@@ -230,6 +245,24 @@ class PixelWitness(unittest.TestCase):
         self.assertNotIn('display', sent)
         DriverContext._probe(ctx, 'foreground', dict(query, display={'rgb': 'x' * 1024}))
         self.assertIn('display', sent)
+
+    def test_a_placement_retry_places_only_a_fresh_capture_of_the_window_size(self):
+        first, odd, fresh = (80, 40, b'\x01' * 9600), (79, 40, b'\x02' * 9480), (80, 40, b'\x03' * 9600)
+        captures = iter([first, odd, fresh])
+        placed = []
+        def place(compositor, title, app_id, image, screen, fullscreen=False):
+            placed.append(image)
+            if len(placed) == 1:
+                raise RuntimeError('still covered')
+            return {'rect': [5, 6, 80, 40]}
+        placement = probe.WaylandPlacement({'kind': 'toplevel-pixels'})
+        placement._windows = [dict(id='k', title='Kiosk', wm_class='kiosk', focus=True)]
+        with patch.object(probe, 'grim', side_effect=lambda *a: next(captures) if a else (8, 8, b'')), \
+             patch.object(probe, 'app_id_names', return_value=True), patch.object(probe, 'place_pixels', side_effect=place), \
+             patch.object(probe, 'compositor_windows', return_value={'windows': placement._windows}), \
+             patch.object(probe.time, 'sleep'):
+            self.assertEqual(placement._pixel_toplevel(7, 'Kiosk', [0, 0, 80, 40])['frame'], [5, 6, 80, 40])
+        self.assertEqual(placed, [first, fresh])  # the 79x40 capture placed nothing
 
     def test_the_toplevel_list_reports_fullscreen_only_for_a_window_it_names_once(self):
         module = SimpleNamespace(socket_path=lambda: 'x', snapshot=lambda _: {

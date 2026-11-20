@@ -1516,12 +1516,19 @@ class WaylandPlacement:
                 # It may have become active meanwhile (the kiosk once a closing window is gone).
                 self._windows = None
                 found = [w for w in self.windows() if w['id'] == found[0]['id']] or found
-                # And it may have repainted as its cover closed: compare its current pixels.
-                again = grim(found[0]['id'])
-                if again[:2] != (width, height) and again[0] >= width and again[1] >= height:
-                    again = content_box(again, width, height) or again
-                if again[:2] == (width, height):
-                    image = again
+                # And it may have repainted as its cover closed: compare its current pixels, and
+                # only those (a capture of another size places nothing; look again).
+                image = grim(found[0]['id'])
+                if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
+                    image = content_box(image, width, height) or image
+                while image[:2] != (width, height):
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError('toplevel %r captures %dx%d but its accessible window is %dx%d'
+                                           % (title, image[0], image[1], width, height))
+                    time.sleep(.2)
+                    image = grim(found[0]['id'])
+                    if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
+                        image = content_box(image, width, height) or image
         return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
 
     def _dialog(self, pid, title, rect, window):

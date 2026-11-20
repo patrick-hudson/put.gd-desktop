@@ -445,11 +445,12 @@ class DriverContext(Context):
         if not probe:
             return dict(query, display=None)  # only says that a display would be read
         import base64, zlib
-        try:
-            image = self.target.capture_image(0).convert('RGB')
-        except (TimeoutError, OSError, RuntimeError) as error:  # tools/lab/rfb.py: handshake and stream errors
-            self.note('display read failed, the hit-test keeps grim: '+type(error).__name__+': '+str(error)[:120])
+        # Endpoint and lease failures still stop the run; only a failed VNC read falls back to grim.
+        image = self.target.display_image(0)
+        if image is None:
+            self.note('display read failed; the hit-test keeps grim')
             return query
+        image = image.convert('RGB')
         rect = [int(geometry[k]) for k in ('x', 'y', 'width', 'height')]
         if rect[0] < 0 or rect[1] < 0 or rect[0]+rect[2] > image.width or rect[1]+rect[3] > image.height:
             return query

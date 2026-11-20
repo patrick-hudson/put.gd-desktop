@@ -694,13 +694,22 @@ original=rc.read_text()
 merged=merge_labwc_rules(original,RULES)  # a bad rule or rc.xml fails here, with the bridge still running
 start=lambda:subprocess.Popen(['/usr/bin/python3',BRIDGE],env=env,cwd=env.get('HOME','/'),stdin=subprocess.DEVNULL,
                               stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
-fd=os.pidfd_open(old[0])
+# Both files are written before the bridge stops; each later change of rc.xml is one rename.
+staged,kept=rc.with_name('rc.xml.putgd-lab'),rc.with_name('rc.xml.putgd-lab-original')
+staged.write_text(merged)
+kept.write_text(original)
+def stop(pids):
+ for pid in pids:
+  try:fd=os.pidfd_open(pid)
+  except ProcessLookupError:continue
+  try:
+   signal.pidfd_send_signal(fd,signal.SIGTERM)
+   assert select.select([fd],[],[],10)[0],'the labwc bridge did not stop'
+  except ProcessLookupError:pass
+  finally:os.close(fd)
+stop(old)
 try:
- signal.pidfd_send_signal(fd,signal.SIGTERM)
- assert select.select([fd],[],[],10)[0],'the labwc bridge did not stop'
-finally:os.close(fd)
-try:
- rc.write_text(merged)
+ os.replace(staged,rc)
  before=rc.stat().st_mtime_ns
  p=start()
  deadline=time.monotonic()+30
@@ -708,22 +717,22 @@ try:
   assert p.poll() is None,'the restarted labwc bridge exited'
   assert time.monotonic()<deadline,'the restarted labwc bridge did not write rc.xml'
   time.sleep(.2)
+ time.sleep(1)
+ import xml.etree.ElementTree as ET
+ held=[(e.get('identifier'),e.get('title'),e.get('serverDecoration'),[(a.get('name'),a.get('x'),a.get('y')) for a in e])
+       for e in ET.fromstring(rc.read_text()).iter('windowRule')]
+ for r in RULES:
+  assert (r['app_id'],r['title'],'no',[('MoveTo',str(r['position'][0]),str(r['position'][1]))]) in held,'the bridge dropped a lab window rule'
+ assert p.poll() is None and own(bridge)==[p.pid],'the labwc bridge is not running exactly once after the restart'
 except BaseException:
- # Leave the session as it was: its own rc.xml and one bridge running.
- for pid in own(bridge):
-  try:os.kill(pid,signal.SIGTERM)
-  except OSError:pass
- rc.write_text(original)
- start()
+ # Leave the session as it was: no bridge of ours still writing, its own rc.xml, one bridge running.
+ try:
+  stop(own(bridge))
+  os.replace(kept,rc)
+ finally:
+  start()
  raise
-time.sleep(1)
-text=rc.read_text()
-import xml.etree.ElementTree as ET
-held=[(e.get('identifier'),e.get('title'),e.get('serverDecoration'),[(a.get('name'),a.get('x'),a.get('y')) for a in e])
-      for e in ET.fromstring(text).iter('windowRule')]
-for r in RULES:
- assert (r['app_id'],r['title'],'no',[('MoveTo',str(r['position'][0]),str(r['position'][1]))]) in held,'the bridge dropped a lab window rule'
-assert p.poll() is None and own(bridge)==[p.pid],'the labwc bridge is not running exactly once after the restart'
+kept.unlink()
 print(json.dumps(dict(rcXml=str(rc),rules=RULES,bridgeBefore=old[0],bridgeAfter=p.pid,heldAfterBridgeWrite=True)))
 NIGHTLY_LABWC
 '''
