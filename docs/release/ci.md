@@ -50,24 +50,30 @@ read-only token. Pull requests and release callers never stamp.
 The nightly `plan` job tags HEAD, then runs `tools/ci/reuse_ci.py packages`. It
 accepts only a `ci.yml` run of this repository with event `push`, branch
 `nightly` and exactly this commit, whose successful attempt passed contracts,
-both Linux test jobs, sanitizers, every package job, `appimage-sources`,
-`appimage-pipewire`, `sbom` and `CI`. Each package, SBOM and source artifact must
-exist once, unexpired, in that run. A matching run still in progress is waited for,
+both Linux test jobs, sanitizers, the five native package builds, `arch`,
+`arch-install`, `appimage`, `appimage-sources`, `appimage-pipewire`, `sbom` and
+`CI` (`collect` runs only in tagged builds). Each package, SBOM and source
+artifact must exist once, unexpired, in that run, and `plan` records their IDs. A matching run still in progress is waited for,
 for up to 25 minutes. A missing, cancelled, failed, incomplete or expired run, or a
-lookup error, leaves the run ID empty, and the `ci` job then tests and packages
-everything in the nightly run, as before.
+lookup error, leaves the run ID empty, and the `ci` job then builds and checks the
+tagged packages in the nightly run, as before; it reruns the source tests only when
+it cannot reuse passing ones for the commit.
 
-With a reused run, `ci` is skipped. `publish` downloads that run's artifacts once,
-runs `collect.py --installers-only` against the real tag (every package, SBOM and
-source must carry the tag's commit, tree and version) and publishes them with
+With a reused run, `ci` is skipped. `publish` downloads exactly the artifact IDs
+`plan` verified, once. If a rerun of that push-CI run has replaced one, it is
+missing from the download and publication fails; it never takes the replacement
+and does not fall back to building. `publish` then runs `collect.py
+--installers-only` against the real tag (the packages and curated source must
+carry the tag's commit, tree and version, the SBOMs must match the package hashes,
+and the bundled sources must match the AppImage receipt) and publishes them with
 `publish.py --nightly --built-by`. The release notes name the push-CI run as the
 build and its debug symbols' home, and the nightly run as the publisher; the
 publication receipt records both. The run's record is the nightly run's
 `source-ci-provenance` artifact, which `surface-map` also reads for the UI catalog.
 
 `gh workflow run ci.yml --ref <branch> -f planned_nightly=true` builds stamped
-packages on any branch, as a test of this path; it creates no tag and publishes
-nothing. `reuse_ci.py packages --rehearse-run <run>` and `publish.py --nightly
+packages on any branch, as a test of this path. The tag exists only in each job's
+checkout: it pushes no tag and publishes no release. `reuse_ci.py packages --rehearse-run <run>` and `publish.py --nightly
 --rehearse` replay the reuse, verification and release notes read-only: the
 rehearsal stops before the first GitHub write, and a real publication refuses a
 rehearsal record.
@@ -231,10 +237,10 @@ part of the required `CI` summary when selected.
 The 2026-10-26 baseline is in [the CI records](../history/ci-records.md#nightly-baseline-2026-10-26).
 
 Package compiler caches are separate per distro/AppImage and dependency
-fingerprint, capped at 1 GiB each and trimmed to the build's own entries before
+fingerprint, capped at 1 GB each and trimmed to the build's own entries before
 saving, as in the [cache budget](#cache-budget). Arch also compiles the SDK
 through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit.
-Until #1724 the cap was 256 MiB, less than a build plus the restored cache,
+Until #1724 the cap was 256 MB (384 MB on Arch), less than a build plus the restored cache,
 so ccache cleaned up mid-build and rebuilt only 53-79% of native objects from
 cache. Arch's key names only the distro, so a restore can cross a dependency update; ccache's own hashing of the compiler and headers keeps stale objects from being reused. The
 source export compiled on Ubuntu 24.04 has its own compiler cache, saved even when a newer push cancels the compile. Only `nightly` pushes save them; other runs
@@ -263,8 +269,9 @@ Proton source parts stay at their permanent URLs. Publication checks GitHub's
 SHA-256 asset digest, downloading bytes only when that digest is absent. It still
 rejects missing assets, checksum mismatches, replaced tags and changed metadata.
 
-A nightly that reuses push CI moves no artifact between its own jobs: `publish`
-downloads the push-CI run's packages and sources once and uploads them once.
+A nightly that reuses push CI hands no installer or source artifact between its
+own jobs (only the small `source-ci-provenance` record): `publish` downloads the
+push-CI run's packages and sources once and uploads them once.
 Only when it builds them itself does `collect` hand `release-assets` and
 `release-source-assets` to `publish`.
 
@@ -481,13 +488,14 @@ compressed archive sizes; the ceiling is
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
 | `grype-db-v6-<sha256>` ([vulnerability database](release.md#sboms-and-vulnerability-scans)) | first `sbom` job to see a new database, per ref | 1 per ref | about 195 MB | one database |
-| `ccache-package-<target>-*` (5 native, AppImage, Arch; measured 2026-11-20, #1724) | `nightly` push | 1 per target | 184–216 MB each, about 1.4 GB | 1 GB each |
+| `ccache-package-<target>-*` (5 native, AppImage, Arch; measured 2026-11-20, #1724) | `nightly` push | 1 per target and dependency fingerprint (Arch: 1) | 184–216 MB each, about 1.4 GB | 1 GB each |
 
 The CI images live in the GitHub container registry, not the Actions cache, so
 they count against none of this. The Qt installer and package snapshot caches they
 replaced (650 MB and 1.8 GB on `nightly`) are no longer saved.
 
-Steady state after a `nightly` push is about 1.7 GB (the ccache sizes above
+The totals below are from the 2026-10-19 set, before package caches were pruned
+and trimmed. Steady state after a `nightly` push is about 1.7 GB (the ccache sizes above
 still include objects from earlier commits, so the trimmed caches will be
 somewhat smaller). Between a push's saves and its prune job, three superseded
 ccache entries add about 0.94 GB. With every ccache at its ceiling the steady
