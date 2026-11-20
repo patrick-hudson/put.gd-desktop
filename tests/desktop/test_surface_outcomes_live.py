@@ -15,7 +15,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.fixtures.base import Fixture
 from tools.lab.surface_driver.fixtures.live_outcomes import (key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3,
-                                                             r2_scoped, verify_presigned)
+                                                             r2_scoped, verify_presigned, verify_r2)
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
 from tools.lab.surface_driver import browser
@@ -203,6 +203,42 @@ class LiveOutcomes(unittest.TestCase):
                     text.replace('Secret access key: scoped-secret\n','')):
             with self.subTest(bad=bad[-60:]), self.assertRaises(RecipeBlocked):
                 r2_scoped(bad)
+
+    def test_r2_public_link_is_judged_before_delete_and_only_recorded_after(self):
+        data=b'synthetic r2 bytes'
+        digest=hashlib.sha256(data).hexdigest()
+        key='acceptance/tier1-live/'+'a'*32+'/Tier1-x.png'
+        notes=[]
+        def expect(ok, message):
+            if not ok: raise RecipeFailed(message)
+        ctx=SimpleNamespace(expect=expect, note=notes.append)
+        client=Mock()
+        client.exceptions.NoSuchKey=KeyError
+        client.head_object.return_value={'ContentLength':len(data)}
+        client.get_object.return_value={'Body':io.BytesIO(data)}
+        fx=Fixture(prefix='acceptance/tier1-live/'+'a'*32+'/', bucket='putgd-test', client=client)
+        detail={'receipt':{'objectReference':{'key':key},'destination':{'settings':{'bucket':'putgd-test'}},
+                           'directUrl':'https://cf.ul.gy/'+key}}
+        answers={'https://cf.ul.gy/'+key: dict(status=200, sha256=digest)}
+        with patch('tools.lab.surface_driver.fixtures.live_outcomes._public_get', side_effect=lambda u: answers[u]):
+            verify_r2(ctx, fx, detail, data, base='https://cf.ul.gy')
+            with self.assertRaises(RecipeFailed):  # The link must be on the base it was published with.
+                client.get_object.return_value={'Body':io.BytesIO(data)}
+                verify_r2(ctx, fx, detail, data, base='https://pub-0a1b.r2.dev')
+            answers['https://cf.ul.gy/'+key]=dict(status=404)
+            with self.assertRaises(RecipeFailed):
+                client.get_object.return_value={'Body':io.BytesIO(data)}
+                verify_r2(ctx, fx, detail, data, base='https://cf.ul.gy')
+            # After the delete: the origin decides; a cached 200 on the public host is only recorded.
+            answers['https://cf.ul.gy/'+key]=dict(status=200, sha256=digest)
+            client.get_object.side_effect=KeyError
+            verify_r2(ctx, fx, detail, absent=True, base='https://cf.ul.gy')
+            self.assertIn('r2_origin_absence_count=1', notes)
+            self.assertTrue(any('after_delete_informational' in n and '200' in n for n in notes))
+            client.get_object.side_effect=None
+            client.get_object.return_value={'Body':io.BytesIO(data)}
+            with self.assertRaises(RecipeFailed):
+                verify_r2(ctx, fx, detail, absent=True, base='https://cf.ul.gy')
 
     def test_presigned_link_must_work_signed_and_be_refused_unsigned(self):
         data=b'synthetic presigned bytes'

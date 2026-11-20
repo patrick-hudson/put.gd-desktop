@@ -414,8 +414,16 @@ def _public_get(url, *, timeout=20):
         return dict(status=0)
 
 
-def verify_r2(ctx, fixture, detail, data=None, *, absent=False):
-    """The exact new key through the scoped R2 key, and its public r2.dev link without credentials."""
+# The R2 test bucket's custom domain (Patrick, 2026-11-20); its r2.dev address comes from the credentials file.
+R2_CUSTOM_DOMAIN = 'https://cf.ul.gy'
+
+
+def verify_r2(ctx, fixture, detail, data=None, *, absent=False, base=None):
+    """The exact new key through the scoped R2 key; with BASE, its public link on that host without credentials.
+
+    After a deletion the scoped GET is decisive. A public host can serve a cached copy for a while (as
+    CloudFront does), so a public GET then is recorded, not judged.
+    """
     import hashlib
     from urllib.parse import quote
     receipt = detail['receipt']
@@ -427,37 +435,48 @@ def verify_r2(ctx, fixture, detail, data=None, *, absent=False):
             fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'].close()
         except fixture.client.exceptions.NoSuchKey:
             ctx.note('r2_origin_absence_count=1')
+            if base:
+                after = _public_get(base+'/'+quote(key, safe='/'))
+                ctx.note('r2_public_after_delete_informational='+json.dumps(dict(host=base.split('//', 1)[1],
+                                                                                 status=after['status'])))
             return
         ctx.expect(False, 'scoped R2 GET still resolves after app deletion')
-    ctx.expect(receipt['directUrl'] == fixture.public_base+'/'+quote(key, safe='/'),
-               'copied R2 link is the bucket public r2.dev address of the same key')
+    if base:
+        ctx.expect(receipt['directUrl'] == base+'/'+quote(key, safe='/'),
+                   'copied R2 link is the public '+base.split('//', 1)[1]+' address of the same key')
     head = fixture.client.head_object(Bucket=fixture.bucket, Key=key)
     ctx.expect(head['ContentLength'] == len(data), 'R2 HEAD length matches saved file')
     with fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'] as body:
         remote = body.read(len(data)+1)
     ctx.expect(hashlib.sha256(remote).digest() == hashlib.sha256(data).digest(), 'R2 GET SHA-256 equals saved file')
-    public = _public_get(receipt['directUrl'])
-    ctx.note('r2_public_status='+str(public['status']))
-    ctx.expect(public['status'] == 200 and public.get('sha256') == hashlib.sha256(data).hexdigest(),
-               'public r2.dev GET 200 SHA-256 equals saved file')
+    if base:
+        public = _public_get(receipt['directUrl'])
+        ctx.note('r2_public_status='+json.dumps(dict(host=base.split('//', 1)[1], status=public['status'])))
+        ctx.expect(public['status'] == 200 and public.get('sha256') == hashlib.sha256(data).hexdigest(),
+                   'public '+base.split('//', 1)[1]+' GET 200 SHA-256 equals saved file')
 
 
-def verify_presigned(ctx, fixture, detail, data):
-    """An expiring S3 link (#1366): signed GET returns the file, the same URL unsigned is refused."""
+# A signed link lives on the S3 API host: AWS's, or the R2 account's.
+PRESIGNED_HOSTS = ('.amazonaws.com', '.r2.cloudflarestorage.com')
+
+
+def verify_presigned(ctx, fixture, detail, data, *, refused=(403,)):
+    """An expiring link (#1366): signed GET returns the file, the same URL unsigned is refused (REFUSED)."""
     import hashlib
     from urllib.parse import parse_qs, urlsplit, urlunsplit
     receipt = detail['receipt']
     link = urlsplit(receipt['directUrl'])
     query = parse_qs(link.query)
     expires = query.get('X-Amz-Expires', ['0'])[0]
-    ctx.expect(link.scheme == 'https' and link.hostname.endswith('.amazonaws.com')
+    ctx.expect(link.scheme == 'https' and (link.hostname or '').endswith(PRESIGNED_HOSTS)
                and query.get('X-Amz-Algorithm') == ['AWS4-HMAC-SHA256'] and 'X-Amz-Signature' in query
                and expires.isdigit() and 0 < int(expires) <= 86400,
-               'copied S3 link is a SigV4 presigned GET valid for at most the chosen day')
+               'copied link is a SigV4 presigned GET on the S3 API host, valid for at most the chosen day')
     ctx.expect(bool(receipt.get('linkExpiresAt') or detail.get('linkExpiresAt')), 'the receipt records when the link expires')
     digest = hashlib.sha256(data).hexdigest()
     signed = _public_get(receipt['directUrl'])
     ctx.expect(signed['status'] == 200 and signed.get('sha256') == digest, 'presigned GET 200 SHA-256 equals saved file')
     unsigned = _public_get(urlunsplit((link.scheme, link.netloc, link.path, '', '')))
     ctx.note('presigned_status=200; unsigned_status='+str(unsigned['status']))
-    ctx.expect(unsigned['status'] == 403, 'the same object without the signature is refused (403)')
+    ctx.expect(unsigned['status'] in refused, 'the same object without the signature is refused ('
+               + '/'.join(map(str, refused)) + ')')

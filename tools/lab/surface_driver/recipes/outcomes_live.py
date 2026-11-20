@@ -10,8 +10,8 @@ import sys
 from ..api import recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
 from ..catalog import image_modules
-from ..fixtures.live_outcomes import (capture_name, provider, verify_presigned, verify_r2, verify_s3,
-                                     reconcile_refused_s3)
+from ..fixtures.live_outcomes import (R2_CUSTOM_DOMAIN, capture_name, provider, verify_presigned, verify_r2,
+                                     verify_s3, reconcile_refused_s3)
 from . import history, outcomes, selectors
 
 
@@ -304,16 +304,20 @@ def _capture_once(ctx, service, scene):
     return detail, rect
 
 
-def _settle_extra(ctx, service, detail, verify):
-    """Delete an extra live object through History and prove it gone; never hide a failed delete."""
+def _settle_extra(ctx, service, detail, gone):
+    """Delete an extra live object through History and prove it gone (GONE); never hide a failed delete."""
     _cleanup(ctx, detail)
-    verify(ctx, service, detail, absent=True)
+    gone(detail)
     service.pending['remote'] = False
     ctx.click('windowClose', window='history')
 
 
-def _presigned_upload(ctx):
-    """#1366: the same destination switched to expiring links publishes a signed link that works unsigned-refused."""
+def _link_pass(ctx, settings, check, gone, *, oracle=None):
+    """Switch the live destination's link settings, publish one capture, CHECK it, delete it, GONE proves it.
+
+    Each pass has its own object key, recorded in the cleanup marker before anything is published.
+    With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop.
+    """
     scope = ctx._fixture_manager.scope
     service = ctx._live_service
     scene = ctx.fixture('selector-desktop')
@@ -321,20 +325,38 @@ def _presigned_upload(ctx):
     template, key = capture_name(service.prefix)
     service['object_key'] = key
     service.pending.details['objectKey'] = key
-    scope.patch({'profiles': [dict(current, settings=dict(current['settings'], linkMode='presigned', linkValidityDays=1))],
+    scope.patch({'profiles': [dict(current, settings=dict(current['settings'], **settings))],
                  'naming': {'captureTemplate': template}})
     scene.command('freeze')
     scene.command('raise')
-    detail, published = None, False
+    detail = None
     try:
-        detail, _ = _capture_once(ctx, service, scene)
-        published = True
+        detail, rect = _capture_once(ctx, service, scene)
         data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
-        verify_presigned(ctx, service, detail, data)
-        ctx.note('presigned_link_count=1')
+        if oracle is not None:
+            Image, _, _ = image_modules()
+            ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
+                       'live region pixels equal independently captured pattern crop (tolerance=0)')
+        check(detail, data)
     finally:
-        if detail and published:
-            _settle_extra(ctx, service, detail, verify_s3)
+        if detail and detail.get('uploadStatus') == 'uploaded':
+            failed = sys.exc_info()[0] is not None
+            try:
+                _settle_extra(ctx, service, detail, gone)
+            except Exception as error:
+                ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
+                if not failed:
+                    raise
+    return detail
+
+
+def _presigned_upload(ctx):
+    """#1366: the same S3 destination switched to expiring links publishes a signed link; unsigned is refused."""
+    service = ctx._live_service
+    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1),
+               lambda detail, data: verify_presigned(ctx, service, detail, data),
+               lambda detail: verify_s3(ctx, service, detail, absent=True))
+    ctx.note('presigned_link_count=1')
 
 
 def _live_flow(ctx, extra=None):
@@ -349,34 +371,31 @@ def _live_flow(ctx, extra=None):
 
 
 def _r2_flow(ctx):
-    """#1699: a region capture to a Cloudflare R2 destination, its public link, and deletion from History."""
+    """#1699: Cloudflare R2 public links on the custom domain and on r2.dev, then an expiring link.
+
+    Each pass uploads a region capture, checks the copied link with an unauthenticated GET (and the
+    object with the bucket-scoped key), deletes it from History and proves the origin no longer has it.
+    """
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
-    service = provider(scope, r2=True)
+    service = ctx._live_service = provider(scope, r2=True)
     outcomes._clipboard_reader(scope)
-    scene, oracle = outcomes._pattern(ctx)
-    detail, cleaned = None, False
-    try:
-        detail, rect = _capture_once(ctx, service, scene)
-        outcomes._auto_copy(ctx, scope, detail)
-        data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
-        Image, _, _ = image_modules()
-        ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
-                   'live R2 region pixels equal independently captured pattern crop (tolerance=0)')
+    _, oracle = outcomes._pattern(ctx)
+    for name, base in (('custom domain', R2_CUSTOM_DOMAIN), ('r2.dev', service.public_base)):
+        def check(detail, data, base=base):
+            outcomes._auto_copy(ctx, scope, detail)
+            verify_r2(ctx, service, detail, data, base=base)
+        _link_pass(ctx, dict(linkMode='public', publicUrlBase=base), check,
+                   lambda detail, base=base: verify_r2(ctx, service, detail, absent=True, base=base),
+                   oracle=oracle if name == 'custom domain' else None)
+        ctx.note('r2_public_link_count=1; host='+base.split('//', 1)[1])
+    def signed(detail, data):
         verify_r2(ctx, service, detail, data)
-        ctx.note('r2_upload_count=1; r2_remote_hash_match_count=1')
-        _settle_extra(ctx, service, detail, verify_r2)
-        cleaned = True
-        ctx.note('r2_deletion_count=1')
-    finally:
-        if detail and not cleaned and detail.get('uploadStatus') == 'uploaded':
-            failed = sys.exc_info()[0] is not None
-            try:
-                _settle_extra(ctx, service, detail, verify_r2)
-            except Exception as error:
-                ctx.review('live R2 UI cleanup failed: '+ctx.evidence.redactor.exception(error))
-                if not failed:
-                    raise
+        # R2 refuses an unsigned S3 API request; the status it uses is not AWS's.
+        verify_presigned(ctx, service, detail, data, refused=(400, 401, 403))
+    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1), signed,
+               lambda detail: verify_r2(ctx, service, detail, absent=True))
+    ctx.note('r2_presigned_link_count=1')
 
 
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
