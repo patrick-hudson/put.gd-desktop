@@ -621,11 +621,14 @@ and three labwc 0.20 behaviours need care:
   after a window redrew it, while the display shows the new ones. A window's own
   capture can lag the same way. This happened with History's details pane after its
   link row laid out, and it left History clicks unverified. A pointer hit-test on a
-  toplevel of a single-output guest therefore compares the window's own capture with the
-  guest's display, read over VNC, inside the target's rectangle. Within one check the
-  window is captured up to three times against that one display read. The driver then
-  reads the display again, up to two more times. An activation of the target after the
-  display was read always asks for a fresh read.
+  toplevel (not a popup) of a single-output guest therefore compares the window's own
+  capture with the guest's display, read over VNC, inside the target's rectangle. A
+  target that reaches past the display, or a crop too large for the probe request,
+  keeps grim's capture of the outputs. Within one check the window is captured up to
+  three times against that one display read. The display is read again for each later
+  check: after a screen clearing, and for up to two retries of an unverified result. An
+  activation of the target after the display was read makes the check unverified, so the
+  next check reads it again.
 
 Firefox's blank kiosk page has no pixels to place it by. A window with no distinctive pixels
 is placed only when it is the active toplevel and its capture matches exactly one output
@@ -653,8 +656,7 @@ files. Those files are checked both in the shell's default state folder and in i
 `XDG_STATE_HOME` when set. The guest also gets `qtkeychain-qt6` as a new package,
 because the lab's credential bridge links it. After a successful request to dismiss
 quickshell's notification cards, screen clearing polls until quickshell reports none. It stops
-earlier if the count can't be read or the deadline passes, so a card still leaving rarely
-covers the next click. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
+earlier if the count can't be read or the deadline passes. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
 the revoked-link check asks Firefox for fullscreen back before it navigates.
 
 Each builder reads its own
