@@ -1548,7 +1548,7 @@ def accessible(query, toplevel=False, detail=True):
             return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
         row['rect'] = placed
         row['window_id'] = where['window_id']
-        if row['popup']:
+        if row['popup'] and placement.relative_popups:
             # The popup's own rectangle goes to the input guard with the row's point, so it
             # must be in the same desktop coordinates: on labwc and Hyprland the accessible
             # one is in the parent's coordinates. A copy: the walk shares it between rows.
