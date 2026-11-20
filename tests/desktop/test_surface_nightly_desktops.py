@@ -179,8 +179,16 @@ class NightlyTests(unittest.TestCase):
                 self.assertFalse(slot.exists())
                 self.assertEqual(desktop.status()['state'], 'free')
                 self.assertEqual(proton.status()['state'], 'free')
-                archived = list((root/'putgd-lab/locks/history/recovered').glob('*.json'))
-                self.assertEqual(json.loads(archived[0].read_text()), owner)
+                archived = list((root/'putgd-lab/locks/history/recovered').glob('*-n12345678-*.json'))
+                record = json.loads(archived[0].read_text())
+                # The record keeps the slot's own files and says why the slot could go.
+                self.assertEqual((record['owner'], record['recoveredBy']), (owner, 'nightly'))
+                self.assertEqual(sorted(record['slotFiles']), ['retained.json', 'session'])
+                self.assertEqual(json.loads(record['slotFiles']['retained.json']), owner)
+                self.assertEqual(record['slotFiles']['session'], owner['session'])
+                self.assertEqual((record['cleared']['guest'], record['cleared']['protonLend']),
+                                 ('run directory already gone', 'carried_back'))
+                self.assertTrue(record['desktopRelease'])
 
     def test_live_foreign_and_unresolved_baton_are_never_released(self):
         for mode in ('live', 'foreign', 'unresolved', 'worker-live'):
@@ -720,6 +728,184 @@ class NightlyTests(unittest.TestCase):
             self.assertEqual(order, [])
             self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
 
+    def lost_ssh_row(self, root, errors=('fixture cleanup failed: ssh connection lost',)):
+        """A slot kept only because a fixture cleanup lost the guest connection: no live publication (2026-11-20, d69)."""
+        slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+        evidence = Path(owner['evidence'])
+        (evidence/'region_upload-1').mkdir()
+        nightly.save(evidence/'region_upload-1/receipt.json', dict(environment=dict(
+            cleanup_errors=list(errors), guest_local_cleanup=[])))
+        return slot, out, owner, desktop, proton
+
+    def operator(self, root, desktop, proton, *argv, host='d69'):
+        """Run an operator command as on the builder; returns (exit text or None, printed JSON or None)."""
+        from tools.lab import lab
+        import contextlib, io
+        config = root/'config.json'
+        if not config.exists():
+            config.write_text(json.dumps(dict(builders={host: dict(hostnames=['builder-'+host])})))
+            config.chmod(0o600)
+        printed = io.StringIO()
+        with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                      proton if kw.get('resource') == 'proton' else desktop), \
+                patch.object(lab, 'state', return_value=dict(id='n12345678')), \
+                patch.object(nightly.socket, 'gethostname', return_value='builder-'+host), \
+                patch.object(sys, 'argv', ['nightly_desktops.py', '--config', str(config), *argv]), \
+                contextlib.redirect_stdout(printed):
+            try:
+                nightly.main()
+                error = None
+            except SystemExit as caught:
+                error = str(caught)
+        text = printed.getvalue()
+        return error, json.loads(text) if text.strip() else None
+
+    def test_a_row_with_no_live_publication_records_guest_only_errors_without_a_pause(self):
+        from tools.lab import lab
+        error_text = 'fixture cleanup failed: ssh connection lost'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.lost_ssh_row(root)
+            evidence = Path(owner['evidence'])
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('inspect private cleanup', error)
+            with patch.object(nightly, 'guest_paused') as paused, patch.object(nightly, 'retire'):
+                # Nothing to record: say what to run instead, and write nothing.
+                error, _ = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678')
+                self.assertIn('--recover-retained', error)
+                self.assertFalse((evidence/nightly.LIVE_RESOLUTION).exists())
+                error, record = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678',
+                                              '--guest-only-error', error_text)
+            # No publication is pending, so no pause or destination check is needed.
+            paused.assert_not_called()
+            self.assertIsNone(error)
+            self.assertEqual((record['publication'], record['objectConfirmedGone'], record['livePublicationPending']),
+                             (None, False, False))
+            self.assertEqual(record['guestOnlyErrors'], {'region_upload-1': [error_text]})
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            retire.assert_called_once()
+            self.assertFalse(slot.exists())
+
+    def test_a_record_of_no_live_publication_never_clears_a_live_cleanup_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root, errors=['private session root cleanup refused'])
+            run, evidence = Path(owner['run']), Path(owner['evidence'])
+            # Without the marker, a receipt's flag still means a publication is pending.
+            (run/'live-cleanup-pending.json').unlink()
+            with self.assertRaisesRegex(nightly.NotRun, 'give --destination'):
+                self.resolve(root, guest_only_errors=['private session root cleanup refused'])
+            with self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
+                self.resolve(root, guest_only_errors=['private session root cleanup refused'], paused=None)
+            self.assertFalse((evidence/nightly.LIVE_RESOLUTION).exists())
+            # A hand-made record claiming nothing was pending clears only the errors it names.
+            nightly.save(evidence/nightly.LIVE_RESOLUTION, dict(
+                schemaVersion=1, kind='live-cleanup-resolution', run=str(run), runId='n12345678',
+                session=owner['session'], publication=None, objectConfirmedGone=False, livePublicationPending=False,
+                markerPresent=False, receipts={'idle-1': nightly.digest(evidence/'idle-1/receipt.json')},
+                guestOnlyErrors={'idle-1': ['private session root cleanup refused']}))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('live remote cleanup unresolved', error)
+            retire.assert_not_called()
+            # A record mixing the two forms is refused, never read as either.
+            nightly.save(evidence/nightly.LIVE_RESOLUTION, dict(json.loads((evidence/nightly.LIVE_RESOLUTION).read_text()),
+                                                                 objectConfirmedGone=True))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('does not record a confirmed cleanup', error)
+            self.assertTrue(slot.exists())
+
+    def test_recover_retained_recovers_the_checked_slot_now_and_records_why(self):
+        error_text = 'fixture cleanup failed: ssh connection lost'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.lost_ssh_row(root)
+            evidence = Path(owner['evidence'])
+            with patch.object(nightly, 'retire') as retire:
+                # The wrong run, or a recipe still running for this one, is refused before anything is written.
+                error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n87654321')
+                self.assertIn('not the run you checked', error)
+                with patch.object(nightly, 'guest_clients_live', return_value=True):
+                    error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+                self.assertIn('still live', error)
+                self.assertFalse((evidence/'operator-recovery').exists())
+                # Every nightly check still applies: an unchecked cleanup error keeps the guest.
+                error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+                self.assertIn('inspect private cleanup', error)
+                retire.assert_not_called()
+                self.assertTrue(slot.exists())
+                self.assertNotEqual(desktop.status()['state'], 'free')
+                self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678', '--guest-only-error', error_text)
+                error, summary = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+            self.assertIsNone(error)
+            retire.assert_called_once_with(Path(owner['run']), evidence, {})
+            self.assertFalse(slot.exists())
+            self.assertEqual(desktop.status()['state'], 'free')
+            self.assertEqual(summary['resolution']['guestOnlyErrors'], {'region_upload-1': [error_text]})
+            archived, = (root/'putgd-lab/locks/history/recovered').glob('*-n12345678-*.json')
+            record = json.loads(archived.read_text())
+            self.assertEqual(record['recoveredBy'], 'operator')
+            self.assertEqual(record['keptReason'], None)
+            self.assertEqual(record['cleared'], summary)
+            self.assertTrue(Path(record['desktopRelease']).is_file())
+            self.assertEqual(Path(record['recovery']).parents[1], evidence/'operator-recovery')
+            # Nothing is left to recover.
+            error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+            self.assertIn('no retained nightly guest slot', error)
+
+    def test_recover_retained_never_takes_a_live_lease_or_an_unreturned_proton_lend(self):
+        for mode in ('live lease', 'unreturned lend', 'not this builder'):
+            with self.subTest(mode), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                slot, out, owner, desktop, proton = self.stale_fixture(
+                    root, missing=False, live=mode == 'live lease', lend='provisioned' if mode == 'unreturned lend' else None)
+                with patch.object(nightly, 'retire') as retire, patch.object(nightly, 'command',
+                        side_effect=RuntimeError('proton recover failed')):
+                    if mode == 'not this builder':
+                        (root/'config.json').write_text(json.dumps(dict(builders={'f44': dict(hostnames=['elsewhere'])})))
+                        (root/'config.json').chmod(0o600)
+                    error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+                self.assertIn({'live lease': 'desktop lease is live', 'unreturned lend': 'recovery incomplete',
+                               'not this builder': 'not exactly one configured nightly builder'}[mode], error)
+                retire.assert_not_called()
+                self.assertTrue(slot.exists())
+                self.assertNotEqual(desktop.status()['state'], 'free')
+
+    def test_a_kept_live_row_whose_qemu_exited_resolves_and_recovers_through_the_commands(self):
+        """2026-11-20: the transient unit SIGKILLed QEMU with its worker, so nothing could pause the VM."""
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            run = Path(owner['run'])
+            (run/'qmp.sock').write_text('')
+            with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError), \
+                    patch.object(nightly, 'vm_process_gone', return_value=True), \
+                    patch.object(nightly.time, 'sleep') as sleep, \
+                    patch.object(nightly, 'check_s3_absent', return_value=dict(
+                        objectKeyAbsent=True, prefixEmpty=True, versionsGone=True)) as check:
+                error, result = self.operator(root, desktop, proton, '--check-live-cleanup')
+                self.assertEqual(error, '0')
+                self.assertEqual(result, dict(guestPaused=True, guestExited=True, objectKeyAbsent=True,
+                                              prefixEmpty=True, versionsGone=True))
+                check.assert_called_once()
+                self.assertAlmostEqual(sleep.call_args.args[0], nightly.PAUSE_SETTLE_SECONDS, delta=5)
+                # Within the settle period the resolution still refuses.
+                error, _ = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678')
+                self.assertIn('paused under', error)
+                record = run/nightly.PAUSE_RECORD
+                nightly.save(record, dict(json.loads(record.read_text()), pausedAt=nightly.time.time()-200))
+                error, resolution = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678')
+                self.assertIsNone(error)
+                self.assertTrue(resolution['objectConfirmedGone'])
+                with patch.object(nightly, 'retire') as retire:
+                    error, summary = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
+            self.assertIsNone(error)
+            retire.assert_called_once()
+            self.assertEqual(summary['resolution']['publication']['objectKey'], 'acceptance/tier1-live/x/shot.png')
+            self.assertFalse(slot.exists())
+
     def test_guest_paused_stops_the_vm_and_reports_only_a_confirmed_pause(self):
         from tools.lab import lab
         with tempfile.TemporaryDirectory() as tmp:
@@ -753,7 +939,8 @@ class NightlyTests(unittest.TestCase):
             status['running'] = True
             with patch.object(lab, 'QMP', return_value=qmp):
                 self.assertIsNone(nightly.guest_paused(run))
-            with patch.object(lab, 'QMP', side_effect=OSError):
+            # A QMP that does not answer is no pause while QEMU may still run on the overlay.
+            with patch.object(lab, 'QMP', side_effect=OSError), patch.object(nightly, 'vm_process_gone', return_value=False):
                 self.assertIsNone(nightly.guest_paused(run, pause=True))
             # A stop whose reply is lost leaves no old pause time behind for a retry to reuse.
             def lost(name, *a):
@@ -761,9 +948,70 @@ class NightlyTests(unittest.TestCase):
                     raise lab.LabError('timeout')
                 return {'running': True}
             qmp.execute.side_effect = lost
-            with patch.object(lab, 'QMP', return_value=qmp):
+            with patch.object(lab, 'QMP', return_value=qmp), patch.object(nightly, 'vm_process_gone', return_value=False):
                 self.assertIsNone(nightly.guest_paused(run, pause=True))
             self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+
+    def test_a_guest_whose_qemu_exited_counts_as_stopped_only_from_when_its_exit_was_seen(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            for name in ('state.json', 'disk.qcow2', 'qmp.sock'):
+                (run/name).write_text('')
+            gone = patch.object(nightly, 'vm_process_gone', return_value=True)
+            gone.start()
+            self.addCleanup(gone.stop)
+            # A transient unit killed QEMU with its worker: the socket file is left, nothing answers it.
+            with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError):
+                # Until a check records the exit, no stop counts.
+                self.assertIsNone(nightly.guest_paused(run))
+                with patch.object(nightly, 'vm_process_gone', return_value=False):
+                    self.assertIsNone(nightly.guest_paused(run, pause=True))
+                self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+                seen = nightly.guest_paused(run, pause=True)
+                self.assertAlmostEqual(seen, nightly.time.time(), delta=5)
+                self.assertEqual(nightly.guest_paused(run), seen)
+                self.assertEqual(nightly.guest_paused(run, pause=True), seen)
+                # A QEMU that turns up on the overlay again voids the exit.
+                with patch.object(nightly, 'vm_process_gone', return_value=False):
+                    self.assertIsNone(nightly.guest_paused(run))
+            # An answering VM is never covered by an exit record, even when it is paused.
+            qmp = Mock()
+            qmp.__enter__ = Mock(return_value=qmp)
+            qmp.__exit__ = Mock(return_value=False)
+            qmp.execute.return_value = {'running': False}
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertIsNone(nightly.guest_paused(run))
+                paused = nightly.guest_paused(run, pause=True)
+                self.assertGreaterEqual(paused, seen)
+                self.assertEqual(json.loads((run/nightly.PAUSE_RECORD).read_text())['vm'], 'paused')
+            # A pause recorded before QEMU died does not count: the VM may have been resumed in between.
+            with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError):
+                self.assertIsNone(nightly.guest_paused(run))
+                self.assertGreaterEqual(nightly.guest_paused(run, pause=True), paused)
+            # The socket file can be gone too.
+            (run/'qmp.sock').unlink()
+            self.assertIsNotNone(nightly.guest_paused(run))
+
+    def test_vm_process_gone_needs_every_process_readable_and_none_on_the_overlay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc, run = Path(tmp)/'proc', Path(tmp)/'run'
+            def process(pid, argv):
+                (proc/str(pid)).mkdir(parents=True)
+                (proc/str(pid)/'cmdline').write_bytes(b'\0'.join(os.fsencode(a) for a in argv)+b'\0')
+            process(10, ['python3', str(run/'disk.qcow2')])
+            process(11, ['/usr/bin/qemu-system-x86_64', '-drive', 'file='+str(Path(tmp)/'other/disk.qcow2')])
+            (proc/'12').mkdir()  # Exited between listing and reading.
+            real = nightly.Path
+            def fake(*parts):
+                return proc if parts == ('/proc',) else real(*parts)
+            with patch.object(nightly, 'Path', side_effect=fake):
+                self.assertTrue(nightly.vm_process_gone(run))
+                process(13, ['/usr/bin/qemu-system-x86_64', '-drive', 'file='+str(run/'disk.qcow2')+',format=qcow2'])
+                self.assertFalse(nightly.vm_process_gone(run))
+                (proc/'13/cmdline').unlink()
+                (proc/'13/cmdline').mkdir()  # Unreadable: no proof.
+                self.assertFalse(nightly.vm_process_gone(run))
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
