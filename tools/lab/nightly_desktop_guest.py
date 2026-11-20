@@ -726,8 +726,9 @@ try:
  assert p.poll() is None and own(bridge)==[p.pid],'the labwc bridge is not running exactly once after the restart'
 except BaseException:
  # Leave the session as it was: no bridge of ours still writing, its own rc.xml, one bridge running.
+ # A bridge that will not stop is left as the one running, and this setup fails with it.
+ stop(own(bridge))
  try:
-  stop(own(bridge))
   os.replace(kept,rc)
  finally:
   start()

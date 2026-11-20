@@ -1513,10 +1513,7 @@ class WaylandPlacement:
                     raise
                 time.sleep(.2)
                 self._screen = None
-                # It may have become active meanwhile (the kiosk once a closing window is gone).
-                self._windows = None
-                found = [w for w in self.windows() if w['id'] == found[0]['id']] or found
-                # And it may have repainted as its cover closed: compare its current pixels, and
+                # It may have repainted as its cover closed: compare its current pixels, and
                 # only those (a capture of another size places nothing; look again).
                 image = grim(found[0]['id'])
                 if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
@@ -1529,6 +1526,11 @@ class WaylandPlacement:
                     image = grim(found[0]['id'])
                     if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
                         image = content_box(image, width, height) or image
+                # Then its state as of those pixels: it may have become active meanwhile (the kiosk
+                # once a closing window is gone), or lost focus. One no longer listed has no state.
+                self._windows = None
+                found = ([w for w in self.windows() if w['id'] == found[0]['id']]
+                         or [dict(found[0], focus=False, fullscreen=False)])
         return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
 
     def _dialog(self, pid, title, rect, window):

@@ -249,20 +249,23 @@ class PixelWitness(unittest.TestCase):
     def test_a_placement_retry_places_only_a_fresh_capture_of_the_window_size(self):
         first, odd, fresh = (80, 40, b'\x01' * 9600), (79, 40, b'\x02' * 9480), (80, 40, b'\x03' * 9600)
         captures = iter([first, odd, fresh])
-        placed = []
+        placed, states = [], []
         def place(compositor, title, app_id, image, screen, fullscreen=False):
             placed.append(image)
+            states.append(fullscreen)
             if len(placed) == 1:
                 raise RuntimeError('still covered')
             return {'rect': [5, 6, 80, 40]}
         placement = probe.WaylandPlacement({'kind': 'toplevel-pixels'})
-        placement._windows = [dict(id='k', title='Kiosk', wm_class='kiosk', focus=True)]
+        placement._windows = [dict(id='k', title='Kiosk', wm_class='kiosk', focus=True, fullscreen=True)]
+        later = [dict(placement._windows[0], focus=False)]  # it lost focus while it repainted
         with patch.object(probe, 'grim', side_effect=lambda *a: next(captures) if a else (8, 8, b'')), \
              patch.object(probe, 'app_id_names', return_value=True), patch.object(probe, 'place_pixels', side_effect=place), \
-             patch.object(probe, 'compositor_windows', return_value={'windows': placement._windows}), \
+             patch.object(probe, 'compositor_windows', return_value={'windows': later}), \
              patch.object(probe.time, 'sleep'):
             self.assertEqual(placement._pixel_toplevel(7, 'Kiosk', [0, 0, 80, 40])['frame'], [5, 6, 80, 40])
         self.assertEqual(placed, [first, fresh])  # the 79x40 capture placed nothing
+        self.assertEqual(states, [True, False])  # fresh pixels go with the state read after them
 
     def test_the_toplevel_list_reports_fullscreen_only_for_a_window_it_names_once(self):
         module = SimpleNamespace(socket_path=lambda: 'x', snapshot=lambda _: {
