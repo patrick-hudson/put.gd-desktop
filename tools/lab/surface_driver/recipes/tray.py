@@ -426,7 +426,7 @@ def _pixel_menu(ctx, labels, glyphs):
         box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'the menu still drawn with the pointer moved off the icon')
         image = _settled_menu(ctx, box, showing)
         opened.update(box=box, image=image)
-        first = _read_menu(ctx, image, box)
+        first = _read_menu(ctx, image, box, labels=labels)
         clickable = tray_pixels.align(labels, first)
         read, rest = clickable, []
         if None in read and (_profile(ctx).get('pixels') or {}).get('scroll_menu'):
@@ -437,8 +437,10 @@ def _pixel_menu(ctx, labels, glyphs):
             # Off the rows again before reading: a hovered row reads badly.
             ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
             scrolled = _settled_menu(ctx, box, showing)
+            # Dismissal compares with the view now drawn, should this read fail.
+            opened.update(image=scrolled)
             _menu_frame(ctx, 'tray-menu-scrolled')
-            rest = _read_menu(ctx, scrolled, box)
+            rest = _read_menu(ctx, scrolled, box, labels=labels)
             # Omarchy's card cuts the row at its top edge once scrolled; that row was read whole in
             # the first view, which overlaps this one.
             cut = tray_pixels.clipped_top(labels, rest, box, first)
@@ -452,7 +454,8 @@ def _pixel_menu(ctx, labels, glyphs):
                 ctx.click_drawn(*centre, 0, lambda current: showing(current) is not None, wheel=10)
                 ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
                 image = _settled_menu(ctx, box, showing)
-                top = _read_menu(ctx, image, box)
+                opened.update(image=image)
+                top = _read_menu(ctx, image, box, labels=labels)
                 rest += top
                 clickable = tray_pixels.align(labels, top)
                 if clickable[0] is not None:
@@ -471,7 +474,7 @@ def _pixel_menu(ctx, labels, glyphs):
     return dict(opened, lines=dict(zip(labels, clickable)), read=dict(zip(labels, read)))
 
 
-def _read_menu(ctx, image, box, margin=12):
+def _read_menu(ctx, image, box, margin=12, labels=()):
     # The change box leaves out the panel strip, which a menu may overlap by a few pixels (Budgie's
     # last row): read a margin around it.
     x0, y0 = max(0, box[0] - margin), max(0, box[1] - margin)
@@ -479,6 +482,10 @@ def _read_menu(ctx, image, box, margin=12):
     for line in lines:
         line['rect'][0] += x0
         line['rect'][1] += y0
+    from tools.lab.surface_driver import tray_pixels
+    twice = tray_pixels.repeated_labels(labels, lines)
+    if twice:
+        ctx.blocked('the drawn tray menu shows a row twice: ' + ', '.join(twice), 670)
     return lines
 
 

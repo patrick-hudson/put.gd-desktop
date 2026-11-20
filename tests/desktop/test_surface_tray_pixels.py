@@ -187,6 +187,9 @@ class TheOpenMenu(unittest.TestCase):
         bottom = [view[1], dict(text='Pin to bar', rect=[10, 385, 100, 12])]
         self.assertIsNone(tp.clipped_top(labels, bottom, box, first))
         self.assertEqual(tp.unknown_lines(labels, bottom), ['Pin to bar'])
+        # A row drawn twice in one view is caught; Capture region & edit is not a second Capture region.
+        self.assertEqual(tp.repeated_labels(labels, lines), [])
+        self.assertEqual(tp.repeated_labels(labels, lines + [dict(lines[0])]), ['Capture region'])
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 

@@ -289,6 +289,15 @@ def unknown_lines(labels, lines, *, threshold=.85):
             and not any(label_score(label, line['text']) >= threshold for label in labels)]
 
 
+def repeated_labels(labels, view, *, threshold=.85):
+    """Agreed labels that more than one line of a single menu VIEW reads as: a row drawn twice.
+
+    Views of a scrolled menu overlap, so only lines of one view are compared with each other.
+    """
+    return [label for label in labels
+            if sum(label_score(label, line['text']) >= threshold for line in view) > 1]
+
+
 def clipped_top(labels, view, box, overlap, *, band=20, threshold=.85):
     """The first line of a scrolled menu VIEW when it is a row the scroll edge cut, else None.
 
