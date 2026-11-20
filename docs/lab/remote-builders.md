@@ -898,8 +898,9 @@ then start again from step 1.
    lease with a matching lend receipt. When that lend isn't returned and the run
    directory still exists, recovery first runs `proton_lab.py recover` for it
    (bounded to 120 s) and refuses unless that returns the lend. If an earlier
-   recovery reached guarded cleanup (the run has `overlay-cleanup.json`) and
-   then stopped or had its lease release refused, a retry finishes or
+   recovery reached guarded cleanup (the run has `overlay-cleanup.json`, or its
+   `disk.qcow2` is already gone) and then stopped or had its lease release
+   refused, a retry finishes or
    re-checks that cleanup against the row's existing `completion-manifest.json`
    instead of retiring twice. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
