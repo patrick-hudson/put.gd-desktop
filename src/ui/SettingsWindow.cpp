@@ -1776,7 +1776,7 @@ QJsonObject SettingsWindow::candidate() const {
  // its default, or the draft never matches the file and every action reports unsaved settings.
  // Each is written on its own: a saved edit sends only the field changed, so writing the other
  // too would leave the draft different from the file. A stored object stays, even empty.
- {const bool stored=preferences.contains("updates");auto updates=preferences["updates"].toObject();
+ {const bool stored=preferences.contains("updates");auto updates=preferences.value("updates").toObject();
   if(updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
   if(updates.contains("channel")||channel!="build")updates["channel"]=channel;
   if(stored||!updates.isEmpty())preferences["updates"]=updates;}
