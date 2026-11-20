@@ -626,8 +626,11 @@ puts History's details pane back at the top, and the driver captures History to 
 That keeps the pane's Delete from destination… button below the window. When the button
 isn't in view, a live cleanup deletes through the exact row's own menu instead, the same
 path the History delete cell uses, and then goes through the same confirmation. A geometry read
-that a slow application (Firefox while it closes) holds past its time budget is tried
-again, up to three times.
+that a slow application holds past its time budget is tried again, up to three times. On
+Budgie, History reads skip any application whose executable isn't put.gd's without
+contacting it, because the lab's Firefox stops answering accessibility calls after showing
+a CloudFront page. Live cleanup wheels History's pane below its preview: a pointer resting
+on the preview shows a tooltip over the point.
 
 On Omarchy, quickshell's clipboard plugin (`omarchy.clipboard`) keeps a clipboard
 history on disk: `~/.local/state/omarchy/clipboard-history.json`, copied images under
@@ -639,7 +642,8 @@ random canary copied to the clipboard changes nothing in that folder
 (`omarchy-clipboard.json`). The guest also gets `qtkeychain-qt6` as a new package,
 because the lab's credential bridge links it. Screen clearing on Omarchy waits until
 quickshell reports no notification cards, so a card that is still leaving doesn't cover the
-next click.
+next click. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
+the revoked-link check asks Firefox for fullscreen back before it navigates.
 
 Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
