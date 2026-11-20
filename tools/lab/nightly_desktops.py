@@ -1293,7 +1293,7 @@ def worker(config, tag, identity, artifacts, out):
 def worker_run(config, tag, identity, artifacts, out, deadline):
     """Observe one configured desktop and retain ownership of unfinished cleanup."""
     from tools.lab import lab
-    from tools.lab.nightly_desktop_guest import install_rpm, prepare, prepare_live_keyring
+    from tools.lab.nightly_desktop_guest import hold_package_updates, install_rpm, prepare, prepare_live_keyring
     out.mkdir(mode=0o700, parents=True)
     if command(['git', 'rev-parse', 'HEAD']).strip() != identity['driver']:
         raise NotRun('worker checkout differs from the controller source identity')
@@ -1352,6 +1352,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         '--golden', row['golden'], '--run', run, '--bootstrap-key', row['bootstrapKey'],
                         '--known-hosts', known, '--ssh-port', str(ssh_port), '--vnc-display', str(vnc_display), '--timeout', '420'],
                         log=rowout/'launch.log', timeout=600)
+                    hold_package_updates(run, rowout)
                     package = package_path(artifacts, tag, row, identity)
                     if digest(package) != identity['packages'][package.name]:
                         raise RuntimeError('worker package checksum mismatch')

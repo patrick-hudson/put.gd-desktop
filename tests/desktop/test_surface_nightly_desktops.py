@@ -391,6 +391,7 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly, 'preflight', return_value={}), \
                     patch.object(nightly, 'command', side_effect=command), \
                     patch.object(guest, 'prepare', side_effect=prepare), \
+                    patch.object(guest, 'hold_package_updates') as hold, \
                     patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
                     patch.object(lab, 'reset') as reset, \
                     patch.object(nightly, 'retire', side_effect=lambda run, *_:(run/'disk.qcow2').unlink()) as retire, \
@@ -403,6 +404,7 @@ class NightlyTests(unittest.TestCase):
                 records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity,
                                              artifacts, root/'output', 100)
             self.assertEqual(attempts, [40], records[0].get('notRunReason'))
+            self.assertEqual(hold.call_args.args[0], runs[0])
             if not finished:
                 self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
             slot = root/'putgd-lab/locks/tier1-guest.lock.d'
@@ -462,6 +464,7 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly, 'await_host', return_value=0), patch.object(nightly, 'preflight', return_value={}), \
                     patch.object(nightly, 'command', side_effect=command), patch.object(nightly, 'verdict', return_value=observed), \
                     patch.object(guest, 'prepare', return_value=root/'profiles'), \
+                    patch.object(guest, 'hold_package_updates'), \
                     patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
                     patch.object(lab, 'reset') as reset, patch.object(nightly, 'guest_clients_live', return_value=False), \
                     patch.object(nightly, 'retire') as retire, patch('tools.lab.desktop_lock.Desktop') as lock:
@@ -1551,6 +1554,31 @@ with n.controller_shutdown(workers):
             inventory = json.loads((out/'rpm-before.json').read_text())
             self.assertEqual(len(inventory['kernel-core.x86_64']), 2)
             self.assertIn('solver diagnostic', (out/'rpm-install.txt').read_text())
+
+    def test_guest_package_updaters_are_held_or_the_row_stops(self):
+        from tools.lab import nightly_desktop_guest as guest
+        def reply(**override):
+            rows = {unit: 'not-found not-found inactive' for unit in guest.UPDATE_UNITS}
+            rows.update({'apt-daily-upgrade.timer': 'loaded masked inactive',
+                         'apt-daily-upgrade.service': 'loaded masked inactive'}, **override)
+            return ''.join(f'{unit} {value}\n' for unit, value in rows.items())
+        with tempfile.TemporaryDirectory() as tmp, patch.object(guest.lab, 'verify_owned_guest'):
+            out = Path(tmp)
+            with patch.object(guest.lab, 'ssh', return_value=reply()) as ssh:
+                report = guest.hold_package_updates(out, out)
+            self.assertEqual(report['held'], ['apt-daily-upgrade.service', 'apt-daily-upgrade.timer'])
+            self.assertEqual(json.loads((out/'package-updates.json').read_text())['notHeld'], [])
+            script = ssh.call_args.args[1]
+            # The password reaches sudo from its own pipe; the script itself is on sudo's stdin otherwise.
+            self.assertIn("printf '%s\\n' putgd-lab | sudo -S", script)
+            self.assertNotIn('sudo -n', script)
+            # An updater still running after the mask, or a unit the guest did not report, stops the row.
+            for broken in (reply(**{'apt-daily-upgrade.service': 'loaded masked deactivating'}),
+                           reply(**{'apt-daily.timer': 'loaded loaded active'}),
+                           reply().replace('dnf5-automatic.timer not-found not-found inactive\n', '')):
+                with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
+                    with self.assertRaisesRegex(RuntimeError, 'could not be held'):
+                        guest.hold_package_updates(out, out)
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

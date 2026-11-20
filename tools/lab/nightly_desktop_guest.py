@@ -24,6 +24,52 @@ FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesse
                 'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
                 'openh264 gstreamer1-plugin-openh264')
 
+# The distros' own package updaters. Ubuntu's apt-daily-upgrade fires between 06:00 and 07:00 guest time,
+# which is when the nightly runs: on 2026-11-20 it upgraded openssh-server mid-row in the Kubuntu guest,
+# restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
+UPDATE_UNITS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
+                'mintupdate-automation-autoremove.timer', 'dnf-makecache.timer', 'dnf-automatic.timer',
+                'dnf-automatic-install.timer', 'dnf5-automatic.timer',
+                'apt-daily.service', 'apt-daily-upgrade.service', 'mintupdate-automation-upgrade.service',
+                'mintupdate-automation-autoremove.service', 'dnf-makecache.service', 'dnf-automatic.service',
+                'dnf-automatic-install.service', 'dnf5-automatic.service')
+# The goldens' sudo rules cover only their package manager; other root commands take the standard
+# guest password (docs/lab/remote-golden-images.md) from a pipe, never from the script on stdin.
+# Masking a running updater waits for it to stop at a safe point (apt's TimeoutStopSec is 900 s).
+HOLD_UPDATES = r'''set -u
+root() { printf '%s\n' putgd-lab | sudo -S -p '' "$@"; }
+for unit in UNITS; do
+ before=$(systemctl show -P LoadState "$unit" 2>/dev/null) || before=unknown
+ if [ "$before" = loaded ]; then root timeout 960 systemctl mask --now "$unit" >/dev/null 2>&1 || true; fi
+ printf '%s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
+  "$(systemctl show -P ActiveState "$unit" 2>/dev/null)"
+done
+'''.replace('UNITS', ' '.join(UPDATE_UNITS))
+
+
+def hold_package_updates(run, out):
+    """Mask and stop the guest's own package updaters in this disposable overlay, before anything is installed.
+
+    A unit the golden has must end masked and inactive, or the row stops here: an updater left running can
+    restart sshd or the desktop under a live cell.
+    """
+    lab.verify_owned_guest(run)
+    units = {}
+    for line in lab.ssh(run, HOLD_UPDATES, timeout=1200).splitlines():
+        fields = line.split()
+        if len(fields) == 4 and fields[0] in UPDATE_UNITS:
+            units[fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3])
+    report = dict(overlayOnly=True, units=units,
+                  held=sorted(name for name, unit in units.items() if unit['before'] == 'loaded'),
+                  notHeld=sorted(name for name, unit in units.items() if unit['before'] == 'loaded' and
+                                 (unit['after'] != 'masked' or unit['active'] not in ('inactive', 'failed'))))
+    if set(units) != set(UPDATE_UNITS):
+        report['notHeld'] = sorted(set(report['notHeld']) | (set(UPDATE_UNITS) - set(units)))
+    lab.write_json(Path(out)/'package-updates.json', report)
+    if report['notHeld']:
+        raise RuntimeError('guest package updaters could not be held: '+', '.join(report['notHeld']))
+    return report
+
 
 def install_rpm(run, package, out):
     """Install the published RPM through the golden's authorized package manager.
