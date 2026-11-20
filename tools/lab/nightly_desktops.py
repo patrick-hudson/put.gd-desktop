@@ -723,8 +723,11 @@ def guest_paused(run, *, pause=False):
                 # Paused by something else (or an exit record from an earlier QEMU): the settle period starts now.
                 save(record, dict(pausedAt=time.time(), vm='paused'))
             return pause_record(run, 'paused')
-        except (OSError, lab.LabError):
-            pass
+        except (OSError, lab.LabError) as error:
+            # Only a refused or missing socket says nothing listens. Anything that accepted the connection
+            # (even one that dropped during the greeting or negotiation) was a QEMU: no exit record outlives it.
+            if not isinstance(error, (ConnectionRefusedError, FileNotFoundError)) and pause_record(run, 'paused') is None:
+                record.unlink(missing_ok=True)
     # No QMP answer: only a QEMU that is provably gone counts as stopped.
     if not vm_process_gone(run):
         if pause_record(run, 'paused') is None:
@@ -972,14 +975,14 @@ def recover_guest(config, owner, out, cells):
         if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
-    if ((run/'state.json').exists() and os.path.lexists(run/'overlay-cleanup.json')
-            and (evidence/'completion-manifest.json').exists()):
+    if ((run/'state.json').exists() and (evidence/'completion-manifest.json').exists()
+            and (os.path.lexists(run/'overlay-cleanup.json') or not os.path.lexists(run/'disk.qcow2'))):
         # An earlier retirement got as far as guarded cleanup (prepared or completed), then stopped or its lease
         # release refused. Finish or re-verify it against its own manifest; retiring again would write new
         # evidence that no longer matches the cleanup receipt.
         lab.cleanup_overlay(run, evidence_manifest=evidence/'completion-manifest.json',
                             images_root=Path(lab.state(run)['golden']).parents[1])
-        guest = 'retired by an earlier recovery'
+        guest = 'cleanup finished or re-checked from the earlier manifest'
     elif (run/'state.json').exists():
         # retire uses exact QEMU/overlay ownership and the existing evidence gate.
         retire(run, evidence, cells)

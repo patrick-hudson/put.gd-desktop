@@ -1018,6 +1018,12 @@ class NightlyTests(unittest.TestCase):
             with patch.object(lab, 'QMP', return_value=dropping):
                 self.assertIsNone(nightly.guest_paused(run))
             self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+            # The same when it drops during the greeting or negotiation, before the session opens.
+            for failure in (ConnectionResetError, BrokenPipeError, TimeoutError, lab.LabError('Missing QMP greeting')):
+                nightly.save(run/nightly.PAUSE_RECORD, dict(pausedAt=1.0, vm='exited', disk=nightly.disk_identity(run)))
+                with patch.object(lab, 'QMP', side_effect=failure):
+                    self.assertIsNone(nightly.guest_paused(run))
+                self.assertFalse((run/nightly.PAUSE_RECORD).exists())
             with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError):
                 nightly.guest_paused(run, pause=True)
             # The socket file can be gone too.
@@ -1074,8 +1080,8 @@ class NightlyTests(unittest.TestCase):
             # The first recovery got to guarded cleanup and wrote its manifest: done (no disk left) or only
             # prepared (disk still there) when it stopped.
             nightly.save(evidence/'completion-manifest.json', dict(files={}))
-            nightly.save(run/'overlay-cleanup.json', dict(status='completed'))
             for disk_left in (False, True):
+                # With no disk, the guarded path decides even without a cleanup receipt.
                 if disk_left:
                     (run/'disk.qcow2').write_text('')
                     nightly.save(run/'overlay-cleanup.json', dict(status='prepared'))
@@ -1095,7 +1101,7 @@ class NightlyTests(unittest.TestCase):
                     retire.assert_not_called()
                     cleanup.assert_called_once_with(run, evidence_manifest=evidence/'completion-manifest.json',
                                                     images_root=root/'g/a')
-                    self.assertEqual(summary['guest'], 'retired by an earlier recovery')
+                    self.assertEqual(summary['guest'], 'cleanup finished or re-checked from the earlier manifest')
                     self.assertFalse(slot.exists())
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
