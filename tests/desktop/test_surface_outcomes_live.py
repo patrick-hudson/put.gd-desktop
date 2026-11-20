@@ -14,7 +14,8 @@ from unittest.mock import Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.fixtures.base import Fixture
-from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3
+from tools.lab.surface_driver.fixtures.live_outcomes import (key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3,
+                                                             r2_scoped, verify_presigned)
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
 from tools.lab.surface_driver import browser
@@ -186,6 +187,45 @@ class LiveOutcomes(unittest.TestCase):
                      first.replace('AWS Region ID: us-east-2\n','')+pair+other, 'unlabelled text'):
             with self.assertRaises(RecipeBlocked):key_set_two(text)
 
+    def test_r2_takes_only_the_bucket_scoped_key_never_the_broad_one(self):
+        account='0123456789abcdef0123456789abcdef'
+        broad=('Cloudflare R2\nAccess key ID: broad-expired\nSecret access key: broad-secret\n'
+               'S3 API: https://'+account+'.r2.cloudflarestorage.com\n')
+        scoped=('\nR2 object-scoped\nAccess key ID: scoped-id\nSecret access key: scoped-secret\n'
+                'R2 public URL: https://pub-0a1b2c.r2.dev\nR2 bucket: putgd-test\n')
+        text='AKIA'+'A'*16+' '+'b'*40+'\n'+broad+scoped
+        parsed=r2_scoped(text)
+        self.assertEqual(parsed['credentials'],dict(accessKey='scoped-id',secretKey='scoped-secret',sessionToken=''))
+        self.assertEqual(parsed['settings'],dict(accountId=account,bucket='putgd-test',publicUrlBase='https://pub-0a1b2c.r2.dev'))
+        for bad in (broad, text+scoped, text.replace('R2 bucket: putgd-test\n',''),
+                    text.replace('R2 public URL: https://pub-0a1b2c.r2.dev\n',''),
+                    text.replace(account+'.r2', 'f'*32+'.r2')+'https://'+account+'.r2.cloudflarestorage.com\n',
+                    text.replace('Secret access key: scoped-secret\n','')):
+            with self.subTest(bad=bad[-60:]), self.assertRaises(RecipeBlocked):
+                r2_scoped(bad)
+
+    def test_presigned_link_must_work_signed_and_be_refused_unsigned(self):
+        data=b'synthetic presigned bytes'
+        digest=hashlib.sha256(data).hexdigest()
+        url=('https://s3.us-east-2.amazonaws.com/put.gd/acceptance/x.png?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+             '&X-Amz-Expires=86400&X-Amz-Signature=abc')
+        def expect(ok, message):
+            if not ok: raise RecipeFailed(message)
+        ctx=SimpleNamespace(expect=expect, note=lambda _text: None)
+        detail=dict(receipt=dict(directUrl=url, linkExpiresAt='2026-11-21T00:00:00Z'))
+        answers={url: dict(status=200, sha256=digest), url.split('?')[0]: dict(status=403)}
+        with patch('tools.lab.surface_driver.fixtures.live_outcomes._public_get', side_effect=lambda u: answers[u]):
+            verify_presigned(ctx, None, detail, data)
+            answers[url.split('?')[0]]=dict(status=200, sha256=digest)
+            with self.assertRaisesRegex(RecipeFailed, 'without the signature'):
+                verify_presigned(ctx, None, detail, data)
+            answers[url.split('?')[0]]=dict(status=403)
+            for broken in (url.replace('86400','604800'), url.replace('&X-Amz-Signature=abc',''),
+                           'https://put.gd/acceptance/x.png'):
+                answers[broken]=dict(status=200, sha256=digest)
+                with self.subTest(broken=broken), self.assertRaises(RecipeFailed):
+                    verify_presigned(ctx, None, dict(receipt=dict(directUrl=broken, linkExpiresAt='x')), data)
+
     def test_live_rejects_boat_native_wrong_desktop_before_secret_read(self):
         for placement,host,desktop in [('boat','boat','mint-cinnamon-x11'),('native','f44','kubuntu-kde-wayland'),
                                         ('guest','d69','kubuntu-kde-wayland')]:
@@ -264,7 +304,8 @@ class LiveOutcomes(unittest.TestCase):
 
     def test_destinations_claim_only_supported_cleanup_interactions(self):
         recipes=discover('outcomes_live');validate_recipes(recipes)
-        self.assertEqual(len(recipes),2)
+        self.assertEqual(sorted(r.name for r in recipes),['outcomes_live.proton_region_upload',
+                         'outcomes_live.s3_r2_region_upload','outcomes_live.s3_region_upload'])
         for r in recipes:
             self.assertEqual(len(r.destinations),1)
             self.assertIn('region.to-upload',r.interactions)

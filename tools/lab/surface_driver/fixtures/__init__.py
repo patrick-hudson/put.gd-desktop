@@ -94,6 +94,7 @@ FACTORIES={
     'events.update-lifecycle':lambda scope:scope.ctx.fixture('settings-update-lifecycle'),
     'events.recording-source':lifecycle.source,
     'selector-desktop':recordings.pattern,
+    'text-desktop':lambda scope,lines:recordings.pattern(scope,text=lines),
     'events.record-storage':events.storage,
     'events.import-storage':events.storage,
     'events.incomplete-multipart':events.incomplete,

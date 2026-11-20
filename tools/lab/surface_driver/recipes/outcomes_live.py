@@ -10,7 +10,8 @@ import sys
 from ..api import recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
 from ..catalog import image_modules
-from ..fixtures.live_outcomes import provider, verify_s3, reconcile_refused_s3
+from ..fixtures.live_outcomes import (capture_name, provider, verify_presigned, verify_r2, verify_s3,
+                                     reconcile_refused_s3)
 from . import history, outcomes, selectors
 
 
@@ -25,10 +26,11 @@ def _owned(ctx, service, detail, oid):
         # Only a key inside this campaign's prefix may replace the marker's key; a rejected receipt leaves the
         # planned key in place. Then require it to be the one recorded before publishing (a unique prefix and
         # name leave nothing to rename).
-        if (destination['providerId'] == 's3' and destination['settings']['objectPrefix'] == service.prefix
+        kind = 'cloudflare-r2' if service.get('r2') else 's3'
+        if (destination['providerId'] == kind and destination['settings']['objectPrefix'] == service.prefix
                 and receipt['objectReference']['key'].startswith(service.prefix)):
             service.pending.record_key(receipt['objectReference']['key'])
-        ctx.expect(destination['providerId'] == 's3' and destination['settings']['objectPrefix'] == service.prefix
+        ctx.expect(destination['providerId'] == kind and destination['settings']['objectPrefix'] == service.prefix
                    and receipt['objectReference']['key'].startswith(service.prefix),
                    'cleanup cannot leave the new S3 campaign prefix')
         ctx.expect(receipt['objectReference']['key'] == service.object_key,
@@ -161,7 +163,7 @@ def _copy_history_link(ctx, scope, detail):
 def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
-    service = provider(scope)
+    service = ctx._live_service = provider(scope)
     outcomes._clipboard_reader(scope)
     scene, oracle = outcomes._pattern(ctx)
     if ctx.destination == 's3':
@@ -286,19 +288,112 @@ def _region_upload(ctx):
                     raise
 
 
-def _live_flow(ctx):
+def _capture_once(ctx, service, scene):
+    """One real region capture of the pattern to the live destination; the saved bytes and History row."""
+    x, y, w, h = scene.rect
+    rect = (x+20, y+20, x+w-20, y+h-20)
+    with selectors._portal_scope(ctx):
+        service.pending['remote'] = True
+        oid = selectors._open_region(ctx, accessible=False)
+        ctx.drag(rect[:2], rect[2:])
+        op, detail = _published(ctx, oid, service.pending)
+    if detail.get('uploadStatus') == 'uploaded':
+        _owned(ctx, service, detail, oid)
+    ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
+               and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
+    return detail, rect
+
+
+def _settle_extra(ctx, service, detail, verify):
+    """Delete an extra live object through History and prove it gone; never hide a failed delete."""
+    _cleanup(ctx, detail)
+    verify(ctx, service, detail, absent=True)
+    service.pending['remote'] = False
+    ctx.click('windowClose', window='history')
+
+
+def _presigned_upload(ctx):
+    """#1366: the same destination switched to expiring links publishes a signed link that works unsigned-refused."""
+    scope = ctx._fixture_manager.scope
+    service = ctx._live_service
+    scene = ctx.fixture('selector-desktop')
+    current = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
+    template, key = capture_name(service.prefix)
+    service['object_key'] = key
+    service.pending.details['objectKey'] = key
+    scope.patch({'profiles': [dict(current, settings=dict(current['settings'], linkMode='presigned', linkValidityDays=1))],
+                 'naming': {'captureTemplate': template}})
+    scene.command('freeze')
+    scene.command('raise')
+    detail, published = None, False
+    try:
+        detail, _ = _capture_once(ctx, service, scene)
+        published = True
+        data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
+        verify_presigned(ctx, service, detail, data)
+        ctx.note('presigned_link_count=1')
+    finally:
+        if detail and published:
+            _settle_extra(ctx, service, detail, verify_s3)
+
+
+def _live_flow(ctx, extra=None):
     try:
         _region_upload(ctx)
+        if extra:
+            extra(ctx)
     except BaseException:
         outcomes.note_app_error_banners(ctx)
         raise
     outcomes.no_app_error_banner(ctx)
 
 
+def _r2_flow(ctx):
+    """#1699: a region capture to a Cloudflare R2 destination, its public link, and deletion from History."""
+    ctx.fixture('app-profile')
+    scope = ctx._fixture_manager.scope
+    service = provider(scope, r2=True)
+    outcomes._clipboard_reader(scope)
+    scene, oracle = outcomes._pattern(ctx)
+    detail, cleaned = None, False
+    try:
+        detail, rect = _capture_once(ctx, service, scene)
+        outcomes._auto_copy(ctx, scope, detail)
+        data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
+        Image, _, _ = image_modules()
+        ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
+                   'live R2 region pixels equal independently captured pattern crop (tolerance=0)')
+        verify_r2(ctx, service, detail, data)
+        ctx.note('r2_upload_count=1; r2_remote_hash_match_count=1')
+        _settle_extra(ctx, service, detail, verify_r2)
+        cleaned = True
+        ctx.note('r2_deletion_count=1')
+    finally:
+        if detail and not cleaned and detail.get('uploadStatus') == 'uploaded':
+            failed = sys.exc_info()[0] is not None
+            try:
+                _settle_extra(ctx, service, detail, verify_r2)
+            except Exception as error:
+                ctx.review('live R2 UI cleanup failed: '+ctx.evidence.redactor.exception(error))
+                if not failed:
+                    raise
+
+
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
-        'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=720)
+        'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=840)
 def s3_region_upload(ctx):
-    _live_flow(ctx)
+    _live_flow(ctx, _presigned_upload)
+
+
+@recipe('region.to-upload', 'region.drag', 'history.delete-remote', 'confirm.history-delete',
+        destinations=('s3',), desktop_drawn=True, timeout=600)
+def s3_r2_region_upload(ctx):
+    try:
+        _r2_flow(ctx)
+    except BaseException:
+        outcomes.note_app_error_banners(ctx)
+        raise
+    outcomes.no_app_error_banner(ctx)
 
 
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',

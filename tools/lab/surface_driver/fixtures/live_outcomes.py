@@ -84,6 +84,36 @@ def key_set_two(text):
                 settings=first['settings'])
 
 
+def r2_scoped(text):
+    """The bucket-scoped R2 key set and its bucket, account and public r2.dev base.
+
+    The scoped block is the file's last (after the AWS and B2 sets): an ``R2 object-scoped`` heading,
+    its labelled key pair, then ``R2 public URL`` and ``R2 bucket``. The account comes from the one R2
+    S3 API address in the file. Never report input values, fragments or parser exceptions.
+    """
+    from tools.lab import provision_live_credentials as bridge
+    if not isinstance(text, str) or '\0' in text or len(text.encode()) > bridge.MAX_CREDENTIAL_FILE:
+        raise RecipeBlocked('R2 credential input has an invalid shape')
+    headings = list(re.finditer(r'(?im)^.*\bR2 object-scoped\b.*$', text))
+    if len(headings) != 1:
+        raise RecipeBlocked('R2 input must contain exactly one object-scoped key block')
+    block = text[headings[0].end():]
+    if (len(re.findall(r'(?im)^\s*Access key ID\s*:', block)) != 1
+            or len(re.findall(r'(?im)^\s*Secret access key\s*:', block)) != 1):
+        raise RecipeBlocked('R2 object-scoped block must hold one labelled key pair')
+    try:
+        keys = bridge.parse_s3_credentials(block)['credentials']
+    except Exception:
+        raise RecipeBlocked('R2 object-scoped key pair could not be parsed') from None
+    public = re.findall(r'(?im)^\s*R2 public URL\s*:\s*(https://pub-[0-9a-f]+\.r2\.dev)/?\s*$', text)
+    bucket = re.findall(r'(?im)^\s*R2 bucket\s*:\s*([a-z0-9][a-z0-9-]{1,61}[a-z0-9])\s*$', text)
+    accounts = set(re.findall(r'https://([0-9a-f]{32})\.r2\.cloudflarestorage\.com', text))
+    if len(public) != 1 or len(bucket) != 1 or len(accounts) != 1:
+        raise RecipeBlocked('R2 input needs one public r2.dev URL, one bucket and one account endpoint')
+    return dict(credentials=dict(accessKey=keys['accessKey'], secretKey=keys['secretKey'], sessionToken=''),
+                settings=dict(accountId=accounts.pop(), bucket=bucket[0], publicUrlBase=public[0]))
+
+
 def admit(ctx):
     """Require an approved disposable guest, held leases and private storage before live setup."""
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
@@ -152,17 +182,21 @@ def _setup(scope, profile_id, kind, extra=None):
     return result.get('result', {})
 
 
-def provider(scope):
+def provider(scope, *, r2=False):
+    """The admitted live destination; with R2, a Cloudflare R2 destination on the S3 lane."""
     ctx = scope.ctx
     admit(ctx)
+    if r2 and ctx.destination != 's3':
+        raise RecipeBlocked('Cloudflare R2 runs on the S3 live lane only')
     ctx.fixture('app-profile')
     profile_id = 'tier1-live'
     prefix = ('acceptance/tier1-live/' if ctx.destination == 's3' else 'putgd-tier1-')+uuid.uuid4().hex+'/'
     from tools.lab import lab
     capture_template, object_key = capture_name(prefix)
+    # The marker names R2 as its own destination: the S3 recovery check reads AWS only.
     pending = RemotePending(Path(ctx.target.run)/lab.LIVE_CLEANUP_MARKER,
-                            dict(destination=ctx.destination, prefix=prefix, objectKey=object_key,
-                                 runId=ctx.target.info['id']))
+                            dict(destination='cloudflare-r2' if r2 else ctx.destination, prefix=prefix,
+                                 objectKey=object_key, runId=ctx.target.info['id']))
     # The run's receipt reads this at the end, so an unresolved remote object is also a field of the receipt.
     ctx.target.live_cleanup_pending = pending
     def guarded(function):
@@ -176,10 +210,11 @@ def provider(scope):
     scope.finalizers[:] = [(priority, label, guarded(function) if label in
                            ('owned history and cache', 'accepted settings', 'owned directory') else function)
                           for priority, label, function in scope.finalizers]
-    fixture = Fixture(profile_id=profile_id, prefix=prefix, pending=pending, object_key=object_key)
-    if ctx.destination == 's3':
+    fixture = Fixture(profile_id=profile_id, prefix=prefix, pending=pending, object_key=object_key, r2=r2)
+    if r2:
+        provider_name, provider_settings, reference = _r2_setup(scope, fixture, prefix, guarded)
+    elif ctx.destination == 's3':
         from tools.lab import provision_live_credentials as bridge
-        from tools.lab import proton_lab
         try:
             import boto3
             from botocore.config import Config
@@ -208,18 +243,7 @@ def provider(scope):
         client = session.client('s3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com', **options)
         scope.defer('independent S3 client', client.close)
         preflight_s3(ctx, client, settings['bucket'], prefix)
-        guest = proton_lab.Guest(ctx.target.run)
-        broker = guest.place_brokers(Path.home()/'putgd-lab/proton/guest-bridge')['qt']
-        scope.defer('guest bridge executables', guest.remove_brokers, priority=-10)
-        guest.prepare_keyring()
-        reference = 'putgd-lab-'+str(uuid.uuid4())
-        receipt = ctx.out/'s3-bridge.json'
-        state = bridge._receipt_value('s3', 'guest', str(ctx.target.run), reference, 'one_time', 'import_pending', True)
-        bridge._create_receipt(receipt, state)
-        scope.defer('S3 bridge credential', guarded(lambda: bridge.cleanup(dict(op='cleanup', provider='s3',
-                    run=str(ctx.target.run), guestBroker=broker, reference=reference, receipt=str(receipt)))), priority=10)
-        bridge.guest_call(str(ctx.target.run), broker, 's3', dict(op='import', reference=reference, credentials=keys))
-        bridge._update_receipt(receipt, state, state='import_confirmed')
+        reference = _import_keys(scope, keys, guarded)
         provider_settings = json.loads((Path(__file__).resolve().parents[4]/'config/development.example.json').read_text())['profiles'][0]['settings']
         provider_settings.update(bucket=settings['bucket'], region=region, endpoint='https://s3.'+region+'.amazonaws.com',
                                  objectPrefix=prefix, publicUrlBase='https://put.gd', aclMode='public-read', addressing='auto')
@@ -260,9 +284,59 @@ def provider(scope):
     return fixture
 
 
-def preflight_s3(ctx, client, bucket, prefix):
+def _import_keys(scope, keys, guarded):
+    """Lend KEYS to the guest keychain through the S3 bridge; return the credential reference."""
+    ctx = scope.ctx
+    from tools.lab import provision_live_credentials as bridge
+    from tools.lab import proton_lab
+    guest = proton_lab.Guest(ctx.target.run)
+    broker = guest.place_brokers(Path.home()/'putgd-lab/proton/guest-bridge')['qt']
+    scope.defer('guest bridge executables', guest.remove_brokers, priority=-10)
+    guest.prepare_keyring()
+    reference = 'putgd-lab-'+str(uuid.uuid4())
+    receipt = ctx.out/'s3-bridge.json'
+    state = bridge._receipt_value('s3', 'guest', str(ctx.target.run), reference, 'one_time', 'import_pending', True)
+    bridge._create_receipt(receipt, state)
+    scope.defer('S3 bridge credential', guarded(lambda: bridge.cleanup(dict(op='cleanup', provider='s3',
+                run=str(ctx.target.run), guestBroker=broker, reference=reference, receipt=str(receipt)))), priority=10)
+    bridge.guest_call(str(ctx.target.run), broker, 's3', dict(op='import', reference=reference, credentials=keys))
+    bridge._update_receipt(receipt, state, state='import_confirmed')
+    return reference
+
+
+def _r2_setup(scope, fixture, prefix, guarded):
+    """The bucket-scoped R2 key, an independent client for it, and the cloudflare-r2 settings."""
+    ctx = scope.ctx
+    from tools.lab import provision_live_credentials as bridge
+    try:
+        import boto3
+        from botocore.config import Config
+    except ImportError:
+        raise RecipeBlocked('live R2 verifier requires the builder distro python3-boto3 package') from None
+    selected = r2_scoped(bridge.read_private_credentials(Path.home()/'Documents/creds.txt'))
+    keys, settings = selected['credentials'], selected['settings']
+    for value in (keys['accessKey'], keys['secretKey'], settings['accountId']):
+        ctx.evidence.redactor.remember(value, opaque=True)
+    endpoint = 'https://'+settings['accountId']+'.r2.cloudflarestorage.com'
+    client = boto3.Session(region_name='auto').client(
+        's3', region_name='auto', endpoint_url=endpoint, aws_access_key_id=keys['accessKey'],
+        aws_secret_access_key=keys['secretKey'],
+        config=Config(s3={'addressing_style': 'path'}, connect_timeout=10, read_timeout=20,
+                      retries={'total_max_attempts': 2, 'mode': 'standard'}))
+    scope.defer('independent R2 client', client.close)
+    preflight_s3(ctx, client, settings['bucket'], prefix, r2=True)
+    reference = _import_keys(scope, keys, guarded)
+    provider_settings = dict(accountId=settings['accountId'], jurisdiction='default', bucket=settings['bucket'],
+                             objectPrefix=prefix, linkMode='public', linkValidityDays=7,
+                             publicUrlBase=settings['publicUrlBase'], connectTimeoutMs=5000, requestTimeoutMs=60000,
+                             lowSpeedBytesPerSecond=1, lowSpeedTimeSeconds=30)
+    fixture.update(client=client, bucket=settings['bucket'], region='auto', public_base=settings['publicUrlBase'])
+    return 'cloudflare-r2', provider_settings, reference
+
+
+def preflight_s3(ctx, client, bucket, prefix, *, r2=False):
     """One read-only HEAD, confined to the acceptance identity's new prefix."""
-    if bucket != 'put.gd' or not re.fullmatch(r'acceptance/tier1-live/[0-9a-f]{32}/', prefix):
+    if (bucket != 'put.gd' and not r2) or not re.fullmatch(r'acceptance/tier1-live/[0-9a-f]{32}/', prefix):
         raise RecipeBlocked('S3 preflight cannot leave the authorized new acceptance prefix')
     try:
         client.head_object(Bucket=bucket, Key=prefix+'missing-preflight.png')
@@ -322,3 +396,68 @@ def reconcile_refused_s3(ctx, fixture, op, detail):
         ctx.note('failed_upload_absence_count=1')
         return True
     ctx.expect(False, 'refused Put still has a remote object; preserve its row and credential')
+
+
+def _public_get(url, *, timeout=20):
+    """An independent unauthenticated GET from the builder: status and SHA-256, nothing else."""
+    import hashlib
+    import urllib.error
+    import urllib.request
+    request = urllib.request.Request(url, headers={'User-Agent': 'putgd-tier1-check'})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            data = response.read(32*1024*1024+1)
+            return dict(status=response.status, sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+    except urllib.error.HTTPError as error:
+        return dict(status=error.code)
+    except (urllib.error.URLError, OSError):
+        return dict(status=0)
+
+
+def verify_r2(ctx, fixture, detail, data=None, *, absent=False):
+    """The exact new key through the scoped R2 key, and its public r2.dev link without credentials."""
+    import hashlib
+    from urllib.parse import quote
+    receipt = detail['receipt']
+    key = receipt['objectReference']['key']
+    ctx.expect(key.startswith(fixture.prefix) and receipt['destination']['settings']['bucket'] == fixture.bucket,
+               'independent R2 check confined to the new campaign key')
+    if absent:
+        try:
+            fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'].close()
+        except fixture.client.exceptions.NoSuchKey:
+            ctx.note('r2_origin_absence_count=1')
+            return
+        ctx.expect(False, 'scoped R2 GET still resolves after app deletion')
+    ctx.expect(receipt['directUrl'] == fixture.public_base+'/'+quote(key, safe='/'),
+               'copied R2 link is the bucket public r2.dev address of the same key')
+    head = fixture.client.head_object(Bucket=fixture.bucket, Key=key)
+    ctx.expect(head['ContentLength'] == len(data), 'R2 HEAD length matches saved file')
+    with fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'] as body:
+        remote = body.read(len(data)+1)
+    ctx.expect(hashlib.sha256(remote).digest() == hashlib.sha256(data).digest(), 'R2 GET SHA-256 equals saved file')
+    public = _public_get(receipt['directUrl'])
+    ctx.note('r2_public_status='+str(public['status']))
+    ctx.expect(public['status'] == 200 and public.get('sha256') == hashlib.sha256(data).hexdigest(),
+               'public r2.dev GET 200 SHA-256 equals saved file')
+
+
+def verify_presigned(ctx, fixture, detail, data):
+    """An expiring S3 link (#1366): signed GET returns the file, the same URL unsigned is refused."""
+    import hashlib
+    from urllib.parse import parse_qs, urlsplit, urlunsplit
+    receipt = detail['receipt']
+    link = urlsplit(receipt['directUrl'])
+    query = parse_qs(link.query)
+    expires = query.get('X-Amz-Expires', ['0'])[0]
+    ctx.expect(link.scheme == 'https' and link.hostname.endswith('.amazonaws.com')
+               and query.get('X-Amz-Algorithm') == ['AWS4-HMAC-SHA256'] and 'X-Amz-Signature' in query
+               and expires.isdigit() and 0 < int(expires) <= 86400,
+               'copied S3 link is a SigV4 presigned GET valid for at most the chosen day')
+    ctx.expect(bool(receipt.get('linkExpiresAt') or detail.get('linkExpiresAt')), 'the receipt records when the link expires')
+    digest = hashlib.sha256(data).hexdigest()
+    signed = _public_get(receipt['directUrl'])
+    ctx.expect(signed['status'] == 200 and signed.get('sha256') == digest, 'presigned GET 200 SHA-256 equals saved file')
+    unsigned = _public_get(urlunsplit((link.scheme, link.netloc, link.path, '', '')))
+    ctx.note('presigned_status=200; unsigned_status='+str(unsigned['status']))
+    ctx.expect(unsigned['status'] == 403, 'the same object without the signature is refused (403)')

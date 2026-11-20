@@ -43,9 +43,16 @@ FLOWS = dict(idle_memory='Idle memory', region_upload='Region', window_desktop='
              link_browser='Link → browser', history_delete='History delete',
              auto_copy='Auto-copy', upload_clipboard='Upload clipboard',
              copy_image='Copy image', survives_exit='Survives exit',
-             file_manager_upload='Right-click upload',
-             s3_region_upload='Live S3', proton_region_upload='Live Proton')
+             file_manager_upload='Right-click upload', window_recording='Window recording',
+             tray_menu='Tray menu', copy_text='Copy text / redact',
+             s3_region_upload='Live S3', s3_r2_region_upload='Live R2', proton_region_upload='Live Proton')
 LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
+LIVE = [name for name in FLOWS if name not in LOCAL]
+# A feature the acceptance matrix (docs/testing/acceptance-matrix.md) says a
+# desktop does not support is reported as such, never as red or not run.
+# Keyed by (row desktop id, flow); the reason quotes the matrix.
+UNSUPPORTED = {}
+STATUS_MARK = {'green': '🟢', 'red': '🔴', 'not_run': '⚪', 'unsupported': '➖'}
 STABLE_TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+')
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
@@ -63,6 +70,20 @@ class NotRun(RuntimeError):
 
 def cell(status='not_run', assertion='', **proof):
     return dict(status=status, green=status == 'green', assertion=assertion, **proof)
+
+
+def row_cells(row, reason):
+    """Every cell a row runs, each starting not run with REASON; unsupported cells say why."""
+    cells = {}
+    for flow in LOCAL + (LIVE if row.get('live') else []):
+        unsupported = UNSUPPORTED.get((row.get('desktop'), flow))
+        cells[flow] = cell('unsupported', unsupported) if unsupported else cell(assertion=reason)
+    return cells
+
+
+def passed(value):
+    """A cell that needs no follow-up: green, or a feature the desktop does not support."""
+    return value['status'] in ('green', 'unsupported')
 
 
 def save(path, value):
@@ -1067,7 +1088,7 @@ def retire(run, out, rows):
             shutil.copy2(out/name, out/(name+'.before-recovery-'+uuid.uuid4().hex[:8]))
     completion = dict(schemaVersion=1, kind='vm-overlay-cleanup-evidence', run=str(run),
         runId=info['id'], completed=True, evidenceExportVerified=True,
-        outcome='passed' if rows and not unaudited and all(c['green'] for c in rows.values()) else 'failed')
+        outcome='passed' if rows and not unaudited and all(passed(c) for c in rows.values()) else 'failed')
     if unaudited:
         completion['unauditedAttempts'] = [a.name for a in unaudited]
     save(out/'completion.json', completion)
@@ -1130,8 +1151,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         rowout = out/row['name'].lower().replace(' ', '-')
         rowout.mkdir(mode=0o700)
         session = 'nightly-'+uuid.uuid4().hex[:12]
-        cells = {flow: cell(assertion='desktop setup did not complete')
-                 for flow in LOCAL + (['s3_region_upload', 'proton_region_upload'] if row.get('live') else [])}
+        cells = row_cells(row, 'desktop setup did not complete')
         record = dict(desktop=row['name'], host=host, profile=row['profile'], cells=cells,
                       release=tag, build=identity['gitCommit'], driver=identity['driver'],
                       session=session, evidence=str(rowout))
@@ -1176,11 +1196,16 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                   packageSha256=digest(package))
                     record['setupSeconds'] = round(time.monotonic()-setup_started, 3)
                     env = dict(os.environ, PUTGD_TIER1_SESSION=session, HOME=str(Path.home().resolve()))
+                    keyring_ready = False
                     for flow in cells:
+                        if cells[flow]['status'] == 'unsupported':
+                            continue
                         flow_started = time.monotonic()
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
-                        if destination == 's3' and row['desktop'] == 'aurora-kde-wayland':
+                        if destination == 's3' and row['desktop'] == 'aurora-kde-wayland' and not keyring_ready:
+                            # One private keyring per guest serves both S3 cells.
                             prepare_live_keyring(run, rowout)
+                            keyring_ready = True
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow
                         for attempt in (1, 2):
                             remaining_timeout(deadline)
@@ -1296,7 +1321,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
             record['notRunReason'] = reason
             record['cleanupBlocked'] = True
             for value in cells.values():
-                value.update(status='not_run', green=False, assertion=reason)
+                if value['status'] != 'unsupported':
+                    value.update(status='not_run', green=False, assertion=reason)
         if (rowout/'availability.json').exists():
             record['waitSeconds'] = json.loads((rowout/'availability.json').read_text()).get('waitedSeconds', 0)
         record['seconds'] = round(time.monotonic()-started, 3)
@@ -1319,7 +1345,7 @@ def table(result):
             if value is None:
                 values.append('—')
                 continue
-            color = {'green':'🟢', 'red':'🔴', 'not_run':'⚪'}[value['status']]
+            color = STATUS_MARK[value['status']]
             values.append(f'[{color}]({value["receiptUrl"]})' if value.get('receiptUrl') else color)
             if value['status'] == 'not_run' and value.get('assertion'):
                 reasons.append(value['assertion'])
@@ -1393,7 +1419,7 @@ def publish(github, result, out, *, previous=None):
             github.api(f'repos/{github.repo}/issues/{issue["number"]}/labels', 'POST',
                        dict(labels=['release-blocker']))
             row['issueUrl'] = issue['html_url']
-        elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
+        elif existing and existing['state'] == 'open' and all(passed(v) for v in row['cells'].values()):
             github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
                 dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
             # A filtered recheck is one row's second look; only a full run closes. Red reopens it.
@@ -1402,7 +1428,7 @@ def publish(github, result, out, *, previous=None):
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
-    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · — disabled.\n'
+    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · ➖ not supported on this desktop (acceptance matrix) · — disabled.\n'
     markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
     for row in result['desktops']:
         markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'
@@ -1419,8 +1445,7 @@ def publish(github, result, out, *, previous=None):
 
 def not_run_rows(host, builder, reason, out):
     return [dict(desktop=row['name'], host=host, evidence=str(out), notRunReason=reason,
-                 cells={flow:cell(assertion=reason) for flow in LOCAL+
-                        (['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
+                 cells=row_cells(row, reason))
             for row in builder['rows']]
 
 

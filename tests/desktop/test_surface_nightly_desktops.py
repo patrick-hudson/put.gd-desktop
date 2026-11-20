@@ -1175,6 +1175,18 @@ with n.controller_shutdown(workers):
         with self.assertRaises(RuntimeError):
             nightly.merge_desktops(previous, dict(result, build='b'*40))
 
+    def test_unsupported_cells_are_neither_red_nor_run(self):
+        with patch.dict(nightly.UNSUPPORTED, {('budgie', 'window_recording'): 'matrix: not offered'}):
+            cells = nightly.row_cells(dict(desktop='budgie', live=True), 'setup')
+            self.assertEqual(cells['window_recording']['status'], 'unsupported')
+            self.assertFalse(cells['window_recording']['green'])
+            self.assertTrue(nightly.passed(cells['window_recording']))
+            self.assertEqual(cells['region_upload']['status'], 'not_run')
+            self.assertEqual(set(cells), set(nightly.FLOWS))
+            row = dict(desktop='Budgie', host='d69', cells=cells)
+            self.assertIn('➖', nightly.table(dict(desktops=[row])))
+        self.assertEqual(set(nightly.row_cells(dict(desktop='x'), 'setup')), set(nightly.LOCAL))
+
     def test_guest_service_selection_is_explicit_and_never_changes_host_default(self):
         from tools.lab import lab, lab_keyring
         self.assertEqual(lab.guest_secret_prefix({}), '')
