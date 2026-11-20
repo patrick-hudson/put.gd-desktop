@@ -1776,8 +1776,10 @@ QJsonObject SettingsWindow::candidate() const {
  // its default, or the draft never matches the file and every action reports unsaved settings.
  // Each is written on its own: a saved edit sends only the field changed, so writing the other
  // too would leave the draft different from the file. Which keys are stored comes from the file
- // as last accepted too (a saved edit can add or empty the object); a stored object stays, even empty.
- {const auto accepted=acceptedDocument()["preferences"].toObject();
+ // as last accepted too (a saved edit can add or empty the object), but only while that file is the
+ // one this draft is based on: a restored draft must not take keys someone else just saved and
+ // fill them with its own older values. A stored object stays, even empty.
+ {const auto accepted=baseRevision_==settings_.revision()?acceptedDocument()["preferences"].toObject():QJsonObject{};
   const bool stored=preferences.contains("updates")||accepted.contains("updates");
   auto updates=preferences.contains("updates")?preferences.value("updates").toObject():accepted.value("updates").toObject();
   if(updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();

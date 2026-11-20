@@ -675,6 +675,22 @@ private slots:
  }
  // #1704: an older checkpoint has no base, and the file has changed since: Retry saving says the
  // changes can't be merged and writes nothing; the draft stays visible.
+ // #1732 (Sol S3): a restored draft without an Updates object retries its own edit only: daily
+ // checks turned off by another client stay off.
+ void restoredDraftKeepsUpdatesChangedElsewhere(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();auto preferences=doc["preferences"].toObject();preferences.remove("updates");doc["preferences"]=preferences;QVERIFY(service.save(doc,{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));}
+  auto elsewhere=service.document();preferences=elsewhere["preferences"].toObject();preferences["updates"]=QJsonObject{{"check",false}};elsewhere["preferences"]=preferences;QVERIFY(service.save(elsewhere,service.revision()));
+  PUTGD_TRY_COMPARE(fixture.session.revision(),service.revision());
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  auto* retry=second.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY(service.document()["profiles"].toArray()[0].toObject()["label"].toString()=="Renamed here");
+  PUTGD_VERIFY_STEADY(service.document()["preferences"].toObject()["updates"].toObject()["check"]==QJsonValue(false),300);
+ }
  void legacyCheckpointIsNotMergedIntoAChangedFile(){
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
