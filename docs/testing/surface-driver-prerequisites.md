@@ -289,19 +289,35 @@ saw, whether or not that banner covered anything. Add an exception to
 one in a private runtime folder, then carries the session back.
 
 **A dead guest keyring.** On Aurora and Budgie the nightly runs its own
-`gnome-keyring-daemon` in the guest, on `/dev/shm/nd-keys`, and every guest step reaches it by
-its unique D-Bus name in the run's `state.json`. If that daemon dies, the name is gone and
-nothing starts it again, so every return of a lend fails. When a return fails in a guest
-step, `recover` checks that the recorded connection has no owner, that no process still
-serves the keyring's folder and that the desktop's own Secret Service is running. It then
-starts the daemon again with the nightly's own command on the same files and opens the blank
-`putgd lab` collection with its empty password. Only then does it point `state.json` at the new
-connection and try the return once more. `lend.json` appends each attempt to
-`keyringRestarts`, with the connection names, the daemon's pid and the collection's lock
-state, and never a secret. A daemon that still answers, or still holds the folder, is never
-replaced. A failed carry-back is never retried, and a second failure keeps the lock blocked
-as before. A desktop's own Secret Service (GNOME, Cinnamon, Plasma) is
-started again by D-Bus on the next call, so it needs none of this.
+`gnome-keyring-daemon` in the guest, on `/dev/shm/nd-keys`. The guest's credential bridge and
+the private put.gd processes reach it by its unique D-Bus name, recorded in the run's
+`state.json`. That daemon does not restart by itself, so a lend return that needs the guest
+keyring fails once it has died.
+
+When a guest step of the return fails, `recover` restarts the daemon only if all of these hold:
+
+- The recorded connection has no owner.
+- No process still serves the keyring's folder.
+- The keyring files are still there.
+- The desktop's own Secret Service (KWallet or oo7) is running.
+
+It then starts the daemon with the nightly's own command, on the same files, and opens the blank
+`putgd lab` collection with its empty password. It checks that the collection is unlocked and
+that the desktop's Secret Service kept the same owner. Only then does `state.json` name the new
+connection. If a check, the unlock or the state update fails, it ends the daemon it just
+started.
+
+After a restart, `recover` tries the return once more. If the session had already been carried
+back to the builder, only the guest's cleanup is retried. A failure while the builder's entry is
+read, exported or carried back never triggers a restart, and a conflict there leaves the Proton
+lock blocked as before. So does a second failure.
+
+`lend.json` appends each attempt to `keyringRestarts`. A restart records both connection names,
+the daemon's pid and start time, and the collection's lock state. A refused or failed check
+records only its reason. Neither records a secret.
+
+A desktop's own Secret Service (GNOME, Cinnamon, Plasma) is started again by D-Bus on the next
+call, so it needs none of this.
 
 ## Recording fixture: consent, retained media and the GTK sink
 
