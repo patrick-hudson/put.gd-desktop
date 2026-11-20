@@ -759,7 +759,8 @@ hosted minutes are free; the change saves about 15-30 s per Linux job.
 
 Every container job in `ci.yml` and `package.yml` runs in a prebuilt image from the
 private package `ghcr.io/patrick-hudson/putgd-ci`, so jobs never download distro
-packages and a slow Ubuntu mirror can't hold up a pull request. The jobs pull with the
+packages. A slow Ubuntu mirror can hold up only a pull request that changes an
+image's inputs, because CI builds that image before its jobs start. The jobs pull with the
 run's token (`packages: read`); `ci.yml`'s `images` job builds with `packages: write`,
 which the nightly and release callers grant. Only `arch-install` still runs in plain
 `archlinux:base`, because it checks the package on a clean system.
@@ -798,8 +799,10 @@ package caches:
 **Tags.** A profile's tag is `<profile>-<ISO week>-<hash>` (`tools/ci/ci_images.py`).
 The hash covers the base digest, the build target and arguments (the Qt version for
 `appimage`) and the bytes of every input file, and the build context holds only those
-files, so an image can't contain anything its tag doesn't name. The week keeps an image
-at most about a week behind its distro's updates.
+files, so no other file in the checkout can change what an image contains. The distro
+packages a build downloads are not in the hash: they are whatever the mirrors served
+when the image was built, and the week keeps them at most about a week behind the
+distro's updates.
 
 **Planning.** `ci.yml`'s first job calls `ci-images.yml`, whose `plan` job names this
 week's tag for every profile and checks the registry. A tag that's there is used. When
@@ -823,7 +826,9 @@ week's image may rebuild them.
 pull request's own CI builds the new tag before its jobs start, and the scheduled run
 never needs to. To reproduce a job without the registry, run
 `bash tools/ci/images/provision.sh PROFILE` as root in the profile's base container,
-from a checkout; Boat candidate builds do this.
+from a checkout; Boat candidate builds do this. For `appimage`, also export the
+environment the Dockerfile's `appimage` stage sets (`QT_ROOT_DIR=/opt/Qt/<version>/gcc_64`
+and the paths under it).
 
 ## Package installs
 
