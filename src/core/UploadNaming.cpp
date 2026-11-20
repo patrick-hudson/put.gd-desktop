@@ -54,7 +54,9 @@ QString boundedName(QString name, int maximumBytes, const QString& addition = {}
 }
 }
 
-QString UploadNaming::randomName(const RandomNameSettings& random) {
+namespace {
+// A Random names name without its extension: a UUID or a random string.
+QString randomName(const RandomNameSettings& random) {
  if (random.style != "string") return QUuid::createUuid().toString(QUuid::WithoutBraces);
  QString alphabet = QStringLiteral("abcdefghijklmnopqrstuvwxyz");
  if (random.uppercase) alphabet += QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -65,6 +67,7 @@ QString UploadNaming::randomName(const RandomNameSettings& random) {
  auto* generator = QRandomGenerator::system();
  for (int index = 0; index < length; ++index) name += alphabet.at(generator->bounded(int(alphabet.size())));
  return name;
+}
 }
 
 Error UploadNaming::validateTemplate(const QString& format) {

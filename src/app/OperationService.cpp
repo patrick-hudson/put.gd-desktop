@@ -8,6 +8,7 @@
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
 #include <QBuffer>
+#include <QSet>
 #include <QSysInfo>
 #include <QElapsedTimer>
 #include <QImageReader>
@@ -39,10 +40,22 @@
 #include <unistd.h>
 #else
 #include <QBuffer>
+#include <QSet>
 #include <QImageReader>
 #endif
 namespace putgd {
 namespace {
+// Another name for a taken candidate. A fresh random-characters name (#1729) can repeat another
+// item's pending name in the batch, so it is drawn again, up to 32 times, until it does not.
+QString renamedAwayFrom(const Settings& settings,const QString& name,int maximumBytes,const QSet<QString>& taken) {
+ const auto* fresh=settings.namingMode=="generated"?&settings.randomName:nullptr;
+ auto renamed=UploadNaming::renamedCandidate(name,maximumBytes,fresh);
+ for(int draws=1;draws<32&&taken.contains(renamed);++draws)renamed=UploadNaming::renamedCandidate(name,maximumBytes,fresh);
+ return renamed;
+}
+QSet<QString> otherCandidates(const QList<OperationItem>& items,int index) {
+ QSet<QString> names;for(int other=0;other<items.size();++other)if(other!=index)names.insert(items[other].candidate);return names;
+}
 // Clean library pages leave this process once it has been quiet for this long.
 constexpr int imagePageDelayMs=30*1000;
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
@@ -997,7 +1010,7 @@ Operation OperationService::run(Job job) {
    if(job.cancelled->load())break;
    if(check.error||check.status=="inconclusive"||check.objectReference.isEmpty()) {item.error=check.error?check.error:Error{"existence_unknown","Name availability is inconclusive",{}};item.uploadStatus="failed";auto fields=itemFields(op,item);fields["status"]=check.status;fields["error"]=logging::errorFields(item.error);logging::warning(providerLog(op.destination.providerId),"Name check failed",fields);break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";break;}
-   if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes,op.settings.namingMode=="generated"?&op.settings.randomName:nullptr);if(!saveItem(item))return op;continue;}
+   if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=renamedAwayFrom(op.settings,item.candidate,capabilities.maximumNameBytes,otherCandidates(op.items,index));if(!saveItem(item))return op;continue;}
    item.objectReference=check.objectReference;item.concurrencyToken=check.concurrencyToken;item.condition=check.status=="present"?"match":"absent";
    if(item.condition=="match"&&item.concurrencyToken.isEmpty()) {item.error={"precondition_missing","Provider returned no replacement precondition",{}};item.uploadStatus="failed";break;}
    item.uploadStatus="stored";targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);checked=true;break;
@@ -1141,8 +1154,14 @@ Operation OperationService::run(Job job) {
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
-   item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes,op.settings.namingMode=="generated"?&op.settings.randomName:nullptr);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
-   auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
+   NameCheck check;
+   // #1729: a short random name can be taken too; draw again while the check confirms it is.
+   for(int draws=0;draws<32;++draws) {
+    QSet<QString> taken;{std::lock_guard items(itemsMutex);taken=otherCandidates(op.items,index);}
+    item.candidate=renamedAwayFrom(op.settings,item.candidate,capabilities.maximumNameBytes,taken);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
+    check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
+    if(cancel->load()||check.error||check.status!="present")break;
+   }
    if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::timed_mutex>(*lock);

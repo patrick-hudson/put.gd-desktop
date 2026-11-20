@@ -26,6 +26,8 @@ private slots:
   length->setValue(8);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomLength"].toInt(),8);
   capitals->setChecked(false);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomUppercase"].toBool(true),false);
   digits->setChecked(false);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomDigits"].toBool(true),false);
+  // The kept view state accepts the new keys, or the dashboard refuses to close or capture.
+  QVERIFY(!window.settings()->saveViewState().contains("stateError"));
   const auto random=Settings::fromValidated(service.document()).randomName;QCOMPARE(random.style,QString("string"));QCOMPARE(random.length,8);QVERIFY(!random.uppercase);QVERIFY(!random.digits);
   mode->setCurrentIndex(mode->findData("original"));PUTGD_TRY_VERIFY(!style->isVisible()&&!length->isVisible());
  }

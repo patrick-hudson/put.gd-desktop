@@ -9,8 +9,6 @@ public:
  static Error validateTemplate(const QString&);
  static FilenameResult renderTemplate(const QString&,const Artifact&,const QDateTime&,const QString& unique={});
  static FilenameResult acquiredName(const Artifact&,const Settings&,const QString& action,const QDateTime&);
- // A Random names name without its extension: a UUID or a random string.
- static QString randomName(const RandomNameSettings&);
  static QString candidate(const Artifact&,const QString& mode,bool forceRename=false,int maximumBytes=255,const RandomNameSettings& random={});
  // With fresh set to a string style, a taken random name is replaced by a new random string
  // (same extension) instead of gaining a UUID suffix.
