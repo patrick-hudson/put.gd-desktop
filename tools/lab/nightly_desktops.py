@@ -76,7 +76,10 @@ def cell(status='not_run', assertion='', **proof):
 def row_cells(row, reason):
     """Every cell a row runs, each starting not run with REASON; unsupported cells say why."""
     cells = {}
-    for flow in LOCAL + (LIVE if row.get('live') else []):
+    # A row with "proton": false has not proven a Proton lend on its golden: its Live Proton cell is
+    # left out (— in the table), so a failed lend can't leave an outstanding Proton copy there.
+    live = [f for f in LIVE if f != 'proton_region_upload' or row.get('proton', True)] if row.get('live') else []
+    for flow in LOCAL + live:
         unsupported = UNSUPPORTED.get((row.get('desktop'), flow))
         cells[flow] = cell('unsupported', unsupported) if unsupported else cell(assertion=reason)
     return cells
@@ -1044,7 +1047,7 @@ def await_host(config, out, row, *, clock=time.monotonic, sleep=time.sleep, work
         if worker_deadline is not None and clock() >= worker_deadline:
             raise NotRun('worker deadline exhausted while awaiting host')
         try:
-            for resource in ('desktop', 'proton') if row.get('live') else ('desktop',):
+            for resource in ('desktop', 'proton') if row.get('live') and row.get('proton', True) else ('desktop',):
                 state = Desktop(Path.home()/'putgd-lab/locks', config['host'], resource=resource).status()
                 if state['state'] != 'free':
                     raise NotRun(resource+' lease held by another session')
@@ -1203,8 +1206,10 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                             continue
                         flow_started = time.monotonic()
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
-                        if destination == 's3' and row['desktop'] == 'aurora-kde-wayland' and not keyring_ready:
-                            # One private keyring per guest serves both S3 cells.
+                        if (destination == 's3' and row['desktop'] in ('aurora-kde-wayland', 'fedora-budgie-wayland')
+                                and not keyring_ready):
+                            # KWallet (Aurora) and oo7-daemon (Budgie) can't take the lab collection;
+                            # one private keyring per guest serves both S3 cells.
                             prepare_live_keyring(run, rowout)
                             keyring_ready = True
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow

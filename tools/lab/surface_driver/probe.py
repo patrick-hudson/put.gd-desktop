@@ -1249,8 +1249,10 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3):
                     'obscuring_window': 'point outside the window', 'obscuring_window_id': None}
         if pixels_at(window, screen, where, point):
             return {'ok': True, 'backend': 'toplevel-pixels-pick', 'target': wid, 'obscuring_window': None}
-    return {'ok': False, 'backend': 'toplevel-pixels-pick', 'target': wid, 'obscuring_window': reason,
-            'obscuring_window_id': None}
+    # No window was found covering the point: the witness could not place or match the target's
+    # pixels. That is not evidence against the app, so the guard reports it as unverified.
+    return {'ok': False, 'unverified': True, 'backend': 'toplevel-pixels-pick', 'target': wid,
+            'obscuring_window': reason, 'obscuring_window_id': None}
 
 
 class WaylandPlacement:
