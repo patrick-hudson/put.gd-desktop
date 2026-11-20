@@ -5,8 +5,8 @@ Omarchy is an Arch Linux and Hyprland setup from omarchy.org
 Hyprland and for Arch packages, tracked in
 [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275). It has an acceptance
 row in the [matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row) that is not a
-nightly or release gate; adding it to the nightly desktop check is Patrick's decision.
-The nightly desktop check runs only the five physical builders, so no nightly row installs
+release gate. The nightly desktop check runs it as a row on m74 with the AppImage (Patrick,
+2026-11-19). No nightly row installs
 the Arch package on an Omarchy package set; the Arch CI job installs it on current Arch,
 where OpenSSL always matches. That is why [#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)
 (a package that pacman accepted on Omarchy and that then could not load `libcrypto.so.4`)

@@ -520,6 +520,40 @@ five builders, using the holder name `nightly-desktops`, and posts to pinned
 [issue #1003](https://github.com/patrick-hudson/put.gd-desktop/issues/1003).
 Release manual desktop leases by 12:15 UTC so the check can acquire them.
 
+#### What the nightly check runs
+
+Each row boots a fresh guest of its golden, installs the published package and runs
+these cells, each judged by an independent check, not the app's own report:
+
+| Cell | Green when |
+| --- | --- |
+| Idle memory | The idle resident is under the 40 MiB budget and maps no forbidden library |
+| Region, Auto-copy | Region pixels equal the frozen pattern; the link is on the clipboard with no copy click |
+| Window / desktop | Hotkey window and desktop captures equal the pattern |
+| Recording → upload | A moving clip beats a frozen one, then uploads |
+| Edit → upload | Four mouse marks land on the drawn image coordinates |
+| Link → browser, History delete, Upload clipboard, Copy image, Survives exit, Right-click upload | As named |
+| Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11): the exported clip lasts 4 to 30 s, its frames differ and it is the window's size |
+| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order, and a region capture started from it completes at the dragged size |
+| Copy text / redact | Copy text of a drawn two-line pattern puts exactly those lines on the clipboard; Quick redact (`name`, `list`) covers the login name and a listed word with solid pixels in the saved copy and leaves the other words alone |
+| Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the signed GET returns the file and the same URL unsigned gets 403 |
+| Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link. Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
+| Live Proton (live rows) | An upload, its share link and revoking it |
+
+➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
+desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
+words); it is never red and opens no issue. A cell the harness cannot drive on a
+desktop is ⚪ with the reason, for example Tray menu on Cinnamon, whose tray items have
+no accessible name, and on the stock Fedora GNOME guest, which has no tray host.
+
+A builder runs one or two rows, one after the other, sharing its one guest slot and
+ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
+Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
+(AppImage) and f44 Fedora GNOME (RPM) run one each. Each builder reads its own
+`~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
+builder's copy and in d69's. The new cells add about six minutes to a row; a builder
+with two rows takes about an hour.
+
 ### Desktop locks
 
 Each builder keeps its own lock in `~/putgd-lab/locks/desktop.lock`, a file of
