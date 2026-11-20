@@ -1396,7 +1396,9 @@ def publish(github, result, out, *, previous=None):
         # Acceptance attachments stay private/local until a person attaches them.
         # Do not update #1003, pin an issue, or file/close nightly regressions.
         for row in result['desktops']:
-            save(out/(row['host']+'-'+re.sub(r'[^a-z0-9]+', '-', row['desktop'].lower()).strip('-')+'-receipt.json'), row)
+            # The slug is for people; the digest of the exact row name keeps distinct rows apart.
+            slug = re.sub(r'[^a-z0-9]+', '-', row['desktop'].lower()).strip('-')
+            save(out/(row['host']+'-'+slug+'-'+hashlib.sha256(row['desktop'].encode()).hexdigest()[:8]+'-receipt.json'), row)
         (out/'results.md').write_text(f'Stable draft: **{result["release"]}** · {result["date"]}\n\n'+table(result))
         save(out/'results.json', result)
         return
@@ -1543,6 +1545,7 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
     root = builder['root']
     output = str(Path(root).parent/'ne'/uuid.uuid4().hex[:8])
     waited = 0
+    inputs = None
     try:
         if ssh:
             deadline = time.monotonic()+builder.get('waitSeconds', 1200)
@@ -1573,25 +1576,61 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
         remote = ['timeout', '--foreground', '--signal=TERM', f'--kill-after={TERMINATE_GRACE}',
                   str(HOST_TIMEOUT), *args]
         env = dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(controller)) if controller and not ssh else None
-        command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'), env=env,
-                timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
-                terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
-        text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
-        rows = json.loads(text)
-        expected = sorted(r['name'] for r in builder.get('rows', []))
-        if expected and sorted(r.get('desktop') for r in rows) != expected:
-            raise NotRun('worker reported other rows than the controller selected')
-        if ssh:
-            try:
-                remove_inputs(ssh, inputs, archive)
-            except (RuntimeError, subprocess.TimeoutExpired) as error:
-                print(json.dumps(dict(host=host, inputsKept=str(error))), flush=True)
+        worker_error = None
+        try:
+            command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'), env=env,
+                    timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
+                    terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
+        except (RuntimeError, subprocess.TimeoutExpired) as error:
+            if not builder.get('rows'):
+                raise
+            # The worker saves each row as it finishes: keep those, whatever ended the rest.
+            worker_error = ('worker timed out' if isinstance(error, subprocess.TimeoutExpired)
+                            else 'worker exited with an error') + ' before reporting this row'
+        try:
+            text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
+            reported = json.loads(text)
+        except (RuntimeError, subprocess.TimeoutExpired, OSError, ValueError):
+            if worker_error is None:
+                raise
+            reported = []
+        rows = selected_rows(host, builder, reported, worker_error, out/host)
     except Exception as error:
         reason = str(error) if isinstance(error, NotRun) else 'worker infrastructure failed: '+type(error).__name__
         rows = not_run_rows(host, builder, reason, out/host)
+    finally:
+        # Once the worker is done (or never started), its unpacked packages go, whatever the result.
+        if ssh and inputs:
+            try:
+                remove_inputs(ssh, inputs, archive)
+            except (RuntimeError, subprocess.TimeoutExpired, OSError, tarfile.TarError) as error:
+                print(json.dumps(dict(host=host, inputsKept=str(error))), flush=True)
     for row in rows:
         row.update(totalSeconds=round(time.monotonic()-started,3), startedAt=started_at)
         row['waitSeconds'] = round(row.get('waitSeconds', 0)+waited, 3)
+    return rows
+
+
+def selected_rows(host, builder, reported, missing_reason, out):
+    """The worker's rows the controller selected, in its order; each selected row it didn't report is not run.
+
+    A row it reports that wasn't selected (it has no package for it) is never published.
+    """
+    if not builder.get('rows'):
+        return reported
+    names = [r['name'] for r in builder['rows']]
+    found = {}
+    for row in reported if isinstance(reported, list) else []:
+        if isinstance(row, dict) and row.get('desktop') in names:
+            found.setdefault(row['desktop'], row)
+    stray = [r.get('desktop') for r in reported if isinstance(r, dict) and r.get('desktop') not in names] \
+        if isinstance(reported, list) else []
+    reason = missing_reason or ('worker reported other rows than the controller selected' if stray
+                                else 'worker reported no result for this row')
+    rows = []
+    for row in builder['rows']:
+        rows += [found[row['name']]] if row['name'] in found else \
+            not_run_rows(host, dict(builder, rows=[row]), reason, out)
     return rows
 
 

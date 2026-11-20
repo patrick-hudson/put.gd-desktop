@@ -958,6 +958,23 @@ class NightlyTests(unittest.TestCase):
             self.assertEqual([r['desktop'] for r in rows], ['Budgie'])
             self.assertIn('other rows than the controller selected', rows[0]['notRunReason'])
 
+    def test_a_worker_that_stops_after_its_first_row_still_reports_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            builder = dict(ssh=['ssh', 'builder'], root='/repo', config='/private',
+                           rows=[dict(name='Ubuntu GNOME', desktop='ubuntu-gnome-wayland'),
+                                 dict(name='Budgie', desktop='fedora-budgie-wayland')])
+            saved = json.dumps([dict(desktop='Ubuntu GNOME', cells={'idle_memory': nightly.cell('green')})])
+            with patch.object(nightly, 'command', side_effect=[None, None, None, subprocess.TimeoutExpired('ssh', 1),
+                                                               saved, None]) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                rows = nightly.run_host('d69', builder, 'vtest', root, archive, root, local_workers=Mock())
+            self.assertEqual([r['desktop'] for r in rows], ['Ubuntu GNOME', 'Budgie'])
+            self.assertEqual(rows[0]['cells']['idle_memory']['status'], 'green')
+            self.assertIn('worker timed out', rows[1]['notRunReason'])
+            self.assertIn('rm -f', command.call_args_list[-1].args[0][-1])  # Inputs removed after a timeout too.
+
     def test_failed_cleanup_keeps_the_result(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1487,7 +1504,7 @@ with n.controller_shutdown(workers):
             marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
             out = Path(marker['results']).parent
             self.assertTrue((out/'results.md').is_file())
-            self.assertTrue((out/'d69-d69-receipt.json').is_file())  # One receipt per builder and row.
+            self.assertEqual(len(list(out.glob('d69-d69-*-receipt.json'))), 1)  # One receipt per builder and row.
             self.assertIn('dry run', (out/'results.md').read_text())
 
     def test_checksum_failure_blocks_before_guest_launch(self):

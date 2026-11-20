@@ -855,7 +855,7 @@ def hyprland_foreground(target, point, attempts=3):
         if attempt:
             time.sleep(.2)
         own, screen = grim(str(mine['stable_id'])), grim()
-        if pixels_at(own, screen, mine['content'], point):
+        if pixels_at(own, screen, mine['content'], point, cursor=True):
             return dict(result, ok=True, obscuring_window=None, backend='hyprctl-pick-pixels')
     # A see-through window (Omarchy draws Nautilus over the wallpaper) never shows its own
     # pixels anywhere; a cover changes them only where it lies. For such a window the shell
@@ -1040,13 +1040,14 @@ def locate_pixels(window, screen):
     return {'rect': [x, y, ww, wh], 'visible': round(share, 3)}
 
 
-def pixels_at(window, screen, rect, point, radius=6):
-    """True when the outputs show the window's own pixels around the point.
+def pixels_at(window, screen, rect, point, radius=6, cursor=False):
+    """True when the outputs show the window's own pixels at and around the point.
 
-    Of the four boxes that meet at the point, the three a cursor arrow whose hotspot
-    is at the point can't reach (above left, above right and below left) must all be
-    the window's own pixels. Hyprland draws its software cursor into every output
-    copy, and the arrow covers only the box below and right of its hotspot.
+    Without a cursor in the capture (grim's default), the point itself and the four
+    boxes that meet at it must all be the window's own pixels. With CURSOR (Hyprland
+    draws its software cursor into every output copy), the arrow whose hotspot is at
+    the point covers the point and the box below and right of it, so the other three
+    boxes must match; a cover reaching only that corner is then not seen.
     """
     ww, wh, wb = window
     sw, sh, sb = screen
@@ -1068,7 +1069,9 @@ def pixels_at(window, screen, rect, point, radius=6):
     gap = 2  # the arrow's outline reaches a pixel or so past its hotspot
     boxes = ((px - gap - radius, px - gap, py - gap - radius, py - gap), (px + gap, px + gap + radius, py - gap - radius, py - gap),
              (px - gap - radius, px - gap, py + gap, py + gap + radius), (px + gap, px + gap + radius, py + gap, py + gap + radius))
-    return all(same(*box) for box in boxes[:3])
+    if cursor:
+        return all(same(*box) for box in boxes[:3])
+    return same(px, px + 1, py, py + 1) and all(same(*box) for box in boxes)
 
 
 def content_box(image, width, height):
@@ -2844,28 +2847,39 @@ def quickshell_dismiss(deadline):
     return reply.returncode == 0
 
 
-def signal_processes(pids, number):
-    for pid in pids:
-        # Only one real process: kill(-1) is every process this user owns, 0 our own group.
-        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 1:
-            continue
-        with contextlib.suppress(ProcessLookupError):
-            os.kill(pid, number)
-
-
 def stop_windows(rows):
     """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left.
 
     A process is known by its pid and start time, read before TERM; KILL goes only to
     that same process, never to a pid reused meanwhile.
     """
-    started = {pid: process_start(pid) for pid in {row['pid'] for row in rows}}
-    started = {pid: start for pid, start in started.items() if start}
-    signal_processes(started, signal.SIGTERM)
-    deadline = time.monotonic() + (2 if started else 0)
-    while time.monotonic() < deadline and any(process_start(pid) == start for pid, start in started.items()):
-        time.sleep(.1)
-    signal_processes([pid for pid, start in started.items() if process_start(pid) == start], signal.SIGKILL)
+    handles = {}
+    for pid in {row['pid'] for row in rows}:
+        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 1:
+            continue
+        start = process_start(pid)
+        try:
+            handle = os.pidfd_open(pid)
+        except OSError:
+            continue
+        # The descriptor names one process for good; it must be the one whose start time was read.
+        if start and process_start(pid) == start:
+            handles[pid] = handle
+        else:
+            os.close(handle)
+    try:
+        for handle in handles.values():
+            with contextlib.suppress(ProcessLookupError):
+                signal.pidfd_send_signal(handle, signal.SIGTERM)
+        deadline = time.monotonic() + (2 if handles else 0)
+        while time.monotonic() < deadline and any(process_start(pid) for pid in handles):
+            time.sleep(.1)
+        for handle in handles.values():
+            with contextlib.suppress(ProcessLookupError):
+                signal.pidfd_send_signal(handle, signal.SIGKILL)  # A no-op for a process that has exited.
+    finally:
+        for handle in handles.values():
+            os.close(handle)
 
 
 def clear_screen(query):

@@ -147,12 +147,13 @@ def admit(ctx):
         # Omarchy's clipboard history writes copied text to its own store on disk, and the app
         # auto-copies every link, a signed one included. That would outlive the guest's tmpfs.
         raise RecipeBlocked('Tier 1 live is refused on Omarchy: its clipboard history stores copied links on disk')
-    # The VM-only desktops are bound to their one lab golden: its profile and its image directory.
-    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'fedora45-budgie')}.get(ctx.desktop)
+    # The VM-only desktops are bound to their one lab golden: its profile and its exact image.
+    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'work/put.gd/work/lab-images/fedora45-budgie/image.qcow2')}.get(ctx.desktop)
     if golden:
         from tools.lab import lab
         state = lab.state(ctx.target.run)
-        if state['profile'] != golden[0] or Path(state['golden']).parent.name != golden[1]:
+        approved = (Path.home()/golden[1]).resolve()
+        if state['profile'] != golden[0] or Path(state['golden']).resolve() != approved:
             raise RecipeBlocked('Tier 1 live requires the desktop\'s own lab golden')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')

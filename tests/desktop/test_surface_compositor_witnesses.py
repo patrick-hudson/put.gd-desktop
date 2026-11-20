@@ -104,27 +104,32 @@ class HyprlandWitness(unittest.TestCase):
                                                   'namespace': 'wallpaper', 'pid': -1}]}}}
         document = self.document(clients, layers=layers)
         self.assertEqual([w['pid'] for w in document['windows']], [4321, None, None])
-        sent, starts = [], iter(['777'] + [None] * 50)
+        sent, starts = [], iter(['777'] * 2 + [None] * 50)
         with patch.object(probe, 'hyprland_windows', return_value=document), \
              patch.object(probe, 'close_notifications', return_value=1), \
              patch.object(probe, 'owned', return_value=False), \
              patch.object(probe, 'process_name', side_effect=lambda pid: {4321: 'nag'}.get(pid)), \
              patch.object(probe, 'process_start', side_effect=lambda pid: next(starts)), \
-             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append((pid, number))):
+             patch.object(probe.os, 'pidfd_open', side_effect=lambda pid: 100 + pid), \
+             patch.object(probe.os, 'close'), \
+             patch.object(probe.signal, 'pidfd_send_signal', side_effect=lambda fd, number: sent.append((fd - 100, number))), \
+             patch.object(probe.os, 'kill', side_effect=AssertionError('kill by pid')):
             result = probe.clear_screen({'compositor': {'kind': 'hyprctl'}, 'above': '0xa1', 'obscuring': '0xa2', 'shell': []})
-        # TERM only: the process (known by its start time) was gone before KILL.
-        self.assertEqual(sent, [(4321, probe.signal.SIGTERM)])
+        # Only the named nag process, through its own descriptor; KILL to an exited process is a no-op.
+        self.assertEqual(sent, [(4321, probe.signal.SIGTERM), (4321, probe.signal.SIGKILL)])
         self.assertEqual(result['stopped'], [{'title': 'nag', 'process': 'nag'}])
-        with patch.object(probe.os, 'kill', side_effect=AssertionError('signalled')):
-            probe.signal_processes([-1, 0, 1, None, True], 15)
+        with patch.object(probe.os, 'pidfd_open', side_effect=AssertionError('opened')):
+            probe.stop_windows([{'pid': p} for p in (-1, 0, 1, None, True)])
 
-    def test_kill_goes_only_to_the_process_term_was_sent_to(self):
+    def test_signals_go_only_to_the_process_whose_start_was_read(self):
         sent = []
-        starts = {4321: iter(['777', '999', '999'])}  # pid reused by another process after TERM
+        starts = {4321: iter(['777', '999'])}  # the pid was reused between the read and the descriptor
         with patch.object(probe, 'process_start', side_effect=lambda pid: next(starts[pid])), \
-             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append((pid, number))):
+             patch.object(probe.os, 'pidfd_open', return_value=104), patch.object(probe.os, 'close') as close, \
+             patch.object(probe.signal, 'pidfd_send_signal', side_effect=lambda fd, number: sent.append(number)):
             probe.stop_windows([{'pid': 4321}])
-        self.assertEqual(sent, [(4321, probe.signal.SIGTERM)])
+        self.assertEqual(sent, [])
+        close.assert_called_once_with(104)
 
     def test_activate_refuses_a_malformed_address(self):
         with self.assertRaises(RuntimeError):
@@ -181,10 +186,16 @@ class PixelWitness(unittest.TestCase):
 
     def test_a_cursor_at_the_point_is_not_a_cover(self):
         rect = [113, 47, 80, 50]
+        self.assertTrue(probe.pixels_at(self.window, self.screen, rect, (150, 70)))
+        # Hyprland's software cursor at the point is not a cover; in a cursor-free capture
+        # (grim's default, labwc) the same pixels are one, and so is a corner at the point.
         cursor = paste(self.screen, (12, 20, b'\x10' * (12 * 20 * 3)), 150, 70)
-        self.assertTrue(probe.pixels_at(self.window, cursor, rect, (150, 70)))
+        self.assertTrue(probe.pixels_at(self.window, cursor, rect, (150, 70), cursor=True))
+        self.assertFalse(probe.pixels_at(self.window, cursor, rect, (150, 70)))
+        corner = paste(self.screen, (2, 2, b'\x10' * (2 * 2 * 3)), 150, 70)
+        self.assertFalse(probe.pixels_at(self.window, corner, rect, (150, 70)))
         card = paste(self.screen, (30, 30, b'\x10' * (30 * 30 * 3)), 140, 60)
-        self.assertFalse(probe.pixels_at(self.window, card, rect, (150, 70)))
+        self.assertFalse(probe.pixels_at(self.window, card, rect, (150, 70), cursor=True))
         self.assertFalse(probe.pixels_at(self.window, self.screen, rect, (400, 70)))
 
     def test_flat_missing_and_repeated_windows_are_refused(self):

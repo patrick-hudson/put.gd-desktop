@@ -330,7 +330,7 @@ class LiveOutcomes(unittest.TestCase):
                 ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop, package=package,
                                       target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
                                       profile={'guest': actual}, _live_admitted=True)
-                state = {'profile': actual, 'golden': '/synthetic/lab-images/'+image+'/image.qcow2'}
+                state = {'profile': actual, 'golden': str(Path.home()/'work/put.gd/work/lab-images'/image/'image.qcow2')}
                 with patch('tools.lab.lab.state', return_value=state), \
                      patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
                      patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
