@@ -595,7 +595,9 @@ the cell right-clicks up to three times, each only while no popup shows.
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
-(AppImage) and f44 Fedora GNOME (RPM) run one each. Every row runs the live cells.
+(AppImage) and f44 Fedora GNOME (RPM) run one each. All seven rows run Live S3, Live R2 and
+Live Proton once d69's and m74's configs set `"live": true` and `"proton": true` for the Budgie
+and Hyprland rows.
 
 labwc reports no window geometry, so the Budgie row places windows by their own pixels,
 and three labwc 0.20 behaviours need care:
@@ -605,8 +607,10 @@ and three labwc 0.20 behaviours need care:
   for the dialogs the cells click (`window_rules` in the `fedora-budgie-wayland`
   profile: Delete from destination and Revoke share link). Each rule moves the dialog to a
   fixed position with no server-side decoration, so its content starts exactly there.
-  The driver checks the dialog's own pixels, taken from its parent's capture, at that
-  rectangle.
+  The driver takes the dialog's own pixels from the top-left corner of the captures of
+  its process's other windows. Exactly one such corner must match the outputs at the
+  rule's rectangle, both across all sampled cells and across the cells with at least four
+  colours.
 - **The labwc bridge.** Budgie's labwc bridge reads `rc.xml` once, when it starts, and
   writes its own copy back on every change. put.gd's shortcuts reach it as gsettings,
   so rules written while it runs are lost. The guest setup stops the bridge, writes
@@ -616,17 +620,22 @@ and three labwc 0.20 behaviours need care:
 - **Stale captures.** grim's capture of the outputs can show a region's earlier pixels
   after a window redrew it, while the display shows the new ones. A window's own
   capture can lag the same way. This happened with History's details pane after its
-  link row laid out, and it left History clicks unverified. A pointer hit-test therefore
-  compares the window's own capture with the guest's display, read over VNC, inside the
-  target's rectangle. A capture that disagrees is read again, up to three times.
+  link row laid out, and it left History clicks unverified. A pointer hit-test on a
+  toplevel of a single-output guest therefore compares the window's own capture with the
+  guest's display, read over VNC, inside the target's rectangle. Within one check the
+  window is captured up to three times against that one display read. The driver then
+  reads the display again, up to two more times. An activation of the target after the
+  display was read always asks for a fresh read.
 
-Firefox's blank kiosk page has no pixels to place it by. A flat window counts as placed
-only where it fills the one output of its size. On labwc, each capture of a toplevel
-puts History's details pane back at the top, and the driver captures History to place it.
-That keeps the pane's Delete from destination… button below the window. When the button
-isn't in view, a live cleanup deletes through the exact row's own menu instead, the same
-path the History delete cell uses, and then goes through the same confirmation. A geometry read
-that a slow application holds past its time budget is tried again, up to three times. On
+Firefox's blank kiosk page has no pixels to place it by. A window with no distinctive pixels
+is placed only when it is the active toplevel and its capture matches exactly one output
+of its size. On labwc, capturing History puts its own details pane back at the top, and the
+driver captures History to place it. That keeps the pane's Delete from destination… button
+below the window. When the button isn't in view, the S3 and R2 cleanup deletes through the
+exact row's own menu instead, the same path the History delete cell uses, and goes through
+the same confirmation. It then clears the History search for the next pass. When an
+accessibility walk runs past its time budget, the driver makes up to three attempts at the
+geometry read. On
 Budgie, History reads skip any application whose executable isn't put.gd's without
 contacting it, because the lab's Firefox stops answering accessibility calls after showing
 a CloudFront page. Live cleanup wheels History's pane below its preview: a pointer resting
@@ -634,15 +643,18 @@ on the preview shows a tooltip over the point.
 
 On Omarchy, quickshell's clipboard plugin (`omarchy.clipboard`) keeps a clipboard
 history on disk: `~/.local/state/omarchy/clipboard-history.json`, copied images under
-`clipboard-images/`, and a temporary copy of each text. put.gd copies every link it
-makes, signed ones included. The Hyprland guest turns the plugin off with
-`omarchy-plugin-disable` before the cells run. A live cell starts only after a check
-shows the plugin is disabled in `shell.json`, no `capture.sh` watcher runs, and a
-random canary copied to the clipboard changes nothing in that folder
-(`omarchy-clipboard.json`). The guest also gets `qtkeychain-qt6` as a new package,
-because the lab's credential bridge links it. Screen clearing on Omarchy waits until
-quickshell reports no notification cards, so a card that is still leaving doesn't cover the
-next click. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
+`clipboard-images/`, and a temporary copy of each text. Omarchy can record links
+put.gd copies automatically, signed ones included. The Hyprland guest turns the plugin off with
+`omarchy-plugin-disable` before the cells run, and records its check in
+`omarchy-clipboard.json`. Each live cell repeats that check after confirming the desktop lease and
+the guest slot. The plugin must be disabled in `shell.json`, no `capture.sh` watcher may
+run, and a random canary copied to the clipboard must change none of the known clipboard
+files. Those files are checked both in the shell's default state folder and in its
+`XDG_STATE_HOME` when set. The guest also gets `qtkeychain-qt6` as a new package,
+because the lab's credential bridge links it. After a successful request to dismiss
+quickshell's notification cards, screen clearing polls until quickshell reports none. It stops
+earlier if the count can't be read or the deadline passes, so a card still leaving rarely
+covers the next click. Hyprland ends the kiosk's fullscreen when History opens over it for a revoke, so
 the revoked-link check asks Firefox for fullscreen back before it navigates.
 
 Each builder reads its own

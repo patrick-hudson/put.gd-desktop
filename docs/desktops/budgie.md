@@ -302,11 +302,11 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
   screen, and a click it can't verify that way is not run rather than red. labwc 0.20
   captures a modal dialog alone as 1×1 (a plain PyQt6 dialog does the same) and draws it
   into its parent's capture at the origin. The guest's labwc window rules put each dialog
-  a cell clicks at a fixed position without decoration, and the lab checks the dialog's
-  pixels from that corner there. Budgie's labwc bridge writes back its own copy of
-  `rc.xml`, so the rules go in while the bridge is stopped. labwc's captures can show a
-  window's earlier pixels after a redraw, so clicks are checked against the guest's
-  display read over VNC ([details](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
+  a cell clicks at a fixed position without decoration. The lab checks the dialog's
+  pixels from that corner there, its detailed cells included. Budgie's labwc bridge writes
+  back its own copy of `rc.xml`, so the rules go in while the bridge is stopped. labwc's
+  captures can show a window's earlier pixels after a redraw, so clicks on a toplevel are
+  checked against the guest's display read over VNC, read again after any activation ([details](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
   accessible name, so the Tray menu cell finds put.gd's icon by its pixels and reads the menu
   with put.gd's `diagnostics.trayMenu` and tesseract
   ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
