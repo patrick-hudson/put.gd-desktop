@@ -19,7 +19,7 @@ import re
 # the clock's digits and other seasons' glyphs stay well below. Both bounds were measured on the
 # Cinnamon, Budgie and Hyprland panels (tests/desktop/test_surface_tray_pixels.py keeps them honest).
 MIN_SCORE = 0.8
-MARGIN = 0.12          # Any other candidate this close to the best makes the match ambiguous.
+MARGIN = 0.12          # Any other candidate this close to the best, or reaching MIN_SCORE, makes it ambiguous.
 CONTRAST = 40          # A pixel this far (largest channel difference) from the panel colour is drawn.
 ALPHA = 64             # A template pixel this opaque is part of the glyph's outline box.
 
@@ -186,7 +186,8 @@ def locate(image, box, glyphs, *, min_score=MIN_SCORE, margin=MARGIN):
                       '%d candidates)' % (best, min_score, len(candidates)))
     best, others = candidates[0], candidates[1:]
     runner_up = others[0]['score'] if others else 0.0
-    if runner_up >= best['score'] - margin:
+    # A second drawn copy of the glyph, however good the first, is never told apart by score.
+    if runner_up >= min_score or runner_up >= best['score'] - margin:
         raise NoMatch('put.gd\'s icon is ambiguous on the panel: candidates at %s and %s score %.3f and %.3f'
                       % (best['rect'], others[0]['rect'], best['score'], runner_up))
     return dict(rect=best['rect'], score=best['score'], runner_up=runner_up, panel=list(colour),
@@ -274,6 +275,17 @@ def label_score(label, text):
     if label.endswith('*'):
         got = got[:len(want)]
     return SequenceMatcher(None, want, got).ratio()
+
+
+def unknown_lines(labels, lines, *, threshold=.85):
+    """Lines read in a menu that are none of LABELS: a row the host added, or text OCR couldn't place.
+
+    Overlapping scroll views read some rows twice; those still match a label. Marks with fewer
+    than three letters or digits (submenu arrows, a scroll bar) are not rows.
+    """
+    return [line['text'] for line in lines
+            if len(normal(line['text']).replace(' ', '')) >= 3
+            and not any(label_score(label, line['text']) >= threshold for label in labels)]
 
 
 def align(labels, lines, *, threshold=.85):

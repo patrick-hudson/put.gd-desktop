@@ -277,6 +277,7 @@ else:
         entry.pop('pinned', None)
     else:
         entry['pinned'] = previous
+    print(json.dumps(entry.get('pinned')))
 temporary = path.with_name(path.name + '.putgd-lab')
 temporary.write_text(json.dumps(document, indent=2) + '\n')
 os.replace(temporary, path)
@@ -289,8 +290,9 @@ def _tray_shown(ctx, item):
     """Keep put.gd's tray icon on the bar while the block runs.
 
     Omarchy's tray keeps every item in a drawer that opens while the pointer is over its chevron;
-    a user pins an item (the tray's right-click Pin) to keep it on the bar. The lab pins put.gd's
-    item, by its StatusNotifier Id, and puts the setting back afterwards.
+    a user pins an item (the tray's right-click Pin) to keep it on the bar. The lab adds put.gd's
+    item, by its StatusNotifier Id, to the tray's pinned list. The fixture scope puts the earlier
+    value back in its deadline-exempt cleanup, which fails the run's cleanup if it can't.
     """
     if (_profile(ctx).get('pixels') or {}).get('reveal') != 'omarchy-pin':
         yield
@@ -298,13 +300,14 @@ def _tray_shown(ctx, item):
     pinned = ctx.shell('set -- pin ' + shlex.quote(item['id']) + '\n' + OMARCHY_PIN)
     if pinned.get('returncode') != 0:
         ctx.blocked('could not pin put.gd\'s tray item on Omarchy\'s bar', 670)
-    ctx.note('omarchy_tray_pin=' + item['id'] + ' (was ' + pinned['stdout'].strip() + ')')
-    try:
-        yield
-    finally:
-        restored = ctx.shell('set -- restore ' + shlex.quote(pinned['stdout'].strip()) + '\n' + OMARCHY_PIN)
-        if restored.get('returncode') != 0:
-            ctx.note('omarchy tray pin was not restored')
+    previous = pinned['stdout'].strip()
+    def restore():
+        result = ctx.shell('set -- restore ' + shlex.quote(previous) + '\n' + OMARCHY_PIN)
+        if result.get('returncode') != 0 or result.get('stdout', '').strip() != previous:
+            raise RecipeBlocked('Omarchy\'s tray pin setting was not put back')
+    ctx._fixture_manager.scope.defer('omarchy tray pin', restore, guest_only=True)
+    ctx.note('omarchy_tray_pin=' + item['id'] + ' (was ' + previous + ')')
+    yield
 
 
 def _panel(ctx, image):
@@ -339,6 +342,16 @@ def _pixel_icon(ctx, glyphs):
     return found, panel, image
 
 
+def _same_icon(image, panel, glyphs, rect):
+    """A fresh capture still shows exactly one copy of the glyph on the panel, where it was found."""
+    from tools.lab.surface_driver import tray_pixels
+    try:
+        again = tray_pixels.locate(image, panel, glyphs)
+    except tray_pixels.NoMatch:
+        return False
+    return all(abs(a - b) <= 1 for a, b in zip(again['rect'], rect))
+
+
 def _menu_activity(ctx):
     """put.gd's record of what the tray host asked of its menu (ui.snapshot diagnostics.trayMenu)."""
     menu = ctx.call('ui.snapshot')['diagnostics'].get('trayMenu')
@@ -362,27 +375,26 @@ def _pixel_menu(ctx, labels, glyphs):
     found, panel, before = _pixel_icon(ctx, glyphs)
     served = _menu_activity(ctx)
     x, y, w, h = found['rect']
-    still = lambda image: tray_pixels.still_drawn(image, found['rect'], glyphs) >= tray_pixels.MIN_SCORE
-    ctx.click_drawn(x + w / 2, y + h / 2, 0, still, button='right')
+    ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect']), button='right')
     menu = ctx.wait(lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None),
                     'the tray host asking put.gd for its menu after the right-click', timeout=5)
     rows = [r for r in menu['rows'] if r.get('visible')]
     ctx.note('tray_menu_served=' + json.dumps(dict(rows=[r.get('label') for r in rows], shows=menu.get('shows'),
                                                    opened=menu.get('opened')), ensure_ascii=False))
     showing = lambda image: tray_pixels.menu_box(before, image, panel, found['rect'])
-    box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon', timeout=5)
-    opened = dict(rows=rows, icon=found['rect'], glyphs=glyphs, box=box)
+    box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon')
+    opened = dict(rows=rows, icon=found['rect'], glyphs=glyphs, box=box, showing=showing, panel=panel)
     try:
         # The pointer still rests on the icon, whose tooltip can cover the first row (Omarchy): park
         # it beside the popup, over no row (a hovered row reads badly), on whichever side has room.
         park = (box[0] - 40 if box[0] >= 60 else box[2] + 40, (box[1] + box[3]) // 2)
         ctx.click_drawn(*park, 0, lambda image: showing(image) is not None, button=None)
-        box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'the menu still drawn with the pointer on it', timeout=5)
+        box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'the menu still drawn with the pointer moved off the icon')
         image = _settled_menu(ctx, box)
         opened.update(box=box, image=image)
         first = _read_menu(ctx, image, box)
         clickable = tray_pixels.align(labels, first)
-        read = clickable
+        read, rest = clickable, []
         if None in read and (_profile(ctx).get('pixels') or {}).get('scroll_menu'):
             # A host that caps the menu's height scrolls it (Omarchy's card, 420 px): read the rest,
             # then scroll back to the first view, the one whose rows are clicked.
@@ -400,9 +412,12 @@ def _pixel_menu(ctx, labels, glyphs):
                 if clickable[0] is not None:
                     break
             opened.update(image=image)
+        unknown = tray_pixels.unknown_lines(labels, first + rest)
         ctx.note('tray_menu_drawn=' + json.dumps(dict(box=list(box), lines=[l['text'] for l in first],
-                                                      unread=[l for l, m in zip(labels, read) if m is None]),
-                                                 ensure_ascii=False))
+                                                      unread=[l for l, m in zip(labels, read) if m is None],
+                                                      unknown=unknown), ensure_ascii=False))
+        if unknown:
+            ctx.blocked('the drawn tray menu shows text that is no agreed row: ' + ', '.join(unknown), 670)
         _menu_frame(ctx, 'tray-menu-by-pixels')
     except BaseException:
         _dismiss_drawn_menu(ctx, opened)
@@ -426,7 +441,16 @@ def _settled_menu(ctx, box):
     def settled():
         first = ctx.target.capture_image(0)
         return first if _same(first, _stable_menu(ctx, box), box) else None
-    return ctx.wait(settled, 'the drawn menu settled', timeout=5)
+    return _seen(ctx, settled, 'the drawn menu settled')
+
+
+def _seen(ctx, predicate, what, timeout=5):
+    """Wait for something only the screen shows; the lab not seeing it is not a failure of put.gd."""
+    try:
+        return ctx.wait(predicate, what, timeout=timeout)
+    except RecipeFailed:
+        _frame(ctx, 'tray-menu-not-seen')
+        ctx.blocked('tray menu by its pixels: no ' + what + ' within ' + str(timeout) + ' s', 670)
 
 
 def _stable_menu(ctx, box):
@@ -473,15 +497,17 @@ def _dismiss_drawn_menu(ctx, opened):
     import time
     box = opened['box']
     def showing(image):
-        return 'image' not in opened or _same(opened['image'], image, box)
+        if 'image' in opened:
+            return _same(opened['image'], image, box)
+        return opened['showing'](image) is not None
     for attempt in ('key', 'icon'):
         try:
             if attempt == 'key':
                 ctx.key_drawn('Esc', 0, showing)
             else:
                 x, y, w, h = opened['icon']
-                ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: showing(image) and tray_pixels.still_drawn(
-                    image, opened['icon'], opened['glyphs']) >= tray_pixels.MIN_SCORE, button='right')
+                ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: showing(image) and _same_icon(
+                    image, opened['panel'], opened['glyphs'], opened['icon']), button='right')
         except RecipeBlocked:
             return
         time.sleep(1)

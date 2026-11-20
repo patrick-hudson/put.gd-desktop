@@ -102,6 +102,15 @@ class LocateTheIcon(unittest.TestCase):
         with self.assertRaisesRegex(tp.NoMatch, 'no icon frames'):
             tp.locate(other, (0, 0, 640, 36), [None])
 
+    def test_a_second_shape_above_the_cutoff_is_ambiguous_however_far_behind(self):
+        from unittest.mock import patch
+        image = panel('dark', distractors=[(200, drawn(largest('turkey', 'dark'), 24)),
+                                           (300, drawn(largest('turkey', 'dark'), 24))])
+        scores = iter([0.95, 0.81] + [0.1] * 20)
+        with patch.object(tp, 'similarity', side_effect=lambda *a: next(scores)):
+            with self.assertRaisesRegex(tp.NoMatch, 'ambiguous'):
+                tp.locate(image, (0, 0, 640, 36), frames('turkey', 'dark'))
+
     def test_a_panel_border_line_does_not_swallow_the_icon(self):
         published = frames('mark', 'light')
         image = panel('light', distractors=[(300, drawn(largest('mark', 'light'), 22))])
@@ -160,6 +169,9 @@ class TheOpenMenu(unittest.TestCase):
         self.assertEqual([m and m['text'] for m in matched],
                          [rows[0], rows[1], None, rows[2], rows[3], rows[4], rows[5]])
         self.assertEqual(matched[0]['rect'][1], 20)
+        # Every line read must be an agreed row; a row read twice in overlapping views still is.
+        self.assertEqual(tp.unknown_lines(labels, lines + [lines[3], dict(text='›', rect=[0, 0, 1, 1])]), [])
+        self.assertEqual(tp.unknown_lines(labels, lines + [dict(text='Pin to bar', rect=[0, 0, 1, 1])]), ['Pin to bar'])
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 
