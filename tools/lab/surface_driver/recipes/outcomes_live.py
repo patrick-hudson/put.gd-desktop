@@ -127,6 +127,9 @@ def _cleanup(ctx, detail):
             history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
             final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
                                      in DELETION_SETTLED else None), 'UI deletion settled', timeout=180)
+            if not in_view:
+                # The search that picked the row would hide the next pass's row from History.
+                history._search(ctx, '')
         ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
                    'History confirms object removal')
         ctx.note('deletion_count=1')
