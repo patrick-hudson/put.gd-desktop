@@ -875,7 +875,7 @@ class NightlyTests(unittest.TestCase):
                     patch('tools.lab.desktop_lock.Desktop') as lock:
                 lock.return_value.status.return_value = dict(state='held')
                 with self.assertRaisesRegex(nightly.NotRun, 'awaiting host'):
-                    nightly.await_host(dict(host='d69', rows=[{}], waitSeconds=1200), Path(tmp),
+                    nightly.await_host(dict(host='d69', rows=[{}], waitSeconds=1200), Path(tmp), {},
                                        clock=lambda:clock[0], sleep=sleep, worker_deadline=45)
             self.assertEqual(clock[0], 45)
 
@@ -1167,13 +1167,29 @@ with n.controller_shutdown(workers):
         self.assertEqual(list(nightly.selected_builders(builders, ['aurora-amd-profile'])), ['aurora-amd'])
         with self.assertRaises(RuntimeError):
             nightly.selected_builders(builders, ['typo'])
-        previous = dict(release='tag', build=BUILD, desktops=[dict(host=h, cells={'old': h}) for h in builders])
-        result = dict(release='tag', build=BUILD, desktops=[dict(host='aurora-amd', cells={'new': True})])
+        previous = dict(release='tag', build=BUILD, desktops=[dict(host=h, desktop=h, cells={'old': h}) for h in builders])
+        result = dict(release='tag', build=BUILD, desktops=[dict(host='aurora-amd', desktop='aurora-amd', cells={'new': True})])
         merged = nightly.merge_desktops(previous, result)
         self.assertIs(merged[0], previous['desktops'][0])
         self.assertIs(merged[3], result['desktops'][0])
         with self.assertRaises(RuntimeError):
             nightly.merge_desktops(previous, dict(result, build='b'*40))
+
+    def test_a_builder_with_two_rows_rechecks_only_the_named_row(self):
+        builders = {host: dict(rows=[dict(name=host, desktop=host+'-profile')]) for host in nightly.HOSTS}
+        builders['d69']['rows'].append(dict(name='Budgie', desktop='fedora-budgie-wayland'))
+        only = nightly.selected_builders(builders, ['Budgie'])
+        self.assertEqual(list(only), ['d69'])
+        self.assertEqual([r['name'] for r in only['d69']['rows']], ['Budgie'])
+        self.assertEqual(len(builders['d69']['rows']), 2)  # The configuration itself is untouched.
+        both = nightly.selected_builders(builders, ['d69'])
+        self.assertEqual([r['name'] for r in both['d69']['rows']], ['d69', 'Budgie'])
+        previous = dict(release='tag', build=BUILD, desktops=[dict(host='d69', desktop='d69', cells={}),
+                                                              dict(host='d69', desktop='Budgie', cells={})])
+        result = dict(release='tag', build=BUILD, desktops=[dict(host='d69', desktop='Budgie', cells={'new': 1})])
+        merged = nightly.merge_desktops(previous, result)
+        self.assertIs(merged[0], previous['desktops'][0])
+        self.assertIs(merged[1], result['desktops'][0])
 
     def test_unsupported_cells_are_neither_red_nor_run(self):
         with patch.dict(nightly.UNSUPPORTED, {('budgie', 'window_recording'): 'matrix: not offered'}):
