@@ -557,7 +557,7 @@ guest and sshd's restart cost the row its guest.
 | Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
-| Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden; the Budgie and Hyprland rows do |
+| Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden |
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
@@ -595,13 +595,53 @@ the cell right-clicks up to three times, each only while no popup shows.
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
-(AppImage) and f44 Fedora GNOME (RPM) run one each. The Budgie row runs no live cells
-(`"live": false` in d69's config since 2026-11-20). Live S3 cleanup deletes the object
-from History, which labwc doesn't let the driver do: on 2026-11-20 the Live S3 cell
-couldn't verify its click on the History window, so its cleanup stayed unresolved and
-the row kept its guest with the object still published. Had that click worked, the
-deletion confirmation would have stopped it: the same row's History delete cell couldn't
-place that dialog, and a click on a dialog labwc captures as 1×1 is never verified. Each builder reads its own
+(AppImage) and f44 Fedora GNOME (RPM) run one each. Every row runs the live cells.
+
+labwc reports no window geometry, so the Budgie row places windows by their own pixels,
+and three labwc 0.20 behaviours need care:
+
+- **Dialogs.** labwc captures a modal dialog on its own as 1×1, and draws it into its
+  parent's capture at that capture's origin. The Budgie guest gets labwc window rules
+  for the dialogs the cells click (`window_rules` in the `fedora-budgie-wayland`
+  profile: Delete from destination and Revoke share link). Each rule moves the dialog to a
+  fixed position with no server-side decoration, so its content starts exactly there.
+  The driver checks the dialog's own pixels, taken from its parent's capture, at that
+  rectangle.
+- **The labwc bridge.** Budgie's labwc bridge reads `rc.xml` once, when it starts, and
+  writes its own copy back on every change. put.gd's shortcuts reach it as gsettings,
+  so rules written while it runs are lost. The guest setup stops the bridge, writes
+  the rules, starts it again from its own environment, and checks that the bridge's first
+  write still holds them (`labwc-rules.json` in the row's evidence). budgie-session
+  does not restart the bridge on its own.
+- **Stale captures.** grim's capture of the outputs can show a region's earlier pixels
+  after a window redrew it, while the display shows the new ones. A window's own
+  capture can lag the same way. This happened with History's details pane after its
+  link row laid out, and it left History clicks unverified. A pointer hit-test therefore
+  compares the window's own capture with the guest's display, read over VNC, inside the
+  target's rectangle. A capture that disagrees is read again, up to three times.
+
+Firefox's blank kiosk page has no pixels to place it by. A flat window counts as placed
+only where it fills the one output of its size. On labwc, each capture of a toplevel
+puts History's details pane back at the top, and the driver captures History to place it.
+That keeps the pane's Delete from destination… button below the window. When the button
+isn't in view, a live cleanup deletes through the exact row's own menu instead, the same
+path the History delete cell uses, and then goes through the same confirmation. A geometry read
+that a slow application (Firefox while it closes) holds past its time budget is tried
+again, up to three times.
+
+On Omarchy, quickshell's clipboard plugin (`omarchy.clipboard`) keeps a clipboard
+history on disk: `~/.local/state/omarchy/clipboard-history.json`, copied images under
+`clipboard-images/`, and a temporary copy of each text. put.gd copies every link it
+makes, signed ones included. The Hyprland guest turns the plugin off with
+`omarchy-plugin-disable` before the cells run. A live cell starts only after a check
+shows the plugin is disabled in `shell.json`, no `capture.sh` watcher runs, and a
+random canary copied to the clipboard changes nothing in that folder
+(`omarchy-clipboard.json`). The guest also gets `qtkeychain-qt6` as a new package,
+because the lab's credential bridge links it. Screen clearing on Omarchy waits until
+quickshell reports no notification cards, so a card that is still leaving doesn't cover the
+next click.
+
+Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
 builder's copy and in d69's. The cells added on 2026-11-20 add about nine minutes to a
 live row (Live R2 alone takes about five) and three to a local-only one; a builder with

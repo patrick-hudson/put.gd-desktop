@@ -297,14 +297,16 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
   round trips and click highlights are left to Budgie desktop acceptance. The
   Ubuntu 26.04 CI leg installs labwc; the test skips where labwc is absent. Headless results are supporting evidence,
   never desktop acceptance.
-- The nightly desktop check runs a Fedora 45 Budgie row (RPM). labwc gives no window
-  geometry, so the lab places a window only where its own pixels show on screen, and a
-  click it can't verify that way is not run rather than red. labwc 0.20 captures a modal
-  dialog as a 1×1 surface (a plain PyQt6 dialog does the same). The lab places such a
-  dialog only when a rectangle of its expected size is the one change over its parent window,
-  but that only locates it: a click on a dialog captured as 1×1 is never verified, so it is
-  not run. Deleting from History needs such a click, so the row runs no live cells
-  ([why](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
+- The nightly desktop check runs a Fedora 45 Budgie row (RPM) with its live cells. labwc
+  gives no window geometry, so the lab places a window only where its own pixels show on
+  screen, and a click it can't verify that way is not run rather than red. labwc 0.20
+  captures a modal dialog alone as 1×1 (a plain PyQt6 dialog does the same) and draws it
+  into its parent's capture at the origin. The guest's labwc window rules put each dialog
+  a cell clicks at a fixed position without decoration, and the lab checks the dialog's
+  pixels from that corner there. Budgie's labwc bridge writes back its own copy of
+  `rc.xml`, so the rules go in while the bridge is stopped. labwc's captures can show a
+  window's earlier pixels after a redraw, so clicks are checked against the guest's
+  display read over VNC ([details](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
   accessible name, so the Tray menu cell finds put.gd's icon by its pixels and reads the menu
   with put.gd's `diagnostics.trayMenu` and tesseract
   ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
