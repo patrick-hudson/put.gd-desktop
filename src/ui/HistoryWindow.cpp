@@ -195,8 +195,7 @@ private:
 // the close button and Copy link past the window edge, where nobody can click them.
 class HistoryTitle final:public QLabel {
 public:
- explicit HistoryTitle(QWidget* parent):QLabel(parent){setTextFormat(Qt::PlainText);setWordWrap(true);QSizePolicy policy(QSizePolicy::Preferred,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
- bool hasHeightForWidth()const override{return true;}
+ explicit HistoryTitle(QWidget* parent):QLabel(parent){setTextFormat(Qt::PlainText);setWordWrap(true);}
  int heightForWidth(int width)const override{const auto m=contentsMargins();return int(std::ceil(document(width-m.left()-m.right())->size().height()))+m.top()+m.bottom();}
  QSize sizeHint()const override{const auto m=contentsMargins();const int width=int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))+m.left()+m.right();return {width,heightForWidth(width)};}
  QSize minimumSizeHint()const override{const auto m=contentsMargins();return {m.left()+m.right(),fontMetrics().height()+m.top()+m.bottom()};}

@@ -3,7 +3,6 @@
 // the rendered catalog, except a layout that puts a control out of reach.
 #include <QDateTime>
 #include <QApplication>
-#include <QCryptographicHash>
 #include <QDialog>
 #include <QLabel>
 #include <QListView>
@@ -162,7 +161,8 @@ private slots:
  // widening it past the window, where its close button and Copy link were cut off.
  void unbrokenFileNameStaysInsideTheDetailsPane() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  const QString name="Tier1-"+QString(QCryptographicHash::hash("unbroken",QCryptographicHash::Sha256).toHex());
+  // A hyphen never breaks before a digit, so the whole name is one run.
+  const QString name="Tier1-0fdcf967b2bf47e781b6d9903002e2230fdcf967b2bf47e781b6d9903002e223";
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="long-name";op.created="2026-11-19T00:00:00.000Z";op.restore(OperationState::Completed);op.settings=settings.snapshot();OperationItem item;item.artifact.id="long-name-item";item.artifact.name=name+".png";item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="uploaded";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1280,746);window.show();
   auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);
@@ -173,6 +173,9 @@ private slots:
   QVERIFY(QFontMetrics(title->font()).horizontalAdvance(name)>pane->viewport()->width());
   // Nothing in the pane is laid out past its edge: its content fits and the close button shows.
   PUTGD_VERIFY_STEADY(pane->widget()->width()<=pane->viewport()->width()&&pane->viewport()->rect().contains(QRect(close->mapTo(pane->viewport(),QPoint()),close->size())),200);
+  // The title wrapped onto more than one line and got the height to show all of them.
+  QVERIFY(title->heightForWidth(title->width())>QFontMetrics(title->font()).height());
+  QVERIFY(title->height()>=title->heightForWidth(title->width()));
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
