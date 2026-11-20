@@ -523,7 +523,13 @@ Release manual desktop leases by 12:15 UTC so the check can acquire them.
 #### What the nightly check runs
 
 Each row boots a fresh guest of its golden, installs the published package and runs
-these cells, each judged by an independent check, not the app's own report:
+these cells, each judged by an independent check, not the app's own report. Before it
+installs anything, the row masks and stops the guest's own package updaters (`apt-daily`,
+`apt-daily-upgrade`, Mint Update's automation, dnf makecache and automatic) in the
+overlay, and records them in `package-updates.json`; a unit still loaded or active
+stops the row. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
+hour the check runs: on 2026-11-20 it upgraded `openssh-server` mid-row in the Kubuntu
+guest and sshd's restart cost the row its guest.
 
 | Cell | Green when |
 | --- | --- |
@@ -556,7 +562,11 @@ no tray host.
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
-(AppImage) and f44 Fedora GNOME (RPM) run one each. Each builder reads its own
+(AppImage) and f44 Fedora GNOME (RPM) run one each. The Budgie row runs no live cells
+(`"live": false` in d69's config since 2026-11-20): its live S3 cleanup deletes the
+object from History, and on labwc the driver can't verify a click on the deletion
+confirmation, which labwc captures as 1×1, so the first live run kept its guest with
+the object still published. Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
 builder's copy and in d69's. The cells added on 2026-11-20 add about nine minutes to a
 live row (Live R2 alone takes about five) and three to a local-only one; a builder with
