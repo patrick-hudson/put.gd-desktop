@@ -56,7 +56,21 @@ def _retry_deletion(ctx, current):
                              in settled else None), 'retried deletion settled', timeout=90)
 
 
-COPY_LINK = {'name': 'Copy link', 'role': 'push button'}
+def _delete_from_row_menu(ctx, detail):
+    """Delete from destination… in the exact row's own menu, as history_delete does.
+
+    On labwc every capture of History (the driver places it by its own pixels) puts its details
+    pane back at the top, so the pane's button, below the window's end, cannot be scrolled to.
+    """
+    history._search(ctx, history._distinct_text(ctx, detail))
+    ctx.wait(lambda: history._state(ctx)['rows'] == 1, 'the live row is the one row shown')
+    node = history._searched_row_node(ctx)
+    history._click_history_node(ctx, {'role': 'list item', 'name': node['name']})
+    ctx.wait(lambda: history._state(ctx)['selectedIds'] == [detail['id']], 'the live row is selected with real input')
+    history._focus_items(ctx)
+    ctx.keys('Shift+F10')
+    history._wait_menu(ctx, 'Delete from destination…')
+    ctx.click('text:Delete from destination…', window='historyRowMenu')
 
 
 def _cleanup(ctx, detail):
@@ -68,13 +82,9 @@ def _cleanup(ctx, detail):
     # right side with guarded real input; older Qt does not export its ID.
     ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.6*box['height']), -16, head=box.get('head', 0))
     button = ({'name': 'Revoke link…', 'role': 'push button'} if ctx.destination == 'proton' else history.DELETE_BUTTON)
-    inside = ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
-                                 within=[box[k] for k in ('x', 'y', 'width', 'height')]))
-    if not (len(inside) == 1 and inside[0].get('rect')):
-        # The pane can grow after the first wheel (Budgie: its link row lays out late), leaving the action
-        # below the window's end: wheel again until it stops moving, as the History recipes do.
-        # Wheel over a plain button of the pane: History's preview takes the wheel itself (Budgie).
-        history._scroll_details_to_end(ctx, button, (button, COPY_LINK, history.RECEIPT_TOGGLE, history.PREVIEW))
+    in_view = ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
+                                  within=[box[k] for k in ('x', 'y', 'width', 'height')]))
+    in_view = len(in_view) == 1 and bool(in_view[0].get('rect'))
     ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
         # Qt 6.4 does not publish objectName, and the pinned S3 catalog has
@@ -101,9 +111,12 @@ def _cleanup(ctx, detail):
         if current.get('deleteOperationId') and current.get('remoteStatus') in ('failed', 'unknown'):
             final = _retry_deletion(ctx, current)
         else:
-            # Qt 6.4 does not expose this button's objectName. The exact caption
-            # still binds the unique visible owned inspector action.
-            ctx.click('text:Delete from destination…', window='history')
+            if in_view:
+                # Qt 6.4 does not expose this button's objectName. The exact caption
+                # still binds the unique visible owned inspector action.
+                ctx.click('text:Delete from destination…', window='history')
+            else:
+                _delete_from_row_menu(ctx, detail)
             history._wait_window(ctx, 'confirmAction')
             ctx.call('ui.history', {'action': 'copyDeletionDetails'})
             prepared = json.loads(ctx.clipboard_text())
