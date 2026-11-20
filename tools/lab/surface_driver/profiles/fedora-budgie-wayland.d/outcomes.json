@@ -1,0 +1,9 @@
+{
+  "file_manager": {
+    "process": "dolphin",
+    "command": [
+      "dolphin",
+      "--new-window"
+    ]
+  }
+}
