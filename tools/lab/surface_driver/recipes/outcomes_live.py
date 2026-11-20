@@ -6,6 +6,7 @@ No preuploaded result, fake endpoint, direct provider delete or account sign-in.
 import io
 import json
 import sys
+from urllib.parse import urlsplit
 
 from ..api import recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
@@ -117,6 +118,9 @@ def _published(ctx, oid, pending):
                                if r.get('operationId') == oid], 'live publication has durable history')
     ctx.expect(len(records) == 1, 'one live capture has exactly one durable row')
     detail = ctx.call('history.detail', {'id': records[0]['id']})
+    if 'X-Amz-' in urlsplit(detail.get('receipt', {}).get('directUrl') or '').query:
+        # History shows a signed link in full (key ID and signature): no frame until History is closed.
+        ctx._frames_withheld = 'a signed link may be on screen'
     ctx.note('operationId='+oid)
     ctx.note('historyId='+detail['id'])
     # Register cleanup even for partial publication, before checking its outcome.

@@ -946,8 +946,13 @@ def window_recording(ctx):
             ready = selectors._state(ctx, rid, 'ready')
             window = ready.get('window') or {}
             ctx.note('recording window=' + json.dumps({k: window.get(k) for k in ('appId', 'rect')}, sort_keys=True))
-            # The fixture covers its monitor, so the size alone cannot tell a window from a monitor recording.
-            ctx.expect(window.get('title') == 'putgd synthetic fixture' or (not window and ctx.profile.get('session') == 'x11'),
+            # The fixture covers its monitor, so the size alone cannot tell a window from a monitor recording:
+            # the resident must have frozen exactly the identity asked for (and, where it reports one, the title).
+            ctx.expect(ready.get('target', {}).get('kind') == 'window'
+                       and ready['target'].get('identity') == target['identity']
+                       and (not window or (window.get('identity') == target['identity']
+                                           and window.get('title') == 'putgd synthetic fixture'))
+                       and (window or ctx.profile.get('session') == 'x11'),
                        'the resident froze the fixture window, not another one')
             ctx.call('recording.start', {'id': rid})
             selectors._state(ctx, rid, 'recording')
@@ -997,6 +1002,12 @@ def _top(node):
     return _box(node)[1]
 
 
+def _menu_chain(node):
+    """The menu a row sits in: its accessible ancestors, leaving out menu-item wrappers (GNOME's labels)."""
+    return json.dumps([[a.get('role'), a.get('name'), a.get('rect')] for a in node.get('ancestors', [])
+                       if a.get('role') != 'menu item'])
+
+
 @recipe('tray.context-menu', 'tray.menu-capture-region', desktop_drawn=True, timeout=300)
 def tray_menu(ctx):
     with _lane(ctx) as (scope, service):
@@ -1012,11 +1023,14 @@ def tray_menu(ctx):
         tops = [_top(n) for n in rows]
         ctx.note('tray_rows=' + json.dumps([[n['name'], top] for n, top in zip(rows, tops)]))
         ctx.expect(tops == sorted(tops) and len(set(tops)) == len(tops), 'tray rows are in the agreed order')
-        # Nothing else in the menu: every named row in the menu's own column is one of the agreed rows.
-        left = _box(rows[0])[0]
-        column = sorted((n for n in tray._nodes(ctx, '*', 'menu item')
-                         if n.get('name') and _box(n)[0] == left), key=_top)
-        extra = [n['name'] for n in column if n['name'] not in {r['name'] for r in rows}]
+        # Nothing else in the menu: every shown, named row inside the same open menu is an agreed one.
+        menus = {_menu_chain(n) for n in rows}
+        ctx.expect(len(menus) == 1 and next(iter(menus)) != '[]', 'the agreed rows share one open tray menu')
+        role = tray._profile(ctx).get('menu', {}).get('role', 'menu item')
+        inside = [n for n in ctx.accessible({'name': '*', 'role': role,
+                                             'application': tray._profile(ctx)['icon']['application']})
+                  if n.get('name') and n.get('visible', True) and n.get('showing', True) and _menu_chain(n) in menus]
+        extra = sorted({n['name'] for n in inside} - {r['name'] for r in rows})
         ctx.expect(not extra, 'tray menu shows only the agreed rows; also: ' + ', '.join(extra))
         tray._menu_frame(ctx, 'tray-menu-agreed-layout')
         tray._press(ctx, 'region', 'menu item')
