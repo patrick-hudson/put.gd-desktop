@@ -1679,6 +1679,35 @@ with n.controller_shutdown(workers):
         no_proton = nightly.row_cells(dict(desktop='x', live=True, proton=False), 'setup')
         self.assertEqual(set(no_proton), set(nightly.FLOWS) - {'proton_region_upload'})
 
+    def test_stock_fedora_gnome_has_no_tray_so_its_tray_cell_is_not_supported(self):
+        cells = nightly.row_cells(dict(desktop='fedora-gnome-wayland', live=False), 'setup')
+        self.assertEqual(cells['tray_menu']['status'], 'unsupported')
+        self.assertIn('no tray host', cells['tray_menu']['assertion'])
+        # Only the tray: every other Fedora GNOME cell runs, and other GNOME rows keep their tray cell.
+        self.assertEqual([f for f, c in cells.items() if c['status'] == 'unsupported'], ['tray_menu'])
+        ubuntu = nightly.row_cells(dict(desktop='ubuntu-gnome-wayland', live=False), 'setup')
+        self.assertEqual(ubuntu['tray_menu']['status'], 'not_run')
+
+    def test_a_row_green_but_for_unsupported_cells_files_nothing_and_closes_its_issue(self):
+        failure = dict(number=2, title='nightly: Fedora GNOME failing', state='open')
+        github = FakeGitHub(failure)
+        cells = nightly.row_cells(dict(desktop='fedora-gnome-wayland', live=False), 'setup')
+        for flow, value in cells.items():
+            if value['status'] != 'unsupported':
+                cells[flow] = nightly.cell('green')
+        row = dict(desktop='Fedora GNOME', host='f44', evidence='/new', cells=cells)
+        result = dict(release='tag', build=BUILD, date='today', desktops=[row])
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github, result, Path(tmp))
+            markdown = (Path(tmp)/'results.md').read_text()
+        line = next(l for l in markdown.splitlines() if l.startswith('| Fedora GNOME / f44 |'))
+        self.assertIn('➖', line)
+        self.assertNotIn('⚪', line)
+        self.assertNotIn('🔴', line)
+        self.assertTrue(line.endswith('|  |'), line)  # Nothing in the Not run column.
+        self.assertFalse(any(w[0] == 'issue' and w[1] == failure['title'] for w in github.writes))
+        self.assertIn(('PATCH', 'repos/owner/repo/issues/2', dict(state='closed')), github.writes)
+
     def test_guest_service_selection_is_explicit_and_never_changes_host_default(self):
         from tools.lab import lab, lab_keyring
         self.assertEqual(lab.guest_secret_prefix({}), '')

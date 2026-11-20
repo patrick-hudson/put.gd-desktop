@@ -49,9 +49,13 @@ FLOWS = dict(idle_memory='Idle memory', region_upload='Region', window_desktop='
 LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
 LIVE = [name for name in FLOWS if name not in LOCAL]
 # A feature the acceptance matrix (docs/testing/acceptance-matrix.md) says a
-# desktop does not support is reported as such, never as red or not run.
-# Keyed by (row desktop id, flow); the reason quotes the matrix.
-UNSUPPORTED = {}
+# desktop does not support is reported as such (➖), never as red or not run.
+# Only for something no user of that desktop can do; a check the lab can't
+# drive stays not run (⚪). Keyed by (row desktop id, flow); the reason quotes the matrix.
+UNSUPPORTED = {
+    ('fedora-gnome-wayland', 'tray_menu'): 'stock Fedora GNOME has no tray host (no StatusNotifier or AppIndicator '
+                                           'extension), so put.gd shows no tray icon there; Settings has Quit put.gd',
+}
 STATUS_MARK = {'green': '🟢', 'red': '🔴', 'not_run': '⚪', 'unsupported': '➖'}
 STABLE_TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+')
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
