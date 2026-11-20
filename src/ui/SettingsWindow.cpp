@@ -1744,8 +1744,13 @@ QJsonObject SettingsWindow::candidate() const {
  // An untouched config keeps neither capture delay key: no delay, shortcuts immediate.
  if(preferences.contains("captureDelaySeconds")||captureDelay_->currentData().toInt()!=0)preferences["captureDelaySeconds"]=captureDelay_->currentData().toInt();
  if(preferences.contains("captureDelayShortcuts")||captureDelayShortcuts_->isChecked())preferences["captureDelayShortcuts"]=captureDelayShortcuts_->isChecked();
+ // A configuration from before scroll capture keeps neither key; each reads as its default. Writing
+ // one regardless would leave the draft different from the saved file after every save, which then
+ // reads as unsaved and refuses every action.
+ if(preferences.contains("scrollCaptureMaxHeight")||scrollHeight_->value()!=effective.scrollCaptureMaxHeight)preferences["scrollCaptureMaxHeight"]=scrollHeight_->value();
+ if(preferences.contains("scrollCaptureFromTop")||scrollFromTop_->isChecked()!=effective.scrollCaptureFromTop)preferences["scrollCaptureFromTop"]=scrollFromTop_->isChecked();
+ if(preferences.contains("scrollCaptureAutoScroll")||scrollAutoScroll_->isChecked())preferences["scrollCaptureAutoScroll"]=scrollAutoScroll_->isChecked();
  // An untouched config keeps no recordingFrameRate; it reads as 30.
- preferences["scrollCaptureMaxHeight"]=scrollHeight_->value();preferences["scrollCaptureFromTop"]=scrollFromTop_->isChecked();if(preferences.contains("scrollCaptureAutoScroll")||scrollAutoScroll_->isChecked())preferences["scrollCaptureAutoScroll"]=scrollAutoScroll_->isChecked();
  if(preferences.contains("recordingFrameRate")||recordingFrameRate_->currentData().toInt()!=30)preferences["recordingFrameRate"]=recordingFrameRate_->currentData().toInt();
  // #1428: Automatic keeps no key; otherwise the chosen languages in order, each once.
  {QJsonArray languages;for(auto* combo:textLanguages_){const auto id=combo->currentData().toString();if(id.isEmpty()){if(combo==textLanguages_.first())break;continue;}if(!languages.contains(id))languages.append(id);}

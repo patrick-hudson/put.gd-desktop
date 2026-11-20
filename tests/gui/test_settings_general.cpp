@@ -25,6 +25,21 @@ private slots:
   QCOMPARE(writes,0);QCOMPARE(service.document(),doc);QCOMPARE(service.revision(),revision);
   QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),bytes);
  }
+ // A configuration written before scroll capture has neither of its preferences. Settings shows
+ // their defaults without adding them, so after a saved edit nothing reads as unsaved and an
+ // explicit action still runs (f44, nightly 26.1120.5780: Upload clipboard was refused).
+ void untouchedScrollCaptureKeysLeaveNothingUnsaved(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();auto preferences=doc["preferences"].toObject();preferences.remove("scrollCaptureMaxHeight");preferences.remove("scrollCaptureFromTop");doc["preferences"]=preferences;
+  QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
+  auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");QVERIFY(notifications);
+  const bool shown=notifications->isChecked();notifications->click();
+  PUTGD_TRY_COMPARE(service.document()["preferences"].toObject()["notifications"].toBool(),!shown);
+  PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&!window.settings()->actionSaveError());
+  const auto saved=service.document()["preferences"].toObject();
+  QVERIFY(!saved.contains("scrollCaptureMaxHeight")&&!saved.contains("scrollCaptureFromTop"));
+ }
  // The status band ends in the same state whether the window opened at a width
  // or was resized to it, either way, and gives way in order: the delay control
  // stays whole, "Settings save automatically" goes before the version, then
