@@ -1139,12 +1139,12 @@ def rule_rect(compositor, title, app_id, size):
     return [int(rules[0]['position'][0]), int(rules[0]['position'][1])] + list(size) if rules else None
 
 
-def place_pixels(compositor, title, app_id, window, screen, rule_only=False):
+def place_pixels(compositor, title, app_id, window, screen, rule_only=False, active=False):
     """Where a toplevel's pixels are on the outputs: {'rect', 'visible', 'by'} or RuntimeError.
 
     A window a lab window rule places must show at the rule's position. Any other is found by its
-    own pixels; when it has none to find (a blank fullscreen kiosk), a window exactly the size of
-    one output must show on that output.
+    own pixels; when it has none to find (a blank fullscreen kiosk), the active toplevel, exactly
+    the size of one output, must show on that output.
     """
     size = list(window[:2])
     known = rule_rect(compositor, title, app_id, size)
@@ -1159,7 +1159,7 @@ def place_pixels(compositor, title, app_id, window, screen, rule_only=False):
     try:
         return dict(locate_pixels(window, screen), by='pixels')
     except RuntimeError as error:
-        if 'no distinctive pixels' not in str(error):
+        if 'no distinctive pixels' not in str(error) or not active:
             raise
         fits = [o for o in wlr_outputs() if o[2:] == size]
         shown = [o for o in fits if pixel_share(window, screen, o[0], o[1]) >= KNOWN_SHARE]
@@ -1185,6 +1185,9 @@ def dialog_place(compositor, pid, title, window, size, screen):
         if image[:2] == (1, 1) or image[0] < size[0] or image[1] < size[1]:
             continue
         corner = crop(image, 0, 0, *size)
+        if _detail(corner[2]) < len(corner[2]) // 64:
+            refused.append('the corner of %s has no detail to be a dialog' % other['id'])
+            continue
         try:
             placed.append((other['id'], corner, place_pixels(compositor, title, window['wm_class'], corner, screen,
                                                              rule_only=True)['rect']))
@@ -1331,7 +1334,8 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3, display=No
             else:
                 if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
                     window = content_box(window, *size) or window
-                where = place_pixels(compositor, target.get('name', ''), me['wm_class'], window, screen)['rect']
+                where = place_pixels(compositor, target.get('name', ''), me['wm_class'], window, screen,
+                                     active=bool(me.get('focus')))['rect']
         except RuntimeError as error:
             reason = str(error)
             continue
@@ -1484,7 +1488,8 @@ class WaylandPlacement:
         while True:
             # A window just shown may still be under one that is closing: look again, bounded.
             try:
-                content = place_pixels(self.compositor, title, found[0]['wm_class'], image, self.screen())['rect']
+                content = place_pixels(self.compositor, title, found[0]['wm_class'], image, self.screen(),
+                                       active=bool(found[0].get('focus')))['rect']
                 break
             except RuntimeError:
                 if time.monotonic() >= deadline:
@@ -2804,9 +2809,11 @@ def witness_foreground(query):
         if (not result['ok'] and query.get('raise') and not query.get('popup')
                 and not str(wid).startswith('layer:') and compositor_activate(compositor, wid)):
             # labwc keeps a fullscreen window above an activated one until that one is activated again.
-            # A display read before this activation no longer says what is on top: use grim's.
+            # A display read before this activation no longer says what is on top, and grim's capture
+            # of the outputs can be stale: the driver reads the display again and asks once more.
             time.sleep(.3)
-            result = toplevel_pixels_foreground(compositor, target, point)
+            if not query.get('display'):
+                result = toplevel_pixels_foreground(compositor, target, point)
         return result
     if point is not None and compositor.get('kind') == 'hyprctl':
         return hyprland_foreground(target, point)

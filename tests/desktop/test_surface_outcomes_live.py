@@ -319,8 +319,7 @@ class LiveOutcomes(unittest.TestCase):
                 ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
                 ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
                 # Omarchy's clipboard history keeps copied links on disk: live only once a copy is seen to stay off it.
-                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'history is not verified off'),
-                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy+'/off', 'synthetic lock denied'),
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'synthetic lock denied'),
                 ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'not on an authorized builder'),
                 ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'not on an authorized builder'),
                 ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', budgie, 'requires an approved guest package/profile'),
@@ -340,6 +339,32 @@ class LiveOutcomes(unittest.TestCase):
                      patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
                     with self.assertRaisesRegex(RecipeBlocked, reason):
                         admit(ctx)
+
+    def test_omarchy_live_needs_its_clipboard_history_seen_off_after_the_lease_and_slot(self):
+        # Omarchy's clipboard history stores copied links on disk: live starts only once the guest shows
+        # it off, and that check (it replaces the clipboard) runs only after the lease and the exact slot.
+        with tempfile.TemporaryDirectory() as home:
+            run = Path(home)/'run'
+            slot = Path(home)/'putgd-lab/locks/tier1-guest.lock.d'
+            slot.mkdir(parents=True)
+            (slot/'session').write_text('synthetic-session\n')
+            (slot/'owner.json').write_text(json.dumps({'run': str(run)}))
+            image = Path(home)/'work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2'
+            for off, reason in ((False, 'history is not verified off'), (True, 'private app root must be on guest tmpfs')):
+                with self.subTest(off=off):
+                    report = json.dumps(dict(historyOff=off, reason='' if off else 'a clipboard history watcher still runs'))
+                    shell = Mock(side_effect=[dict(returncode=0, stdout=report), dict(returncode=0, stdout='ext4')])
+                    ctx = SimpleNamespace(destination='s3', placement='guest', host='m74', desktop='omarchy-hyprland-wayland',
+                                          package='appimage', profile={'guest': 'omarchy-hyprland'}, _live_admitted=True,
+                                          target=SimpleNamespace(physical=None, run=run, root=str(run/'root')), shell=shell)
+                    with patch('pathlib.Path.home', return_value=Path(home)), \
+                         patch('tools.lab.lab.state', return_value={'profile': 'omarchy-hyprland', 'golden': str(image)}), \
+                         patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                         patch('tools.lab.desktop_lock.Desktop') as lock:
+                        with self.assertRaisesRegex(RecipeBlocked, reason):
+                            admit(ctx)
+                    lock.return_value.heartbeat.assert_called_once_with('synthetic-session')
+                    self.assertIn('clipboard-history.json', shell.call_args_list[0].args[0])
 
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
         """Reject unsupported or misidentified AppImages before any lease or credential access."""

@@ -402,7 +402,7 @@ class DriverContext(Context):
             time.sleep(.5)
             witness = self._probe('foreground', self._with_display(query))
         for _ in range(2):
-            if witness.get('ok') or not witness.get('unverified') or 'display' not in query:
+            if witness.get('ok') or not witness.get('unverified') or 'display' not in self._with_display(query, probe=False):
                 break
             # A capture of labwc's can still hold pixels the window has since replaced; look again.
             time.sleep(.5)
@@ -419,10 +419,10 @@ class DriverContext(Context):
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
         return witness
 
-    # The display is read over the guest's VNC, so the request stays under the probe's 1 MiB cap.
-    DISPLAY_BYTES = 768 * 1024
+    # The display crop travels base64-encoded in the probe request, which is capped at 1 MiB.
+    DISPLAY_BYTES = 640 * 1024
 
-    def _with_display(self, query):
+    def _with_display(self, query, probe=True):
         """A pointer hit-test on labwc, with what the display shows over the target window now.
 
         labwc's own output capture (grim) can hold a region's earlier pixels while the display
@@ -437,6 +437,8 @@ class DriverContext(Context):
                 or self.profile.get('compositor', {}).get('kind') != 'toplevel-pixels'
                 or str(geometry.get('window_id', '')).startswith('layer:') or len(self.profile.get('screens', [])) > 1):
             return query
+        if not probe:
+            return dict(query, display=None)  # only says that a display would be read
         import base64, zlib
         image = self.target.capture_image(0).convert('RGB')
         rect = [int(geometry[k]) for k in ('x', 'y', 'width', 'height')]

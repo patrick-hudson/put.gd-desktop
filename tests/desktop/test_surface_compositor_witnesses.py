@@ -193,8 +193,11 @@ class PixelWitness(unittest.TestCase):
         flat = (320, 200, b'\x20' * (320 * 200 * 3))
         with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200], [320, 0, 640, 480]]):
             with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels.*nor does it fill one output'):
-                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen)
-            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat)
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen, active=True)
+            # Only the active toplevel: another flat surface the same size proves nothing about this one.
+            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat)
+            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, active=True)
         self.assertEqual((placed['rect'], placed['by']), ([0, 0, 320, 200], 'output'))
 
     def test_a_dialog_shows_its_pixels_in_its_parents_capture_corner(self):
@@ -215,6 +218,11 @@ class PixelWitness(unittest.TestCase):
                 probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), self.screen)
             with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
                 probe.dialog_place({}, 7, 'Delete', windows['windows'][1], (30, 20), screen)
+            # A flat corner is no dialog, even where the outputs show the same flat colour.
+            captures['p'] = paste(self.window, (30, 20, b'\x07' * (30 * 20 * 3)), 0, 0)
+            flat = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 140, 60)
+            with self.assertRaisesRegex(RuntimeError, 'no detail'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), flat)
 
     def test_the_display_snapshot_stands_for_the_outputs_over_the_target(self):
         import base64
