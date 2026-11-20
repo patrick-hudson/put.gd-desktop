@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path, PurePosixPath
 import shlex
+import sys
 import time
 import uuid
 
@@ -33,8 +34,11 @@ class Scope:
         self._environment = {}
         self.processes = []
 
-    def defer(self, label, function, *, priority=0):
-        self.finalizers.append((priority, label, function))
+    def defer(self, label, function, *, priority=0, guest_only=False):
+        """``guest_only``: the finalizer cleans only state inside the guest, so retiring the guest
+        does what it would have done. Anything that copies out of the guest or cleans host or
+        remote state must not say so."""
+        self.finalizers.append((priority, label, _GuestOnly(function) if guest_only else function))
 
     def python(self, code, *, timeout=60):
         result = self.ctx.shell("python3 - <<'SD_FIXTURE_PY'\n" + code + '\nSD_FIXTURE_PY\n', timeout=timeout)
@@ -70,7 +74,7 @@ p.mkdir(mode=0o700)
 (p/'owner').write_text(TOKEN)
 '''.replace('ROOT', repr(self.ctx.target.root)).replace('OWNED', repr(self.root)).replace('TOKEN', repr(self.token)))
         self.initialized = True
-        self.defer('owned directory', lambda: self.python('''import os,shutil
+        self.defer('owned directory', guest_only=True, function=lambda: self.python('''import os,shutil
 from pathlib import Path
 p=Path(ROOT)
 assert p.resolve()==p and not p.is_symlink() and (p/'owner').read_text()==TOKEN
@@ -107,7 +111,7 @@ with open(LOG,'xb') as out:
 identity={'pid':p.pid,'start':Path('/proc/%d/stat'%p.pid).read_text().split(') ',1)[1].split()[19]}
 print(json.dumps(identity))
 '''.replace('LOG', repr(self.root+'/'+name+'.log')).replace('ARGV', repr(argv)).replace('ENV', repr(environment or {})))
-        self.defer(name, lambda: self.stop(result))
+        self.defer(name, lambda: self.stop(result), guest_only=True)
         self.processes.append(result)
         return result
 
@@ -150,7 +154,7 @@ except (ProcessLookupError,FileNotFoundError):pass
             self._environment.update(environment)
         if self._environment and not self.values.get('_resident_restore'):
             self.values['_resident_restore'] = True
-            self.defer('resident environment', lambda: self.restart(), priority=-500)
+            self.defer('resident environment', lambda: self.restart(), priority=-500, guest_only=True)
         self.ctx.call('ui.quit')
         target.started = False
         original = None
@@ -205,7 +209,10 @@ except (ProcessLookupError,FileNotFoundError):pass
         with critical(getattr(self.ctx, 'review', None), label='fixture cleanup'):
             previous = self.ctx._deadline
             self.ctx._deadline = time.monotonic()+180
+            from ..target import only_unreachable
             failures = []
+            # A discarded setup scope closes while its setup error is handled; that error is not a finalizer's.
+            active = sys.exc_info()[1]
             try:
                 self.finalizers.sort(key=_priority)
                 while self.finalizers:
@@ -214,7 +221,7 @@ except (ProcessLookupError,FileNotFoundError):pass
                         function()
                     except Exception as error:
                         self.errors.append(label+': '+type(error).__name__)
-                        failures.append(error)
+                        failures.append(getattr(function, 'guest_only', False) and only_unreachable(error, active))
             finally:
                 self.ctx._deadline = previous
             errors, self.errors = self.errors, []
@@ -222,14 +229,13 @@ except (ProcessLookupError,FileNotFoundError):pass
         return errors
 
     def _guest_local(self, errors, failures):
-        """``errors`` when every one of them is a finalizer that could not reach the guest, else none.
+        """``errors`` when every one of them is a guest-only finalizer that could not reach the guest, else none.
 
         What such a finalizer would have removed lives in the guest, so retiring the guest resolves it
         (target.close). The scope's directory stays behind in the private session root; the target
         learns its name, so that refusing the root over it alone is guest-local too.
         """
-        from ..target import only_unreachable
-        if not errors or len(failures) != len(errors) or not all(only_unreachable(f) for f in failures):
+        if not errors or len(failures) != len(errors) or not all(failures):
             return []
         target = getattr(self.ctx, 'target', None)
         if target is not None and self.initialized:
@@ -242,3 +248,14 @@ except (ProcessLookupError,FileNotFoundError):pass
 
 def _priority(item):
     return item[0]
+
+
+class _GuestOnly:
+    """A finalizer marked as cleaning guest state alone (Scope.defer)."""
+    guest_only = True
+
+    def __init__(self, function):
+        self.function = function
+
+    def __call__(self):
+        return self.function()

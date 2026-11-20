@@ -65,7 +65,7 @@ assert label==LABEL
 assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]!=p
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
-'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr(label))))
+'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr(label))),guest_only=True)
     return Fixture(reference=reference,collection=created['collection'],credentials_file=path,blank_password=True,private=True)
 
 

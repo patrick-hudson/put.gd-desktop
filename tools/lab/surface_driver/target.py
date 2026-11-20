@@ -266,15 +266,16 @@ def checked_socket(path):
     return path
 
 
-def only_unreachable(error):
+def only_unreachable(error, stop=None):
     """Whether every blocked step behind ``error`` was the guest being unreachable.
 
     A later transport failure can replace an earlier refusal the guest answered (the clipboard keeper
     failed, then the exact stop lost SSH). The chain keeps both, and an answer keeps the guest from being
-    retired as lost.
+    retired as lost. ``stop`` is an exception already being handled when the step ran (a fixture setup
+    failure): Python chains it, but it is not this step's, so the walk ends there.
     """
     seen = False
-    while error is not None:
+    while error is not None and error is not stop:
         if isinstance(error, RecipeBlocked):
             if not isinstance(error, GuestUnreachable):
                 return False
