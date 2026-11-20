@@ -408,7 +408,7 @@ class LiveKeyringRestart(unittest.TestCase):
                 return json.dumps([':1.77'])
             return json.dumps(status or {'provider': 'gnome-keyring-d', 'label': 'putgd lab', 'locked': False,
                                          'default': '/org/freedesktop/secrets/collection/putgd_5flab'})
-        with mock.patch.object(guest.lab, 'verify_owned_guest'), \
+        with mock.patch.object(guest.lab, 'verify_owned_guest'), mock.patch.object(guest.lab, 'put'), \
                 mock.patch.object(guest.lab, 'state', return_value=info), \
                 mock.patch.object(guest.lab, 'write_json', lambda path, value: written.append(dict(value))), \
                 mock.patch.object(guest.lab, 'guest_session', session):
@@ -426,6 +426,8 @@ class LiveKeyringRestart(unittest.TestCase):
         start = self.started(scripts)
         self.assertEqual(len(start), 1)
         self.assertIn('if False:', start[0])  # the existing folders are reused, never made afresh
+        # The new daemon loads the blank collection locked; it is opened before anything uses it.
+        self.assertTrue(scripts[-1].endswith('lab_keyring.py --unlock'))
         self.assertEqual(written, [{'secret_service': ':1.77'}])
 
     def test_a_daemon_that_answers_or_still_serves_the_folder_is_never_replaced(self):

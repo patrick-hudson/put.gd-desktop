@@ -11,6 +11,7 @@ alias moves. Patrick approved blank lab keyrings on the builders on 2026-10-23.
 
   lab_keyring.py           # create if needed, set as default, print JSON
   lab_keyring.py --status  # the default collection's provider, label and lock state
+  lab_keyring.py --unlock  # gnome-keyring: open the lab collection with its empty password
 """
 import json
 import os
@@ -108,6 +109,31 @@ def refresh_ksecretd_alias(bus, call, Gio, GLib):
     return True
 
 
+def unlock_lab_keyring():
+    """gnome-keyring only: open the 'putgd lab' collection with its empty master password. A new
+    daemon (the nightly's live keyring started again after a crash) loads it from disk locked; no
+    prompt or login password is involved. Prints the status afterwards, never a secret."""
+    import gi
+    gi.require_version('Gio', '2.0')
+    from gi.repository import Gio, GLib
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+    def call(path, interface, method, parameters, reply):
+        return bus.call_sync(os.environ.get('SECRET_SERVICE_BUS_NAME', 'org.freedesktop.secrets'), path, interface, method,
+                             parameters, GLib.VariantType(reply), Gio.DBusCallFlags.NONE, 20000, None).unpack()
+
+    service = '/org/freedesktop/secrets'
+    status = secret_service()
+    if status.get('provider') == 'ksecretd' or status.get('label') != LAB_KEYRING:
+        raise RuntimeError('the default collection is not the gnome-keyring lab keyring')
+    if status.get('locked'):
+        session = call(service, 'org.freedesktop.Secret.Service', 'OpenSession',
+                       GLib.Variant('(sv)', ('plain', GLib.Variant('s', ''))), '(vo)')[1]
+        call(service, 'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface', 'UnlockWithMasterPassword',
+             GLib.Variant('(o(oayays))', (status['default'], (session, b'', b'', 'text/plain'))), '()')
+    return secret_service()
+
+
 KWALLET_LAB = 'putgdlab'
 
 
@@ -135,4 +161,5 @@ def kwallet_lab_wallet(call, GLib):
 
 
 if __name__ == '__main__':
-    print(json.dumps(secret_service() if sys.argv[1:] == ['--status'] else lab_keyring()))
+    action = {'--status': secret_service, '--unlock': unlock_lab_keyring}.get(sys.argv[1] if sys.argv[1:] else None, lab_keyring)
+    print(json.dumps(action()))

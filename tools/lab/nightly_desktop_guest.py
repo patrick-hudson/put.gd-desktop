@@ -275,8 +275,9 @@ def restart_live_keyring(run):
 
     The recorded unique connection must have no owner and no daemon may still serve the
     keyring's folder: a daemon that is only slow is never replaced. The new daemon reads the
-    same tmpfs files, so the blank collection and the lent entry are back; the run's state
-    then names its new connection for the bridge and every later guest step. Returns only
+    same tmpfs files, so the blank collection and the lent entry are back once it is opened
+    with its empty password; the run's state then names its new connection for the bridge
+    and every later guest step. Returns only
     connection names, the process identity and the collection's label and lock state.
     """
     run = Path(run)
@@ -297,7 +298,9 @@ def restart_live_keyring(run):
     identity, name = _start_live_keyring(run, fresh=False)
     info['secret_service'] = name
     lab.write_json(run/'state.json', info)
-    status = json.loads(lab.guest_session(run, 'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --status'))
+    # A new daemon loads the blank collection locked: open it with its empty password.
+    lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
+    status = json.loads(lab.guest_session(run, 'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
     if status.get('label') != 'putgd lab' or status.get('locked') is not False:
         raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
     return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
