@@ -994,14 +994,20 @@ class NightlyTests(unittest.TestCase):
             self.assertTrue(all('row not started: worker terminated' in r['notRunReason'] for r in result))
             self.assertEqual(json.loads((Path(tmp)/'out/results.json').read_text())[1]['desktop'], 'Budgie')
 
-    def test_failed_cleanup_keeps_the_result(self):
+    def test_failed_cleanup_keeps_the_workers_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             archive = self.remote_inputs(root)
-            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', RuntimeError('rm failed')]), \
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]']) as command, \
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
-                self.assertEqual(nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
-                                                  'vtest', root, archive, root, local_workers=Mock()), [])
+                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                 'vtest', root, archive, root, local_workers=Mock())
+            line = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
+            worker, _, rest = line.partition('; status=$?; ')
+            self.assertTrue(rest.endswith('; exit $status'))
+            # Run the generated line with a worker that exits 3 and a cleanup step that fails.
+            shell = 'sh -c "exit 3"; status=$?; ' + rest.replace(rest[:-len('; exit $status')], 'false')
+            self.assertEqual(subprocess.run(['sh', '-c', shell]).returncode, 3)
 
     def test_remote_worker_has_its_own_watchdog(self):
         with tempfile.TemporaryDirectory() as tmp:
