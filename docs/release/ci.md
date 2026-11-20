@@ -1,6 +1,6 @@
 # CI coverage and runtime
 
-Five workflows cover every event. Jobs that gate one another run in the same
+Six workflows cover every event. Jobs that gate one another run in the same
 workflow run and are linked with `needs:`. Nightlies can reuse completed source
 checks for their exact commit; an absent or failed lookup runs the tests again.
 No job waits for another workflow to finish.
@@ -11,6 +11,7 @@ dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
+| `ci-images.yml` | called first by `ci.yml`; 00:17 UTC daily and manual | check the prebuilt images the container jobs run in and build any whose inputs changed; daily, build the new week's images ([CI images](#ci-images)) |
 | `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
 | `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
@@ -143,27 +144,21 @@ scans them with Grype ([SBOMs and vulnerability scans](release.md#sboms-and-vuln
 With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 
-The hosted runner names one Ubuntu mirror, its region's or Azure's, through
-`/etc/apt/apt-mirrors.txt`. When that mirror stalled, every attempt stalled with it
-([#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)). So the AppImage and
-`appimage-sources` jobs write the Ubuntu archive and security sources as plain
-`archive.ubuntu.com` and `security.ubuntu.com` URIs (`tools/ci/hosted_apt_mirrors.py`, legacy
-direct and folded deb822 URIs included). Then they run the container jobs' mirror probe
-(`PUTGD_UBUNTU_MIRRORS`), which ranks `us.archive.ubuntu.com`, `mirrors.edge.kernel.org`,
-`azure.archive.ubuntu.com` and `archive.ubuntu.com` by a timed download into
-`/etc/apt/putgd-mirrors.txt`. The step fails if the sources don't then use that list. Suites,
-components and `Signed-By` don't change, so apt verifies everything against the Ubuntu keyring
-as before (#500).
-Its standard build-dependency attempts have a 300-second deadline, a 120-second
-silence limit and three attempts; the shared installer records failures and retry outcomes. It
-adds no AppImage package snapshot to the shared 10 GB cache: it restores
-`native (ubuntu24.04)`'s snapshot when one exists and never saves one. On a hit it downloads only
-the packages missing from that snapshot or newer than it; on a miss it downloads them all. That container installs `zstd`, because
-`actions/cache` treats gzip and zstd caches as different caches. The restored files land three
-levels above the hosted workspace, not in `/var/cache`, because the cache stores the path
-relative to the container's shallower workspace. Native dependency pins are unchanged. See the
-[independent mirror and journal-retry evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-ci-mirror-journal/README.md)
-for targeted checks and the outstanding hosted-run/stress gates.
+The linux, sanitizers, native, Arch, AppImage and PipeWire jobs run in prebuilt
+images ([CI images](#ci-images)), so they download no distro packages. Only the
+`appimage-sources` job still installs from an Ubuntu mirror on the hosted runner, for
+the source indexes of the packages the AppImage bundles. The runner names one Ubuntu
+mirror, its region's or Azure's, through `/etc/apt/apt-mirrors.txt`, and when that
+mirror stalled every attempt stalled with it
+([#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)). So the job
+writes the Ubuntu archive and security sources as plain `archive.ubuntu.com` and
+`security.ubuntu.com` URIs (`tools/ci/hosted_apt_mirrors.py`), then ranks
+`us.archive.ubuntu.com`, `mirrors.edge.kernel.org`, `azure.archive.ubuntu.com` and
+`archive.ubuntu.com` by a timed download into `/etc/apt/putgd-mirrors.txt`
+(`tools/ci/ubuntu-mirrors.sh`, the probe the images are built with). The step fails if
+the sources don't then use that list. Suites, components and `Signed-By` don't change,
+so apt verifies everything against the Ubuntu keyring as before (#500). Its install
+attempts have a 300-second deadline, a 120-second silence limit and three attempts.
 
 **appimage-pipewire** in `package.yml` checks each new image as soon as its
 build finishes, alongside the SBOM and corresponding-source jobs. It remains
@@ -186,11 +181,10 @@ and nothing in CI could see it, since the runners have PipeWire 1.0.5. The job r
 
 It takes the AppImage from this run's `packages` job when that ran. Otherwise only
 `src/record` or the check changed, so it downloads the latest nightly's AppImage and
-checks it against that release's `SHA256SUMS`. It takes about two minutes, most of
-it installing the container's packages. That install is `putgd_apt_install` with a
-12-minute budget (`PUTGD_APT_BUDGET_SECONDS=720`) for its downloads, waits and recovery,
-the work before the install itself. The check step's 20-minute limit and the job's 30 minutes
-cap the whole run; they don't reserve time for the check. A branch that drops `min-buffers=1` fails
+checks it against that release's `SHA256SUMS`. It runs in the `pipewire` CI image,
+which already holds PipeWire 1.6, its plugin headers and the probe's compiler
+(`ci_check.sh --install` runs at image build time), and takes about a minute. The
+check step's 20-minute limit and the job's 30 minutes cap the run. A branch that drops `min-buffers=1` fails
 it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
 part of the required `CI` summary when selected.
 
@@ -416,13 +410,13 @@ reads the newest one on a ref. Three rules keep the total bounded:
   `GITHUB_TOKEN` (`actions: write`, `pull-requests: read`; the nightly and release
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
-  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, `putgd-pkgs-v1-*` by ISO
-  week, `grype-db-v6-*` by database, and `appimage-distro-sources-v1-*` whatever
+  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, `putgd-pkgs-v1-*` (the retired
+  package snapshots) by ISO week, `grype-db-v6-*` by database, and `appimage-distro-sources-v1-*` whatever
   its package hash) older than the newest on the
   same ref, and every cache of a closed pull request or deleted branch. On `main`,
   `nightly` and `v*` tags it deletes only those superseded entries. Merging a
   pull request pushes to `nightly`, so its caches go with the next run. Exact-key
-  caches (SDK prefixes, the Qt installer's) are left to GitHub's seven-day idle
+  caches (SDK prefixes) are left to GitHub's seven-day idle
   eviction. `--dry-run` lists the deletions without making them. The job is not
   in the required `CI` summary.
 
@@ -436,15 +430,13 @@ compressed archive sizes; the ceiling is
 | `ccache-linux-26.04-*` | `nightly` push | 1 | 435 MB | 1 GB |
 | `ccache-clang-asan-26.04-*` | `nightly` push | 1 | 102 MB | 400 MB |
 | `qt-asan-core-26.04-*` | first miss on a ref | 1 per ref | 31 MB | recipe-bound |
-| `install-qt-action-*` (AppImage and retired platform jobs) | first miss | 1 each | 650 MB | Qt version |
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
 | `grype-db-v6-<sha256>` ([vulnerability database](release.md#sboms-and-vulnerability-scans)) | first `sbom` job to see a new database, per ref | 1 per ref | about 195 MB | one database |
-| `putgd-pkgs-v1-*` ([package snapshots](#package-installs)) | first run of an ISO week, or new dependency scripts, per ref | 1 per package target | 408-544 MB (Fedora 544, Ubuntu 24.04 408, Ubuntu 26.04 422, Debian 13 421 on 2026-10-22) | dependency lists |
 
-The four package snapshots add 1.8 GB on `nightly` to the steady state below. A new week's
-snapshot supersedes the previous week's at the next prune, and a pull request
-that changes the dependency scripts saves its own four until it closes.
+The CI images live in the GitHub container registry, not the Actions cache, so
+they count against none of this. The Qt installer and package snapshot caches they
+replaced (650 MB and 1.8 GB on `nightly`) are no longer saved.
 
 Steady state after a `nightly` push is about 1.7 GB (the ccache sizes above
 still include objects from earlier commits, so the trimmed caches will be
@@ -763,11 +755,87 @@ to 76.6 s and 95.0 s at twelve
 A retry costs only the failed tests' own time. The repository is public, so
 hosted minutes are free; the change saves about 15-30 s per Linux job.
 
+## CI images
+
+Every container job in `ci.yml` and `package.yml` runs in a prebuilt image from the
+private package `ghcr.io/patrick-hudson/putgd-ci`, so jobs never download distro
+packages. A slow Ubuntu mirror can hold up only a pull request that changes an
+image's inputs, because CI builds that image before its jobs start. The jobs pull with the
+run's token (`packages: read`); `ci.yml`'s `images` job builds with `packages: write`,
+which the nightly and release callers grant. Only `arch-install` still runs in plain
+`archlinux:base`, because it checks the package on a clean system.
+
+`tools/ci/images/profiles.json` lists the 11 profiles and their inputs:
+
+| Profile | Base | Jobs |
+| --- | --- | --- |
+| `linux-24.04`, `linux-26.04` | Ubuntu 24.04, 26.04 | `linux` |
+| `sanitizers` | Ubuntu 26.04 | `sanitizers` |
+| `native-ubuntu24.04`, `native-ubuntu26.04`, `native-debian13`, `native-fedora44`, `native-fedora45` | the package matrix's distro | `packages / native` |
+| `native-archlinux` | Arch | `packages / arch` |
+| `appimage` | Ubuntu 24.04 | `packages / appimage` |
+| `pipewire` | Ubuntu 26.04 | `packages / appimage-pipewire`, `pipewire` |
+
+Every base is pinned by digest, and the native bases are the same digests as
+`package.yml`'s matrix (`tests/ci/test_ci_images.py`). `tools/ci/images/Dockerfile`
+copies the profile's inputs in and runs `tools/ci/images/provision.sh PROFILE`,
+which ranks the Ubuntu mirrors, installs the profile's packages through
+`tools/ci/install-packages.sh`, restores the base's own apt sources and empties the
+package caches:
+
+- **linux and sanitizers:** the build and test packages that `ci.yml` used to
+  install, plus the unprivileged `putgd-ci` user CTest runs as.
+- **native:** `git` and `ca-certificates`, then `tools/releases/install-native-deps.sh`;
+  Arch also gets the `builder` user `makepkg` needs.
+- **appimage:** the base dependencies, `tools/ci/appimage-packages.txt`, `weston` and
+  the hosted runner tools the job uses, in one apt transaction; CMake 3.31.6 from
+  Kitware (checksum pinned; Ubuntu 24.04's 3.28 is too old for ECM), the version the
+  hosted runner had; and the locked official Qt in `/opt/Qt`, installed with aqtinstall
+  3.3 and py7zr 1.1.0 as `jurplel/install-qt-action` installed it. The image sets the
+  environment that action exported (`QT_ROOT_DIR`, `PATH`, `LD_LIBRARY_PATH`,
+  `PKG_CONFIG_PATH`, `QT_PLUGIN_PATH`, `QML2_IMPORT_PATH`).
+- **pipewire:** `tests/desktop/pipewire/ci_check.sh --install`.
+
+**Tags.** A profile's tag is `<profile>-<ISO week>-<hash>` (`tools/ci/ci_images.py`).
+The hash covers the base digest, the build target and arguments (the Qt version for
+`appimage`) and the bytes of every input file, and the build context holds only those
+files, so no other file in the checkout can change what an image contains. The distro
+packages a build downloads are not in the hash: they are whatever the mirrors served
+when the image was built, and the week keeps them at most about a week behind the
+distro's updates.
+
+**Planning.** `ci.yml`'s first job calls `ci-images.yml`, whose `plan` job names this
+week's tag for every profile and checks the registry. A tag that's there is used. When
+this week's tag is missing but one of the previous 4 weeks has an image with the same
+hash, CI uses that one and the profile is *stale*. Only a change to a profile's inputs
+leaves nothing to fall back to; that profile is *missing*, and CI builds it before the
+jobs that need it start. The plan's job summary lists each image and its state. A
+registry answer other than "present" or "unknown manifest" is a warning, and the
+profile counts as missing: a rebuild costs minutes, a wrong "present" fails every job.
+
+**Refresh.** `ci-images.yml` runs on its own at 00:17 UTC daily, from `nightly`, and
+builds the missing and stale tags. A stalled mirror only delays a refresh; CI keeps
+using last week's image, and the next day tries again. A build is limited to 100
+minutes (normally 3–20). Two runs that miss the same tag may both build it; a build
+that starts after the other's push finds the tag and stops. A refreshed image with new
+package versions changes the SDK prefix and compiler cache keys, which hash the
+installed packages ([speed measures](#speed-measures)), so the first run on a new
+week's image may rebuild them.
+
+**Changing an image.** Edit `provision.sh`, a profile's input or its base digest. The
+pull request's own CI builds the new tag before its jobs start, and the scheduled run
+never needs to. To reproduce a job without the registry, run
+`bash tools/ci/images/provision.sh PROFILE` as root in the profile's base container,
+from a checkout; Boat candidate builds do this. For `appimage`, also export the
+environment the Dockerfile's `appimage` stage sets (`QT_ROOT_DIR=/opt/Qt/<version>/gcc_64`
+and the paths under it).
+
 ## Package installs
 
-Package jobs install through `tools/ci/install-packages.sh` (dnf or apt-get).
-`tools/releases/install-native-deps.sh` calls it, so do the AppImage, weston
-and dwz steps. It works in three layers:
+`tools/ci/install-packages.sh` (dnf or apt-get; Arch uses pacman directly) installs the profiles'
+packages at image build time. The `contracts`, `appimage-sources` and `sbom` jobs
+still call it directly on the hosted runner for their few packages. It works in three
+layers:
 
 - **Bounded attempts.** Up to 4 online attempts (`PUTGD_PKG_ATTEMPTS`), waiting
   30, 60 and 120 s between them (`PUTGD_PKG_BACKOFF`). Every retry downloads
@@ -779,153 +847,41 @@ and dwz steps. It works in three layers:
 - **Stopped attempts.** An attempt that runs longer than `PUTGD_PKG_TIMEOUT`
   (900 s) or prints nothing for `PUTGD_PKG_STALL` seconds (600 s) is stopped
   (`timeout --kill-after=30s`, process group included) and counts as a failed
-  attempt, so the back-off and the snapshot apply. On apt the limits cover the
-  metadata update and the download only (`apt-get install --download-only`).
-  Once every archive is downloaded, the install of what was fetched
-  (`--no-download`) runs with no limit, so dpkg is never stopped halfway: the
-  source of the packages, mirror or snapshot, is chosen before dpkg starts. A
-  stopped attempt is followed by `dpkg --configure -a` before the retry. On apt,
-  every failed or stopped attempt of `tools/ci/install-packages.sh` also moves the
-  first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
-  than one mirror answered the probe, so the next attempt starts on another mirror. (The
-  workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
-  than 128 MiB.) `putgd_apt_install` puts everything before the install in one budget
-  (`PUTGD_APT_BUDGET_SECONDS`, 25 minutes): the update and download attempts, timeout's
-  30 s kill grace, the waits for a leftover dpkg and the recovery. The budget starts when
-  the helper is called, after the mirror probe, so the 5 minutes of the `linux` and
-  `sanitizers` install steps' 30 that it leaves for the install are nominal. The install
-  takes 1-2 minutes on a runner, has no limit of its own, and runs under the step's
-  `timeout-minutes`. Each attempt, its update and download together, is limited to the
-  earlier of 8 minutes (`PUTGD_APT_ATTEMPT_SECONDS=480`) and the budget, with the kill grace
-  inside that; `putgd_timed` takes the time left right before each command and skips the
-  command when 30 s or less remain. Attempts resume from the kept archives and go on while
-  they make progress. The helper stops, without waiting or recovery, after the third attempt
-  in a row that adds under 4 MiB (`PUTGD_APT_STALL_KB`) or whose install fails, and when the
-  budget runs out. After any other failed attempt it waits, up to 600 s and not past the
-  budget except by its 2 s polling interval, until no process holds a dpkg or apt lock. It
-  asks the kernel about each lock file with F_GETLK, through `perl` from `perl-base`, so an
-  OFD lock or a holder in another PID namespace counts and an unrelated lock doesn't. A
-  query that fails for any reason but a missing file is a warning and stops the install. If
-  a lock is still held or the budget is spent, it stops too; otherwise it runs
-  `dpkg --configure -a` through `putgd_timed` with what is left of the budget and retries
-  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702),
-  [#1706](https://github.com/patrick-hudson/put.gd-desktop/issues/1706)).
-  Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
-  connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
-  dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
-  download themselves. See [Stalled installs](#stalled-installs).
-- **Package snapshot.** The native package jobs restore
-  `/var/cache/putgd-packages` from `actions/cache`, under the key
-  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>` (ubuntu24.04 also hashes `tools/ci/appimage-packages.txt`). It holds the
-  package metadata and exactly the packages of the last successful install.
-  Online attempts start from a copy of it, so packages already in it aren't
-  downloaded again. After an online success, the copy, pruned to the installed
-  packages, replaces it. The cache is saved on that week's first run and when
-  the dependency scripts change, never after a fallback. When no snapshot has the
-  exact key, the newest snapshot under the same hash is restored, and then the newest of
-  the target at all (`putgd-pkgs-v1-<target>-`), so new dependency scripts still have
-  one to fall back to. Snapshots are refreshed weekly, but a restored older snapshot
-  can be older than a week: there is no age limit, and the cache keeps it until it
-  is pruned or evicted. If all online attempts
-  fail, the install runs once more offline from the snapshot
-  (`dnf --cacheonly`, `apt-get --no-download`, again with no time limit on the
-  install itself). On apt a download that times out has changed nothing on the
-  system, so the snapshot installs onto the state the job started in. That builds against a package
-  set as old as the restored snapshot instead of failing the job. On apt, a snapshot from an
-  older list can lack archives the new list needs. The install first asks apt for
-  the archives the transaction needs that the snapshot doesn't hold
-  (`apt-get install --print-uris`, against the snapshot's own indexes), downloads
-  those against the same indexes, and then installs with `--no-download`. So the
-  whole transaction uses one set of indexes and never mixes in a mirror's newer
-  ones. If the snapshot's indexes can't satisfy the list, or a lacking archive
-  can't be downloaded, nothing is installed and the error names the archives. On
-  dnf, a dependency list that changed since the snapshot can't be satisfied
-  offline, and the step fails.
-  On apt the snapshot also keeps the sources it was made with, and the offline
-  install reads the metadata through them, because apt names its metadata files
-  after the source URI.
+  attempt. On apt the limits cover the metadata update and the download only
+  (`apt-get install --download-only`). Once every archive is downloaded, the
+  install of what was fetched (`--no-download`) runs with no limit, so dpkg is never
+  stopped halfway. A stopped attempt is followed by `dpkg --configure -a` before the
+  retry. On apt, every failed or stopped attempt also moves the first mirror of
+  `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more than one mirror
+  answered the probe, so the next attempt starts on another mirror. Downloaded packages
+  stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
+  connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and dnf one
+  under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the download
+  themselves. See [Stalled installs](#stalled-installs).
+- **Last-resort mirrors.** Image builds set `PUTGD_APT_LAST_RESORT_MIRRORS` to
+  `tools/ci/apt-last-resort-mirrors.txt`, a checked-in list of ten public HTTPS Ubuntu
+  mirrors from Ubuntu's US list, other than the four the probe ranks. Nothing fetched
+  at run time chooses where the runner connects, and only `https://` lines with a host
+  name are used (no IP literal, no port). After the online attempts have failed, each
+  is timed on 256 KB of this release's amd64 package index (5 s limit). The fastest 8
+  that answer replace `/etc/apt/putgd-mirrors.txt`, and one more transaction runs
+  through them with fresh metadata (`PUTGD_PKG_LAST_RESORT_TIMEOUT`, 1800 s, and the
+  same silence limit). apt checks every file against the signed indexes, whichever
+  mirror served it. The dated `snapshot.ubuntu.com` archive was the first choice, but
+  on 2026-11-18 it answered `401 Unauthorized` for about 90 minutes, and a source that
+  can be down for a while isn't a last resort.
+- **Reporting.** Each failed or stopped attempt and a retry that passed are warning
+  annotations and rows of a "Package install retries" table in the job summary. A
+  stopped attempt's row says `**stopped**`, which limit stopped it and the last line it
+  printed. A clean install writes nothing.
 
-  **Last-resort mirrors.** The AppImage job sets `PUTGD_APT_LAST_RESORT_MIRRORS`
-  to `tools/ci/apt-last-resort-mirrors.txt`, a checked-in list of ten public HTTPS
-  Ubuntu mirrors from Ubuntu's US list, other than the four the probe ranks. Nothing
-  fetched at run time chooses where the runner connects, and only `https://` lines
-  with a host name are used (no IP literal, no port). After the online attempts
-  have failed, each is timed on 256 KB of this release's amd64 package index (5 s
-  limit, HTTPS only). The fastest 8 that answer replace `/etc/apt/putgd-mirrors.txt`. The snapshot install downloads the archives it
-  lacks through them. With no snapshot, or when the snapshot can't serve the list
-  before dpkg starts, one more online transaction runs through them with fresh
-  metadata (`PUTGD_PKG_LAST_RESORT_TIMEOUT`, 1800 s, and the same silence limit).
-  apt checks every file against the signed indexes, whichever mirror served it. If
-  the gap fill fails, the snapshot's summary row names the archives it lacked. The
-  dated `snapshot.ubuntu.com` archive was the first choice, but at about 18:37 UTC on
-  2026-11-18, the archive paths probed from the workstation and k72 answered
-  `401 Unauthorized` (HTTP Basic auth). By about 20:00 UTC they answered 200 again,
-  `InRelease` included. A source that can be down for a while isn't a last resort.
+The helper can still restore and save an offline package snapshot
+(`PUTGD_PKG_CACHE`), but no workflow sets it since the images replaced the
+`putgd-pkgs-v1-*` snapshots. The 2026-10-22 mirror incident behind this design and its
+demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
-  The AppImage job restores the ubuntu24.04 snapshot and installs everything in
-  one `install-packages.sh` call, so it is one apt transaction: the base
-  dependencies, the packages in `tools/ci/appimage-packages.txt` (`#` starts a comment to the end of the line)
-  and `weston` (`install-native-deps.sh` takes them as `PUTGD_EXTRA_PACKAGES`). The list
-  includes the system libraries `jurplel/install-qt-action` would otherwise
-  install itself, so the action runs with `install-deps: false`. The transaction
-  comes entirely online or entirely from the snapshot, never a mix: a mirror
-  that moved on since the snapshot would otherwise give an online install newer
-  packages that an offline install of the rest can't satisfy. Nothing else in
-  that job runs `apt-get`.
-
-  The native ubuntu24.04 job adds the AppImage packages and `weston` to its
-  snapshot with one `--download-only` call after its own install, which runs
-  `install-native-deps.sh` itself (`PUTGD_INSTALL_OPTIONS`) with the AppImage
-  job's package list, so the base list and the extras can't drift apart. That call
-  never refreshes the indexes, on any attempt (`PUTGD_PKG_REUSE_METADATA=true`):
-  it downloads against the indexes the install before it fetched, so the
-  snapshot's indexes and packages match. If it can't download everything
-  against them, it has no offline fallback and fails with an error annotation,
-  the native build goes on, and that run saves no snapshot. The step has its own
-  small budget (2 attempts of 5 minutes, 15 minutes in all), so cache warming
-  can't use up the native job's time. It runs with `--reinstall`, which also
-  downloads archives of packages the image already had at the candidate version
-  (for example `git` and `ca-certificates`, which the bootstrap installs before
-  the snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
-  cache key includes `tools/ci/appimage-packages.txt`, so changing the list
-  rebuilds that snapshot and no other. The native job saves it in parallel with
-  the AppImage job, so the first AppImage run on a new key restores the newest
-  older snapshot instead. The archives that snapshot lacks are downloaded against
-  its own indexes, and when it can't serve the new list, the last-resort mirrors
-  install it online.
-
-  The `appimage-sources` job writes its `deb-src` source before the mirror probe, so
-  the source indexes come through the ranked list too.
-
-  The AppImage job also switches off the runner's non-Ubuntu apt sources
-  (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
-  can't fail the metadata refresh. `PUTGD_PKG_ATTEMPTS=0` skips the online
-  attempts, which exercises the fallback on demand.
-- **Reporting.** Each failed or stopped attempt, a retry that passed and a
-  snapshot install are warning annotations and rows of a "Package install
-  retries" table in the job summary. A stopped attempt's row says
-  `**stopped**`, which limit stopped it and the last line it printed. A clean
-  install writes nothing. The pre-checkout bootstrap installs git and ca-certificates,
-  plus zstd on ubuntu24.04. On apt it runs `putgd_apt_install` with a 20-minute budget and
-  10-minute attempts. That budget also starts after the mirror probe, so the 10 of the step's
-  30 minutes it leaves for the install are nominal. It writes one summary row, `| all |
-  failed |`, only when the whole install fails. On dnf it runs `dnf install` up to 3 times
-  under the same budget, each limited to 10 minutes with the kill grace inside. It stops at
-  the first success, and `putgd_timed` skips a command when 30 s or less remain. Each failed
-  attempt is a row of a table of the same form.
-
-The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
-
-Not covered yet: a package snapshot for `ci.yml`. The `linux` and `sanitizers`
-installs run before checkout, so they use the workflow's own `putgd_apt_install`
-instead of `tools/ci/install-packages.sh`
-([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). That gives
-them the mirror probe, 8-minute download attempts within a 25-minute budget, a kept
-archives directory, mirror demotion and a 30-minute step limit. They restore no package
-snapshot, so when the download stalls or the budget runs out there is no offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
-its online retries, also without a snapshot (`PUTGD_PKG_CACHE`). In `package.yml`'s
-native and AppImage jobs, `npm ci` in the Proton helper step runs with
-`npm_config_fetch_retries=5`. `ci.yml`'s `linux` job runs the same step with npm's
+In `package.yml`'s native and AppImage jobs, `npm ci` in the Proton helper step runs
+with `npm_config_fetch_retries=5`. `ci.yml`'s `linux` job runs the same step with npm's
 default of 2 retries. All three have a 15-minute step limit. That step's exit-152
 failure ([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is
 128 + 24, SIGXCPU, which points to a CPU-time limit rather than a network error.
@@ -945,31 +901,33 @@ The limits come from the 60 green runs before the change. A normal install
 attempt takes 1–4 minutes. On 2026-10-22 and 2026-10-23, though, the hosted
 runner's Azure mirror served 40–55 kB/s, and five green AppImage installs took
 26 to 113 minutes. The longest silence in them was 8.2 minutes, a 27 MB
-package, so the stall limit is 10 minutes. The AppImage install has no
-snapshot, so its attempts got 30 minutes (`PUTGD_PKG_TIMEOUT=1800`) and resumed
-each other's downloads. It now has the package snapshot, four ranked mirrors and the
-last-resort mirrors, so its attempts are limited to 300 s with a 120 s silence limit, and
-a stopped attempt moves on to the next mirror
+package, so the stall limit is 10 minutes. The AppImage job later got a package
+snapshot, four ranked mirrors and the last-resort mirrors
 ([#500](https://github.com/patrick-hudson/put.gd-desktop/issues/500),
-[#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)). The 120 s limit stays: a
-mirror that is slow but moving prints a `Get:` line for each package, and the 27 MB
-package above takes under 110 s at 250 kB/s.
+[#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)), and since
+[#1707](https://github.com/patrick-hudson/put.gd-desktop/pull/1707) it installs nothing:
+its packages come with the `appimage` image.
 
 Every Linux job with a network step has a `timeout-minutes` above its normal
 run time and above its worst bounded install path (four stopped attempts plus
 3.5 minutes of back-off):
 
-| Job | Normal run (p50 / max, min) | `timeout-minutes` |
+| Job | Normal run (min) | `timeout-minutes` |
 | --- | --- | --- |
-| `packages / native` (4 targets) | 8–13 / 17 | 90 |
-| `packages / appimage` | 13 / 128 (slow mirror) | 180 |
-| `packages / debug-symbols`, `collect` | 5–8 / 8 | 75 |
-| `contracts` | 1 / 3 | 75 |
-| `linux` (2 releases) | 5–6 / 10 | 60 |
-| `sanitizers` | 5 / 10, more when QtCore is rebuilt | 90 |
-| `pipewire` | 2 / 15 | 30 |
-| `prune caches`, nightly `plan`, release `tag` | under 1 | 15 |
+| `images / build` | 3–20 | 100 |
+| `images / plan`, `prune caches`, nightly `plan`, release `tag` | under 1 | 10–15 |
+| `packages / native` (5 targets), `packages / arch` | 3–7 | 90 |
+| `packages / appimage` | 4–5 with a warm compiler cache, 17 cold | 180 |
+| `packages / appimage-sources` | 4 | 45 |
+| `packages / collect` | 5–8 | 75 |
+| `contracts` | 4 | 75 |
+| `linux` (2 releases) | 4–7 | 60 |
+| `sanitizers` | 3–6, more when QtCore is rebuilt | 90 |
+| `pipewire`, `packages / appimage-pipewire` | 1–2 | 30 |
 | nightly `publish`, release `draft` | 4 / 6 | 60 |
+
+The job limits still allow for the old installs; most can come down once the images
+have run for a while.
 
 Steps that clone or download outside the helper have step limits:
 "Verify pinned SDK source" 20 minutes, "Provision pinned Proton helper" 15,

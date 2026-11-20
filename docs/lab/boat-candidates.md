@@ -58,31 +58,27 @@ proxies and connection sharing. The private SSH key and agent stay local.
 The controller reads the requested commit's `.github/workflows/package.yml`
 and `ci.yml` from Git, takes the native image digests from that matrix and reuses
 the CI shell run blocks and in-repository provisioning/package scripts. All
-builds use fresh public checkouts with full Git history and tags. Dependencies
-and application products are built cold; the pilot's SDK/build tree is not
-transplanted into distro containers. AppImage Qt is installed with the CI
-install-qt-action's aqtinstall/py7zr versions and the candidate's Qt lock.
-Each receipt's `ciDifferences` lists the remaining boundaries:
+builds use fresh public checkouts with full Git history and tags. Each build
+starts in its profile's plain base container and runs
+`tools/ci/images/provision.sh PROFILE`, the script the
+[CI images](../release/ci.md#ci-images) are built with, so it installs the same
+packages without pulling from the private registry. Dependencies and application
+products are built cold; the pilot's SDK/build tree is not transplanted into distro
+containers. Each receipt's `ciDifferences` lists the remaining boundaries:
 
 - Native packages use CI's pinned container digests. All workers build cold on
-  Boat without Actions cache restore/save, hosted preinstalled packages or
-  Actions upload steps. The compiler cache is private and capped at 256 MiB;
-  `/usr/bin` takes precedence in `PATH`. No weekly native package snapshot or
-  its offline install fallback is available.
-- AppImage uses the pinned Ubuntu 24.04 native container rather than GitHub's
-  mutable `ubuntu-24.04` hosted VM. It runs `hosted_apt_mirrors.py`, installs Qt
-  through fresh aqtinstall 3.3.* / py7zr 1.1.0 rather than the cached Action, and
-  exports `QT_PLUGIN_PATH`, `QML2_IMPORT_PATH` and `PKG_CONFIG_PATH`
-  (appending Qt’s `lib/pkgconfig` after existing entries, as install-qt-action does). Python is bootstrapped
-  before the mirror helper because the minimal container does not preinstall it.
-  The retained package inventory identifies the actual distro packages. Hosted preinstalled desktop links can
-  differ; inspect `appimage-build.json`'s `rootDesktopEntry.removedLinks`. The
-  cold container uses `install-packages.sh` defaults: four attempts, 900-second
-  overall and 600-second stall limits per attempt, with distro/manager labels.
-  The AppImage CI dependency step instead sets three attempts, 300 seconds
-  overall and 120 seconds stalled, with an AppImage label.
-- UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
-  job uses the floating `ubuntu:26.04` tag. The dependency and build run blocks
+  Boat without Actions cache restore/save or Actions upload steps. The compiler
+  cache is private and capped at 256 MiB; `/usr/bin` takes precedence in `PATH`.
+  Packages are installed at build time, so they can be newer than the CI image
+  of the same week.
+- AppImage provisions the `appimage` profile in the pinned Ubuntu 24.04 base:
+  Kitware CMake 3.31.6 and the locked Qt through aqtinstall 3.3.* / py7zr 1.1.0,
+  as the CI image has them, and exports the image's Qt environment with
+  `/usr/local/bin` on `PATH`. The retained package inventory identifies the actual
+  distro packages. The cold container uses `install-packages.sh` defaults: four
+  attempts, 900-second overall and 600-second stall limits per attempt.
+- UI catalog provisions the `linux-26.04` profile in the package matrix's pinned
+  Ubuntu 26.04 digest, the base of CI's `linux (26.04)` image. The dependency and build run blocks
   are reused (`PUTGD_UI_CATALOG_RENDER` resolved for 26.04); CI renders the
   catalog inside CTest, so the worker renders it directly and runs the surface
   map check. CI keeps one complete render without pixel comparison (see [the UI catalog](../design/ui-catalog.md)). The private compiler cache is
