@@ -388,9 +388,11 @@ def _pixel_menu(ctx, labels, glyphs):
     x, y, w, h = found['rect']
     showing = lambda image: tray_pixels.menu_box(before, image, panel, found['rect'])
     box = None
-    # Cinnamon's host sometimes asks put.gd for the menu and then draws nothing; a user right-clicks
-    # again. Once, and only while no popup shows; put.gd must have been asked each time.
-    for attempt in (1, 2):
+    # Cinnamon's host sometimes asks put.gd for the menu and then draws nothing, and then takes the
+    # next click as closing that undrawn menu; a user clicks again. Up to three right-clicks, each only
+    # while no popup shows; the popup must follow a click the host asked put.gd's menu for.
+    menu = None
+    for attempt in (1, 2, 3):
         served = _menu_activity(ctx)
         ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect'])
                         and showing(image) is None, button='right')
@@ -399,9 +401,11 @@ def _pixel_menu(ctx, labels, glyphs):
         if attempt == 1:
             menu = ctx.wait(asked, what, timeout=5)
         else:
-            # The first click was asked for and drew nothing: a host that also ignores the second is
-            # the host's state the lab can't judge, not put.gd's menu.
-            menu = _seen(ctx, asked, what + ' again')
+            try:
+                menu = ctx.wait(asked, what, timeout=5)
+            except RecipeFailed:
+                ctx.note('tray host did not ask for the menu after right-click ' + str(attempt))
+                continue
         try:
             box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon', timeout=5)
             break
@@ -409,7 +413,7 @@ def _pixel_menu(ctx, labels, glyphs):
             ctx.note('tray menu not drawn after right-click ' + str(attempt))
     if box is None:
         _frame(ctx, 'tray-menu-not-seen')
-        ctx.blocked('tray menu by its pixels: the host asked put.gd for the menu twice and drew none within 5 s', 670)
+        ctx.blocked('tray menu by its pixels: three right-clicks drew no menu next to the icon within 5 s each', 670)
     rows = [r for r in menu['rows'] if r.get('visible')]
     ctx.note('tray_menu_served=' + json.dumps(dict(rows=[r.get('label') for r in rows], shows=menu.get('shows'),
                                                    opened=menu.get('opened')), ensure_ascii=False))
