@@ -897,7 +897,7 @@ then start again from step 1.
    held Proton lease must be the retained session's own `nightly-desktops`
    lease with a matching lend receipt. When that lend isn't returned and the run
    directory still exists, recovery first runs `proton_lab.py recover` for it
-   (bounded to 120 s) and refuses unless that returns the lend. If an earlier
+   (bounded to 300 s) and refuses unless that returns the lend. If an earlier
    recovery reached guarded cleanup (the run has `overlay-cleanup.json`, or its
    `disk.qcow2` is already gone) and then stopped or had its lease release
    refused, a retry finishes or
