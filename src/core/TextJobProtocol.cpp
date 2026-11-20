@@ -164,8 +164,10 @@ QByteArray encodeInputHeader(const InputHeader& header){
  return bytes;
 }
 bool admitted(int width,int height,int stride,int colourStride){
- return width>=1&&height>=1&&width<=maximumEdge&&height<=maximumEdge&&stride>=width&&stride<=maximumEdge+3
-  &&qint64(colourStride)>=3*qint64(width)&&qint64(colourStride)<=3*qint64(maximumEdge)+3&&qint64(width)*height<=maximumInputPixels;
+ // Packed rows only, as the parent writes them: no stride can make the memfd
+ // larger than the pixels it carries.
+ return width>=1&&height>=1&&width<=maximumEdge&&height<=maximumEdge&&stride==width
+  &&qint64(colourStride)==3*qint64(width)&&qint64(width)*height<=maximumInputPixels;
 }
 qint64 inputBytes(const InputHeader& header){return colourOffset(header)+qint64(header.colourStride)*header.height;}
 qint64 colourOffset(const InputHeader& header){return inputHeaderBytes+qint64(header.stride)*header.height;}

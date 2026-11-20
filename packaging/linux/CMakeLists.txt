@@ -184,8 +184,9 @@ foreach(font_notice IN ITEMS OFL-sans.txt OFL-mono.txt SOURCE.md)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ui/fonts/${font_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/fonts")
 endforeach()
 # putgd-ocr's emoji templates are drawn from Noto Color Emoji (OFL-1.1) and
-# Twemoji Mozilla (CC-BY-4.0) (#1748): their licences and where they came from.
-foreach(emoji_notice IN ITEMS OFL.txt CC-BY-4.0.txt SOURCE.md)
+# Twemoji Mozilla (CC-BY-4.0), for the sequences of Unicode's emoji-test.txt
+# (Unicode-3.0) (#1748): their licences and where they came from.
+foreach(emoji_notice IN ITEMS OFL.txt CC-BY-4.0.txt UNICODE-LICENSE.txt SOURCE.md)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ocr/emoji/${emoji_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/emoji")
 endforeach()
 

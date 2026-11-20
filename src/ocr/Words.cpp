@@ -33,7 +33,7 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
  // A band's first block continues the block the previous band ended in: a
  // band boundary is not a paragraph break.
  const int blockBase=job.lines.isEmpty()?0:job.lines.last().block;
- for(const auto& line:band.lines)job.lines.append({toSource(line.rect,placement,scale,border,imageWidth,imageHeight),blockBase+line.block,bandIndex});
+ for(const auto& line:band.lines)job.lines.append({toSource(line.rect,placement,scale,border,imageWidth,imageHeight),blockBase+line.block,bandIndex,line.rightToLeft});
  const bool seam=placement.seamAbove&&previous;
  if(seam){
   // The previous band was cut at its limit: its words on the cut edge are partial.
@@ -52,8 +52,18 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
   Word word;word.text=textjob::sanitizeText(item.text).trimmed();
   if(word.text.isEmpty())continue;
   word.rect=toSource(item.rect,placement,scale,border,imageWidth,imageHeight);
-  // Symbols only while they still spell the text the filter left.
-  if(word.text==item.text)for(auto symbol:item.symbols){symbol.rect=toSource(symbol.rect,placement,scale,border,imageWidth,imageHeight);word.symbols.append(symbol);}
+  // Symbols only while their cleaned text spells the cleaned word: a direction
+  // mark Tesseract puts in a word's text but in no character, or one the filter
+  // removes, changes no length that counts.
+  if(item.symbols.size()==item.characters.size()&&!item.symbols.isEmpty()){
+   QString spelled;QList<Symbol> symbols;
+   for(int c=0;c<item.symbols.size();++c){
+    auto symbol=item.symbols[c];const auto clean=textjob::sanitizeText(item.characters[c]);
+    symbol.length=int(clean.size());spelled+=clean;symbol.rect=toSource(symbol.rect,placement,scale,border,imageWidth,imageHeight);
+    if(symbol.length>0)symbols.append(symbol);
+   }
+   if(spelled==word.text)word.symbols=std::move(symbols);
+  }
   word.confidence=item.confidence;word.line=lineBase+item.line;word.seamOrder=k;
   if(seam){
    if(word.rect.top()<=placement.top+1)continue;
@@ -135,6 +145,9 @@ void joinUrls(Recognition& job){
 void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
  for(const auto& hit:hits){
   const QRect glyph=hit.rect;
+  // Lines that hold words: a band seam leaves a second, empty box for a line
+  // whose words joined the band above, and an emoji does not go there.
+  QSet<int> worded;for(const auto& w:std::as_const(job.words))worded.insert(w.line);
   // The characters the glyph covers leave their words.
   for(int i=0;i<job.words.size();){
    const auto word=job.words[i];
@@ -148,8 +161,10 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
    for(const auto& symbol:word.symbols){
     const auto text=word.text.mid(at,symbol.length);at+=symbol.length;
     if(area(symbol.rect.intersected(glyph))*5>=area(symbol.rect)*2){covered=true;flush();continue;}
-    if(piece.symbols.isEmpty()){piece=word;piece.text.clear();piece.symbols.clear();piece.rect=symbol.rect;piece.attach=word.attach&&pieces.isEmpty();}
-    piece.text+=text;piece.symbols.append(symbol);piece.rect=piece.rect.united(symbol.rect);
+    // A piece is as sure as its own characters: the word's confidence counted
+    // the junk the emoji was read as.
+    if(piece.symbols.isEmpty()){piece=word;piece.text.clear();piece.symbols.clear();piece.rect=symbol.rect;piece.confidence=symbol.confidence;piece.attach=word.attach&&pieces.isEmpty();}
+    piece.text+=text;piece.symbols.append(symbol);piece.rect=piece.rect.united(symbol.rect);piece.confidence=std::min(piece.confidence,symbol.confidence);
    }
    flush();
    if(!covered){++i;continue;}
@@ -161,6 +176,7 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // the nearest across, within three glyph widths.
   int line=-1;qint64 nearest=std::numeric_limits<qint64>::max();int bestOverlap=0;
   for(int l=0;l<job.lines.size();++l){
+   if(!worded.contains(l))continue;
    const auto& r=job.lines[l].rect;
    const int overlap=std::min(r.bottom(),glyph.bottom())-std::max(r.top(),glyph.top())+1;
    if(overlap*5<2*std::min(r.height(),glyph.height()))continue;
@@ -180,13 +196,13 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
    }
    line=after+1;
    const int block=after>=0?job.lines[after].block:(job.lines.isEmpty()?0:job.lines.first().block);
-   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0});
+   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0,false});
    for(auto& w:job.words)if(w.line>=line)++w.line;
   }else job.lines[line].rect=job.lines[line].rect.united(glyph);
   // Its place among the line's words, in the line's own direction.
   int first=0;while(first<job.words.size()&&job.words[first].line<line)++first;
   int end=first;while(end<job.words.size()&&job.words[end].line==line)++end;
-  const bool rightToLeft=end-first>=2&&job.words[first].rect.center().x()>job.words[end-1].rect.center().x();
+  const bool rightToLeft=job.lines[line].rightToLeft;
   int at=first;
   while(at<end&&(rightToLeft?job.words[at].rect.center().x()>glyph.center().x():job.words[at].rect.center().x()<glyph.center().x()))++at;
   Word emoji;emoji.text=hit.text;emoji.rect=glyph;emoji.line=line;emoji.lineHeight=job.lines[line].rect.height();emoji.emoji=true;
@@ -226,14 +242,17 @@ void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& f
 }
 QString copiedText(const Recognition& job,QList<int>* lineTops){
  QString text;int line=-1,block=-1;
- for(const auto& word:job.words){
+ for(qsizetype i=0;i<job.words.size();++i){
+  const auto& word=job.words[i];
   if(!word.kept)continue;
   if(word.line!=line){
    const int wordBlock=job.lines.value(word.line).block,top=job.lines.value(word.line).rect.top();
    if(line>=0){text+=wordBlock!=block?QStringLiteral("\n\n"):QStringLiteral("\n");if(wordBlock!=block&&lineTops)lineTops->append(top);}
    if(lineTops)lineTops->append(top);
    line=word.line;block=wordBlock;
-  }else if(!word.attach)text+=QLatin1Char(' ');
+  }else if(!(word.attach&&i>0&&job.words[i-1].kept&&job.words[i-1].line==word.line))text+=QLatin1Char(' ');
+  // A join counts only with the word it was made with: when that one was
+  // dropped, the space stays.
   text+=word.text;
  }
  return text;

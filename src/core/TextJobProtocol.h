@@ -69,7 +69,8 @@ inline constexpr char dataPathVariable[]="PUTGD_TEXT_DATA";
 // The input memfd: a 32-byte little-endian header (magic, version, width,
 // height, stride, colour stride, two reserved zero words), then stride*height
 // bytes of 8-bit grey, then colourStride*height bytes of 8-bit RGB, both
-// flattened onto white (#1748: the colour finds emoji). Sealed against write,
+// flattened onto white (#1748: the colour finds emoji). Rows are packed: the
+// stride is the width and the colour stride three times it. Sealed against write,
 // shrink and grow before the child starts.
 inline constexpr char inputMagic[4]={'P','G','T','J'};
 inline constexpr quint32 inputVersion=2;

@@ -90,6 +90,7 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
    QImage flat(width,rows,QImage::Format_RGB32);if(flat.isNull()){error=textjob::failure("text_job_failed");return {};}
    flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QPoint(0,0),image,QRect(0,y,width,rows));}
    const auto greyRows=flat.convertToFormat(QImage::Format_Grayscale8),colourRows=flat.convertToFormat(QImage::Format_RGB888);
+   if(greyRows.isNull()||colourRows.isNull()){error=textjob::failure("text_job_failed");return {};}
    grey.resize(qsizetype(width)*rows);colour.resize(qsizetype(width)*3*rows);
    for(int row=0;row<rows;++row){
     std::memcpy(grey.data()+qsizetype(row)*width,greyRows.constScanLine(row),size_t(width));

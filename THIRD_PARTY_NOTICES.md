@@ -16,9 +16,11 @@ The text-recognition helper `putgd-ocr` embeds small pictures of each emoji as
 two fonts draw them, used only to recognize emoji on the screen (#1748). No font
 is included. They are drawn from Noto Color Emoji 2.051, copyright Google Inc.,
 under SIL OFL 1.1, and from Twemoji Mozilla 0.7.0, graphics copyright Twitter,
-Inc and other contributors, under CC-BY 4.0. The template file, its inputs and
-their checksums are in `src/ocr/emoji`; packages install `OFL.txt`,
-`CC-BY-4.0.txt` and `SOURCE.md` in `share/doc/putgd/emoji`.
+Inc and other contributors, under CC-BY 4.0, for the emoji sequences of Unicode
+Emoji 16.0 (`emoji-test.txt`), copyright Unicode, Inc., under the Unicode License
+v3. The template file, its inputs and their checksums are in `src/ocr/emoji`;
+packages install `OFL.txt`, `CC-BY-4.0.txt`, `UNICODE-LICENSE.txt` and
+`SOURCE.md` in `share/doc/putgd/emoji`.
 
 The package privately includes the official AWS SDK for C++ and its CRT shared
 libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinned

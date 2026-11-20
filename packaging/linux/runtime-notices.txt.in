@@ -10,9 +10,9 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
     (ported, in putgd-record)
   IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
   IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt
-  Emoji templates drawn from Noto Color      OFL-1.1, CC-BY-4.0  below
-    Emoji 2.051 and Twemoji Mozilla 0.7.0
-    (in putgd-ocr)
+  Emoji templates drawn from Noto Color      OFL-1.1, CC-BY-4.0, below
+    Emoji 2.051 and Twemoji Mozilla 0.7.0,    Unicode-3.0
+    for Unicode Emoji 16.0 (in putgd-ocr)
   zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
     (in putgd-record)
   KWin fake-input bindings                  LGPL-2.1-or-later   wayland-fake-input.xml
@@ -94,6 +94,8 @@ emoji on the screen. No font is included.
 - Twemoji Mozilla 0.7.0, graphics Copyright Twitter, Inc and other contributors
   (https://github.com/mozilla/twemoji-colr). Licensed under CC-BY 4.0
   (https://creativecommons.org/licenses/by/4.0/).
+- The emoji sequences of Unicode Emoji 16.0 (emoji-test.txt), Copyright Unicode,
+  Inc. Licensed under the Unicode License v3 (emoji/UNICODE-LICENSE.txt).
 
 Nayuki QR Code generator, vendored in src/core/qrcodegen:
 

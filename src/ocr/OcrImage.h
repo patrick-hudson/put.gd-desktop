@@ -48,6 +48,7 @@ struct Line {
  QRect rect;          // source pixels
  int block=0;         // index of its block; a new block starts a paragraph gap
  int band=0;
+ bool rightToLeft=false;  // its paragraph reads right to left (Tesseract's)
 };
 // A code's corners: top-left, top-right, bottom-right, bottom-left. QtCore only, so
 // not QPolygon, which is QtGui.

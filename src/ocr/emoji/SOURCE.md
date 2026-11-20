@@ -34,3 +34,5 @@ Mozilla, and Discord shows Twemoji pictures.
 - Twemoji Mozilla: graphics Copyright Twitter, Inc and other contributors, from
   [mozilla/twemoji-colr](https://github.com/mozilla/twemoji-colr). Licensed under CC-BY 4.0
   (<https://creativecommons.org/licenses/by/4.0/>).
+- The emoji sequences come from Unicode's `emoji-test.txt` 16.0, Copyright Unicode, Inc.,
+  under the Unicode License v3 (`UNICODE-LICENSE.txt`).

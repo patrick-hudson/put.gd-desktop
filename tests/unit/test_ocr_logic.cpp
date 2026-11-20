@@ -7,6 +7,7 @@
 #include "ocr/Layout.h"
 #include "ocr/Words.h"
 #include <QTest>
+#include <cmath>
 #include <iterator>
 
 using namespace putgd::ocr;
@@ -181,7 +182,8 @@ private slots:
   const auto& t=EmojiTemplates::builtIn();QVERIFY(t.count()>6000);
   const int heart=find(t,QString::fromUtf8("\u2764\ufe0f")),wave=find(t,QString::fromUtf8("\U0001F44B"),1);
   QVERIFY(heart>=0&&wave>=0);
-  for(const Rgb background:{Rgb{255,255,255},Rgb{49,51,56}}){
+  // White, a dark theme, and a saturated chat bubble the emoji sit inside.
+  for(const Rgb background:{Rgb{255,255,255},Rgb{49,51,56},Rgb{20,90,165}}){
    Canvas canvas(220,40,background);
    canvas.draw(t,heart,QRect(40,10,22,20));canvas.draw(t,wave,QRect(147,10,20,21));
    Recognition job;job.lines={{QRect(0,8,220,24),0,0}};
@@ -194,18 +196,20 @@ private slots:
  // A plain shape such as a red dot is matched, so it is not taken for a stop
  // sign, but never named; a glyph that only roughly fits a template that stands
  // out little from the background (a faint letter against a dark disc) is not
- // named; and an emoji on no line of text gets a line of its own.
+ // named; and emoji on no line of text get a line of their own, a tall narrow
+ // one included.
  void emojiNeverNameShapesOrFaintFits(){
   const auto& t=EmojiTemplates::builtIn();
-  const int face=find(t,QString::fromUtf8("\U0001F602")),dot=find(t,QString::fromUtf8("\U0001F534")),moon=find(t,QString::fromUtf8("\U0001F311"));
-  QVERIFY(face>=0&&dot>=0&&moon>=0&&t.shape(dot)&&!t.shape(face));
-  Canvas canvas(200,80,Rgb{30,30,30});
+  const int face=find(t,QString::fromUtf8("\U0001F602")),dot=find(t,QString::fromUtf8("\U0001F534")),moon=find(t,QString::fromUtf8("\U0001F311")),merperson=find(t,QString::fromUtf8("\U0001F9DC"));
+  QVERIFY(face>=0&&dot>=0&&moon>=0&&merperson>=0&&t.shape(dot)&&!t.shape(face));
+  Canvas canvas(200,100,Rgb{30,30,30});
   canvas.draw(t,dot,QRect(100,10,20,20));canvas.draw(t,face,QRect(60,50,20,20));
+  canvas.draw(t,merperson,QRect(90,45,int(std::lround(40*t.aspect(merperson))),40));
   // A dim blue letter-sized blob where a dark disc would fit loosely.
   for(int y=12;y<26;++y)for(int x=20;x<32;++x)if((x-26)*(x-26)+(y-19)*(y-19)<=30){char* o=canvas.rgb.data()+3*(y*200+x);o[0]=char(40);o[1]=char(60);o[2]=char(110);}
   Recognition job;job.lines={{QRect(0,8,200,24),0,0}};
   job.words={word("o",{QRect(20,12,12,14)},95),word("@",{QRect(100,10,20,20)},60),word("end",{QRect(130,12,6,16),QRect(137,12,6,16),QRect(144,12,6,16)},96)};
-  QCOMPARE(recognized(job,canvas.view()),QString::fromUtf8("o @ end\n\U0001F602"));
+  QCOMPARE(recognized(job,canvas.view()),QString::fromUtf8("o @ end\n\U0001F602 \U0001F9DC"));
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

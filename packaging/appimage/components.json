@@ -28,6 +28,8 @@
          "licenseText": "usr/share/doc/putgd/emoji/OFL.txt"},
         {"name": "Emoji templates drawn from Twemoji Mozilla 0.7.0 (in putgd-ocr)", "license": "CC-BY-4.0",
          "licenseText": "usr/share/doc/putgd/emoji/CC-BY-4.0.txt"},
+        {"name": "Unicode Emoji 16.0 sequences in the emoji templates (in putgd-ocr)", "license": "Unicode-3.0",
+         "licenseText": "usr/share/doc/putgd/emoji/UNICODE-LICENSE.txt"},
         {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
          "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"},
         {"name": "KWin fake-input protocol bindings", "license": "LGPL-2.1-or-later",

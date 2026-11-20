@@ -333,7 +333,11 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const int lineBase=int(result.recognition.lines.size());
   const int blockBase=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block+=blockBase;result.recognition.lines.append(line);}
-  for(auto word:std::as_const(part.words)){word.rect.translate(p.rect.topLeft());word.line+=lineBase;result.recognition.words.append(std::move(word));}
+  for(auto word:std::as_const(part.words)){
+   word.rect.translate(p.rect.topLeft());word.line+=lineBase;
+   for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
+   result.recognition.words.append(std::move(word));
+  }
   result.recognition.banded|=p.plan.banded();
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }

@@ -24,8 +24,11 @@ struct EngineOptions {
 };
 // One band's words and lines, in Tesseract's reading order, in the band's pixels.
 struct BandText {
- struct Item { QString text;QRect rect;float confidence=0;int line=0;QList<Symbol> symbols={}; };
- struct LineBox { QRect rect;int block=0; };
+ // symbols are the word's characters as Tesseract gives them, each with its
+ // own text in `characters`; mergeBand keeps them only when they spell the
+ // word once both are cleaned.
+ struct Item { QString text;QRect rect;float confidence=0;int line=0;QList<Symbol> symbols={};QStringList characters={}; };
+ struct LineBox { QRect rect;int block=0;bool rightToLeft=false; };
  QList<LineBox> lines;
  QList<Item> words;
 };
