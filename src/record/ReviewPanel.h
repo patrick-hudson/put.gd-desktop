@@ -5,6 +5,7 @@
 #include <QFrame>
 #include <QJsonObject>
 #include <QPointer>
+#include <QTimer>
 #include <QWidget>
 #include <memory>
 #include <optional>
@@ -28,8 +29,11 @@ namespace putgd::record {
 //    Shows from → / Until → with m:ss.s fields and Set to playhead · Redact |
 //    Blur (Blur adds its strength).
 // Below, once anything is edited: Edits, every trim, cut and cover in source
-// order (icon, name, span; a selected row shows its verb in place of the span
-// unless the part above already offers it; other rows show it on hover).
+// order (icon, name, span, and a 24 px trailing icon button for the row's verb,
+// shown on hover, focus or selection, in space the row always keeps; the part
+// above offers Restore for a selected cut, so its row shows it only on hover).
+// Controls update in place while what they are made of stays the same; the
+// blur strength stepper coalesces its steps for 350 ms into one edit.
 //
 // It shows and proposes only: every control emits a signal, the window turns
 // it into an edit or a seek, and setState() is what it then shows.
@@ -63,6 +67,10 @@ public:
     // Shows from (start) or Until field as typing it does (frame snapping, then
     // coverEdgeEdited). False when no cover's fields are shown.
     bool commitCoverEdge(bool start, qint64 sourceUs);
+    // The Edits row of an edit (kind "trim" with no id), or null.
+    QWidget* rowFor(const QString& kind, const QString& id) const;
+    // Proposes a strength still coalescing (a selection change, or the window before an upload).
+    void flushStrength();
     QSize sizeHint() const override;
 signals:
     void cutRequested();                 // a time selection's Cut
@@ -82,7 +90,10 @@ signals:
     void removeCover(const QString& id);
 protected:
     void paintEvent(QPaintEvent*) override;
+    bool eventFilter(QObject*, QEvent*) override;
 private:
+    QString structure(const State&) const;
+    void updateInPlace();
     void rebuild();
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
@@ -98,6 +109,9 @@ private:
     QVBoxLayout* root_ = nullptr;
     QWidget* defaultControl_ = nullptr;
     bool building_ = false;
+    QString built_;  // structure() of the controls on screen
+    QTimer strengthTimer_;
+    std::optional<std::pair<QString, int>> strengthPending_;
 };
 
 // #1613: below ~1180×720 the panel folds into the tool row's Edits toggle and

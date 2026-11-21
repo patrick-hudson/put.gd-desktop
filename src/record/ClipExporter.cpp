@@ -1226,6 +1226,19 @@ QImage fitPreview(const QImage& image, int maxEdge) {
     return size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 }
+// The review viewer's live cover (#1613 D4): one cover's effect painted onto a
+// preview-sized picture, its rect and blur strength scaled from canvas pixels.
+void paintCoverPreview(QImage& image, const RecordingMask& mask, const QSize& canvas) {
+    const QSize source = canvas.isEmpty() ? image.size() : canvas;
+    if (source.isEmpty() || image.isNull()) return;
+    const double sx = double(image.width()) / source.width(), sy = double(image.height()) / source.height();
+    const QRect r = QRectF(mask.rect.x() * sx, mask.rect.y() * sy, mask.rect.width() * sx, mask.rect.height() * sy).toAlignedRect().intersected(image.rect());
+    if (r.width() < 1 || r.height() < 1) return;
+    if (mask.kind == "solid" || r.width() < 4 || r.height() < 4) { QPainter painter(&image); painter.fillRect(r, Qt::black); return; }
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32 && image.format() != QImage::Format_ARGB32_Premultiplied) image = image.convertToFormat(QImage::Format_RGB32);
+    const int radius = std::clamp(int(std::lround(std::clamp(mask.strength, 2, 64) * std::min(sx, sy))), 1, std::max(1, std::min(r.width(), r.height()) / 2 - 1));
+    boxBlur(image, r, radius);
+}
 Error probeClip(const QString& path, qint64& durationUs, QSize& canvas) {
     Input input;
     if (auto e = input.open(path, false)) return e;

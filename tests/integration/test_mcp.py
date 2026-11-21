@@ -133,11 +133,22 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ({'action': 'panel', 'panel_open': True}, {'action': 'panel', 'open': True}),
             ({'action': 'resize', 'width': 1000, 'height': 680}, {'action': 'resize', 'width': 1000, 'height': 680}),
             ({'action': 'undo'}, {'action': 'undo'}),
+            ({'action': 'timelineZoom', 'level': 3}, {'action': 'timelineZoom', 'level': 3}),
+            ({'action': 'setSkimming', 'on': False}, {'action': 'setSkimming', 'on': False}),
+            ({'action': 'setSnapping', 'on': True}, {'action': 'setSnapping', 'on': True}),
+            ({'action': 'zoomIn'}, {'action': 'zoomIn'}),
+            ({'action': 'zoomOut'}, {'action': 'zoomOut'}),
+            ({'action': 'retimeCover', 'start_us': 2, 'end_us': 8}, {'action': 'retimeCover', 'start': 2, 'end': 8}),
+            ({'action': 'moreCovers'}, {'action': 'moreCovers'}),
+            ({'action': 'markSelection', 'edge': 'end'}, {'action': 'markSelection', 'edge': 'end'}),
+            ({'action': 'editPoint', 'delta': -1}, {'action': 'editPoint', 'delta': -1}),
         ]:
             adapter.call.reset_mock()
             result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
             adapter.call.assert_awaited_once_with('recording.review', {'id': 'r', **params})
-        for args in [{'action': 'selectRange', 'start_us': 1}, {'action': 'selectEdit', 'kind': 'cover'}, {'action': 'timelineZoom', 'level': 3},
+        for args in [{'action': 'selectRange', 'start_us': 1}, {'action': 'selectEdit', 'kind': 'cover'}, {'action': 'timelineZoom', 'level': 0},
+                     {'action': 'setSkimming'}, {'action': 'retimeCover', 'start_us': 2}, {'action': 'markSelection'},
+                     {'action': 'editPoint', 'delta': 3},
                      {'action': 'frameStep', 'delta': 2}, {'action': 'viewerZoom', 'mode': 'big'}, {'action': 'panel'}, {'action': 'resize', 'width': 10, 'height': 900},
                      {'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0}, {'action': 'cut', 'edge': 'middle'}]:
             adapter.call.reset_mock()

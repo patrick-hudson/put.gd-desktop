@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstring>
 #include <deque>
+#include <optional>
 #include <vector>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -42,12 +43,14 @@ struct Source {
     qint64 origin = 0;
     AVRational timeBase{1, 1};
     bool pending = false;  // packet holds a verified key packet not yet sent
+    bool drained = false;  // the decoder was sent end of stream; it needs a seek before more
     QString path;
 
     static int interrupted(void* opaque) { return static_cast<const std::atomic_bool*>(opaque)->load() ? 1 : 0; }
     void close() {
         av_packet_unref(packet);
         pending = false;
+        drained = false;
         if (codec) avcodec_free_context(&codec);
         if (format) avformat_close_input(&format);
         stream = -1;
@@ -77,6 +80,16 @@ struct Source {
         return {};
     }
     qint64 streamTime(qint64 us) const { return origin + av_rescale_q(us, microseconds, timeBase); }
+    // The indexed keyframe at or before a stream time, or nullopt when the index
+    // has none (the caller then seeks).
+    std::optional<qint64> indexedKeyframe(qint64 target) const {
+        AVStream* track = format->streams[stream];
+        const int at = av_index_search_timestamp(track, target, AVSEEK_FLAG_BACKWARD);
+        if (at < 0) return std::nullopt;
+        const AVIndexEntry* entry = avformat_index_get_entry(track, at);
+        if (!entry) return std::nullopt;
+        return entry->timestamp;
+    }
     qint64 clipTime(qint64 ts) const { return av_rescale_q(ts - origin, timeBase, microseconds); }
     int readVideo() {
         int status;
@@ -90,6 +103,7 @@ struct Source {
     bool seekKey(qint64 target) {
         av_packet_unref(packet);
         pending = false;
+        drained = false;
         const int sought = av_seek_frame(format, stream, target, AVSEEK_FLAG_BACKWARD);
         avcodec_flush_buffers(codec);
         if (sought >= 0 && readVideo() >= 0 && packet->pts != AV_NOPTS_VALUE && packet->pts <= target && (packet->flags & AV_PKT_FLAG_KEY)) return pending = true;
@@ -121,7 +135,7 @@ struct Source {
             int rc = 0;
             if (pending) pending = false;
             else rc = readVideo();
-            if (rc == AVERROR_EOF) avcodec_send_packet(codec, nullptr);
+            if (rc == AVERROR_EOF) { avcodec_send_packet(codec, nullptr); drained = true; }
             else if (rc < 0) return have;
             else {
                 rc = avcodec_send_packet(codec, packet);
@@ -360,16 +374,28 @@ struct FrameSkimmer::Private final : QThread {
     std::atomic_bool quit{false};
     std::atomic<quint64> cancelled{0};  // advances on cancel(): answers older than it are dropped
     // Guarded by mutex.
-    bool openRequested = false, opened = false, havePending = false;
-    QString clip;
+    bool openRequested = false, opened = false, havePending = false, openFailed = false;
+    QString clip, openError;
     QSize canvas;
     qint64 pendingTime = 0;
     RecordingEdit pendingEdit;
     int pendingEdge = 0;
 
+    void fail(qint64 requested, quint64 generation, const QString& message) {
+        QMetaObject::invokeMethod(owner, [o = owner, d = this, generation, requested, message] {
+            if (d->cancelled.load() == generation) emit o->frameFailed(requested, message);
+        }, Qt::QueuedConnection);
+    }
     void run() override {
         Source source(&quit);
         FramePtr frame(av_frame_alloc());
+        // The last decoded frame and the request it answered (stream units): a
+        // request between the two is answered by it again (a new edit at the same
+        // time is rendered without decoding), and a later one in the same GOP is
+        // decoded forward from it without a seek (a scrub or a held key).
+        FramePtr kept(av_frame_alloc());
+        bool haveKept = false, decoderFollowsKept = false;
+        qint64 keptRequest = 0, keptPts = 0;
         while (true) {
             qint64 time = 0;
             RecordingEdit edit;
@@ -394,26 +420,56 @@ struct FrameSkimmer::Private final : QThread {
             }
             if (open) {
                 const QString error = source.open(clipPath);
+                av_frame_unref(kept.get());
+                haveKept = decoderFollowsKept = false;
                 QMutexLocker lock(&mutex);
                 opened = error.isEmpty();
+                openFailed = !opened;
+                openError = error;
                 if (!opened) {
+                    // A request waiting for the open is answered with the reason.
+                    if (havePending && !quit) fail(pendingTime, cancelled.load(), error);
                     havePending = false;
                     if (!quit) QMetaObject::invokeMethod(owner, [o = owner, error] { emit o->failed(error); }, Qt::QueuedConnection);
                 }
                 continue;
             }
             const auto abort = [&] { return quit.load() || cancelled.load() != generation; };
-            qint64 pts = 0;
-            if (!source.seekKey(source.streamTime(std::max<qint64>(0, time))) || !source.decodeTo(source.streamTime(std::max<qint64>(0, time)), frame.get(), pts, abort)) continue;
-            if (abort()) continue;
-            const qint64 frameUs = source.clipTime(pts);
+            const qint64 target = source.streamTime(std::max<qint64>(0, time));
+            if (!(haveKept && keptRequest <= target && target <= keptPts)) {
+                const auto key = decoderFollowsKept && haveKept && target > keptPts ? source.indexedKeyframe(target) : std::nullopt;
+                const bool forward = key && *key <= keptPts && !source.drained;
+                qint64 pts = 0;
+                if (!forward && !source.seekKey(target)) {
+                    haveKept = decoderFollowsKept = false;
+                    if (!abort()) fail(time, generation, QStringLiteral("Reading the working clip failed"));
+                    continue;
+                }
+                const bool decoded = source.decodeTo(target, frame.get(), pts, abort);
+                if (abort()) { decoderFollowsKept = false; continue; }
+                if (!decoded) {
+                    haveKept = decoderFollowsKept = false;
+                    fail(time, generation, QStringLiteral("No frame could be decoded at this time"));
+                    continue;
+                }
+                av_frame_unref(kept.get());
+                av_frame_move_ref(kept.get(), frame.get());
+                haveKept = true;
+                keptRequest = target;
+                keptPts = pts;
+                decoderFollowsKept = !source.drained;
+            }
+            const qint64 frameUs = source.clipTime(keptPts);
             QImage image;
-            if (renderPreviewFrame(frame.get(), edit, frameUs, canvasSize, edge, image, time)) continue;
-            av_frame_unref(frame.get());
+            if (auto e = renderPreviewFrame(kept.get(), edit, frameUs, canvasSize, edge, image, time)) {
+                if (!abort()) fail(time, generation, e.message);
+                continue;
+            }
             if (abort()) continue;
             // A cancel that lands after the post still drops the answer: checked again on delivery.
-            QMetaObject::invokeMethod(owner, [o = owner, d = this, generation, time, frameUs, image] {
-                if (d->cancelled.load() == generation) emit o->frameReady(time, frameUs, image);
+            const quint64 revision = edit.revision;
+            QMetaObject::invokeMethod(owner, [o = owner, d = this, generation, time, frameUs, image, revision] {
+                if (d->cancelled.load() == generation) emit o->frameReady(time, frameUs, image, revision);
             }, Qt::QueuedConnection);
         }
     }
@@ -430,11 +486,17 @@ void FrameSkimmer::open(const QString& clip, const QSize& canvas) {
     d_->canvas = canvas;
     d_->openRequested = true;
     d_->opened = false;
+    d_->openFailed = false;
     d_->havePending = false;
     d_->wake.wakeAll();
 }
 void FrameSkimmer::request(qint64 timeUs, const RecordingEdit& edit, int maxEdge) {
     QMutexLocker lock(&d_->mutex);
+    if (d_->openFailed) {
+        // The clip could not be opened: every request is answered with why.
+        d_->fail(timeUs, d_->cancelled.load(), d_->openError);
+        return;
+    }
     d_->pendingTime = timeUs;
     d_->pendingEdit = edit;
     d_->pendingEdge = std::max(1, maxEdge);
@@ -445,5 +507,9 @@ void FrameSkimmer::cancel() {
     QMutexLocker lock(&d_->mutex);
     d_->havePending = false;
     d_->cancelled.fetch_add(1);
+}
+bool FrameSkimmer::failedToOpen() const {
+    QMutexLocker lock(&d_->mutex);
+    return d_->openFailed;
 }
 }

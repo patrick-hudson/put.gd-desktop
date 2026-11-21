@@ -66,25 +66,36 @@ private:
     std::unique_ptr<Private> d_;
 };
 
-// #1613: the exact frame under a skimming pointer. It keeps its own input open
-// on its own worker thread; at most one decode is in flight, a newer request
-// replaces a queued one, and cancel() drops the answer of the one in flight.
-// The frame is decoded at the exact time (seek back to the keyframe, decode
-// forward, as previewFrame does) with the covers active at that time applied,
-// long edge scaled to at most maxEdge. Measured on m74: 217 ms median, 328 ms
-// p95 at 4K, so the timeline shows the tile first and asks for this after the
-// pointer rests ~120 ms.
+// #1613: the exact frame at a time, decoded on its own worker thread with its
+// own input kept open. The window owns two: one for the skimming pointer and
+// one for the playhead (scrub, edge drags, held keys). At most one decode is in
+// flight; a newer request replaces a queued one (latest wins) without stopping
+// the one in flight, so a scrub shows frames continuously; cancel() drops the
+// answer of the one in flight. The frame is decoded at the exact time (seek
+// back to the keyframe, decode forward, as previewFrame does) with the covers
+// active at that time applied, long edge scaled to at most maxEdge. A later
+// time in the same GOP is decoded forward from the last frame without a seek,
+// and a time the last frame already answers (a new edit at the same playhead)
+// is rendered again without decoding. Measured on m74 (seek and decode):
+// 217 ms median, 328 ms p95 at 4K.
 class FrameSkimmer final : public QObject {
     Q_OBJECT
 public:
     explicit FrameSkimmer(QObject* parent = nullptr);
     ~FrameSkimmer() override;
+    // Opens (or opens again, after a failure) the clip on the worker.
     void open(const QString& clip, const QSize& canvas);
     void request(qint64 timeUs, const RecordingEdit& edit, int maxEdge);
     void cancel();
+    // The last open() failed; requests are then answered by frameFailed at once.
+    bool failedToOpen() const;
 signals:
-    // requestedUs is the request's time; frameUs the decoded frame's own time.
-    void frameReady(qint64 requestedUs, qint64 frameUs, const QImage& frame);
+    // requestedUs is the request's time; frameUs the decoded frame's own time;
+    // revision the request's edit revision.
+    void frameReady(qint64 requestedUs, qint64 frameUs, const QImage& frame, quint64 revision);
+    // A request was not answered: the clip could not be opened or read, or no
+    // frame decoded at that time. message says which (previewFrame's wording).
+    void frameFailed(qint64 requestedUs, const QString& message);
     void failed(const QString& message);
 private:
     struct Private;

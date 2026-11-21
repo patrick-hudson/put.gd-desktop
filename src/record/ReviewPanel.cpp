@@ -19,6 +19,7 @@
 #include <QRegularExpression>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -68,7 +69,8 @@ QPushButton* makeButton(QWidget* parent, const QString& text, const QString& gly
     }
     Ui::role(button, role);
     button->setAutoDefault(true);
-    button->setFocusPolicy(Qt::StrongFocus);
+    // Tab reaches it; a click doesn't take Space or the arrows from the timeline (E2).
+    button->setFocusPolicy(Qt::TabFocus);
     button->setAccessibleName(name.isEmpty() ? text : name);
     button->setObjectName(objectName);
     return button;
@@ -115,35 +117,47 @@ private:
     QString text_;
 };
 
-// One entry of Edits: icon, name and span; a selected row (or a hovered or
-// focused one) shows its verb in place of the span. Enter or a click selects
-// it; Up / Down move between rows; Delete cuts a time selection, else removes
-// a cover (never restores a cut).
+// One entry of Edits: icon, name and span, and a 24 px trailing icon button
+// for its verb (Reset, Restore, Remove) in space the row always keeps, shown
+// on hover, focus or selection; the span never gives way to it (F1). Enter or
+// a click selects the row (Enter on a selected cut's row restores it); Up /
+// Down move between rows; Delete cuts a time selection, else removes a cover
+// (never restores a cut).
 class EditRow final : public QWidget {
     Q_OBJECT
 public:
-    EditRow(const QString& kind, const QString& id, const QString& name, const QString& span, const QString& glyph, bool selected, const QString& verb, bool verbOffered, QWidget* parent)
+    EditRow(const QString& kind, const QString& id, const QString& name, const QString& span, const QString& glyph, bool selected, const QString& verb, const QString& verbGlyph, bool verbOffered, QWidget* parent)
         : QWidget(parent), kind_(kind), name_(name), span_(span), glyph_(Ui::icon(glyph)), selected_(selected), verbOffered_(verbOffered) {
         setObjectName("reviewPanelRow");
         setProperty("rowKey", kind + QLatin1Char('/') + id);
         setFocusPolicy(Qt::StrongFocus);
         setAttribute(Qt::WA_Hover);
         setMouseTracking(true);
-        setAccessibleName(QStringLiteral("%1, %2").arg(name, QString(span).replace(QStringLiteral("–"), QStringLiteral(" to "))));
+        setSpan(span);
         if (selected) setAccessibleDescription(QStringLiteral("Selected"));
-        verb_ = makeButton(this, verb, {}, "quiet", QStringLiteral("%1 %2").arg(verb, kind == "trim" ? QStringLiteral("trim") : kind == "cut" ? QStringLiteral("cut") : name), QStringLiteral("reviewPanelRowVerb"));
+        verb_ = Ui::toolButton({}, verbGlyph, "quiet", this);
+        verb_->setObjectName("reviewPanelRowVerb");
+        const QString target = kind == "trim" ? QStringLiteral("trim") : kind == "cut" ? QStringLiteral("cut") : name;
+        verb_->setAccessibleName(QStringLiteral("%1 %2").arg(verb, target));
+        verb_->setToolTip(QStringLiteral("%1 %2").arg(verb, target));
         verb_->setProperty("rowKey", property("rowKey"));
-        verb_->setAutoDefault(false);
-        verb_->setFixedHeight(rowHeight() - Ui::space(Space::s));
-        connect(verb_, &QPushButton::clicked, this, &EditRow::verbClicked);
+        verb_->setFocusPolicy(Qt::TabFocus);
+        verb_->setFixedSize(verbSide(), verbSide());
+        connect(verb_, &QToolButton::clicked, this, &EditRow::verbClicked);
         connect(qApp, &QApplication::focusChanged, this, [this] { refreshVerb(); });
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { update(); });
         refreshVerb();
     }
     static int rowHeight() { return std::max(Ui::scaled(40), QFontMetrics(Ui::font(Ui::Type::body, true)).height() + Ui::scaled(16)); }
+    static int verbSide() { return Ui::scaled(24); }
     QSize sizeHint() const override { return {Ui::scaled(200), rowHeight()}; }
     QSize minimumSizeHint() const override { return {0, rowHeight()}; }
-    QPushButton* verbButton() const { return verb_; }
+    QToolButton* verbButton() const { return verb_; }
+    void setSpan(const QString& span) {
+        span_ = span;
+        setAccessibleName(QStringLiteral("%1, %2").arg(name_, QString(span).replace(QStringLiteral("–"), QStringLiteral(" to "))));
+        update();
+    }
 signals:
     void activated();
     void verbClicked();
@@ -158,7 +172,12 @@ protected:
     }
     void keyPressEvent(QKeyEvent* event) override {
         switch (event->key()) {
-        case Qt::Key_Return: case Qt::Key_Enter: case Qt::Key_Space: emit activated(); break;
+        case Qt::Key_Return: case Qt::Key_Enter:
+            // A selected cut's row: Enter is its Restore (E3).
+            if (selected_ && kind_ == "cut") emit verbClicked();
+            else emit activated();
+            break;
+        case Qt::Key_Space: emit activated(); break;
         case Qt::Key_Down: case Qt::Key_Up: {
             const auto rows = parentWidget() ? parentWidget()->findChildren<EditRow*>(QString(), Qt::FindDirectChildrenOnly) : QList<EditRow*>{};
             const int at = int(rows.indexOf(this)) + (event->key() == Qt::Key_Down ? 1 : -1);
@@ -198,25 +217,20 @@ protected:
         const int glyph = std::max(Ui::scaled(15), chip - 10);
         glyph_.paint(&p, QRect(int(chipRect.center().x()) - glyph / 2, int(chipRect.center().y()) - glyph / 2, glyph, glyph));
         const QFont nameFont = Ui::font(Ui::Type::body, true), spanFont = Ui::monoFont(Ui::Type::caption);
-        int right = width() - pad;
-        if (verb_->isVisibleTo(this)) right = verb_->geometry().left() - gap;
-        else {
-            const int spanWidth = QFontMetrics(spanFont).horizontalAdvance(span_);
-            Ui::paintText(p, QRectF(width() - pad - spanWidth, 0, spanWidth, height()), span_, c.textMuted, spanFont, Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
-            right = width() - pad - spanWidth - gap;
-        }
+        // The span ends 8 px before the verb's reserved place, shown or not.
+        const int spanRight = width() - Ui::space(Space::xs) - verbSide() - Ui::space(Space::s);
+        const int spanWidth = QFontMetrics(spanFont).horizontalAdvance(span_);
+        Ui::paintText(p, QRectF(spanRight - spanWidth, 0, spanWidth, height()), span_, c.textMuted, spanFont, Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        const int right = spanRight - spanWidth - gap;
         const qreal left = chipRect.right() + gap;
         Ui::paintText(p, QRectF(left, 0, std::max<qreal>(0, right - left), height()), name_, c.text, nameFont);
     }
 private:
-    void placeVerb() {
-        const QSize size = verb_->sizeHint();
-        verb_->setGeometry(width() - Ui::space(Space::xs) - size.width(), (height() - verb_->height()) / 2, size.width(), verb_->height());
-    }
+    void placeVerb() { verb_->move(width() - Ui::space(Space::xs) - verbSide(), (height() - verbSide()) / 2); }
     void refreshVerb() {
         const auto* focus = QApplication::focusWidget();
         const bool show = verbOffered_ || hovered_ || focus == this || focus == verb_;
-        if (show == verb_->isVisibleTo(this) && !show) return;
+        if (show == verb_->isVisibleTo(this)) return;
         verb_->setVisible(show);
         if (show) placeVerb();
         update();
@@ -224,7 +238,7 @@ private:
     QString kind_, name_, span_;
     QIcon glyph_;
     bool selected_, verbOffered_, hovered_ = false;
-    QPushButton* verb_ = nullptr;
+    QToolButton* verb_ = nullptr;
 };
 }  // namespace
 
@@ -236,7 +250,87 @@ ReviewPanel::ReviewPanel(std::shared_ptr<MaskNames> names, QWidget* parent) : QW
     root_->setContentsMargins(0, 0, 0, 0);
     root_->setSpacing(0);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
+    strengthTimer_.setSingleShot(true);
+    strengthTimer_.setInterval(350);
+    connect(&strengthTimer_, &QTimer::timeout, this, &ReviewPanel::flushStrength);
     rebuild();
+}
+void ReviewPanel::flushStrength() {
+    strengthTimer_.stop();
+    if (!strengthPending_) return;
+    const auto [id, value] = *strengthPending_;
+    strengthPending_.reset();
+    emit coverStrengthChanged(id, value);
+}
+QWidget* ReviewPanel::rowFor(const QString& kind, const QString& id) const {
+    const QString key = kind + QLatin1Char('/') + id;
+    for (auto* row : findChildren<EditRow*>()) if (row->property("rowKey").toString() == key) return row;
+    return nullptr;
+}
+bool ReviewPanel::eventFilter(QObject* watched, QEvent* event) {
+    auto* field = qobject_cast<QLineEdit*>(watched);
+    if (field && (event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+        event->accept();
+        if (event->type() == QEvent::KeyPress) field->setText(field->property("shown").toString());
+        return event->type() == QEvent::KeyPress;
+    }
+    return QWidget::eventFilter(watched, event);
+}
+// What the panel's controls are made of: the mode, what is selected and the
+// rows (kind, id, name, selection). Times, spans and the strength change in
+// place; anything else rebuilds the controls (F2).
+QString ReviewPanel::structure(const State& s) const {
+    QStringList parts;
+    const auto cover = std::find_if(s.edit.masks.cbegin(), s.edit.masks.cend(), [&](const RecordingMask& m) { return s.selectedKind == "cover" && m.id == s.selectedId; });
+    const auto cut = std::find_if(s.edit.cuts.cbegin(), s.edit.cuts.cend(), [&](const RecordingCut& c) { return s.selectedKind == "cut" && c.id == s.selectedId; });
+    if (cover != s.edit.masks.cend()) parts << QStringLiteral("cover") << cover->id << names_->name(*cover) << cover->kind << QString::number(!s.coverFirstKept && !s.coverLastKept);
+    else if (cut != s.edit.cuts.cend()) parts << QStringLiteral("cut") << cut->id << QString::number(cut->start) << QString::number(cut->end);
+    else if (s.timeSelection && !s.timeSelection->empty()) parts << QStringLiteral("selection") << QString::number(s.timeSelection->start) << QString::number(s.timeSelection->end);
+    else parts << QStringLiteral("rest") << s.selectedKind;
+    const auto& e = s.edit;
+    if (e.trimStart > 0 || (e.trimEnd && *e.trimEnd < s.durationUs)) parts << QStringLiteral("trim");
+    for (const auto& c : e.cuts) parts << QStringLiteral("cut/") + c.id;
+    for (const auto& m : e.masks) parts << QStringLiteral("cover/") + m.id + QLatin1Char('/') + names_->name(m) + QLatin1Char('/') + m.kind;
+    // Rows follow source order: a retime that reorders them rebuilds.
+    QList<QPair<qint64, QString>> order;
+    if (e.trimStart > 0 || (e.trimEnd && *e.trimEnd < s.durationUs)) order.append({e.trimStart, QStringLiteral("trim")});
+    for (const auto& c : e.cuts) order.append({c.start, c.id});
+    for (const auto& m : e.masks) order.append({m.start, m.id});
+    std::stable_sort(order.begin(), order.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (const auto& o : order) parts << o.second;
+    parts << QString::number(s.durationUs) << QString::number(s.fps);
+    return parts.join(QLatin1Char('|'));
+}
+void ReviewPanel::updateInPlace() {
+    if (const auto* mask = selectedCover(); mask && top_) {
+        for (const bool start : {true, false}) {
+            auto* field = top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelShowsFromTime") : QStringLiteral("reviewPanelUntilTime"));
+            const qint64 time = start ? mask->start : mask->end;
+            // A field being typed in keeps the typing.
+            if (field && (!field->hasFocus() || field->text() == field->property("shown").toString())) {
+                field->setText(clockText(time));
+                field->setProperty("shown", field->text());
+                field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(time, state_.fps)));
+            }
+            if (auto* seek = top_->findChild<QPushButton*>(start ? QStringLiteral("reviewPanelShowsFrom") : QStringLiteral("reviewPanelUntil"))) {
+                const bool kept = (start ? state_.coverFirstKept : state_.coverLastKept).has_value();
+                seek->setEnabled(kept);
+                seek->setToolTip(kept ? seek->accessibleDescription() : QStringLiteral("Excluded from output"));
+            }
+        }
+        if (auto* strength = top_->findChild<QSpinBox*>(QStringLiteral("reviewPanelStrength")); strength && !strengthPending_) {
+            const QSignalBlocker block(strength);
+            strength->setValue(std::clamp(mask->strength, 2, 64));
+        }
+    }
+    if (!list_) return;
+    const auto& e = state_.edit;
+    for (auto* row : list_->findChildren<EditRow*>()) {
+        const auto key = row->property("rowKey").toString();
+        if (key == QStringLiteral("trim/")) row->setSpan(spanText(e.trimStart, e.exportEnd(state_.durationUs)));
+        for (const auto& c : e.cuts) if (key == QStringLiteral("cut/") + c.id) row->setSpan(spanText(c.start, c.end));
+        for (const auto& m : e.masks) if (key == QStringLiteral("cover/") + m.id) row->setSpan(spanText(m.start, m.end));
+    }
 }
 
 QSize ReviewPanel::sizeHint() const {
@@ -256,8 +350,11 @@ void ReviewPanel::paintEvent(QPaintEvent*) {
 }
 
 void ReviewPanel::setState(const State& state) {
+    names_->observe(state.edit.masks);
+    const QString next = structure(state);
     state_ = state;
-    names_->observe(state_.edit.masks);
+    if (next == built_ && (top_ || list_)) { updateInPlace(); return; }
+    built_ = next;
     rebuild();
 }
 
@@ -289,6 +386,8 @@ QWidget* ReviewPanel::firstControl() const {
 }
 
 void ReviewPanel::rebuild() {
+    // A strength still coalescing is the old cover's: it is proposed now.
+    flushStrength();
     building_ = true;
     const auto* focus = QApplication::focusWidget();
     const QString restore = focus && isAncestorOf(focus) ? focusKey(focus) : QString();
@@ -378,8 +477,9 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         v->addSpacing(Ui::space(Space::xs));
         struct Gesture { QStringList keys; bool pointer; QString text; };
         const QList<Gesture> gestures{
-            {{QStringLiteral("[ ]")}, false, QStringLiteral("Drag a bracket to trim the ends")},
+            {{QStringLiteral("I"), QStringLiteral("O")}, false, QStringLiteral("Drag a bracket to trim the ends, or set them at the playhead")},
             {{QStringLiteral("drag")}, true, QStringLiteral("Drag across the filmstrip to select time")},
+            {{QStringLiteral("["), QStringLiteral("]")}, false, QStringLiteral("Start or end the selected time at the playhead")},
             {{QStringLiteral("C"), QStringLiteral("Del")}, false, QStringLiteral("Cut the selected time")},
             {{QStringLiteral("X"), QStringLiteral("B")}, false, QStringLiteral("Redact or blur part of the picture for that time")},
             {{QStringLiteral("Ctrl+Z")}, false, QStringLiteral("Undo any edit")},
@@ -500,7 +600,7 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         choice->setText(isBlur ? QStringLiteral("Blur") : QStringLiteral("Redact"));
         choice->setAccessibleName(choice->text());
         choice->setToolTip(isBlur ? QStringLiteral("Blur the covered pixels. Blur may be reversible.") : QStringLiteral("Remove the covered pixels"));
-        choice->setFocusPolicy(Qt::StrongFocus);
+        choice->setFocusPolicy(Qt::TabFocus);
         choice->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         track->addButton(choice);
         choice->setChecked(isBlur == blur);
@@ -519,8 +619,12 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         radius->spinBox()->setAccessibleDescription(QStringLiteral("Blur strength, 2 to 64"));
         radius->spinBox()->setToolTip(QStringLiteral("Blur strength, 2 to 64"));
         v->addWidget(radius);
+        // Steps coalesce for 350 ms into one edit, so a held arrow keeps
+        // stepping and makes one undo step (F2).
         connect(radius->spinBox(), &QSpinBox::valueChanged, this, [this, id](int value) {
-            if (!building_) emit coverStrengthChanged(id, value);
+            if (building_) return;
+            strengthPending_ = std::pair<QString, int>(id, value);
+            strengthTimer_.start();
         });
     }
 }
@@ -558,6 +662,8 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
     field->setFixedWidth(std::max(Ui::scaled(84), QFontMetrics(field->font()).horizontalAdvance(QStringLiteral("000:00.0")) + Ui::scaled(24)));
     field->setFixedHeight(std::max(Ui::scaled(32), QFontMetrics(field->font()).height() + Ui::scaled(14)));
     field->setProperty("shown", field->text());
+    // Esc puts the field's time back and keeps the cover selected (E6).
+    field->installEventFilter(this);
     connect(field, &QLineEdit::editingFinished, this, [this, field, id, start] {
         if (building_) return;
         const QString shown = field->property("shown").toString();
@@ -616,12 +722,13 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
         const bool selected = state_.selectedKind == item.kind && (item.kind == "trim" || state_.selectedId == item.id);
         const bool cut = item.kind == "cut";
         const QString verb = item.kind == "trim" ? QStringLiteral("Reset") : cut ? QStringLiteral("Restore") : QStringLiteral("Remove");
+        const QString verbGlyph = item.kind == "trim" ? QStringLiteral("trim-reset") : cut ? QStringLiteral("undo") : QStringLiteral("remove");
         // The part above already offers Restore for a selected cut.
         const bool offered = selected && !cut;
-        auto* row = new EditRow(item.kind, item.id, item.name, spanText(item.start, item.end), item.glyph, selected, verb, offered, rows);
+        auto* row = new EditRow(item.kind, item.id, item.name, spanText(item.start, item.end), item.glyph, selected, verb, verbGlyph, offered, rows);
         const QString kind = item.kind, id = item.id;
         connect(row, &EditRow::activated, this, [this, kind, id] { emit editActivated(kind, id); });
-        connect(row->verbButton(), &QPushButton::clicked, this, [this, kind, id] {
+        connect(row, &EditRow::verbClicked, this, [this, kind, id] {
             if (kind == "trim") emit resetTrim();
             else if (kind == "cut") emit restoreCut(id);
             else emit removeCover(id);

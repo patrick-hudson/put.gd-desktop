@@ -1,6 +1,7 @@
 #include "ReviewWindowFixture.h"
 #include "fixtures/GopClip.h"
 #include "record/ClipExporter.h"
+#include "record/ReviewPanel.h"
 #include "ui/Ui.h"
 #include <atomic>
 #include <QThread>
@@ -385,8 +386,8 @@ private slots:
         QVERIFY(window.drive({{"action", "retryExport"}}).code.isEmpty());
         QCOMPARE(retries.size(), 1);
     }
-    // U7: Ctrl+Z during a nudge not yet proposed drops the nudge locally and
-    // undoes at the current revision; the nudge is never sent.
+    // U7, D6: the first Ctrl+Z during a nudge not yet proposed takes back only
+    // the nudge (never sent); the next one undoes at the current revision.
     void undoDropsAPendingNudge() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
@@ -399,8 +400,12 @@ private slots:
         auto* view = window.findChild<FrameView*>("frame");
         QTest::keyClick(view, Qt::Key_Right);
         QVERIFY(view->nudging());
-        for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated();
+        const auto undo = [&] { for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated(); };
+        undo();
         QVERIFY(!view->nudging());
+        QCOMPARE(proposals.size(), 0);
+        QCOMPARE(window.inspect()["masks"].toArray().size(), 2);
+        undo();
         QCOMPARE(proposals.size(), 1);
         QCOMPARE(proposals[0].at(0).toULongLong(), 6ull);
         QCOMPARE(proposals[0].at(1).toJsonArray(), (QJsonArray{QJsonObject{{"op", "undo"}}}));
@@ -451,8 +456,9 @@ private slots:
         QCOMPARE(proposals.size(), count + 2);
         QCOMPARE(proposals.last().at(1).toJsonArray(), typed);
     }
-    // U13: Enter by focus and state: placing, it places the centred cover; a
-    // selected cut, Restore; a focused time field keeps it; otherwise Upload.
+    // U13, E3: Enter by focus and state: placing, it places the centred cover; a
+    // selected cut is restored only by its Restore button or its row; a focused
+    // time field keeps it; it uploads only when Upload has focus.
     void enterFollowsFocusAndState() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
@@ -471,7 +477,19 @@ private slots:
         window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
         timeline(window)->setFocus();
         QTest::keyClick(&window, Qt::Key_Enter);
+        QCOMPARE(proposals.size(), 1);
+        window.activateWindow();
+        auto* restore = window.findChild<QAbstractButton*>("reviewPanelRestore");
+        QVERIFY(restore);
+        restore->setFocus();
+        QTest::keyClick(restore, Qt::Key_Enter);
         QCOMPARE(proposals.size(), 2);
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("removeCut"));
+        auto* cutRow = window.findChild<ReviewPanel*>()->rowFor("cut", "c1");
+        QVERIFY(cutRow);
+        cutRow->setFocus();
+        QTest::keyClick(cutRow, Qt::Key_Return);
+        QCOMPARE(proposals.size(), 3);
         QCOMPARE(proposed(proposals)["op"].toString(), QString("removeCut"));
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
@@ -483,12 +501,46 @@ private slots:
         QCOMPARE(proposals.size(), before);
         QCOMPARE(uploads.size(), 0);
         QVERIFY(window.isVisible());
-        // Nothing selected, every proposal answered: Enter uploads.
+        // Nothing selected, every proposal answered: Enter uploads only from Upload itself.
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong()));
         window.drive({{"action", "clearSelection"}});
         timeline(window)->setFocus();
         QTest::keyClick(&window, Qt::Key_Return);
+        QCOMPARE(uploads.size(), 0);
+        auto* upload = window.findChild<QPushButton*>("upload");
+        upload->setFocus();
+        QTest::keyClick(upload, Qt::Key_Return);
         QCOMPARE(uploads.size(), 1);
+    }
+    // E3 (safety): a plain Enter with the timeline, the viewer or the panel
+    // focused never uploads, whatever is selected.
+    void plainEnterNeverUploads() {
+        ReviewWindow window(options(), config());
+        QSignalSpy uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit = twoMasks(2);
+        edit.cuts = {RecordingCut{"c1", 11000000, 11500000}};
+        window.setEdit(edit);
+        auto* panel = window.findChild<ReviewPanel*>();
+        const QList<QJsonObject> selections{{{"action", "clearSelection"}}, {{"action", "selectMask"}, {"maskId", "m-blur"}}, {{"action", "selectRange"}, {"start", 1000000}, {"end", 2000000}}};
+        for (const auto& select : selections) {
+            window.drive(select);
+            for (QWidget* focus : {static_cast<QWidget*>(timeline(window)), static_cast<QWidget*>(window.findChild<FrameView*>("frame"))}) {
+                focus->setFocus();
+                QTest::keyClick(focus, Qt::Key_Return);
+                QTest::keyClick(focus, Qt::Key_Enter);
+            }
+            // A row of Edits: Enter selects it (the panel then rebuilds).
+            auto* row = panel->rowFor("cover", "m-solid");
+            QVERIFY(row);
+            row->setFocus();
+            QTest::keyClick(row, Qt::Key_Return);
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        }
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.isVisible());
     }
     // U9, U10 on a real clip: an exact skim frame stays exact only for the
     // revision it was decoded at, and 100 % decodes source pixels.
@@ -917,6 +969,240 @@ private slots:
         cut.cuts = {RecordingCut{"c1", 4000000, 6000000}};
         window.setEdit(cut, answer(2));
         QCOMPARE(window.inspect()["playheadUs"].toDouble(), 3000000.0);
+    }
+    // D1: every handle resizes from the opposite edge or corner; the nearest
+    // handle within its 20 × 20 px target wins; a small box keeps its inside
+    // for the body.
+    void everyHandleResizesFromTheOppositeSide() {
+        const QRect r(100, 80, 320, 120), all(0, 0, 1280, 720);
+        const QPoint d(10, -5);
+        // 0 top-left, 1 top, 2 top-right, 3 right, 4 bottom-right, 5 bottom, 6 bottom-left, 7 left.
+        const QList<QRect> expected{QRect(110, 75, 310, 125), QRect(100, 75, 320, 125), QRect(100, 75, 330, 125), QRect(100, 80, 330, 120),
+                                    QRect(100, 80, 330, 115), QRect(100, 80, 320, 115), QRect(110, 80, 310, 115), QRect(110, 80, 310, 120)};
+        for (int h = 0; h < 8; ++h) QCOMPARE(FrameView::resizedRect(r, h, d, all), expected[h]);
+        QCOMPARE(FrameView::resizedRect(r, 0, QPoint(-500, -500), all), QRect(0, 0, 420, 200));
+        QCOMPARE(FrameView::resizedRect(r, 4, QPoint(-1000, -1000), all), QRect(100, 80, 2, 2));
+        const QRectF big(100, 100, 200, 100), small(100, 100, 40, 30);
+        QCOMPARE(FrameView::handleAt(big, QPointF(108, 104)), 0);
+        QCOMPARE(FrameView::handleAt(big, QPointF(200, 95)), 1);
+        QCOMPARE(FrameView::handleAt(big, QPointF(309, 209)), 4);
+        QCOMPARE(FrameView::handleAt(big, QPointF(311, 205)), -1);
+        QCOMPARE(FrameView::handleAt(small, QPointF(104, 104)), -1);
+        QCOMPARE(FrameView::handleAt(small, QPointF(95, 95)), 0);
+    }
+    // D1, D3, D5, D7, D8 through the pointer: a press on an unselected cover
+    // selects it and nothing moves inside 3 px; the top-left handle keeps the
+    // bottom-right corner; Esc or a right press mid-gesture puts the box back
+    // and keeps it selected; a placing drag under 6 px or beside the picture
+    // creates nothing; at 100 % a click beside the cover deselects it.
+    void viewerGesturesHaveADeadZoneAndCancel() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 0, duration)};
+        window.setEdit(edit);
+        auto* view = window.findChild<FrameView*>("frame");
+        QImage frame(1280, 720, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        view->setFrame(frame, 0);
+        const auto box = [&] {
+            const QRect r = view->imageRect();
+            const double k = r.width() / 1280.0;
+            return QRectF(r.x() + 100 * k, r.y() + 80 * k, 320 * k, 120 * k);
+        };
+        const auto move = [&](QPoint to, Qt::MouseButtons buttons = Qt::LeftButton) {
+            QMouseEvent event(QEvent::MouseMove, QPointF(to), view->mapToGlobal(QPointF(to)), Qt::NoButton, buttons, Qt::NoModifier);
+            QApplication::sendEvent(view, &event);
+        };
+        const QPoint body = box().center().toPoint();
+        drag(view, body, body + QPoint(2, 2));
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+        QCOMPARE(proposals.size(), 0);
+        const QPoint topLeft = box().topLeft().toPoint();
+        drag(view, topLeft, topLeft + QPoint(20, 10));
+        QCOMPARE(proposals.size(), 1);
+        const auto resized = proposed(proposals)["mask"].toObject()["rect"].toArray();
+        QVERIFY2(resized[0].toInt() > 100 && resized[1].toInt() > 80, qPrintable(QJsonDocument(resized).toJson()));
+        QCOMPARE(resized[0].toInt() + resized[2].toInt(), 420);
+        QCOMPARE(resized[1].toInt() + resized[3].toInt(), 200);
+        window.setEdit(edit, answer(1));
+        // Esc mid-move, then a right press mid-resize: nothing proposed, still selected.
+        QTest::mousePress(view, Qt::LeftButton, {}, body);
+        move(body + QPoint(30, 30));
+        QTest::keyClick(view, Qt::Key_Escape);
+        QTest::mouseRelease(view, Qt::LeftButton, {}, body + QPoint(30, 30));
+        const QPoint bottomRight = box().bottomRight().toPoint();
+        QTest::mousePress(view, Qt::LeftButton, {}, bottomRight);
+        move(bottomRight + QPoint(25, 25));
+        QTest::mousePress(view, Qt::RightButton, {}, bottomRight + QPoint(25, 25));
+        QTest::mouseRelease(view, Qt::LeftButton, {}, bottomRight + QPoint(25, 25));
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+        QCOMPARE(window.inspect()["masks"].toArray().first().toObject()["id"].toString(), QString("m1"));
+        // Placing: a 4 px drag, or one from beside the picture, stays armed.
+        window.drive({{"action", "armRedact"}});
+        const QPoint inside = view->imageRect().center();
+        drag(view, inside, inside + QPoint(4, 40));
+        QVERIFY(!window.inspect()["armed"].isNull());
+        const QPoint beside(view->imageRect().left() - 4, view->imageRect().center().y());
+        QVERIFY(view->rect().contains(beside));
+        drag(view, beside, inside + QPoint(100, 60));
+        QVERIFY(!window.inspect()["armed"].isNull());
+        QCOMPARE(proposals.size(), 1);
+        window.drive({{"action", "cancelPlacement"}});
+        // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
+        const QPoint away = view->imageRect().topLeft() + QPoint(1100, 600);
+        QVERIFY(view->rect().contains(away));
+        drag(view, away, away + QPoint(-40, -30));
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+        drag(view, away, away + QPoint(1, 0));
+        QVERIFY(window.inspect()["selectedMaskId"].isNull());
+    }
+    // E1, E4, E5: the window's keys work from the timeline's or the viewer's
+    // focus; a text field keeps its own.
+    void windowKeysWorkFromAnyFocus() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        const auto playhead = [&] { return qint64(window.inspect()["playheadUs"].toDouble()); };
+        const auto timelineState = [&] { return window.inspect()["timeline"].toObject(); };
+        auto* strip = timeline(window);
+        strip->setFocus();
+        window.drive({{"action", "seek"}, {"time", 1000000}});
+        QTest::keyClick(strip, Qt::Key_Right);
+        QCOMPARE(playhead(), qint64(1033333));
+        QTest::keyClick(strip, Qt::Key_Left, Qt::ShiftModifier);
+        QCOMPARE(playhead(), qint64(33333));
+        for (const qint64 point : {qint64(3000000), qint64(4000000), qint64(6000000)}) { QTest::keyClick(strip, Qt::Key_Down); QCOMPARE(playhead(), point); }
+        QTest::keyClick(strip, Qt::Key_Up);
+        QCOMPARE(playhead(), qint64(4000000));
+        const auto cleanup = qScopeGuard([&] { strip->setSkimming(true); strip->setSnapping(true); });
+        QTest::keyClick(strip, Qt::Key_S);
+        QVERIFY(!timelineState()["skimming"].toBool());
+        QVERIFY(!window.findChild<QToolButton*>("skimToggle")->isChecked());
+        QTest::keyClick(strip, Qt::Key_N);
+        QVERIFY(!timelineState()["snapping"].toBool());
+        QTest::keyClick(strip, Qt::Key_Equal);
+        QVERIFY(timelineState()["zoom"].toInt() > 1);
+        QTest::keyClick(strip, Qt::Key_Minus);
+        QCOMPARE(timelineState()["zoom"].toInt(), 1);
+        QTest::keyClick(strip, Qt::Key_Equal, Qt::ControlModifier);
+        QTest::keyClick(strip, Qt::Key_Equal);
+        QVERIFY(timelineState()["zoom"].toInt() > 2);
+        QTest::keyClick(strip, Qt::Key_Z, Qt::ShiftModifier);
+        QCOMPARE(timelineState()["zoom"].toInt(), 1);
+        // [ and ] from the viewer.
+        auto* view = window.findChild<FrameView*>("frame");
+        view->setFocus();
+        window.drive({{"action", "seek"}, {"time", 1000000}});
+        QTest::keyClick(view, Qt::Key_BracketLeft);
+        window.drive({{"action", "seek"}, {"time", 2000000}});
+        QTest::keyClick(view, Qt::Key_BracketRight);
+        QCOMPARE(window.inspect()["selection"].toObject()["start"].toDouble(), 1000000.0);
+        QCOMPARE(window.inspect()["selection"].toObject()["end"].toDouble(), 2000000.0);
+        // A time field types them, and Esc there puts its time back and keeps the cover (E6).
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
+        QVERIFY(field);
+        field->setFocus();
+        QTest::keyClicks(field, "s[n");
+        QVERIFY(!timelineState()["skimming"].toBool());
+        QVERIFY(!timelineState()["snapping"].toBool());
+        QVERIFY(window.inspect()["selection"].isNull());
+        QTest::keyClick(field, Qt::Key_Escape);
+        QCOMPARE(field->text(), QString("0:06.0"));
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+    }
+    // C3, A14, A5: a click on the timeline while playing seeks and keeps
+    // playing; a scrub pauses and keeps the time selection; a click on a cover
+    // bar seeks only when the playhead is outside the cover.
+    void timelineClicksKeepPlayingAndTheSelection() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 3, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 3000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 1000000, 2000000)};
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        QVERIFY(window.drive({{"action", "play"}}).code.isEmpty());
+        QVERIFY(window.inspect()["playing"].toBool());
+        emit strip->seekRequested(500000);
+        QVERIFY(window.inspect()["playing"].toBool());
+        emit strip->scrubStarted();
+        QVERIFY(!window.inspect()["playing"].toBool());
+        window.drive({{"action", "selectRange"}, {"start", 300000}, {"end", 900000}});
+        emit strip->scrubStarted();
+        emit strip->seekRequested(2500000);
+        QCOMPARE(window.inspect()["selection"].toObject()["end"].toDouble(), 900000.0);
+        window.drive({{"action", "seek"}, {"time", 1200000}});
+        emit strip->coverSelected("m1");
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 1200000.0);
+        window.drive({{"action", "seek"}, {"time", 2500000}});
+        emit strip->coverSelected("m1");
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 1000000.0);
+    }
+    // D4 (privacy): while a cover moves, its effect follows the box. The frame
+    // without it is asked for (pending, the old place still covered, until it
+    // arrives), and the live state ends only once the frame for the committed
+    // edit is shown.
+    void aMovedCoverStaysCoveredUntilItsFrameArrives() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 1, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 1000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 0, 1000000)};
+        edit.masks[0].rect = QRect(10, 10, 100, 60);
+        window.setEdit(edit);
+        PUTGD_TRY_VERIFY(!window.inspect()["preview"].toObject()["shownUs"].isNull());
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* view = window.findChild<FrameView*>("frame");
+        const QRect r = view->imageRect();
+        const double k = r.width() / 320.0;
+        const QPoint centre(r.x() + int(60 * k), r.y() + int(40 * k));
+        const auto live = [&] { return window.inspect()["viewer"].toObject()["live"]; };
+        QTest::mousePress(view, Qt::LeftButton, {}, centre);
+        QVERIFY(live().isNull());
+        QMouseEvent move(QEvent::MouseMove, QPointF(centre + QPoint(60, 30)), view->mapToGlobal(QPointF(centre + QPoint(60, 30))), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(view, &move);
+        QCOMPARE(live().toObject()["maskId"].toString(), QString("m1"));
+        PUTGD_TRY_VERIFY(!live().toObject()["pending"].toBool());
+        QTest::mouseRelease(view, Qt::LeftButton, {}, centre + QPoint(60, 30));
+        QCOMPARE(proposals.size(), 1);
+        QVERIFY(!live().isNull());
+        auto moved = edit;
+        moved.revision = 3;
+        const auto rect = proposed(proposals)["mask"].toObject()["rect"].toArray();
+        moved.masks[0].rect = QRect(rect[0].toInt(), rect[1].toInt(), rect[2].toInt(), rect[3].toInt());
+        window.setEdit(moved, answer(1));
+        PUTGD_TRY_VERIFY(live().isNull());
     }
     // U27: the resident's retry asks only for the window's guard; the window
     // then doesn't ask for a second retry itself.

@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <tuple>
 
 class QAction;
 class QActionGroup;
@@ -40,8 +41,14 @@ class ViewerBanner;
 // lets the user draw a cover's box, select a cover and move or resize it, in
 // canvas pixels, with the pointer or, with focus, the keyboard: arrows move
 // the selected cover, Shift+arrows resize it (1 px steps, 10 px with Ctrl).
+// The selected cover's eight handles resize it from the opposite edge or
+// corner (20 × 20 px targets, as the image editor's); its body moves it. A
+// move or resize starts 3 px from the press; Esc or a right press reverts it.
+// While a cover moves, its effect follows the box (the "live" cover): the
+// window supplies the frame without that cover, and until it arrives the
+// shown frame keeps the old place covered under a pending outline.
 // Nothing is written over the picture: guidance lives in the window's
-// banners above it.
+// banners along its top edge.
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
@@ -92,11 +99,23 @@ public:
     bool nudging() const { return nudging_; }
     // A pointer drag (draw, move, resize or pan) is in progress.
     bool dragging() const { return drag_ != Drag::None; }
+    // The live cover (D4): the frame without cover `id` at timeUs (asked for on
+    // liveEditStarted), and the end of the live state once the frame for the
+    // committed edit is shown (or the gesture changed nothing).
+    void setUncovered(const QString& id, const QImage& image, qint64 timeUs);
+    void endLive();
+    QString liveId() const { return liveId_; }
+    bool livePending() const;
+    // Geometry shared by hover, cursor and press (tests).
+    static int handleAt(const QRectF& viewRect, const QPointF& p);
+    static QRect resizedRect(const QRect& r, int handle, const QPoint& delta, const QRect& bounds);
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
     void maskMoved(const QString& id, const QRect& rect);
     void maskSelected(const QString& id);
+    // A cover shown at timeUs started to move: the window asks for the frame without it.
+    void liveEditStarted(const QString& id, qint64 timeUs);
     void retryRequested();
     void zoomChanged();
 protected:
@@ -119,6 +138,12 @@ private:
     void clampPan();
     void placeErrorCard();
     void announce();
+    struct Target { enum class Kind { None, Handle, Body } kind = Kind::None; QString id; int handle = -1; };
+    Target targetAt(const QPointF&) const;
+    void updateHover(const QPointF&);
+    void beginLive(const QString& id);
+    const QImage& livePicture();
+    void cancelDrag();
     QImage frame_, skim_;
     qint64 timeUs_ = 0, skimUs_ = 0;
     QSize canvas_;
@@ -131,6 +156,13 @@ private:
     enum class Drag { None, Create, Move, Resize, Pan } drag_ = Drag::None;
     QPointF anchor_, current_, panFrom_;
     QRect original_;
+    QString dragId_;
+    int handle_ = -1, hoveredHandle_ = -1;
+    bool moved_ = false;  // the pointer passed the 3 px dead zone
+    QString liveId_, uncoveredId_;
+    QImage uncovered_, composite_;
+    qint64 uncoveredUs_ = -1;
+    std::tuple<qint64, QRect, QString, int> compositeKey_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;
@@ -188,7 +220,9 @@ public:
     // clearSelection|cut|selectCut|adjustCut|restoreCut|playAcross|undo|redo|armRedact|
     // armBlur|cancelPlacement|selectEdit|nextEdit|previousEdit|seekCoverStart|
     // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
-    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
+    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, and the
+    // feel controls: setSkimming|setSnapping {on}|zoomIn|zoomOut|retimeCover|
+    // moreCovers|markSelection {edge}|editPoint {delta}, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error. A state that
     // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
@@ -253,7 +287,18 @@ private:
     void cancelUpload(const QString& why = {});
     void emitConfig();
     int viewEdge() const;
-    void refreshFrame();
+    // The frame at the playhead (or a dragged edge) from the frame worker: asked
+    // at once (leading edge), one decode in flight, the newest time next; the
+    // viewer keeps the last frame meanwhile (#1613 C1, C2).
+    void requestFrame();
+    void askFrame();
+    void showFrameError(qint64 at, const QString& message);
+    // The same frame decoded on this thread, for Set Out / Set to playhead when
+    // the frame at the playhead isn't shown yet (they need its own time).
+    void decodeFrameNow();
+    void placeBanners();
+    void stepEditPoint(int direction);
+    void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
     // its start (never decoded through a cut) and frames are shown at their
@@ -343,6 +388,24 @@ private:
     // The exact skim frame asked for: its time and the edit revision it was asked at.
     std::optional<std::pair<qint64, quint64>> skimAsked_;
     void askSkimFrame(qint64 at);
+    // The last exact skim frames (B2): one answers any time from its request to
+    // its frame's own time when no cover starts or ends in between.
+    struct SkimFrame { qint64 requested, frameUs; quint64 revision; int edge; QImage image; };
+    QList<SkimFrame> skimCache_;
+    const SkimFrame* cachedSkim(qint64 at) const;
+    void cacheSkim(SkimFrame frame);
+    // The playhead frame asked for last (its time, revision and size).
+    struct FrameAsk { qint64 at; quint64 revision; int edge; };
+    std::optional<FrameAsk> frameAsked_;
+    quint64 shownRevision_ = 0;
+    // The live cover (D4): the frame without it asked for, the proposal its
+    // drag made, and the revision whose frame ends the live state.
+    std::optional<std::pair<QString, qint64>> uncoveredAsked_;
+    quint64 liveProposal_ = 0;
+    std::optional<quint64> liveWaitRevision_;
+    // C4: a trim proposal and whether it moved the start; its answer may bring the playhead in.
+    quint64 pendingTrimProposal_ = 0;
+    bool pendingTrimStart_ = false;
     std::optional<qint64> edgePreview_;  // a dragged bracket or edge: the frame shown
     std::optional<qint64> skimUs_;
     QString savedPath_;
@@ -364,6 +427,7 @@ private:
     EditsOverlay* overlay_ = nullptr;
     Filmstrip* filmstrip_ = nullptr;
     FrameSkimmer* skimmer_ = nullptr;
+    FrameSkimmer* frames_ = nullptr;  // the playhead's frames (its own decoder)
     QTimer tileTimer_;
     QLabel *notice_ = nullptr, *time_ = nullptr, *clipTime_ = nullptr, *silent_ = nullptr;
     QWidget* noticeBand_ = nullptr;
@@ -372,7 +436,9 @@ private:
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
     QToolButton *select_ = nullptr, *cut_ = nullptr, *redact_ = nullptr, *blur_ = nullptr, *undo_ = nullptr, *redo_ = nullptr, *pictureZoom_ = nullptr, *editsToggle_ = nullptr;
-    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr;
+    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr, *skimToggle_ = nullptr;
+    QMenu* timelineZoomMenu_ = nullptr;
+    QWidget* bannerArea_ = nullptr;
     QToolButton *format_ = nullptr, *destinationMenu_ = nullptr;
     QMenu *speedMenu_ = nullptr, *formatMenu_ = nullptr;
     QActionGroup *speeds_ = nullptr, *formats_ = nullptr;
@@ -380,7 +446,7 @@ private:
     QLabel* destinationFull_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
-    QTimer frameTimer_;
+    QTimer frameTimer_;  // only with PUTGD_RECORD_REVIEW_DELAY_MS (tests, the catalog): frames asked that long after a seek
     // The worker deletes itself when it finishes; the guard forgets it then, so
     // closing the window after a preview ended never waits on a freed thread.
     QPointer<QThread> playThread_;
