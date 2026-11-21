@@ -93,10 +93,8 @@ public:
     bool skimming() const { return skimming_; }
     // [ and ] (E4, the window calls it from any focus): the time selection's
     // start or end at the playhead; with none, it runs to the kept footage's
-    // other end. Emits timeSelected.
-    // With a cut selected, its start or end moves to the playhead instead (one
-    // cutAdjusted); with a cover selected it does nothing (the window sets the
-    // cover's time as Shift+I / Shift+O do).
+    // other end. Always the time selection, whatever is selected (Q7). Emits
+    // timeSelected.
     void markSelectionEdge(bool start);
     // Paused hover at a source time, as the pointer over the ruler or strip
     // makes it after hover intent (skimMoved, then skimRested 40 ms after it
@@ -107,6 +105,9 @@ public:
     // The skim flag reads "≈m:ss.s" until the exact frame for the skim time has
     // arrived; the window calls this when it shows that frame.
     void setSkimExact(bool exact);
+    // Q9: paints a cut or cover bar in its hover state (an Edits row under the
+    // pointer); an empty kind clears it.
+    void setLinkedHover(const QString& kind, const QString& id);
     // The visible source span and the tile times to request for it (12 at Fit
     // across the default width, up to 24 per zoom batch; the two ends first).
     recording::Span visibleSpan() const;
@@ -158,6 +159,9 @@ signals:
     // R18t: a plain click on the filmstrip clears only the time selection (a
     // selected cut or cover stays selected).
     void timeSelectionCleared();
+    // Q9: the cut or cover (its bar or an edge) under the pointer changed;
+    // kind "cut" | "cover", or empty for none.
+    void hoverChanged(const QString& kind, const QString& id);
     // A press on a cut or a cover bar (its body or an edge) selects it.
     void cutSelected(const QString& id);
     void coverSelected(const QString& id);
@@ -223,7 +227,7 @@ private:
     double viewStart() const;
     double viewLength() const;
     bool zoomLive() const { return liveLength_ > 0; }
-    void startZoomAnimation(double fromStart, double fromLength);
+    void startZoomAnimation(double fromStart, double fromLength, qint64 anchor, double fraction);
     void finishZoom();
     void continuousZoom(double factor, qint64 anchorUs);
     void settleContinuousZoom();
@@ -297,6 +301,12 @@ private:
     bool deferredSelect_ = false;           // R7: an unselected cut's edge selects only once the drag arms
     bool selectFromCut_ = false;            // R8: a time selection started on a cut body (a click only selected it)
     qint64 pressScroll_ = 0;                // R12: the scroll before the press
+    QString preKind_, preId_;               // Q1: the selection before a cover press
+    std::optional<recording::Span> preSelection_;
+    QString linkedKind_, linkedId_;         // Q9: the Edits row's item painted as hovered
+    QString hoverItemKind_, hoverItemId_;   // Q9: the hovered cut or cover last reported
+    std::optional<QPointF> gripAt_;         // Q10t: where the pointer last was on a grip
+    QElapsedTimer gripLeft_;                // and since when it is off it
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
     qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
@@ -320,6 +330,8 @@ private:
     QElapsedTimer wheelClock_;
     // R5: the live view while animating (liveLength_ > 0) and the animation's start.
     double liveStart_ = 0, liveLength_ = 0, fromStart_ = 0, fromLength_ = 0;
+    qint64 animAnchor_ = 0;
+    double animFraction_ = 0;               // Q2: the anchor's screen fraction, held while animating
     bool continuous_ = false;               // a pinch or Ctrl+trackpad zoom is under way
     double continuousZoom_ = 1;
     qint64 continuousAnchor_ = 0;

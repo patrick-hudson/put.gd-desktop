@@ -246,20 +246,14 @@ private slots:
         QCOMPARE(selected.size(), 2);
         QCOMPARE(selected[1][0].toLongLong(), 6000000);
         QCOMPARE(selected[1][1].toLongLong(), 9000000);
-        // T13: with a cut selected, its edge moves to the playhead instead.
+        // Q7: whatever is selected, [ and ] mark the time selection; a cut is never edited.
         QSignalSpy adjusted(t.get(), &FilmstripTimeline::cutAdjusted);
         t->setSelectedEdit("cut", "c1");
         t->setPlayhead(12000000);
         t->markSelectionEdge(true);
-        QCOMPARE(adjusted.size(), 1);
-        QCOMPARE(adjusted[0][1].toLongLong(), 12000000);
-        QCOMPARE(adjusted[0][2].toLongLong(), 19500000);
-        QCOMPARE(selected.size(), 2);
-        // A selected cover is the window's (Shift+I / Shift+O): nothing here.
-        t->setSelectedEdit("cover", "m1");
-        t->markSelectionEdge(false);
-        QCOMPARE(adjusted.size(), 1);
-        QCOMPARE(selected.size(), 2);
+        QCOMPARE(adjusted.size(), 0);
+        QCOMPARE(selected.size(), 3);
+        QCOMPARE(selected[2][0].toLongLong(), 12000000);
     }
     // A1, A2, A12: one hit test for hover, press and parts(), in priority order.
     void hitPriorityAndZones() {
@@ -377,13 +371,18 @@ private slots:
         QVERIFY(onFrame(adjusted[0][2].toLongLong()));
         // The edge moved by 54 px of time, not to the pointer's x (5 px further).
         QVERIFY(std::abs(adjusted[0][2].toLongLong() - (19500000 + pixels(t.get(), 54))) <= 1000000 / fps);
-        // A click on an unselected cut's edge is a strip click: it seeks and selects nothing (R7).
+        // A click just outside an unselected cut's edge seeks and selects nothing (R7);
+        // inside the cut it selects the cut (Q5).
         reset(t.get());
         t->setSelectedEdit({}, {});
         QSignalSpy seek(t.get(), &FilmstripTimeline::seekRequested);
-        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(t->xFor(13000000) + 3, y));
+        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(t->xFor(13000000) - 3, y));
         QCOMPARE(seek.size(), 1);
         QCOMPARE(selected.size(), 1);
+        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(t->xFor(13000000) + 3, y));
+        QCOMPARE(seek.size(), 1);
+        QCOMPARE(selected.size(), 2);
+        t->setSelectedEdit({}, {});
         // R1: a drag that starts on a snap target (the playhead here) moves from its first armed pixel.
         t->setPlayhead(13000000);
         dragged.clear();
@@ -699,6 +698,23 @@ private slots:
         PUTGD_COMPARE_STEADY(moved.size(), 0, 150);
         QVERIFY(t->inspect()["skim"].isNull());
     }
+    // Q3: intent needs 12 px of mostly horizontal travel (or a dwell); Q4: after a
+    // seek (a key step) a 1-2 px jiggle does not bring the skim back.
+    void skimIntentAndSeeks() {
+        auto t = make();
+        QSignalSpy moved(t.get(), &FilmstripTimeline::skimMoved);
+        const QPoint at(t->xFor(9000000), t->stripRect().center().y());
+        QTest::mouseMove(t.get(), at);
+        QTest::mouseMove(t.get(), at + QPoint(4, 0));
+        QTest::mouseMove(t.get(), at + QPoint(8, 0));
+        QCOMPARE(moved.size(), 0);
+        QTest::mouseMove(t.get(), at + QPoint(12, 0));
+        QCOMPARE(moved.size(), 1);
+        t->skimAt(std::nullopt);  // the window's seek
+        QTest::mouseMove(t.get(), at + QPoint(13, 0));
+        QTest::mouseMove(t.get(), at + QPoint(14, 0));
+        PUTGD_COMPARE_STEADY(moved.size(), 1, 250);
+    }
     // A3: after a click nothing skims until the pointer has moved 2 px.
     void noSkimAfterAClickUntilThePointerMoves() {
         auto t = make();
@@ -743,6 +759,107 @@ private slots:
         drag(t.get(), QPoint(t->xFor(answered.cuts[0].end), y), QPoint(t->xFor(answered.cuts[0].end) + 40, y));
         QVERIFY(!t->inspect()["pending"].isNull());
         PUTGD_TRY_VERIFY(t->inspect()["pending"].isNull());
+    }
+    // Q8: a cut edge stops at its neighbour; Q6: the drop uses the last move's
+    // Ctrl; Q1: a cover slid with its start off screen moves by the travel only,
+    // and Esc on a cover press gives back the earlier selection and playhead.
+    void dragLimitsAndRestores() {
+        auto t = make();
+        auto e = edit();
+        e.revision = 80;
+        e.cuts.append(RecordingCut{"c3", 21000000, 23000000});
+        t->setEdit(e);
+        QSignalSpy adjusted(t.get(), &FilmstripTimeline::cutAdjusted);
+        const int y = t->stripRect().center().y();
+        drag(t.get(), QPoint(t->xFor(19500000), y), QPoint(t->xFor(25000000), y));
+        QCOMPARE(adjusted.size(), 1);
+        QCOMPARE(adjusted[0][2].toLongLong(), 21000000);
+        // Ctrl held on the moves, let go just before the drop: no snap to m2's start (22.1 s).
+        reset(t.get());
+        const QPoint from(t->xFor(19500000), y), near(t->xFor(22100000) - 4, y);
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, from);
+        for (int i = 1; i <= 4; ++i) move(t.get(), from + (near - from) * i / 4, Qt::ControlModifier);
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, near);
+        QCOMPARE(adjusted.size(), 2);
+        QVERIFY(adjusted[1][2].toLongLong() != 22100000);
+        // A cover starting left of the view slides by the pointer's travel.
+        auto wide = edit();
+        wide.revision = 81;
+        wide.masks[0].start = 14000000;
+        wide.masks[0].end = 17000000;
+        t->setEdit(wide);
+        t->setZoom(4, qint64(20000000));
+        QVERIFY(t->visibleSpan().start > 14000000);
+        QSignalSpy retimed(t.get(), &FilmstripTimeline::coverRetimed);
+        t->setSelectedEdit("cover", "m1");
+        const QPoint bar(t->xFor(16000000), t->coverBarRect("m1").center().y());
+        drag(t.get(), bar, bar + QPoint(20, 0));
+        QCOMPARE(retimed.size(), 1);
+        QVERIFY(std::abs(retimed[0][1].toLongLong() - (14000000 + pixels(t.get(), 20))) <= 1000000 / fps);
+        // Esc on an unselected cover's press: the cut stays selected, the playhead comes back.
+        reset(t.get());
+        t->setZoom(1);
+        connect(t.get(), &FilmstripTimeline::seekRequested, t.get(), &FilmstripTimeline::setPlayhead);
+        connect(t.get(), &FilmstripTimeline::coverSelected, t.get(), [&] { t->setPlayhead(22100000); });  // as the window seeks to it
+        t->setPlayhead(5000000);
+        t->setSelectedEdit("cut", "c1");
+        const auto m2 = t->coverBarRect("m2");
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, m2.center());
+        QCOMPARE(t->playhead(), 22100000);
+        for (int i = 1; i <= 3; ++i) move(t.get(), m2.center() + QPoint(i * 4, 0));
+        QTest::keyClick(t.get(), Qt::Key_Escape);
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, m2.center() + QPoint(12, 0));
+        QCOMPARE(t->inspect()["selectedEdit"].toObject()["id"].toString(), QString("c1"));
+        QCOMPARE(t->playhead(), 5000000);
+    }
+    // Q10t: a press delivered late, after the pointer has already moved a few px
+    // off a grip (middle-button emulation holds a left press back ~50 ms), still
+    // takes the grip the pointer was on: a zoomed end bracket and an unselected
+    // cut's edge dragged inward.
+    void aLatePressKeepsTheGripItLeft() {
+        auto t = make();
+        t->setZoom(3, qint64(29000000));
+        QVERIFY(t->visibleSpan().end > 29400000);
+        QSignalSpy proposed(t.get(), &FilmstripTimeline::trimProposed), selected(t.get(), &FilmstripTimeline::timeSelected), adjusted(t.get(), &FilmstripTimeline::cutAdjusted);
+        const int y = t->stripRect().center().y();
+        const int edge = t->xFor(29400000);
+        QTest::mouseMove(t.get(), QPoint(edge + 1, y));  // on the bracket, lit
+        QTest::mouseMove(t.get(), QPoint(edge - 6, y));
+        QTest::mouseMove(t.get(), QPoint(edge - 10, y));  // already off it when the press arrives
+        // (the drag counts from edge - 6, the last point on the bracket)
+        drag(t.get(), QPoint(edge - 10, y), QPoint(edge - 48, y));
+        QCOMPARE(selected.size(), 0);
+        QCOMPARE(proposed.size(), 1);
+        QVERIFY(std::abs(proposed[0][1].toLongLong() - (29400000 - pixels(t.get(), 42))) <= 1000000 / fps);
+        reset(t.get());
+        t->setZoom(1);
+        const int start = t->xFor(13000000);
+        QTest::mouseMove(t.get(), QPoint(start, y));
+        QTest::mouseMove(t.get(), QPoint(start + 10, y));
+        drag(t.get(), QPoint(start + 10, y), QPoint(start + 60, y));
+        QCOMPARE(selected.size(), 0);
+        QCOMPARE(adjusted.size(), 1);
+        QVERIFY(std::abs(adjusted[0][1].toLongLong() - (13000000 + pixels(t.get(), 60))) <= 1000000 / fps);
+    }
+    // Q9: the hovered cut or cover is reported for the Edits list.
+    void hoverReportsTheItemUnderThePointer() {
+        auto t = make();
+        QSignalSpy changed(t.get(), &FilmstripTimeline::hoverChanged);
+        const int y = t->stripRect().center().y();
+        QTest::mouseMove(t.get(), QPoint(t->xFor(16000000), y));
+        QCOMPARE(changed.size(), 1);
+        QCOMPARE(changed[0][0].toString(), QString("cut"));
+        QCOMPARE(changed[0][1].toString(), QString("c1"));
+        QTest::mouseMove(t.get(), QPoint(t->xFor(13000000) + 2, y));  // its edge: still the cut
+        QCOMPARE(changed.size(), 1);
+        QTest::mouseMove(t.get(), t->coverBarRect("m2").center());
+        QCOMPARE(changed.size(), 2);
+        QCOMPARE(changed[1][0].toString(), QString("cover"));
+        QTest::mouseMove(t.get(), QPoint(t->xFor(5000000), y));
+        QCOMPARE(changed.size(), 3);
+        QVERIFY(changed[2][0].toString().isEmpty());
+        t->setLinkedHover("cover", "m1");
+        QVERIFY(changed.size() == 3);
     }
     // R3: a click on the playhead's cap away from the line seeks there; on the line it does nothing.
     void capClickAwayFromTheLineSeeks() {
