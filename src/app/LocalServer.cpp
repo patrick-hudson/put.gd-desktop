@@ -282,15 +282,19 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   // #283: one review-window control per call; the helper checks the values.
   static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog","placeMask","useSolidCover","trimToLimit","dismissStatus","showAdvice","showInFolder","copyPath","dismissSavedCopy","retryExport","retryPreview","discard","keepReviewing","confirmDiscard",
    // #1613: the redesigned window's controls.
-   "selectRange","clearSelection","cut","selectCut","adjustCut","restoreCut","playAcross","undo","redo","armRedact","armBlur","cancelPlacement","selectEdit","nextEdit","previousEdit","seekCoverStart","seekCoverEnd","setCoverEdgeToPlayhead","setCoverEdge","coverKind","timelineZoom","timelineFit","viewerZoom","viewerPan","frameStep","skim","skimEnd","panel","resize","setTrim"};
+   "selectRange","clearSelection","cut","selectCut","adjustCut","restoreCut","playAcross","undo","redo","armRedact","armBlur","cancelPlacement","selectEdit","nextEdit","previousEdit","seekCoverStart","seekCoverEnd","setCoverEdgeToPlayhead","setCoverEdge","coverKind","timelineZoom","timelineFit","viewerZoom","viewerPan","frameStep","skim","skimEnd","panel","resize","setTrim",
+   // The review window's feel controls (S, N, = / -, a cover bar's slide, the "+n" chip, [ ], Up / Down).
+   "setSkimming","setSnapping","zoomIn","zoomOut","retimeCover","moreCovers","markSelection","editPoint",
+   // A cut's Set to playhead and the overview track.
+   "setCutEdge","scrollTimeline"};
   // The numbers are plain JSON numbers (the window checks ranges and whole values); the strings are bounded.
   const auto number=[&](const char* key){return !p.contains(key)||p[key].isDouble();};
-  if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec","start","end","cutId","editId","edge","level","mode","dx","dy","delta","open","width","height"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
+  if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec","start","end","cutId","editId","edge","level","mode","dx","dy","delta","open","width","height","on","at"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
      ||(p.contains("time")&&!p["time"].isDouble())||(p.contains("speed")&&!p["speed"].isDouble())||(p.contains("kind")&&!string(p,"kind",8))
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("maskId")&&!p["maskId"].isNull()&&!string(p,"maskId"))
      ||(p.contains("strength")&&!p["strength"].isDouble())||(p.contains("format")&&!string(p,"format",8))||(p.contains("codec")&&!p["codec"].isString())
      ||!number("start")||!(number("end")||p["end"].isNull())||(p.contains("cutId")&&!string(p,"cutId"))||(p.contains("editId")&&!string(p,"editId"))||(p.contains("edge")&&!string(p,"edge",8))
-     ||!number("level")||(p.contains("mode")&&!string(p,"mode",8))||!number("dx")||!number("dy")||!number("delta")||(p.contains("open")&&!p["open"].isBool())||!number("width")||!number("height")){reply(invalid(),{});return;}
+     ||!number("level")||(p.contains("mode")&&!string(p,"mode",8))||!number("dx")||!number("dy")||!number("delta")||(p.contains("open")&&!p["open"].isBool())||(p.contains("on")&&!p["on"].isBool())||(p.contains("at")&&(!p["at"].isArray()||p["at"].toArray().size()!=2))||!number("width")||!number("height")){reply(invalid(),{});return;}
   operations_.recordingCommand("review",p,reply);return;
  }
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}

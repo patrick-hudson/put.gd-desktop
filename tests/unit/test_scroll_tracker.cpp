@@ -1657,6 +1657,70 @@ void testJumpPastLookAlikes() {
          fmt("%d wrong%s, %d frames past the jump not placed, %d placed right on the way back", wrong, first.c_str(), lostAfterJump, foundBack));
 }
 
+// While the page is lost, a frame matched at a guessed place marks nothing as
+// changing in place (#1795). The scene came out of a randomized search over
+// look-alike tables (seed 17884), kept exactly because the guess depends on
+// every frame: a jump of 416 rows leaves the page lost; 18 frames later the
+// playing-video retry (#1537) took a look-alike 21 rows on for the frame's
+// place and marked the rows there dynamic; found again on the way back, the
+// late header over those rows was written into them as their latest picture.
+// GitHub's pull request page on Cinnamon did the same (a commit hash painted
+// over with the header's plain side).
+void testLostGuessMarksNothing() {
+  std::printf("\n[lost guesses] a frame matched at a guessed place while lost marks no rows dynamic\n");
+  const int W = 480, V = 480, P = 133, header = 38;
+  Image doc(W, 7000, kBg);
+  Rng prose(23 + 17884);
+  for (int y = 10; y + 12 < 1000; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  const std::vector<int> twoHeadings{10, 11, 14, 16, 17, 20, 23, 28, 31, 32, 35, 43, 46, 47, 49, 50};
+  for (int b = 1000 / P; b * P < doc.h; ++b) {
+    Rng head(500 + uint64_t(b) + 17884000ull);
+    if (b % 3 == 0) {  // every third block a paragraph
+      for (int y = b * P + 6; y + 12 < (b + 1) * P; y += 18) drawTextLine(doc, y, 40, W - 40, head);
+      continue;
+    }
+    drawTextLine(doc, b * P + 6, 40, W - 40, head);
+    if (std::find(twoHeadings.begin(), twoHeadings.end(), b) != twoHeadings.end()) drawTextLine(doc, b * P + 24, 40, W - 40, head);
+    for (int j = 0; j < 6 && b * P + 44 + j * 19 + 12 < (b + 1) * P; ++j) {
+      Rng words(77 + uint64_t(j));  // rows the same in every table
+      drawTextLine(doc, b * P + 44 + j * 19, 40, W - 40, words);
+    }
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  PinnedPart h;
+  h.w = W;
+  h.h = header;
+  h.background = 0xFAFAFA;
+  h.ink = 0x30303A;
+  h.inkRows = 11;
+  h.border = false;
+  h.fromPos = 672;  // a header that shows once the page is scrolled past its title
+  ss.pinned.push_back(h);
+  const Scene scene(doc, ss);
+  const std::vector<int> pos{0,    89,   178,  267,  356,  445,  534,  623,  712,  801,  890,  979,  1068, 1157, 1573, 1577,
+                             1573, 1573, 1573, 1580, 1576, 1577, 1573, 1579, 1573, 1577, 1576, 1580, 1579, 1573, 1579, 1579,
+                             1577, 1575, 1575, 1580, 1577, 1580, 1578, 1572, 1572, 1577, 1576, 1577, 1579, 1573, 1572, 1573,
+                             1577, 1575, 1575, 1580, 1579, 1578, 1579, 1580, 1580, 1572, 1572, 1580, 1519, 1472, 1426, 1396,
+                             1351, 1271, 1216, 1185, 1158, 1126, 1061, 1033, 964,  904,  831,  808,  776,  704,  629,  588};
+  // Also with the lost stretch 13 rows further on, where the retry against the
+  // previous skipped frame (its place a pair's guess) marked rows (round 1 of
+  // #1801's review).
+  for (const int shift : {0, 13}) {
+    std::vector<int> at = pos;
+    for (size_t i = 14; i < 60; ++i) at[i] += shift;
+    const Played r = play(scene, at);
+    int foundBack = 0;
+    for (size_t i = 60; i < at.size(); ++i) foundBack += r.results[i].status == TrackStatus::Placed && r.results[i].position == at[i];
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc, 0, r.totals.bottom, W), {}, 0, &firstBad);
+    report(fmt("lost over look-alike tables (+%d), found again under a late header: rows stay text", shift),
+           r.wrong == 0 && foundBack >= 15 && bad == 0,
+           fmt("%d wrong%s, %d placed on the way back, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), foundBack, bad, firstBad));
+  }
+}
+
 // A playing video in the region (#1537): a part of the page that keeps
 // changing while the rest of the frame agrees must not contradict the image
 // or stall a capture the person scrolls themselves (slow scrolling, pausing,
@@ -2597,6 +2661,7 @@ int main() {
   testLookAlikes();
   testRepeatAtStep();
   testJumpPastLookAlikes();
+  testLostGuessMarksNothing();
   testPlayingVideo();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;

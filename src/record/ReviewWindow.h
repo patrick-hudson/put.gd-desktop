@@ -2,6 +2,7 @@
 #include "core/KeptSpans.h"
 #include "core/RecordingModel.h"
 #include "MaskNames.h"
+#include <QElapsedTimer>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -13,6 +14,8 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <limits>
+#include <tuple>
 
 class QAction;
 class QActionGroup;
@@ -40,8 +43,20 @@ class ViewerBanner;
 // lets the user draw a cover's box, select a cover and move or resize it, in
 // canvas pixels, with the pointer or, with focus, the keyboard: arrows move
 // the selected cover, Shift+arrows resize it (1 px steps, 10 px with Ctrl).
-// Nothing is written over the picture: guidance lives in the window's
-// banners above it.
+// The selected cover's corners (16 × 16 px targets) and a band along each side
+// (6 px outside; inside, 6 px on a box at least 40 px that way, else 4) resize
+// it from the opposite side, flipping past
+// it; its body moves it. A press on an unselected cover selects it (a move
+// then needs 8 px); moves and resizes of the selected one start 4 px from the
+// press and apply the release point; Esc, a right press, Ctrl+Z or a lost
+// window reverts the gesture (pan included). While playing a click only pauses.
+// A click while placing places a default box at it; the arrows belong to the
+// viewer only after a click on a cover or Tab into it.
+// While a cover moves, its effect follows the box (the "live" cover): the
+// window supplies the frame without that cover, and until it arrives the
+// shown frame keeps the old place covered under a pending outline.
+// Nothing is written over the picture: guidance lives in the window's tool
+// row (placement, blur warning, a frame error with Retry preview).
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
@@ -52,11 +67,19 @@ public:
     // place of the playhead frame until clearSkim(); the frame stays.
     void setSkim(const QImage&, qint64 timeUs);
     void clearSkim();
+    void promoteSkim();
+    void fadeOutSkim(int ms);
+    // The cover a placing drag would make now (canvas px), or empty (F5).
+    QRect placementPreview() const;
+    void setLinkedHover(const QString& coverId);
     bool skimming() const { return !skim_.isNull(); }
-    // A failed refresh: the message over the frame with Retry preview, and a
-    // frame still shown dimmed and marked as an earlier one. Empty clears it.
+    qint64 skimTime() const { return skimUs_; }
+    // A failed refresh: a frame still shown is dimmed and marked as an earlier
+    // one; the window shows the message with Retry preview. Empty clears it.
     void setPreviewError(const QString& message);
     QString previewError() const { return error_; }
+    // The error with which frame is still shown, as the window's message says it.
+    QString previewErrorText() const;
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
@@ -92,12 +115,47 @@ public:
     bool nudging() const { return nudging_; }
     // A pointer drag (draw, move, resize or pan) is in progress.
     bool dragging() const { return drag_ != Drag::None; }
+    // The live cover (D4): the frame without cover `id` at timeUs (asked for on
+    // liveEditStarted), and the end of the live state once the frame for the
+    // committed edit is shown (or the gesture changed nothing).
+    void setUncovered(const QString& id, const QImage& image, qint64 timeUs);
+    // Another cover changed under the live one: its base is pending again (W3).
+    void dropUncovered();
+    void endLive();
+    // R29: the selected blur's strength while the panel coalesces it, shown at once.
+    void previewStrength(const QString& id, int strength);
+    QString liveId() const { return liveId_; }
+    // {box: [x, y, w, h], grips: [[x, y] × 8, handle order]} for the selected cover, or {}.
+    QJsonObject selectedGeometry() const;
+    // Esc, a right press, Ctrl+Z or a lost window: the gesture in progress
+    // goes back to its start (W5, W20). False with none.
+    bool cancelGesture();
+    // The viewer has the arrow keys (a click on a cover or Tab into it, W8).
+    bool arrowsClaimed() const { return arrowsClaimed_; }
+    // Placing waits for the frame it is drawn on (W6).
+    void setPlaceWaiting(bool waiting);
+    bool placeWaiting() const { return placeWaiting_; }
+    // A click while placing: the box it places, centred on a canvas point.
+    QRect defaultMaskRectAt(const QPointF& canvasPoint) const;
+    bool livePending() const;
+    // Geometry shared by hover, cursor and press (tests).
+    static int handleAt(const QRectF& viewRect, const QPointF& p);
+    static QRect resizedRect(const QRect& r, int handle, const QPoint& delta, const QRect& bounds);
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
     void maskMoved(const QString& id, const QRect& rect);
     void maskSelected(const QString& id);
-    void retryRequested();
+    // A cover shown at timeUs started to move: the window asks for the frame without it.
+    void liveEditStarted(const QString& id, qint64 timeUs);
+    // A click on the picture while playing (W3).
+    void pauseRequested();
+    // The cover under the pointer on the picture ("" when none) (Q22).
+    void hoveredCoverChanged(const QString& id);
+    void arrowsClaimedChanged(bool claimed);
+    // Esc gave the arrows back: the window returns focus to the timeline.
+    void arrowsReleased();
+    void previewErrorChanged();
     void zoomChanged();
 protected:
     bool event(QEvent*) override;
@@ -117,8 +175,16 @@ private:
     QSize source() const;
     QRect area() const;
     void clampPan();
-    void placeErrorCard();
     void announce();
+    struct Target { enum class Kind { None, Handle, Body } kind = Kind::None; QString id; int handle = -1; };
+    Target targetAt(const QPointF&) const;
+    void updateHover(const QPointF&);
+    void beginLive(const QString& id);
+    const QImage& livePicture();
+    void applyDrag(const QPointF&);
+    bool pastDeadZone(const QPointF&) const;
+    QRect placementAt(const QPointF& p) const;
+    void claimArrows(bool);
     QImage frame_, skim_;
     qint64 timeUs_ = 0, skimUs_ = 0;
     QSize canvas_;
@@ -129,22 +195,38 @@ private:
     int rightInset_ = 0;
     QPointF pan_;  // at 100 %: the source point at the area's centre, minus the source centre
     enum class Drag { None, Create, Move, Resize, Pan } drag_ = Drag::None;
-    QPointF anchor_, current_, panFrom_;
+    QPointF anchor_, current_, panFrom_, pressAt_;
     QRect original_;
+    QString dragId_;
+    int handle_ = -1, hoveredHandle_ = -1;
+    bool moved_ = false;  // the pointer passed the dead zone
+    bool pressedSelected_ = false, arrowsClaimed_ = false, placeWaiting_ = false;
+    QString liveId_, uncoveredId_;
+    QImage uncovered_, composite_;
+    qint64 uncoveredUs_ = -1;
+    std::tuple<qint64, QRect, QString, int> compositeKey_;
+    std::optional<int> liveStrength_;
+    QString linkedHover_;
+    QImage fading_;
+    QElapsedTimer fadeClock_;
+    int fadeMs_ = 100;
+    // The last point the pointer was on a grip, and when it left it (Q23, Q24),
+    // as the timeline keeps them (Q10t).
+    std::optional<QPointF> gripAt_;
+    QElapsedTimer gripLeft_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;
     QRect nudgeFrom_;
     bool nudging_ = false;
-    QWidget* errorCard_ = nullptr;
-    QLabel* errorText_ = nullptr;
-    QPushButton* retry_ = nullptr;
 };
 
 // #1613: the private review (design: put.gd-evidence record
 // 2026-11-17-recording-review-redesign, design.md). Title; tool row (Select V,
-// Cut C, Redact X, Blur B, Undo, Redo, Fit · n%, and the Edits toggle when the
-// panel folds); the viewer with its banners along the top; the transport; the
+// Cut C, Redact X, Blur B, Undo, Redo, then the placement prompt, blur warning
+// or frame error in its free middle, Fit · n%, and the Edits toggle when the
+// panel folds); the viewer, with the notice and status lines over its top
+// edge (they never refit the picture); the transport; the
 // filmstrip timeline; the footer (format, Discard…, Save a copy…, destination,
 // Upload). The right panel (ReviewPanel) runs from the tool row to the footer
 // and folds into the Edits overlay below ~1180×720.
@@ -188,7 +270,11 @@ public:
     // clearSelection|cut|selectCut|adjustCut|restoreCut|playAcross|undo|redo|armRedact|
     // armBlur|cancelPlacement|selectEdit|nextEdit|previousEdit|seekCoverStart|
     // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
-    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
+    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, and the
+    // feel controls: setSkimming|setSnapping {on}|zoomIn|zoomOut|retimeCover|
+    // moreCovers|markSelection {edge}|editPoint {delta}|setCutEdge {cutId, edge}|
+    // scrollTimeline {start}; placeMask {at} places the default box a click
+    // places (exactly one of rect and at), ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error. A state that
     // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
@@ -243,7 +329,7 @@ private:
     void askDiscard();
     void answerDiscard(bool discard);
     // Save a copy…: the desktop's chooser (#259); false while one is open or exporting.
-    bool chooseCopy();
+    bool chooseCopy(std::optional<quint64> refusalsAtPress = std::nullopt);
     // Upload, Ctrl+Enter and Enter: never during a pointer drag or while placing;
     // with proposals unanswered, only once the resident accepted the last of
     // them (a refusal or 2 s without an answer cancels it, with a status line).
@@ -251,9 +337,35 @@ private:
     bool tryUpload();  // sends once nothing is unanswered; true when it did
     // The one way a waiting upload stops, with its own status line (why: what happened).
     void cancelUpload(const QString& why = {});
+    // Save a copy waits, as Upload does, for the changes made before it (W5).
+    void trySaveCopy();
+    void cancelSaveCopy(const QString& why);
     void emitConfig();
     int viewEdge() const;
-    void refreshFrame();
+    // The frame at the playhead (or a dragged edge) from the frame worker: asked
+    // at once (leading edge), one decode in flight, the newest time next; the
+    // viewer keeps the last frame meanwhile (#1613 C1, C2).
+    void requestFrame();
+    void askFrame();
+    void showFrameError(qint64 at, const QString& message);
+    // The same frame decoded on this thread, for Set Out / Set to playhead when
+    // the frame at the playhead isn't shown yet (they need its own time).
+    void decodeFrameNow();
+    void placeBanners();
+    void beginEdgePreview();
+    void endEdgePreview();
+    bool cancelDrags();
+    void stopPlaceWait();
+    void showNote(const QString& text, int ms);
+    void refreshNote();
+    void noteUndo();
+    bool blurApplies() const;
+    recording::Span placementSpan(const QString& kind, bool& whole) const;
+    void stepEditPoint(int direction);
+    bool adoptSkim();
+    qint64 shownFrameStart();
+    void placePendingEnter();
+    void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
     // its start (never decoded through a cut) and frames are shown at their
@@ -282,6 +394,10 @@ private:
     void selectTime(qint64 start, qint64 end);
     void selectEdit(const QString& kind, const QString& id);
     void selectCover(const QString& id, bool seekToIt = true);
+    // The frame without live cover `id`, every other cover as the edit has it (D4, W3).
+    void askUncovered(const QString& id, qint64 at);
+    QString cutEdgeToPlayhead(const QString& id, bool start);
+    void takeSkimForKey();
     void selectCut(const QString& id, bool seekToIt);
     void clearSelection();
     void stepEdit(int direction);
@@ -334,6 +450,11 @@ private:
     bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
     StatusEntry uploadNotice_;    // "Upload cancelled: …" until dismissed or Upload again
     quint64 configSeq_ = 0;
+    QString saveWaitingPath_;  // a chosen copy waiting for earlier changes to be answered
+    quint64 saveAwaits_ = 0;
+    quint64 refusals_ = 0, saveRefusalMark_ = 0;  // changes not applied, counted
+    std::optional<quint64> savePressRefusals_;  // refusals_ at a press on Save (W5)
+    QTimer saveWait_;
     quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
     qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
@@ -343,7 +464,46 @@ private:
     // The exact skim frame asked for: its time and the edit revision it was asked at.
     std::optional<std::pair<qint64, quint64>> skimAsked_;
     void askSkimFrame(qint64 at);
+    qint64 skimReach() const;
+    // The last exact skim frames (B2): one answers any time from its request to
+    // its frame's own time when no cover starts or ends in between.
+    struct SkimFrame { qint64 requested, frameUs; quint64 revision; int edge; QImage image; };
+    QList<SkimFrame> skimCache_;
+    const SkimFrame* cachedSkim(qint64 at) const;
+    void cacheSkim(SkimFrame frame);
+    // The playhead frame asked for last (its time, revision and size).
+    struct FrameAsk { qint64 at; quint64 revision; int edge; QString variant; };
+    std::optional<FrameAsk> frameAsked_;
+    quint64 shownRevision_ = 0;
+    // The live cover (D4): the frame without it asked for, the proposal its
+    // drag made, and the revision whose frame ends the live state.
+    std::optional<std::pair<QString, qint64>> uncoveredAsked_;
+    // Request tags (W3, W4): each live-base request and each cover edge
+    // preview gets its own; answers under any other tag are dropped.
+    quint64 requestTags_ = 0, uncoveredTag_ = 0, edgeTag_ = 0;
+    quint64 nextRequestTag() { return std::numeric_limits<quint64>::max() - ++requestTags_; }
+    quint64 cutFieldProposal_ = 0;  // the proposal a typed cut time made (W8)
+    quint64 liveProposal_ = 0;
+    std::optional<quint64> liveWaitRevision_;
+    // C4: a trim proposal and whether it moved the start; its answer may bring the playhead in.
+    quint64 pendingTrimProposal_ = 0;
+    bool pendingTrimStart_ = false;
     std::optional<qint64> edgePreview_;  // a dragged bracket or edge: the frame shown
+    std::optional<RecordingEdit> edgeEdit_;  // a cover edge drag: the edit with its proposed span (W4)
+    quint64 edgeDragSeq_ = 0, edgeHoldProposal_ = 0;  // proposals before the drag; the one its release made
+    QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
+    QString transientNote_, placeHint_;
+    QTimer placeHintTimer_, enterPlaceTimer_;
+    bool enterPlacePending_ = false;
+    QElapsedTimer skimMovedClock_;  // P11
+    QTimer skimReturn_;  // F2
+    std::optional<std::pair<QString, QString>> revealRow_;  // Q20
+    int noteMs_ = 1500;
+    bool loadingFrame_ = false;
+    bool heldPlaying_ = false;  // T15: playing when the timeline held playback for a press
+    quint64 undoProposal_ = 0;
+    bool undoWasUndo_ = true;
+    RecordingEdit undoBefore_;
     std::optional<qint64> skimUs_;
     QString savedPath_;
     quint64 savedRevision_ = 0;
@@ -364,15 +524,19 @@ private:
     EditsOverlay* overlay_ = nullptr;
     Filmstrip* filmstrip_ = nullptr;
     FrameSkimmer* skimmer_ = nullptr;
+    FrameSkimmer* frames_ = nullptr;  // the playhead's frames (its own decoder)
     QTimer tileTimer_;
     QLabel *notice_ = nullptr, *time_ = nullptr, *clipTime_ = nullptr, *silent_ = nullptr;
     QWidget* noticeBand_ = nullptr;
-    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr;
+    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr, *frameError_ = nullptr, *toolNote_ = nullptr;
+    QWidget* toolMessages_ = nullptr;
     QList<StatusEntry> shownStatus_;
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
     QToolButton *select_ = nullptr, *cut_ = nullptr, *redact_ = nullptr, *blur_ = nullptr, *undo_ = nullptr, *redo_ = nullptr, *pictureZoom_ = nullptr, *editsToggle_ = nullptr;
-    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr;
+    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr, *skimToggle_ = nullptr, *snapToggle_ = nullptr, *playSpeed_ = nullptr;
+    QMenu* timelineZoomMenu_ = nullptr;
+    QWidget* bannerArea_ = nullptr;
     QToolButton *format_ = nullptr, *destinationMenu_ = nullptr;
     QMenu *speedMenu_ = nullptr, *formatMenu_ = nullptr;
     QActionGroup *speeds_ = nullptr, *formats_ = nullptr;
@@ -380,7 +544,7 @@ private:
     QLabel* destinationFull_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
-    QTimer frameTimer_;
+    QTimer frameTimer_;  // only with PUTGD_RECORD_REVIEW_DELAY_MS (tests, the catalog): frames asked that long after a seek
     // The worker deletes itself when it finishes; the guard forgets it then, so
     // closing the window after a preview ended never waits on a freed thread.
     QPointer<QThread> playThread_;

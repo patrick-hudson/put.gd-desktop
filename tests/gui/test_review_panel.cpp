@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSignalSpy>
 #include <QSpinBox>
 #include <QTest>
@@ -108,8 +109,8 @@ private slots:
         QCOMPARE(info["mode"].toString(), QString("cut"));
         QVERIFY(names(info).contains("Restore") && names(info).contains("Play across"));
         QCOMPARE(panel.defaultControl(), button(panel, "Restore"));
-        // The selected cut keeps its span: Restore is above, so its row has no verb button.
-        QVERIFY(!names(info).contains("Restore cut"));
+        // R20: the selected row shows its action, the cut's Restore too.
+        QVERIFY(names(info).contains("Restore cut"));
         QCOMPARE(info["rows"].toArray().size(), 4);
         // Source order: trim, redaction, cut, blur.
         QStringList order;
@@ -199,8 +200,11 @@ private slots:
         QCOMPARE(kind.size(), 1);
         QCOMPARE(kind[0][0].toString(), QString("m2"));
         QCOMPARE(kind[0][1].toString(), QString("solid"));
+        // F2: steps coalesce for 350 ms into one edit.
+        panel.findChild<QSpinBox*>("reviewPanelStrength")->setValue(39);
         panel.findChild<QSpinBox*>("reviewPanelStrength")->setValue(40);
-        QCOMPARE(strength.size(), 1);
+        QCOMPARE(strength.size(), 0);
+        PUTGD_TRY_COMPARE(strength.size(), 1);
         QCOMPARE(strength[0][1].toInt(), 40);
         button(panel, "Remove Blur 2")->click();
         QCOMPARE(remove.size(), 1);
@@ -287,6 +291,48 @@ private slots:
         QCOMPARE(restore.size() + reset.size(), 0);
     }
 
+    // r5-neon #4: a pointer click on a row's Remove hands the keys back to the
+    // window (no silent focus on the next row); Delete from the keyboard moves
+    // focus to the next surviving row.
+    void removeByPointerReturnsFocusAndByKeyMovesOn() {
+        QWidget window;
+        window.resize(320, 700);
+        auto* layout = new QVBoxLayout(&window);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        layout->addWidget(panel);
+        auto s = edited();
+        s.selectedKind = "cover";
+        s.selectedId = "m1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QSignalSpy remove(panel, &ReviewPanel::removeCover), back(panel, &ReviewPanel::focusReturnRequested);
+        QAbstractButton* verb = nullptr;
+        for (auto* b : row(*panel, "cover/m1")->findChildren<QAbstractButton*>("reviewPanelRowVerb")) verb = b;
+        QVERIFY(verb && verb->isVisibleTo(panel));
+        QTest::mouseClick(verb, Qt::LeftButton);
+        QCOMPARE(remove.size(), 1);
+        s.edit.masks.removeFirst();
+        s.edit.revision += 1;
+        s.selectedKind.clear();
+        s.selectedId.clear();
+        panel->setState(s);
+        QCOMPARE(back.size(), 1);
+        QVERIFY(!panel->isAncestorOf(QApplication::focusWidget()));
+
+        auto* last = row(*panel, "cover/m2");
+        last->setFocus(Qt::TabFocusReason);
+        QTest::keyClick(last, Qt::Key_Delete);
+        QCOMPARE(remove.size(), 2);
+        s.edit.masks.removeFirst();
+        s.edit.revision += 1;
+        panel->setState(s);
+        QCOMPARE(back.size(), 1);
+        QVERIFY(QApplication::focusWidget() && QApplication::focusWidget()->objectName() == QString("reviewPanelRow"));
+    }
+
     // U4: with a time selection, Delete on any row cuts the selection (as in the
     // viewer and the timeline) and never removes the row's cover.
     void deleteOnARowCutsATimeSelection() {
@@ -301,6 +347,69 @@ private slots:
         QTest::keyClick(row(panel, "cut/c1"), Qt::Key_Backspace);
         QCOMPARE(remove.size(), 0);
         QCOMPARE(cut.size(), 2);
+    }
+
+    // W8: a typed cut time goes out as typed (the resident snaps it, as a
+    // dragged edge); refused, the field shows the cut's time again.
+    void aRefusedCutTimeShowsTheCutAgain() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        layout->addWidget(panel);
+        auto s = edited();
+        s.selectedKind = "cut";
+        s.selectedId = "c1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QSignalSpy adjust(panel, &ReviewPanel::cutAdjustRequested);
+        auto* field = panel->findChild<QLineEdit*>("reviewPanelCutStartsTime");
+        QVERIFY(field);
+        QCOMPARE(field->text(), QString("0:13.0"));
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "13.52");
+        QTest::keyClick(field, Qt::Key_Return);
+        QCOMPARE(adjust.size(), 1);
+        QCOMPARE(adjust[0][1].toLongLong(), 13520000LL);
+        QCOMPARE(adjust[0][2].toLongLong(), 19500000LL);
+        panel->setState(s);  // nothing changed yet: the typed time stays
+        QCOMPARE(field->text(), QString("13.52"));
+        panel->refreshCutFields();
+        QCOMPARE(field->text(), QString("0:13.0"));
+    }
+
+    // r5-neon H5: in the folded overlay an edit rebuilds the list at the
+    // height a fresh open gives it, so the details below stay in view.
+    void overlayListKeepsItsFitAfterAnEdit() {
+        QWidget window;
+        window.resize(1100, 560);
+        auto* toggle = new QPushButton("Edits", &window);
+        toggle->setGeometry(900, 8, 80, 28);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        panel->setGeometry(800, 40, 280, 500);
+        auto s = edited();
+        for (int i = 3; i <= 7; ++i) s.edit.masks.append(cover(QStringLiteral("m%1").arg(i), "solid", i * second, i * second + second / 2));
+        s.selectedKind = "cover";
+        s.selectedId = "m1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const auto rows = [&] { return panel->findChild<QScrollArea*>("reviewPanelRows")->minimumHeight(); };
+        const int natural = rows();
+        EditsOverlay overlay(&window);
+        overlay.openFor(panel, toggle);
+        QCoreApplication::processEvents();
+        const int fitted = rows();
+        QVERIFY2(fitted < natural, qPrintable(QStringLiteral("%1 vs %2").arg(fitted).arg(natural)));
+        s.edit.masks.append(cover("m8", "blur", 30 * second, 31 * second));
+        s.edit.revision += 1;
+        panel->setState(s);
+        QCoreApplication::processEvents();
+        QCOMPARE(rows(), fitted);
+        QVERIFY(panel->heightForWidth(panel->width()) <= overlay.height());
     }
 
     // The overlay lends the window's one panel and gives it back: same parent,
