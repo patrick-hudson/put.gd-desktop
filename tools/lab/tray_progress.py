@@ -32,10 +32,14 @@ COPY_SETTLED = ('copied', 'partial', 'suppressed', 'failed', 'no_result')
 IDLE = 'put.gd'
 # November and December: the idle title, or the last line after active work.
 SEASONAL_IDLE = 'put.gd - Happy Holidays!'
+CAPTURING = 'Capturing'
+PROCESSING = 'Processing'
 UPLOADING = 'Uploading'
 COMPLETE = 'Upload complete'
+SAVED = 'Saved'
 ATTENTION = 'Needs attention'
-FINISHING = 'Finishing upload'
+WORKING = (CAPTURING, PROCESSING, UPLOADING)
+DONE = (COMPLETE, SAVED)
 REVIEW = ' — open the tray menu to review'
 # TrayController::latchFailure: the attention item each runner failure latches.
 ATTENTION_LABELS = {'local-save': ('Local save needs attention',), 'proton-busy': ('Failed uploads',)}
@@ -47,10 +51,10 @@ LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local cop
 # theme, picks the set (#60). IconArt uses encoding for the progress fill over
 # the idle glyph; upload is reserved for confirmed completion.
 TRAY_TINTS = {
-    'dark': {'idle': '#d6d6d2', 'upload': '#91bca2',
-             'encoding': '#e8b66d', 'error': '#e59b93', 'live': '#f0524f'},
-    'light': {'idle': '#383834', 'upload': '#386a4b',
-              'encoding': '#8f5b20', 'error': '#a44139', 'live': '#c8302b'},
+    'dark': {'idle': '#d6d6d2', 'capture': '#e8b66d', 'process': '#8db4e8', 'upload': '#62d69b',
+             'error': '#e59b93', 'live': '#f0524f'},
+    'light': {'idle': '#383834', 'capture': '#8f5b20', 'process': '#2f5e9e', 'upload': '#1f7a4a',
+              'error': '#a44139', 'live': '#c8302b'},
 }
 
 
@@ -277,9 +281,12 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     and bounded independently against observed bytes and the acquired file size.
 
     attention lists the labels a runner-created failure may latch. The resident
-    keeps "Needs attention" with the error glyph until the tray menu's attention
-    item is opened (TrayController::latchFailure); without a runner-created
-    failure that state is fatal.
+    shows "Needs attention" with the error glyph for eight seconds, or until new
+    work starts or the tray menu's attention item is opened
+    (TrayController::latchFailure); without a runner-created failure that state is fatal.
+    The working stages are Capturing (capture tint), Processing (process tint) and
+    Uploading (the upload fill over the process tint); a finished upload or save shows
+    the upload tint with its check badge.
     """
     require(snapshot.get('pid') == pid and snapshot.get('hostRegistered') and snapshot.get('registered'),
             'SNI must be registered with the native host and owned by the expected app PID')
@@ -287,13 +294,13 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     require(not re.search(r'https?://|file://|synthetic-[12]\.txt|/tmp/|/home/', text, re.IGNORECASE),
             'Tray tooltip exposes a source name, path or link')
     title = snapshot.get('title')
-    require(title in (IDLE, SEASONAL_IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
+    require(title in (IDLE, SEASONAL_IDLE, ATTENTION) + WORKING + DONE, 'Unexpected tray title')
     if text == SEASONAL_IDLE or text.endswith('\n' + SEASONAL_IDLE):
-        require(title in (IDLE, UPLOADING, COMPLETE, ATTENTION), 'Seasonal greeting under an idle title')
+        require(title in (IDLE, ATTENTION) + WORKING + DONE, 'Seasonal greeting under an idle title')
         require(title != IDLE or text != SEASONAL_IDLE,
                 'Seasonal greeting under an idle title without activity')
         # It replaces a row that would only repeat the title.
-        text = COMPLETE if text == SEASONAL_IDLE and title == COMPLETE else text[:-len(SEASONAL_IDLE)].rstrip('\n')
+        text = title if text == SEASONAL_IDLE and title in DONE else text[:-len(SEASONAL_IDLE)].rstrip('\n')
     require(SEASONAL_IDLE not in text, 'Seasonal greeting is not the last tooltip line')
     require(title != SEASONAL_IDLE or not text, 'Seasonal idle title takes priority over activity')
     icons = snapshot.get('icons', [])
@@ -304,39 +311,33 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
         first, _, rest = text.partition('\n')
         labels = [label for label in attention if first == label + REVIEW]
         require(labels, 'Attention text does not name the expected failure')
-        # The error glyph and badge replace every progress or completion fill.
-        require(all(has(icon, 'error') and not has(icon, 'upload') and not has(icon, 'encoding') for icon in icons),
+        # The error glyph and badge replace every stage tint and fill.
+        require(all(has(icon, 'error') and not any(has(icon, role) for role in ('capture', 'process', 'upload')) for icon in icons),
                 'Attention icon must be the error glyph without progress or completion')
         result = {'idle': False, 'attention': labels[0], 'storageActive': False, 'counter': False, 'phases': []}
         if rest:
             check_activity(rest.splitlines(), records, provider, result)
         return result
     require(not any(has(icon, 'error') for icon in icons), 'Error tint outside the attention state')
-    if title == COMPLETE:
-        require(text == COMPLETE, 'Completion title without completion text')
-        observed(not records and all(has(icon, 'upload') for icon in icons), 'Completion fill must be green with no remaining work')
-        require(all(not has(icon, 'encoding') and not has(icon, 'idle') for icon in icons),
-                'Completion frame must be fully green without a progress fill')
+    if title in DONE:
+        require(text == title, 'Completion title without completion text')
+        observed(not records and all(has(icon, 'upload') for icon in icons), 'Completion glyph must be green with no remaining work')
+        require(all(not any(has(icon, role) for role in ('idle', 'capture', 'process')) for icon in icons),
+                'Completion frame must be fully green without another stage tint')
         return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
-    require(not any(has(icon, 'upload') for icon in icons), 'Completion tint before a confirmed completion')
-    # Partial progress keeps idle pixels beside the encoding fill; a nearly
-    # complete fill covers the whole glyph. A sliver of fill reaches the large
-    # sizes before the smallest, so every advertised size must contain the
-    # fill before it earns storage coverage.
-    filled = [has(icon, 'encoding') for icon in icons]
-    require(all(has(icon, 'idle') for icon in icons) or all(filled),
-            'SNI icon does not have the required idle/active brand color')
+    require(not any(has(icon, 'upload') for icon in icons) or title == UPLOADING, 'Upload tint outside an upload')
+    # The upload fill climbs over the process tint and is never empty; each
+    # advertised size must contain it before the row earns storage coverage.
+    filled = [has(icon, 'upload') for icon in icons]
+    stage = {CAPTURING: 'capture', PROCESSING: 'process', UPLOADING: 'process'}.get(title, 'idle')
+    require(all(has(icon, stage) for icon in icons) or (title == UPLOADING and all(filled)),
+            'SNI icon does not have the tint of its stage (' + stage + ')')
     if title in (IDLE, SEASONAL_IDLE) and not text:
-        require(not any(filled) and all(has(icon, 'idle') for icon in icons), 'Idle tray retains a progress fill')
+        require(not any(filled) and all(has(icon, 'idle') for icon in icons), 'Idle tray retains a stage tint or fill')
         observed(not records, 'Idle tray while production work remains active')
         return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
-    result = {'idle': False, 'storageActive': all(filled), 'counter': False, 'phases': []}
-    if text == FINISHING:
-        # The 200-600 ms hold after the last transfer, before completion.
-        require(title == UPLOADING, 'Finishing text outside an upload')
-        result['finishing'] = True
-        return result
+    result = {'idle': False, 'storageActive': title == UPLOADING and all(filled), 'counter': False, 'phases': []}
     check_activity(text.splitlines(), records, provider, result)
     return result
 

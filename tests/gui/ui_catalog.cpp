@@ -254,7 +254,7 @@ QImage iconSpecimen(){
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
  auto caption=p.font();caption.setPixelSize(11);p.setFont(caption);
  for(int i=0;i<names.size();++i){const int x=24+(i%8)*156,y=52+(i/8)*94;Ui::icon(names[i]).paint(&p,QRect(x+12,y,40,40));Ui::icon(names[i]).paint(&p,QRect(x+64,y+12,16,16));const int side=Ui::scaled(names[i]=="info"?14:Ui::Metric::icon);Ui::icon(names[i]).paint(&p,QRect(x+88,y+(40-side)/2,side,side));p.drawText(QRect(x,y+48,144,22),Qt::AlignCenter,names[i]);}
- p.drawText(24,identityY,"Solid identity artwork · encoding fill");Ui::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
+ p.drawText(24,identityY,"Solid identity artwork · upload fill");Ui::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
  for(int i=0;i<5;++i){const int x=155+i*125;Ui::icon("tray",tints.idle,i*25).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x,identityY+94,64,24),Qt::AlignCenter,QString::number(i*25)+"%");}
  for(int i=0;i<2;++i){const int x=860+i*130;Ui::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x-10,identityY+94,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
  p.drawText(24,identityY+152,"Actual tray sizes: 16 / 22 / 24 / 32 px");
@@ -381,18 +381,22 @@ int main(int argc,char** argv){
  // but enforce the same Linux path precondition before constructing the app.
  const auto socket=QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)).filePath("putgd/session.sock");if(socket.toUtf8().size()>107){qCritical("Resolved Unix socket exceeds 107 UTF-8 bytes");return 2;}
  {
-  QImage states(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&states);painter.setFont(Ui::font(Ui::Type::metadata));
-  const QStringList labels{"Idle","Recording","Paused","Uploading + recording","Failed","Failed + recording","Failed + paused"};
+  // Each stage the icon shows, in pipeline order, then the recording badges.
+  QImage states(1440,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&states);painter.setFont(Ui::font(Ui::Type::metadata));
+  const QStringList labels{"Idle","Capturing","Processing","Uploading 50%","Complete","Failed","Recording","Uploading + paused"};
   for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,states.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
-   for(int n=0;n<labels.size();++n){const auto icon=Ui::icon("tray",tints.idle,n>=4?-2:n==3?50:-1,n==1||n==3||n==5?1:n==2||n==6?2:0);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+   const QList<IconArt::TrayIcon> icons{{tints.idle},{tints.capture},{tints.process},{tints.process,50},{tints.upload,-1,0,IconArt::TrayGlyph::Mark,true},{tints.error,-2},{tints.idle,-1,1},{tints.process,50,2}};
+   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon(icons[n]);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
  }
  {
-  // The calendar's glyphs at idle, in transfer and on success, with the sizes a host may pick.
+  // The calendar's glyphs through each stage, with the sizes a host may pick: no stage replaces them.
   QImage seasons(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&seasons);painter.setFont(Ui::font(Ui::Type::metadata));
-  const QStringList labels{"Turkey","Turkey 50%","Turkey 100%","Turkey complete","Tree","Tree 50%","Tree 100%"};
+  const QStringList labels{"Turkey","Turkey capturing","Turkey uploading 50%","Turkey complete","Tree processing","Tree uploading 100%","Tree complete"};
   for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,seasons.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
-   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon({n==3?tints.upload:tints.idle,n==1||n==5?50:n==2||n==6?100:-1,0,n<4?IconArt::TrayGlyph::Turkey:IconArt::TrayGlyph::Tree});painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,22,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+   const auto turkey=IconArt::TrayGlyph::Turkey,tree=IconArt::TrayGlyph::Tree;
+   const QList<IconArt::TrayIcon> icons{{tints.idle,-1,0,turkey},{tints.capture,-1,0,turkey},{tints.process,50,0,turkey},{tints.upload,-1,0,turkey,true},{tints.process,-1,0,tree},{tints.process,100,0,tree},{tints.upload,-1,0,tree,true}};
+   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon(icons[n]);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,22,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!seasons.save(QDir(output).filePath("settings-tray-seasons.png")))return 2;
  }
  DataDir data("pgr");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}

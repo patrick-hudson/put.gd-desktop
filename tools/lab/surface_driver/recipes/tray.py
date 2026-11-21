@@ -216,7 +216,7 @@ def _icon_node(ctx, timeout=10):
         return None
 
 
-TRAY_TITLES = ('Uploading', 'Upload complete', 'Needs attention')
+TRAY_TITLES = ('Capturing', 'Processing', 'Uploading', 'Upload complete', 'Saved', 'Needs attention')
 
 
 def _published_glyphs(ctx):

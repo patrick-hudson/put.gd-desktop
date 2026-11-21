@@ -25,7 +25,7 @@ public:
  ~NativeTray() override;
  bool available() const;
  bool availabilityKnown() const;
- void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark);
+ void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark,bool done = false);
  // Shows the "update" menu entry with this label; empty hides it (#293).
  void setUpdateLabel(const QString& label);
  // The menu's live state (TrayMenu's table): the live block, shortcuts,
