@@ -214,6 +214,7 @@ TrayController::TrayController(OperationService& operations,
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
+  logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
   if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
   else if(reason=="lost_track")notifyMessage("scroll_lost_track","put.gd — scrolling capture incomplete",message,true);
   else if(reason=="done")notifyMessage("scroll_blank_stretch","put.gd — scrolling capture stopped",message,true);
@@ -245,14 +246,17 @@ TrayController::TrayController(OperationService& operations,
  },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
+  logError("recording",{"recording_budget_stopped",stop["message"].toString(),{}},{},Settings::recordingActionName());
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
  });
  // History could not save some results; a restart's recovery saves them (#1579). Once per session.
  connect(&operations_,&OperationService::historyResultsUnsaved,this,[this]{
+  logError("history",{"history_results_unsaved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",{}},"history_results_unsaved");
   if(operations_.settingsSnapshot().notifications)notifyMessage("history_results_unsaved","put.gd — History not saved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",true);
  });
  // Uploads an automatic cleanup could not abort, once for each (#226).
  connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
+  logError("upload",{"incomplete_uploads_kept",notice["message"].toString(),{{"count",notice["count"]},{"bytes",notice["bytes"]}}});
   if(available())notifyMessage("incomplete_uploads_kept","put.gd — incomplete uploads left",notice["message"].toString(),true);
  });
 #ifdef Q_OS_LINUX
@@ -662,8 +666,10 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  if (const auto settings = operations_.settingsSnapshot(); (!fromShortcut || settings.captureDelayShortcuts) && settings.captureDelaySeconds > 0 && Settings::delayableAction(action) && !effective.contains("delaySeconds") && (action != "edit" || Settings::delayableEditSource(effective.value("source").toString("region"))))
   effective["delaySeconds"] = settings.captureDelaySeconds;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
+  if (guard && !error && guard->errorLog_) guard->errorLog_->resolve("action.invoke:"+action,"It worked when tried again");
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
+   if (error.code != "busy_selecting") guard->logError(ErrorLog::kindForAction(action),error,"action.invoke:"+action,action);
    // A second Copy text press while one runs: say so and change nothing else.
    if (error.code == "text_busy") { if (guard->operations_.settingsSnapshot().notifications) guard->notifyMessage("text_busy", "Copy text", error.message, false); return; }
    if (fromShortcut) {
@@ -874,7 +880,13 @@ void TrayController::notifyUpdate(const QJsonObject& result) {
  notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
 }
 void TrayController::notifyDesktopSetup(const QString& code, const QString& message) {
+ if(code != "gnome_login_required" && code != "gnome_extension_updated")logError("desktop_setup",{code,message,{}},"desktop:"+code);
  notifyMessage(code, "put.gd", message, code != "gnome_login_required" && code != "gnome_extension_updated");
+}
+void TrayController::logError(const QString& kind,const Error& error,const QString& subject,const QString& action) {
+ if(!errorLog_||!ErrorLog::userFacing(error))return;
+ ErrorLog::Entry context;context.subject=subject;context.action=action;
+ errorLog_->record(kind,error,context);
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)latchFailure(error);
@@ -882,8 +894,9 @@ void TrayController::notifyFailure(const Error& error) {
 }
 void TrayController::saveDiagnostics(const QString& operationId) {
  if(!saveDiagnostics_||operationId.isEmpty())return;
- saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this)](Error error,QJsonObject result) {
+ saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this),operationId](Error error,QJsonObject result) {
   if(!guard)return;
+  if(error)guard->logError("diagnostics",error,"diagnostics.bundle:"+operationId);
   if(error)guard->notifyMessage("diagnostics_not_saved","put.gd — diagnostics not saved",error.message,true);
   else guard->notifyDiagnosticsSaved(result);
  });
@@ -922,7 +935,7 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
 #endif
 }
-void TrayController::notifyFileManagerProblem(const QString& message) {notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
+void TrayController::notifyFileManagerProblem(const QString& message) {logError("other",{"file_manager_menu_problem",message,{}},"file_manager_menu");notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
 bool TrayController::restartFileManager(const QString& name) {
  const auto script=FileManagerIntegration::restartScript(name);
  if(script.isEmpty())return false;
@@ -933,6 +946,7 @@ bool TrayController::restartFileManager(const QString& name) {
 void TrayController::showSavedPackage(const QString& path) {
  const auto error=revealPackage(path,true);if(!error)return;
  qWarning("Show in folder refused: %s",qPrintable(error.code));
+ logError("diagnostics",error);
  notifyMessage("show_in_folder_refused","put.gd — Show in folder",error.message,true);
 }
 Error TrayController::revealPackage(const QString& path,bool savedHere) {

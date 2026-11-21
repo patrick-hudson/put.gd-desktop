@@ -79,7 +79,9 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="history.copyLink"||method=="history.copyLinks"||method=="history.qr")return 630000;
  // editor.apply with redactText answers when recognition is done, not at once.
  if(method=="editor.apply")return textjob::maximumDeadlineMs+base;
- if(method=="history.unlockLinkCredentials")return 300000;
+ if(method=="history.unlockLinkCredentials"||method=="history.unlockCredentials")return 300000;
+ // An error log step runs the session method it stands for: unlocking can wait on a keyring prompt (#1753).
+ if(method=="errors.act")return 300000;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
  if(method=="settings.importUploader")return uploaderImportReplyMs;
@@ -112,7 +114,7 @@ void LocalServer::accept() {
  }
 }
 void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
- reply=[reply=std::move(reply),method=request["method"].toString().left(64)](Error error,QJsonObject result){if(error)logRejection(method,error);reply(std::move(error),std::move(result));};
+ reply=[guarded=QPointer<LocalServer>(this),reply=std::move(reply),method=request["method"].toString().left(64),params=request["params"].toObject()](Error error,QJsonObject result){if(error)logRejection(method,error);if(guarded)guarded->noteOutcome(method,params,error);reply(std::move(error),std::move(result));};
  if(!fields(request,{"schemaVersion","requestId","session","method","params"})||!string(request,"requestId",128)||!string(request,"method",64)||!request["params"].isObject()||!request["session"].isString()) {reply(invalid(),{});return;}
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
@@ -130,7 +132,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="ui.show") {
   // updates: Settings scrolled to Updates, as the rail's Update available link opens it (#293).
-  if(!fields(p,{"view"})||!QStringList{"settings","updates","history","activity","destinations","about","editFile"}.contains(p["view"].toString())){reply(invalid(),{});return;}
+  if(!fields(p,{"view"})||!QStringList{"settings","updates","history","activity","destinations","about","editFile","errors"}.contains(p["view"].toString())){reply(invalid(),{});return;}
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }
@@ -323,9 +325,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   }
   HistoryQuery q;q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.counts(q,days,reply);return;
  }
- if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.unlockLinkCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
+ if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.unlockLinkCredentials"||method=="history.unlockCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
   // history.preview alone takes an optional boolean retry (Retry preview).
-  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,[this,reply](Error e,QJsonObject data){if(!e&&operations_.operationSettling(data.value("operationId").toString()))data["settling"]=true;reply(e,data);});else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
+  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,[this,reply](Error e,QJsonObject data){if(!e&&operations_.operationSettling(data.value("operationId").toString()))data["settling"]=true;reply(e,data);});else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.unlockCredentials")history_.unlockItemCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
  }
  if(method=="history.copyLinks") {
   if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000) {reply(invalid(),{});return;}
@@ -404,7 +406,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open History page: filters, selection and the compact details view.
  if(method=="ui.history") {
-  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","finishShareLink","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
+  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","finishShareLink","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading","openErrorLog","dismissNotice","unlockDeletionCredentials"};const auto action=p["action"].toString();
   static const QStringList filterKeys{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus","exactRemoteStatus","includeCanceled"};
   // Each parameter belongs to exactly the actions that take it.
   if(!fields(p,{"action"},{"scope","ids","page","key","value","category","view"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
@@ -417,6 +419,66 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("history",p,std::move(reply));return;
+ }
+ // The error log (#1753): read, act on and clear its entries, and drive Settings → Error log.
+ if(method.startsWith("errors.")&&!errorLog_){reply({"error_log_unavailable","This resident keeps no error log",{}},{});return;}
+ if(method=="errors.list") {
+  bool valid=fields(p,{},{"limit","offset","kind","search","resolved","historyId","operationId"})
+   &&(!p.contains("limit")||(p["limit"].isDouble()&&std::floor(p["limit"].toDouble())==p["limit"].toDouble()&&p["limit"].toDouble()>=1&&p["limit"].toDouble()<=200))
+   &&(!p.contains("offset")||(p["offset"].isDouble()&&std::floor(p["offset"].toDouble())==p["offset"].toDouble()&&p["offset"].toDouble()>=0&&p["offset"].toDouble()<=INT_MAX))
+   &&(!p.contains("kind")||(p["kind"].isString()&&ErrorLog::kinds().contains(p["kind"].toString())))
+   &&(!p.contains("search")||(p["search"].isString()&&p["search"].toString().size()<=256))
+   &&(!p.contains("resolved")||p["resolved"].isBool())
+   &&(!p.contains("historyId")||string(p,"historyId",138))&&(!p.contains("operationId")||string(p,"operationId",128));
+  if(!valid){reply(invalid(),{});return;}
+  ErrorLogQuery query;query.limit=p.contains("limit")?p["limit"].toInt():50;query.offset=p["offset"].toInt();query.kind=p["kind"].toString();query.search=p["search"].toString();
+  query.resolved=p.contains("resolved")?int(p["resolved"].toBool()):-1;query.historyId=p["historyId"].toString();query.operationId=p["operationId"].toString();
+  errorLog_->list(query,std::move(reply));return;
+ }
+ if(method=="errors.inspect") {
+  if(!fields(p,{"id"})||!string(p,"id",64)){reply(invalid(),{});return;}
+  errorLog_->inspect(p["id"].toString(),std::move(reply));return;
+ }
+ if(method=="errors.act") {
+  static const QStringList actions{"unlock_credentials","retry","save_diagnostics"};
+  if(!fields(p,{"id","action"})||!string(p,"id",64)||!p["action"].isString()||!actions.contains(p["action"].toString())){reply(invalid(),{});return;}
+  QPointer<LocalServer> guarded(this);const auto action=p["action"].toString();
+  errorLog_->inspect(p["id"].toString(),[guarded,action,reply=std::move(reply)](Error error,QJsonObject entry){
+   if(error){reply(error,{});return;}
+   if(!guarded){reply({"error_log_unavailable","This resident keeps no error log",{}},{});return;}
+   guarded->actOnError(entry,action,std::move(reply));
+  });return;
+ }
+ if(method=="errors.clear") {
+  if(!fields(p,{},{"ids","resolvedOnly"})||(p.contains("resolvedOnly")&&!p["resolvedOnly"].isBool())||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>500))){reply(invalid(),{});return;}
+  QStringList ids;for(const auto& id:p["ids"].toArray()){if(!id.isString()||id.toString().isEmpty()||id.toString().size()>64){reply(invalid(),{});return;}ids<<id.toString();}
+  errorLog_->clear(ids,p["resolvedOnly"].toBool(),std::move(reply));return;
+ }
+ // A failure put.gd's own window found itself (a file copy, a browser that would not
+ // open): recorded like any other, and answered with the entry's ID for its link.
+ if(method=="errors.record") {
+  static const QStringList kinds=ErrorLog::kinds();
+  if(!fields(p,{"kind","code","message"},{"historyId","operationId","profileId","itemName"})||!p["kind"].isString()||!kinds.contains(p["kind"].toString())||!string(p,"code",128)||!string(p,"message",4096)
+     ||(p.contains("historyId")&&!string(p,"historyId",138))||(p.contains("operationId")&&!string(p,"operationId",128))||(p.contains("profileId")&&!string(p,"profileId",64))||(p.contains("itemName")&&!string(p,"itemName",512))){reply(invalid(),{});return;}
+  ErrorLog::Entry entry;entry.kind=p["kind"].toString();entry.code=p["code"].toString();entry.message=p["message"].toString();entry.historyId=p["historyId"].toString();entry.itemId=entry.historyId;
+  entry.operationId=p["operationId"].toString();entry.profileId=p["profileId"].toString();entry.itemName=p["itemName"].toString();
+  entry.subject=entry.kind+":"+entry.code+":"+(entry.historyId.isEmpty()?entry.operationId:entry.historyId);
+  reply({},{{"id",errorLog_->record(entry)}});return;
+ }
+ // Drives the open Settings → Error log page the way a user does.
+ if(method=="ui.errorLog") {
+  static const QStringList actions{"inspect","refresh","select","step","setFilter","clear","confirmClear","cancelClear","nextPage","previousPage"};
+  static const QStringList steps{"unlock_credentials","open_destination","retry","show_in_history","save_diagnostics"};
+  const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"id","step","kind","search","showResolved","resolvedOnly"})||!p["action"].isString()||!actions.contains(action)
+     ||(action=="select")!=p.contains("id")||(p.contains("id")&&!string(p,"id",64))
+     ||(action=="step")!=p.contains("step")||(p.contains("step")&&(!p["step"].isString()||!steps.contains(p["step"].toString())))
+     ||(action!="setFilter"&&(p.contains("kind")||p.contains("search")||p.contains("showResolved")))
+     ||(p.contains("kind")&&(!p["kind"].isString()||(!p["kind"].toString().isEmpty()&&!ErrorLog::kinds().contains(p["kind"].toString()))))
+     ||(p.contains("search")&&(!p["search"].isString()||p["search"].toString().size()>256))||(p.contains("showResolved")&&!p["showResolved"].isBool())
+     ||(p.contains("resolvedOnly")&&(action!="clear"||!p["resolvedOnly"].isBool()))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("errorLog",p,std::move(reply));return;
  }
  if(method=="ui.historySaveDiagnostics") {
   if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
@@ -479,6 +541,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   // A changed generation tells an open window that a credential read or store ended (#600).
   if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
   if(destinationStatus_)snapshot["destinationStatus"]=destinationStatus_->publicJson();
+  // The error log's counts and revision (#1753): an open Error log page reloads when it changes.
+  if(errorLog_)snapshot["errorLog"]=errorLog_->summary();
   reply({},snapshot);
  }
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}
@@ -500,5 +564,66 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Removes every persistent log file and starts a new one (#74).
  else if(method=="logs.clear")operations_.background([](Error& error){return logging::clear(error);},reply);
  else reply({"unknown_method","Unknown session method",{}},{});
+}
+
+// Which session methods are a person's actions whose errors belong in the error log, by
+// the kind of action (#1753). Read-only calls (history.detail, delete.inspect, the
+// inspect and list methods) and the windows' own drivers are left out.
+void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& error) {
+ if(!errorLog_)return;
+ static const QHash<QString,QString> kinds{
+  {"history.copyLink","copy"},{"history.copyLinks","copy"},{"history.copyImage","copy"},{"history.qr","copy"},{"operation.copy","copy"},
+  {"history.copyText","text_recognition"},{"text.recognize","text_recognition"},
+  {"history.share","share_link"},{"history.revokeLink","share_link"},{"history.openLink","share_link"},
+  {"history.unlockLinkCredentials","credentials"},{"history.unlockCredentials","credentials"},{"setup.unlockCredentials","credentials"},{"setup.storeCredentials","credentials"},{"setup.storeSharePassword","credentials"},
+  {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},
+  {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
+  {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"upload.files","upload"},
+  {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
+  {"diagnostics.bundle","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
+  {"history.clear","history"},{"cache.clear","history"},{"action.invoke",""}};
+ if(!kinds.contains(method))return;
+ // A diagnostics preview writes nothing; its refusal is the dialog's own message.
+ if(method=="diagnostics.bundle"&&p["preview"].toBool())return;
+ const auto kind=method=="action.invoke"?ErrorLog::kindForAction(p["action"].toString()):kinds.value(method);
+ QString key;
+ if(method.startsWith("history.")||method.startsWith("operation.")||method.startsWith("recording.")||method=="delete.retry"||method=="delete.cancel")key=p["id"].toString();
+ else if(method=="delete.prepare"||method=="delete.confirm"){key=error.details["historyId"].toString();if(key.isEmpty()&&p["ids"].toArray().size()==1)key=p["ids"].toArray().first().toString();}
+ else if(method.startsWith("setup."))key=p["profileId"].toString();
+ else if(method=="action.invoke")key=p["action"].toString();
+ else if(method=="text.recognize")key=p["historyId"].toString(p["source"].toString());
+ const auto subject=method.startsWith("settings.")?QStringLiteral("settings"):method+':'+key;
+ if(!error){errorLog_->resolve(subject,"It worked when tried again");return;}
+ if(!ErrorLog::userFacing(error))return;
+ ErrorLog::Entry context;context.subject=subject;context.action=p["action"].toString();context.details={{"method",method}};
+ if(method.startsWith("history.")||method=="delete.prepare"||method=="delete.confirm"||method=="history.copyText"){context.historyId=key;context.itemId=key;}
+ if(method=="text.recognize"){context.historyId=p["historyId"].toString();context.itemId=context.historyId;}
+ if(method.startsWith("operation.")||method.startsWith("recording.")){context.operationId=key;}
+ if(method=="delete.retry"||method=="delete.cancel")context.deletionId=key;
+ if(method.startsWith("setup.")||method=="upload.files")context.profileId=method.startsWith("setup.")?key:p["profileId"].toString();
+ if(method=="history.unlockCredentials"||method=="history.unlockLinkCredentials")context.profileId=error.details["profileId"].toString();
+ error.details["errorLogId"]=errorLog_->record(kind,error,context);
+}
+// One of an entry's next steps, through the same session method its button stands for,
+// so the step's own result (and any error it records) is what the caller gets.
+void LocalServer::actOnError(const QJsonObject& entry,const QString& action,JsonReply reply) {
+ const auto steps=entry["nextSteps"].toArray();
+ if(!steps.contains(QJsonValue(action))){reply({"error_action_unavailable","This error log entry doesn't offer that step",{{"id",entry["id"]},{"nextSteps",steps}}},{});return;}
+ const auto kind=entry["kind"].toString(),historyId=entry["historyId"].toString(),profileId=entry["profileId"].toString(),operationId=entry["operationId"].toString();
+ QString method;QJsonObject params;
+ if(action=="unlock_credentials"){
+  if(!historyId.isEmpty()){method="history.unlockCredentials";params={{"id",historyId}};}
+  else{method="setup.unlockCredentials";params={{"profileId",profileId},{"expectedRevision",settings_.revision()}};}
+ }
+ else if(action=="retry"){
+  if(kind=="deletion"){method="delete.retry";params={{"id",entry["deletionId"]}};}
+  else if(kind=="destination_test"){method="setup.testDestination";params={{"profileId",profileId},{"expectedRevision",settings_.revision()}};}
+  else if(kind=="copy"){method="operation.copy";params={{"id",operationId}};}
+  else if(kind=="local_save"){method="operation.retryLocalSave";params={{"id",operationId}};}
+  else{method="operation.retry";params={{"id",operationId}};}
+ }
+ else{method="diagnostics.bundle";params={{"operation",operationId}};}
+ const QJsonObject request{{"schemaVersion",1},{"requestId","errors.act"},{"session",socketPath()},{"method",method},{"params",params}};
+ dispatch(request,[method,action,id=entry["id"],reply=std::move(reply)](Error error,QJsonObject result){reply(error,{{"id",id},{"action",action},{"method",method},{"result",result}});});
 }
 }

@@ -7,7 +7,7 @@
 #include <QPointer>
 class QTextDocument;class QGridLayout;class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
-class FileDialog;class QrCodeWindow;namespace Ui { class ElidedLabel; }
+class FileDialog;class QrCodeWindow;namespace Ui { class ElidedLabel;class Banner; }
 class HistoryWindow final:public RetainedWindow {
  Q_OBJECT
 public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);void releasePreview();
@@ -39,6 +39,8 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  static QString copyTextUnavailable(const QJsonObject& record);
  static QString qrUnavailable(const QJsonObject& record);
  void confirmUploads(const QStringList& ids);void showFailedUploads();
+ // The Error log's Show in History: the item selected, its page found with filters cleared.
+ void showItem(const QString& historyId);
  // The remote-deletion confirmation for a delete.prepare reply: each exact
  // target by file name, then the full preparation under Technical details.
  // Cancel is the default and Escape choice; accepting is the named action.
@@ -48,11 +50,25 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
 // The active operations History last read (operation.recent); activityChanged follows them.
  QJsonArray activeOperations()const;
 signals:void viewStateChanged();void activityChanged();
+ // Open error log on History's error notice: the entry {id}, or the newest about {historyId, kind} (#1753).
+ void errorLogRequested(const QJsonObject& target);
+ // Open destination settings for a file whose destination's credentials aren't loaded.
+ void destinationSettingsRequested(const QString& profileId);
  void captureSettingsRequested();void localCopySettingsRequested();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
 protected:bool eventFilter(QObject*,QEvent*) override;void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
 private:
+ // History's error notice (#1753): an error shows briefly with Open error log, then clears;
+ // notice() is the same line for a warning with no entry. Neither is kept in view state.
+ static constexpr int errorNoticeMs=12000;
+ void notify(const Error&,const QString& success={});void showError(const QString& text,const QJsonObject& target);void notice(const QString& text);void dismissNotice();
+ void localError(const QString& kind,const QString& code,const QString& text,const QString& historyId={},const QString& operationId={});
+ static QJsonObject errorTarget(const Error&,const QString& historyId={},const QString& kind={});
+ Ui::Banner* errorNotice_=nullptr;QTimer* errorNoticeTimer_=nullptr;QJsonObject errorNoticeTarget_;
+ QPushButton *deletionUnlock_=nullptr,*deletionDestination_=nullptr;
+ // A deletion or link change seen running in this window: its outcome is announced once.
+ bool deletionAnnounce_=false,sharingAnnounce_=false,deletionProgressShown_=false;
  void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
  bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();void dismissSavedCopy();
  QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;

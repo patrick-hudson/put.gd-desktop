@@ -15,7 +15,7 @@
 #include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;class CustomUploaderPanel;namespace Ui{class Banner;}
+class ShortcutEditor;class CustomUploaderPanel;class ErrorLogPage;namespace Ui{class Banner;}
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -62,12 +62,20 @@ public:
  // originating row with Try again (tests drive failures through here).
  void folderChooserFinished(const QString& dialog,const QString& field,const FileDialog::Result&);
  void openDiagnosticsPackage(const QString& operationId={});
+ // Settings → Error log (#1753), on one entry: {id}, or the newest about {historyId|operationId, kind}.
+ void showErrorLog(const QJsonObject& target={});
+ // ui.errorLog: the page's controls, driven the way a user does.
+ void errorLogCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ ErrorLogPage* errorLog()const{return errorLogPage_;}
 signals:
  void viewStateChanged();
  void actionRequested(const QString&);
  void quitRequested();
  // Capture's "Add a destination…" when none exists: the main window shows Destinations.
  void destinationsRequested();
+ // The Error log's Open destination settings and Show in History (#1753).
+ void destinationSettingsRequested(const QString& profileId);
+ void historyItemRequested(const QString& historyId);
  // #237: the theme picked in Appearance, shown before the resident accepts it;
  // empty when the accepted setting applies again (a refused or discarded save).
  void appearancePreview(const QString& theme);
@@ -139,6 +147,7 @@ private:
  // from changes another writer made.
  QJsonObject baseDocument_;
  // Sidebars as wide as their labels need, between the baseline and the cap.
+ ErrorLogPage* errorLogPage_=nullptr;
  void fitRails();QWidget *settingsRail_=nullptr,*destinationRail_=nullptr;QListWidget* settingsNavigation_=nullptr;QPushButton* addDestination_=nullptr;
  QTimer* typingPause_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;

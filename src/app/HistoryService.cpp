@@ -64,6 +64,18 @@ void HistoryService::unlockLinkCredentials(const QString& id,JsonReply reply) {
   provider->unlockLinkCredentials(receipt,[reply](Error e){reply(e,{{"unlocked",!e}});});
  });
 }
+// The saved keychain credentials of the destination a stored item went to, as its
+// receipt names them: what a deletion or link refresh of that item needs (#1753).
+void HistoryService::unlockItemCredentials(const QString& id,JsonReply reply) {
+ detail(id,[this,reply](Error e,QJsonObject data){
+  if(e){reply(e,{});return;}
+  const auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());
+  auto provider=operations_.providers().find(receipt.destination.providerId);
+  if(receipt.validate()||!provider){reply({"provider_unavailable","Restore access to the original destination",{}},{});return;}
+  if(receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","This file's destination used credentials for one session only. Enter them again in Destinations.",{{"profileId",receipt.destination.profileId}}},{});return;}
+  provider->unlockLinkCredentials(receipt,[reply,profileId=receipt.destination.profileId](Error e){reply(e,{{"unlocked",!e},{"profileId",profileId}});});
+ });
+}
 void HistoryService::copyLink(const QString& id,JsonReply reply) {
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
@@ -165,7 +177,9 @@ void HistoryService::stopDeletions() {quitting_->store(true);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {
  if(quitting_->load()) {reply(quittingError(),{});return;}
  operations_.background([this,ids,acknowledgement](Error& e) {auto preview=prepare(ids,e);if(e)return QJsonObject{};if(acknowledgement.isEmpty()||preview["acknowledgement"]!=acknowledgement) {e={"delete_confirmation_changed","Acknowledge the current exact target set and effect",{}};return QJsonObject{};}
-  QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};items.append(item);}
+  // Each item keeps the file's name from the journal, so its outcome names it wherever it is shown (#1753).
+  HistoryStore names(operations_.databasePath());
+  QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};Error ignored;const auto name=names.detail(item["historyId"].toString(),&ignored)["name"].toString();if(!name.isEmpty())item["name"]=name;items.append(item);}
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},{"state","accepted"},{"acknowledgement",acknowledgement},{"items",items},{"cancelled",false}};
   HistoryStore store(operations_.databasePath());e=store.saveDeletion(doc);return doc;
  },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}notifyChanged();
@@ -233,6 +247,7 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
   if(!(result.status=="unknown"&&result.progress.isEmpty()))doc["progress"]=result.progress;doc["error"]=result.error.toJson();e=store.saveSharing(doc);return doc;
  },[this,id](Error e,QJsonObject doc){
   if(e)recordStoppedSharing(doc,e);
+  else emit sharingFinished(doc);
   active_.remove(id);notifyChanged();
  });
 }
@@ -323,7 +338,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
   // Quit: the deletion stays running in its journal; the next start marks it interrupted.
   if(quitting->load())return doc;
   doc["state"]=cancelled->load()?"cancelled":"completed";doc["items"]=items;error=store.saveDeletion(doc);if(!error)committed();return doc;
- },[this,id=doc["id"].toString()](Error,QJsonObject) {active_.remove(id);});
+ },[this,id=doc["id"].toString()](Error,QJsonObject finished) {active_.remove(id);if(finished["state"]=="completed"||finished["state"]=="cancelled")emit deletionFinished(finished);});
 }
 void HistoryService::inspectDelete(const QString& id,JsonReply reply) {const auto path=operations_.databasePath();operations_.background([path,id](Error& e) {HistoryStore store(path);return store.deletion(id,&e);},reply);}
 void HistoryService::retryDelete(const QString& id,JsonReply reply) {

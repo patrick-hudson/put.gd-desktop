@@ -1,8 +1,10 @@
 #pragma once
 #include "app/OperationService.h"
+#include "app/ErrorLog.h"
 #include "PanelTone.h"
 #include "TrayCalendar.h"
 #include <QObject>
+#include <QPointer>
 #include <QElapsedTimer>
 #include <QColor>
 #include <QTimer>
@@ -62,6 +64,9 @@ public:
  // Builds a diagnostics package for one operation (#122); main wires it to
  // DiagnosticsBundles. Failure notifications offer it when it is set.
  void setDiagnosticsSaver(std::function<void(const QString& operationId,JsonReply)> saver) {saveDiagnostics_=std::move(saver);}
+ // The error log (#1753): failure notifications that no operation or session method
+ // already recorded (a refused action, a scrolling capture's warning) are kept there too.
+ void setErrorLog(ErrorLog* log) {errorLog_=log;}
  void saveDiagnostics(const QString& operationId);
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
@@ -140,6 +145,8 @@ private:
  // `gone`: see NativeTray::closeNotifications.
  int closeOwnNotifications(std::function<void()> gone={});
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
+ QPointer<ErrorLog> errorLog_;
+ void logError(const QString& kind,const Error& error,const QString& subject={},const QString& action={});
  void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();void acknowledgeFailures();
  void latchFailure(const Error&,const QJsonObject& operation = {});

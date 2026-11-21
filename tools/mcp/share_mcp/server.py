@@ -91,7 +91,7 @@ FILE_DIALOG_ACTIONS = {'open', 'inspect', 'cancel'}
 HISTORY_ACTIONS = {'inspect', 'copyDeletionDetails', 'retryLoading', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails', 'toggleDetails',
                    'nextPage', 'previousPage', 'goToPage', 'setFilter', 'removeFilter', 'showCategory', 'setView', 'copySelectedLinks', 'finishShareLink', 'deleteSelected',
                    'cancelConfirmation', 'expandPreview', 'closePreview', 'retryPreview', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'cancelAll',
-                   'confirmCancelAll', 'keepUploading'}
+                   'confirmCancelAll', 'keepUploading', 'openErrorLog', 'dismissNotice', 'unlockDeletionCredentials'}
 HISTORY_FILTER_KEYS = {'from', 'to', 'mime', 'profileId', 'uploadStatus', 'localStatus', 'remoteStatus', 'exactRemoteStatus', 'includeCanceled'}
 HISTORY_CATEGORIES = {'all', 'images', 'videos', 'text+other', 'failed'}
 OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
@@ -109,6 +109,12 @@ REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key', 'name', 'list'}
 REDACT_TERMS_MAX, REDACT_TERM_LENGTH = 200, 100
 REDACT_PATTERNS_MAX, REDACT_PATTERN_LENGTH = 50, 500
 QR_MODES = {'copy', 'save', 'show'}
+# The error log (#1753): ErrorLog::kinds(), the steps an entry offers, and the Error log page's controls.
+ERROR_KINDS = {'upload', 'capture', 'recording', 'local_save', 'copy', 'deletion', 'share_link', 'destination_test', 'destination_setup',
+               'credentials', 'settings_save', 'text_recognition', 'diagnostics', 'history', 'desktop_setup', 'other'}
+ERROR_ACTIONS = {'unlock_credentials', 'retry', 'save_diagnostics'}
+ERROR_STEPS = ERROR_ACTIONS | {'open_destination', 'show_in_history'}
+ERROR_LOG_ACTIONS = {'inspect', 'refresh', 'select', 'step', 'setFilter', 'clear', 'confirmClear', 'cancelClear', 'nextPage', 'previousPage'}
 
 
 def safe_recording_target(target: Any) -> bool:
@@ -1204,7 +1210,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None, page: int | None = None,
                             key: str | None = None, value: str | None = None, category: str | None = None,
                             view: str | None = None) -> Json:
-        """Drive the open History page as its controls do and read its state. action: inspect; copyDeletionDetails (copy the exact preparation shown by an open deletion confirmation, without deleting); cancelConfirmation (Cancel on an open deletion confirmation); retryLoading (retry the current history query after a load failure; canRetryLoading reports availability); clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); setFilter (key, value: add or change one filter chip; key from, to (ISO date or time), mime, profileId, uploadStatus, localStatus, remoteStatus (available, deleted, needs_attention or an exact state), exactRemoteStatus or includeCanceled ("true")); removeFilter (key: a chip's remove button); showCategory (category all, images, videos, text+other or failed); setView (view list or gallery); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails, closeDetails or toggleDetails (the details pane: in the wide list these set detailsWanted, which persists and is honoured whenever something is selected; in the gallery and the compact layout they open or close the pane over the current selection, one row or several); nextPage, previousPage or goToPage (page, 1-based) as Previous/Next do. finishShareLink presses Finish share link on the one selected row (finishableIds lists the files that offer it; see retry_operation stage share_link); copySelectedLinks and deleteSelected run the selection bar's Copy links and Delete from destination… (deleteSelected opens the same confirmation for deletableIds; answer it with cancelConfirmation, or delete with delete_history_uploads). Returns the applied query, heading and countLabel ("236 items", "12 of 168 items", empty while loading), categoryTotals (all, images, videos, text+other, failed), days (each day on the page: day, heading, files within the query), page (page, pageCount, firstItem, lastItem, total, limit, offset, loading), activeFilters, filterChips (key, label, value), foldedFilters, filtersPanelOpen, filtersLabel, selectedIds, selectedRows, selectionHeader, selectionActions (copyLinks, delete, clearSelection), deletableIds, deletionConfirmationOpen, layout (split or compact), detailsWanted, detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. dismissSavedCopy hides the saved-copy strip without losing its path; savedCopyVisible and copyJob (id, filename, path, status, error) report feedback and pending work. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). cancelAll opens the same confirmation as Cancel all (N)…; inspect cancelAllConfirmation.operationIds, then confirmCancelAll or keepUploading. Only those captured operation IDs are canceled; newer uploads stay running. selectionSummary includes counts, total bytes, destinations and upload-state tallies. Delete selected files with delete_history_uploads using deletableIds."""
+        """Drive the open History page as its controls do and read its state. action: inspect; copyDeletionDetails (copy the exact preparation shown by an open deletion confirmation, without deleting); cancelConfirmation (Cancel on an open deletion confirmation); retryLoading (retry the current history query after a load failure; canRetryLoading reports availability); clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); setFilter (key, value: add or change one filter chip; key from, to (ISO date or time), mime, profileId, uploadStatus, localStatus, remoteStatus (available, deleted, needs_attention or an exact state), exactRemoteStatus or includeCanceled ("true")); removeFilter (key: a chip's remove button); showCategory (category all, images, videos, text+other or failed); setView (view list or gallery); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails, closeDetails or toggleDetails (the details pane: in the wide list these set detailsWanted, which persists and is honoured whenever something is selected; in the gallery and the compact layout they open or close the pane over the current selection, one row or several); nextPage, previousPage or goToPage (page, 1-based) as Previous/Next do. finishShareLink presses Finish share link on the one selected row (finishableIds lists the files that offer it; see retry_operation stage share_link); copySelectedLinks and deleteSelected run the selection bar's Copy links and Delete from destination… (deleteSelected opens the same confirmation for deletableIds; answer it with cancelConfirmation, or delete with delete_history_uploads). Returns the applied query, heading and countLabel ("236 items", "12 of 168 items", empty while loading), categoryTotals (all, images, videos, text+other, failed), days (each day on the page: day, heading, files within the query), page (page, pageCount, firstItem, lastItem, total, limit, offset, loading), activeFilters, filterChips (key, label, value), foldedFilters, filtersPanelOpen, filtersLabel, selectedIds, selectedRows, selectionHeader, selectionActions (copyLinks, delete, clearSelection), deletableIds, deletionConfirmationOpen, layout (split or compact), detailsWanted, detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. dismissSavedCopy hides the saved-copy strip without losing its path; savedCopyVisible and copyJob (id, filename, path, status, error) report feedback and pending work. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). cancelAll opens the same confirmation as Cancel all (N)…; inspect cancelAllConfirmation.operationIds, then confirmCancelAll or keepUploading. Only those captured operation IDs are canceled; newer uploads stay running. selectionSummary includes counts, total bytes, destinations and upload-state tallies. Delete selected files with delete_history_uploads using deletableIds. An error shows briefly in errorNotice (text, target, link) and clears; openErrorLog presses its Open error log (Settings → Error log on that entry, see drive_error_log) and dismissNotice its ×. A deletion stopped by its destination's credentials offers deletion.canUnlock: unlockDeletionCredentials presses Unlock saved credentials (the keyring may prompt), then deletion.status says whether they loaded."""
         if action not in HISTORY_ACTIONS or (scope is not None and (action != 'clearFilters' or scope not in {'filters', 'all'})):
             return invalid()
         if (action == 'select') != (ids is not None) or (ids is not None and (not ids or len(ids) > 1000 or any(not identifier(id, 138) for id in ids))):
@@ -1224,6 +1230,63 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             if argument is not None:
                 params[name] = argument
         return await adapter.call('ui.history', params)
+
+    @server.tool(annotations=read)
+    async def list_errors(limit: int | None = None, offset: int | None = None, kind: str | None = None, search: str | None = None,
+                          resolved: bool | None = None, history_id: str | None = None, operation_id: str | None = None) -> Json:
+        """Read put.gd's error log (#1753), newest first: every error it reported (History's notices, failure notifications, refused session calls). Each entry has id, time, firstTime, occurrences (a repeat within 10 minutes updates one entry), kind (upload, capture, recording, local_save, copy, deletion, share_link, destination_test, destination_setup, credentials, settings_save, text_recognition, diagnostics, history, desktop_setup, other), action, code, title (one line), message, details (HTTP status, S3 request IDs, stage and what else put.gd recorded; redacted like the logs), operationId, historyId/itemId, deletionId, sharingId, setupId, itemName, itemPresent, previewPath, profileId, provider, destination, nextSteps (unlock_credentials, open_destination, retry, show_in_history, save_diagnostics) and resolved with resolvedAt and resolution once a later success fixed it. limit 1-200 (default 50), offset; filter by kind, search (message, item, destination, code), resolved, history_id or operation_id. Returns {entries, total, unresolved, revision}."""
+        if (limit is not None and (type(limit) is not int or not 1 <= limit <= 200) or
+                offset is not None and (type(offset) is not int or not 0 <= offset <= 2147483647) or
+                kind is not None and kind not in ERROR_KINDS or search is not None and (not isinstance(search, str) or len(search) > 256) or
+                resolved is not None and type(resolved) is not bool or history_id is not None and not identifier(history_id, 138) or
+                operation_id is not None and not identifier(operation_id, 128)):
+            return invalid()
+        params = {key: value for key, value in {'limit': limit, 'offset': offset, 'kind': kind, 'search': search, 'resolved': resolved,
+                                                 'historyId': history_id, 'operationId': operation_id}.items() if value is not None}
+        return await adapter.call('errors.list', params)
+
+    @server.tool(annotations=read)
+    async def get_error(id: str) -> Json:
+        """Read one error log entry by ID, as list_errors returns it (errors.inspect). Errors: error_not_found."""
+        return await adapter.call('errors.inspect', {'id': id}) if identifier(id, 64) else invalid()
+
+    @server.tool(annotations=effect)
+    async def act_on_error(id: str, action: str) -> Json:
+        """Take one of an error log entry's nextSteps through the session method its Settings button uses (errors.act): unlock_credentials (the item's original destination's saved keychain credentials, history.unlockCredentials, or the destination's, setup.unlockCredentials with its setupId to follow with get_setup_job; the keyring may prompt), retry (delete.retry for a deletion, setup.testDestination for a destination test, operation.copy, operation.retryLocalSave or operation.retry) or save_diagnostics (a local diagnostics package for its operation; nothing is uploaded). Returns {id, action, method, result} with that method's own result, or its error, which is itself recorded in the log. open_destination and show_in_history are window navigation: use drive_error_log step. Errors: error_not_found, error_action_unavailable (the entry doesn't offer it)."""
+        if not identifier(id, 64) or action not in ERROR_ACTIONS:
+            return invalid()
+        return await adapter.call('errors.act', {'id': id, 'action': action}, timeout=315)
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
+    async def clear_errors(ids: list[str] | None = None, resolved_only: bool = False) -> Json:
+        """Remove error log entries: the given IDs (1-500), or every entry; resolved_only keeps open problems. History, uploads, settings and log files are untouched. Returns {removed}."""
+        if (ids is not None and (not isinstance(ids, list) or not 1 <= len(ids) <= 500 or any(not identifier(value, 64) for value in ids))) or type(resolved_only) is not bool:
+            return invalid()
+        params: Json = {}
+        if ids is not None:
+            params['ids'] = ids
+        if resolved_only:
+            params['resolvedOnly'] = True
+        return await adapter.call('errors.clear', params)
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def drive_error_log(action: str, id: str | None = None, step: str | None = None, kind: str | None = None, search: str | None = None,
+                              show_resolved: bool | None = None, resolved_only: bool | None = None) -> Json:
+        """Drive the open Settings → Error log page as its controls do and read its state (open it first: ui.show errors). action: inspect; refresh; select (id: an entry, shown with its details and buttons); step (step: press one of the selected entry's buttons: unlock_credentials, open_destination (opens Destinations on its destination), retry, show_in_history (opens History on its item), save_diagnostics); setFilter (kind, or empty for all; search; show_resolved false lists open problems only); nextPage/previousPage; clear (opens Clear's confirmation; resolved_only for Clear resolved entries…), then confirmClear or cancelClear. Returns visible, filter, page (offset, total, size), rows (id, time, kind, action, itemName, thumbnail, destination, message, resolved, occurrences), selected (entry, title, buttons with step/label/enabled, resolution), feedback, feedbackError, confirming and package (a saved diagnostics path)."""
+        if action not in ERROR_LOG_ACTIONS or (action == 'select') != (id is not None) or (id is not None and not identifier(id, 64)):
+            return invalid()
+        if (action == 'step') != (step is not None) or (step is not None and step not in ERROR_STEPS):
+            return invalid()
+        if action != 'setFilter' and (kind is not None or search is not None or show_resolved is not None):
+            return invalid()
+        if (kind is not None and kind != '' and kind not in ERROR_KINDS) or (search is not None and (not isinstance(search, str) or len(search) > 256)) or \
+                (show_resolved is not None and type(show_resolved) is not bool) or (resolved_only is not None and (action != 'clear' or type(resolved_only) is not bool)):
+            return invalid()
+        params: Json = {'action': action}
+        for name, argument in (('id', id), ('step', step), ('kind', kind), ('search', search), ('showResolved', show_resolved), ('resolvedOnly', resolved_only)):
+            if argument is not None:
+                params[name] = argument
+        return await adapter.call('ui.errorLog', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def history_save_diagnostics(id: str) -> Json:
