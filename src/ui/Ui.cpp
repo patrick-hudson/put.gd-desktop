@@ -3101,15 +3101,12 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
   auto* note=button->property("inlineHelp").value<QLabel*>();
   if(!note){note=new QLabel(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
    // Follow the field's layout so help appears below the value, not in the label gutter. The
-   // nearest enclosing place wins: a form row whose field is the control or holds it, or a column.
-   // A form row that holds a whole panel of rows (Advanced connection settings, #1787) is further
-   // out than the control's own row, so it never takes the note.
+   // control's own form row wins: the nearest one holding it, so a row that holds a whole panel
+   // of rows (Advanced connection settings, #1787) never takes the note.
    const auto forms=control->window()->findChildren<QFormLayout*>();
-   for(QWidget* field=control;field&&!placed;field=field->parentWidget()){
+   for(QWidget* field=control;field&&!placed;field=field->parentWidget())
     for(auto* form:forms)for(int row=0;row<form->rowCount()&&!placed;++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||item->widget()!=field)continue;if(auto* column=qobject_cast<QVBoxLayout*>(field->layout()))column->addWidget(note);else form->insertRow(row+1,QString{},note);placed=true;}
-    if(!placed&&field!=control)if(auto* column=qobject_cast<QVBoxLayout*>(field->layout())){column->addWidget(note);placed=true;}
-   }
-   if(!placed){delete note;button->setChecked(false);return;}
+   if(!placed){auto* field=control->parentWidget();while(field&&field->layout()&&!qobject_cast<QVBoxLayout*>(field->layout()))field=field->parentWidget();if(field&&qobject_cast<QVBoxLayout*>(field->layout()))qobject_cast<QVBoxLayout*>(field->layout())->addWidget(note);else{delete note;button->setChecked(false);return;}}
    button->setProperty("inlineHelp",QVariant::fromValue(note));
   }
   note->setVisible(open);button->setAccessibleDescription(open?"Explanation shown. "+description:description);

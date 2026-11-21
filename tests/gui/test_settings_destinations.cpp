@@ -1225,6 +1225,10 @@ private slots:
      const int left=note->mapTo(scroll->widget(),QPoint(0,0)).x(),controlLeft=control->mapTo(scroll->widget(),QPoint(0,0)).x();
      if(below<-1||below>Ui::scaled(40))problem=QString("%1 px below the field").arg(below);
      else if(left+note->width()<controlLeft||left>controlLeft+control->width())problem="outside the field's column";
+     else if(note->width()<Ui::scaled(160))problem=QString("only %1 px wide").arg(note->width());
+     // Its own row: a form row of its own, or a container that holds no other setting with an ⓘ.
+     else if(const auto forms=note->parentWidget()->findChildren<QFormLayout*>();std::none_of(forms.cbegin(),forms.cend(),[&](auto* form){return form->indexOf(note)>=0;}))for(auto* other:scroll->widget()->findChildren<QToolButton*>())if(const auto name=other->property("settingHelpFor").toString();!name.isEmpty()&&name!=controlName)
+      for(auto* field:scroll->widget()->findChildren<QWidget*>(name))if(note->parentWidget()->isAncestorOf(field)){problem="shares a row with "+name;break;}
     }
     if(!problem.isEmpty()){QStringList chain;for(auto* w=note?note->parentWidget():nullptr;w&&w!=scroll->widget();w=w->parentWidget())chain<<(w->objectName().isEmpty()?QString(w->metaObject()->className()):w->objectName());misplaced<<controlName+": "+problem+" ["+chain.join(" < ")+"]";}
     help->setChecked(false);putgd::test::settle(10);if(note&&note->isVisible())misplaced<<controlName+": still shown after a second click";
