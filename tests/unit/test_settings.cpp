@@ -42,6 +42,8 @@ private slots:
   const QJsonObject b2{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://API.example.com/Tenant-A"},{"bucket","shots"}}}};
   QVERIFY(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","x"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant-a"},{"bucket","shots"}}}}}).isEmpty());
   QCOMPARE(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","y"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/Tenant-A/"},{"bucket","shots"}}}}})["id"].toString(),QString("y"));
+  const QJsonObject nested{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant/a"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(nested,{QJsonObject{{"id","w"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant%2Fa"},{"bucket","shots"}}}}}).isEmpty());
   const QJsonObject http{{"providerId","custom-http"},{"profileId","gone"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}};
   QVERIFY(putgd::Settings::profileForDestination(http,{QJsonObject{{"id","z"},{"provider","custom-http"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}}}).isEmpty());
  }

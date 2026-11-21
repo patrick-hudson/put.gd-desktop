@@ -84,7 +84,7 @@ private:
  QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;QString outputSummary(QComboBox* profile,QComboBox* sharing)const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
  // History items uploaded to each destination, counted when it is selected (#1759).
- QHash<QString,int> uploadedCounts_;void refreshUploadedCount();
+ QHash<QString,int> uploadedCounts_;void refreshUploadedCount();quint64 countRequests_=0;
  QHash<QString,bool> credentialAvailability_;QStringList outputRecoveryActions_;QGridLayout* captureExceptionRows_=nullptr;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false,recordingRoutingEdited_=false;

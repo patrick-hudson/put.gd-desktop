@@ -44,9 +44,11 @@ public:
  Error expireBefore(const QString& timestamp);
  Error clear(); // preserves any identities retained by in-progress deletion
  // Removes these records from History the way clear() removes all of them (#1759).
- Error forget(const QStringList& ids,int* removed=nullptr);
- // A settled deletion that sent nothing no longer holds this record (Remove from History only, #1759).
- Error releaseDeletionTarget(const QString& deletionId,const QString& historyId);
+ // Releases the settled deletions that sent nothing and removes the records, in one transaction;
+ // `running` are the deletions running in this resident.
+ Error forget(const QStringList& ids,const QSet<QString>& running,int* removed=nullptr);
+ // Whether forget() would remove this record now: no link change pending and no deletion that may have reached the server.
+ bool forgettable(const QString& historyId,const QSet<QString>& running) const;
  // requireRecords: a new deletion, recorded only while each of its records is still in History (#1759).
  Error saveDeletion(const QJsonObject&,bool requireRecords=false);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
@@ -59,6 +61,7 @@ public:
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:
  Error initialize();
+ bool releasable(const QString& historyId,const QSet<QString>& running,QStringList* release=nullptr) const;
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
  // Stored artifact and preview paths are absolute. A journal moved with its
  // data folder (#56) reads them under the folder it is in now.

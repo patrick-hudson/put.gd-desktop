@@ -594,7 +594,8 @@ QJsonObject Settings::profileForDestination(const QJsonObject& destination, cons
             // Scheme and host compare without case; port and path exactly as the provider uses them.
             QUrl url(text);
             if (!url.isValid() || url.host().isEmpty()) return text;
-            auto path = url.path();
+            // Encoded as sent: an escaped slash is not a path separator.
+            auto path = url.path(QUrl::FullyEncoded);
             while (path.endsWith('/')) path.chop(1);
             return url.scheme().toLower() + "://" + url.host().toLower() + (url.port() < 0 ? QString() : ":" + QString::number(url.port())) + path;
         }

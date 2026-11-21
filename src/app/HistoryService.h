@@ -47,7 +47,7 @@ signals:
 private:
  QJsonObject copyableLink(const QString&,Error&);
  void notifyChanged();
- QJsonObject prepare(const QStringList&,const QJsonArray& profiles,Error&) const;
+ QJsonObject prepare(const QStringList&,const QJsonArray& profiles,const QSet<QString>& runningDeletions,Error&) const;
  // Marks an uploaded record (and its grouped records) whose destination was removed from
  // Settings with nothing at the same place: destinationRemoved true (#1759).
  static void markRemovedDestinations(QJsonObject& record,const QJsonArray& profiles);

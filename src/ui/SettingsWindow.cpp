@@ -3690,6 +3690,7 @@ void SettingsWindow::fitRails(){
 void SettingsWindow::refreshUploadedCount(){
  if(!destinationList_)return;const auto profiles=candidate()["profiles"].toArray();const int index=destinationList_->currentRow();if(index<0||index>=profiles.size())return;
  const auto id=profiles[index].toObject()["id"].toString();
- settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id](Error e,QJsonObject counts){if(g&&!e)g->uploadedCounts_[id]=counts["total"].toInt();});
+ const auto ticket=++countRequests_;
+ settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id,ticket](Error e,QJsonObject counts){if(g&&!e&&ticket==g->countRequests_)g->uploadedCounts_[id]=counts["total"].toInt();});
 }
 }

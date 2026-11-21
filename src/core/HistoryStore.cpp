@@ -378,13 +378,43 @@ Error HistoryStore::clear() {
  const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  if(!q.exec("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+retained)||!q.exec("DELETE FROM history"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
-// Remove from History only (#1759): as clear(), for these records alone.
-Error HistoryStore::forget(const QStringList& ids,int* removed) {
+// Which deletions hold a record in History (#1759), and whether each of them provably sent
+// nothing that deletes: not running here, ended in its journal, and the record's item failed,
+// unknown or pending without a request checkpoint ("phase"). Answers false when one may have
+// reached the server; the deletions that may be released go in `release`.
+bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& running,QStringList* release) const {
+ QSqlQuery q(db_);q.prepare("SELECT deletion_id FROM deletion_targets WHERE history_id=? AND active=1");q.addBindValue(historyId);
+ if(!q.exec())return false;
+ QStringList held;while(q.next())held<<q.value(0).toString();q.finish();
+ for(const auto& id:held){
+  if(running.contains(id))return false;
+  Error error;const auto doc=deletion(id,&error);if(error||doc["state"]=="running"||doc["state"]=="accepted")return false;
+  bool settled=false;
+  for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]!=historyId)continue;
+   settled=QStringList{"failed","unknown","pending"}.contains(item["status"].toString())&&!item["progress"].toObject().contains("phase")&&!item["progress"].toObject().contains("target");}
+  if(!settled)return false;
+ }
+ if(release)*release=held;
+ return true;
+}
+bool HistoryStore::forgettable(const QString& historyId,const QSet<QString>& running) const {
+ if(error_)return false;
+ QSqlQuery q(db_);q.prepare("SELECT 1 FROM item_state WHERE id=? AND json_extract(data,'$.shareStatus') IN ('pending','unknown')");q.addBindValue(historyId);
+ if(!q.exec()||q.next())return false;
+ return releasable(historyId,running);
+}
+// Remove from History only (#1759): as clear(), for these records alone, after releasing the
+// settled deletions that sent nothing. One transaction, so a retry can't start in between: its
+// running save needs the record still in History.
+Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,int* removed) {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();
  QSqlQuery q(db_);int count=0;bool ok=true;
  const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  for(const auto& id:ids){
+  QStringList release;
+  if(releasable(id,running,&release))for(const auto& deletionId:release){q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(id);if(!(ok=q.exec()))break;}
+  if(!ok)break;
   q.prepare("INSERT OR IGNORE INTO cleared_history SELECT id FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;
   q.prepare("DELETE FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;count+=qMax(0,q.numRowsAffected());
  }
@@ -394,11 +424,6 @@ Error HistoryStore::forget(const QStringList& ids,int* removed) {
 }
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"delete_not_found","Deletion not found",{}};return {};}return decode(q.value(0));}
-Error HistoryStore::releaseDeletionTarget(const QString& deletionId,const QString& historyId) {
- if(error_)return error_;
- QSqlQuery q(db_);q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(historyId);
- return q.exec()?Error{}:sqlError();
-}
 Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
  if(error_) return error_;
  if(!db_.transaction()) return sqlError();
