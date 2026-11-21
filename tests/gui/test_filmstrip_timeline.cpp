@@ -68,9 +68,18 @@ class FilmstripTimelineTest : public QObject {
         const auto hover = t->inspect()["hover"];
         return hover.isNull() ? QString() : hover.toObject()["kind"].toString();
     }
-    // Back to the fixture's edit as an answer (a new revision), so nothing pending eases back.
+    // Back to the fixture's edit as an answer, so nothing pending eases back: a
+    // revision that moves every item answers any outstanding proposal (T4), then
+    // the fixture's own edit.
     static void reset(FilmstripTimeline* t) {
         static quint64 revision = 100;
+        auto answer = edit();
+        answer.revision = ++revision;
+        answer.trimStart += 1;
+        answer.trimEnd = *answer.trimEnd + 1;
+        for (auto& c : answer.cuts) c.start += 1, c.end += 1;
+        for (auto& m : answer.masks) m.start += 1, m.end += 1;
+        t->setEdit(answer);
         auto e = edit();
         e.revision = ++revision;
         t->setEdit(e);
@@ -770,9 +779,15 @@ private slots:
         const auto pending = t->inspect()["pending"].toObject();
         QCOMPARE(pending["kind"].toString(), QString("cut"));
         QCOMPARE(qint64(pending["end"].toDouble()), adjusted[0][2].toLongLong());
+        // Someone else's reply (the cut as it was) keeps it pending (T4).
+        auto unrelated = edit();
+        unrelated.revision = 3;  // the fixture is at revision 1
+        unrelated.masks[0].end = 12000000;
+        t->setEdit(unrelated);
+        QVERIFY(!t->inspect()["pending"].isNull());
         // Answered: a new revision with the cut where it was dropped.
         auto answered = edit();
-        answered.revision = 1;
+        answered.revision = 4;
         answered.cuts[0].end = adjusted[0][2].toLongLong();
         t->setEdit(answered);
         QVERIFY(t->inspect()["pending"].isNull());
@@ -948,6 +963,23 @@ private slots:
         QCOMPARE(retimed.size(), 2);
         const qint64 frames = std::llround(retimed[1][2].toLongLong() * 30.0 / 1e6) - std::llround(retimed[1][1].toLongLong() * 30.0 / 1e6);
         QCOMPARE(frames, 31LL);  // 930..961, the last one partial
+        // A one-frame cover dragged to the end of a 10,066,667 µs recording (a
+        // rounded frame boundary) stays one frame (T1).
+        t->setDuration(10066667, fps);
+        auto one = edit();
+        one.revision = 96;
+        one.trimEnd = std::nullopt;
+        one.cuts.clear();
+        one.masks[0].start = 5000000;
+        one.masks[0].end = 5033333;
+        one.masks.removeLast();
+        t->setEdit(one);
+        t->setSelectedEdit("cover", "m1");
+        const auto single = t->coverBarRect("m1");
+        drag(t.get(), single.center(), QPoint(t->width() + 40, single.center().y()));
+        QCOMPARE(retimed.size(), 3);
+        QCOMPARE(retimed[2][2].toLongLong(), 10066667);
+        QCOMPARE(retimed[2][1].toLongLong(), 10033333);
         // T3: at the closest zoom, a 6 px drag that lands in the anchor's frame still selects one frame.
         t->setDuration(duration, fps);
         reset(t.get());
@@ -963,6 +995,29 @@ private slots:
         QTest::mouseRelease(t.get(), Qt::LeftButton, {}, QPoint(x + 6, y));
         QCOMPARE(selected.size(), 1);
         QVERIFY(selected[0][1].toLongLong() - selected[0][0].toLongLong() >= 1000000 / fps - 1);
+        // ...and a leftward one at 0:00.0 takes the frame after it (T3).
+        t->zoomFit();
+        t->setZoom(8, qint64(0));
+        const int zero = t->xFor(5000);
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, QPoint(zero, y));
+        move(t.get(), QPoint(zero - 6, y));
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, QPoint(zero - 6, y));
+        QCOMPARE(selected.size(), 2);
+        QCOMPARE(selected[1][0].toLongLong(), 0);
+        QCOMPARE(selected[1][1].toLongLong(), 33333);
+    }
+    // T7: a small move onto a grip restarts the rest timer, so the skim does not
+    // end on a timer started off the grip.
+    void skimRestTimerRestartsOnAGrip() {
+        auto t = make();
+        QSignalSpy moved(t.get(), &FilmstripTimeline::skimMoved), left(t.get(), &FilmstripTimeline::skimLeft);
+        const int trim = t->xFor(2600000), y = t->stripRect().center().y();
+        for (int px = trim + 60; px >= trim + 10; px -= 10) QTest::mouseMove(t.get(), QPoint(px, y));
+        QVERIFY(!moved.isEmpty());
+        putgd::test::settle(110);
+        QTest::mouseMove(t.get(), QPoint(trim + 7, y));  // 3 px: onto the bracket's zone
+        PUTGD_COMPARE_STEADY(left.size(), 0, 80);
+        QVERIFY(putgd::test::waitForSignal(left));
     }
     // Q9: the hovered cut or cover is reported for the Edits list.
     void hoverReportsTheItemUnderThePointer() {

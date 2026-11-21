@@ -324,6 +324,7 @@ private:
     QElapsedTimer gripLeft_;                // and since when it is off it
     QPointF armFrom_;                       // P1: the dead zone counts from the real press
     bool restoring_ = false;                // T5: a cancel is putting the playhead back
+    bool skimOnGrip_ = false;               // T7: the skim was over a grip on the last move
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
     qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
