@@ -249,7 +249,9 @@ private:
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
  // localOnly (#1804): a capture whose sensitive text check was cancelled keeps only its local copy.
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;};
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;
+  // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
+  QHash<QString,QString> checkedFiles={};};
  // #1804: an upload whose capture is checked for sensitive text first, one check at a time.
  void admitUpload(Job);
  bool needsSensitiveCheck(const Job&) const;

@@ -69,7 +69,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
  auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
  // A file-manager selection is answered as a whole: the editor edits one image.
- if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+QStringLiteral(" · Upload anyway sends every file, Cancel sends none"),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
+ if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none"),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
  if(!model_.preview.isNull()){
   // The capture as Redact and upload would start, scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);

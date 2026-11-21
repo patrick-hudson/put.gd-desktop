@@ -555,6 +555,11 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
 }
 namespace {
 // A PNG or JPEG by its signature: what the editor helper can open and check.
+// A file's identity as the sensitive text check saw it: device, inode, size and modification time.
+QString fileIdentity(const QString& path){
+ struct stat s{};if(::stat(QFile::encodeName(path).constData(),&s)!=0)return {};
+ return QStringLiteral("%1:%2:%3:%4.%5").arg(s.st_dev).arg(s.st_ino).arg(s.st_size).arg(s.st_mtim.tv_sec).arg(s.st_mtim.tv_nsec);
+}
 bool checkableImage(const QString& path){
  const QFileInfo info(path);if(!info.isFile()||info.size()<8)return false;
  QFile file(path);if(!file.open(QIODevice::ReadOnly))return false;
@@ -644,8 +649,10 @@ void OperationService::runCheck(Job job) {
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
    EditorJob::Check check{categories,prompt,single,{}};
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
+   shared->checkedFiles.insert(images[index],fileIdentity(images[index]));
    *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
-   if(outcome->check!="clean")break;
+   // Upload anyway goes on to check the files after this one; anything else ends the selection.
+   if(outcome->check!="clean"&&outcome->check!="upload")break;
   }
   return QJsonObject{};
  },[owner,id,shared,outcome,clock](Error,QJsonObject){if(owner)owner->checkFinished(id,shared,outcome,clock->elapsed());});
@@ -1136,6 +1143,11 @@ Operation OperationService::run(Job job) {
   // imports run one at a time. Without one, free disk is the only bound and its
   // reservation is atomic: a new action's import never waits behind a large copy.
   std::unique_lock acquisitionGuard(acquisitionMutex_,std::defer_lock);if(op.settings.limits.pendingArtifactBytes<ResourceLimits::unlimitedBytes)acquisitionGuard.lock();
+  // #1804: a file that changed after its sensitive text check is not uploaded unchecked.
+  for(auto it=job.checkedFiles.cbegin();it!=job.checkedFiles.cend();++it)if(fileIdentity(it.key())!=it.value()){
+   job.payload={};job.payloadLease.reset();op.error={"sensitive_check_failed",QFileInfo(it.key()).fileName()+": the file changed after put.gd checked it for sensitive text, so nothing was uploaded. Upload it again to check it again.",{{"cause","file_changed"}}};
+   op.advance(OperationState::Failed);save();return op;
+  }
   auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   // A file-manager upload names the requested file or folder a late failure came from.

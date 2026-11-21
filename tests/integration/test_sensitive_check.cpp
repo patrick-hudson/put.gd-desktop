@@ -106,6 +106,19 @@ private slots:
   QCOMPARE(f.provider->uploads.load(),0);
   if(keep){const auto items=f.inspect(id)["items"].toArray();QCOMPARE(items.size(),1);QCOMPARE(items.first().toObject()["uploadStatus"].toString(),QString("local_only"));}
  }
+ // A file from a file manager that changes after its check is never uploaded unchecked.
+ void aFileChangedAfterItsCheckIsNotUploaded(){
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto path=f.dir.filePath("receipt.png");QVERIFY(page(card).save(path,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({path},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  QVERIFY(page({"A different receipt 4111 1111 1111 1111"}).save(path,"PNG"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("failed"),20000);
+  QCOMPARE(f.inspect(id)["error"].toObject()["details"].toObject()["cause"].toString(),QString("file_changed"));
+  QCOMPARE(f.provider->uploads.load(),0);
+ }
  // Redact and upload opens the editor with the suggestions placed; its PNG is what uploads.
  void redactOpensTheEditorWithTheSuggestionsPlaced(){
   Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
