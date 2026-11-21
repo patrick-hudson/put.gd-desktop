@@ -411,20 +411,21 @@ QString HistoryStore::forgetBlocker(const QString& historyId,const QSet<QString>
 // Remove from History only (#1759): as clear(), for these records alone, after releasing the
 // settled deletions that sent nothing. One transaction, so a retry can't start in between: its
 // running save needs the record still in History.
-Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,int* removed) {
+Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,int* removed,QStringList* removedIds) {
  if(error_)return error_;
  if(!beginWrite())return sqlError();
- QSqlQuery q(db_);int count=0;bool ok=true;
+ QSqlQuery q(db_);int count=0;bool ok=true;QStringList taken;
  const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  for(const auto& id:ids){
   QStringList release;
   if(releasable(id,running,&release))for(const auto& deletionId:release){q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(id);if(!(ok=q.exec()))break;}
   if(!ok)break;
   q.prepare("INSERT OR IGNORE INTO cleared_history SELECT id FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;
-  q.prepare("DELETE FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;count+=qMax(0,q.numRowsAffected());
+  q.prepare("DELETE FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;if(q.numRowsAffected()>0){count+=q.numRowsAffected();taken<<id;}
  }
  if(!ok||!db_.commit()){db_.rollback();return sqlError();}
  if(removed)*removed=count;
+ if(removedIds)*removedIds=taken;
  return {};
 }
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}

@@ -48,6 +48,8 @@ signals:
  void changed();
  // A deletion or sharing change ended; its terminal journal document (#1753).
  void deletionFinished(const QJsonObject& deletion);
+ // Remove from History only removed these records (#1759).
+ void recordsForgotten(const QStringList& historyIds);
  void sharingFinished(const QJsonObject& sharing);
 private:
  QJsonObject copyableLink(const QString&,Error&);

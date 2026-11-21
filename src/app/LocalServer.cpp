@@ -446,7 +446,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   errorLog_->inspect(p["id"].toString(),std::move(reply));return;
  }
  if(method=="errors.act") {
-  static const QStringList actions{"unlock_credentials","retry","save_diagnostics"};
+  static const QStringList actions{"unlock_credentials","retry","save_diagnostics","remove_from_history"};
   if(!fields(p,{"id","action"})||!string(p,"id",64)||!p["action"].isString()||!actions.contains(p["action"].toString())){reply(invalid(),{});return;}
   QPointer<LocalServer> guarded(this);const auto action=p["action"].toString();
   errorLog_->inspect(p["id"].toString(),[guarded,action,reply=std::move(reply)](Error error,QJsonObject entry){
@@ -477,8 +477,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open Settings → Error log page the way a user does.
  if(method=="ui.errorLog") {
-  static const QStringList actions{"inspect","refresh","select","step","setFilter","clear","confirmClear","cancelClear","nextPage","previousPage"};
-  static const QStringList steps{"unlock_credentials","open_destination","retry","show_in_history","save_diagnostics"};
+  static const QStringList actions{"inspect","refresh","select","step","setFilter","clear","confirmClear","cancelClear","confirmRemove","cancelRemove","nextPage","previousPage"};
+  static const QStringList steps{"unlock_credentials","open_destination","retry","remove_from_history","show_in_history","save_diagnostics"};
   const auto action=p["action"].toString();
   if(!fields(p,{"action"},{"id","step","kind","search","showResolved","resolvedOnly"})||!p["action"].isString()||!actions.contains(action)
      ||(action=="select")!=p.contains("id")||(p.contains("id")&&!string(p,"id",64))
@@ -624,6 +624,28 @@ void LocalServer::actOnError(const QJsonObject& entry,const QString& action,Json
  const auto steps=entry["nextSteps"].toArray();
  if(!steps.contains(QJsonValue(action))){reply({"error_action_unavailable","This error log entry doesn't offer that step",{{"id",entry["id"]},{"nextSteps",steps}}},{});return;}
  const auto kind=entry["kind"].toString(),historyId=entry["historyId"].toString(),profileId=entry["profileId"].toString(),operationId=entry["operationId"].toString();
+ const auto request=[session=socketPath()](const QString& method,const QJsonObject& params){return QJsonObject{{"schemaVersion",1},{"requestId","errors.act"},{"session",session},{"method",method},{"params",params}};};
+ // Remove from History only (#1759): what History's deletion dialog offers for a removed destination,
+ // refused as it is there: delete.prepare says whether the record may go, then history.forget takes it.
+ if(action=="remove_from_history"){
+  // Already gone (removed here or from History): answered without a preview that would log a new error.
+  if(entry.contains("itemPresent")&&!entry["itemPresent"].toBool()){reply({"history_not_found","This item is no longer in History.",{{"historyId",historyId}}},{});return;}
+  QPointer<LocalServer> guarded(this);const auto ids=QJsonArray{historyId};
+  const auto answer=[id=entry["id"],reply](Error error,QJsonObject result){reply(error,{{"id",id},{"action","remove_from_history"},{"method","history.forget"},{"result",result}});};
+  dispatch(request("delete.prepare",{{"ids",ids}}),[guarded,request,historyId,ids,answer](Error error,QJsonObject preview){
+   if(error){answer(error,{});return;}
+   const auto target=preview["targets"].toArray().first().toObject();
+   if(!target["destinationRemoved"].toBool()){answer({"destination_not_removed","This file's destination is in Settings again, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}},{});return;}
+   const auto retainedBy=target["retainedBy"].toString();
+   if(!target["forgettable"].toBool()){answer({"history_record_retained",retainedBy=="sharing"?QStringLiteral("This file can't be removed from History yet: a share link change hasn't finished. Check its link in History first."):QStringLiteral("This file can't be removed from History yet: an earlier deletion may have reached the destination. Check the file there."),{{"historyId",historyId},{"retainedBy",retainedBy}}},{});return;}
+   if(!guarded){answer({"error_log_unavailable","This resident keeps no error log",{}},{});return;}
+   guarded->dispatch(request("history.forget",{{"ids",ids}}),[historyId,answer](Error error,QJsonObject result){
+    if(!error&&result["removed"].toInt()<1)error={"history_record_retained","This file can't be removed from History yet: a deletion or link change started meanwhile.",{{"historyId",historyId}}};
+    answer(error,result);
+   });
+  });
+  return;
+ }
  QString method;QJsonObject params;
  if(action=="unlock_credentials"){
   if(!historyId.isEmpty()){method="history.unlockCredentials";params={{"id",historyId}};}
@@ -637,7 +659,6 @@ void LocalServer::actOnError(const QJsonObject& entry,const QString& action,Json
   else{method="operation.retry";params={{"id",operationId}};}
  }
  else{method="diagnostics.bundle";params={{"operation",operationId}};}
- const QJsonObject request{{"schemaVersion",1},{"requestId","errors.act"},{"session",socketPath()},{"method",method},{"params",params}};
- dispatch(request,[method,action,id=entry["id"],reply=std::move(reply)](Error error,QJsonObject result){reply(error,{{"id",id},{"action",action},{"method",method},{"result",result}});});
+ dispatch(request(method,params),[method,action,id=entry["id"],reply=std::move(reply)](Error error,QJsonObject result){reply(error,{{"id",id},{"action",action},{"method",method},{"result",result}});});
 }
 }

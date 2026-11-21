@@ -51,7 +51,7 @@ public:
  // Removes these records from History the way clear() removes all of them (#1759).
  // Releases the settled deletions that sent nothing and removes the records, in one transaction;
  // `running` are the deletions running in this resident.
- Error forget(const QStringList& ids,const QSet<QString>& running,int* removed=nullptr);
+ Error forget(const QStringList& ids,const QSet<QString>& running,int* removed=nullptr,QStringList* removedIds=nullptr);
  // Why forget() would keep this record now: "sharing" (a link change pending or unknown), "deletion"
  // (a deletion running or one that may have reached the server), or empty when it would remove it.
  QString forgetBlocker(const QString& historyId,const QSet<QString>& running) const;

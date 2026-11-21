@@ -42,7 +42,9 @@ void HistoryService::forget(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto path=operations_.databasePath();const auto running=QSet<QString>(active_.keyBegin(),active_.keyEnd());
  operations_.background([path,ids,running](Error& e){HistoryStore store(path);
-  int removed=0;e=store.forget(ids,running,&removed);return QJsonObject{{"removed",removed}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});
+  int removed=0;QStringList taken;e=store.forget(ids,running,&removed,&taken);return QJsonObject{{"removed",removed},{"removedIds",QJsonArray::fromStringList(taken)}};},[this,reply=std::move(reply)](Error e,QJsonObject result){
+  if(!e){notifyChanged();QStringList taken;for(const auto& id:result.take("removedIds").toArray())taken<<id.toString();if(!taken.isEmpty())emit recordsForgotten(taken);}
+  reply(e,result);});
 }
 void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.copyHistoryImage(id,std::move(reply));}
 QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {

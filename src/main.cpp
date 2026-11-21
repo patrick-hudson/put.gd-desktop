@@ -365,6 +365,7 @@ int main(int argc,char* argv[]) {
  putgd::ErrorLog errorLog(operations);server.setErrorLog(&errorLog);
  QObject::connect(&history,&putgd::HistoryService::deletionFinished,&errorLog,&putgd::ErrorLog::deletionFinished);
  QObject::connect(&history,&putgd::HistoryService::sharingFinished,&errorLog,&putgd::ErrorLog::sharingFinished);
+ QObject::connect(&history,&putgd::HistoryService::recordsForgotten,&errorLog,&putgd::ErrorLog::historyForgotten);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly,replacedResident);return retry>=0?retry:1;}return 1;}
  // This process now owns the session: open its persistent log (#74) and the
  // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
