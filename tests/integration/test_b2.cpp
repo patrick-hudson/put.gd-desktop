@@ -445,6 +445,16 @@ private slots:
         QCOMPARE(f.events("b2_list_file_versions").size(), listings + 1);
         QVERIFY(f.versions().isEmpty());
     }
+    // #1782. A reply lost after the whole file went out leaves the upload unknown when the lookup
+    // finds nothing: B2 may still commit it, so put.gd neither fails it nor sends a second copy.
+    void lostReplyAfterTheWholeFileIsUnknownAndNotResent() {
+        B2Fixture f;
+        f.reset();
+        f.rules(QJsonArray{QJsonObject{{"call", "upload_file"}, {"drop", true}}});
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "unknown", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(f.events("upload_file").size(), 1);
+    }
     // A 2xx upload reply cut before it named the file: B2 stored it, so the upload is unknown,
     // never a definite failure that Retry would turn into a second copy.
     void uploadReplyWithoutFileIdIsUnknown() {

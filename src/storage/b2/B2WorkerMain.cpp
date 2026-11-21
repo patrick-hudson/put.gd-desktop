@@ -493,7 +493,7 @@ private:
                 // keeps nothing shorter than the length and SHA-1 it was sent (#1782). Cancel then
                 // ends the upload as failed, and a stall sends it again, with nothing to look up.
                 if (!synthetic_ && body.consumed() < artifact.bytes) {
-                    if (r.aborted && cancelled.load()) { error = stoppedError(); return {}; }
+                    if (r.aborted && cancelled.load()) { error = {"cancelled", "Cancelled before Backblaze B2 received the whole file; nothing was uploaded", {}}; return {}; }
                     error = Client::failure(r, "upload_file");
                     continue;
                 }
@@ -501,6 +501,14 @@ private:
                 const auto found = published(name, publication, lookup);
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
                 if (!found) { error = lookup; uncertain = true; return {}; }
+                // The whole file went out and no reply settled it: B2 may still commit it after this
+                // lookup, so the upload stays unknown instead of failing or sending a second copy;
+                // Retry checks again first (#1782). B2's own error replies keep their resend.
+                if (r.transport && !synthetic_) {
+                    error = r.aborted && cancelled.load() ? stoppedError() : Client::failure(r, "upload_file");
+                    uncertain = true;
+                    return {};
+                }
                 // A synthetic upload cancelled once sent may still have been stored (#1690).
                 if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");
