@@ -29,6 +29,10 @@ filenames, history URLs, authorization values or credential references.
 | `unknown` upload / `publication_unknown` | Reconcile the saved publication identity before another PUT |
 | copy `suppressed` / `failed` | Explicitly copy the existing result; no new PUT is needed |
 | `delete_confirmation_changed`, `delete_target_changed` | Review the exact original targets/effects again |
+| `destination_removed` | The destination the file was uploaded to was removed from Settings, so put.gd can't delete it there; the file stays where it was uploaded. Choose **Remove from History only**, or add a destination for the same place again (an S3, Cloudflare R2 or Backblaze B2 destination with the same endpoint or account and the same bucket) and delete it through that. Proton Drive and custom uploader files can't move to another destination |
+| `destination_readded` | A deletion began through one destination, which was then removed, and a destination for the same place was added back. The request may have reached the file, so put.gd won't finish it through the new destination or offer Remove from History only. Check the file at the destination. The same applies when a deletion began through a destination added back and that destination's credentials were changed afterwards: restore those credentials in Destinations to finish it |
+| `history_record_retained` | Remove from History only kept the record: an earlier deletion may have reached the file, or a share link change hasn't finished (`details.retainedBy` says which). Check the file at the destination, or its link in History, first |
+| `destination_not_removed` | The error log entry's destination is in Settings again, so the file can be deleted there: delete it from History instead of removing the record |
 | remote `changed` | Replacement is preserved; no destructive request was sent |
 | remote `unknown` / `hidden_version_retained` | Explicitly retry the recorded deletion/progress |
 | `history_migration`, `history_version` | Preserve the database and restore a supported version; no partial migration is committed |
