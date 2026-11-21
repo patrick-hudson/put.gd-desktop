@@ -10,7 +10,10 @@ namespace {
 // Ink must differ from the background by at least this much.
 constexpr int inkContrast=24;
 // A text height Tesseract's LSTM reads well: line runs of about this many rows.
-constexpr int targetLineRows=24;
+// Research #1805: overridable by bench_ocr_method.
+int researchTargetLineRows=24;
+double researchMinimumScale=1.0;
+#define targetLineRows researchTargetLineRows
 QRect bounds(const Quad& q){
  int left=q[0].x(),right=q[0].x(),top=q[0].y(),bottom=q[0].y();
  for(const auto& p:q){left=std::min(left,p.x());right=std::max(right,p.x());top=std::min(top,p.y());bottom=std::max(bottom,p.y());}
@@ -130,7 +133,7 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
  const qint64 pixels=qint64(width)*height;
  if(width<1||height<1||pixels>maximumInputPixels){result.error="input_excessive";return result;}
  double scale=limits.forcedScale>0?limits.forcedScale:preferredScale(profile.lineHeight,limits.maximumScale);
- if(double(pixels)*scale*scale>double(limits.scaledPixels))scale=std::max(1.0,std::sqrt(double(limits.scaledPixels)/double(pixels)));
+ if(double(pixels)*scale*scale>double(limits.scaledPixels))scale=std::max(researchMinimumScale,std::sqrt(double(limits.scaledPixels)/double(pixels)));
  const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
  for(;;){
   const qint64 scaledWidth=qint64(std::ceil(width*scale))+2*limits.border;

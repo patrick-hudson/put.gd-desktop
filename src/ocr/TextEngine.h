@@ -5,6 +5,9 @@
 #include <QString>
 #include <QStringList>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace tesseract { class TessBaseAPI; }
 namespace putgd::ocr {
@@ -21,6 +24,7 @@ struct EngineOptions {
  bool dictionary=true;        // the word lists (system and frequent words)
  bool invertLines=true;       // Tesseract's own retry of a line as inverted
  int resolution=0;            // source resolution in DPI given to Tesseract; 0 picks from the scale
+ std::vector<std::pair<std::string,std::string>> research;  // #1805 research only: extra Tesseract variables
 };
 // One band's words and lines, in Tesseract's reading order, in the band's pixels.
 struct BandText {

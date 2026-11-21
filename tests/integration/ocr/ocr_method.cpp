@@ -9,6 +9,7 @@
 // Emoji (#1748) are looked for in the image's colour, with the built-in
 // templates unless --emoji-templates names a file.
 #include "ocr/Recognize.h"
+#include "ocr/Layout.h"
 #include <QGuiApplication>
 #include <QFile>
 #include <QImageReader>
@@ -54,6 +55,9 @@ int main(int argc,char** argv){
   else if(a=="--emoji-templates")templatesPath=next();
   else if(a=="--emoji-distance")options.emoji.distance=next().toDouble();
   else if(a=="--symbols")symbols=true;
+  else if(a=="--var"){const auto kv=next();const int eq=kv.indexOf('=');options.engine.research.emplace_back(kv.left(eq).toStdString(),kv.mid(eq+1).toStdString());}
+  else if(a=="--target-rows")putgd::ocr::researchTargetLineRows=next().toInt();
+  else if(a=="--min-scale")putgd::ocr::researchMinimumScale=next().toDouble();
   else images.append(a);
  }
  if(!languages.isEmpty())options.languages=languages;

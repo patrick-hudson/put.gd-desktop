@@ -133,8 +133,8 @@ bool readData(const char* filename,std::vector<char>* data){
 }
 // Without the dictionary, none of the word lists is loaded: system and frequent
 // words, punctuation, numbers, unambiguous words and bigrams.
-std::vector<std::string> initNames(const EngineOptions& o){return o.dictionary?std::vector<std::string>{}:std::vector<std::string>{"load_system_dawg","load_freq_dawg","load_punc_dawg","load_number_dawg","load_unambig_dawg","load_bigram_dawg"};}
-std::vector<std::string> initValues(const EngineOptions& o){return o.dictionary?std::vector<std::string>{}:std::vector<std::string>(6,"0");}
+std::vector<std::string> initNames(const EngineOptions& o){auto v=o.dictionary?std::vector<std::string>{}:std::vector<std::string>{"load_system_dawg","load_freq_dawg","load_punc_dawg","load_number_dawg","load_unambig_dawg","load_bigram_dawg"};for(const auto& r:o.research)v.push_back(r.first);return v;}
+std::vector<std::string> initValues(const EngineOptions& o){auto v=o.dictionary?std::vector<std::string>{}:std::vector<std::string>(6,"0");for(const auto& r:o.research)v.push_back(r.second);return v;}
 }
 LanguageData::LanguageData(const QStringList& directories){delete resolver;resolver=new Resolver;resolver->directories=directories;}
 LanguageData::~LanguageData(){delete resolver;resolver=nullptr;}
@@ -208,6 +208,7 @@ void TextEngine::prepare(const GreyImage& band,double scale){
  api_->SetVariable("tessedit_do_invert",options_.invertLines?"1":"0");
  api_->SetImage(reinterpret_cast<const unsigned char*>(band.pixels.constData()),band.width,band.height,1,band.width);
  api_->SetSourceResolution(options_.resolution>0?options_.resolution:std::clamp(int(96*scale),70,600));
+ for(const auto& r:options_.research)api_->SetVariable(r.first.c_str(),r.second.c_str());
 }
 BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,bool* failed){
  BandText out;if(cutShort)*cutShort=false;if(failed)*failed=false;

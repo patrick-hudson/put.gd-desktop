@@ -107,7 +107,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  for(auto& p:panelList){
   auto limits=options.limits;limits.threads=threads;limits.scaledPixels=std::numeric_limits<qint64>::max();
   const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
-  limits.forcedScale=std::max(1.0,s*lower);
+  limits.forcedScale=std::max(researchMinimumScale,s*lower);
   p.plan=putgd::ocr::plan(p.rect.width(),p.rect.height(),p.profile,limits);
   if(!p.plan.error.isEmpty()){result.error=p.plan.error;return result;}
   p.tasks=p.plan.bands;
