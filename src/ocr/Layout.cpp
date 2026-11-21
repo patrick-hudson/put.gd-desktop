@@ -9,6 +9,7 @@ namespace putgd::ocr {
 // Research #1805: overridable by bench_ocr_method.
 int researchTargetLineRows=24;
 double researchMinimumScale=1.0;
+int researchLineTasks=0;
 namespace {
 // Ink must differ from the background by at least this much.
 constexpr int inkContrast=24;

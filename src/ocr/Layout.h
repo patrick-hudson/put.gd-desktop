@@ -65,6 +65,7 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits);
 int preferredScale(int lineHeight,int maximumScale);
 extern int researchTargetLineRows;   // research #1805 only
 extern double researchMinimumScale; // research #1805 only
+extern int researchLineTasks;        // research #1805 only: 1 reads every row run (a text line) as its own task
 
 // Cuts rows [0, height) into about `parts` strips between text lines only:
 // each cut is the middle of the blank run nearest its even share, searched

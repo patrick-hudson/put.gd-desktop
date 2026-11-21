@@ -172,6 +172,21 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*options.stripsPerThread);
    if(cut.size()>1){p.tasks=cut;p.split=true;}
   }
+  if(researchLineTasks>0){
+   // Research #1805: our own line pre-pass. Every run of inked rows is a task.
+   QList<Band> lines;const int H=p.rect.height(),W=p.rect.width();int y=0;
+   const bool rows=p.profile.rowInk.size()>=H;
+   while(rows&&y<H){
+    while(y<H&&p.profile.blank(y,W))++y;
+    if(y>=H)break;
+    const int s=y;while(y<H&&!p.profile.blank(y,W))++y;
+    if(y-s<3)continue;
+    int top=std::max(0,s-2);const int bottom=std::min(H,y+2);
+    if(!lines.isEmpty()&&top<lines.last().bottom)top=lines.last().bottom;
+    if(bottom>top)lines.append({top,bottom,false});
+   }
+   if(!lines.isEmpty()){p.tasks=lines;p.split=true;}
+  }
   anyBanded|=p.plan.banded();
   for(int j=0;j<p.tasks.size();++j){
    const qint64 pixels=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil((p.tasks[j].bottom-p.tasks[j].top)*p.plan.scale));
