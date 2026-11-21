@@ -209,9 +209,10 @@ private:
     QImage fading_;
     QElapsedTimer fadeClock_;
     int fadeMs_ = 100;
-    struct HoverSample { qint64 t; QPointF p; int handle; QString id; };
-    QList<HoverSample> hoverTrail_;
-    QElapsedTimer trailClock_;
+    // The last point the pointer was on a grip, and when it left it (Q23, Q24),
+    // as the timeline keeps them (Q10t).
+    std::optional<QPointF> gripAt_;
+    QElapsedTimer gripLeft_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;

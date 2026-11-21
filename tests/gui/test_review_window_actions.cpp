@@ -1211,6 +1211,9 @@ private slots:
         QTest::newRow("blur west, press 7 px late on the body") << "blur" << 7 << QPoint(0, 0) << QPoint(7, 3) << true;
         QTest::newRow("solid east 2 px outside, press 7 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(6, 4) << false;
         QTest::newRow("solid south 2 px below, press 7 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(4, 6) << false;
+        // The final live run (middle emulation): rests 4 px outside the east
+        // grip, the press arrives 6 px farther out (10 px outside the box).
+        QTest::newRow("solid east 4 px outside, rest, press 6 px farther") << "solid" << 3 << QPoint(4, 0) << QPoint(6, 0) << false;
         QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0) << QPoint() << false;
         QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2) << QPoint() << false;
         QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2) << QPoint() << false;
@@ -1255,12 +1258,21 @@ private slots:
         QApplication::sendEvent(view, &hover);
         const auto shape = view->cursor().shape();
         QVERIFY2(shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor || shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor, qPrintable(QString::number(int(shape))));
-        // A late press that doesn't move afterwards never edits (P1 rule).
+        // A late press: the pointer rests on the grip (no motion for 120 ms),
+        // slips off, and the press arrives where it slipped to. One that
+        // doesn't move afterwards never edits (P1 rule).
+        const auto restThenSlip = [&] {
+            QApplication::sendEvent(view, &hover);
+            putgd::test::settle(120);
+            QMouseEvent slip(QEvent::MouseMove, QPointF(at + late), view->mapToGlobal(QPointF(at + late)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            QApplication::sendEvent(view, &slip);
+        };
         if (!late.isNull()) {
+            restThenSlip();
             QTest::mousePress(view, Qt::LeftButton, {}, at + late);
             QTest::mouseRelease(view, Qt::LeftButton, {}, at + late);
             QCOMPARE(proposals.size(), 0);
-            QApplication::sendEvent(view, &hover);
+            restThenSlip();
         }
         drag(view, at + late, at + QPoint(30, 21));
         QCOMPARE(proposals.size(), 1);

@@ -528,11 +528,12 @@ FrameView::Target FrameView::targetAt(const QPointF& p) const {
 }
 void FrameView::updateHover(const QPointF& p) {
     const auto target = armed_.isEmpty() && drag_ == Drag::None && !playing_ ? targetAt(p) : Target{};
-    // Where the pointer has just been, for a press that arrives late (Q23, Q24).
+    // The last grip under the pointer and when it left it, for a press that
+    // arrives late (Q23, Q24). A pointer resting on a grip sends no motion,
+    // so the time counts from leaving, never from the last sample there.
     if (drag_ == Drag::None) {
-        if (!trailClock_.isValid()) trailClock_.start();
-        hoverTrail_.append({trailClock_.elapsed(), p, target.kind == Target::Kind::Handle ? target.handle : -1, target.id});
-        while (hoverTrail_.size() > 16) hoverTrail_.removeFirst();
+        if (target.kind == Target::Kind::Handle) { gripAt_ = p; gripLeft_.invalidate(); }
+        else if (gripAt_ && !gripLeft_.isValid()) gripLeft_.start();
     }
     // The outline follows a cover shown at this frame; the selected one is outlined anyway.
     QString hovered;
@@ -813,21 +814,19 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
         drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return;
     }
     auto target = targetAt(p);
-    // A press on empty picture takes the grip the pointer left within the
-    // last 60 ms and 8 px: a press that arrives late (a pointer already
-    // moving, emulated middle buttons) still grabs what was under the cursor
-    // (Q23, Q24). A press on a cover or another grip keeps what it hit, and the
-    // drag counts from the real press point, so a press that never moves
-    // changes nothing (r5-neon #6).
-    if (target.kind == Target::Kind::None && trailClock_.isValid()) {
-        const qint64 now = trailClock_.elapsed();
-        for (auto it = hoverTrail_.crbegin(); it != hoverTrail_.crend(); ++it) {
-            if (now - it->t > 60) break;
-            if (it->handle < 0 || it->id != selected_ || QLineF(it->p, p).length() > 8) continue;
-            target = {Target::Kind::Handle, it->id, it->handle};
-            break;
-        }
+    // A press on empty picture within 60 ms of the pointer leaving a grip and
+    // within 8 px of where it left (each axis), the timeline's rule (Q10t),
+    // takes that grip: a press that arrives late (a pointer already moving,
+    // emulated middle buttons) still grabs what was under the cursor (Q23,
+    // Q24). A press on a cover or another grip keeps what it hit, and the drag
+    // counts from the real press point, so a press that never moves changes
+    // nothing (r5-neon #6).
+    if (target.kind == Target::Kind::None && gripAt_ && gripLeft_.isValid() && gripLeft_.elapsed() <= 60
+        && std::abs(p.x() - gripAt_->x()) <= 8 && std::abs(p.y() - gripAt_->y()) <= 8) {
+        if (const auto grip = targetAt(*gripAt_); grip.kind == Target::Kind::Handle) target = grip;
     }
+    gripAt_.reset();
+    gripLeft_.invalidate();
     if (target.kind != Target::Kind::None) {
         const auto it = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == target.id; });
         if (it == masks_.cend()) return;
