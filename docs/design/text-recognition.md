@@ -129,7 +129,7 @@ authority. The resident's capabilities report only the known prerequisite in adv
 kernel's Landlock version, and nothing stronger.
 
 - `PR_SET_NO_NEW_PRIVS` and `PR_SET_DUMPABLE 0`.
-- Resource limits: no core file. `RLIMIT_DATA` at 288 MiB, lowered to 192 MiB when the job
+- Resource limits: no core file. `RLIMIT_DATA` at 576 MiB, lowered to 480 MiB when the job
   reads English only. `RLIMIT_CPU` at 21 seconds for each recognition thread. `RLIMIT_FSIZE` at
   8 MiB, which is also the output cap. `RLIMIT_NOFILE` at 32. There is no `RLIMIT_AS`, because
   mapped libraries and glibc's reservations would trip it.
@@ -184,13 +184,35 @@ banded, parallel recognition, and all of them fail.
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
 | Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
-| Memory | One budget: peak resident size of the whole job of 128 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
+| Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
 The helper recognizes on up to four engines at once and starts another engine only while its
 resident set stays under the budget, so the budget decides how many cores a job can use. A
 worker that has read one task reserves only the working memory its next task needs beyond the
 largest it has read, and an extra engine is counted without the language data it shares. There is no smaller memory figure for small regions. The helper is transient, and the memory buys
 speed.
+
+**Why 320 MiB (#1808).** The budget was 128 MiB until 2026-11-21. A whole screen's first task
+already used that up, so a GNOME 4K screen ran all 43 of its tasks on one engine and a 1080p
+screen on two of four. The #1805 research measured the corpus in the in-process benchmark with
+the memory gate turned off and everything else as shipped. On k72 the screens of 4 megapixels
+or more took 2.75 s on average instead of 5.18 s (four screens), and the 1080p screens 0.94 s
+instead of 1.15 s (median of 22). In those runs the text was byte-identical to the gated
+helper's on all 176 captures on aurora-amd and 50 on k72, and the largest peak, a dense
+24-megapixel page with four engines, was 258 MiB. That page also ran normally with
+`RLIMIT_DATA` at 320 MiB. Through the packaged helper of #1809, which first spends about a second
+of a 4K job on one thread for the emoji scan and page analysis, the gain is smaller. On k72 the
+CI DEB ran through its own resident and packaged helper. The baseline was today's helper built
+from the #1805 research tree, linked to the same distro Tesseract and driven by `test_ocr_run`. The screens of 4 megapixels or more went from
+4.07 s on average to 3.14 s and 3.06 s in two runs. The dense page read 66,138 to 70,602
+characters before the time budget instead of 48,546, and the highest peak was 172 MiB. On
+aurora-amd the candidate AppImage was compared with the nightly AppImage. Its bundled engine
+peaked at about 90 MiB on the corpus, so the old budget never held it back there, and only the
+dense page got faster: 15.35 s to 12.8 s. The text was
+byte-identical on all 176 captures on both hosts
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/tree/0e6051e3c427dd671ea776b25aae7dde215b1805/records/2026-11-21-issue-1808-ocr-memory-budget)). Patrick allowed the larger figure
+because the helper is short-lived: it holds the memory only while it recognizes and exits after
+the job, never living in the resident, and `RLIMIT_DATA` still bounds a runaway.
 
 **Language data is trimmed in memory.** Some distributions ship a larger model than English
 needs. Arch's `tesseract-data-eng` is 23,466,654 bytes, because it also holds the legacy
@@ -210,9 +232,16 @@ and returns what it has recognized so far, in reading order, with `truncated` tr
 notification and the editor then say the text was cut. A job that has text to give never
 fails for time. This was decided because recognition time follows the number of characters,
 not the number of pixels. It costs roughly a millisecond a character on each core. On m74 one
-engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dense text, about
-100,000 characters, therefore cannot be read inside the deadline, and no pixel limit changes
-that.
+engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dense text, with
+100,000 characters or more, therefore cannot be read on one engine inside the deadline, and no
+pixel limit changes that. Four engines still leave the densest test page cut.
+
+The figure of a millisecond a character is for one engine. The helper can use up to four, as
+many as the memory budget lets it start, so how much of a dense page it reads before the time
+budget depends on that budget too. Under the old 128 MiB budget a 4K screen ran on one engine
+and took as long as `--threads 1`. In the #1805 benchmark on aurora-amd, the dense 24-megapixel
+page gave 88,112 characters in 16 seconds with the 128 MiB gate and 180,776 with the gate
+turned off (#1808).
 
 - A task is not started when the slowest task so far says it cannot finish.
 - Every pass gets Tesseract's own monitor deadline.
@@ -1085,7 +1114,7 @@ from 8,980 to 11,580 KiB and PSS from 4,703 to 7,751 KiB (f44 RPM and AppImage, 
 Aurora AppImage, an Ubuntu GNOME DEB and AppImage, and d69 DEB and AppImage). They are not a new
 180 second run on the final build.
 
-**Helper peak.** Every recorded peak is below 131,072 KiB (128 MiB), before the allowance for extra
+**Helper peak.** Every peak recorded on these candidates, in the table below, was below 131,072 KiB (128 MiB, the budget then), before the allowance for extra
 languages, with English and with three languages, on every engine build. The highest corpus peak was
 126,064 KiB (Ubuntu 26.04). Arch's original 23 MB model is measured separately, and its corpus value is a
 conservative upper bound from a fresh child's rusage. Everything else is the kernel's VmHWM after exec.
@@ -1174,7 +1203,8 @@ Tesseract 5.5.4 built from source.
 | GNOME 4K screen, light | 5.5 s, 89 MiB | 3.4 s, 79 MiB |
 | GNOME 4K screen, dark | 6.9 s, 90 MiB | 2.0 s, 81 MiB |
 
-- Every measured input stays inside the 128 MiB budget with English data.
+- Every input in this table stays inside the 128 MiB budget it was measured under. The 320 MiB
+  budget of #1808 gives large screens more engines and higher peaks; see Bounds and budgets.
 - The dense terminal with a different number of engines on m74: 1 engine 6.72 s (86 MiB), 2
   3.51 s (87 MiB), 3 2.52 s (104 MiB) and 4 2.55 s (120 MiB). Four take no less time than three
   because 8 strips do not divide evenly. With four engines about 3,400 characters are read a
@@ -1182,7 +1212,7 @@ Tesseract 5.5.4 built from source.
 - End to end on m74 on the final candidate: see the latency table above.
 - Engine start takes 115 to 153 milliseconds on m74 and d69, which is the model load.
 - With three languages (eng, deu and fra, 2.6 MB beyond English) the final peaks are in the table above.
-  English alone peaks at 106 MiB of `RLIMIT_DATA`'s data against its 192 MiB limit (m74, measured on the code of #1452).
+  English alone peaked at 106 MiB of `RLIMIT_DATA`'s data against its then 192 MiB limit (m74, measured on the code of #1452; the limit is 480 MiB since #1808).
 - On Arch's model, before and after the trim, on m74: English 112 to 54 MiB for a paragraph and 137 to
   120 MiB for a dense 24 MP page, and three languages (53,117,539 bytes) 155 to 81 MiB and 180 to 115
   MiB.
