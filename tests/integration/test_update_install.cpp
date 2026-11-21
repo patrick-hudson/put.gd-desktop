@@ -277,7 +277,7 @@ private slots:
    Error error;installUpdate(build(),options(method),{},error);
    QCOMPARE(error.code,method=="zsync"?QString("update_zsync_failed"):QString("update_download_failed"));
    const auto details=QJsonDocument(error.details).toJson()+error.message.toUtf8();
-   QVERIFY2(details.contains("/signed/asset"),details.constData());QVERIFY2(!details.contains("SECRET"),details.constData());
+   QVERIFY2(details.contains("ContentNotFoundError"),details.constData());QVERIFY2(!details.contains("SECRET")&&!details.contains("/signed/"),details.constData());
    QCOMPARE(read(image()),old_);
   }
  }
