@@ -310,8 +310,14 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     // The destination an attempt went through: the recorded one, or one added back for the same place.
     const auto bound=item["deletingProfileId"].toString(receipt.destination.profileId);
     // Settings may have changed during that wait: the destination is read again now, that one first (#1759).
-    auto lookup=receipt.destination.toJson();lookup["profileId"]=bound;
-    const auto serving=Settings::profileForDestination(lookup,currentProfiles());
+    // A destination added back serves only while it still points at the recorded place: edited to
+    // point elsewhere, its credentials never go to this receipt's address.
+    const auto profiles=currentProfiles();QJsonObject serving;
+    if(bound!=receipt.destination.profileId){
+     auto place=receipt.destination.toJson();place["profileId"]=QString();
+     for(const auto& entry:profiles)if(entry.toObject()["id"].toString()==bound&&!Settings::profileForDestination(place,QJsonArray{entry}).isEmpty())serving=entry.toObject();
+    }
+    if(serving.isEmpty())serving=Settings::profileForDestination(receipt.destination.toJson(),profiles);
     if(serving.isEmpty()){e=destinationRemovedError(item["historyId"].toString());outcome=status=="pending"?QStringLiteral("failed"):status;}
     // A worker's checkpoint is bound to the destination it went through: another destination added
     // back can't finish that attempt, so it is said and left as it was. Retry through the same one goes on.
