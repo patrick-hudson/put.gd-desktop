@@ -27,6 +27,8 @@ def main():
     for l in labels:
         s = load(root / l)
         a, sc, k = s['all'], s.get('screens_1080p') or {}, s.get('screens_4k') or {}
+        if not a:
+            print(f"| {l} (all {s['failed']} failed) |"); continue
         rel = f"{a['wall_sum'] / base['all']['wall_sum']:.2f}x" if base else ''
         four = f"{k['wall_sum'] / max(1, k['n']):.2f}" if k else '–'
         cls = [pct((s['classes'].get(c) or {}).get('cer_median')) for c in CLASSES]
