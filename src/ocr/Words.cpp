@@ -146,9 +146,11 @@ void joinUrls(Recognition& job){
 void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
  // Each line's box as recognition left it (an emoji's own line: its first
  // glyph's): an emoji placed on a line does not move it into the next one's
- // way, or across into another column's. Only when no line is near that way
- // does a line reach as far as its emoji, so a row of them stays one.
- QList<QRect> fixed;for(const auto& line:std::as_const(job.lines))fixed.append(line.rect);
+ // way, or across into another column's. Across, an emoji's own line reaches
+ // as far as its emoji, so a row of them stays one; a line of text does so
+ // only when no line is near as recognition left it.
+ QList<QRect> fixed;QList<bool> own;
+ for(const auto& line:std::as_const(job.lines)){fixed.append(line.rect);own.append(false);}
  for(const auto& hit:hits){
   const QRect glyph=hit.rect;
   // Lines that hold words: a band seam leaves a second, empty box for a line
@@ -183,7 +185,7 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   int line=-1;qint64 nearest=std::numeric_limits<qint64>::max();int bestOverlap=0;
   for(int pass=0;pass<2&&line<0;++pass)for(int l=0;l<job.lines.size();++l){
    if(!worded.contains(l))continue;
-   const auto& r=fixed[l];const auto& reach=pass==0?r:job.lines[l].rect;
+   const auto& r=fixed[l];const auto& reach=pass==0&&!own[l]?r:job.lines[l].rect;
    const int overlap=std::min(r.bottom(),glyph.bottom())-std::max(r.top(),glyph.top())+1;
    if(overlap*5<2*std::min(r.height(),glyph.height()))continue;
    const qint64 across=std::max({0,reach.left()-glyph.right()-1,glyph.left()-reach.right()-1});
@@ -202,7 +204,7 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
    }
    line=after+1;
    const int block=after>=0?job.lines[after].block:(job.lines.isEmpty()?0:job.lines.first().block);
-   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0,false});fixed.insert(line,glyph);
+   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0,false});fixed.insert(line,glyph);own.insert(line,true);
    for(auto& w:job.words)if(w.line>=line)++w.line;
   }else job.lines[line].rect=job.lines[line].rect.united(glyph);
   // Its place among the line's words, in the line's own direction.

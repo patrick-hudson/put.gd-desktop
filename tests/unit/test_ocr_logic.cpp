@@ -241,6 +241,11 @@ private slots:
   QList<EmojiHit> five;for(int i=0;i<5;++i)five.append({face,QRect(22*i,50,20,20),0.02,0});
   placeEmoji(row,five);
   QCOMPARE(copiedText(row),"Hi\n"+face.repeated(5));
+  // ...also with a line of text beside the row.
+  Recognition beside;beside.lines={{QRect(160,50,40,20),0,0,false}};beside.words={word("text",{QRect(160,52,40,16)},95)};
+  QList<EmojiHit> fiveMore;for(int i=0;i<5;++i)fiveMore.append({face,QRect(22*i,50,20,20),0.02,0});
+  placeEmoji(beside,fiveMore);
+  QCOMPARE(copiedText(beside),"text\n"+face.repeated(5));
   // Between two columns, an emoji goes with the nearer one as recognition
   // left it, not with a line an earlier emoji drew towards it.
   Recognition columns;columns.lines={{QRect(0,10,40,20),0,0,false},{QRect(120,10,40,20),0,0,false}};
