@@ -76,8 +76,8 @@ constexpr int kNarrowOutside = 10;       // R6: a selected narrow item's edge zo
 constexpr int kNarrowInside = 2;         // ...and inside it
 constexpr int kSelectedGrip = 5;         // R11: a selected item's grip wins within this of its edge
 constexpr int kPlayheadClickSlop = 2;    // R3: a cap click farther than this from the line seeks
-constexpr int kLateGripMs = 80;          // Q10t: a press this soon after leaving a grip...
-constexpr int kLateGripPx = 12;          // ...and this close to where it left takes that grip
+constexpr int kLateGripMs = 60;          // Q10t, P1: a press this soon after leaving a grip...
+constexpr int kLateGripPx = 8;           // ...and this close to where it left takes that grip
 constexpr int kPixelZoomStep = 60; // trackpad pixels per zoom level with Ctrl
 
 // Everything that follows the text size comes from QFontMetrics, with the
@@ -366,7 +366,8 @@ FilmstripTimeline::FilmstripTimeline(std::shared_ptr<MaskNames> names, QWidget* 
         if (drag_ != Drag::None || !inSkimArea_ || playing_ || !lastMove_ || skimBlockedAt_) return;
         // Resting on a grip ends a skim (R9); dwelling elsewhere is intent (T8).
         if (skimIntent_) { if (onGrip(hover_.target)) disengageSkim(*lastMove_); return; }
-        if (!onGrip(hover_.target)) engageSkim();
+        // After a press or release in the timeline only travel is intent (P4).
+        if (!onGrip(hover_.target) && !travelOnly_) engageSkim();
     });
     pendingTimer_.setSingleShot(true);
     pendingTimer_.setInterval(kPendingMs);
@@ -1588,9 +1589,21 @@ void FilmstripTimeline::hoverSkim(QPointF pos) {
     }
     const bool grip = onGrip(hover_.target);
     if (skimIntent_) {
-        // Leaving vertically ends the skim; passing over a grip does not, only
-        // resting on one does (the dwell timer, R9).
-        if (std::abs(pos.y() - engagedY_) > kSkimVertical) { disengageSkim(pos); return; }
+        // Leaving vertically ends the skim: 8 px from the reference while the
+        // recent motion (the last 40 ms, at least 6 px of it) is mostly vertical;
+        // sideways travel carries the reference along (P2). Passing over a grip
+        // does not end it, only resting on one does (the dwell timer, R9).
+        double sdx = 0, sdy = 0, path = 0;
+        const qint64 now = motionClock_.elapsed();
+        for (int i = int(recentMotion_.size()) - 1; i >= 0 && path < 6; --i) {
+            const auto& [t, d] = recentMotion_[i];
+            if (now - t > 40) break;
+            sdx += d.x();
+            sdy += d.y();
+            path += std::hypot(d.x(), d.y());
+        }
+        if (std::abs(sdy) > 2 * std::abs(sdx)) { if (std::abs(pos.y() - engagedY_) >= kSkimVertical) { disengageSkim(pos); return; } }
+        else if (std::abs(sdx) >= 2 * std::abs(sdy)) engagedY_ = pos.y();
         if (QLineF(dwellAt_, pos).length() > kSkimDwellSlop) { dwellAt_ = pos; dwellTimer_.start(); }
         const qint64 at = std::clamp<qint64>(timeAt(pos.x()), 0, std::max<qint64>(0, duration_ - 1));
         if (skimming_) skimAt(at);
@@ -1622,12 +1635,13 @@ void FilmstripTimeline::engageSkim() {
 }
 void FilmstripTimeline::leaveSkimArea() {
     inSkimArea_ = false;
+    travelOnly_ = false;
     skimIntent_ = false;
     dwellTimer_.stop();
     if (hoverLine_) { hoverLine_.reset(); update(); }
     clearSkim();
 }
-void FilmstripTimeline::clearSkim() {
+void FilmstripTimeline::clearSkim(bool silent) {
     skimRest_.stop();
     restThrottle_.stop();
     lastRested_.reset();
@@ -1635,7 +1649,7 @@ void FilmstripTimeline::clearSkim() {
     skim_.reset();
     skimExact_ = false;
     update();
-    emit skimLeft();
+    if (!silent) emit skimLeft();
 }
 void FilmstripTimeline::restartSkimTimer() { skimRest_.start(); }
 void FilmstripTimeline::clearSelections() {
@@ -1699,6 +1713,8 @@ void FilmstripTimeline::beginDrag(Drag drag, const QString& id, QPointF pos) {
 // slid cover's end) and returns the start that puts that end on the target.
 qint64 FilmstripTimeline::snapToTargets(qint64 us, bool bypass, std::optional<qint64> second) {
     snapGuide_.reset();
+    // The clip's ends are reachable even when the duration is not frame-aligned (P5).
+    if (us >= duration_) { snapLock_.reset(); return duration_; }
     if (bypass) { snapLock_.reset(); return snap(us); }
     QList<qint64> targets;
     if (drag_ != Drag::Scrub && drag_ != Drag::Playhead) targets << playhead_;
@@ -1744,6 +1760,7 @@ qint64 FilmstripTimeline::snapToTargets(qint64 us, bool bypass, std::optional<qi
         }
     }
     if (snapLock_) snapGuide_ = snap(*snapLock_);
+    if (result && (*result == duration_ || *result == 0)) return *result;
     return snap(result.value_or(us));
 }
 void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers) {
@@ -1759,12 +1776,12 @@ void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers)
         // The dead zone: nothing changes until the pointer has moved this far
         // horizontally. A time selection also needs mostly horizontal motion (T15);
         // a bar this press selected slides only after 8 px (T5).
-        const double dx = std::abs(pos.x() - pressPos_.x()), dy = std::abs(pos.y() - pressPos_.y());
+        const double dx = std::abs(pos.x() - armFrom_.x()), dy = std::abs(pos.y() - armFrom_.y());
         const double threshold = drag_ == Drag::Strip ? kSelectStart : drag_ == Drag::Scrub || drag_ == Drag::Playhead ? kScrubDeadZone : drag_ == Drag::CoverSlide && pressSelected_ ? kFirstPressSlide : kDeadZone;
         if (dx < threshold || (drag_ == Drag::Strip && dx <= dy)) return;
         armed_ = true;
         // An unselected cut's edge selects it only now that the drag is real (R7).
-        if (std::exchange(deferredSelect_, false)) { selectLocally("cut", dragId_); emit cutSelected(dragId_); }
+        if (std::exchange(deferredSelect_, false)) { selectLocally("cut", dragId_); emit cutSelected(dragId_); pressSelected_ = true; }
         if (drag_ == Drag::Scrub || drag_ == Drag::Playhead) emit scrubStarted();
         if (drag_ == Drag::Strip) drag_ = Drag::Select;
         if (drag_ == Drag::CoverSlide) setCursor(Qt::ClosedHandCursor);
@@ -1782,8 +1799,9 @@ void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers)
     // Above Fit the dragged edge stays in view; autoscroll brings the rest (R20t).
     const auto view = visibleSpan();
     // The whole frames inside the view (snapping rounds to frames, so the clamp does too).
-    const qint64 firstIn = std::min(duration_, qRound64(std::ceil(double(view.start) * fps_ / 1e6) * 1e6 / fps_));
-    const qint64 lastIn = std::max(firstIn, std::min(duration_, qRound64(std::floor(double(view.end) * fps_ / 1e6) * 1e6 / fps_)));
+    // A view that reaches the clip's start or end reaches 0 or the duration, frame-aligned or not (P5).
+    const qint64 firstIn = view.start <= 0 ? 0 : std::min(duration_, qRound64(std::ceil(double(view.start) * fps_ / 1e6) * 1e6 / fps_));
+    const qint64 lastIn = view.end >= duration_ ? duration_ : std::max(firstIn, std::min(duration_, qRound64(std::floor(double(view.end) * fps_ / 1e6) * 1e6 / fps_)));
     const auto inView = [&](qint64 t) { return zoom_ > 1 ? std::clamp<qint64>(t, firstIn, lastIn) : t; };
     // A cut edge stops at a neighbouring cut's edge (Q8).
     qint64 floorUs = 0, ceilUs = duration_;
@@ -1884,9 +1902,11 @@ void FilmstripTimeline::cancelDrag() {
     // The view comes back as it was before the press, autoscroll or overview drag included (R12).
     setScroll(pressScroll_);
     if ((drag == Drag::Scrub || drag == Drag::Playhead || drag == Drag::Strip || drag == Drag::Select) && playhead_ != prePlayhead_) emit seekRequested(prePlayhead_);
-    // A cover press that selected the cover gives the earlier selection back,
-    // then the playhead its selection may have moved (Q1).
-    if ((drag == Drag::CoverSlide || drag == Drag::CoverStart || drag == Drag::CoverEnd) && std::exchange(pressSelected_, false)) {
+    // A cover or cut press that selected its item gives the earlier selection
+    // back, then the playhead its selection may have moved (Q1, P7).
+    const bool itemPress = drag == Drag::CoverSlide || drag == Drag::CoverStart || drag == Drag::CoverEnd || drag == Drag::CutStart || drag == Drag::CutEnd
+        || ((drag == Drag::Strip || drag == Drag::Select) && selectFromCut_);
+    if (itemPress && std::exchange(pressSelected_, false)) {
         selectLocally(preKind_, preId_);
         selection_ = preSelection_;
         if (preKind_ == "cut") emit cutSelected(preId_);
@@ -1913,11 +1933,12 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
     // A zoom still easing or pinching lands first, so the press hits what it sees settle.
     settleContinuousZoom();
     finishZoom();
-    clearSkim();
     hoverLine_.reset();
     skimIntent_ = false;
+    travelOnly_ = true;  // P4
     dwellTimer_.stop();
     auto pos = e->position();
+    armFrom_ = pos;  // P1: the dead zone counts from the real press
     skimBlockedAt_ = pos;
     prePlayhead_ = playhead_;
     pressHeldPlayback_ = false;
@@ -1926,13 +1947,18 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
     // A press that arrives just after the pointer left a grip, near where it
     // left (an input stack holding the button back, such as middle-button
     // emulation, delivers it late at a moved position), takes that grip, from
-    // where the pointer was on it, so the travel already made counts (Q10t).
+    // where the pointer was on it (Q10t). It arms only after 4 px of travel
+    // past the real press, so a click with no movement never edits (P1).
     if (!onGrip(hit.target) && gripAt_ && gripLeft_.isValid() && gripLeft_.elapsed() <= kLateGripMs
         && std::abs(pos.x() - gripAt_->x()) <= kLateGripPx && std::abs(pos.y() - gripAt_->y()) <= kLateGripPx) {
         if (const auto grip = hitAt(*gripAt_); onGrip(grip.target)) { hit = grip; pos = *gripAt_; }
     }
     gripAt_.reset();
     const double clampedX = std::clamp<double>(pos.x(), strip.left(), strip.right() + 1);
+    // A press that seeks ends the skim silently, so the window's seek keeps
+    // the skimmed picture; any other press ends it as leaving does (P3).
+    const bool seeks = !playing_ && (hit.target == Target::Ruler || hit.target == Target::Lane || (hit.target == Target::Strip && !(e->modifiers() & Qt::ShiftModifier)));
+    clearSkim(seeks);
     setHover(hit);
     // One gesture: an unselected cut's or cover's edge selects it and drags at once (A5).
     const auto select = [this](const QString& kind, const QString& id) {
@@ -1943,8 +1969,10 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
     };
     switch (hit.target) {
     case Target::More: emit moreCoversRequested(); return;
-    case Target::TrimStart: beginDrag(Drag::TrimStart, {}, pos); return;
-    case Target::TrimEnd: beginDrag(Drag::TrimEnd, {}, pos); return;
+    case Target::TrimStart: case Target::TrimEnd:
+        beginDrag(hit.target == Target::TrimStart ? Drag::TrimStart : Drag::TrimEnd, {}, pos);
+        anchorUs_ = timeAt(std::clamp<double>(armFrom_.x(), strip.left(), strip.right() + 1));  // P6
+        return;
     case Target::SelectionStart: beginDrag(Drag::SelectionStart, {}, pos); return;
     case Target::SelectionEnd: beginDrag(Drag::SelectionEnd, {}, pos); return;
     case Target::CutStart: case Target::CutEnd: {
@@ -1966,8 +1994,8 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
         return;
     case Target::Cut:
         // A press on a cut selects it; a drag from it selects time from the press (R8).
-        select("cut", hit.id);
         beginDrag(Drag::Strip, {}, pos);
+        pressSelected_ = select("cut", hit.id);
         selectFromCut_ = true;
         anchorUs_ = timeAt(clampedX);
         return;
@@ -2022,7 +2050,12 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
 void FilmstripTimeline::mouseMoveEvent(QMouseEvent* e) {
     const auto pos = e->position();
     recentDelta_.reset();
-    if (lastMove_) recentDelta_ = pos - *lastMove_;
+    if (lastMove_) {
+        recentDelta_ = pos - *lastMove_;
+        if (!motionClock_.isValid()) motionClock_.start();
+        recentMotion_.append({motionClock_.elapsed(), *recentDelta_});
+        while (recentMotion_.size() > 16 || (!recentMotion_.isEmpty() && motionClock_.elapsed() - recentMotion_.first().first > 200)) recentMotion_.removeFirst();
+    }
     lastMove_ = pos;
     // A release we never saw (the button is up): the drag is cancelled (R2).
     if (drag_ != Drag::None && !(e->buttons() & Qt::LeftButton)) { cancelDrag(); return; }
@@ -2047,6 +2080,7 @@ void FilmstripTimeline::mouseReleaseEvent(QMouseEvent* e) {
     snapGuide_.reset();
     snapLock_.reset();
     skimBlockedAt_ = e->position();
+    travelOnly_ = true;  // P4
     update();
     const bool changed = dragStart_ != originStart_ || dragEnd_ != originEnd_;
     const bool deferred = std::exchange(deferredSelect_, false), fromCut = std::exchange(selectFromCut_, false);
@@ -2064,10 +2098,14 @@ void FilmstripTimeline::mouseReleaseEvent(QMouseEvent* e) {
         emit seekRequested(startMoved ? dragStart_ : std::max(dragStart_, snap(dragEnd_ - frameUs())));
     };
     switch (drag) {
-    case Drag::TrimStart: case Drag::TrimEnd:
+    case Drag::TrimStart: case Drag::TrimEnd: {
         emit edgeDragFinished();
         if (armed && changed) { setPending(drag, {}, dragStart_, dragEnd_); emit trimProposed(dragStart_, dragEnd_); }
+        // A click on the kept side of a bracket's zone is a strip click; on its body it does nothing (P6).
+        const bool keptSide = drag == Drag::TrimStart ? armFrom_.x() > xFor(originStart_) : armFrom_.x() < xFor(originEnd_);
+        if (!armed && keptSide) stripClick(true);
         break;
+    }
     case Drag::CutStart: case Drag::CutEnd:
         emit edgeDragFinished();
         if (!armed && deferred) {
