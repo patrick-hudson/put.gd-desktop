@@ -80,7 +80,7 @@ private slots:
  // the file is gone it ends and the entry is released. Nothing destructive is sent either time.
  void readdedDestinationSettlesACheckpointedDeletion() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("s3",provider);SettingsService settings(d.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
-  const QJsonObject place{{"endpoint","https://s3.example.invalid"},{"bucket","shots"}},credentials{{"mode","session"},{"reference",QJsonValue::Null}};
+  const QJsonObject place{{"endpoint","https://s3.example.invalid"},{"addressing","path"},{"bucket","shots"}},credentials{{"mode","session"},{"reference",QJsonValue::Null}};
   auto doc=configuration(d.path());doc["profiles"]=QJsonArray{QJsonObject{{"id","test"},{"label","Added back"},{"provider","s3"},{"settings",place},{"credentials",credentials}}};QVERIFY(settings.save(doc,{}));
   Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());
   StorageReceipt receipt;receipt.destination={"s3","removed",{},place,credentials};receipt.objectReference={{"format",1},{"fileId","recorded-object"}};receipt.publicationId="recorded-publication";receipt.concurrencyToken="recorded-token";

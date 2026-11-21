@@ -586,7 +586,8 @@ QJsonObject Settings::profileForDestination(const QJsonObject& destination, cons
     // Only services whose deletion addresses the object by bucket and key with the destination's
     // own credentials: a custom uploader's deletion URL or a Proton share is tied to an account
     // put.gd can't check, so those never move to another destination.
-    static const QHash<QString, QStringList> place{{"s3", {"endpoint", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
+    // S3's addressing (path or virtual-hosted) decides the host a request goes to, so it is part of the place (#1778).
+    static const QHash<QString, QStringList> place{{"s3", {"endpoint", "addressing", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
                                                     {"backblaze-b2", {"apiUrl", "bucket"}}};
     const auto value = [](const QJsonObject& settings, const QString& key) {
         auto text = settings[key].toString().trimmed();
@@ -597,7 +598,10 @@ QJsonObject Settings::profileForDestination(const QJsonObject& destination, cons
             // Encoded as sent: an escaped slash is not a path separator.
             auto path = url.path(QUrl::FullyEncoded);
             while (path.endsWith('/')) path.chop(1);
-            return url.scheme().toLower() + "://" + url.host().toLower() + (url.port() < 0 ? QString() : ":" + QString::number(url.port())) + path;
+            // An IPv6 literal keeps its brackets, or [::1]:443 and [::1:443] would compare equal (#1778).
+            auto host = url.host().toLower();
+            if (host.contains(':')) host = "[" + host + "]";
+            return url.scheme().toLower() + "://" + host + (url.port() < 0 ? QString() : ":" + QString::number(url.port())) + path;
         }
         return text;
     };
