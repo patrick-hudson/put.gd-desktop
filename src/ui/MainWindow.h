@@ -15,6 +15,9 @@ public:
  explicit MainWindow(UiSession&,QWidget* parent=nullptr);
  ~MainWindow()override;
  void navigate(const QString&);
+ // Settings → Error log on one entry (#1753), and Destinations on one destination.
+ Q_SLOT void showErrorLog(const QJsonObject& target);
+ Q_SLOT void showDestination(const QString& profileId);
  Q_SLOT void showLocalCopySettings();void showCaptureSettings(const QStringList& actions={});void showActionFailure(const QString& action,const Error&);
  // Asks for a PNG or JPEG to edit through the desktop's chooser (#259), then
  // emits editRequested; false while that chooser is already open.

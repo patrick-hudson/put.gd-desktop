@@ -1,4 +1,5 @@
 #include "HistoryStore.h"
+#include "Log.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -96,7 +97,9 @@ HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::remo
 Error HistoryStore::initialize() {
  QSqlQuery q(db_);if(!q.exec("PRAGMA foreign_keys=ON")||!q.exec("PRAGMA user_version")||!q.next()) return sqlError(); const int version=q.value(0).toInt();
  if(version>7) return {"history_version","Unsupported history schema version",{}};
- if(version==7) return {};
+ // The error log table (#1753) is created beside schema 7 without raising the version, so an
+ // older put.gd still opens this journal; it never reads the table.
+ if(version==7) return ensureErrorLog();
  if(!db_.transaction()) return sqlError();
  auto exec=[&](const QString& s) {return q.exec(s);}; bool ok=true;
  if(version<4) {
@@ -127,7 +130,7 @@ Error HistoryStore::initialize() {
  if(ok)ok=exec("CREATE TABLE IF NOT EXISTS sharing_operations(id TEXT PRIMARY KEY,history_id TEXT NOT NULL,data BLOB NOT NULL)")
   &&exec("CREATE INDEX IF NOT EXISTS sharing_history ON sharing_operations(history_id)")&&exec("CREATE INDEX IF NOT EXISTS sharing_state ON sharing_operations(json_extract(data,'$.state'))")&&exec("PRAGMA user_version=7");
  if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
- return {};
+ return ensureErrorLog();
 }
 void HistoryStore::relocate(Operation& op) const {
  for(auto& item:op.items) {
@@ -423,5 +426,141 @@ Error HistoryStore::updateRemote(const QString& id,const QString& status,const E
  auto remote=remoteFields(data);remote["remoteStatus"]=status;remote["remoteError"]=e.toJson();
  if(!db_.transaction())return sqlError();
  if(!persistRemote(db_,id,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};
+}
+
+// The error log (#1753). Entries are written by one resident queue at a time
+// (ErrorLog), so an entry and the success that resolves it keep their order.
+Error HistoryStore::ensureErrorLog() {
+ QSqlQuery q(db_);
+ if(!q.exec("SELECT 1 FROM sqlite_master WHERE type='table' AND name='error_log'"))return sqlError();
+ if(q.next())return {};
+ q.finish();
+ if(!db_.transaction())return sqlError();
+ const bool ok=q.exec("CREATE TABLE IF NOT EXISTS error_log(id TEXT PRIMARY KEY,time TEXT NOT NULL,kind TEXT NOT NULL,subject TEXT NOT NULL,resolved INTEGER NOT NULL,history_id TEXT NOT NULL,operation_id TEXT NOT NULL,data BLOB NOT NULL)")
+  &&q.exec("CREATE INDEX IF NOT EXISTS error_log_time ON error_log(time DESC,id)")
+  &&q.exec("CREATE INDEX IF NOT EXISTS error_log_subject ON error_log(subject,resolved)");
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ return {};
+}
+namespace {
+// What the entry's item is called now, or was called in its operation when History was cleared.
+QString storedItemName(const QSqlDatabase& db,const QString& historyId,const QString& operationId) {
+ QSqlQuery q(db);q.prepare("SELECT name FROM history WHERE id=?");q.addBindValue(historyId);
+ if(q.exec()&&q.next())return q.value(0).toString();
+ if(operationId.isEmpty())return {};
+ q.prepare("SELECT json_extract(item.value,'$.artifact.name') FROM operations,json_each(operations.data,'$.items') AS item WHERE operations.id=? AND json_extract(item.value,'$.artifact.id')=?");
+ q.addBindValue(operationId);q.addBindValue(historyId);
+ if(q.exec()&&q.next())return q.value(0).toString();
+ return {};
+}
+}
+QJsonObject HistoryStore::errorItem(const QString& historyId,const QString& operationId) const {
+ if(error_||historyId.isEmpty())return {};
+ QJsonObject item;const auto name=storedItemName(db_,historyId,operationId);if(!name.isEmpty())item["name"]=name;
+ QSqlQuery q(db_);q.prepare("SELECT json_extract(data,'$.receipt.destination.profileId'),json_extract(data,'$.receipt.destination.providerId') FROM history WHERE id=?");q.addBindValue(historyId);
+ if(q.exec()&&q.next()){if(!q.value(0).toString().isEmpty())item["profileId"]=q.value(0).toString();if(!q.value(1).toString().isEmpty())item["providerId"]=q.value(1).toString();}
+ return item;
+}
+Error HistoryStore::saveError(QJsonObject entry,int keep,const QString& notBefore,QJsonObject* saved) {
+ if(error_)return error_;
+ const auto id=entry.value("id").toString(),historyId=entry.value("historyId").toString(),operationId=entry.value("operationId").toString();
+ if(id.isEmpty()||entry.value("time").toString().isEmpty()||entry.value("kind").toString().isEmpty())return {"error_log_invalid","Incomplete error log entry",{}};
+ if(!db_.transaction())return sqlError();
+ QSqlQuery q(db_);
+ q.prepare("INSERT INTO error_log VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET time=excluded.time,kind=excluded.kind,subject=excluded.subject,resolved=excluded.resolved,history_id=excluded.history_id,operation_id=excluded.operation_id,data=excluded.data");
+ // A null QString binds as SQL NULL: every text column gets an empty string instead.
+ const auto text=[](const QString& value){return value.isEmpty()?QStringLiteral(""):value;};
+ q.addBindValue(id);q.addBindValue(entry.value("time").toString());q.addBindValue(entry.value("kind").toString());q.addBindValue(text(entry.value("subject").toString()));q.addBindValue(entry.value("resolved").toBool()?1:0);
+ q.addBindValue(text(historyId));q.addBindValue(text(operationId));q.addBindValue(encode(entry));
+ bool ok=q.exec();
+ if(ok&&!notBefore.isEmpty()){q.prepare("DELETE FROM error_log WHERE time<?");q.addBindValue(notBefore);ok=q.exec();}
+ if(ok&&keep>0){q.prepare("DELETE FROM error_log WHERE id NOT IN (SELECT id FROM error_log ORDER BY time DESC,id DESC LIMIT ?)");q.addBindValue(keep);ok=q.exec();}
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ if(saved)*saved=entry;
+ return {};
+}
+Error HistoryStore::resolveErrors(const QString& subject,const QString& at,const QString& resolution,QStringList* ids) {
+ if(error_)return error_;
+ if(!db_.transaction())return sqlError();
+ QSqlQuery q(db_);q.prepare("SELECT id,data FROM error_log WHERE subject=? AND resolved=0 AND time<=?");q.addBindValue(subject);q.addBindValue(at);
+ if(!q.exec()){db_.rollback();return sqlError();}
+ QList<std::pair<QString,QJsonObject>> open;while(q.next())open.append({q.value(0).toString(),decode(q.value(1))});q.finish();
+ bool ok=true;
+ for(auto& [id,data]:open){
+  data["resolved"]=true;data["resolvedAt"]=at;data["resolution"]=resolution;
+  QSqlQuery update(db_);update.prepare("UPDATE error_log SET resolved=1,data=? WHERE id=?");update.addBindValue(encode(data));update.addBindValue(id);
+  if(!(ok=update.exec()))break;
+  if(ids)ids->append(id);
+ }
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ return {};
+}
+namespace {
+QString errorFilter(const ErrorLogQuery& query,QVariantList& values) {
+ QStringList where;
+ if(!query.kind.isEmpty()){where<<"e.kind=?";values<<query.kind;}
+ if(query.resolved>=0){where<<"e.resolved=?";values<<query.resolved;}
+ if(!query.historyId.isEmpty()){where<<"e.history_id=?";values<<query.historyId;}
+ if(!query.operationId.isEmpty()){where<<"e.operation_id=?";values<<query.operationId;}
+ if(!query.search.isEmpty()){
+  auto term=query.search;term.replace('\\',"\\\\").replace('%',"\\%").replace('_',"\\_");term="%"+term+"%";
+  QStringList fields;for(const auto* field:{"$.title","$.message","$.itemName","$.destination","$.code"}){fields<<QStringLiteral("json_extract(e.data,'%1') LIKE ? ESCAPE '\\'").arg(QLatin1String(field));values<<term;}
+  where<<"("+fields.join(" OR ")+")";
+ }
+ return where.isEmpty()?QString{}:" WHERE "+where.join(" AND ");
+}
+}
+QJsonObject HistoryStore::listErrors(const ErrorLogQuery& query,Error* error) const {
+ if(error_){if(error)*error=error_;return {};}
+ QVariantList values;const auto filter=errorFilter(query,values);
+ QSqlQuery q(db_);q.prepare("SELECT COUNT(*),COALESCE(SUM(CASE WHEN e.resolved=0 THEN 1 ELSE 0 END),0) FROM error_log e"+filter);for(const auto& v:values)q.addBindValue(v);
+ if(!q.exec()||!q.next()){if(error)*error=sqlError();return {};}
+ const auto total=q.value(0).toLongLong(),unresolved=q.value(1).toLongLong();q.finish();
+ auto page=forwardQuery(db_);page.prepare("SELECT e.data,h.name,json_extract(h.data,'$.previewPath'),h.id IS NOT NULL FROM error_log e LEFT JOIN history h ON e.history_id<>'' AND h.id=e.history_id"+filter+" ORDER BY e.time DESC,e.id DESC LIMIT ? OFFSET ?");
+ for(const auto& v:values)page.addBindValue(v);page.addBindValue(query.limit);page.addBindValue(query.offset);
+ if(!page.exec()){if(error)*error=sqlError();return {};}
+ QJsonArray entries;
+ while(page.next()){
+  auto entry=decode(page.value(0));
+  if(!entry.value("historyId").toString().isEmpty()){
+   entry["itemPresent"]=page.value(3).toBool();
+   if(!page.value(1).isNull()&&!page.value(1).toString().isEmpty())entry["itemName"]=logging::redact(page.value(1).toString()).left(512);
+   if(!page.value(2).isNull()&&!page.value(2).toString().isEmpty())entry["previewPath"]=relocate(QJsonObject{{"id",entry["historyId"]},{"previewPath",page.value(2).toString()}})["previewPath"];
+  }
+  entries.append(entry);
+ }
+ return {{"entries",entries},{"total",double(total)},{"unresolved",double(unresolved)}};
+}
+QJsonObject HistoryStore::errorEntry(const QString& id,Error* error) const {
+ if(error_){if(error)*error=error_;return {};}
+ QSqlQuery q(db_);q.prepare("SELECT e.data,h.name,json_extract(h.data,'$.previewPath'),h.id IS NOT NULL FROM error_log e LEFT JOIN history h ON e.history_id<>'' AND h.id=e.history_id WHERE e.id=?");q.addBindValue(id);
+ if(!q.exec()){if(error)*error=sqlError();return {};}
+ if(!q.next()){if(error)*error={"error_not_found","That error log entry no longer exists",{{"id",id}}};return {};}
+ auto entry=decode(q.value(0));
+ if(!entry.value("historyId").toString().isEmpty()){
+  entry["itemPresent"]=q.value(3).toBool();
+  if(!q.value(1).isNull()&&!q.value(1).toString().isEmpty())entry["itemName"]=logging::redact(q.value(1).toString()).left(512);
+  if(!q.value(2).isNull()&&!q.value(2).toString().isEmpty())entry["previewPath"]=relocate(QJsonObject{{"id",entry["historyId"]},{"previewPath",q.value(2).toString()}})["previewPath"];
+ }
+ return entry;
+}
+Error HistoryStore::clearErrors(const QStringList& ids,bool resolvedOnly,int* removed) {
+ if(error_)return error_;
+ if(!db_.transaction())return sqlError();
+ QSqlQuery q(db_);int count=0;bool ok=true;
+ if(ids.isEmpty()){ok=q.exec(resolvedOnly?"DELETE FROM error_log WHERE resolved=1":"DELETE FROM error_log");if(ok)count=q.numRowsAffected();}
+ else for(const auto& id:ids){q.prepare(resolvedOnly?"DELETE FROM error_log WHERE id=? AND resolved=1":"DELETE FROM error_log WHERE id=?");q.addBindValue(id);if(!(ok=q.exec()))break;count+=qMax(0,q.numRowsAffected());}
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ if(removed)*removed=count;
+ return {};
+}
+QJsonObject HistoryStore::errorSummary(Error* error) const {
+ if(error_){if(error)*error=error_;return {};}
+ QSqlQuery q(db_);
+ if(!q.exec("SELECT COUNT(*),COALESCE(SUM(CASE WHEN resolved=0 THEN 1 ELSE 0 END),0) FROM error_log")||!q.next()){if(error)*error=sqlError();return {};}
+ QJsonObject summary{{"total",double(q.value(0).toLongLong())},{"unresolved",double(q.value(1).toLongLong())}};q.finish();
+ if(!q.exec("SELECT DISTINCT subject FROM error_log WHERE resolved=0 AND subject<>''")){if(error)*error=sqlError();return {};}
+ QJsonArray subjects;while(q.next())subjects.append(q.value(0).toString());summary["subjects"]=subjects;
+ return summary;
 }
 }

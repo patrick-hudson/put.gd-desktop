@@ -11,6 +11,8 @@ void UiSession::applySnapshot(const QJsonObject& data){const auto previous=revis
  // A credential read or store ended in the resident, whoever started it (#600).
  if(const auto credentials=data["credentials"].toObject();credentials.contains("generation")){const auto previous=std::exchange(credentialGeneration_,credentials["generation"].toInteger());if(previous>=0&&previous!=credentialGeneration_)emit credentialsChanged();}
  if(data.contains("destinationStatus")&&data["destinationStatus"].toObject()!=destinationStatus_){destinationStatus_=data["destinationStatus"].toObject();emit destinationStatusChanged();}
+ // The error log's revision and counts (#1753): an open Error log page reloads when they change.
+ if(data.contains("errorLog")&&data["errorLog"].toObject()!=errorLog_){errorLog_=data["errorLog"].toObject();emit errorLogChanged();}
 }
 void UiSession::refreshSnapshot(std::function<void(Error)> callback){
  if(callback)snapshotCallbacks_.append(std::move(callback));

@@ -11,7 +11,7 @@ constexpr bool s3SafeDeleteTransport = PUTGD_SDK_CURL_TRANSPORT;
 QString objectKey(const Destination& destination, const QString& candidate) {
     return s3ObjectKey(destination.settings, candidate);
 }
-Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this original destination. Choose Unlock saved credentials, or restore its session credentials in Settings", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only.", {}}; }
 Error cancelled() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
 Error busy() { return {"provider_busy", "S3 work queue is full", {}}; }
 bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && token->load(); }

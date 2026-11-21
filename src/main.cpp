@@ -360,6 +360,11 @@ int main(int argc,char* argv[]) {
 #endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
+ // The error log (#1753): what failed, kept for Settings → Error log. Fed by operation
+ // results, deletions, sharing changes, setup jobs, session methods and the tray.
+ putgd::ErrorLog errorLog(operations);server.setErrorLog(&errorLog);
+ QObject::connect(&history,&putgd::HistoryService::deletionFinished,&errorLog,&putgd::ErrorLog::deletionFinished);
+ QObject::connect(&history,&putgd::HistoryService::sharingFinished,&errorLog,&putgd::ErrorLog::sharingFinished);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly,replacedResident);return retry>=0?retry:1;}return 1;}
  // This process now owns the session: open its persistent log (#74) and the
  // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
@@ -442,6 +447,9 @@ int main(int argc,char* argv[]) {
  server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
  setup.setDestinationStatus(&destinationStatus);
+ QObject::connect(&setup,&putgd::SetupService::changed,&errorLog,[&setup,&errorLog](const QString& id){
+  setup.inspect(id,[guard=QPointer<putgd::ErrorLog>(&errorLog)](putgd::Error error,QJsonObject job){if(guard&&!error)guard->setupFinished(job);});
+ });
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
   if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2"||destination.providerId==putgd::r2::providerId)){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
@@ -634,6 +642,8 @@ int main(int argc,char* argv[]) {
  QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&destinationStatus,&putgd::DestinationStatus::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&updates,&putgd::UpdateService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&errorLog,&putgd::ErrorLog::changed,&ui,&putgd::UiProcessController::invalidate);
+ tray.setErrorLog(&errorLog);
  QObject::connect(&updates,&putgd::UpdateService::changed,&tray,[&]{tray.setUpdateStatus(updates.status());});
  QObject::connect(&updates,&putgd::UpdateService::updateAvailable,&tray,&putgd::TrayController::notifyUpdate);
  updates.start();tray.setUpdateStatus(updates.status());
@@ -729,7 +739,7 @@ int main(int argc,char* argv[]) {
 #endif
  }
  // A quit that did not come through quitApplication (a signal) stops deletions here.
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();operations.shutdown();});
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();operations.shutdown();errorLog.flush();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
 #ifdef Q_OS_LINUX
