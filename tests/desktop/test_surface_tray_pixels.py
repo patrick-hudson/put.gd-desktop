@@ -217,15 +217,38 @@ class TheOpenMenu(unittest.TestCase):
     def test_after_a_press_only_the_clicked_rows_hover_may_differ(self):
         # The menu is closed after a click put.gd did not record only while it is still the menu
         # the cell read: the pressed row's hover is allowed, any other change is another popup.
-        from tools.lab.surface_driver.recipes.tray import _same_but_row
-        menu = Image.new('RGB', (400, 300), (30, 30, 30))
-        box, row = (100, 50, 300, 250), [120, 80, 80, 14]
+        from tools.lab.surface_driver.recipes import tray
+        before = Image.new('RGB', (1280, 800), (120, 140, 160))
+        ImageDraw.Draw(before).rectangle((0, 760, 1279, 799), fill=(22, 22, 22))
+        menu = before.copy()
+        ImageDraw.Draw(menu).rectangle((864, 272, 1115, 767), fill=(50, 50, 60))
+        showing = lambda image: tp.menu_box(before, image, (0, 760, 1280, 800), (1100, 771, 23, 23))
+        opened = dict(box=showing(menu), image=menu, showing=showing,
+                      lines={'Capture region': dict(rect=[900, 293, 102, 14])})
+
+        class Ctx:
+            def key_drawn(self, chord, head, still_drawn):
+                self.sent = still_drawn(self.image)
+                if not self.sent:
+                    raise tray.RecipeBlocked('the drawn popup closed or changed before the key')
+
+            class target:
+                capture_image = staticmethod(lambda head: before)  # Esc closed it.
+
+        def esc_sent(image):
+            ctx = Ctx()
+            ctx.image = image
+            tray._dismiss_drawn_menu(ctx, opened, pressed='Capture region')
+            return ctx.sent
         hovered = menu.copy()
-        ImageDraw.Draw(hovered).rectangle((101, 75, 299, 99), fill=(60, 60, 90))
-        self.assertTrue(_same_but_row(menu, hovered, box, row))
-        other = hovered.copy()
-        ImageDraw.Draw(other).rectangle((150, 150, 200, 200), fill=(200, 0, 0))
-        self.assertFalse(_same_but_row(menu, other, box, row))
+        ImageDraw.Draw(hovered).rectangle((865, 288, 1114, 312), fill=(80, 80, 120))
+        self.assertTrue(esc_sent(hovered))
+        changed = hovered.copy()  # Another row changed: not the menu the cell read.
+        ImageDraw.Draw(changed).rectangle((900, 500, 1000, 520), fill=(200, 0, 0))
+        self.assertFalse(esc_sent(changed))
+        joined = hovered.copy()  # A popup drawn against it widens the bounds.
+        ImageDraw.Draw(joined).rectangle((724, 300, 863, 500), fill=(200, 200, 200))
+        self.assertFalse(esc_sent(joined))
 
 
 if __name__ == '__main__':

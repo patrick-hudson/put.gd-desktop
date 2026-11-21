@@ -566,13 +566,16 @@ def _dismiss_drawn_menu(ctx, opened, *, pressed=None):
     row = (opened['lines'].get(pressed) or {}).get('rect') if pressed else None
     def showing(image):
         # A popup is still drawn next to the icon, and it is the one the cell read.
-        if opened['showing'](image) is None:
+        drawn = opened['showing'](image)
+        if drawn is None:
             return False
         if 'image' not in opened:
             return True
         if row is None:
             return _same(opened['image'], image, box)
-        return _same_but_row(opened['image'], image, box, row)
+        # The same bounds (menu_box works in 4 px steps), so no popup joined it, and the same pixels.
+        return (all(abs(a - b) <= 4 for a, b in zip(drawn, box))
+                and _same_but_row(opened['image'], image, box, row))
     for attempt in ('key', 'icon'):
         try:
             if attempt == 'key':
