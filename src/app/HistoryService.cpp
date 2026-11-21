@@ -177,7 +177,7 @@ QString readdedMessage(const QString& status,const QString& found,bool credentia
  const QString why=credentials?QStringLiteral("This deletion started with other credentials for the destination added back, so put.gd won't finish it with its current ones. "):QStringLiteral("This deletion started before its destination was removed, so put.gd won't finish it through the destination added back. ");
  const QString restore=credentials?QStringLiteral(" Restore those credentials in Destinations to finish it."):QString();
  const QString forget=wayOut?QStringLiteral(" You can also remove it from History only."):QString();
- if(found=="own")return why+QStringLiteral("The recorded file is still there. Delete it at the destination yourself, then choose Retry deletion: put.gd checks again and ends this deletion once it is gone.")+restore+forget;
+ if(found=="own")return why+QStringLiteral("The recorded file is still there; Advanced file details show its exact name and version. Delete that file at the destination yourself, then choose Retry deletion: put.gd checks again and ends this deletion once it is gone.")+restore+forget;
  if(found=="unknown"){auto reason=checkError.message.trimmed();while(reason.endsWith('.'))reason.chop(1);
   return why+QStringLiteral("put.gd couldn't check whether the file is still there")+(reason.isEmpty()?QString():QStringLiteral(" (")+reason+QStringLiteral(")"))+QStringLiteral(". Choose Retry deletion to check again.")+restore+forget;}
  return why+QStringLiteral("Check the file at the destination")+(wayOut?QStringLiteral(", or remove it from History only."):QStringLiteral("; Remove from History only is not offered while it may be there."))+restore;
