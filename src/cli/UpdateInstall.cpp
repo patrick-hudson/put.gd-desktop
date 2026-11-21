@@ -78,6 +78,9 @@ QJsonObject transferDetails(const QUrl& url,const Transfer& transfer) {
 }
 }
 QJsonObject installUpdate(const update::Build& build,const InstallOptions& options,const std::function<void(const QJsonObject&)>& emitLine,Error& error) {
+ // zsync must give up while the whole-file download still has its time: its
+ // deadline counts from the child's start, not from the .zsync request.
+ const QDeadlineTimer zsyncDeadline(options.zsyncTimeoutMs);
  // A new phase (or zsync step) is reported at once; byte counts at most every 250 ms.
  QString lastPhase;QElapsedTimer sinceLast;
  const auto progress=[&](const QString& phase,const QString& method,qint64 bytes,qint64 total,const QJsonObject& extra={}){
@@ -168,8 +171,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  qint64 downloaded=0,reused=0;
  if(options.method!="download") {
   QElapsedTimer took;took.start();
-  // One deadline from the .zsync's request to the last range.
-  const QDeadlineTimer deadline(options.zsyncTimeoutMs);
+  // One deadline from the child's start to the last range.
+  const auto& deadline=zsyncDeadline;
   QString reason;QJsonObject details;zsync::Control control;
   zsync={{"used",false},{"reusedBytes",0},{"downloadedBytes",0},{"controlBytes",0},{"requests",0},{"ranges",0}};
   Error urlError;const auto controlUrl=update::mirrorFileUrl(tag,name+".zsync",urlError);const auto imageUrl=update::mirrorFileUrl(tag,name,urlError);

@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QEventLoop>
 #include <QJsonDocument>
+#include <QMetaEnum>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QRegularExpression>
@@ -49,9 +50,12 @@ int runUpdateMode(int argc,char** argv) {
  Error error;const auto result=fetchUpdate(build,QString::fromLocal8Bit(argv[2]),error);
  return finish(error,result);
 }
+// Qt's errorString() carries the request URL (and a redirect's signed query)
+// and the server's reason phrase, so diagnostics name only the error code.
 QString networkErrorText(const QNetworkReply& reply) {
- static const QRegularExpression query(R"(([A-Za-z][A-Za-z0-9+.-]*://[^\s?#]*)[?#]\S*)");
- return reply.errorString().replace(query,"\\1").left(200);
+ const auto code=reply.error();
+ const char* name=QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(code);
+ return name?QString::fromLatin1(name):QString("NetworkError %1").arg(int(code));
 }
 QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Error& error) {
  // How this installation updates: the system's updater while the package's
