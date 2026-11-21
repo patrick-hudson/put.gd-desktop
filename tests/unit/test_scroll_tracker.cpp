@@ -1704,13 +1704,21 @@ void testLostGuessMarksNothing() {
                              1577, 1575, 1575, 1580, 1577, 1580, 1578, 1572, 1572, 1577, 1576, 1577, 1579, 1573, 1572, 1573,
                              1577, 1575, 1575, 1580, 1579, 1578, 1579, 1580, 1580, 1572, 1572, 1580, 1519, 1472, 1426, 1396,
                              1351, 1271, 1216, 1185, 1158, 1126, 1061, 1033, 964,  904,  831,  808,  776,  704,  629,  588};
-  const Played r = play(scene, pos);
-  int foundBack = 0;
-  for (size_t i = 60; i < pos.size(); ++i) foundBack += r.results[i].status == TrackStatus::Placed && r.results[i].position == pos[i];
-  int firstBad = 0;
-  const long long bad = differing(r, pageRows(doc, 0, r.totals.bottom, W), {}, 0, &firstBad);
-  report("lost over look-alike tables, found again under a late header: rows stay text", r.wrong == 0 && foundBack >= 15 && bad == 0,
-         fmt("%d wrong%s, %d placed on the way back, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), foundBack, bad, firstBad));
+  // Also with the lost stretch 13 rows further on, where the retry against the
+  // previous skipped frame (its place a pair's guess) marked rows (round 1 of
+  // #1801's review).
+  for (const int shift : {0, 13}) {
+    std::vector<int> at = pos;
+    for (size_t i = 14; i < 60; ++i) at[i] += shift;
+    const Played r = play(scene, at);
+    int foundBack = 0;
+    for (size_t i = 60; i < at.size(); ++i) foundBack += r.results[i].status == TrackStatus::Placed && r.results[i].position == at[i];
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc, 0, r.totals.bottom, W), {}, 0, &firstBad);
+    report(fmt("lost over look-alike tables (+%d), found again under a late header: rows stay text", shift),
+           r.wrong == 0 && foundBack >= 15 && bad == 0,
+           fmt("%d wrong%s, %d placed on the way back, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), foundBack, bad, firstBad));
+  }
 }
 
 // A playing video in the region (#1537): a part of the page that keeps

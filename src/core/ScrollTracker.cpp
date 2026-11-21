@@ -4243,6 +4243,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     prevIsLast_ = true;
     prevPos_ = 0;
     prevHasPos_ = true;
+    prevPlaceKnown_ = true;
     prevViewMoved_ = false;
     r.confidence = 1;
     r.state = state_ = TrackState::Following;
@@ -4291,6 +4292,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = true;
       prevPos_ = lastPos_;
       prevHasPos_ = true;
+      prevPlaceKnown_ = true;
       prevViewMoved_ = false;
       framesSincePlaced_ = 0;
       skipsSincePlaced_ = 0;
@@ -4303,6 +4305,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = false;
       prevPos_ = lastPos_;
       prevHasPos_ = true;
+      prevPlaceKnown_ = true;
       prevViewMoved_ = false;
       r.hintsKept = true;
     }
@@ -4346,6 +4349,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   int unexplainedPick = -1;
   int pick = decide(cands, expected, uncertainty, hinted, &byExp, &why, &unexplainedPick);
   long long refusedCandPos = 0;
+  bool refusedKnown = false;  // refusedCandPos was found in the image (or derives from a place that was)
   bool hasRefusedCand = false;
   // A large playing video (>50% of shown tiles) can lower coarseShare below
   // coarseFloor (0.30) or make decide() reject a strong pair match as
@@ -4406,7 +4410,10 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     long long upos = 0;
     if (pIdx >= 0) {
       upos = prevPos_ + prevCands[size_t(pIdx)].d;
-      marked = observeOnce(cur, *prevSig(), upos, prevPos_, &prevCands, pIdx, true);
+      refusedKnown = prevPlaceKnown_;
+      // Once lost, only from a place the image lookup found (#1795).
+      if (skipRun_ < opts_.lostAfterSkips || prevPlaceKnown_)
+        marked = observeOnce(cur, *prevSig(), upos, prevPos_, &prevCands, pIdx, true);
     }
     computeExcluded(cur, ref, lastPos_);
     if (marked) {
@@ -4541,6 +4548,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       if (!retried) {
         refusedCandPos = pos;
         hasRefusedCand = true;
+        refusedKnown = false;
         pick = -1;
         why = SkipReason::Contradicted;
       }
@@ -4618,6 +4626,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (!hasRefusedCand) {
       refusedCandPos = lastPos_;
       hasRefusedCand = true;
+      refusedKnown = true;
     }
   }
   if (pick < 0 && why != SkipReason::Ambiguous && (share >= opts_.stillFallback || still)) return noMovement(false);
@@ -4671,6 +4680,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
         if (!hasRefusedCand) {
           refusedCandPos = fpos;
           hasRefusedCand = true;
+          refusedKnown = true;
         }
         fp = -1;
         fw = SkipReason::Contradicted;
@@ -4710,6 +4720,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = false;
       prevPos_ = refusedCandPos;
       prevHasPos_ = true;
+      prevPlaceKnown_ = refusedKnown;
       prevViewMoved_ = false;
     } else {
       prevHasPos_ = false;
@@ -4740,6 +4751,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   prevIsLast_ = true;
   prevPos_ = pos;
   prevHasPos_ = true;
+  prevPlaceKnown_ = true;
   prevViewMoved_ = viewMoved_;
   skipRun_ = 0;
   r.state = state_ = capped_ ? TrackState::Capped : TrackState::Following;
