@@ -184,7 +184,7 @@ banded, parallel recognition, and all of them fail.
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
 | Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
-| Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 384 MiB at most. The `RLIMIT_DATA` ceiling is one and a half times the same figure. The resident set size is what acceptance measures |
+| Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
 The helper recognizes on up to four engines at once and starts another engine only while its
 resident set stays under the budget, so the budget decides how many cores a job can use. A
@@ -194,10 +194,13 @@ speed.
 
 **Why 320 MiB (#1808).** The budget was 128 MiB until 2026-11-21. A whole screen's first task
 already used that up, so a GNOME 4K screen ran all 43 of its tasks on one engine and a 1080p
-screen on two of four. With room for four engines a 4K screen takes 2.75 s on k72 instead of
-5.18 s, and a 1080p screen 0.94 s instead of 1.15 s. The text is byte-identical on every corpus
-capture. The largest measured peak with four engines is a dense 24-megapixel page at 258 MiB,
-which also ran normally with `RLIMIT_DATA` at 320 MiB. Patrick allowed the larger figure
+screen on two of four. The #1805 research measured the corpus in the in-process benchmark with
+the memory gate turned off and everything else as shipped. On k72 the screens of 4 megapixels
+or more took 2.75 s on average instead of 5.18 s (four screens), and the 1080p screens 0.94 s
+instead of 1.15 s (median of 22). In those runs the text was byte-identical to the gated
+helper's on all 176 captures on aurora-amd and 50 on k72, and the largest peak, a dense
+24-megapixel page with four engines, was 258 MiB. That page also ran normally with
+`RLIMIT_DATA` at 320 MiB. Patrick allowed the larger figure
 because the helper is short-lived: it holds the memory only while it recognizes and exits after
 the job, never living in the resident, and `RLIMIT_DATA` still bounds a runaway.
 
@@ -219,15 +222,16 @@ and returns what it has recognized so far, in reading order, with `truncated` tr
 notification and the editor then say the text was cut. A job that has text to give never
 fails for time. This was decided because recognition time follows the number of characters,
 not the number of pixels. It costs roughly a millisecond a character on each core. On m74 one
-engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dense text, about
-100,000 characters, therefore cannot be read inside the deadline, and no pixel limit changes
-that.
+engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dense text, with
+100,000 characters or more, therefore cannot be read on one engine inside the deadline, and no
+pixel limit changes that. Four engines still leave the densest test page cut.
 
-How many characters a second a job reads depends on how many engines the memory budget lets it
-start. Under the old 128 MiB budget a 4K screen ran on one engine and took as long as
-`--threads 1`. With the 320 MiB budget it gets all four, so a dense page reads about twice the
-text before the time budget cuts it: 180,776 characters of a dense 24-megapixel page in 16
-seconds on aurora-amd, against 88,112 before (#1808).
+The figure of a millisecond a character is for one engine. The helper can use up to four, as
+many as the memory budget lets it start, so how much of a dense page it reads before the time
+budget depends on that budget too. Under the old 128 MiB budget a 4K screen ran on one engine
+and took as long as `--threads 1`. In the #1805 benchmark on aurora-amd, the dense 24-megapixel
+page gave 88,112 characters in 16 seconds with the 128 MiB gate and 180,776 with the gate
+turned off (#1808).
 
 - A task is not started when the slowest task so far says it cannot finish.
 - Every pass gets Tesseract's own monitor deadline.
@@ -1100,7 +1104,7 @@ from 8,980 to 11,580 KiB and PSS from 4,703 to 7,751 KiB (f44 RPM and AppImage, 
 Aurora AppImage, an Ubuntu GNOME DEB and AppImage, and d69 DEB and AppImage). They are not a new
 180 second run on the final build.
 
-**Helper peak.** Every recorded peak is below 131,072 KiB (128 MiB), before the allowance for extra
+**Helper peak.** Every peak recorded on these candidates, in the table below, was below 131,072 KiB (128 MiB, the budget then), before the allowance for extra
 languages, with English and with three languages, on every engine build. The highest corpus peak was
 126,064 KiB (Ubuntu 26.04). Arch's original 23 MB model is measured separately, and its corpus value is a
 conservative upper bound from a fresh child's rusage. Everything else is the kernel's VmHWM after exec.
