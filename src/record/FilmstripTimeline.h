@@ -83,6 +83,10 @@ public:
     // wider than the view or wholly off screen); nothing at Fit. Undo and redo
     // call it for the item they brought back.
     void reveal(recording::Span span);
+    // Above Fit, starts the view at `startUs` (clamped) as an overview drag
+    // does, suspending playback follow until playback restarts or the playhead
+    // is back in view; nothing at Fit.
+    void scrollTo(qint64 startUs);
     // Snapping (A7) and skimming (B4): on by default; the window's N / S keys
     // and the transport's skim toggle call the setters. Each emits its
     // *Changed signal only on a change. Skimming off: hover shows only the

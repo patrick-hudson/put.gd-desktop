@@ -3291,8 +3291,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         const auto start = whole("start");
         if (!start || *start < 0 || *start > options_.durationUs) return invalid("scrollTimeline takes start in microseconds within the recording");
         if (timeline_->zoom() <= 1) return state("The timeline is at Fit: the whole recording is in view");
-        const auto view = timeline_->visibleSpan();
-        timeline_->reveal({*start, *start + view.length()});
+        timeline_->scrollTo(*start);
         return done();
     }
     if (action == "viewerPan") {

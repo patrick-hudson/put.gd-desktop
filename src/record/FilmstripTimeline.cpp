@@ -811,6 +811,11 @@ void FilmstripTimeline::zoomOut(std::optional<qint64> anchorUs) {
     for (int i = int(levels.size()) - 1; i >= 0; --i) if (levels[i] < zoom_) { setZoom(levels[i], anchorUs); return; }
 }
 void FilmstripTimeline::zoomFit() { setZoom(1); }
+void FilmstripTimeline::scrollTo(qint64 startUs) {
+    if (zoom_ <= 1) return;
+    if (playing_) followSuspended_ = true;
+    setScroll(startUs);
+}
 void FilmstripTimeline::reveal(recording::Span span) {
     if (zoom_ <= 1) return;
     const auto view = visibleSpan();
