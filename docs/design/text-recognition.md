@@ -113,7 +113,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 
 | Step | Rule |
 | --- | --- |
-| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each glyph it matches, and lets those go too, so the colour plane never sits whole in its resident set |
+| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
 | Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
@@ -182,7 +182,7 @@ banded, parallel recognition, and all of them fail.
 | Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey and 8-bit RGB that is a memfd of at most 96,000,032 bytes: the 32-byte header, 24,000,000 bytes of grey and 72,000,000 of colour. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
-| Emoji | At most 512 candidate glyphs are matched, and the scan reads at most 1,048,576 runs of colour pixels over all its passes. It stops once 3 seconds have passed since the job started (reading codes counts), checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
+| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that brings them to 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 128 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
 
@@ -341,8 +341,8 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   Mozilla, the same file in Firefox ESR 153 and Firefox 158 and 159, and Discord shows Twemoji
   pictures. Noto redraws some emoji in each release, so the emoji that Noto 2.047 (Ubuntu 24.04,
   Linux Mint 22) and 2.057 (Fedora 44 and 45, Aurora) draw differently from 2.051 are templates
-  too (445 and 291; 2.057 drew a new 🚀). Each later set keeps only drawings that differ by more
-  than 0.03 from every template kept before it. Qt draws a COLRv1 font such as 2.057 itself and leaves
+  too (445 and 291; 2.057 drew a new 🚀). Each later Noto set keeps only drawings that differ by
+  more than 0.03 from every drawing of the same emoji kept in the Noto sets before it. Qt draws a COLRv1 font such as 2.057 itself and leaves
   out some of its shading (flags and 🍳 come out flat), so the 261 emoji Qt 6.11 draws
   differently are templates as well: a Plasma desktop on Fedora or Aurora shows those. Each
   template is the glyph's ink box stretched to 20 by 20 and to 10 by 10 pixels, premultiplied
@@ -405,7 +405,7 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   ("Hello👋"): a glued emoji's gap was a median 0.15 of its height, and one after a space 0.25 or
   more for 247 of 248. A join counts only while that neighbour is copied too. A line qualifies
   when its height and the glyph's overlap by 40 percent of the shorter of the two. Its height is
-  always the one recognition gave it, so an emoji placed on a line does not stretch it towards
+  the one recognition gave it (for a line of emoji alone, its first emoji's), so an emoji placed on a line does not stretch it towards
   the line below. Across, a line of text is first measured by its recognized box, and a line of
   emoji alone by its emoji, so a row of them stays one line; only when no line qualifies that
   way is a line of text measured with its emoji too. A colour glyph inside a decoded code (a logo in a
@@ -1253,8 +1253,9 @@ desktop), every one of the 24 item pages covered 17 of 17, the hashes page 30 of
 
 Measured for [#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748) through the
 whole pipeline (release build, Tesseract 5.5.0, d69) on PR #1751's build at `648946bf3`. The
-commits after it change only where emoji go in edge cases; at `a1f63c3fc` the named emoji are
-the same on these sets. "Common" is a fixed
+commits after it keep a scaled capture's pixels, leave emoji inside decoded codes out, give a
+line joined at a band seam its later band's direction, and change where emoji go in edge cases;
+at `a1f63c3fc` the named emoji are the same on these sets. "Common" is a fixed
 list of 200 emoji people use most; the rest were drawn at random from all 3,781.
 
 | Set | Emoji | Common named right | Common wrong | Others right | Named where there was none |
@@ -1329,8 +1330,8 @@ and 54 and 56 wrong, and the third 1,268 right.
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
-- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found, nor are small
-  flags at a text editor's default size or Noto's ☕ on white at 150% zoom, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
+- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found, nor were 🇬🇧 at
+  the tested editors' default size and Noto's ☕ on white at 150% zoom, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
   draws in its own design are named only where they look like Noto's or Twemoji's. Neighbouring
   skin tones, and the man, woman and person forms of one emoji, are sometimes swapped at text
   size. See [emoji](#emoji).
