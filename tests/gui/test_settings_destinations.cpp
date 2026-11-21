@@ -1226,6 +1226,10 @@ private slots:
      if(below<-1||below>Ui::scaled(40))problem=QString("%1 px below the field").arg(below);
      else if(left+note->width()<controlLeft||left>controlLeft+control->width())problem="outside the field's column";
      else if(note->width()<Ui::scaled(160))problem=QString("only %1 px wide").arg(note->width());
+     // #1793: no blank line around the text. The custom endpoint's note was 85 px taller than
+     // its wrapped lines and the file-name pattern's 17 px, because a form row without a label
+     // never shrinks below its size hint.
+     else if(const int extra=note->height()-note->heightForWidth(note->width());extra>=note->fontMetrics().lineSpacing())problem=QString("%1 px taller than its text").arg(extra);
      // Its own row: a form row of its own, or a container that holds no other setting with an ⓘ.
      else if(const auto forms=note->parentWidget()->findChildren<QFormLayout*>();std::none_of(forms.cbegin(),forms.cend(),[&](auto* form){return form->indexOf(note)>=0;}))for(auto* other:scroll->widget()->findChildren<QToolButton*>())if(const auto name=other->property("settingHelpFor").toString();!name.isEmpty()&&name!=controlName)
       for(auto* field:scroll->widget()->findChildren<QWidget*>(name))if(note->parentWidget()->isAncestorOf(field)){problem="shares a row with "+name;break;}
@@ -1243,7 +1247,7 @@ private slots:
   QVERIFY2(window.findChild<QToolButton*>("s3StorageClassHelp"),"Storage class has an ⓘ");
   window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");QVERIFY(tabs);
   for(int i=0;i<tabs->count();++i)if(auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(i))){tabs->setCurrentIndex(i);putgd::test::settle(30);check(scroll);}
-  for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
+  for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference","customEndpoint","customFileNamePatternToggle"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
   QVERIFY2(checked.size()>=20,qPrintable("only checked "+checked.join(", ")));
   QVERIFY2(misplaced.isEmpty(),qPrintable(misplaced.join("\n")));
  }

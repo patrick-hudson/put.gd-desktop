@@ -3092,6 +3092,18 @@ void setFeedback(QLabel* label,const QString& text,const char* tone){label->setP
 }
 void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,text,error?"error":"neutral");}
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
+namespace {
+// Height that follows the widget's width (#1793). A form row without a label never shrinks below
+// its item's size hint, and a wrapping widget's hint is its height at a narrow guessed width, so
+// an opened setting's help sat in blank space above and below its text.
+template<class Base> class FollowsWidth final:public Base {
+public:
+ using Base::Base;
+ QSize sizeHint()const override{auto size=Base::sizeHint();if(this->width()>0&&this->hasHeightForWidth())size.setHeight(this->heightForWidth(this->width()));return size;}
+protected:
+ void resizeEvent(QResizeEvent* event)override{Base::resizeEvent(event);if(event->oldSize().width()!=this->width())this->updateGeometry();}
+};
+}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
  auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","quiet");button->setCheckable(true);button->setIcon(icon("info"));button->setProperty("uiIconBase",QSize(14,14));button->setIconSize(QSize(Ui::scaled(14),Ui::scaled(14)));
@@ -3099,7 +3111,7 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
  button->setFixedSize(Ui::scaled(24),Ui::scaled(24));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
  QObject::connect(button,&QToolButton::toggled,button,[button,control,description](bool open){
   auto* note=button->property("inlineHelp").value<QLabel*>();
-  if(!note){note=new QLabel(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
+  if(!note){note=new FollowsWidth<QLabel>(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
    // Follow the field's layout so help appears below the value, not in the label gutter. The
    // control's own form row wins: the nearest one holding it, so a row that holds a whole panel
    // of rows (Advanced connection settings, #1787) never takes the note.
@@ -3124,7 +3136,7 @@ QWidget* settingLabel(const QString& title,const QString& description,QWidget* c
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* row=new QWidget(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Ui::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ auto* row=new FollowsWidth<QWidget>(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Ui::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Ui::palette());}
