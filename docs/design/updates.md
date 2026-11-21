@@ -216,8 +216,9 @@ installs on its own: not on the daily check, not from a notification.
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
 folder isn't writable or has no room for another copy, when the file isn't yours, or when an
 installed update still waits for its restart. It also refuses with `update_install_failed` when
-the staging folder of an earlier, interrupted update beside the AppImage can't be removed; put.gd
-keeps its record and tries again at the next start and the next install. While you watch the other channel, the same
+the staging folder of an earlier, interrupted update beside the AppImage can't be removed, unless
+the new version is already in place (then it succeeds with `method: none`). Either way put.gd
+keeps the folder's record and tries again at the next start and the next install. While you watch the other channel, the same
 button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository.
 
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
