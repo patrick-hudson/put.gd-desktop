@@ -612,8 +612,9 @@ An entry is added for:
   link wasn't made, one for a local copy that failed (also after Retry local save), and
   one for the operation itself when no file says more (a capture, recording, Copy text or
   diagnostics upload that failed before it had files); a link the upload couldn't copy,
-  as one entry with the copy's own error. Entries are taken from the operation's
-  committed result, never read back later, so a newer attempt can't hide them;
+  as one entry with the copy's own error. An explicit Copy result changes only that
+  copy entry. Entries are taken from the operation's committed result, never read back
+  later, so a newer attempt can't hide them;
 - a deletion item that ends failed, unknown, changed, with a version left behind or
   not safely removable, and a share link change that fails;
 - a Test connection, credential read or store, or Proton account step that fails;
@@ -682,7 +683,8 @@ are dropped and counted in the log record `Error log write dropped`), and the on
 waiting at quit are written before the resident exits. Reads answer at once with the
 journal's not-ready error while it recovers. **Clear…** in Settings and `errors.clear` remove all entries, the given ones or
 only resolved ones. A message is redacted, and its details are redacted field by field,
-as log records are (see [Redaction](#redaction)), before anything is stored; details
+as log records are (see [Redaction](#redaction)), before anything is stored, and so is
+every other stored string: names, destination, code and IDs; details
 over 16 KiB are replaced by `{"truncated": true}`. A diagnostics package never
 includes `history.sqlite`, so it carries no error log; its log records already hold
 the same errors.
