@@ -580,9 +580,6 @@ void TrayController::refreshActivity() {
  for(const auto& value:observations) {
   const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
   auto stage=stageOf(op);
-  // Full only when no file of the uploading operations still waits or transfers (a skipped
-  // or failed file is settled): one finished file while another waits keeps below full.
-  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending";uploadedItems+=status=="uploaded";}
   // A recording handed over to Upload is new work; one handed back to review (its
   // export failed) shows its badge again instead of the stage it had reached.
   if(const auto known=opStages_.constFind(id);known==opStages_.cend()){
@@ -593,6 +590,9 @@ void TrayController::refreshActivity() {
   }
   else if(stage!=Activity::Idle){if(*known==Activity::Idle)fresh=true;else if(int(*known)>int(stage))stage=*known;}
   opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
+  // Full only when no file of the uploading operations still waits, transfers or checks a
+  // name (a skipped or failed file is settled): one finished file while another waits keeps below full.
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending"||status=="stored";uploadedItems+=status=="uploaded";}
  }
  if(startPending_>0&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
  // New work replaces a failure or a completion still on the icon.
