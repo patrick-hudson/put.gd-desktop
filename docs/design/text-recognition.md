@@ -843,6 +843,82 @@ other tool active it does not. The user's side is in the
     items with 2 extra marks. Quick redact still suggests only. The key and token shapes rest on
     measured thresholds with real but not wide margins, and should stay behind that line.
 
+## Checking captures before uploading
+
+[#1804](https://github.com/patrick-hudson/put.gd-desktop/issues/1804) adds **Check captures for
+sensitive text before uploading** to Settings → Capture → Text recognition, with the kinds it looks
+for. It is off by default. With it on, put.gd recognizes an image capture's text before it uploads.
+It asks only when that text includes one of the chosen kinds, or when the check couldn't finish. A
+capture with nothing found uploads as it does with the option off, with the check's time added.
+
+This is not a confirmation step. An explicit upload is consent, and put.gd shows no notice, dialog
+or undo on an ordinary upload. The prompt is a targeted warning that the user turns on and sees
+only when the check finds something. Don't extend it into a general "are you sure?".
+
+| Part | Rule |
+| --- | --- |
+| Setting | `preferences.sensitiveTextCheck` `{enabled, categories}`, see [configuration](configuration.md). The categories are Quick redact's: `card`, `key`, `list`, `email`, `phone`, `ip`, `name`. The default is `card`, `key` and `list`. Email addresses, phone numbers, IP addresses and the user's own name appear on most ordinary chat and terminal screenshots, so they are offered but off by default. `list` matches nothing until the user saves words or patterns |
+| What is checked | Image captures going to a destination: region, window, monitor, desktop, Repeat last region, scrolling capture, the clipboard action with an image or one copied PNG or JPEG, and the file manager's **Upload with put.gd**. For the file manager, each PNG and JPEG in the selection is checked in turn, and the first one with a finding asks |
+| Not checked | Capture region & edit (the user reviews that image before Upload), recordings, files that are not PNG or JPEG, clipboard text, diagnostics packages, retries of uploads already made, and captures going only to the local archive, since nothing is uploaded |
+| Where it runs | In the editor helper, `putgd-ui --edit-image`, in check mode. The resident stages the capture as it does for Edit & upload, and keeps its own copy for the upload. The helper runs the editor's recognition (`putgd-ocr`) and Quick redact, including the account name lookup and the pattern child, on a document it does not show. No editor or matching code is in the resident. Recognition, its deadline, its limits and its confinement are exactly the editor's |
+| One at a time | Checks run one after another. A capture taken while a prompt is open waits in the `checking` phase |
+| Nothing found | The helper ends at once, and the capture goes to the upload queue unchanged: same format, name, copy and history |
+| Found | The operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {card: 1, key: 1}, complete: true}`, kinds and counts only. A person sees the prompt. An agent decides with `operation.decide` |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers recognition failing or timing out, a result cut at its time or size limit, an image over 24 megapixels, text recognition being unavailable, a pattern from the list that didn't finish, and an account lookup that didn't answer. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped` or `name_unchecked`. It also lists whatever was found |
+| Helper failure | If the helper is missing, crashes, or gives no result within 40 seconds of starting, nothing is uploaded or kept. The operation fails with `sensitive_check_failed`, its `details.cause` names what failed, and the failure notification says the capture wasn't uploaded |
+
+### The prompt
+
+The prompt is put.gd's own frameless panel, drawn by the helper from the theme tokens: the raised
+surface, a strong border, a gold accent edge, the `alert` glyph and the `putgd::Ui` roles. It has no
+desktop title bar or frame, and it moves by dragging its body, through the desktop's own move. It stays
+above other windows. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc) float it. Where
+the desktop lets a window choose (X11), it opens centred on the screen with the pointer. Focus starts on
+its default button.
+
+- The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
+  names what was found by kind and count: "This capture shows a card number and a key or token. It
+  hasn't been uploaded." It never shows the text, except as pixels in the preview.
+- A preview shows the capture with every suggested Redact applied, followed by "Suggestions only.
+  Recognition can miss text." and the destination.
+- **Redact and upload** (the default button) opens the editor on the same document, with the
+  suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
+  From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
+  nothing.
+- **Upload anyway** uploads the original.
+- **Cancel**, Escape or closing the panel uploads nothing. With **Keep a local copy** on, the capture is
+  saved to the archive and History as a local item. Otherwise nothing is kept.
+- For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png") and offers only
+  **Upload anyway** (every file) and **Cancel** (none). Redact is not offered, because the editor edits
+  one image. A selection of one image offers all three.
+
+### Agents
+
+`action.invoke` and `upload.files` take `sensitiveText`: `prompt` or `report`. The tray, hotkeys,
+the main window and the file manager's menu entry (which names its installation) ask a person, with
+`prompt`. Any other request defaults to `report`, which covers `putgd-cli`, MCP and scripts. In report
+mode no panel opens. The operation waits in `sensitive_text_found` until `operation.decide {id,
+choice}`, where `choice` is `redact`, `upload` or `cancel` (MCP `decide_upload`). The same method also
+settles a prompt that a person is looking at. A report-mode decision that doesn't come within 5 minutes
+is taken as Cancel. After `redact` the operation is an open editor, and the `editor.*` methods drive it
+by the same ID. `operation.decide` answers `sensitive_check_running` while the check runs,
+`sensitive_decision_unavailable` when nothing waits, and `sensitive_choice_unavailable` for `redact` on
+a file selection or on an image too large to edit. No method waits on the decision, so nothing hangs.
+
+### Privacy
+
+Recognized text and matches never leave the helper's memory, as for Quick redact. The resident logs
+the check's start, its outcome, the kinds with counts, the reason when it couldn't finish, and the
+duration. The journal, observations, `operation.inspect`, diagnostics and notifications carry the same,
+and nothing more. Tests and evidence use only test values.
+
+### Cost
+
+Each checked capture adds the time to stage it, start the helper, recognize it and match it,
+before its upload starts. Measured on the lab builders with today's engine:
+MEASUREMENTS_PENDING. A capture that is not checked (the option off, Edit & upload, a local-only
+capture) costs nothing.
+
 ## History
 
 - **Copy text** is on an image item's inspector and menu, beside Edit, including when a batch has

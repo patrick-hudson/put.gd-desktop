@@ -198,6 +198,25 @@ Choose the **Copy text** tool (G) in the editor, the last one, after Blur. put.g
 
 **Quick redact only suggests. Recognition can miss text, and a page with no matches can still hold some.** A misread name, such as one letter wrong in a short name, can be missed too: names and words are matched as spelled, not by closeness. Look at the result yourself before you upload. Redact is what removes the pixels, and Quick redact only places Redacts for you. A number made of repeated digits can be counted wrong, so a card number like that can be missed. If you submit or close the edit while Quick redact is still working, it adds nothing and says "Quick redact added nothing: the edit was already submitted."
 
+### Check captures for sensitive text before uploading
+
+Turn on **Check captures for sensitive text before uploading** in **Settings → Capture → Text recognition** if you want put.gd to look at a capture's text before it goes anywhere. It is off until you turn it on. Under it, **Look for** chooses the kinds it looks for: **Card numbers**, **Keys and tokens** and **My redaction list** are on to start with. **Email addresses**, **Phone numbers**, **IP addresses** and **My username and name** are there too, but most chat and terminal screenshots show some of those, so turning them on means being asked much more often.
+
+With it on, each region, window, monitor, desktop and scrolling capture, each image you upload from the clipboard, and each PNG or JPEG you upload with **Upload with put.gd** is read first, the same way Quick redact reads it.
+
+- **Nothing found:** it uploads as usual, with no prompt. The only difference is the time the reading takes: MEASUREMENTS_PENDING.
+- **Something found:** nothing is uploaded yet, and put.gd shows a small panel. It says what it found, for example "This capture shows a card number and a key or token", with a preview that has the suggested redactions applied. It never shows the text it found. Choose:
+  - **Redact and upload** (Enter) opens the editor with the suggested Redact marks already in place. Check them, add or remove any, then press **Upload**.
+  - **Upload anyway** uploads the capture as it is.
+  - **Cancel** (Escape) uploads nothing. With **Keep a local copy** on, the capture is saved to your archive and shows in History as a local item.
+- **Couldn't finish checking:** if recognition failed, ran out of time, the image is over 24 megapixels, or a pattern in your list didn't finish, put.gd asks anyway, with the title "put.gd couldn't finish checking this capture" and the reason. It never uploads a capture it couldn't check without asking you.
+
+For several files from your file manager, the panel names the file it found something in, and offers only **Upload anyway** (every file) and **Cancel** (none of them), since the editor edits one image at a time.
+
+While one panel is open, a capture you take next waits until you answer. The tray and History show "Checking for sensitive text" and then "Waiting for your decision". The panel has no title bar. Drag it by its body to move it.
+
+**It only suggests, as Quick redact does.** Recognition can miss text, and a capture with no prompt can still show something private. Captures you make with **Capture region & edit**, recordings and other kinds of files are not checked. Nothing it reads is saved, logged or uploaded.
+
 ### Copy text and show a QR code from History
 
 - **Copy text** in an image item's inspector and ⋯ menu does the same as the action, reading the item's local copy. It is off, and says why, when the item has no local copy (turn on **Keep a local copy** before capturing) or is not a PNG or JPEG image. put.gd never downloads an upload to read it.
