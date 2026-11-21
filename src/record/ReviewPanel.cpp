@@ -232,19 +232,30 @@ protected:
         const int glyph = std::max(Ui::scaled(15), chip - 10);
         glyph_.paint(&p, QRect(int(chipRect.center().x()) - glyph / 2, int(chipRect.center().y()) - glyph / 2, glyph, glyph));
         const QFont nameFont = Ui::font(Ui::Type::body, true), spanFont = Ui::monoFont(Ui::Type::caption);
-        // The span ends 8 px before the verb's reserved place, shown or not.
-        const int spanRight = width() - Ui::space(Space::xs) - verbSide() - Ui::space(Space::s);
-        const qreal left = chipRect.right() + gap;
-        // The name keeps its room first: the span drops its "0:" before the name elides (W18).
-        const int nameWidth = QFontMetrics(nameFont).horizontalAdvance(name_);
-        const int fullWidth = QFontMetrics(spanFont).horizontalAdvance(span_);
-        const QString& span = left + nameWidth + Ui::space(Space::s) + fullWidth <= spanRight ? span_ : shortSpan_;
+        const int spanRight = this->spanRight();
+        const qreal left = nameLeft();
+        // The whole list uses one span form (the panel decides, W18).
+        const QString& span = compact_ ? shortSpan_ : span_;
         const int spanWidth = QFontMetrics(spanFont).horizontalAdvance(span);
         Ui::paintText(p, QRectF(spanRight - spanWidth, 0, spanWidth, height()), span, c.textMuted, spanFont, Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
         const int right = spanRight - spanWidth - Ui::space(Space::s);
         Ui::paintText(p, QRectF(left, 0, std::max<qreal>(0, right - left), height()), name_, c.text, nameFont);
     }
+public:
+    // Whether the name and the full span fit side by side at this width.
+    bool fitsFullSpan() const {
+        if (width() <= 0) return true;
+        const QFont nameFont = Ui::font(Ui::Type::body, true), spanFont = Ui::monoFont(Ui::Type::caption);
+        return nameLeft() + QFontMetrics(nameFont).horizontalAdvance(name_) + Ui::space(Space::s) + QFontMetrics(spanFont).horizontalAdvance(span_) <= spanRight();
+    }
+    void setCompact(bool compact) { if (compact_ != compact) { compact_ = compact; update(); } }
 private:
+    // The span ends 8 px before the verb's reserved place, shown or not.
+    int spanRight() const { return width() - Ui::space(Space::xs) - verbSide() - Ui::space(Space::s); }
+    qreal nameLeft() const {
+        const int chip = std::max(Ui::scaled(26), QFontMetrics(Ui::font()).height() + 4);
+        return Ui::space(Space::s) + 2 + chip + Ui::space(Space::m);
+    }
     void placeVerb() { verb_->move(width() - Ui::space(Space::xs) - verbSide(), (height() - verbSide()) / 2); }
     void refreshVerb() {
         const auto* focus = QApplication::focusWidget();
@@ -256,7 +267,7 @@ private:
     }
     QString kind_, name_, span_, shortSpan_;
     QIcon glyph_;
-    bool selected_, verbOffered_, hovered_ = false;
+    bool selected_, verbOffered_, hovered_ = false, compact_ = false;
     QToolButton* verb_ = nullptr;
 };
 }  // namespace
@@ -297,6 +308,7 @@ QWidget* ReviewPanel::rowFor(const QString& kind, const QString& id) const {
     return nullptr;
 }
 bool ReviewPanel::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == list_ && event->type() == QEvent::Resize) { updateSpanForm(); return false; }
     if (event->type() != QEvent::ShortcutOverride && event->type() != QEvent::KeyPress) return QWidget::eventFilter(watched, event);
     const auto* key = static_cast<QKeyEvent*>(event);
     const bool enter = key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter, escape = key->key() == Qt::Key_Escape;
@@ -390,6 +402,20 @@ void ReviewPanel::updateRows() {
         // The part above offers Restore for a selected cut.
         row->setSelected(selected, selected && kind != "cut");
     }
+    updateSpanForm();
+}
+// One span form for the whole list (W18): when any row's name and full span
+// don't fit side by side and every time is under a minute, every row drops
+// "0:"; names are never shortened for it.
+void ReviewPanel::updateSpanForm() {
+    if (!list_) return;
+    const auto rows = list_->findChildren<EditRow*>();
+    const auto& e = state_.edit;
+    bool underMinute = e.trimStart < 60000000 && e.exportEnd(state_.durationUs) < 60000000;
+    for (const auto& c : e.cuts) underMinute = underMinute && c.end < 60000000;
+    for (const auto& m : e.masks) underMinute = underMinute && m.end < 60000000;
+    const bool compact = underMinute && std::any_of(rows.cbegin(), rows.cend(), [](const EditRow* row) { return !row->fitsFullSpan(); });
+    for (auto* row : rows) row->setCompact(compact);
 }
 
 QSize ReviewPanel::sizeHint() const {
@@ -486,6 +512,7 @@ void ReviewPanel::rebuild(bool rebuildTop, bool rebuildList) {
     }
     if (rebuildList && anyEdit()) {
         list_ = new QWidget(this);
+        list_->installEventFilter(this);
         auto* v = new QVBoxLayout(list_);
         v->setContentsMargins(m, m, m, m);
         v->setSpacing(0);

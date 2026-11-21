@@ -102,6 +102,7 @@ private:
     QString neighbourOf(const QString& rowKey) const;
     void updateInPlace();
     void updateRows();
+    void updateSpanForm();
     void rebuild(bool rebuildTop = true, bool rebuildList = true);
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
