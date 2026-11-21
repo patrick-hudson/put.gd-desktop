@@ -27,6 +27,18 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+ // #1759: deletion goes through the destination this picks; a wrong match deletes from the wrong place.
+ void receiptsFindTheirCurrentDestination(){
+  const QJsonObject s3{{"providerId","s3"},{"profileId","old"},{"settings",QJsonObject{{"endpoint","https://S3.example.com/"},{"bucket","shots"}}}};
+  const QJsonObject same{{"id","old"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://elsewhere.example.com"},{"bucket","other"}}}};
+  const QJsonObject readded{{"id","new"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots"}}}};
+  const QJsonObject otherBucket{{"id","b"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots2"}}}};
+  const QJsonObject otherService{{"id","r"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{same,readded})["id"].toString(),QString("old"));
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{otherBucket,readded})["id"].toString(),QString("new"));
+  QVERIFY(putgd::Settings::profileForDestination(s3,{otherBucket,otherService}).isEmpty());
+  QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
+ }
     void startupUnlockAndRecentColorPreferencesAreOptionalAndBounded() {
         auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
         QVERIFY(!putgd::Settings::validate(doc,validator));

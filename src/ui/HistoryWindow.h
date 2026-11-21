@@ -44,6 +44,8 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // Cancel is the default and Escape choice; accepting is the named action.
  // names maps history IDs to file names; skipped counts selected files that
  // were not sent because they have no deletable remote target.
+ // The deletion dialog's third outcome (#1759): Remove from History only, for files whose destination was removed.
+ static constexpr int forgetResult=2;
  static QDialog* deletionConfirmation(QWidget* parent,const QJsonObject& preparation,const QHash<QString,QString>& names,const QJsonArray& profiles,int skipped=0);
 // The active operations History last read (operation.recent); activityChanged follows them.
  QJsonArray activeOperations()const;

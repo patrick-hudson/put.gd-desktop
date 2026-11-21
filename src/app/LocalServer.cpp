@@ -332,6 +332,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128||ids.contains(id.toString())) {reply(invalid(),{});return;}ids.append(id.toString());}
   history_.copyLinks(ids,reply);return;
  }
+ // Remove from History only (#1759): local records, never a remote file.
+ if(method=="history.forget") {
+  if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000){reply(invalid(),{});return;}
+  QStringList ids;for(const auto& id:p["ids"].toArray()){if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}ids<<id.toString();}
+  history_.forget(ids,std::move(reply));return;
+ }
  if(method=="delete.prepare"||method=="delete.confirm") {
   if(!fields(p,method=="delete.confirm"?QStringList{"ids","acknowledgement"}:QStringList{"ids"})||!p["ids"].isArray()||p["ids"].toArray().size()>1000||(method=="delete.confirm"&&!string(p,"acknowledgement",64))) {reply(invalid(),{});return;}
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
@@ -404,7 +410,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open History page: filters, selection and the compact details view.
  if(method=="ui.history") {
-  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","finishShareLink","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
+  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","finishShareLink","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading","removeFromHistoryOnly"};const auto action=p["action"].toString();
   static const QStringList filterKeys{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus","exactRemoteStatus","includeCanceled"};
   // Each parameter belongs to exactly the actions that take it.
   if(!fields(p,{"action"},{"scope","ids","page","key","value","category","view"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))

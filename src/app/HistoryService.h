@@ -14,6 +14,9 @@ public:
  // Makes the item's missing image or video preview (#190); see OperationService::makePreview.
  void preview(const QString&,JsonReply,bool retry=false);
  void clear(JsonReply);
+ // Remove from History only (#1759): these records leave History; the files and any deletion or
+ // sharing in progress for them are untouched. Answers {removed}.
+ void forget(const QStringList& ids,JsonReply);
  void copyImage(const QString&,JsonReply);
  void unlockLinkCredentials(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
@@ -44,7 +47,10 @@ signals:
 private:
  QJsonObject copyableLink(const QString&,Error&);
  void notifyChanged();
- QJsonObject prepare(const QStringList&,Error&) const;
+ QJsonObject prepare(const QStringList&,const QJsonArray& profiles,Error&) const;
+ // Marks an uploaded record (and its grouped records) whose destination was removed from
+ // Settings with nothing at the same place: destinationRemoved true (#1759).
+ static void markRemovedDestinations(QJsonObject& record,const QJsonArray& profiles);
  void expireConfigured();
  void recordStoppedSharing(QJsonObject,const Error&);
  void runSharing(QJsonObject,std::shared_ptr<std::atomic_bool>);

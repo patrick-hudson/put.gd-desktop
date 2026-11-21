@@ -378,6 +378,20 @@ Error HistoryStore::clear() {
  const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  if(!q.exec("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+retained)||!q.exec("DELETE FROM history"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
+// Remove from History only (#1759): as clear(), for these records alone.
+Error HistoryStore::forget(const QStringList& ids,int* removed) {
+ if(error_)return error_;
+ if(!db_.transaction())return sqlError();
+ QSqlQuery q(db_);int count=0;bool ok=true;
+ const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
+ for(const auto& id:ids){
+  q.prepare("INSERT OR IGNORE INTO cleared_history SELECT id FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;
+  q.prepare("DELETE FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;count+=qMax(0,q.numRowsAffected());
+ }
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ if(removed)*removed=count;
+ return {};
+}
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"delete_not_found","Deletion not found",{}};return {};}return decode(q.value(0));}
 Error HistoryStore::saveDeletion(const QJsonObject& doc) {

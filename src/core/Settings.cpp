@@ -4,6 +4,7 @@
 #include "TextJobProtocol.h"
 #include "UploadNaming.h"
 #include <QDir>
+#include <algorithm>
 #include <QJsonArray>
 #include <QKeySequence>
 #include <QRegularExpression>
@@ -577,6 +578,28 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     }
     for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
     return settings;
+}
+QJsonObject Settings::profileForDestination(const QJsonObject& destination, const QJsonArray& profiles) {
+    const auto provider = destination["providerId"].toString(), id = destination["profileId"].toString();
+    const auto recorded = destination["settings"].toObject();
+    static const QHash<QString, QStringList> place{{"s3", {"endpoint", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
+                                                    {"backblaze-b2", {"apiUrl", "bucket"}}, {"proton-drive", {"accountRootUid", "folderUid"}},
+                                                    {"custom-http", {"requestUrl"}}};
+    const auto value = [](const QJsonObject& settings, const QString& key) {
+        auto text = settings[key].toString().trimmed();
+        if (key == "endpoint" || key == "apiUrl" || key == "requestUrl") { while (text.endsWith('/')) text.chop(1); text = text.toLower(); }
+        return text;
+    };
+    for (const auto& entry : profiles) if (entry.toObject()["id"].toString() == id && entry.toObject()["provider"].toString() == provider) return entry.toObject();
+    const auto keys = place.value(provider);
+    if (keys.isEmpty()) return {};
+    for (const auto& entry : profiles) {
+        const auto profile = entry.toObject();
+        if (profile["provider"].toString() != provider) continue;
+        const auto settings = profile["settings"].toObject();
+        if (std::all_of(keys.begin(), keys.end(), [&](const QString& key) { return !value(recorded, key).isEmpty() && value(recorded, key) == value(settings, key); })) return profile;
+    }
+    return {};
 }
 Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {
     const auto profiles = document["profiles"].toArray();

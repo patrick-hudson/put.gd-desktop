@@ -43,6 +43,8 @@ public:
  QStringList journaledOperations(Error* = nullptr) const;
  Error expireBefore(const QString& timestamp);
  Error clear(); // preserves any identities retained by in-progress deletion
+ // Removes these records from History the way clear() removes all of them (#1759).
+ Error forget(const QStringList& ids,int* removed=nullptr);
  Error saveDeletion(const QJsonObject&);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
  Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
