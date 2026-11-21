@@ -354,18 +354,27 @@ class PixelWitness(unittest.TestCase):
 
     def test_app_id_must_name_the_process(self):
         with patch.object(probe, 'executable', return_value=['dolphin']):
-            self.assertTrue(probe.app_id_names('org.kde.dolphin', 1))
-            self.assertFalse(probe.app_id_names('firefox', 1))
-            self.assertFalse(probe.app_id_names('', 1))
+            # PID 0 has no /proc entry, so only the mocked executable is consulted.
+            self.assertTrue(probe.app_id_names('org.kde.dolphin', 0))
+            self.assertFalse(probe.app_id_names('firefox', 0))
+            self.assertFalse(probe.app_id_names('', 0))
         import os
+        import select
         import subprocess
-        kiosk = subprocess.Popen(['sleep', '30'], env=dict(os.environ, MOZ_APP_REMOTINGNAME='putgdsurfacexyz'))
+        import sys
+        # The child reports from its own code once it runs, so its environment is in
+        # place before /proc/<pid>/environ is read (a fresh exec can show it late).
+        kiosk = subprocess.Popen([sys.executable, '-c', 'import sys, time; sys.stdout.write("r"); sys.stdout.flush(); time.sleep(30)'],
+                                 stdout=subprocess.PIPE, env=dict(os.environ, MOZ_APP_REMOTINGNAME='putgdsurfacexyz'))
         try:
+            ready, _, _ = select.select([kiosk.stdout], [], [], 10)
+            self.assertTrue(ready and kiosk.stdout.read(1) == b'r', 'the child never started')
             self.assertTrue(probe.app_id_names('putgdsurfacexyz', kiosk.pid))
             self.assertFalse(probe.app_id_names('putgdsurfaceother', kiosk.pid))
         finally:
             kiosk.kill()
             kiosk.wait()
+            kiosk.stdout.close()
 
     def test_output_rectangles_are_logical(self):
         outputs = [{'name': 'Virtual-1', 'enabled': True, 'position': {'x': 0, 'y': 0}, 'scale': 2.0, 'transform': 'normal',
