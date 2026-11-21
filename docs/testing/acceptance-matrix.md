@@ -607,10 +607,11 @@ Each resident runs with private `XDG_CONFIG_HOME`,
       older), with no prompt.
 - **U7. AppImage in-app update N → N+1**, through Settings → **Download and install** with a real click
   on at least one desktop, and `update.install` elsewhere:
-  - **zsync:** with the real `appimageupdatetool` on `PATH`. The mirror's `.zsync` is used and only the
-    changed blocks are fetched.
-  - **The fallback, forced once per desktop:** a crashing `appimageupdatetool` on `PATH`, so the verified
-    full download is taken and `zsync.fallbackReason` names the crash.
+  - **zsync:** put.gd's own client, with no `appimageupdatetool` installed. The mirror's `.zsync` is
+    used, `install.result.zsync.used` is true and `downloadedBytes` is a small part of the image.
+  - **The fallback, forced once per desktop:** `PUTGD_UPDATE_MIRROR_URL` at a loopback stand-in that
+    answers Range requests with the whole file, so the verified full download is taken and
+    `zsync.fallbackReason` is `range_refused`.
   - The new image is on the same path, with its mode kept. **Restart put.gd** runs N+1, and the hidden
     backup is gone after that first start.
   - **One runtime, one mount after restart (#1165):** record the old runtime PID, its
