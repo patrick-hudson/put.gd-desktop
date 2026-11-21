@@ -88,6 +88,22 @@ private slots:
    HistoryStore reopened(path);QVERIFY(!reopened.error());const auto restored=reopened.operation("op");QCOMPARE(restored.items[0].remoteStatus,QString("removed"));QVERIFY(!restored.items[0].linkAvailable());
   }
  }
+ // #1759: Remove from History only and a deletion's retry never overlap. A "target" alone sent
+ // nothing; a "phase" may have. A retry leaves out a record already removed and retains the rest.
+ void removeFromHistoryOnlyAndRetryNeverOverlap() {
+  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());
+  for(const auto* id:{"sent-nothing","may-have-sent","unsupported"}){OperationItem item;item.artifact.id=id;item.artifact.name=QString(id)+".png";item.uploadStatus="uploaded";op.items.append(item);}
+  QVERIFY(!store.saveOperation(op));
+  const auto target=[](const QString& id,const QString& status,const QJsonObject& progress){return QJsonObject{{"historyId",id},{"status",status},{"progress",progress}};};
+  QJsonObject doc{{"id","delete"},{"state","completed"},{"items",QJsonArray{target("sent-nothing","failed",{{"schemaVersion",1},{"target",QJsonObject{}}}),target("may-have-sent","unknown",{{"schemaVersion",1},{"phase","delete_intent"}}),target("unsupported","unsupported_safe_removal",{})}}};
+  QVERIFY(!store.saveDeletion(doc));
+  QCOMPARE(store.forgetBlocker("sent-nothing",{}),QString());QCOMPARE(store.forgetBlocker("may-have-sent",{}),QString("deletion"));
+  int removed=-1;QVERIFY(!store.forget({"sent-nothing","may-have-sent"},{},&removed));QCOMPARE(removed,1);
+  doc["state"]="running";QVERIFY(!store.startDeletion(doc));
+  QCOMPARE(doc["forgotten"].toArray(),QJsonArray{"sent-nothing"});QCOMPARE(doc["items"].toArray().size(),2);
+  QCOMPARE(store.forgetBlocker("unsupported",{}),QString("deletion"));
+  QVERIFY(!store.forget({"unsupported"},{"delete"},&removed));QCOMPARE(removed,0);
+ }
  void knownRemovalSurvivesClearAndExpiry() {
   for(bool expire:{false,true}) {
    QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.restore(OperationState::Completed);op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/removed";op.items={item};
