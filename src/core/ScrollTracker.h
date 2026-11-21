@@ -382,25 +382,29 @@ class ScrollTracker {
     bool keptTile(size_t i) const { return inf[i] > 0 && 2 * agree[i] >= inf[i]; }
   };
 
-  void computeExcluded(const Signature& cur, const Signature& ref);
+  void computeExcluded(const Signature& cur, const Signature& ref, long long refPos);
+  void refreshRefIncl(long long refPos);
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
   void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
   void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
                       long long from, Tally& t) const;
-  void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const;
+  void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1,
+             bool allowAllMovingCols = false) const;
   bool stillTile(size_t i) const;
   bool boxed(const Candidate& c) const;
   int texturedRowCount(const Signature& sig) const;
   double coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
                      const std::vector<uint16_t>& incl) const;
   void searchPass(const Signature& cur, const Signature& ref, int expected, const std::vector<uint16_t>& incl,
-                  std::vector<Candidate>& out) const;
+                  std::vector<Candidate>& out, double floorOverride = -1.0) const;
   double storeCoarseShare(const Signature& cur, long long pos, double abortBelow) const;
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
-  bool stillFrame(const Signature& cur, const Signature& ref, double* share) const;
-  std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected) const;
+  // redrawn: not still, yet the same picture drawn anew in place (see kRedrawTolerance).
+  bool stillFrame(const Signature& cur, const Signature& ref, double* share, bool* redrawn = nullptr) const;
+  std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected,
+                                    double floorOverride = -1.0) const;
   std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,
                                      size_t maxPeaks) const;
   // The slice of the image a lost frame looks through after the near window,
@@ -408,11 +412,15 @@ class ScrollTracker {
   static constexpr long long kSweepRows = 4096;
   long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
-             bool* byExpectation, SkipReason* why) const;
+             bool* byExpectation, SkipReason* why, int* unexplainedPick = nullptr) const;
+  bool observeDynamic(const Signature& cur, const Signature& other, long long curPos, long long otherPos,
+                      const std::vector<Candidate>* cands, int pick, bool verifyAgreement);
+  void snapshotDynamic(const FrameView& frame, long long pos, const Signature& cur, const Signature& ref, int d);
+  const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d) const;
-  double selfRepeat(const Signature& sig, int y0, int y1) const;
+  double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const;
   // Frames skipped since the last placed frame (a frame that only stood
   // still while nothing was proved does not end the count).
   int skipsSincePlaced_ = 0;
@@ -435,12 +443,13 @@ class ScrollTracker {
   void compose(const FrameView& frame, const Signature& cur, const Signature* ref, int d, long long pos,
                TrackResult& r);
   struct FrameCopy {
-    std::vector<uint8_t> px;     // the frame's pixels, where tag says so
-    std::vector<uint32_t> tag;   // per block: the serial of the copy that wrote it
+    std::vector<uint8_t> px;       // the frame's pixels, where tag says so
+    std::vector<uint32_t> tag;     // per block: the serial of the copy that wrote it
+    std::vector<uint16_t> bands;   // full-frame band values when all blocks were kept
     uint32_t serial = 0;
     long long pos = 0;
   };
-  void keepCopy(const FrameView& frame, FrameCopy& copy, long long pos, bool all, int fromRow);
+  void keepCopy(const FrameView& frame, const Signature& cur, FrameCopy& copy, long long pos, bool all, int fromRow);
   void placeFrame(const FrameView& frame, Signature& cur, const Signature* ref, int d, long long pos,
                   TrackResult& r);
   // Pinned parts that move again (#1538): a column that sticks beside the
@@ -492,6 +501,13 @@ class ScrollTracker {
   int blockRowCount_ = 0;
   std::unique_ptr<Signature> last_;           // the last placed frame's signatures
   std::unique_ptr<Signature> work_;           // the incoming frame's
+  // The immediately preceding incoming frame's signature and its page position
+  // (placed, still, or a strong candidate refused only by contradiction /
+  // unexplained tiles): proves live changing content across consecutive frames
+  // (#1537). When prevIsLast_ is true, last_ already holds that frame.
+  std::unique_ptr<Signature> prev_;
+  long long prevPos_ = 0;
+  bool prevIsLast_ = false, prevHasPos_ = false, prevViewMoved_ = false;
   long long lastPos_ = 0;
   long long top_ = 0, bottom_ = 0;            // extent written
   // Expectation: the last movement per frame, and the hints since the last
@@ -504,6 +520,30 @@ class ScrollTracker {
   int skipRun_ = 0;
   // The pinned mask, per block: steps it stayed, steps it moved, pinned.
   std::vector<uint8_t> stayed_, wandering_, pinned_, closed_, stillNow_;
+  // Page position span [min, max] seen while wandering_ > 0, so an in-page
+  // playing video scrolled slowly or back and forth through the page's area
+  // cannot build up pinning evidence until the page actually moves a full
+  // frame height across it (#1537).
+  std::vector<long long> wanderingMinPos_, wanderingMaxPos_, wanderingEdgePos_;
+  // Whether the current wandering_ episode overlapped a confirmed scrolling
+  // page column (remembered until wandering_ resets so margin edges of a
+  // full-width in-page video keep page membership as the video scrolls past),
+  // and consecutive learn() steps a wandering block sat directly beside
+  // cleanly moving text (stationary edge -> fixed floating overlay, not page).
+  std::vector<uint8_t> wanderingPage_, wanderingEdge_;
+  // Blocks that have shown textured motion with the page (`move >= 3`), never
+  // expiring while scrolling back and forth over an in-page video (#1537).
+  std::vector<uint8_t> pageMoved_;
+  // Best single-frame snapshot written for each dynamic page region (#1537).
+  struct DynSnap {
+    long long p0 = 0, p1 = 0;
+    int k0 = 0, k1 = 0;
+    long long coveredCells = 0;
+    uint8_t settledCount = 0;
+    std::vector<uint16_t> bands;  // saved band values over [p0, p1) x [k0, k1]
+  };
+  bool hasDyn_ = false;
+  std::vector<DynSnap> dynSnaps_;
   // Colours behind the text that moved with the page, by bin, over every pair learned from.
   std::array<uint64_t, 256> behindSeen_{};
   // What a placed frame does not offer the image: pinned or stood still in
@@ -513,6 +553,9 @@ class ScrollTracker {
   // that vote (not pinned, not standing still since the last placed frame).
   std::vector<int> bandLo_;
   std::vector<uint16_t> bandIncl_, cellIncl_;
+  // For the reference frame (last_, at lastPos_): bandIncl_ and cellIncl_ with
+  // page bands already recognized as dynamic (#1537) masked out.
+  std::vector<uint16_t> refBandIncl_, refCellIncl_;
   // The closed mask as 16-bit lanes: per block row, per cell and per band;
   // the excluded rectangle is in them too.
   std::vector<uint16_t> closed16_, bandPinned16_;
