@@ -196,20 +196,23 @@ void ErrorLogPage::populate() {
  pageText_->setText(total_==0?QString{}:QStringLiteral("%1–%2 of %3 · %4 open").arg(offset_+1).arg(offset_+entries_.size()).arg(total_).arg(session_.errorLog()["unresolved"].toInt()));
  newer_->setEnabled(offset_>0);older_->setEnabled(offset_+pageSize<total_);newer_->setVisible(total_>pageSize);older_->setVisible(total_>pageSize);
  clear_->setEnabled(total_>0||session_.errorLog()["total"].toInt()>0);
- if(!keep.isEmpty())select(keep,false);
+ // A pending link is shown as the link; otherwise the page keeps its row after a reload.
+ if(!wanted_.isEmpty())select(wanted_,Link);else if(!keep.isEmpty())select(keep,Reselect);
  else if(entries_.isEmpty()){selected_={};details_->hide();}
 }
-void ErrorLogPage::select(const QString& id,bool supersede) {
+void ErrorLogPage::select(const QString& id,Selection kind) {
  for(int row=0;row<table_->topLevelItemCount();++row)if(table_->topLevelItem(row)->data(0,IdRole).toString()==id){const QSignalBlocker block(table_);table_->setCurrentItem(table_->topLevelItem(row));table_->scrollToItem(table_->topLevelItem(row));break;}
  // Each selection, by click, link or agent, supersedes the replies of the ones before it; the
  // page reselecting its row after a reload does not.
- const auto ticket=supersede?++selection_:selection_;
+ const auto ticket=kind==User?++selection_:selection_;
+ if(kind==Link&&wanted_!=id)return;
  for(const auto& value:entries_)if(value.toObject()["id"]==id){wanted_.clear();showDetails(value.toObject());return;}
  // Not on this page (an older entry, or one a filter hides): read it on its own.
- session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket,supersede](Error e,QJsonObject entry){
+ session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket,kind,id](Error e,QJsonObject entry){
   // A reload's own reselection never displaces a link that is still on its way.
-  if(!g||g->selection_!=ticket||(!supersede&&!g->wanted_.isEmpty()))return;
-  if(supersede)g->wanted_.clear();
+  // A reload's reselection never displaces a link still on its way; the link's own reply shows it.
+  if(!g||g->selection_!=ticket||(kind==Reselect&&!g->wanted_.isEmpty())||(kind==Link&&g->wanted_!=id))return;
+  if(kind!=Reselect)g->wanted_.clear();
   if(e){g->selected_={};g->details_->hide();return;}
   g->showDetails(entry);
  });

@@ -36,7 +36,10 @@ protected:
 private:
  void load(std::function<void(Error)> done={});
  void populate();
- void select(const QString& id,bool supersede=true);
+ // User: a click or agent select (supersedes earlier replies). Link: the pending link target
+ // (wanted_) after its page loaded. Reselect: the page keeping its row after a reload.
+ enum Selection {User,Link,Reselect};
+ void select(const QString& id,Selection kind=User);
  void showDetails(const QJsonObject& entry);
  void runStep(const QString& step,std::function<void(Error,QJsonObject)> done={});
  void openClear(bool resolvedOnly);

@@ -1,5 +1,6 @@
 #include "ErrorLog.h"
 #include "core/Log.h"
+#include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QPointer>
 #include <QUuid>
@@ -68,7 +69,12 @@ bool ErrorLog::userFacing(const Error& error) {
  if(code.isEmpty()||protocol.contains(code)||code.endsWith("_busy")||code.startsWith("ui_")||code=="cancelled"||code=="copy_suppressed")return false;
  return true;
 }
-QString ErrorLog::subjectKey(const QString& subject) {return logging::redact(subject).left(512);}
+// A subject is matched by its digest: stable across restarts, distinct for distinct subjects,
+// and never the caller's text, which may hold anything an ID can.
+QString ErrorLog::subjectKey(const QString& subject) {
+ if(subject.isEmpty())return {};
+ return QString::fromLatin1(QCryptographicHash::hash(subject.toUtf8(),QCryptographicHash::Sha256).toHex());
+}
 QString ErrorLog::destinationLabel(const QString& profileId,const QString& provider) const {
  if(!profileId.isEmpty()){const auto profile=operations_.settingsSnapshot().profiles.value(profileId);if(!profile["label"].toString().isEmpty())return profile["label"].toString();}
  return providerName(provider);

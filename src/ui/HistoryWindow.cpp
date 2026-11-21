@@ -1910,7 +1910,7 @@ void HistoryWindow::pollDeletion(){
    Ui::feedback(g->status_,progress.isEmpty()?QStringLiteral("Deleting from the destination…"):progress.join("\n"));
   }else{
    g->deletionTimer_->stop();g->deletionId_.clear();
-   if(std::exchange(g->deletionProgressShown_,false))Ui::feedback(g->status_,{});
+   if(std::exchange(g->deletionProgressShown_,false)&&g->status_->text().startsWith("Deleting "))Ui::feedback(g->status_,{});
    // A deletion that had already ended when History opened says nothing: the item's own
    // row and inspector show its state, and the error log keeps what went wrong.
    if(std::exchange(g->deletionAnnounce_,false)){
