@@ -50,6 +50,8 @@ public:
  // Every recognized word, unfiltered, with what touches a Redact mark dropped (Quick redact).
  const QList<editor::RecognizedWord>& candidates() const {return candidates_;}
  bool truncated() const {return truncated_;}
+ // Languages asked for that had no data (#1804: the sensitive text check reads that as unfinished).
+ QStringList languagesSkipped() const {return languagesSkipped_;}
  // The Copy all text clipboard text: the words by line with each text code
  // on a line of its own (textjob::copyText's rule), rebuilt from what is left.
  QString allText() const;
@@ -86,7 +88,7 @@ private:
  editor::TextLayer layer_;
  QList<editor::RecognizedWord> candidates_;
  QList<int> lineTops_;
- bool truncated_=false,active_=false,restart_=false;
+ bool truncated_=false,active_=false,restart_=false;QStringList languagesSkipped_;
  QString state_="idle";Error error_;
  QByteArray signature_;quint64 revision_=1,jobRevision_=0,nextIdentity_=1;
  TextJob::Cancel cancel_;

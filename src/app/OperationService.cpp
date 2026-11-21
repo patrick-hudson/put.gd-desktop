@@ -141,7 +141,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  scrollHost.accept=[this](Operation& op){return acceptScroll(op);};
  scrollHost.admit=[this,admit=host.admit](Operation op,ClipboardPayload payload,std::function<void()> released){
   if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);startEditing(op,active_.value(op.id),std::move(payload));}
-  else admit(op,std::move(payload),std::move(released));
+  // One scrolling capture at a time: the mode is the one its invoke or scroll.prepare set (#1804).
+  else {if(!sensitiveModes_.contains(op.id))sensitiveModes_.insert(op.id,scrollSensitiveMode_);admit(op,std::move(payload),std::move(released));}
  };
  scroll_=std::make_unique<ScrollCaptureService>(root_+"/scroll",std::move(scrollHost),this);
  TextService::Host textHost;
@@ -702,6 +703,7 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   // With Keep a local copy on, the capture is still kept, as Cancel keeps it.
   if(op.settings.archive.keepUploads&&op.state()!=OperationState::Editing&&(!job.payload.image.isNull()||!job.payload.bytes.isEmpty()||!job.payload.files.isEmpty())){
    logging::warning(logOperation(),"Sensitive text check failed; saving the capture locally only",{{"operationId",id},{"error",logging::errorFields(outcome->error)}});
+   op.note=QStringLiteral("Not uploaded: put.gd couldn't check it for sensitive text.");
    job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;
   }
   job.payload={};
@@ -850,7 +852,6 @@ void OperationService::setCaptureDelayPreference(int seconds) {
 // Recording shares the editor's exclusivity: one interactive private review at a time.
 Error OperationService::acceptScroll(Operation& op) {
  if(recording_->active())return {"recording_active","A recording is active",{}};
- sensitiveModes_.insert(op.id,scrollSensitiveMode_);
  const auto action=op.action;
  auto e=acceptRecording(op);if(e)return e;
  op.action=action;const auto route=op.settings.actions.value(action);op.destination={};

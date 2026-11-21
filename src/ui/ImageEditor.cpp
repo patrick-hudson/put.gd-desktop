@@ -208,17 +208,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
     return {{"decided",choice}};
    }
-   if(name=="raise"&&prompt){
-    const auto token=params["activationToken"].toString();
-    if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
-    putgd::activateWindow(prompt.get(),token);deferred=true;
-    whenActivated(prompt.get(),1500,[done](bool active){done(active?QJsonObject{{"raised",true}}:QJsonObject{{"raised",false},{"reason","activation_refused"}},{},{});});
-    return {};
-   }
    return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
   }
   // A decision already taken: a late one is answered, never fatal (#1804).
-  if(!window)return denied("editor_finalizing","The capture was already decided");
+  if(!window||name=="decide")return denied("editor_finalizing","The capture was already decided");
   const bool open=!terminal&&!finalizing;
   if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(window->copying()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","The image is still being copied");
@@ -432,6 +425,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(format.isEmpty()){refuse("source_unsupported");return;}
    QImageReader reader(&files.input,format);reader.setAutoDetectImageFormat(false);reader.setAutoTransform(true);
    const auto size=reader.size();
+   if((!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1)&&checkMode){deadline.stop();findings.complete=false;findings.reason="recognition_failed";checkRedact=false;checked();return;}
    if(!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1){refuse("source_unsupported");return;}
    const auto pixels=qint64(size.width())*size.height();
    // #1804: an image too large to read can't be checked, and that is said, never passed over.
@@ -459,9 +453,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     // Recognition and Quick redact on the hidden editor, with the editor's own helper, deadline and limits.
     checking=true;
     // Adding the marks starts a new recognition revision, which clears the result: read whether it was cut first.
-    auto truncated=std::make_shared<bool>(false);
-    window->text().whenRecognized([&,truncated](Error error){if(!error)*truncated=window->text().truncated();});
-    window->quickRedact(checkCategories,[&,truncated](Error error,QJsonObject result){
+    auto truncated=std::make_shared<bool>(false);auto languageMissing=std::make_shared<bool>(false);
+    window->text().whenRecognized([&,truncated,languageMissing](Error error){if(!error){*truncated=window->text().truncated();*languageMissing=!window->text().languagesSkipped().isEmpty();}});
+    window->quickRedact(checkCategories,[&,truncated,languageMissing](Error error,QJsonObject result){
      checking=false;if(terminal)return;
      findings={};
      const auto counts=result["counts"].toObject();
@@ -470,6 +464,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      if(error){findings.complete=false;findings.reason=unavailable.contains(error.code)?QStringLiteral("unavailable"):QStringLiteral("recognition_failed");}
      else if(*truncated){findings.complete=false;findings.reason="truncated";}
      else if(result["unfinished"].toBool()){findings.complete=false;findings.reason="matching_unfinished";}
+     else if(*languageMissing){findings.complete=false;findings.reason="language_missing";}
      else if(!result["skippedPatterns"].toArray().isEmpty()){findings.complete=false;findings.reason="patterns_skipped";}
      else if(result["nameUnchecked"].toBool()){findings.complete=false;findings.reason="name_unchecked";}
      // Nothing found, all of it read: the upload goes ahead as if there were no check.
