@@ -9,6 +9,7 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QDeadlineTimer>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -19,7 +20,9 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <algorithm>
+#include <climits>
 #include <cstdio>
 #include <cstring>
 namespace putgd {
@@ -32,11 +35,11 @@ constexpr qint64 maximumControlBytes=8*1024*1024;
 void printLine(const QJsonObject& object) {
  const auto bytes=QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n';std::fwrite(bytes.constData(),1,bytes.size(),stdout);std::fflush(stdout);
 }
-struct Transfer {int status=0;QString network;bool tooLarge=false,ok=false;qint64 bytes=0;};
-// One GET (or HEAD). With a sink the body streams into it and into hash;
-// without one it is returned. limit bounds the body.
+struct Transfer {int status=0;QString network;bool tooLarge=false,timedOut=false,ok=false;qint64 bytes=0;};
+// One GET. With a sink the body streams into it and into hash; without one it
+// is returned. limit bounds the body; past deadline the request is aborted.
 QByteArray fetch(QNetworkAccessManager& network,const QUrl& url,qint64 limit,QIODevice* sink,QCryptographicHash* hash,
-                 const std::function<void(qint64,qint64)>& progress,Transfer& transfer,bool head=false) {
+                 const std::function<void(qint64,qint64)>& progress,Transfer& transfer,const QDeadlineTimer& deadline=QDeadlineTimer(QDeadlineTimer::Forever)) {
  QNetworkRequest request(url);
  request.setHeader(QNetworkRequest::UserAgentHeader,"put.gd-update/1");
  request.setAttribute(QNetworkRequest::CookieLoadControlAttribute,QNetworkRequest::Manual);
@@ -47,7 +50,10 @@ QByteArray fetch(QNetworkAccessManager& network,const QUrl& url,qint64 limit,QIO
  request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::NoLessSafeRedirectPolicy);
  request.setMaximumRedirectsAllowed(5);request.setTransferTimeout(stallTimeoutMs);
  QEventLoop loop;QByteArray body;
- auto* reply=head?network.head(request):network.get(request);
+ auto* reply=network.get(request);
+ QTimer expiry;expiry.setSingleShot(true);
+ QObject::connect(&expiry,&QTimer::timeout,reply,[&]{transfer.timedOut=true;reply->abort();});
+ if(!deadline.isForever())expiry.start(int(qBound(qint64(0),deadline.remainingTime(),qint64(INT_MAX))));
  const auto drain=[&]{
   const auto chunk=reply->readAll();if(chunk.isEmpty())return;
   transfer.bytes+=chunk.size();
@@ -62,13 +68,13 @@ QByteArray fetch(QNetworkAccessManager& network,const QUrl& url,qint64 limit,QIO
  if(!reply->isFinished())loop.exec();
  if(reply->isOpen()&&!transfer.tooLarge)drain();
  transfer.status=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
- if(transfer.network.isEmpty()&&reply->error()!=QNetworkReply::NoError)transfer.network=reply->errorString().left(200);
- transfer.ok=!transfer.tooLarge&&transfer.network.isEmpty()&&transfer.status==200;
+ if(transfer.network.isEmpty()&&reply->error()!=QNetworkReply::NoError)transfer.network=networkErrorText(*reply);
+ transfer.ok=!transfer.tooLarge&&!transfer.timedOut&&transfer.network.isEmpty()&&transfer.status==200;
  reply->deleteLater();
  return body;
 }
 QJsonObject transferDetails(const QUrl& url,const Transfer& transfer) {
- return {{"url",url.toString()},{"httpStatus",transfer.status?QJsonValue(transfer.status):QJsonValue()},{"network",transfer.network.isEmpty()?QJsonValue():QJsonValue(transfer.network)},{"tooLarge",transfer.tooLarge}};
+ return {{"url",url.toString(QUrl::RemoveUserInfo|QUrl::RemoveQuery|QUrl::RemoveFragment)},{"httpStatus",transfer.status?QJsonValue(transfer.status):QJsonValue()},{"network",transfer.network.isEmpty()?QJsonValue():QJsonValue(transfer.network)},{"tooLarge",transfer.tooLarge}};
 }
 }
 QJsonObject installUpdate(const update::Build& build,const InstallOptions& options,const std::function<void(const QJsonObject&)>& emitLine,Error& error) {
@@ -162,15 +168,21 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  qint64 downloaded=0,reused=0;
  if(options.method!="download") {
   QElapsedTimer took;took.start();
+  // One deadline from the .zsync's request to the last range.
+  const QDeadlineTimer deadline(options.zsyncTimeoutMs);
   QString reason;QJsonObject details;zsync::Control control;
   zsync={{"used",false},{"reusedBytes",0},{"downloadedBytes",0},{"controlBytes",0},{"requests",0},{"ranges",0}};
   Error urlError;const auto controlUrl=update::mirrorFileUrl(tag,name+".zsync",urlError);const auto imageUrl=update::mirrorFileUrl(tag,name,urlError);
+  // The signed SHA256SUMS lists the .zsync too: nothing in it is trusted before it matches.
+  const auto controlSha256=appimage::sumsLine(sums,name+".zsync");
   if(urlError)reason="mirror_invalid";
+  else if(controlSha256.isEmpty())reason="control_unlisted";
   if(reason.isEmpty()) {
    progress("zsync","zsync",0,image.size,{{"step","reading"}});
-   Transfer transfer;const auto data=fetch(network,controlUrl,maximumControlBytes,nullptr,nullptr,{},transfer);
+   Transfer transfer;const auto data=fetch(network,controlUrl,maximumControlBytes,nullptr,nullptr,{},transfer,deadline);
    downloaded+=transfer.bytes;zsync["controlBytes"]=transfer.bytes;
-   if(!transfer.ok){reason=transfer.tooLarge?"control_too_large":"mirror_unavailable";details=transferDetails(controlUrl,transfer);}
+   if(!transfer.ok){reason=transfer.timedOut?"timeout":transfer.tooLarge?"control_too_large":"mirror_unavailable";details=transferDetails(controlUrl,transfer);}
+   else if(const auto actual=QString::fromLatin1(QCryptographicHash::hash(data,QCryptographicHash::Sha256).toHex());actual!=controlSha256){reason="control_sha256_mismatch";details={{"expected",controlSha256},{"actual",actual}};}
    // The .zsync must describe the file SHA256SUMS names.
    else if(zsync::parse(data,control,reason)&&(control.filename!=name||control.length!=size)){reason="control_mismatch";details={{"filename",control.filename},{"length",control.length}};}
   }
@@ -179,12 +191,12 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    zsync::Assembly assembly;zsync::Fetch fetched;
    if(!seed.open(QIODevice::ReadOnly|QIODevice::Unbuffered))reason="seed_unreadable";
    else if(!output.open(QIODevice::ReadWrite|QIODevice::Truncate)||!output.resize(size))reason="write_failed";
-   else if(zsync::reuse(control,seed,output,assembly,[&](qint64 bytes,qint64 total){progress("zsync","zsync",bytes,total,{{"step","reading"}});},reason)) {
+   else if(zsync::reuse(control,seed,output,assembly,deadline,[&](qint64 bytes,qint64 total){progress("zsync","zsync",bytes,total,{{"step","reading"}});},reason)) {
     reused=assembly.reusedBytes;zsync["reusedBytes"]=reused;
     const auto ranges=zsync::missing(control,assembly);zsync["ranges"]=qint64(ranges.size());
     const auto wanted=size-reused;
     progress("zsync","zsync",0,wanted,{{"step","fetching"},{"reused",reused}});
-    const bool ok=zsync::fetch(network,imageUrl,control,ranges,output,fetched,[&](qint64 bytes){progress("zsync","zsync",bytes,wanted,{{"step","fetching"},{"reused",reused}});},reason,details);
+    const bool ok=zsync::fetch(network,imageUrl,control,ranges,output,fetched,deadline,[&](qint64 bytes){progress("zsync","zsync",bytes,wanted,{{"step","fetching"},{"reused",reused}});},reason,details);
     downloaded+=fetched.downloadedBytes;zsync["downloadedBytes"]=fetched.downloadedBytes;zsync["requests"]=fetched.requests;
     if(ok&&!output.flush())reason="write_failed";
     output.close();

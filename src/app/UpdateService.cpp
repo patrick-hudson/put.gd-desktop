@@ -240,6 +240,16 @@ void UpdateService::installFinished(const QByteArray& last,const Error& failure)
  Error error=failure;QJsonObject result;
  if(reply["schemaVersion"]==1&&reply["ok"]==true){error={};result=reply["result"].toObject();}
  else if(reply["schemaVersion"]==1&&reply["ok"]==false){const auto e=reply["error"].toObject();error={e["code"].toString(),e["message"].toString(),e["details"].toObject()};}
+ // A child that was killed or died without a result left its staging folder,
+ // perhaps with a partly assembled image: it goes now, not at the next start,
+ // and the record only once it has, so a retry can't orphan it.
+ if(reply["schemaVersion"]!=1) {
+  auto state=appimage::readState(stateRoot_);
+  if(const auto staging=state.value("staging").toString();!staging.isEmpty()) {
+   if(appimage::removeStaging(staging)){state["staging"]=QJsonValue();appimage::writeState(stateRoot_,state);}
+   else logging::warning(logApp(),"Cannot remove the stopped update install's staging folder",{{"staging",staging}});
+  }
+ }
  installState_=appimage::readState(stateRoot_);
  install_["finishedAt"]=isoTime(now());
  if(error) {

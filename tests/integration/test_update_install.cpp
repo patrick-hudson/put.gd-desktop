@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QScopeGuard>
+#include <QSet>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
@@ -28,12 +29,15 @@ QByteArray read(const QString& path) {QFile file(path);return file.open(QIODevic
 // A loopback stand-in for app.put.gd's feed, the GitHub release and pkg.put.gd's
 // mirror. Range requests get a 206: one part, or multipart/byteranges as
 // CloudFront sends for several; ignoreRanges answers them with the whole file,
-// corruptRanges flips the first byte of every part.
+// corruptRanges flips the first byte of every part, trailingBytes streams that
+// much more past the closing boundary. A path in redirects answers 302 to its
+// location; one in stalls is never answered.
 class ReleaseServer final:public QObject {
  Q_OBJECT
 public:
  QHash<QByteArray,QByteArray> files;QList<QByteArray> requests,ranges;
- bool ignoreRanges=false,corruptRanges=false;
+ QHash<QByteArray,QByteArray> redirects;QSet<QByteArray> stalls;
+ bool ignoreRanges=false,corruptRanges=false;qint64 trailingBytes=0;
  ReleaseServer(){QVERIFY(server_.listen(QHostAddress::LocalHost));connect(&server_,&QTcpServer::newConnection,this,&ReleaseServer::accept);}
  QByteArray base() const {return "http://127.0.0.1:"+QByteArray::number(server_.serverPort());}
  bool requested(const QByteArray& line) const {for(const auto& r:requests)if(r.startsWith(line))return true;return false;}
@@ -47,6 +51,8 @@ private:
     QByteArray range;
     for(const auto& header:request->left(request->indexOf("\r\n\r\n")).split('\n'))if(header.toLower().startsWith("range:"))range=header.mid(6).trimmed();
     const auto parts=line.split(' ');const bool head=parts.value(0)=="HEAD";const auto path=parts.value(1);
+    if(stalls.contains(path))return;
+    if(redirects.contains(path)){socket->write("HTTP/1.1 302 Found\r\nLocation: "+redirects[path]+"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");socket->disconnectFromHost();return;}
     const auto found=files.constFind(path);
     QByteArray status=found==files.cend()?"404 Not Found":"200 OK",headers,body=found==files.cend()?QByteArray("missing"):*found;
     if(found!=files.cend()&&range.startsWith("bytes=")&&!ignoreRanges) {
@@ -60,7 +66,7 @@ private:
      else {
       headers="Content-Type: multipart/byteranges; boundary=CloudFront:TEST\r\n";body.clear();
       for(const auto& span:spans)body+="\r\n--CloudFront:TEST\r\nContent-Type: application/vnd.appimage\r\nContent-Range: "+contentRange(span)+"\r\n\r\n"+piece(span);
-      body+="\r\n--CloudFront:TEST--\r\n";
+      body+="\r\n--CloudFront:TEST--\r\n"+QByteArray(trailingBytes,'x');
      }
     }
     socket->write("HTTP/1.1 "+status+"\r\n"+headers+"Content-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+(head?QByteArray():body));
@@ -117,13 +123,18 @@ class UpdateInstallTest:public QObject {
   asset["sha256"]=feedSha.isEmpty()?hex(release):feedSha;
   server.files["/update/v1/nightly.json"]=QJsonDocument(QJsonObject{{"schema",1},{"channel","nightly"},{"release",QJsonObject{{"tag",tag},{"version","0.1.1-nightly.801"},
    {"assets",QJsonObject{{"appimage",asset}}}}}}).toJson();
-  const auto sums=(hex(release)+"  "+name+"\n"+hex("zsync")+"  "+name+".zsync\n").toUtf8();
+  server.files["/release/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
+  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
+  serveControl(server,release,zsyncmake(release,name));
+  qputenv("PUTGD_UPDATE_FEED_URL",server.base()+"/update/v1");qputenv("PUTGD_UPDATE_RELEASE_URL",server.base()+"/release");qputenv("PUTGD_UPDATE_MIRROR_URL",server.base()+"/mirror");
+ }
+ // The mirror's .zsync, and the signed SHA256SUMS listing release and (unless
+ // unlisted) that .zsync.
+ void serveControl(ReleaseServer& server,const QByteArray& release,const QByteArray& control,bool listed=true) {
+  const auto sums=(hex(release)+"  "+name+"\n"+(listed?hex(control)+"  "+name+".zsync\n":QString())).toUtf8();
   server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=sums;
   server.files["/mirror/"+tag.toUtf8()+"/SHA256SUMS.minisig"]=signer_.signature(sums,"put.gd "+tag.toUtf8()+" nightly");
-  server.files["/release/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
-  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"]=zsyncmake(release,name);
-  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
-  qputenv("PUTGD_UPDATE_FEED_URL",server.base()+"/update/v1");qputenv("PUTGD_UPDATE_RELEASE_URL",server.base()+"/release");qputenv("PUTGD_UPDATE_MIRROR_URL",server.base()+"/mirror");
+  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"]=control;
  }
  InstallOptions options(const QString& method="auto") const {
   InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();
@@ -214,22 +225,36 @@ private slots:
    cleanup();
   }
  }
- // A server that answers ranges with the whole file or sends wrong bytes, a
- // .zsync put.gd can't use, one whose SHA-1 is another file's, and none at
- // all: each falls back to the whole download, with the reason.
+ // A server that answers ranges with the whole file, sends wrong bytes or
+ // keeps sending, a .zsync the signed SHA256SUMS doesn't list or doesn't match,
+ // one put.gd can't use, one whose SHA-1 is another file's, one that builds a
+ // file SHA256SUMS doesn't name, none at all, and one that never arrives: each
+ // falls back to the whole download, with the reason.
  void aZsyncThatCantFinishFallsBackToTheDownload(){
   const auto control="/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync";
+  const auto recompressed=QByteArray(zsyncmake(next_,name)).replace("\nSHA-1:","\nSafe: Recompress\nRecompress: 1f8b0800 0\nSHA-1:");
+  // Another file of the same length, with its own .zsync, listed and served.
+  auto other=next_;other[150000]=char(other[150000]^1);
   const QList<std::pair<QString,std::function<void(ReleaseServer&)>>> cases{
    {"range_refused",[](ReleaseServer& server){server.ignoreRanges=true;}},
    {"range_checksum",[](ReleaseServer& server){server.corruptRanges=true;}},
-   {"bad_header",[&](ReleaseServer& server){server.files[control]="zsync";}},
-   {"unsupported_hash_lengths",[&](ReleaseServer& server){server.files[control]=zsyncmake(next_,name,1024,"3,2,5");}},
-   {"sha1_mismatch",[&](ReleaseServer& server){server.files[control]=zsyncmake(next_,name,1024,"2,2,5",QByteArray(40,'0'));}},
-   {"mirror_unavailable",[&](ReleaseServer& server){server.files.remove(control);}}};
+   {"range_too_large",[](ReleaseServer& server){server.trailingBytes=1<<20;}},
+   {"control_unlisted",[&](ReleaseServer& server){serveControl(server,next_,zsyncmake(next_,name),false);}},
+   {"control_sha256_mismatch",[&](ReleaseServer& server){server.files[control]=zsyncmake(next_,name,2048);}},
+   {"bad_header",[&](ReleaseServer& server){serveControl(server,next_,"zsync");}},
+   {"unsupported_hash_lengths",[&](ReleaseServer& server){serveControl(server,next_,zsyncmake(next_,name,1024,"3,2,5"));}},
+   // 2^32+2 would be 2 once narrowed to int.
+   {"unsupported_hash_lengths",[&](ReleaseServer& server){serveControl(server,next_,zsyncmake(next_,name,1024,"4294967298,2,5"));}},
+   {"unsupported_header",[&](ReleaseServer& server){serveControl(server,next_,recompressed);}},
+   {"sha1_mismatch",[&](ReleaseServer& server){serveControl(server,next_,zsyncmake(next_,name,1024,"2,2,5",QByteArray(40,'0')));}},
+   {"verification_failed:sha256",[&](ReleaseServer& server){serveControl(server,next_,zsyncmake(other,name));server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()]=other;}},
+   {"mirror_unavailable",[&](ReleaseServer& server){server.files.remove(control);}},
+   {"timeout",[&](ReleaseServer& server){server.stalls.insert(control);}}};
   for(const auto& [reason,breakIt]:cases) {
    init();
    ReleaseServer server;publish(server,next_);breakIt(server);
-   Error error;const auto result=installUpdate(build(),options(),{},error);
+   auto o=options();if(reason=="timeout")o.zsyncTimeoutMs=300;
+   Error error;const auto result=installUpdate(build(),o,{},error);
    QVERIFY2(!error,qPrintable(reason+": "+error.message));
    QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),reason);QCOMPARE(result["zsync"].toObject()["used"].toBool(),false);
    QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(read(image()),next_);QCOMPARE(leftovers().size(),1);
@@ -241,6 +266,20 @@ private slots:
   Error error;installUpdate(build(),options("zsync"),{},error);
   QCOMPARE(error.code,QString("update_zsync_failed"));QCOMPARE(error.details["zsync"].toObject()["fallbackReason"].toString(),QString("range_refused"));
   QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
+ }
+ // Qt's error text names the URL it fetched; a redirect's signed URL carries
+ // a token in its query, which must not reach update.status or the log.
+ void aRedirectsTokenNeverReachesTheErrorDetails(){
+  ReleaseServer server;publish(server,next_);
+  const auto signedUrl=server.base()+"/signed/asset?token=SECRET123&X-Amz-Signature=SECRET456";
+  for(const auto& path:{"/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync","/mirror/"+tag.toUtf8()+"/"+name.toUtf8(),"/release/"+tag.toUtf8()+"/"+name.toUtf8()})server.redirects[path]=signedUrl;
+  for(const QString method:{"zsync","download"}) {
+   Error error;installUpdate(build(),options(method),{},error);
+   QCOMPARE(error.code,method=="zsync"?QString("update_zsync_failed"):QString("update_download_failed"));
+   const auto details=QJsonDocument(error.details).toJson()+error.message.toUtf8();
+   QVERIFY2(details.contains("/signed/asset"),details.constData());QVERIFY2(!details.contains("SECRET"),details.constData());
+   QCOMPARE(read(image()),old_);
+  }
  }
  void aTamperedDownloadIsRefusedAndNothingChanges(){
   ReleaseServer server;auto tampered=next_;tampered[tampered.size()-1]='X';publish(server,tampered);

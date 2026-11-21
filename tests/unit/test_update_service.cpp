@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/SystemUpdates.h"
 #include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -380,9 +381,14 @@ private slots:
   const auto install=updates->status()["install"].toObject();
   QCOMPARE(install["error"].toObject()["code"].toString(),QString("update_verification_failed"));QCOMPARE(install["restartRequired"].toBool(),false);
   Error error;updates->restart({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_restart_unavailable"));
-  // A child that dies without a result is a failure too.
+  // A child that dies without a result is a failure too, and its staging
+  // folder (a partly assembled image) goes with it.
+  const auto staging=dir.filePath(".putgd-update-Ab12Cd");QVERIFY(QDir().mkpath(staging));
+  {QFile part(staging+"/putgd.AppImage");QVERIFY(part.open(QIODevice::WriteOnly));part.write("partial");}
+  QVERIFY(appimage::writeState(dir.path(),{{"staging",staging}}));
   answerLines({},9);updates->install({{"confirm",true}},[](Error,QJsonObject){});
   PUTGD_TRY_COMPARE(updates->status()["install"].toObject()["error"].toObject()["code"].toString(),QString("update_install_failed"));
+  QVERIFY(!QFileInfo::exists(staging));QVERIFY(appimage::readState(dir.path())["staging"].isNull());
  }
  void onlyAnAppImageOnItsOwnChannelInstalls(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);

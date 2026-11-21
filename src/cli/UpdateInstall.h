@@ -33,6 +33,12 @@ struct InstallOptions {
  // The minisign key SHA256SUMS must be signed with, by channel; a channel
  // without one uses the release key compiled in (tests pass their own).
  QHash<QString,QByteArray> publicKeys;
+ // How long the zsync update may take, from the .zsync's request through the
+ // seed scan and the last range, before it falls back. The resident kills the
+ // whole child after an hour (UpdateService::installTimeoutMs); 15 minutes
+ // leaves 45 for the whole file, which a 64 KB/s link still manages. Tests
+ // pass a shorter one.
+ int zsyncTimeoutMs=15*60*1000;
  // Who owns the image and whether its folder can be written; empty asks the
  // system (tests pass their own).
  appimage::Access access;

@@ -1,4 +1,5 @@
 #include "Zsync.h"
+#include "UpdateCheck.h"
 #include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFile>
@@ -8,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QTimer>
 #include <algorithm>
+#include <climits>
 #include <bit>
 #include <cstring>
 #include <memory>
@@ -47,8 +49,8 @@ bool contentRange(const QByteArray& header,qint64 length,qint64& first,qint64& l
 constexpr qint64 maximumHeaderBytes=64*1024,partHeaderBytes=8*1024;
 // Runs per Range request and requests in flight.
 constexpr int maximumRanges=32,parallelRequests=4;
-// No bytes for this long ends a request; the whole fetch ends after deadlineMs.
-constexpr int stallMs=60000,deadlineMs=15*60*1000;
+// No bytes for this long ends a request.
+constexpr int stallMs=60000;
 }
 
 bool parse(const QByteArray& data,Control& control,QString& reason) {
@@ -61,6 +63,9 @@ bool parse(const QByteArray& data,Control& control,QString& reason) {
   if(colon<=0){reason="bad_header";return false;}
   const auto key=line.left(colon).trimmed();
   if(fields.contains(key)){reason="bad_header";return false;}
+  // A gzip-recompressed target (Recompress, Z-URL, Z-Map2...) is never
+  // supported, even when the file calls the field safe to ignore.
+  if(key=="Recompress"||key.startsWith("Z-")){reason="unsupported_header";return false;}
   fields.insert(key,line.mid(colon+1).trimmed());
  }
  // Fields this client doesn't know are refused unless the file lists them as
@@ -72,7 +77,7 @@ bool parse(const QByteArray& data,Control& control,QString& reason) {
  if(!fields.contains("zsync")){reason="bad_header";return false;}
  qint64 blocksize=0,length=0;
  if(!number(fields.value("Blocksize"),blocksize)||blocksize<512||blocksize>(1<<20)||(blocksize&(blocksize-1))
-    ||!number(fields.value("Length"),length)||length<=0){reason="bad_header";return false;}
+    ||!number(fields.value("Length"),length)||length<=0||length>(qint64(1)<<39)){reason="bad_header";return false;}
  control.filename=QString::fromUtf8(fields.value("Filename"));
  control.sha1=QString::fromLatin1(fields.value("SHA-1")).toLower();
  if(control.filename.isEmpty()||control.sha1.size()!=40||QByteArray::fromHex(control.sha1.toLatin1()).toHex()!=control.sha1.toLatin1()){reason="bad_header";return false;}
@@ -81,11 +86,11 @@ bool parse(const QByteArray& data,Control& control,QString& reason) {
  if(fields.contains("Hash-Lengths")) {
   const auto parts=fields.value("Hash-Lengths").split(',');qint64 values[3]{};
   if(parts.size()!=3||!number(parts[0],values[0])||!number(parts[1],values[1])||!number(parts[2],values[2])){reason="bad_header";return false;}
+  // zsync accepts rsum_bytes 1 too; one byte can't tell blocks apart, and no
+  // zsyncmake writes it. Checked before they are narrowed to int.
+  if(values[0]<1||values[0]>2||values[1]<2||values[1]>4||values[2]<3||values[2]>16){reason="unsupported_hash_lengths";return false;}
   seq=int(values[0]);rsumBytes=int(values[1]);checksumBytes=int(values[2]);
  }
- // zsync accepts rsum_bytes 1 too; one byte can't tell blocks apart, and no
- // zsyncmake writes it.
- if(seq<1||seq>2||rsumBytes<2||rsumBytes>4||checksumBytes<3||checksumBytes>16){reason="unsupported_hash_lengths";return false;}
  control.blocksize=int(blocksize);control.length=length;control.blocks=(length+blocksize-1)/blocksize;
  control.seqMatches=seq;control.rsumBytes=rsumBytes;control.checksumBytes=checksumBytes;
  control.records=data.mid(end+2);
@@ -93,7 +98,7 @@ bool parse(const QByteArray& data,Control& control,QString& reason) {
  return true;
 }
 
-bool reuse(const Control& control,QFile& seed,QFile& output,Assembly& assembly,const std::function<void(qint64,qint64)>& progress,QString& reason) {
+bool reuse(const Control& control,QFile& seed,QFile& output,Assembly& assembly,const QDeadlineTimer& deadline,const std::function<void(qint64,qint64)>& progress,QString& reason) {
  const int bs=control.blocksize,seq=control.seqMatches,shift=std::countr_zero(unsigned(bs));
  const qint64 blocks=control.blocks,context=qint64(bs)*seq,record=control.rsumBytes+control.checksumBytes;
  const quint16 aMask=control.rsumBytes<3?0:control.rsumBytes==3?0xff:0xffff;
@@ -151,7 +156,12 @@ bool reuse(const Control& control,QFile& seed,QFile& output,Assembly& assembly,c
    r0=advanced==1&&seq>1?r1:rsum(data,bs);
    if(seq>1)r1=rsum(data+bs,bs);
   }
-  if(progress&&base+x>=reported){progress(base+x,size);reported=base+x+chunk;}
+  // Once per chunk: progress, and the whole update's deadline.
+  if(base+x>=reported) {
+   if(deadline.hasExpired()){reason="timeout";return false;}
+   if(progress)progress(base+x,size);
+   reported=base+x+chunk;
+  }
   QByteArray first,second;
   const auto strong=[&](qint64 id,int which){
    auto& digest=which?second:first;
@@ -207,6 +217,10 @@ struct Request {
  enum State {Waiting,Boundary,Headers,Data,Trailing,Done} state=Waiting;
  QByteArray boundary,pending;qint64 offset=0,remaining=0;
  QString failure;QJsonObject details;bool finished=false;
+ // Body bytes so far, and the most this request may send: what it asked for
+ // plus room for each part's boundary and headers. Repeated or overlapping
+ // parts, or bytes past the closing boundary, run into it.
+ qint64 received=0,limit=0;
  void fail(const QString& reason,const QJsonObject& more={}) {
   if(!failure.isEmpty())return;
   failure=reason;details=more;if(reply&&reply->isRunning())reply->abort();
@@ -240,14 +254,16 @@ struct Request {
 }
 
 bool fetch(QNetworkAccessManager& network,const QUrl& url,const Control& control,const std::vector<Range>& ranges,QFile& output,Fetch& result,
-           const std::function<void(qint64)>& progress,QString& reason,QJsonObject& details) {
+           const QDeadlineTimer& deadline,const std::function<void(qint64)>& progress,QString& reason,QJsonObject& details) {
  result={};
  if(ranges.empty())return true;
+ if(deadline.hasExpired()){reason="timeout";return false;}
  qint64 wantedBytes=0;
  std::vector<std::unique_ptr<Request>> requests;
  for(size_t at=0;at<ranges.size();at+=maximumRanges) {
   auto request=std::make_unique<Request>();
-  for(size_t i=at;i<qMin(ranges.size(),at+maximumRanges);++i){request->wanted.push_back({ranges[i].start,ranges[i].end,ranges[i].start});wantedBytes+=ranges[i].end-ranges[i].start;}
+  for(size_t i=at;i<qMin(ranges.size(),at+maximumRanges);++i){request->wanted.push_back({ranges[i].start,ranges[i].end,ranges[i].start});wantedBytes+=ranges[i].end-ranges[i].start;request->limit+=ranges[i].end-ranges[i].start+partHeaderBytes;}
+  request->limit+=partHeaderBytes;
   requests.push_back(std::move(request));
  }
  qint64 written=0;QString failure;QJsonObject failureDetails;
@@ -265,6 +281,8 @@ bool fetch(QNetworkAccessManager& network,const QUrl& url,const Control& control
  };
  const auto feed=[&](Request& request,QByteArray chunk){
   qsizetype at=0;
+  request.received+=chunk.size();
+  if(request.received>request.limit){request.fail("range_too_large",{{"received",request.received},{"limit",request.limit}});return;}
   while(request.failure.isEmpty()) {
    if(request.state==Request::Data) {
     const auto take=qMin<qint64>(chunk.size()-at,request.remaining);
@@ -314,7 +332,7 @@ bool fetch(QNetworkAccessManager& network,const QUrl& url,const Control& control
    if(!request.failure.isEmpty())stop(request.failure,request.details);
    else if(reply->error()!=QNetworkReply::NoError) {
     const auto timedOut=reply->error()==QNetworkReply::OperationCanceledError||reply->error()==QNetworkReply::TimeoutError;
-    stop(timedOut?"stalled":"range_network",{{"network",reply->errorString().left(200)}});
+    stop(timedOut?"stalled":"range_network",{{"network",networkErrorText(*reply)}});
    } else if(request.state!=Request::Done&&request.state!=Request::Trailing)stop("range_short",{{"state",int(request.state)}});
    else for(const auto& run:request.wanted)if(run.filled!=run.end){stop("range_short",{{"run",QString("%1-%2").arg(run.start).arg(run.end-1)},{"received",run.filled-run.start}});break;}
   }
@@ -348,9 +366,9 @@ bool fetch(QNetworkAccessManager& network,const QUrl& url,const Control& control
    QObject::connect(reply,&QNetworkReply::finished,&loop,[&,reply,target=&request]{if(target->reply==reply)finish(*target);});
   }
  };
- QTimer deadline;deadline.setSingleShot(true);
- QObject::connect(&deadline,&QTimer::timeout,&loop,[&]{stop("timeout",{});});
- deadline.start(deadlineMs);
+ QTimer expiry;expiry.setSingleShot(true);
+ QObject::connect(&expiry,&QTimer::timeout,&loop,[&]{stop("timeout",{});});
+ expiry.start(int(qBound(qint64(0),deadline.remainingTime(),qint64(INT_MAX))));
  launch();
  if(active)loop.exec();
  if(!failure.isEmpty()){reason=failure;details=failureDetails;return false;}

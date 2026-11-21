@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Update.h"
+class QNetworkReply;
 namespace putgd {
 // putgd-cli's resident-free modes for update checks (#293):
 //   putgd-cli --update-info              this build's update channel and package; no network
@@ -14,4 +15,9 @@ int runUpdateMode(int argc,char** argv);
 // One GET of CHANNEL's feed, evaluated against build; needs a running
 // QCoreApplication. Exposed for the request contract test.
 QJsonObject fetchUpdate(const update::Build&,const QString& channel,Error&);
+// reply's errorString() with every URL's query string and fragment removed, at
+// most 200 characters. Qt's text names the URL it fetched, and a redirect (a
+// GitHub asset's signed URL) can carry a token there; update.status and the
+// log keep only this.
+QString networkErrorText(const QNetworkReply&);
 }

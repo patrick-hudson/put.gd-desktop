@@ -2007,10 +2007,10 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
   if(total>0&&(install["phase"]=="zsync"||install["phase"]=="download")){installProgress_->setRange(0,1000);installProgress_->setValue(int(qBound(qint64(0),bytes*1000/total,qint64(1000))));}
   else installProgress_->setRange(0,0);
   const auto phase=install["phase"].toString();const auto method=install["method"].toString();
-  const auto amount=total>0?" "+ByteSize::summary(bytes)+" of "+ByteSize::summary(total):QString();
+  const auto amount=total>0?" "+ByteSize::fileSummary(bytes)+" of "+ByteSize::fileSummary(total):QString();
   // zsync first reads this version for the parts it can reuse, then fetches the rest (#1766).
   const auto reused=install["reused"].toInteger();
-  QString text=phase=="zsync"?(install["step"]=="fetching"?"Downloading only what changed:"+amount+(reused>0?" ("+ByteSize::summary(reused)+" reused from this version)":QString()):
+  QString text=phase=="zsync"?(install["step"]=="fetching"?"Downloading only what changed:"+amount+(reused>0?" ("+ByteSize::fileSummary(reused)+" reused from this version)":QString()):
    "Finding the parts this version already has:"+amount):
    phase=="download"?(method=="mirror"?QString("Downloading from pkg.put.gd:"):QString("Downloading from the GitHub release:"))+amount:
    phase=="verifying"?QString("Checking against the release's SHA256SUMS…"):phase=="installing"?QString("Putting the new version in place…"):QString("Checking the release…");
@@ -2020,7 +2020,7 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
  const auto from=installed["previousChannel"].toString(),to=installed["channel"].toString();
  const auto how=installed["method"].toString();
  const auto downloaded=installed["downloadedBytes"];
- const QString howText=how=="zsync"?" with a zsync update"+(downloaded.isDouble()?" that downloaded "+ByteSize::summary(downloaded.toInteger()):QString()):how=="download"?QString(" from a full download"):QString();
+ const QString howText=how=="zsync"?" with a zsync update"+(downloaded.isDouble()?" that downloaded "+ByteSize::fileSummary(downloaded.toInteger()):QString()):how=="download"?QString(" from a full download"):QString();
  const bool switched=!from.isEmpty()&&!to.isEmpty()&&from!=to;
  if(restart){
   QString text=(switched?"Switched to "+to+" ":QString("Installed "))+installed["version"].toString()+howText+". Restart put.gd to use it.";

@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QRegularExpression>
 #include <cstdio>
 #include <cstring>
 namespace putgd {
@@ -48,6 +49,10 @@ int runUpdateMode(int argc,char** argv) {
  Error error;const auto result=fetchUpdate(build,QString::fromLocal8Bit(argv[2]),error);
  return finish(error,result);
 }
+QString networkErrorText(const QNetworkReply& reply) {
+ static const QRegularExpression query(R"(([A-Za-z][A-Za-z0-9+.-]*://[^\s?#]*)[?#]\S*)");
+ return reply.errorString().replace(query,"\\1").left(200);
+}
 QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Error& error) {
  // How this installation updates: the system's updater while the package's
  // repository file is in use, else a download. Re-read it for this check even
@@ -79,7 +84,7 @@ QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Erro
  const auto status=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
  if(tooLarge){error={"update_feed_invalid","The update feed is larger than 256 KiB",{}};return {};}
  if(reply->error()!=QNetworkReply::NoError||status!=200){
-  error={"update_feed_unavailable","Cannot read the update feed",{{"httpStatus",status?QJsonValue(status):QJsonValue()},{"network",reply->error()==QNetworkReply::NoError?QString():reply->errorString().left(200)}}};
+  error={"update_feed_unavailable","Cannot read the update feed",{{"httpStatus",status?QJsonValue(status):QJsonValue()},{"network",reply->error()==QNetworkReply::NoError?QString():networkErrorText(*reply)}}};
   return {};
  }
  auto result=update::evaluate(body,build,channel,error);if(error)return {};
