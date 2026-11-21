@@ -37,7 +37,8 @@ public:
  // Whether a session method's error is one a person should find in the log: never
  // a malformed request, a busy or not-yet-ready resident, or a closed window.
  static bool userFacing(const Error&);
- // Records an entry and answers its ID at once; the write follows on the queue.
+ // Records an entry and answers its ID at once; the write follows on the queue. Empty when the
+ // queue is full and the entry was dropped.
  QString record(Entry);
  QString record(const QString& kind,const Error& error,Entry context={});
  // Marks the open entries about `subject` resolved: the problem went away.

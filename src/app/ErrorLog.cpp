@@ -68,25 +68,25 @@ namespace {
 // What the journal knows that the caller may not have: the item's name and the
 // destination its receipt names. Then the destination's name now, and next steps.
 void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QString,QJsonObject>& profiles) {
- if(entry["itemName"].toString().isEmpty()&&!item["name"].toString().isEmpty())entry["itemName"]=logging::redact(item["name"].toString()).left(512);
- if(entry["profileId"].toString().isEmpty()&&!item["profileId"].toString().isEmpty())entry["profileId"]=item["profileId"];
- if(entry["provider"].toString().isEmpty()&&!item["providerId"].toString().isEmpty())entry["provider"]=item["providerId"];
- const auto profileId=entry["profileId"].toString(),provider=entry["provider"].toString();
- if(entry["destination"].toString().isEmpty()&&(!profileId.isEmpty()||!provider.isEmpty())){
+ if(entry.value("itemName").toString().isEmpty()&&!item["name"].toString().isEmpty())entry["itemName"]=logging::redact(item["name"].toString()).left(512);
+ if(entry.value("profileId").toString().isEmpty()&&!item["profileId"].toString().isEmpty())entry["profileId"]=item["profileId"];
+ if(entry.value("provider").toString().isEmpty()&&!item["providerId"].toString().isEmpty())entry["provider"]=item["providerId"];
+ const auto profileId=entry.value("profileId").toString(),provider=entry.value("provider").toString();
+ if(entry.value("destination").toString().isEmpty()&&(!profileId.isEmpty()||!provider.isEmpty())){
   const auto label=profiles.value(profileId)["label"].toString();
   entry["destination"]=logging::redact(label.isEmpty()?providerName(provider):label).left(512);
  }
  // What the Error log offers as buttons, in the order it shows them.
  QStringList steps;const auto add=[&steps](const QString& step){if(!steps.contains(step))steps<<step;};
- const auto kind=entry["kind"].toString(),code=entry["code"].toString();
- const auto has=[&entry](const char* key){return !entry[QLatin1String(key)].toString().isEmpty();};
+ const auto kind=entry.value("kind").toString(),code=entry.value("code").toString();
+ const auto has=[&entry](const char* key){return !entry.value(QLatin1String(key)).toString().isEmpty();};
  if(credentialCode(code)&&(has("historyId")||has("profileId")))add("unlock_credentials");
  if(has("profileId")&&kind!="settings_save")add("open_destination");
  // Retry repeats a failed outcome. A refused session call (its details name the method) offers no
  // Retry: repeating a refused cancel or a share-only retry as an upload retry would change its effect.
- const bool outcome=!entry["details"].toObject().contains("method");
+ const bool outcome=!entry.value("details").toObject().contains("method");
  if(outcome&&((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId"))))add("retry");
- for(const auto& step:entry["nextSteps"].toArray())add(step.toString());
+ for(const auto& step:entry.value("nextSteps").toArray())add(step.toString());
  if(has("historyId"))add("show_in_history");
  if(has("operationId"))add("save_diagnostics");
  entry["nextSteps"]=QJsonArray::fromStringList(steps);
@@ -117,12 +117,16 @@ QString ErrorLog::record(Entry e) {
   if(recent_.size()>=256)recent_.clear();
   recent_.insert(key,{id,first,now,1});
  }
+ if(queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});return {};}
  auto entry=entryJson(e,id,now,occurrences,first);
+ // Bounded: past this many open subjects the set is read again from the table, which keeps at most
+ // `keep` rows; until then every success asks the table.
+ if(open_.size()>=4*keep){open_.clear();loaded_=false;load();}
  if(!e.subject.isEmpty())open_.insert(e.subject);
  logging::info(logHistory(),"Error log entry",{{"errorId",id},{"kind",entry["kind"]},{"code",entry["code"]},{"occurrences",occurrences},{"operationId",e.operationId},{"itemId",e.historyId}});
  const auto notBefore=iso(now.addDays(-keepDays));const auto profiles=operations_.settingsSnapshot().profiles;
  enqueue([entry,notBefore,profiles](HistoryStore& store,Error& error) mutable {
-  completeEntry(entry,store.errorItem(entry["historyId"].toString(),entry["operationId"].toString()),profiles);
+  completeEntry(entry,store.errorItem(entry.value("historyId").toString(),entry.value("operationId").toString()),profiles);
   QJsonObject saved;error=store.saveError(entry,keep,notBefore,&saved);return saved;
  },[id](Error error,QJsonObject){if(error)logging::warning(logHistory(),"Error log entry not saved",{{"errorId",id},{"code",error.code}});},true);
  return id;
@@ -157,8 +161,9 @@ void ErrorLog::operationFinished(const QJsonObject& op) {
   if(status=="uploaded"){
    resolve("item:"+historyId,"Uploaded");
    // Uploaded, but its share link wasn't made: a link error of its own (#1496's Finish share link fixes it).
-   if(failed){itemErrors=true;context.subject="share:"+historyId;record("share_link",errorFrom(item["error"].toObject()),context);}
-   else if(item["shareStatus"]=="shared")resolve("share:"+historyId,"Link created");
+   // A link confirmed shared wins over an older error the snapshot still carries.
+   if(item["shareStatus"]=="shared")resolve("share:"+historyId,"Link created");
+   else if(failed){itemErrors=true;context.subject="share:"+historyId;record("share_link",errorFrom(item["error"].toObject()),context);}
   }
   else if(failed){itemErrors=true;context.subject="item:"+historyId;record(uploadKind,errorFrom(item["error"].toObject()),context);}
   const auto local=item["local"].toObject();

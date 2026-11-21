@@ -131,10 +131,10 @@ ErrorLogPage::ErrorLogPage(UiSession& session,QWidget* parent):QWidget(parent),s
  unlockPoll_=new QTimer(this);unlockPoll_->setInterval(500);
  connect(unlockPoll_,&QTimer::timeout,this,[this]{
   if(unlockPending_)return;unlockPending_=true;
-  session_.request("setup.inspect",{{"id",unlockSetupId_}},this,[g=QPointer<ErrorLogPage>(this)](Error e,QJsonObject job){
-   if(!g)return;g->unlockPending_=false;
+  session_.request("setup.inspect",{{"id",unlockSetupId_}},this,[g=QPointer<ErrorLogPage>(this),setupId=unlockSetupId_](Error e,QJsonObject job){
+   if(!g)return;g->unlockPending_=false;if(setupId!=g->unlockSetupId_)return;
    if(!e&&job["state"]=="running"){g->feedback(QStringLiteral("Waiting for the keyring…"),false);return;}
-   g->unlockPoll_->stop();
+   g->unlockPoll_->stop();g->stepRunning_=false;if(!g->selected_.isEmpty())g->showDetails(g->selected_);
    const auto error=e?e:Error{job["error"].toObject()["code"].toString(),job["error"].toObject()["message"].toString(),{}};
    if(error)g->feedback(error.message,true);
    else g->feedback(QStringLiteral("Credentials loaded. Choose %1 to try again.").arg(ErrorLogPage::stepLabel("retry",g->unlockKind_)),false);
@@ -271,7 +271,7 @@ void ErrorLogPage::runStep(const QString& step,std::function<void(Error,QJsonObj
    const auto setupId=result["setupId"].toString();
    if(setupId.isEmpty()){g->feedback(QStringLiteral("Credentials loaded. Choose %1 to try again.").arg(ErrorLogPage::stepLabel("retry",kind)),false);finish({},answer);return;}
    // Followed by the page's own timer until the job ends; the keyring may take its time.
-   g->unlockSetupId_=setupId;g->unlockKind_=kind;g->unlockPoll_->start();finish({},answer);return;
+   g->unlockSetupId_=setupId;g->unlockKind_=kind;g->stepRunning_=true;if(g->selected_.value("id")==id)g->showDetails(g->selected_);g->unlockPoll_->start();finish({},answer);return;
   }
   if(step=="save_diagnostics"){
    g->packagePath_=result["path"].toString();g->revealPackage_->setVisible(!g->packagePath_.isEmpty());
@@ -319,6 +319,8 @@ void ErrorLogPage::showEntry(const QJsonObject& target) {
  // Open from History's link: the entry itself, on a page with no filters hiding it.
  const QSignalBlocker kinds(kind_),resolved(openOnly_);kind_->setCurrentIndex(0);openOnly_->setChecked(false);search_->clear();offset_=0;
  const auto id=target["id"].toString(),historyId=target["historyId"].toString(),operationId=target["operationId"].toString(),kind=target["kind"].toString();
+ // Every link supersedes the lookups of the ones before it.
+ ++selection_;
  if(!id.isEmpty()){wanted_=id;load();return;}
  if(historyId.isEmpty()&&operationId.isEmpty()){wanted_.clear();selected_={};load([this](Error e){if(!e&&!entries_.isEmpty())select(entries_.first().toObject()["id"].toString());});return;}
  QJsonObject params{{"limit",1}};if(!historyId.isEmpty())params["historyId"]=historyId;if(!operationId.isEmpty())params["operationId"]=operationId;if(!kind.isEmpty())params["kind"]=kind;

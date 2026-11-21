@@ -1496,7 +1496,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
   if(failed)emit operationError(id,r);
-  if(!r.isEmpty())emit outcome(r);
+  if(!e&&!r.isEmpty())emit outcome(r);
   reply(e,r);
  });
 }
@@ -1517,7 +1517,7 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  auto record=[guarded,path,reply,explicitCopy](Operation value,QJsonObject copy={}) {if(!guarded)return;
   copy["operationId"]=value.id;copy["action"]=value.action;copy["automatic"]=!explicitCopy;copy["copyStatus"]=value.copyStatus;
   logging::write(logClipboard(),value.copyStatus=="failed"?QtWarningMsg:QtInfoMsg,explicitCopy?"Copy finished":"Automatic copy finished",copy);
-  guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e)emit guarded->resultReady(value.id);if(reply)reply(e,result);});};
+  guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e){emit guarded->outcome(result);emit guarded->resultReady(value.id);}if(reply)reply(e,result);});};
  if(!eligible) {
   op.copyStatus="suppressed";
   record(op,{{"suppression",explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision())}});return;

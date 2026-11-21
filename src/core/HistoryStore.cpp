@@ -1,4 +1,5 @@
 #include "HistoryStore.h"
+#include "Log.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -462,14 +463,14 @@ QJsonObject HistoryStore::errorItem(const QString& historyId,const QString& oper
 }
 Error HistoryStore::saveError(QJsonObject entry,int keep,const QString& notBefore,QJsonObject* saved) {
  if(error_)return error_;
- const auto id=entry["id"].toString(),historyId=entry["historyId"].toString(),operationId=entry["operationId"].toString();
- if(id.isEmpty()||entry["time"].toString().isEmpty()||entry["kind"].toString().isEmpty())return {"error_log_invalid","Incomplete error log entry",{}};
+ const auto id=entry.value("id").toString(),historyId=entry.value("historyId").toString(),operationId=entry.value("operationId").toString();
+ if(id.isEmpty()||entry.value("time").toString().isEmpty()||entry.value("kind").toString().isEmpty())return {"error_log_invalid","Incomplete error log entry",{}};
  if(!db_.transaction())return sqlError();
  QSqlQuery q(db_);
  q.prepare("INSERT INTO error_log VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET time=excluded.time,kind=excluded.kind,subject=excluded.subject,resolved=excluded.resolved,history_id=excluded.history_id,operation_id=excluded.operation_id,data=excluded.data");
  // A null QString binds as SQL NULL: every text column gets an empty string instead.
  const auto text=[](const QString& value){return value.isEmpty()?QStringLiteral(""):value;};
- q.addBindValue(id);q.addBindValue(entry["time"].toString());q.addBindValue(entry["kind"].toString());q.addBindValue(text(entry["subject"].toString()));q.addBindValue(entry["resolved"].toBool()?1:0);
+ q.addBindValue(id);q.addBindValue(entry.value("time").toString());q.addBindValue(entry.value("kind").toString());q.addBindValue(text(entry.value("subject").toString()));q.addBindValue(entry.value("resolved").toBool()?1:0);
  q.addBindValue(text(historyId));q.addBindValue(text(operationId));q.addBindValue(encode(entry));
  bool ok=q.exec();
  if(ok&&!notBefore.isEmpty()){q.prepare("DELETE FROM error_log WHERE time<?");q.addBindValue(notBefore);ok=q.exec();}
@@ -521,9 +522,9 @@ QJsonObject HistoryStore::listErrors(const ErrorLogQuery& query,Error* error) co
  QJsonArray entries;
  while(page.next()){
   auto entry=decode(page.value(0));
-  if(!entry["historyId"].toString().isEmpty()){
+  if(!entry.value("historyId").toString().isEmpty()){
    entry["itemPresent"]=page.value(3).toBool();
-   if(!page.value(1).isNull()&&!page.value(1).toString().isEmpty())entry["itemName"]=page.value(1).toString();
+   if(!page.value(1).isNull()&&!page.value(1).toString().isEmpty())entry["itemName"]=logging::redact(page.value(1).toString()).left(512);
    if(!page.value(2).isNull()&&!page.value(2).toString().isEmpty())entry["previewPath"]=relocate(QJsonObject{{"id",entry["historyId"]},{"previewPath",page.value(2).toString()}})["previewPath"];
   }
   entries.append(entry);
@@ -536,9 +537,9 @@ QJsonObject HistoryStore::errorEntry(const QString& id,Error* error) const {
  if(!q.exec()){if(error)*error=sqlError();return {};}
  if(!q.next()){if(error)*error={"error_not_found","That error log entry no longer exists",{{"id",id}}};return {};}
  auto entry=decode(q.value(0));
- if(!entry["historyId"].toString().isEmpty()){
+ if(!entry.value("historyId").toString().isEmpty()){
   entry["itemPresent"]=q.value(3).toBool();
-  if(!q.value(1).isNull()&&!q.value(1).toString().isEmpty())entry["itemName"]=q.value(1).toString();
+  if(!q.value(1).isNull()&&!q.value(1).toString().isEmpty())entry["itemName"]=logging::redact(q.value(1).toString()).left(512);
   if(!q.value(2).isNull()&&!q.value(2).toString().isEmpty())entry["previewPath"]=relocate(QJsonObject{{"id",entry["historyId"]},{"previewPath",q.value(2).toString()}})["previewPath"];
  }
  return entry;

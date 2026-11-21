@@ -458,13 +458,16 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // open): recorded like any other, and answered with the entry's ID for its link.
  if(method=="errors.record") {
   static const QStringList kinds=ErrorLog::kinds();
-  static const QRegularExpression codePattern("^[a-z][a-z0-9_]{0,63}$");
+  static const QRegularExpression codePattern("^[a-z][a-z0-9_]{0,63}$"),idPattern("^[A-Za-z0-9][A-Za-z0-9._:-]{0,137}$");
+  const auto identifier=[&p](const char* key){return !p.contains(QLatin1String(key))||(p[QLatin1String(key)].isString()&&idPattern.match(p[QLatin1String(key)].toString()).hasMatch());};
   if(!fields(p,{"kind","code","message"},{"historyId","operationId","profileId","itemName"})||!p["kind"].isString()||!kinds.contains(p["kind"].toString())||!string(p,"code",64)||!codePattern.match(p["code"].toString()).hasMatch()||!string(p,"message",4096)
-     ||(p.contains("historyId")&&!string(p,"historyId",138))||(p.contains("operationId")&&!string(p,"operationId",128))||(p.contains("profileId")&&!string(p,"profileId",64))||(p.contains("itemName")&&!string(p,"itemName",512))){reply(invalid(),{});return;}
+     ||!identifier("historyId")||!identifier("operationId")||!identifier("profileId")||(p.contains("itemName")&&!string(p,"itemName",512))){reply(invalid(),{});return;}
   ErrorLog::Entry entry;entry.kind=p["kind"].toString();entry.code=p["code"].toString();entry.message=p["message"].toString();entry.historyId=p["historyId"].toString();entry.itemId=entry.historyId;
   entry.operationId=p["operationId"].toString();entry.profileId=p["profileId"].toString();entry.itemName=p["itemName"].toString();
   entry.subject=entry.kind+":"+entry.code+":"+(entry.historyId.isEmpty()?entry.operationId:entry.historyId);
-  reply({},{{"id",errorLog_->record(entry)}});return;
+  const auto id=errorLog_->record(entry);
+  if(id.isEmpty()){reply({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return;}
+  reply({},{{"id",id}});return;
  }
  // Drives the open Settings → Error log page the way a user does.
  if(method=="ui.errorLog") {
@@ -589,7 +592,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
  const auto kind=method=="action.invoke"?ErrorLog::kindForAction(p["action"].toString()):kinds.value(method);
  QString key;
  if(method.startsWith("history.")||method.startsWith("operation.")||method.startsWith("recording.")||method=="delete.retry"||method=="delete.cancel")key=p["id"].toString();
- else if(method=="delete.prepare"||method=="delete.confirm"){key=error.details["historyId"].toString();if(key.isEmpty()&&p["ids"].toArray().size()==1)key=p["ids"].toArray().first().toString();}
+ else if(method=="delete.prepare"||method=="delete.confirm"){key=error.details.value("historyId").toString();if(key.isEmpty()&&p["ids"].toArray().size()==1)key=p["ids"].toArray().first().toString();}
  else if(method.startsWith("setup."))key=p["profileId"].toString();
  else if(method=="action.invoke")key=p["action"].toString();
  else if(method=="text.recognize")key=p["historyId"].toString(p["source"].toString());
@@ -597,7 +600,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
  // A settings save carries the whole document, so a later save that works says nothing about the
  // field an earlier one refused: those entries are never resolved here, only kept per field.
  const bool settings=method.startsWith("settings.");
- const auto subject=settings?"settings:"+error.details["field"].toString(error.details["pointer"].toString()):method+':'+key;
+ const auto subject=settings?"settings:"+error.details.value("field").toString(error.details.value("pointer").toString(error.details.value("path").toString())):method+':'+key;
  if(!error){if(!settings)errorLog_->resolve(subject,"It worked when tried again");return;}
  if(!ErrorLog::userFacing(error))return;
  ErrorLog::Entry context;context.subject=subject;context.action=p["action"].toString();context.details={{"method",method}};
@@ -606,8 +609,8 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
  if(method.startsWith("operation.")||method.startsWith("recording.")){context.operationId=key;}
  if(method=="delete.retry"||method=="delete.cancel")context.deletionId=key;
  if(method.startsWith("setup.")||method=="upload.files")context.profileId=method.startsWith("setup.")?key:p["profileId"].toString();
- if(method=="history.unlockCredentials"||method=="history.unlockLinkCredentials")context.profileId=error.details["profileId"].toString();
- error.details["errorLogId"]=errorLog_->record(kind,error,context);
+ if(method=="history.unlockCredentials"||method=="history.unlockLinkCredentials")context.profileId=error.details.value("profileId").toString();
+ if(const auto id=errorLog_->record(kind,error,context);!id.isEmpty())error.details["errorLogId"]=id;
 }
 // One of an entry's next steps, through the same session method its button stands for,
 // so the step's own result (and any error it records) is what the caller gets.
