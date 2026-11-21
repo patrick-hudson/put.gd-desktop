@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSignalSpy>
 #include <QSpinBox>
 #include <QTest>
@@ -346,6 +347,37 @@ private slots:
         QTest::keyClick(row(panel, "cut/c1"), Qt::Key_Backspace);
         QCOMPARE(remove.size(), 0);
         QCOMPARE(cut.size(), 2);
+    }
+
+    // r5-neon H5: in the folded overlay an edit rebuilds the list at the
+    // height a fresh open gives it, so the details below stay in view.
+    void overlayListKeepsItsFitAfterAnEdit() {
+        QWidget window;
+        window.resize(1100, 560);
+        auto* toggle = new QPushButton("Edits", &window);
+        toggle->setGeometry(900, 8, 80, 28);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        panel->setGeometry(800, 40, 280, 500);
+        auto s = edited();
+        for (int i = 3; i <= 7; ++i) s.edit.masks.append(cover(QStringLiteral("m%1").arg(i), "solid", i * second, i * second + second / 2));
+        s.selectedKind = "cover";
+        s.selectedId = "m1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const auto rows = [&] { return panel->findChild<QScrollArea*>("reviewPanelRows")->minimumHeight(); };
+        const int natural = rows();
+        EditsOverlay overlay(&window);
+        overlay.openFor(panel, toggle);
+        QCoreApplication::processEvents();
+        const int fitted = rows();
+        QVERIFY2(fitted < natural, qPrintable(QStringLiteral("%1 vs %2").arg(fitted).arg(natural)));
+        s.edit.masks.append(cover("m8", "blur", 30 * second, 31 * second));
+        s.edit.revision += 1;
+        panel->setState(s);
+        QCoreApplication::processEvents();
+        QCOMPARE(rows(), fitted);
+        QVERIFY(panel->heightForWidth(panel->width()) <= overlay.height());
     }
 
     // The overlay lends the window's one panel and gives it back: same parent,

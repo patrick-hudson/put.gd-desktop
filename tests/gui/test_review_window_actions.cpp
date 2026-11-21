@@ -794,6 +794,33 @@ private slots:
         const double end = proposed(proposals)["mask"].toObject()["end"].toDouble();
         QVERIFY2(end > shown, qPrintable(QStringLiteral("cover ends at %1, the frame shown is at %2").arg(end).arg(shown)));
     }
+    // r5-neon H6: at 100 % with no cover selected, a click on empty picture or
+    // Esc gives held arrows back to frame stepping (no arrow trap).
+    void arrowsComeBackAtActualSize() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QVERIFY(window.drive({{"action", "viewerZoom"}, {"mode", "actual"}}).code.isEmpty());
+        auto* view = window.findChild<FrameView*>("frame");
+        const auto claimed = [&] { return window.inspect()["viewer"].toObject()["arrowsClaimed"].toBool(); };
+        const auto arrowsHeld = [&] {
+            QKeyEvent override(QEvent::ShortcutOverride, Qt::Key_Right, Qt::NoModifier);
+            override.ignore();
+            QApplication::sendEvent(view, &override);
+            return override.isAccepted();
+        };
+        view->setFocus(Qt::TabFocusReason);
+        QVERIFY(claimed() && arrowsHeld());
+        QTest::mouseClick(view, Qt::LeftButton, {}, view->rect().center());
+        QVERIFY(!claimed() && !arrowsHeld());
+        view->clearFocus();
+        view->setFocus(Qt::TabFocusReason);
+        QVERIFY(claimed());
+        QTest::keyClick(view, Qt::Key_Escape);
+        QVERIFY(!claimed() && !arrowsHeld());
+    }
     // U25 with the rule: Upload sends a pending nudge first and waits for its answer too.
     void uploadSendsAPendingNudgeFirst() {
         ReviewWindow window(options(), config());
