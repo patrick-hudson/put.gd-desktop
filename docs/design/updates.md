@@ -143,9 +143,9 @@ installs on its own: not on the daily check, not from a notification.
    still be downloaded. The blocks it couldn't reuse come from the
    image on `pkg.put.gd` with HTTP Range requests (up to 32 runs each, four at a time). Each
    fetched block must match its checksum in the `.zsync`, and the whole file the `.zsync`'s
-   SHA-1. The zsync update has 15 minutes, counted from the start of the install; after that it
-   falls back, which leaves at least 45 of the 60 minutes put.gd gives an install for the whole
-   file. In the two real updates below it downloaded 12.3 MB and 22.0 MB of a 158 MB image.
+   SHA-1. The zsync update has 15 minutes, counted from the start of the install child, for the
+   `.zsync`, reading the running image, the ranges and its own checks; after that it falls back
+   to the whole file, which still has to finish within the one hour put.gd gives the install. In the two real updates below it downloaded 12.3 MB and 22.0 MB of a 158 MB image.
    Settings shows "Finding the parts this version already has", then "Downloading only what
    changed", with how much was reused once that is more than nothing. No `appimageupdatetool`
    or `zsync2` is needed, and put.gd no longer runs one if it is installed.
@@ -170,12 +170,14 @@ installs on its own: not on the daily check, not from a notification.
      `control_mismatch` (another file name or length than the release's).
    - Reading the running image or writing the new file: `seed_unreadable` and `write_failed`.
    - Fetching the ranges: `range_refused` (the server answered with the whole file; put.gd
-     aborts it at once), `range_failed` (an unexpected HTTP status while reading the reply),
+     aborts it at once), `range_failed` (a missing or unexpected HTTP status, found at the first
+     body bytes or when the reply ends),
      `range_invalid` (range headers, multipart framing or byte bounds that don't fit what was
      asked for), `range_too_large` (more bytes
      than were asked for, plus room for each part's headers), `range_short`, `range_checksum`
-     (a block that doesn't match the `.zsync`), `range_network` (a network or HTTP error Qt
-     reports before the reply is read; the details name only Qt's error code, never the URL)
+     (a block that doesn't match the `.zsync`), `range_network` (a network error Qt reports when
+     the reply ends, possibly after part of it was read; the details name only Qt's error code,
+     never the URL)
      and `stalled` (no bytes for 60 seconds).
    - `timeout`: the 15 minutes ran out.
    - Checking the result: `sha1_mismatch`, or `verification_failed:sha256`,
@@ -191,8 +193,8 @@ installs on its own: not on the daily check, not from a notification.
    is `null` when `method: download` was asked for or the new version was already in place. An
    automatic try that fell back before fetching anything still carries it, with its
    `fallbackReason`. Otherwise it carries `used`,
-   `reusedBytes`, `downloadedBytes` (range data only, without the `.zsync` or multipart
-   headers), `controlBytes` (the `.zsync`), `requests`, `ranges` and `seconds`, plus
+   `reusedBytes`, `downloadedBytes` (the range data put.gd parsed, including data from a reply
+   it later rejected, without the `.zsync`, multipart framing or bytes refused before parsing), `controlBytes` (the `.zsync`), `requests`, `ranges` and `seconds`, plus
    `fallbackReason` and sometimes `details` when it fell back.
 4. **Checked before anything changes:** the new file must match the release's `SHA256SUMS`
    line, be an AppImage, and carry the same update information (the same channel). A download
@@ -410,7 +412,7 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
 | `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
-| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` is `auto` (zsync, then the whole file), or `zsync` or `download` to force one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`starting`, `checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method` (while it runs: the method asked for at `starting`; `null` at `checking` and the first `verifying`; `zsync` during zsync; the source, `mirror` or `release`, during a whole-file download; `zsync` or the source again while the new file is verified; the chosen method at `installing` and `done` (`none` at `done` when the new version was already in place). `result.method` is `zsync`, `download` or `none`), `bytes`, `total`, during zsync `step` (`reading`, then `fetching`) and, only while `fetching`, `reused` (Settings shows it only when it is more than 0), `error`, `result` (with `downloadedBytes`, `reusedBytes`, `zsync` and its `fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
+| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` is `auto` (tries zsync first and downloads the whole file only if zsync fails), or `zsync` or `download` to force one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`starting`, `checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method` (while it runs: the method asked for at `starting`; `null` at `checking` and the first `verifying`; `zsync` during zsync; the source, `mirror` or `release`, during a whole-file download; `zsync` or the source again while the new file is verified; the chosen method at `installing` and `done` (`none` at `done` when the new version was already in place). `result.method` is `zsync`, `download` or `none`), `bytes`, `total`, during zsync `step` (`reading`, then `fetching`) and, only while `fetching`, `reused` (Settings shows it only when it is more than 0), `error`, `result` (with `downloadedBytes`, `reusedBytes`, `zsync` and its `fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
 | `putgd-cli update.restart '{"confirm":true}'` | Once an installed update waits for its restart: starts the AppImage again from the host after this resident exits, and quits it. `update_restart_unavailable` otherwise |
 | `putgd-cli --install-update nightly [--method M] [--state DIR] [--switch [--allow-older]]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE`. Another channel than the build's needs `--switch`, and an older version `--allow-older` |
 | MCP `get_update_status`, `check_for_updates`, `open_software_updates`, `install_update`, `restart_after_update` | `update.status`, `update.check`, `update.openSoftwareUpdates`, `update.install` and `update.restart` |
