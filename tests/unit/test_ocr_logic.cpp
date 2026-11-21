@@ -241,6 +241,13 @@ private slots:
   QList<EmojiHit> five;for(int i=0;i<5;++i)five.append({face,QRect(22*i,50,20,20),0.02,0});
   placeEmoji(row,five);
   QCOMPARE(copiedText(row),"Hi\n"+face.repeated(5));
+  // Between two columns, an emoji goes with the nearer one as recognition
+  // left it, not with a line an earlier emoji drew towards it.
+  Recognition columns;columns.lines={{QRect(0,10,40,20),0,0,false},{QRect(120,10,40,20),0,0,false}};
+  auto right=word("right",{QRect(120,12,40,16)},95);right.line=1;
+  columns.words={word("left",{QRect(0,12,40,16)},95),right};
+  placeEmoji(columns,{{face,QRect(43,10,20,20),0.02,0},{face,QRect(79,10,20,20),0.02,0}});
+  QCOMPARE(copiedText(columns),"left"+face+"\n"+face+" right");
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

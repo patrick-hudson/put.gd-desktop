@@ -144,9 +144,10 @@ void joinUrls(Recognition& job){
  job.words=std::move(out);
 }
 void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
- // Each line's height as recognition left it (an emoji's own line: its first
+ // Each line's box as recognition left it (an emoji's own line: its first
  // glyph's): an emoji placed on a line does not move it into the next one's
- // way. Across, a line reaches as far as its emoji, so a row of them stays one.
+ // way, or across into another column's. Only when no line is near that way
+ // does a line reach as far as its emoji, so a row of them stays one.
  QList<QRect> fixed;for(const auto& line:std::as_const(job.lines))fixed.append(line.rect);
  for(const auto& hit:hits){
   const QRect glyph=hit.rect;
@@ -180,9 +181,9 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // The line it belongs to: one it shares at least 40% of its height with,
   // the nearest across, within three glyph widths.
   int line=-1;qint64 nearest=std::numeric_limits<qint64>::max();int bestOverlap=0;
-  for(int l=0;l<job.lines.size();++l){
+  for(int pass=0;pass<2&&line<0;++pass)for(int l=0;l<job.lines.size();++l){
    if(!worded.contains(l))continue;
-   const auto& r=fixed[l];const auto& reach=job.lines[l].rect;
+   const auto& r=fixed[l];const auto& reach=pass==0?r:job.lines[l].rect;
    const int overlap=std::min(r.bottom(),glyph.bottom())-std::max(r.top(),glyph.top())+1;
    if(overlap*5<2*std::min(r.height(),glyph.height()))continue;
    const qint64 across=std::max({0,reach.left()-glyph.right()-1,glyph.left()-reach.right()-1});
