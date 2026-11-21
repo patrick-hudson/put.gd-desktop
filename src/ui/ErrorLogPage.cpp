@@ -128,6 +128,18 @@ ErrorLogPage::ErrorLogPage(UiSession& session,QWidget* parent):QWidget(parent),s
  connect(technicalToggle_,&QToolButton::toggled,this,[this,copyEntry](bool on){technical_->setVisible(on);copyEntry->setVisible(on);});
  connect(copyEntry,&QPushButton::clicked,this,[this]{QApplication::clipboard()->setText(technical_->toPlainText());feedback("Details copied.",false);});
  detailBox->addStretch(1);details_->hide();
+ unlockPoll_=new QTimer(this);unlockPoll_->setInterval(500);
+ connect(unlockPoll_,&QTimer::timeout,this,[this]{
+  if(unlockPending_)return;unlockPending_=true;
+  session_.request("setup.inspect",{{"id",unlockSetupId_}},this,[g=QPointer<ErrorLogPage>(this)](Error e,QJsonObject job){
+   if(!g)return;g->unlockPending_=false;
+   if(!e&&job["state"]=="running"){g->feedback(QStringLiteral("Waiting for the keyring…"),false);return;}
+   g->unlockPoll_->stop();
+   const auto error=e?e:Error{job["error"].toObject()["code"].toString(),job["error"].toObject()["message"].toString(),{}};
+   if(error)g->feedback(error.message,true);
+   else g->feedback(QStringLiteral("Credentials loaded. Choose %1 to try again.").arg(ErrorLogPage::stepLabel("retry",g->unlockKind_)),false);
+  });
+ });
  // The selected entry gets the larger share: its buttons are what the page is for.
  split->setStretchFactor(0,2);split->setStretchFactor(1,3);split->setSizes({Ui::scaled(240),Ui::scaled(420)});
  connect(table_,&QTreeWidget::currentItemChanged,this,[this](QTreeWidgetItem* item){if(item)select(item->data(0,IdRole).toString());});
@@ -189,10 +201,12 @@ void ErrorLogPage::populate() {
 }
 void ErrorLogPage::select(const QString& id) {
  for(int row=0;row<table_->topLevelItemCount();++row)if(table_->topLevelItem(row)->data(0,IdRole).toString()==id){const QSignalBlocker block(table_);table_->setCurrentItem(table_->topLevelItem(row));table_->scrollToItem(table_->topLevelItem(row));break;}
+ // Each selection, by click, link or agent, supersedes the replies of the ones before it.
+ const auto ticket=++selection_;
  for(const auto& value:entries_)if(value.toObject()["id"]==id){wanted_.clear();showDetails(value.toObject());return;}
  // Not on this page (an older entry, or one a filter hides): read it on its own.
- session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),id](Error e,QJsonObject entry){
-  if(!g||(g->wanted_!=id&&!g->wanted_.isEmpty()))return;g->wanted_.clear();
+ session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket](Error e,QJsonObject entry){
+  if(!g||g->selection_!=ticket)return;g->wanted_.clear();
   if(e){g->selected_={};g->details_->hide();return;}
   g->showDetails(entry);
  });
@@ -256,18 +270,8 @@ void ErrorLogPage::runStep(const QString& step,std::function<void(Error,QJsonObj
    // A destination's credentials come back as a setup job; an item's at once.
    const auto setupId=result["setupId"].toString();
    if(setupId.isEmpty()){g->feedback(QStringLiteral("Credentials loaded. Choose %1 to try again.").arg(ErrorLogPage::stepLabel("retry",kind)),false);finish({},answer);return;}
-   auto poll=std::make_shared<std::function<void(int)>>();
-   *poll=[g,setupId,finish,answer,poll,kind](int attempt){
-    if(!g)return;
-    g->session_.request("setup.inspect",{{"id",setupId}},g,[g,setupId,finish,answer,poll,attempt,kind](Error e,QJsonObject job){
-     if(!g)return;
-     if(!e&&job["state"]=="running"&&attempt<600){QTimer::singleShot(500,g,[poll,attempt]{(*poll)(attempt+1);});return;}
-     const auto error=e?e:Error{job["error"].toObject()["code"].toString(),job["error"].toObject()["message"].toString(),{}};
-     if(error){g->feedback(error.message,true);finish(error,answer);return;}
-     g->feedback(QStringLiteral("Credentials loaded. Choose %1 to try again.").arg(ErrorLogPage::stepLabel("retry",kind)),false);finish({},answer);
-    });
-   };
-   (*poll)(0);return;
+   // Followed by the page's own timer until the job ends; the keyring may take its time.
+   g->unlockSetupId_=setupId;g->unlockKind_=kind;g->unlockPoll_->start();finish({},answer);return;
   }
   if(step=="save_diagnostics"){
    g->packagePath_=result["path"].toString();g->revealPackage_->setVisible(!g->packagePath_.isEmpty());
@@ -318,8 +322,9 @@ void ErrorLogPage::showEntry(const QJsonObject& target) {
  if(!id.isEmpty()){wanted_=id;load();return;}
  if(historyId.isEmpty()&&operationId.isEmpty()){wanted_.clear();selected_={};load([this](Error e){if(!e&&!entries_.isEmpty())select(entries_.first().toObject()["id"].toString());});return;}
  QJsonObject params{{"limit",1}};if(!historyId.isEmpty())params["historyId"]=historyId;if(!operationId.isEmpty())params["operationId"]=operationId;if(!kind.isEmpty())params["kind"]=kind;
- session_.request("errors.list",params,this,[g=QPointer<ErrorLogPage>(this)](Error e,QJsonObject page){
-  if(!g)return;const auto entries=page["entries"].toArray();
+ const auto ticket=++selection_;
+ session_.request("errors.list",params,this,[g=QPointer<ErrorLogPage>(this),ticket](Error e,QJsonObject page){
+  if(!g||g->selection_!=ticket)return;const auto entries=page["entries"].toArray();
   g->wanted_=e||entries.isEmpty()?QString{}:entries.first().toObject()["id"].toString();g->load();
  });
 }
@@ -343,12 +348,18 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
  if(action=="inspect"){reply({},state());return;}
  if(action=="refresh"){load([answer](Error e){answer(e,{});});return;}
  if(action=="select"){
-  const auto id=params["id"].toString();wanted_=id;
+  const auto id=params["id"].toString();
   bool onPage=false;for(const auto& value:std::as_const(entries_))onPage|=value.toObject()["id"]==id;
   if(onPage){select(id);reply({},state());return;}
-  session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),reply,answer](Error e,QJsonObject entry){if(!g)return;g->wanted_.clear();if(e){reply(e,{});return;}g->showDetails(entry);answer({},{});});return;
+  const auto ticket=++selection_;wanted_.clear();
+  session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),reply,answer,ticket](Error e,QJsonObject entry){if(!g)return;if(e){reply(e,{});return;}if(g->selection_==ticket)g->showDetails(entry);answer({},{});});return;
  }
- if(action=="step"){runStep(params["step"].toString(),[answer,reply](Error e,QJsonObject result){if(e){reply(e,{});return;}Q_UNUSED(result);answer({},{});});return;}
+ // A step answers once it has started; its outcome shows in feedback (inspect), as on screen.
+ if(action=="step"){
+  const auto step=params["step"].toString();
+  if(selected_.isEmpty()||!selected_["nextSteps"].toArray().contains(QJsonValue(step))){reply({"error_action_unavailable","The selected entry doesn't offer that step.",{}},state());return;}
+  runStep(step);reply({},state());return;
+ }
  if(action=="setFilter"){
   if(params.contains("kind")){const auto index=kind_->findData(params["kind"].toString());kind_->setCurrentIndex(qMax(0,index));}
   if(params.contains("search"))search_->setText(params["search"].toString());
@@ -359,7 +370,7 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
   if(action=="nextPage"&&offset_+pageSize<total_)offset_+=pageSize;else if(action=="previousPage")offset_=qMax(0,offset_-pageSize);
   load([answer](Error e){answer(e,{});});return;
  }
- if(action=="clear"){openClear(params["resolvedOnly"].toBool());reply({},state());return;}
+ if(action=="clear"){if(confirm_){reply({"ui_confirmation_open","A Clear confirmation is already open; confirm or cancel it first.",{}},state());return;}openClear(params["resolvedOnly"].toBool());reply({},state());return;}
  if(action=="confirmClear"||action=="cancelClear"){
   if(!confirm_){reply({"ui_no_confirmation","No Clear confirmation is open.",{}},{});return;}
   finishClear(action=="confirmClear",[answer](Error e,QJsonObject){answer(e,{});});return;

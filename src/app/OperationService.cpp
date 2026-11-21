@@ -1307,7 +1307,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
   if(!op.active())queuePosters(op);
   if(!op.active())if(auto watcher=finishWatchers_.take(id))watcher(op);
   if(uploadCopies_.contains(id)){finishUploadCopies(op,reply);return;}
-  if(op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted||op.action==diagnosticsAction) {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
+  if(op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted||op.action==diagnosticsAction) {emit outcome(op.publicJson());emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
   performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {releaseActive(id);if(reply)reply(error,result);});
  });
 }
@@ -1496,6 +1496,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
   if(failed)emit operationError(id,r);
+  if(!r.isEmpty())emit outcome(r);
   reply(e,r);
  });
 }

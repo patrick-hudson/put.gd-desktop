@@ -243,7 +243,7 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
   // The copy outcome is a History write too: if it is refused, the row is stale until a restart (#1579).
   if(error.code=="history_io")rememberUnsavedHistory(op.id);
   uploadCopies_.remove(op.id);releaseActive(op.id);
-  emit changed(op.id);if(!error)emit resultReady(op.id);
+  emit changed(op.id);if(!error){emit outcome(result);emit resultReady(op.id);}
   if(state->reply)state->reply(error,result);
  });
 }

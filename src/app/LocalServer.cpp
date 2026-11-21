@@ -458,7 +458,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // open): recorded like any other, and answered with the entry's ID for its link.
  if(method=="errors.record") {
   static const QStringList kinds=ErrorLog::kinds();
-  if(!fields(p,{"kind","code","message"},{"historyId","operationId","profileId","itemName"})||!p["kind"].isString()||!kinds.contains(p["kind"].toString())||!string(p,"code",128)||!string(p,"message",4096)
+  static const QRegularExpression codePattern("^[a-z][a-z0-9_]{0,63}$");
+  if(!fields(p,{"kind","code","message"},{"historyId","operationId","profileId","itemName"})||!p["kind"].isString()||!kinds.contains(p["kind"].toString())||!string(p,"code",64)||!codePattern.match(p["code"].toString()).hasMatch()||!string(p,"message",4096)
      ||(p.contains("historyId")&&!string(p,"historyId",138))||(p.contains("operationId")&&!string(p,"operationId",128))||(p.contains("profileId")&&!string(p,"profileId",64))||(p.contains("itemName")&&!string(p,"itemName",512))){reply(invalid(),{});return;}
   ErrorLog::Entry entry;entry.kind=p["kind"].toString();entry.code=p["code"].toString();entry.message=p["message"].toString();entry.historyId=p["historyId"].toString();entry.itemId=entry.historyId;
   entry.operationId=p["operationId"].toString();entry.profileId=p["profileId"].toString();entry.itemName=p["itemName"].toString();
@@ -592,8 +593,12 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
  else if(method.startsWith("setup."))key=p["profileId"].toString();
  else if(method=="action.invoke")key=p["action"].toString();
  else if(method=="text.recognize")key=p["historyId"].toString(p["source"].toString());
- const auto subject=method.startsWith("settings.")?QStringLiteral("settings"):method+':'+key;
- if(!error){errorLog_->resolve(subject,"It worked when tried again");return;}
+ else if(method=="upload.files")key=p["profileId"].toString();
+ // A settings save carries the whole document, so a later save that works says nothing about the
+ // field an earlier one refused: those entries are never resolved here, only kept per field.
+ const bool settings=method.startsWith("settings.");
+ const auto subject=settings?"settings:"+error.details["field"].toString(error.details["pointer"].toString()):method+':'+key;
+ if(!error){if(!settings)errorLog_->resolve(subject,"It worked when tried again");return;}
  if(!ErrorLog::userFacing(error))return;
  ErrorLog::Entry context;context.subject=subject;context.action=p["action"].toString();context.details={{"method",method}};
  if(method.startsWith("history.")||method=="delete.prepare"||method=="delete.confirm"||method=="history.copyText"){context.historyId=key;context.itemId=key;}

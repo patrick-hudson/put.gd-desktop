@@ -67,6 +67,8 @@ public:
  // ui.errorLog: the page's controls, driven the way a user does.
  void errorLogCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  ErrorLogPage* errorLog()const{return errorLogPage_;}
+ // Selects that destination in the list as Destinations shows it (the draft's order); false when it isn't there.
+ bool selectDestination(const QString& profileId);
 signals:
  void viewStateChanged();
  void actionRequested(const QString&);

@@ -438,12 +438,7 @@ void MainWindow::showActionFailure(const QString& action,const Error& error){
 }
 void MainWindow::showErrorLog(const QJsonObject& target){settings();navigate("settings");settings_->showErrorLog(target);}
 // Destinations, with this destination selected; the page as it is when it no longer exists.
-void MainWindow::showDestination(const QString& profileId){
- settings();navigate("destinations");
- auto* list=findChild<QListWidget*>("destinationList");if(!list||profileId.isEmpty())return;
- const auto profiles=session_.document()["profiles"].toArray();
- for(int row=0;row<profiles.size()&&row<list->count();++row)if(profiles[row].toObject()["id"]==profileId){list->setCurrentRow(row);break;}
-}
+void MainWindow::showDestination(const QString& profileId){settings();navigate("destinations");settings_->selectDestination(profileId);}
 void MainWindow::showCaptureSettings(const QStringList& actions){navigate("settings");settings_->showCaptureSettings(actions);}
 void MainWindow::showLocalCopySettings(){navigate("settings");settings_->showLocalCopySettings();}
 MainWindow::~MainWindow(){

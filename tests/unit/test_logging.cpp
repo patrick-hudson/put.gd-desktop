@@ -376,8 +376,12 @@ private slots:
   errors.record("upload",{"synthetic_failure","Authorization: Bearer synthetic-private-token rejected",leaky.details},leaky);
   const auto codes=[&]{QStringList list;for(const auto& v:page["entries"].toArray())list<<v.toObject()["kind"].toString()+":"+v.toObject()["code"].toString();return list;};
   page={};PUTGD_TRY_VERIFY_WITH_TIMEOUT((poll(),codes().contains("upload:synthetic_failure")),10000);
-  QVERIFY2(page["total"].toInt()==2,qPrintable(codes().join(", ")));
-  verifyNoCanary(QJsonDocument(page).toJson());QVERIFY(page["entries"].toArray().first().toObject()["message"].toString().startsWith("Authorization"));
+  verifyNoCanary(QJsonDocument(page).toJson());
+  // A refused call's entry never offers Retry: repeating a refused share-only retry as operation.retry would upload.
+  ErrorLog::Entry refused;refused.subject="operation.retry:"+id;refused.operationId=id;refused.details={{"method","operation.retry"}};
+  errors.record("upload",{"retry_would_upload","Upload the remaining files first",{}},refused);
+  page={};PUTGD_TRY_VERIFY_WITH_TIMEOUT((poll(),codes().contains("upload:retry_would_upload")),10000);
+  for(const auto& value:page["entries"].toArray())if(value.toObject()["code"]=="retry_would_upload")QVERIFY(!value.toObject()["nextSteps"].toArray().contains(QJsonValue("retry")));for(const auto& value:page["entries"].toArray())if(value.toObject()["code"]=="synthetic_failure")QVERIFY(value.toObject()["message"].toString().startsWith("Authorization"));
   {HistoryStore store(operations.databasePath());QVERIFY(!store.saveError({{"id","bound-1"},{"time","2026-01-01T00:00:00.000Z"},{"kind","other"}},1,{}));QCOMPARE(store.errorSummary()["total"].toInt(),1);}
   // Diagnostics report the log without reading it.
   const auto diagnostics=operations.diagnostics();

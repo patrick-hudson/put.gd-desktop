@@ -51,7 +51,9 @@ private:
  QHBoxLayout* steps_=nullptr;QPlainTextEdit* technical_=nullptr;QToolButton* technicalToggle_=nullptr;QPushButton* revealPackage_=nullptr;
  QTimer* searchDelay_=nullptr;QPointer<QMessageBox> confirm_;bool clearResolvedOnly_=false;
  QJsonArray entries_;QJsonObject selected_;QString wanted_,lastRevision_,packagePath_;
- int offset_=0,total_=0,unresolved_=0;bool loading_=false,reloadPending_=false,stepRunning_=false;
+ int offset_=0,total_=0,unresolved_=0;quint64 selection_=0;
+ // A destination's unlock is a setup job, followed until it ends.
+ QTimer* unlockPoll_=nullptr;QString unlockSetupId_,unlockKind_;bool unlockPending_=false;bool loading_=false,reloadPending_=false,stepRunning_=false;
  static constexpr int pageSize=50;
  QCache<QString,QPixmap> thumbnails_{64};QSet<QString> thumbnailRequested_;
 };

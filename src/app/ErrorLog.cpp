@@ -32,11 +32,8 @@ QString providerName(const QString& provider) {
 }
 }
 ErrorLog::ErrorLog(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
- // Every operation's terminal result, a local save that failed on retry, and Copy text.
- connect(&operations_,&OperationService::resultReady,this,[this](const QString& id){
-  operations_.inspect(id,[guard=QPointer<ErrorLog>(this)](Error error,QJsonObject operation){if(guard&&!error)guard->operationFinished(operation);});
- });
- connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;operationFinished(operation);});
+ // Every operation's committed terminal snapshot (also after Retry local save), and Copy text.
+ connect(&operations_,&OperationService::outcome,this,&ErrorLog::operationFinished);
  connect(&operations_,&OperationService::textFinished,this,[this](const QString& id,const QJsonObject& record,const QString&){
   if(record["state"]!="failed")return;
   Entry context;context.action=Settings::textActionName();context.operationId=id;context.subject="text:"+id;
@@ -77,7 +74,7 @@ void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QStrin
  const auto profileId=entry["profileId"].toString(),provider=entry["provider"].toString();
  if(entry["destination"].toString().isEmpty()&&(!profileId.isEmpty()||!provider.isEmpty())){
   const auto label=profiles.value(profileId)["label"].toString();
-  entry["destination"]=label.isEmpty()?providerName(provider):label;
+  entry["destination"]=logging::redact(label.isEmpty()?providerName(provider):label).left(512);
  }
  // What the Error log offers as buttons, in the order it shows them.
  QStringList steps;const auto add=[&steps](const QString& step){if(!steps.contains(step))steps<<step;};
@@ -85,7 +82,10 @@ void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QStrin
  const auto has=[&entry](const char* key){return !entry[QLatin1String(key)].toString().isEmpty();};
  if(credentialCode(code)&&(has("historyId")||has("profileId")))add("unlock_credentials");
  if(has("profileId")&&kind!="settings_save")add("open_destination");
- if((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId")))add("retry");
+ // Retry repeats a failed outcome. A refused session call (its details name the method) offers no
+ // Retry: repeating a refused cancel or a share-only retry as an upload retry would change its effect.
+ const bool outcome=!entry["details"].toObject().contains("method");
+ if(outcome&&((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId"))))add("retry");
  for(const auto& step:entry["nextSteps"].toArray())add(step.toString());
  if(has("historyId"))add("show_in_history");
  if(has("operationId"))add("save_diagnostics");
@@ -103,7 +103,7 @@ QJsonObject ErrorLog::entryJson(const Entry& e,const QString& id,const QDateTime
  const auto put=[&entry](const char* key,const QString& value){if(!value.isEmpty())entry[QLatin1String(key)]=value.left(512);};
  put("action",e.action);put("operationId",e.operationId);put("itemId",e.itemId);put("historyId",e.historyId);put("deletionId",e.deletionId);put("sharingId",e.sharingId);
  put("setupId",e.setupId);put("profileId",e.profileId);put("provider",provider);put("itemName",logging::redact(e.itemName));
- put("destination",e.destination.isEmpty()&&!e.profileId.isEmpty()?destinationLabel(e.profileId,provider):e.destination);
+ put("destination",logging::redact(e.destination.isEmpty()&&!e.profileId.isEmpty()?destinationLabel(e.profileId,provider):e.destination));
  return entry;
 }
 QString ErrorLog::record(Entry e) {
@@ -124,7 +124,7 @@ QString ErrorLog::record(Entry e) {
  enqueue([entry,notBefore,profiles](HistoryStore& store,Error& error) mutable {
   completeEntry(entry,store.errorItem(entry["historyId"].toString(),entry["operationId"].toString()),profiles);
   QJsonObject saved;error=store.saveError(entry,keep,notBefore,&saved);return saved;
- },[id](Error error,QJsonObject){if(error)logging::warning(logHistory(),"Error log entry not saved",{{"errorId",id},{"code",error.code}});});
+ },[id](Error error,QJsonObject){if(error)logging::warning(logHistory(),"Error log entry not saved",{{"errorId",id},{"code",error.code}});},true);
  return id;
 }
 QString ErrorLog::record(const QString& kind,const Error& error,Entry context) {
@@ -139,7 +139,7 @@ void ErrorLog::resolve(const QString& subject,const QString& resolution) {
  open_.remove(subject);
  for(auto it=recent_.begin();it!=recent_.end();)it=it.key().section('|',1,1)==subject?recent_.erase(it):std::next(it);
  const auto at=iso(QDateTime::currentDateTimeUtc());
- enqueue([subject,at,resolution](HistoryStore& store,Error& error){QStringList ids;error=store.resolveErrors(subject,at,resolution,&ids);return QJsonObject{{"resolved",QJsonArray::fromStringList(ids)}};});
+ enqueue([subject,at,resolution](HistoryStore& store,Error& error){QStringList ids;error=store.resolveErrors(subject,at,resolution,&ids);return QJsonObject{{"resolved",QJsonArray::fromStringList(ids)}};},{},true);
 }
 void ErrorLog::operationFinished(const QJsonObject& op) {
  const auto state=op["state"].toString();
@@ -153,18 +153,27 @@ void ErrorLog::operationFinished(const QJsonObject& op) {
   const auto item=value.toObject();const auto artifact=item["artifact"].toObject();
   const auto historyId=artifact["id"].toString(),name=artifact["name"].toString(),status=item["uploadStatus"].toString();
   Entry context;context.action=action;context.operationId=id;context.itemId=historyId;context.historyId=historyId;context.itemName=name;context.profileId=profileId;context.provider=provider;
-  if(status=="uploaded")resolve("item:"+historyId,"Uploaded");
-  else if(meaningful(item["error"].toObject())){itemErrors=true;context.subject="item:"+historyId;record(uploadKind,errorFrom(item["error"].toObject()),context);}
+  const bool failed=meaningful(item["error"].toObject());
+  if(status=="uploaded"){
+   resolve("item:"+historyId,"Uploaded");
+   // Uploaded, but its share link wasn't made: a link error of its own (#1496's Finish share link fixes it).
+   if(failed){itemErrors=true;context.subject="share:"+historyId;record("share_link",errorFrom(item["error"].toObject()),context);}
+   else if(item["shareStatus"]=="shared")resolve("share:"+historyId,"Link created");
+  }
+  else if(failed){itemErrors=true;context.subject="item:"+historyId;record(uploadKind,errorFrom(item["error"].toObject()),context);}
   const auto local=item["local"].toObject();
   if(meaningful(local["error"].toObject())){itemErrors=true;context.subject="local:"+historyId;context.profileId.clear();record("local_save",errorFrom(local["error"].toObject()),context);}
   else if(local["status"]=="saved")resolve("local:"+historyId,"Saved");
  }
  Entry context;context.action=action;context.operationId=id;context.profileId=profileId;context.provider=provider;context.subject="operation:"+id;
- if(meaningful(op["error"].toObject())&&!itemErrors)record(kindForAction(action),errorFrom(op["error"].toObject()),context);
- else if(state=="completed")resolve("operation:"+id,"Finished");
- // An upload's own link copy (#473): failed or partial is an error; suppressed is by design.
- const auto copy=op["copyStatus"].toString();
- if(copy=="failed"||copy=="partial"){context.subject="copy:"+id;context.profileId.clear();record("copy",{"copy_failed",copy=="partial"?QStringLiteral("Only some of the links were copied to the clipboard."):QStringLiteral("The link couldn't be copied to the clipboard."),{{"copyStatus",copy}}},context);}
+ // An upload's own link copy (#473): failed or partial is an error; suppressed is by design. When the
+ // operation's error is the copy's own, it is that one row, not two.
+ const auto copy=op["copyStatus"].toString();const auto operationError=errorFrom(op["error"].toObject());
+ const bool copyError=operationError.code.startsWith("copy")||operationError.code.startsWith("clipboard");
+ if(meaningful(op["error"].toObject())&&!itemErrors&&!copyError)record(kindForAction(action),operationError,context);
+ else if(state=="completed"&&!meaningful(op["error"].toObject()))resolve("operation:"+id,"Finished");
+ if(copy=="failed"||copy=="partial"){context.subject="copy:"+id;context.profileId.clear();
+  record("copy",copyError?operationError:Error{"copy_failed",copy=="partial"?QStringLiteral("Only some of the links were copied to the clipboard."):QStringLiteral("The link couldn't be copied to the clipboard."),{{"copyStatus",copy}}},context);}
  else if(copy=="copied")resolve("copy:"+id,"Copied");
 }
 void ErrorLog::deletionFinished(const QJsonObject& doc) {
@@ -213,17 +222,30 @@ void ErrorLog::inspect(const QString& id,JsonReply reply) {
 }
 void ErrorLog::clear(const QStringList& ids,bool resolvedOnly,JsonReply reply) {
  enqueue([ids,resolvedOnly](HistoryStore& store,Error& error){int removed=0;error=store.clearErrors(ids,resolvedOnly,&removed);return QJsonObject{{"removed",removed}};},
-  [this,reply](Error error,QJsonObject result){if(!error&&result["removed"].toInt()>0){recent_.clear();load();}reply(error,result);});
+  [this,reply](Error error,QJsonObject result){if(!error&&result["removed"].toInt()>0){recent_.clear();load();}reply(error,result);},true);
 }
 QJsonObject ErrorLog::summary() const {return {{"revision",QString::number(revision_)},{"total",double(total_)},{"unresolved",double(unresolved_)}};}
 void ErrorLog::load() {
  enqueue([](HistoryStore& store,Error& error){return store.errorSummary(&error);},[this](Error error,QJsonObject summary){
   if(error)return;
-  open_.clear();for(const auto& subject:summary["subjects"].toArray())open_.insert(subject.toString());
+  // Merged, never replaced: a subject recorded while this read ran stays open. A stale subject
+  // only costs one resolve job that finds nothing.
+  for(const auto& subject:summary["subjects"].toArray())open_.insert(subject.toString());
   loaded_=true;
  });
 }
-void ErrorLog::enqueue(Work work,JsonReply done) {queue_.push_back({std::move(work),std::move(done)});pump();}
+void ErrorLog::enqueue(Work work,JsonReply done,bool write) {
+ // Reads answer at once while the journal recovers; writes wait, up to a bound (#1753).
+ if(!write&&!operations_.ready()){if(done)done(operations_.notReadyError(),{});return;}
+ if(write&&queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});if(done)done({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return;}
+ queue_.push_back({std::move(work),std::move(done),write});pump();
+}
+// Quit: the writes still waiting are saved here, on this thread, after the workers stopped.
+void ErrorLog::flush() {
+ if(queue_.empty()||!operations_.ready())return;
+ HistoryStore store(operations_.databasePath());if(store.error())return;
+ while(!queue_.empty()){auto job=std::move(queue_.front());queue_.pop_front();if(!job.write)continue;Error error;job.work(store,error);}
+}
 void ErrorLog::pump() {
  if(running_||queue_.empty()||!operations_.ready())return;
  running_=true;auto job=std::move(queue_.front());queue_.pop_front();

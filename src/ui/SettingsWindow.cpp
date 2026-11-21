@@ -3696,4 +3696,10 @@ void SettingsWindow::errorLogCommand(const QJsonObject& params,std::function<voi
  if(params["action"]!="inspect")tabs_->setCurrentWidget(errorLogPage_);
  errorLogPage_->command(params,std::move(reply));
 }
+bool SettingsWindow::selectDestination(const QString& profileId){
+ if(!destinationList_||profileId.isEmpty())return false;
+ const auto profiles=candidate()["profiles"].toArray();
+ for(int row=0;row<profiles.size()&&row<destinationList_->count();++row)if(profiles[row].toObject()["id"]==profileId){destinationList_->setCurrentRow(row);return true;}
+ return false;
+}
 }

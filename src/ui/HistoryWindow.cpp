@@ -1370,7 +1370,7 @@ void HistoryWindow::confirmCancelAll(){
  if(!cancelAllConfirmation_||!cancelAllConfirmation_->isVisible()||cancelAllIds_.isEmpty())return;const auto ids=cancelAllIds_;cancelAllConfirmation_->accept();
  // An upload that finished after the dialog opened answers operation_inactive: it is
  // not a failure, and History shows it finished. Only real cancellations are counted.
- auto remaining=std::make_shared<int>(ids.size());auto requested=std::make_shared<int>(0);auto failures=std::make_shared<QStringList>();for(const auto& id:ids)session_.request("operation.cancel",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),remaining,requested,failures](Error e,QJsonObject){if(!e)++*requested;else if(e.code!="operation_inactive")failures->append(e.message);if(--*remaining||!g)return;if(!failures->isEmpty())g->showError(QString("Some uploads couldn't be canceled. ")+failures->join(" "),QJsonObject{{"kind","upload"}});else Ui::feedback(g->status_,*requested==0?QString("Those uploads had already finished."):*requested==1?QString("Cancellation requested for 1 upload."):QString("Cancellation requested for %1 uploads.").arg(*requested));g->refresh();});
+ auto remaining=std::make_shared<int>(ids.size());auto requested=std::make_shared<int>(0);auto failures=std::make_shared<QStringList>();auto recorded=std::make_shared<QString>();for(const auto& id:ids)session_.request("operation.cancel",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),remaining,requested,failures,recorded](Error e,QJsonObject){if(!e)++*requested;else if(e.code!="operation_inactive"){failures->append(e.message);if(recorded->isEmpty())*recorded=e.details["errorLogId"].toString();}if(--*remaining||!g)return;if(!failures->isEmpty())g->showError(QString("Some uploads couldn't be canceled. ")+failures->join(" "),recorded->isEmpty()?QJsonObject{}:QJsonObject{{"id",*recorded}});else Ui::feedback(g->status_,*requested==0?QString("Those uploads had already finished."):*requested==1?QString("Cancellation requested for 1 upload."):QString("Cancellation requested for %1 uploads.").arg(*requested));g->refresh();});
 }
 void HistoryWindow::updateSelectionBar(){if(!selectionBar_)return;
  const int rows=table_->selectionModel()->selectedRows().size();const bool several=rows>1;
@@ -1513,7 +1513,7 @@ void HistoryWindow::updateActions(){
 void HistoryWindow::openBrowser(const QString& url){
  browserFeedback_->hide();const auto selection=selectionRequest_;host::openLink(QUrl(url),[g=QPointer<HistoryWindow>(this),selection](const QJsonObject& result){if(!g||g->selectionRequest_!=selection)return;if(!result["opened"].toBool()){g->browserFeedback_->setText("Couldn't open the browser. Copy the link instead");g->browserFeedback_->show();if(g->inspectorScroll_->isHidden())g->localError("share_link","browser_unavailable",g->browserFeedback_->text(),g->currentDetail_.value("id").toString());}});
 }
-void HistoryWindow::operationAction(const QString& method,const QJsonObject& extra){if(model_->busy())return;const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return;const auto id=model_->record(rows.first().row())["operationId"].toString();if(id.isEmpty())return;auto params=extra;params["id"]=id;const bool links=extra["scope"]=="sharing";session_.request(method,params,this,[g=QPointer<HistoryWindow>(this),method,links,id](Error e,QJsonObject result){if(g&&method=="operation.cancel"&&e.code=="operation_inactive"){Ui::feedback(g->status_,"That upload had already finished.",false);g->refresh();return;}if(g){const auto message=method=="operation.cancel"?QString("Cancellation requested"):method=="operation.retry"&&links?QString("Finish share link requested"):method=="operation.retry"?QString("Upload retry requested"):method=="operation.retryLocalSave"?QString("Local save retry requested"):result["copyStatus"]=="copied"?QString("Copied to clipboard"):QString("Nothing was copied to the clipboard");const bool copyFailed=method=="operation.copy"&&result["copyStatus"]!="copied";const auto reason=result["error"].toObject()["message"].toString();if(e)g->notify(e);else if(copyFailed)g->localError("copy","copy_failed",message+(reason.isEmpty()?QString("."):": "+reason),{},id);else Ui::feedback(g->status_,message);g->refresh();}});}
+void HistoryWindow::operationAction(const QString& method,const QJsonObject& extra){if(model_->busy())return;const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return;const auto id=model_->record(rows.first().row())["operationId"].toString();if(id.isEmpty())return;auto params=extra;params["id"]=id;const bool links=extra["scope"]=="sharing";session_.request(method,params,this,[g=QPointer<HistoryWindow>(this),method,links,id](Error e,QJsonObject result){if(g&&method=="operation.cancel"&&e.code=="operation_inactive"){Ui::feedback(g->status_,"That upload had already finished.",false);g->refresh();return;}if(g){const auto message=method=="operation.cancel"?QString("Cancellation requested"):method=="operation.retry"&&links?QString("Finish share link requested"):method=="operation.retry"?QString("Upload retry requested"):method=="operation.retryLocalSave"?QString("Local save retry requested"):result["copyStatus"]=="copied"?QString("Copied to clipboard"):QString("Nothing was copied to the clipboard");const bool copyFailed=method=="operation.copy"&&result["copyStatus"]!="copied";const auto reason=result["error"].toObject()["message"].toString();if(e)g->notify(e);else if(copyFailed)g->showError(message+(reason.isEmpty()?QString("."):": "+reason),QJsonObject{{"operationId",id},{"kind","copy"}});else Ui::feedback(g->status_,message);g->refresh();}});}
 // #1496: the link-only retry. The resident refuses it if any file still needs its upload.
 bool HistoryWindow::finishShareLink(){if(sharingAccepting_||sharingTimer_->isActive()){notice("Wait for the current share link request to finish.");return false;}operationAction("operation.retry",{{"scope","sharing"}});return true;}
 QStringList HistoryWindow::finishableIds()const{QStringList ids;for(int row=0;row<model_->rowCount();++row){const auto r=model_->record(row);if(!HistoryModel::finishShareLink(r))continue;auto files=r["records"].toArray();if(files.isEmpty())files.append(r);for(const auto& v:std::as_const(files))if(v.toObject()["linkFinishable"].toBool())ids.append(v.toObject()["id"].toString());}return ids;}
@@ -1728,7 +1728,7 @@ void HistoryWindow::copySavedPath(){if(savedPath_.isEmpty())return;QApplication:
 void HistoryWindow::showSavedCopy(){
  if(savedPath_.isEmpty())return;const auto path=savedPath_;host::showInFolder(path,[g=QPointer<HistoryWindow>(this),path](const QJsonObject& result){if(!g||g->savedPath_!=path)return;g->savedFolderResult_=result;if(!result["opened"].toBool())g->localError("history","folder_unavailable","Couldn't open the saved copy's folder. Copy its path to open it manually.");emit g->viewStateChanged();});
 }
-void HistoryWindow::hideEvent(QHideEvent* event){if(auto* menu=findChild<QMenu*>("historyManagementMenu"))menu->close();releasePreview();RetainedWindow::hideEvent(event);}
+void HistoryWindow::hideEvent(QHideEvent* event){dismissNotice();if(auto* menu=findChild<QMenu*>("historyManagementMenu"))menu->close();releasePreview();RetainedWindow::hideEvent(event);}
 void HistoryWindow::showEvent(QShowEvent* event){RetainedWindow::showEvent(event);selectionChanged();table_->viewport()->update();}
 void HistoryWindow::exportLocal(bool image){
  if(image){const auto record=selectedRecord();if(record.isEmpty())return;session_.request("history.copyImage",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)g->notify(e,"Original image copied.");});return;}
@@ -1783,13 +1783,17 @@ void HistoryWindow::pollSharing(){
  session_.request("share.inspect",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id](Error e,QJsonObject data){
   if(!g)return;
   g->sharingPollActive_=false;if(id!=g->sharingId_)return;
-  if(e){g->sharingFeedback_.clear();g->sharingFeedbackError_=false;g->notify(e);g->sharingTimer_->stop();g->refresh();return;}
-  const auto state=data["state"].toString();g->sharingStopped_=state=="interrupted";if(state=="running"||state=="accepted")return;
+  if(e){g->sharingFeedback_.clear();g->sharingFeedbackError_=false;if(std::exchange(g->sharingAnnounce_,false))g->notify(e);g->sharingId_.clear();g->sharingTimer_->stop();emit g->viewStateChanged();g->refresh();return;}
+  const auto state=data["state"].toString();g->sharingStopped_=state=="interrupted";
+  // Seen running here: its outcome is news when it ends, even after History reopened.
+  if(state=="running"||state=="accepted"){g->sharingAnnounce_=true;return;}
   g->sharingTimer_->stop();const auto error=data["error"].toObject();
   // A failed link change shows briefly, with its entry in the error log (#1753); it is not kept
   // with the item, so reopening History never shows it again. A finished one stays as the link's status.
   if(!error["code"].toString().isEmpty()){g->sharingFeedback_.clear();g->sharingFeedbackError_=false;if(std::exchange(g->sharingAnnounce_,false))g->showError("Link: "+error["message"].toString(data["status"].toString()),QJsonObject{{"historyId",data["historyId"]},{"kind","share_link"}});}
   else{g->sharingAnnounce_=false;g->sharingFeedback_="Link: "+data["status"].toString();g->sharingFeedbackError_=false;Ui::feedback(g->status_,g->sharingFeedback_);}
+  // Its outcome is known: a reopened History doesn't look it up again.
+  if(!g->sharingStopped_){g->sharingId_.clear();emit g->viewStateChanged();}
   g->refresh();
  });
 }
@@ -1868,7 +1872,8 @@ void HistoryWindow::inspectSelectedDeletion(){
   const auto name=g->currentDetail_.value("name").toString();const auto reason=item["error"].toObject()["message"].toString();g->deletionStatus_->setText(reason+(data["items"].toArray().size()>1?QString(" This deletion includes %1 files; retry or cancel applies to the whole deletion.").arg(data["items"].toArray().size()):QString{}));g->deletionStatus_->setVisible(!g->deletionStatus_->text().isEmpty()&&(activeTarget||retryable));
   g->deletionRetry_->setAccessibleName("Retry deletion of "+name);g->deletionCancel_->setAccessibleName("Cancel deletion of "+name);
   const bool locked=retryable&&item["error"].toObject()["code"]=="credential_setup_required";
-  const bool keychain=item["receipt"].toObject()["destination"].toObject()["credentialReference"].toObject()["mode"]=="keychain";
+  // Destination::toJson names the reference "credentials".
+  const bool keychain=item["receipt"].toObject()["destination"].toObject()["credentials"].toObject()["mode"]=="keychain";
   g->deletionUnlock_->setVisible(locked&&keychain);g->deletionUnlock_->setAccessibleName("Unlock saved credentials for "+name);g->deletionDestination_->setVisible(locked&&!keychain);
   Ui::role(g->deletionRetry_,locked?"secondary":"primary");Ui::role(g->deletionUnlock_,"primary");
   if(running){g->deletionId_=id;g->deletionTimer_->start();}emit g->viewStateChanged();
@@ -2020,18 +2025,20 @@ QJsonObject HistoryWindow::errorTarget(const Error& error,const QString& history
  return target;
 }
 void HistoryWindow::notify(const Error& error,const QString& success){
- if(error){showError(error.message,errorTarget(error,error.details["historyId"].toString()));return;}
+ // Linked only when the resident recorded it (details.errorLogId); a read that failed isn't in the log.
+ if(error){showError(error.message,error.details["errorLogId"].toString().isEmpty()?QJsonObject{}:QJsonObject{{"id",error.details["errorLogId"]}});return;}
  if(!success.isEmpty())Ui::feedback(status_,success);
 }
 void HistoryWindow::showError(const QString& text,const QJsonObject& target){
- if(text.isEmpty())return;
- errorNoticeTarget_=target;errorNotice_->setTone(Ui::Banner::Tone::Error);errorNotice_->setText(text);errorNotice_->setAction("Open error log");
+ // A hidden History shows nothing later for it: the error log keeps what failed meanwhile (#1753).
+ if(text.isEmpty()||!isVisible())return;
+ errorNoticeTarget_=target;errorNotice_->setTone(Ui::Banner::Tone::Error);errorNotice_->setText(text);errorNotice_->setAction(target.isEmpty()?QString{}:QStringLiteral("Open error log"));
  // The footer line keeps item and progress notes only; an error never stays there.
  if(status_->property("feedbackTone").toString()=="error")Ui::feedback(status_,{});
  errorNotice_->show();errorNotice_->announce(text);errorNoticeTimer_->start();updateFooterLayout();
 }
 void HistoryWindow::notice(const QString& text){
- if(text.isEmpty())return;
+ if(text.isEmpty()||!isVisible())return;
  errorNoticeTarget_={};errorNotice_->setTone(Ui::Banner::Tone::Warning);errorNotice_->setText(text);errorNotice_->setAction({});
  errorNotice_->show();errorNoticeTimer_->start();updateFooterLayout();
 }
@@ -2053,11 +2060,12 @@ void HistoryWindow::showItem(const QString& historyId){
  session_.request("history.detail",{{"id",historyId}},this,[g=QPointer<HistoryWindow>(this),historyId](Error e,QJsonObject data){
   if(!g)return;
   if(e){g->notify(e);return;}
-  // Selected once its page loads: filters cleared, then a search for its name. Each query resets
-  // the model at once and only the last reply loads, so the wanted selection survives both.
-  g->restoreSelection_={historyId};g->restoringSelection_=true;g->clearFilters(true);
-  const auto name=data["name"].toString();
-  if(!name.isEmpty()){auto* search=g->findChild<QLineEdit*>("historySearch");{const QSignalBlocker block(search);search->setText(name);}g->restoreSelection_={historyId};g->restoringSelection_=true;g->applyFilters();}
+  // Filters cleared, then narrowed to the moment it was stored (its operation's files), so the row
+  // is on the first page whatever its name; the item is selected within its row.
+  g->restoreSelection_={historyId};g->restoringSelection_=true;g->selectedItemId_=historyId;g->clearFilters(true);
+  const auto created=data["created"].toString();
+  if(!created.isEmpty()){for(const auto& key:{"from","to"}){auto* field=g->findChild<QLineEdit*>(QStringLiteral("historyFilter")+key);const QSignalBlocker block(field);field->setText(created);}
+   g->restoreSelection_={historyId};g->restoringSelection_=true;g->selectedItemId_=historyId;g->applyFilters();}
  });
 }
 }
