@@ -1109,6 +1109,12 @@ private slots:
         QCOMPARE(proposals.size(), 4);
         const auto thin = proposed(proposals)["mask"].toObject()["rect"].toArray();
         QVERIFY2(thin[2].toInt() > 100 && thin[3].toInt() >= 2 && thin[3].toInt() < 10, qPrintable(QJsonDocument(thin).toJson()));
+        // Q14: a drawn area under 6 px both ways makes nothing and stays armed.
+        window.drive({{"action", "armRedact"}});
+        drag(view, inside, inside + QPoint(4, 4));
+        QCOMPARE(proposals.size(), 4);
+        QVERIFY(!window.inspect()["armed"].isNull());
+        window.drive({{"action", "cancelPlacement"}});
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
@@ -1118,6 +1124,84 @@ private slots:
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         drag(view, away, away + QPoint(1, 0));
         QVERIFY(window.inspect()["selectedMaskId"].isNull());
+    }
+    // Q11: skimming past the clip's last frame settles on it as exact (its
+    // stored time is earlier than the skim time); no decode loop, no stuck ≈.
+    void skimAtTheLastFrameSettles() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 1, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 1000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        QVERIFY(window.drive({{"action", "skim"}, {"time", 999000}}).code.isEmpty());
+        const auto exact = [&] { return window.inspect()["timeline"].toObject()["skim"].toObject()["exact"].toBool(); };
+        PUTGD_TRY_VERIFY(exact());
+        PUTGD_VERIFY_STEADY(exact(), 300);
+    }
+    // Q23, Q24 (live m74 run, maximized 1920×1040, 784×434 clip): hover,
+    // press and paint agree on every side of a selected box: its west band's
+    // centre resizes (the cursor said so), and presses 2 px outside the right
+    // and bottom edges resize too.
+    void handlesAnswerOnEverySide_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<int>("handle");
+        QTest::addColumn<QPoint>("offset");
+        QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0);
+        QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0);
+        QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2);
+        QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2);
+        QTest::newRow("blur east 2 px outside") << "blur" << 3 << QPoint(2, 0);
+    }
+    void handlesAnswerOnEverySide() {
+        QFETCH(QString, kind);
+        QFETCH(int, handle);
+        QFETCH(QPoint, offset);
+        auto o = options();
+        o.canvas = QSize(784, 434);
+        o.availableSize = QSize(1920, 1040);
+        ReviewWindow window(o, config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(1920, 1040);
+        RecordingEdit edit;
+        edit.revision = 2;
+        auto m = mask("m1", kind, 0, duration);
+        m.rect = kind == "blur" ? QRect(479, 182, 172, 135) : QRect(119, 101, 172, 134);
+        edit.masks = {m};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* view = window.findChild<FrameView*>("frame");
+        QImage frame(784, 434, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        view->setFrame(frame, 0);
+        QCoreApplication::processEvents();
+        const QRect r = view->imageRect();
+        const double k = r.width() / 784.0;
+        const QRectF box(r.x() + m.rect.x() * k, r.y() + m.rect.y() * k, m.rect.width() * k, m.rect.height() * k);
+        const QPointF points[8] = {box.topLeft(), {box.center().x(), box.top()}, box.topRight(), {box.right(), box.center().y()},
+                                   box.bottomRight(), {box.center().x(), box.bottom()}, box.bottomLeft(), {box.left(), box.center().y()}};
+        // inspect reports the same grips, in window coordinates (what a driver aims at).
+        const auto grip = window.inspect()["viewer"].toObject()["selectedCover"].toObject()["grips"].toArray()[handle].toArray();
+        QVERIFY(std::abs(view->mapTo(&window, points[handle].toPoint()).x() - grip[0].toDouble()) <= 1 && std::abs(view->mapTo(&window, points[handle].toPoint()).y() - grip[1].toDouble()) <= 1);
+        const QPoint at = (points[handle] + QPointF(offset)).toPoint();
+        QMouseEvent hover(QEvent::MouseMove, QPointF(at), view->mapToGlobal(QPointF(at)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(view, &hover);
+        const auto shape = view->cursor().shape();
+        QVERIFY2(shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor || shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor, qPrintable(QString::number(int(shape))));
+        drag(view, at, at + QPoint(30, 21));
+        QCOMPARE(proposals.size(), 1);
+        const auto rect = proposed(proposals)["mask"].toObject()["rect"].toArray();
+        // A resize: the size changed (a move keeps it).
+        QVERIFY2(rect[2].toInt() != m.rect.width() || rect[3].toInt() != m.rect.height(), qPrintable(QJsonDocument(rect).toJson()));
     }
     // R28: a placement follows the time selection: a new selection moves it,
     // and with the selection cleared it covers the whole recording.
@@ -1160,9 +1244,15 @@ private slots:
         QCOMPARE(playhead(), qint64(1033333));
         QTest::keyClick(strip, Qt::Key_Left, Qt::ShiftModifier);
         QCOMPARE(playhead(), qint64(33333));
-        for (const qint64 point : {qint64(3000000), qint64(4000000), qint64(6000000)}) { QTest::keyClick(strip, Qt::Key_Down); QCOMPARE(playhead(), point); }
+        // Q21: a cut's boundary is stepped to from its kept side.
+        for (const qint64 point : {qint64(2966667), qint64(4000000), qint64(6000000)}) { QTest::keyClick(strip, Qt::Key_Down); QCOMPARE(playhead(), point); }
         QTest::keyClick(strip, Qt::Key_Up);
         QCOMPARE(playhead(), qint64(4000000));
+        // Q10: a present skim wins: the key acts at the skimmed frame.
+        QVERIFY(window.drive({{"action", "skim"}, {"time", 5000000}}).code.isEmpty());
+        QTest::keyClick(strip, Qt::Key_Period);
+        QCOMPARE(playhead(), qint64(5033333));
+        QVERIFY(window.inspect()["timeline"].toObject()["skim"].isNull());
         const auto cleanup = qScopeGuard([&] { strip->setSkimming(true); strip->setSnapping(true); });
         QTest::keyClick(strip, Qt::Key_S);
         QVERIFY(!timelineState()["skimming"].toBool());
@@ -1178,7 +1268,7 @@ private slots:
         QVERIFY(timelineState()["zoom"].toInt() > 2);
         QTest::keyClick(strip, Qt::Key_Z, Qt::ShiftModifier);
         QCOMPARE(timelineState()["zoom"].toInt(), 1);
-        // [ and ] from the viewer (with no cover selected; with one, T13 sets its in / out).
+        // [ and ] from the viewer: they always mark a time selection (Q7).
         window.drive({{"action", "clearSelection"}});
         auto* view = window.findChild<FrameView*>("frame");
         view->setFocus();

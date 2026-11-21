@@ -73,6 +73,12 @@ public:
     QWidget* rowFor(const QString& kind, const QString& id) const;
     // Proposes a strength still coalescing (a selection change, or the window before an upload).
     void flushStrength();
+    // Ctrl+Z during the strength's coalescing takes back only that step (Q18).
+    bool cancelPendingStrength();
+    // Q20: the row of a cut or cover selected elsewhere scrolls into view.
+    void revealRow(const QString& kind, const QString& id);
+    // Q22: the item hovered elsewhere looks hovered in its row (kind "" for none).
+    void setLinkedHover(const QString& kind, const QString& id);
     // The height the panel may take (the folded overlay's room); 0: no limit.
     void setAvailableHeight(int height);
     QSize sizeHint() const override;
@@ -97,6 +103,8 @@ signals:
     // Enter in a time field or the strength (or Esc on unchanged text): the
     // window hands the keys back to the timeline or the Edits overlay (W17).
     void focusReturnRequested();
+    // The pointer is over an Edits row (kind "" when it left), for hover linking (Q22).
+    void rowHovered(const QString& kind, const QString& id);
 protected:
     void paintEvent(QPaintEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
@@ -145,6 +153,8 @@ public:
     void openFor(ReviewPanel* panel, QWidget* toggle);
     // The widget it ends 8 px above (the transport).
     void setFloor(QWidget* floor);
+    // Presses there only close the overlay (the picture); elsewhere they also act.
+    void setConsumeArea(QWidget* area);
     void dismiss();
     bool isOpen() const;
 signals:
@@ -156,7 +166,7 @@ protected:
 private:
     void place();
     void giveBack();
-    QPointer<QWidget> window_, toggle_, previousParent_, floor_;
+    QPointer<QWidget> window_, toggle_, previousParent_, floor_, consumeArea_;
     QPointer<QLayout> previousLayout_;
     QPointer<ReviewPanel> panel_;
     QScrollArea* scroll_ = nullptr;

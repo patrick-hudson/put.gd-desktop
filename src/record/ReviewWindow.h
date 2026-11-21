@@ -64,6 +64,8 @@ public:
     // place of the playhead frame until clearSkim(); the frame stays.
     void setSkim(const QImage&, qint64 timeUs);
     void clearSkim();
+    void promoteSkim();
+    void setLinkedHover(const QString& coverId);
     bool skimming() const { return !skim_.isNull(); }
     qint64 skimTime() const { return skimUs_; }
     // A failed refresh: a frame still shown is dimmed and marked as an earlier
@@ -115,6 +117,8 @@ public:
     // R29: the selected blur's strength while the panel coalesces it, shown at once.
     void previewStrength(const QString& id, int strength);
     QString liveId() const { return liveId_; }
+    // {box: [x, y, w, h], grips: [[x, y] × 8, handle order]} for the selected cover, or {}.
+    QJsonObject selectedGeometry() const;
     // Esc, a right press, Ctrl+Z or a lost window: the gesture in progress
     // goes back to its start (W5, W20). False with none.
     bool cancelGesture();
@@ -138,6 +142,10 @@ signals:
     void liveEditStarted(const QString& id, qint64 timeUs);
     // A click on the picture while playing (W3).
     void pauseRequested();
+    // A drawn area under 6 px both ways was let go: nothing placed (Q14).
+    void placementTooSmall();
+    // The cover under the pointer on the picture ("" when none) (Q22).
+    void hoveredCoverChanged(const QString& id);
     void arrowsClaimedChanged(bool claimed);
     // Esc gave the arrows back: the window returns focus to the timeline.
     void arrowsReleased();
@@ -191,6 +199,7 @@ private:
     qint64 uncoveredUs_ = -1;
     std::tuple<qint64, QRect, QString, int> compositeKey_;
     std::optional<int> liveStrength_;
+    QString linkedHover_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;
@@ -335,6 +344,7 @@ private:
     bool blurApplies() const;
     recording::Span placementSpan(const QString& kind, bool& whole) const;
     void stepEditPoint(int direction);
+    bool adoptSkim();
     void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
@@ -448,7 +458,9 @@ private:
     std::optional<RecordingEdit> edgeEdit_;  // a cover edge drag: the edit with its proposed span (W4)
     quint64 edgeDragSeq_ = 0, edgeHoldProposal_ = 0;  // proposals before the drag; the one its release made
     QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
-    QString transientNote_;
+    QString transientNote_, placeHint_;
+    QTimer placeHintTimer_;
+    std::optional<std::pair<QString, QString>> revealRow_;  // Q20
     int noteMs_ = 1500;
     bool loadingFrame_ = false;
     bool heldPlaying_ = false;  // T15: playing when the timeline held playback for a press

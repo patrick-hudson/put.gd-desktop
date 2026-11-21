@@ -134,7 +134,8 @@ public:
         : QWidget(parent), kind_(kind), name_(name), span_(span), glyph_(Ui::icon(glyph)), selected_(selected), verbOffered_(verbOffered) {
         setObjectName("reviewPanelRow");
         setProperty("rowKey", kind + QLatin1Char('/') + id);
-        setFocusPolicy(Qt::StrongFocus);
+        // A click never takes the keys; Tab still reaches the row (Q16).
+        setFocusPolicy(Qt::TabFocus);
         setAttribute(Qt::WA_Hover);
         setMouseTracking(true);
         setSpan(span, span);
@@ -175,16 +176,19 @@ public:
         refreshVerb();
         update();
     }
+    // Q22: the item hovered on the timeline or the picture looks hovered here.
+    void setLinked(bool linked) { if (linked_ != linked) { linked_ = linked; update(); } }
 signals:
     void activated();
     void verbClicked();
     void removeKey();
+    void hoverChanged(bool hovered);
 protected:
     void resizeEvent(QResizeEvent*) override { placeVerb(); }
     // The action icon shows on a hovered row only after 150 ms (R20), so a
     // pointer crossing the list never flickers Remove icons.
-    void enterEvent(QEnterEvent*) override { hovered_ = true; hoverDelay_.start(); update(); }
-    void leaveEvent(QEvent*) override { hovered_ = false; hoverHeld_ = false; hoverDelay_.stop(); refreshVerb(); update(); }
+    void enterEvent(QEnterEvent*) override { hovered_ = true; hoverDelay_.start(); emit hoverChanged(true); update(); }
+    void leaveEvent(QEvent*) override { hovered_ = false; hoverHeld_ = false; hoverDelay_.stop(); refreshVerb(); emit hoverChanged(false); update(); }
     void mouseReleaseEvent(QMouseEvent* event) override {
         if (event->button() == Qt::LeftButton && rect().contains(event->position().toPoint())) emit activated();
         else QWidget::mouseReleaseEvent(event);
@@ -225,7 +229,7 @@ protected:
             p.setPen(Qt::NoPen);
             p.setBrush(c.accent);
             p.drawRoundedRect(QRectF(0, 3, 2, height() - 6), 1, 1);
-        } else if (hovered_) {
+        } else if (hovered_ || linked_) {
             Ui::paintSelection(p, body, false, 7);
         }
         if (hasFocus() && Ui::keyboardFocus(this)) {
@@ -277,7 +281,7 @@ private:
     }
     QString kind_, name_, span_, shortSpan_;
     QIcon glyph_;
-    bool selected_, verbOffered_, hovered_ = false, hoverHeld_ = false, compact_ = false;
+    bool selected_, verbOffered_, hovered_ = false, hoverHeld_ = false, compact_ = false, linked_ = false;
     QTimer hoverDelay_;
     QToolButton* verb_ = nullptr;
 };
@@ -312,6 +316,25 @@ QString ReviewPanel::neighbourOf(const QString& key) const {
     if (at < 0) return {};
     if (at + 1 < keys.size()) return keys[at + 1];
     return at > 0 ? keys[at - 1] : QString();
+}
+void ReviewPanel::revealRow(const QString& kind, const QString& id) {
+    auto* row = rowFor(kind, id);
+    if (!row) return;
+    for (auto* up = row->parentWidget(); up; up = up->parentWidget())
+        if (auto* scroll = qobject_cast<QScrollArea*>(up)) { scroll->ensureWidgetVisible(row, 0, 0); break; }
+}
+void ReviewPanel::setLinkedHover(const QString& kind, const QString& id) {
+    const QString key = kind.isEmpty() ? QString() : kind + QLatin1Char('/') + id;
+    for (auto* row : findChildren<EditRow*>()) row->setLinked(!key.isEmpty() && row->property("rowKey").toString() == key);
+}
+bool ReviewPanel::cancelPendingStrength() {
+    if (!strengthPending_) return false;
+    emit coverStrengthPreview(strengthPending_->first, -1);
+    strengthPending_.reset();
+    strengthTimer_.stop();
+    if (const auto* mask = selectedCover(); mask && top_)
+        if (auto* spin = top_->findChild<QSpinBox*>(QStringLiteral("reviewPanelStrength"))) { const QSignalBlocker block(spin); spin->setValue(std::clamp(mask->strength, 2, 64)); }
+    return true;
 }
 QWidget* ReviewPanel::rowFor(const QString& kind, const QString& id) const {
     const QString key = kind + QLatin1Char('/') + id;
@@ -858,6 +881,7 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
             activated_.restart();
             emit editActivated(kind, id);
         });
+        connect(row, &EditRow::hoverChanged, this, [this, kind, id](bool on) { emit rowHovered(on ? kind : QString(), on ? id : QString()); });
         connect(row, &EditRow::verbClicked, this, [this, kind, id] {
             focusAfter_ = neighbourOf(kind + QLatin1Char('/') + id);
             if (kind == "trim") emit resetTrim();
@@ -971,6 +995,7 @@ EditsOverlay::EditsOverlay(QWidget* window) : QFrame(window), window_(window) {
 
 bool EditsOverlay::isOpen() const { return isVisible() && panel_; }
 void EditsOverlay::setFloor(QWidget* floor) { floor_ = floor; }
+void EditsOverlay::setConsumeArea(QWidget* area) { consumeArea_ = area; }
 
 void EditsOverlay::openFor(ReviewPanel* panel, QWidget* toggle) {
     if (!panel || !toggle || !window_) return;
@@ -1089,8 +1114,13 @@ bool EditsOverlay::eventFilter(QObject* watched, QEvent* event) {
         if (!target || QApplication::activePopupWidget()) break;
         if (target == this || isAncestorOf(target)) break;
         if (toggle_ && (target == toggle_ || toggle_->isAncestorOf(target))) break;  // the window's toggle decides
-        // A press outside closes the overlay and goes no further (W11).
-        if (window_ && target->window() == window_->window()) { dismiss(); return true; }
+        // A press outside closes the overlay; on the picture it goes no further,
+        // elsewhere (timeline, transport, tool row) it also acts (W11, Q17).
+        if (window_ && target->window() == window_->window()) {
+            const bool consume = consumeArea_ && (target == consumeArea_ || consumeArea_->isAncestorOf(target));
+            dismiss();
+            return consume;
+        }
         break;
     }
     case QEvent::Resize: case QEvent::Move:
