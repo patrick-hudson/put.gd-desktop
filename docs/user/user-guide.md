@@ -209,7 +209,7 @@ With it on, each region, window, monitor, desktop and scrolling capture, each im
   - **Redact and upload** (Enter) opens the editor with the suggested Redact marks already in place. Check them, add or remove any, then press **Upload**.
   - **Upload anyway** uploads the capture as it is.
   - **Cancel** (Escape) uploads nothing. With **Keep a local copy** on, the capture is saved to your archive and shows in History as a local item.
-- **Couldn't finish checking:** if recognition failed or ran out of time, the image is over 24 megapixels or couldn't be read, or a pattern in your list didn't finish, put.gd asks anyway, with the title "put.gd couldn't finish checking this capture" and the reason. It never uploads a capture it couldn't check without asking you.
+- **Couldn't finish checking:** if recognition failed or ran out of time, the image is over 24 megapixels or couldn't be read, a pattern in your list didn't finish, or a language you chose in Settings has no data installed, put.gd asks anyway, with the title "put.gd couldn't finish checking this capture" and the reason. It never uploads a capture it couldn't check without asking you.
 
 For several files from your file manager, the panel names the file it found something in, and offers only **Upload anyway** (every file) and **Cancel** (none of them), since the editor edits one image at a time.
 
