@@ -802,18 +802,18 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
         drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return;
     }
     auto target = targetAt(p);
-    QPointF from = p;
-    // A press that lands off a grip takes the grip the pointer left within the
-    // last 60 ms and 8 px, counted from there once it travels 4 px: a press that arrives late (a
-    // pointer already moving, emulated middle buttons) still grabs what was
-    // under the cursor (Q23, Q24).
-    if (target.kind != Target::Kind::Handle && trailClock_.isValid()) {
+    // A press on empty picture takes the grip the pointer left within the
+    // last 60 ms and 8 px: a press that arrives late (a pointer already
+    // moving, emulated middle buttons) still grabs what was under the cursor
+    // (Q23, Q24). A press on a cover or another grip keeps what it hit, and the
+    // drag counts from the real press point, so a press that never moves
+    // changes nothing (r5-neon #6).
+    if (target.kind == Target::Kind::None && trailClock_.isValid()) {
         const qint64 now = trailClock_.elapsed();
         for (auto it = hoverTrail_.crbegin(); it != hoverTrail_.crend(); ++it) {
             if (now - it->t > 60) break;
             if (it->handle < 0 || it->id != selected_ || QLineF(it->p, p).length() > 8) continue;
             target = {Target::Kind::Handle, it->id, it->handle};
-            from = it->p;
             break;
         }
     }
@@ -826,7 +826,7 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
         handle_ = target.handle;
         pressedSelected_ = selected_ == target.id;
         drag_ = target.kind == Target::Kind::Handle ? Drag::Resize : Drag::Move;
-        anchor_ = from;
+        anchor_ = p;
         setCursor(drag_ == Drag::Resize ? resizeCursor(handle_) : Qt::SizeAllCursor);
         // A click on a cover gives the viewer the arrows (W8).
         claimArrows(true);
@@ -1144,7 +1144,12 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     playSpeed_ = tool({}, "chevron-down", "Playback speed", "Playback speed: 0.5× to 4× (L plays faster)", transport_);
     playSpeed_->setObjectName("playSpeed");
     playSpeed_->setIconSize(QSize(Ui::scaled(12), Ui::scaled(12)));
-    playSpeed_->setFixedWidth(std::max(Ui::scaled(20), Ui::Metric::splitZone + 6));
+    // The button always names its speed and keeps one width, wide enough for
+    // "0.5×" and the chevron, so the transport never shifts (r5-neon #11).
+    playSpeed_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    playSpeed_->setText(QStringLiteral("0.5×"));
+    playSpeed_->setFixedWidth(std::max(playSpeed_->sizeHint().width(), playSpeed_->fontMetrics().horizontalAdvance(QStringLiteral("0.5×")) + Ui::scaled(12) + Ui::scaled(18)));
+    playSpeed_->setText(QStringLiteral("1×"));
     speedMenu_ = new QMenu(playSpeed_);
     speedMenu_->setObjectName("speedMenu");
     speeds_ = new QActionGroup(speedMenu_);
@@ -1416,7 +1421,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(timeline_, &FilmstripTimeline::timeSelected, this, &ReviewWindow::selectTime);
     connect(timeline_, &FilmstripTimeline::cutSelected, this, [this](const QString& id) { selectCut(id, false); });
     // A cover bar click seeks only when the playhead is outside the cover (A5).
-    connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id); });
+    // A press on a cover's bar or edge selects it and leaves the playhead where
+    // it is (r5-neon #2); seeking on select stays for the Edits list and keys.
+    connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id, false); });
     connect(timeline_, &FilmstripTimeline::moreCoversRequested, this, &ReviewWindow::revealHiddenCovers);
     connect(timeline_, &FilmstripTimeline::hoverChanged, this, [this](const QString& kind, const QString& id) {
         view_->setLinkedHover(kind == "cover" ? id : QString());
@@ -1647,10 +1654,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(play_, &QToolButton::clicked, this, [this] { if (playing_) stopPlayback(); else startPlayback(); });
     connect(speeds_, &QActionGroup::triggered, this, [this](QAction* action) {
         speed_ = action->data().toDouble();
-        // R24: the speed button shows a speed other than 1×.
-        playSpeed_->setText(speed_ == 1.0 ? QString() : action->text());
-        playSpeed_->setToolButtonStyle(speed_ == 1.0 ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextBesideIcon);
-        playSpeed_->setFixedWidth(speed_ == 1.0 ? std::max(Ui::scaled(20), Ui::Metric::splitZone + 6) : playSpeed_->fontMetrics().horizontalAdvance(action->text()) + Ui::scaled(12) + Ui::scaled(18));
+        playSpeed_->setText(action->text());
         if (playing_) { const qint64 from = playhead_; stopPlayback(); startPlayback(from, true); }
     });
     connect(previousFrame_, &QToolButton::clicked, this, [this] { stepFrames(-1); });

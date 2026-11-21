@@ -1167,27 +1167,32 @@ private slots:
     // Q23, Q24 (live m74 run, maximized 1920×1040, 784×434 clip): hover,
     // press and paint agree on every side of a selected box: its west band's
     // centre resizes (the cursor said so), and presses 2 px outside the right
-    // and bottom edges resize too.
+    // and bottom edges resize too. A late press on empty picture takes the grip
+    // the pointer just left; one that lands on the cover's body moves it
+    // (r5-neon #6), and the drag counts from the real press point.
     void handlesAnswerOnEverySide_data() {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<int>("handle");
         QTest::addColumn<QPoint>("offset");
         QTest::addColumn<QPoint>("late");
-        QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0) << QPoint();
+        QTest::addColumn<bool>("moves");
+        QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0) << QPoint() << false;
         // The live run's presses arrived 5–11 px along the drag (emulated middle button).
-        QTest::newRow("blur west, press 7 px late") << "blur" << 7 << QPoint(0, 0) << QPoint(6, 4);
-        QTest::newRow("solid east 2 px outside, press 7 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(6, 4);
-        QTest::newRow("solid south 2 px below, press 7 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(6, 4);
-        QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0) << QPoint();
-        QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2) << QPoint();
-        QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2) << QPoint();
-        QTest::newRow("blur east 2 px outside") << "blur" << 3 << QPoint(2, 0) << QPoint();
+        QTest::newRow("blur west, press 7 px late outside") << "blur" << 7 << QPoint(0, 0) << QPoint(-7, 3) << false;
+        QTest::newRow("blur west, press 7 px late on the body") << "blur" << 7 << QPoint(0, 0) << QPoint(7, 3) << true;
+        QTest::newRow("solid east 2 px outside, press 7 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(6, 4) << false;
+        QTest::newRow("solid south 2 px below, press 7 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(4, 6) << false;
+        QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0) << QPoint() << false;
+        QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2) << QPoint() << false;
+        QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2) << QPoint() << false;
+        QTest::newRow("blur east 2 px outside") << "blur" << 3 << QPoint(2, 0) << QPoint() << false;
     }
     void handlesAnswerOnEverySide() {
         QFETCH(QString, kind);
         QFETCH(int, handle);
         QFETCH(QPoint, offset);
         QFETCH(QPoint, late);
+        QFETCH(bool, moves);
         auto o = options();
         o.canvas = QSize(784, 434);
         o.availableSize = QSize(1920, 1040);
@@ -1231,8 +1236,30 @@ private slots:
         drag(view, at + late, at + QPoint(30, 21));
         QCOMPARE(proposals.size(), 1);
         const auto rect = proposed(proposals)["mask"].toObject()["rect"].toArray();
-        // A resize: the size changed (a move keeps it).
-        QVERIFY2(rect[2].toInt() != m.rect.width() || rect[3].toInt() != m.rect.height(), qPrintable(QJsonDocument(rect).toJson()));
+        // A resize changes the size; a move keeps it.
+        const bool resized = rect[2].toInt() != m.rect.width() || rect[3].toInt() != m.rect.height();
+        QVERIFY2(resized != moves, qPrintable(QJsonDocument(rect).toJson()));
+        if (moves) QVERIFY(rect[0].toInt() != m.rect.x());
+    }
+    // r5-neon #11: the speed button always names its speed and keeps one
+    // width, so Play and the frame steps never shift when the speed changes.
+    void theSpeedButtonKeepsItsWidth() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* speed = window.findChild<QToolButton*>("playSpeed");
+        auto* next = window.findChild<QToolButton*>("nextFrame");
+        QVERIFY(speed && next);
+        QCOMPARE(speed->text(), QString("1×"));
+        const int width = speed->width(), nextX = next->mapTo(&window, QPoint()).x();
+        QVERIFY(speed->sizeHint().width() <= width + 1);
+        for (const double factor : {0.5, 4.0, 1.0}) {
+            QVERIFY(window.drive({{"action", "speed"}, {"speed", factor}}).code.isEmpty());
+            QCoreApplication::processEvents();
+            QCOMPARE(speed->text(), factor == 0.5 ? QString("0.5×") : factor == 4.0 ? QString("4×") : QString("1×"));
+            QCOMPARE(speed->width(), width);
+            QCOMPARE(next->mapTo(&window, QPoint()).x(), nextX);
+        }
     }
     // P9 (real bug): a Shows from time typed but not committed is committed
     // before Upload acts; the upload waits for that edit and sends its answer.
@@ -1433,7 +1460,7 @@ private slots:
     }
     // C3, A14, A5: a click on the timeline while playing seeks and keeps
     // playing; a scrub pauses and keeps the time selection; a click on a cover
-    // bar seeks only when the playhead is outside the cover.
+    // bar selects it without moving the playhead.
     void timelineClicksKeepPlayingAndTheSelection() {
         QTemporaryDir dir;
         const QString clip = dir.filePath("gops.mkv");
@@ -1460,11 +1487,14 @@ private slots:
         emit strip->scrubStarted();
         emit strip->seekRequested(2500000);
         QCOMPARE(window.inspect()["selection"].toObject()["end"].toDouble(), 900000.0);
-        window.drive({{"action", "seek"}, {"time", 1200000}});
-        emit strip->coverSelected("m1");
-        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 1200000.0);
+        // r5-neon #2: a press on the cover's bar selects it in place; the
+        // Edits list still shows the cover from its start.
         window.drive({{"action", "seek"}, {"time", 2500000}});
         emit strip->coverSelected("m1");
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 2500000.0);
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue()}});
+        QVERIFY(window.drive({{"action", "selectEdit"}, {"kind", "cover"}, {"editId", "m1"}}).code.isEmpty());
         QCOMPARE(window.inspect()["playheadUs"].toDouble(), 1000000.0);
     }
     // D4 (privacy): while a cover moves, its effect follows the box. The frame

@@ -38,6 +38,22 @@ QString spanText(qint64 start, qint64 end) { return clockText(start) + QStringLi
 QString shortClock(qint64 us) { return us < 60000000 ? QString::number(double(std::max<qint64>(0, us)) / 1e6, 'f', 1) : clockText(us); }
 QString shortSpanText(qint64 start, qint64 end) { return shortClock(start) + QStringLiteral("–") + shortClock(end); }
 
+// Remembers whether a button was last pressed by the pointer or a key, so a
+// pointer click on Remove, Restore or Reset hands focus back to the timeline
+// and only a key moves it to the next row (r5-neon #4).
+class PressSource : public QObject {
+public:
+    using QObject::QObject;
+    static void watch(QAbstractButton* button) { button->installEventFilter(new PressSource(button)); }
+    static bool byPointer(const QAbstractButton* button) { return button->property("putgdPressedByPointer").toBool(); }
+protected:
+    bool eventFilter(QObject* object, QEvent* event) override {
+        if (event->type() == QEvent::MouseButtonPress) object->setProperty("putgdPressedByPointer", true);
+        else if (event->type() == QEvent::KeyPress) object->setProperty("putgdPressedByPointer", false);
+        return false;
+    }
+};
+
 // "m:ss.s" or plain seconds; anything else is not a time.
 std::optional<qint64> parseClock(const QString& text) {
     static const QRegularExpression minutes(QStringLiteral(R"(^\s*(\d+):(\d{1,2}(?:\.\d+)?)\s*$)"));
@@ -148,6 +164,7 @@ public:
         verb_->setProperty("rowKey", property("rowKey"));
         verb_->setFocusPolicy(Qt::TabFocus);
         verb_->setFixedSize(verbSide(), verbSide());
+        PressSource::watch(verb_);
         connect(verb_, &QToolButton::clicked, this, &EditRow::verbClicked);
         hoverDelay_.setSingleShot(true);
         hoverDelay_.setInterval(150);
@@ -586,12 +603,13 @@ void ReviewPanel::rebuild(bool rebuildTop, bool rebuildList) {
     building_ = false;
     updateRows();
 
-    // After Restore or Remove, the next surviving row has focus, else the timeline (W7).
+    // After Restore or Remove by key, the next surviving row has focus and its
+    // ring shows; after a pointer click, or with no row left, the timeline (W7).
     if (focusAfter_) {
         const auto key = *focusAfter_;
         focusAfter_.reset();
         auto* next = key.isEmpty() ? nullptr : rowFor(key.section(QLatin1Char('/'), 0, 0), key.section(QLatin1Char('/'), 1));
-        if (next) next->setFocus(Qt::OtherFocusReason);
+        if (next) next->setFocus(Qt::TabFocusReason);
         else emit focusReturnRequested();
     } else if (!restore.isEmpty()) {
         for (auto* w : findChildren<QWidget*>()) {
@@ -739,7 +757,11 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         addCutEdge(v, *cut, true);
         addCutEdge(v, *cut, false);
         const QString id = cut->id;
-        connect(restore, &QPushButton::clicked, this, [this, id] { focusAfter_ = neighbourOf(QStringLiteral("cut/") + id); emit restoreCut(id); });
+        PressSource::watch(restore);
+        connect(restore, &QPushButton::clicked, this, [this, id, restore] {
+            focusAfter_ = PressSource::byPointer(restore) ? QString() : neighbourOf(QStringLiteral("cut/") + id);
+            emit restoreCut(id);
+        });
         connect(across, &QPushButton::clicked, this, [this, id] { emit playAcross(id); });
         defaultControl_ = restore;
         return;
@@ -958,8 +980,8 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
             emit editActivated(kind, id);
         });
         connect(row, &EditRow::hoverChanged, this, [this, kind, id](bool on) { emit rowHovered(on ? kind : QString(), on ? id : QString()); });
-        connect(row, &EditRow::verbClicked, this, [this, kind, id] {
-            focusAfter_ = neighbourOf(kind + QLatin1Char('/') + id);
+        connect(row, &EditRow::verbClicked, this, [this, kind, id, row] {
+            focusAfter_ = PressSource::byPointer(row->verbButton()) ? QString() : neighbourOf(kind + QLatin1Char('/') + id);
             if (kind == "trim") emit resetTrim();
             else if (kind == "cut") emit restoreCut(id);
             else emit removeCover(id);
@@ -968,7 +990,7 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
         // selection is cut; without one a cover row's cover is removed.
         connect(row, &EditRow::removeKey, this, [this, kind, id] {
             if (state_.timeSelection && !state_.timeSelection->empty()) emit cutRequested();
-            else if (kind == "cover") emit removeCover(id);
+            else if (kind == "cover") { focusAfter_ = neighbourOf(kind + QLatin1Char('/') + id); emit removeCover(id); }
         });
         column->addWidget(row);
     }
