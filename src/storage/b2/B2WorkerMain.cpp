@@ -58,6 +58,8 @@ public:
     bool atEnd() const override { return read_ >= length_ && QIODevice::bytesAvailable() == 0; }
     bool reset() override { return false; }
     qint64 size() const override { return length_; }
+    // Bytes the transport has read so far; never fewer than it sent.
+    qint64 consumed() const { return consumed_.load(); }
 protected:
     qint64 readData(char* data, qint64 maximum) override {
         const auto want = qMin(maximum, length_ - read_);
@@ -65,7 +67,7 @@ protected:
         qint64 n = 0;
         if (fromFile_) n = file_.read(data, want);
         else { std::memcpy(data, bytes_.constData() + read_, size_t(want)); n = want; }
-        if (n > 0) read_ += n;
+        if (n > 0) { read_ += n; consumed_ = read_; }
         return n;
     }
     qint64 writeData(const char*, qint64) override { return -1; }
@@ -73,6 +75,7 @@ private:
     QByteArray bytes_;
     QFile file_;
     qint64 offset_ = 0, length_ = 0, read_ = 0;
+    std::atomic<qint64> consumed_{0};
     bool fromFile_ = false;
 };
 
@@ -486,14 +489,18 @@ private:
             }
             // A lost or failed reply may still have stored the file: look for it first.
             if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429) {
+                // An attempt cut before the transport read the whole file can't have stored it: B2
+                // keeps nothing shorter than the length and SHA-1 it was sent (#1782). Cancel then
+                // ends the upload as failed, and a stall sends it again, with nothing to look up.
+                if (!synthetic_ && body.consumed() < artifact.bytes) {
+                    if (r.aborted && cancelled.load()) { error = stoppedError(); return {}; }
+                    error = Client::failure(r, "upload_file");
+                    continue;
+                }
                 Error lookup;
-                // Cancel cut this attempt, but the lookup that settles it still runs, as abortLarge's
-                // cancel does (#1782): without it a cancelled upload would always stay unknown.
-                const bool wasCancelled = cancelled.exchange(false);
                 const auto found = published(name, publication, lookup);
-                if (wasCancelled) cancelled = true;
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
-                if (!found) { error = wasCancelled ? stoppedError() : lookup; uncertain = true; return {}; }
+                if (!found) { error = lookup; uncertain = true; return {}; }
                 // A synthetic upload cancelled once sent may still have been stored (#1690).
                 if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");
