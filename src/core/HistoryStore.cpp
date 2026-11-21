@@ -410,7 +410,7 @@ QString HistoryStore::forgetBlocker(const QString& historyId,const QSet<QString>
 // running save needs the record still in History.
 Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,int* removed) {
  if(error_)return error_;
- if(!db_.transaction())return sqlError();
+ if(!beginWrite())return sqlError();
  QSqlQuery q(db_);int count=0;bool ok=true;
  const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  for(const auto& id:ids){
@@ -426,9 +426,12 @@ Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,i
 }
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"delete_not_found","Deletion not found",{}};return {};}return decode(q.value(0));}
+// Takes the write lock before reading (#1759): a read transaction that later writes can fail
+// SQLITE_BUSY without waiting when another writer went first; this one waits its turn.
+bool HistoryStore::beginWrite() {QSqlQuery q(db_);return q.exec("BEGIN IMMEDIATE");}
 Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
  if(error_) return error_;
- if(!db_.transaction()) return sqlError();
+ if(!(requireRecords?beginWrite():db_.transaction())) return sqlError();
  QSqlQuery q(db_);
  // A new deletion records its intent only while every record is still in History, in the same
  // transaction, so Remove from History only can't race it (#1759).
@@ -441,7 +444,7 @@ Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
 // retained while it runs. One transaction, so Remove from History only can't race it.
 Error HistoryStore::startDeletion(QJsonObject& doc) {
  if(error_) return error_;
- if(!db_.transaction()) return sqlError();
+ if(!beginWrite()) return sqlError();
  QSqlQuery q(db_);QJsonArray kept;auto forgotten=doc["forgotten"].toArray();
  for(const auto& v:doc["items"].toArray()){
   const auto item=v.toObject();const auto status=item["status"].toString();

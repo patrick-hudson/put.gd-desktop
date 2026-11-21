@@ -180,7 +180,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   // #1759: a removed destination is said before anything else, even after an earlier attempt
   // that failed or ended unknown; this preview offers Remove from History only, never a deletion.
   const auto current=Settings::profileForDestination(receipt.destination.toJson(),profiles);
-  if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",store.forgetBlocker(id,running).isEmpty()},{"retainedBy",store.forgetBlocker(id,running)},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
+  if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){const auto blocker=store.forgetBlocker(id,running);targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",blocker.isEmpty()},{"retainedBy",blocker},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
   if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
   auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
   // A destination added back for the same place under another ID deletes it with its own
@@ -304,13 +304,14 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     // a stalled request: Quit stops this wait and leaves the item as it was.
     auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock,std::defer_lock);
     while(!guard.try_lock_for(std::chrono::milliseconds(100)))if(quitting->load())return doc;
-    // Settings may have changed during that wait: the destination is read again now (#1759).
-    const auto serving=Settings::profileForDestination(receipt.destination.toJson(),currentProfiles());
     // No driver sends a destructive request before a "phase" checkpoint; a "target" alone is
     // recorded before anything is sent.
     const bool checkpointed=progress.contains("phase");
     // The destination an attempt went through: the recorded one, or one added back for the same place.
     const auto bound=item["deletingProfileId"].toString(receipt.destination.profileId);
+    // Settings may have changed during that wait: the destination is read again now, that one first (#1759).
+    auto lookup=receipt.destination.toJson();lookup["profileId"]=bound;
+    const auto serving=Settings::profileForDestination(lookup,currentProfiles());
     if(serving.isEmpty()){e=destinationRemovedError(item["historyId"].toString());outcome=status=="pending"?QStringLiteral("failed"):status;}
     // A worker's checkpoint is bound to the destination it went through: another destination added
     // back can't finish that attempt, so it is said and left as it was. Retry through the same one goes on.
@@ -320,9 +321,9 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     // the journal keeps the recorded receipt and names the destination used (deletingProfileId).
     if(serving["id"].toString()!=receipt.destination.profileId){
      receipt.destination.profileId=serving["id"].toString();receipt.destination.credentialReference=serving["credentials"].toObject();
-     // A "target" recorded through another destination sent nothing: this attempt records its own.
-     if(!checkpointed&&progress["target"].toObject()["destination"].toObject()["profileId"].toString()!=receipt.destination.profileId)progress.remove("target");
     }
+    // A "target" recorded for another binding sent nothing: this attempt records its own.
+    if(!checkpointed&&progress.contains("target")&&progress["target"].toObject()!=receipt.toJson())progress.remove("target");
     const bool driverReconciles=provider->reconcilesDeleteProgress() && progress.contains("phase");
     // A reference the upload returned addresses exactly that upload: there is nothing to stat (#1361).
     const bool byReference=provider->receiptCapabilities(receipt).referenceDelete;

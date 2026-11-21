@@ -66,6 +66,7 @@ private:
  Error initialize();
  bool releasable(const QString& historyId,const QSet<QString>& running,QStringList* release=nullptr) const;
  bool writeDeletion(const QJsonObject&);
+ bool beginWrite();
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
  // Stored artifact and preview paths are absolute. A journal moved with its
  // data folder (#56) reads them under the folder it is in now.
