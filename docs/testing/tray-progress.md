@@ -257,11 +257,12 @@ against that one set. The resident and the reader get the desktop session's
 there, and without it a Breeze Dark panel reads as Plasma's light default.
 `TRAY_TINTS` in `tray_progress.py` is kept by hand in step with
 `Theme::trayTints` (no contract compares them since the replay's host tests were
-removed); the replay checks every colour against what the resident publishes.
+removed); the replay checks the expected tints of the activity states it observes against what the resident publishes.
 
 The tooltip title follows the [activity stage](../design/appearance.md#activity-stages)
-(`TrayController::refreshActivity`): `put.gd` when idle (and during recording,
-pause or review, which show their own badges), `Capturing` with the glyph in
+(`TrayController::refreshActivity`): `put.gd` when idle (also while recording,
+paused or reviewing a recording; recording and pause add their own badge, review
+shows the idle glyph alone), `Capturing` with the glyph in
 the capture tint, `Processing` in the processing tint, `Uploading` with the
 upload-tint fill over the processing tint, `Upload complete` or `Saved` with the
 whole glyph in the upload tint and the check badge, and `Needs attention` with
@@ -285,9 +286,10 @@ While latched, every icon must carry the error colour without a progress or
 completion fill, and the first tooltip row must name the expected item, such as
 "Local save needs attention — open the tray menu to review". Later rows are
 ordinary activity, checked against observations. The runner holds the badge
-for 3 seconds untouched (`LATCH_SECONDS`); a local-save badge that clears before
-its item is opened and before its 8 seconds have passed fails the replay, while
-one that times out is accepted as long as the attention row is still in the menu. A Proton busy latch clears by itself
+for 3 seconds untouched (`LATCH_SECONDS`). A local-save badge that clears before
+its item is opened and less than 7 seconds after it was first seen (the 8-second
+badge less a second of margin, `FAILURE_SECONDS - 1`) fails the replay; one that
+clears later is accepted, and the attention row must still be in the menu. A Proton busy latch clears by itself
 once its retried items upload. The `attention` results record the failure IDs,
 when the latch was first and last seen, how it was opened and when it cleared.
 
@@ -300,8 +302,8 @@ tray menu, and watches the result:
    other clients make to put.gd's menu. The guest needs `busctl` and `stdbuf`.
 2. Tray icons move when other items come and go, so `--tray-x/--tray-y` is
    only a hint: the runner parks the pointer (Plasma lightens a hovered icon),
-   then finds the icon's error-tint pixels near the hint in the frame taken just
-   before, or its idle-tint pixels when the badge has already timed out, and
+   then looks for the icon's error-tint pixels near the hint in the frame taken
+   just before, then for its idle-tint pixels (the badge may have timed out), and
    fails over (below) if there are neither. The profile's
    button (right by default) opens the menu there. The monitor must show the
    desktop asking for the menu (`AboutToShow`, `AboutToShowGroup` or an
