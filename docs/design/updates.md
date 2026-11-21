@@ -143,9 +143,12 @@ installs on its own: not on the daily check, not from a notification.
    still be downloaded. The blocks it couldn't reuse come from the
    image on `pkg.put.gd` with HTTP Range requests (up to 32 runs each, four at a time). Each
    fetched block must match its checksum in the `.zsync`, and the whole file the `.zsync`'s
-   SHA-1. The zsync update has 15 minutes, counted from the start of the install child, for the
-   `.zsync`, reading the running image, the ranges and its own checks; after that it falls back
-   to the whole file, which still has to finish within the one hour put.gd gives the install. In the two real updates below it downloaded 12.3 MB and 22.0 MB of a 158 MB image.
+   SHA-1. The zsync update has 15 minutes, counted from the start of the install child. put.gd
+   checks that deadline while it reads the `.zsync`, reads the running image, fetches and checks
+   the ranges, and before the SHA-1 check; when a check finds it has passed, `auto` falls back to
+   the whole file. The SHA-1 and the final checks of a finished zsync file can run a little past
+   it. The whole install still has to finish within the one hour put.gd gives it. In the two
+   real updates below it downloaded 12.3 MB and 22.0 MB of a 158 MB image.
    Settings shows "Finding the parts this version already has", then "Downloading only what
    changed", with how much was reused once that is more than nothing. No `appimageupdatetool`
    or `zsync2` is needed, and put.gd no longer runs one if it is installed.
@@ -187,8 +190,9 @@ installs on its own: not on the daily check, not from a notification.
    The byte counters: a result whose `method` is `zsync` or `download` carries
    `downloadedBytes` and `reusedBytes`; one whose `method` is `none` (the new version was
    already in place) carries neither. `result.downloadedBytes` adds up the `.zsync`, the range
-   data and every whole-file attempt, failed ones included; the feed, the signature,
-   `SHA256SUMS` and the bytes of a rejected range reply are not counted.
+   data counted in `zsync.downloadedBytes` and every whole-file attempt, failed ones included;
+   the feed, the signature, `SHA256SUMS`, multipart framing and range bytes refused before
+   parsing are not counted.
    `reusedBytes` is what came from the running image, 0 after a whole-file download. `zsync`
    is `null` when `method: download` was asked for or the new version was already in place. An
    automatic try that fell back before fetching anything still carries it, with its
@@ -211,7 +215,9 @@ installs on its own: not on the daily check, not from a notification.
 
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
 folder isn't writable or has no room for another copy, when the file isn't yours, or when an
-installed update still waits for its restart. While you watch the other channel, the same
+installed update still waits for its restart. It also refuses with `update_install_failed` when
+the staging folder of an earlier, interrupted update beside the AppImage can't be removed; put.gd
+keeps its record and tries again at the next start and the next install. While you watch the other channel, the same
 button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository.
 
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
