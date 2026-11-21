@@ -77,7 +77,7 @@ reads the result back through another. The resident's own cost is one grey copy 
 image for the length of the job, and an optional result for an agent. That result is one byte array of at most 4 MiB, never a parsed tree, kept at most
 120 seconds, after which the resident asks for heap reclamation. No other binary may
 need Tesseract, Leptonica or ZXing-cpp, and the package audits check it. The helper's
-budget is 128 MiB of resident memory for the whole job with English data, plus the size of any other
+budget is 320 MiB of resident memory for the whole job with English data, plus the size of any other
 language's data. The
 measurements are in [text recognition](text-recognition.md#performance-and-memory).
 
