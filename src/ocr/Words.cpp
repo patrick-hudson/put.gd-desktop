@@ -72,7 +72,8 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
     for(int i=previousFirstWord;i<firstNew;++i){
      auto& earlier=job.words[i];if(earlier.text.isEmpty()||overlap(earlier.rect,word.rect)<=0.5)continue;
      duplicate=true;
-     if(!sameLine.contains(item.line))sameLine.insert(item.line,earlier.line);
+     // The joined line takes this band's order, and so its direction too.
+     if(!sameLine.contains(item.line)){sameLine.insert(item.line,earlier.line);job.lines[earlier.line].rightToLeft=band.lines.value(item.line).rightToLeft;}
      earlier.seamOrder=k;
      if(word.confidence>earlier.confidence){earlier.text=word.text;earlier.rect=word.rect;earlier.confidence=word.confidence;earlier.symbols=word.symbols;}
      break;
@@ -143,6 +144,9 @@ void joinUrls(Recognition& job){
  job.words=std::move(out);
 }
 void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
+ // Each line's box as recognition left it (an emoji's own line: its first
+ // glyph): an emoji placed on a line does not move it into the next one's way.
+ QList<QRect> fixed;for(const auto& line:std::as_const(job.lines))fixed.append(line.rect);
  for(const auto& hit:hits){
   const QRect glyph=hit.rect;
   // Lines that hold words: a band seam leaves a second, empty box for a line
@@ -177,7 +181,7 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   int line=-1;qint64 nearest=std::numeric_limits<qint64>::max();int bestOverlap=0;
   for(int l=0;l<job.lines.size();++l){
    if(!worded.contains(l))continue;
-   const auto& r=job.lines[l].rect;
+   const auto& r=fixed[l];
    const int overlap=std::min(r.bottom(),glyph.bottom())-std::max(r.top(),glyph.top())+1;
    if(overlap*5<2*std::min(r.height(),glyph.height()))continue;
    const qint64 across=std::max({0,r.left()-glyph.right()-1,glyph.left()-r.right()-1});
@@ -189,14 +193,14 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
    // last above it at all), in that line's block.
    int after=-1;
    for(int pass=0;pass<2&&after<0;++pass)for(int l=0;l<job.lines.size();++l){
-    const auto& r=job.lines[l].rect;
+    const auto& r=fixed[l];
     const bool column=r.left()<=glyph.right()&&glyph.left()<=r.right();
     if((pass==0&&!column)||r.center().y()>glyph.center().y())continue;
-    if(after<0||r.bottom()>=job.lines[after].rect.bottom())after=l;
+    if(after<0||r.bottom()>=fixed[after].bottom())after=l;
    }
    line=after+1;
    const int block=after>=0?job.lines[after].block:(job.lines.isEmpty()?0:job.lines.first().block);
-   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0,false});
+   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0,false});fixed.insert(line,glyph);
    for(auto& w:job.words)if(w.line>=line)++w.line;
   }else job.lines[line].rect=job.lines[line].rect.united(glyph);
   // Its place among the line's words, in the line's own direction.
@@ -236,9 +240,10 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // between them. Measured on rendered lines: a glued emoji's gap was a median
   // 0.15 of its height, and one after a space 0.25 or more but for 1 in 248.
   const auto gap=[&](const QRect& word){return std::max(word.left()-glyph.right()-1,glyph.left()-word.right()-1);};
-  const int tight=std::max(1,glyph.height()/4);
-  if(at>first&&touchBefore>=0&&gap(job.words[touchBefore].rect)<tight)emoji.attach=true;
-  if(at<end&&touchAfter>=0&&gap(job.words[touchAfter].rect)<tight)job.words[at].attach=true;
+  const auto tight=[&](int word){return word>=0&&4*gap(job.words[word].rect)<glyph.height();};
+  emoji.attach=at>first&&tight(touchBefore);
+  // The word after it now follows the emoji, whatever it joined before.
+  if(at<end)job.words[at].attach=tight(touchAfter);
   job.words.insert(at,emoji);
  }
 }

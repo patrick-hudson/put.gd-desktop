@@ -62,7 +62,8 @@ int main(int argc,char** argv){
  QByteArray templateBytes;putgd::ocr::EmojiTemplates loaded;
  if(!templatesPath.isEmpty()){
   QFile file(templatesPath);
-  if(!file.open(QIODevice::ReadOnly)||!loaded.load(reinterpret_cast<const uint8_t*>((templateBytes=file.readAll()).constData()),templateBytes.size())){std::fprintf(stderr,"not a template file: %s\n",qPrintable(templatesPath));return 2;}
+  if(file.open(QIODevice::ReadOnly))templateBytes=file.readAll();
+  if(templateBytes.isEmpty()||!loaded.load(reinterpret_cast<const uint8_t*>(templateBytes.constData()),templateBytes.size())){std::fprintf(stderr,"not a template file: %s\n",qPrintable(templatesPath));return 2;}
  }
  if(emoji)options.emojiTemplates=templatesPath.isEmpty()?&putgd::ocr::EmojiTemplates::builtIn():&loaded;
  for(const auto& path:images){

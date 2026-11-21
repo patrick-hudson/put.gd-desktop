@@ -27,6 +27,17 @@ qint64 residentBytes(){
  return fields.value(1).toLongLong()*::sysconf(_SC_PAGESIZE);
 }
 void raise(std::atomic<qint64>& value,qint64 seen){qint64 now=value.load();while(seen>now&&!value.compare_exchange_weak(now,seen)){}}
+// Inside a code's corners (in order around it, either way).
+bool insideCode(const Quad& q,QPoint p){
+ int sign=0;
+ for(int i=0;i<4;++i){
+  const QPoint a=q[size_t(i)],b=q[size_t((i+1)%4)];
+  const qint64 cross=qint64(b.x()-a.x())*(p.y()-a.y())-qint64(b.y()-a.y())*(p.x()-a.x());
+  if(cross==0)continue;
+  const int s=cross>0?1:-1;if(sign!=0&&s!=sign)return false;sign=s;
+ }
+ return true;
+}
 }
 int workerThreads(int requested){
  // The CPUs this process may run on (affinity, a container's cpuset), not the
@@ -52,6 +63,12 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   stage.restart();
   emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
   options.emojiTemplates->release();
+  // A colour glyph inside a code (a logo in a QR code) is part of the code,
+  // which is copied as its own line.
+  emoji.hits.removeIf([&](const EmojiHit& hit){
+   for(const auto& q:std::as_const(areas))if(insideCode(q,hit.rect.center()))return true;
+   return false;
+  });
   result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
   result.timings.emojiMs=stage.elapsed();
  }
