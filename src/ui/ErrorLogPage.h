@@ -6,7 +6,7 @@
 #include <QSet>
 #include <QWidget>
 #include <functional>
-class QCheckBox;class QComboBox;class QGridLayout;class QHBoxLayout;class QLabel;class QLineEdit;class QMessageBox;class QPlainTextEdit;class QPushButton;class QTimer;class QToolButton;class QTreeWidget;
+class QCheckBox;class QDialog;class QComboBox;class QGridLayout;class QHBoxLayout;class QLabel;class QLineEdit;class QMessageBox;class QPlainTextEdit;class QPushButton;class QTimer;class QToolButton;class QTreeWidget;
 namespace putgd {
 // Settings → Error log (#1753): every error put.gd reported, newest first, from the
 // resident's error log (errors.list). A row is the time, the kind of action, the item
@@ -42,6 +42,9 @@ private:
  void select(const QString& id,Selection kind=User);
  void showDetails(const QJsonObject& entry);
  void runStep(const QString& step,std::function<void(Error,QJsonObject)> done={});
+ void openRemove(const QJsonObject& entry,std::function<void(Error,QJsonObject)> done);
+ void finishRemove(bool accepted,const QJsonObject& entry,std::function<void(Error,QJsonObject)> done={});
+ QJsonObject removeConfirmation()const;
  void openClear(bool resolvedOnly);
  void finishClear(bool accepted,std::function<void(Error,QJsonObject)> done={});
  void loadThumbnail(const QString& path);
@@ -53,6 +56,8 @@ private:
  QWidget* details_=nullptr;QLabel *detailTitle_=nullptr,*detailMessage_=nullptr,*resolution_=nullptr,*feedback_=nullptr;QGridLayout* facts_=nullptr;
  QHBoxLayout* steps_=nullptr;QPlainTextEdit* technical_=nullptr;QToolButton* technicalToggle_=nullptr;QPushButton* revealPackage_=nullptr;
  QTimer* searchDelay_=nullptr;QPointer<QMessageBox> confirm_;bool clearResolvedOnly_=false;
+ // Remove from History only's confirmation, and an agent's reply waiting for its outcome.
+ QPointer<QDialog> removeConfirm_;std::function<void(Error,QJsonObject)> removeDone_;
  QJsonArray entries_;QJsonObject selected_;QString wanted_,lastRevision_,packagePath_;
  int offset_=0,total_=0,unresolved_=0;quint64 selection_=0;
  // A destination's unlock is a setup job, followed until it ends.

@@ -381,17 +381,98 @@ Error HistoryStore::clear() {
  const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  if(!q.exec("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+retained)||!q.exec("DELETE FROM history"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
+// Which deletions hold a record in History (#1759), and whether each of them provably sent
+// nothing that deletes: not running here, ended in its journal, and the record's item failed,
+// unknown or pending without a request checkpoint ("phase": no driver sends a destructive request
+// before one; a "target" alone is recorded before anything is sent). Answers false when one may have
+// reached the server; the deletions that may be released go in `release`.
+bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& running,QStringList* release) const {
+ QSqlQuery q(db_);q.prepare("SELECT deletion_id FROM deletion_targets WHERE history_id=? AND active=1");q.addBindValue(historyId);
+ if(!q.exec())return false;
+ QStringList held;while(q.next())held<<q.value(0).toString();q.finish();
+ for(const auto& id:held){
+  if(running.contains(id))return false;
+  Error error;const auto doc=deletion(id,&error);if(error||doc["state"]=="running"||doc["state"]=="accepted")return false;
+  bool settled=false;
+  for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]!=historyId)continue;
+   settled=QStringList{"failed","unknown","pending"}.contains(item["status"].toString())&&!item["progress"].toObject().contains("phase");}
+  if(!settled)return false;
+ }
+ if(release)*release=held;
+ return true;
+}
+QString HistoryStore::forgetBlocker(const QString& historyId,const QSet<QString>& running) const {
+ if(error_)return QStringLiteral("deletion");
+ QSqlQuery q(db_);q.prepare("SELECT 1 FROM item_state WHERE id=? AND json_extract(data,'$.shareStatus') IN ('pending','unknown')");q.addBindValue(historyId);
+ if(!q.exec())return QStringLiteral("deletion");
+ if(q.next())return QStringLiteral("sharing");
+ return releasable(historyId,running)?QString{}:QStringLiteral("deletion");
+}
+// Remove from History only (#1759): as clear(), for these records alone, after releasing the
+// settled deletions that sent nothing. One transaction, so a retry can't start in between: its
+// running save needs the record still in History.
+Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,int* removed,QStringList* removedIds) {
+ if(error_)return error_;
+ if(!beginWrite())return sqlError();
+ QSqlQuery q(db_);int count=0;bool ok=true;QStringList taken;
+ const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
+ for(const auto& id:ids){
+  QStringList release;
+  if(releasable(id,running,&release))for(const auto& deletionId:release){q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(id);if(!(ok=q.exec()))break;}
+  if(!ok)break;
+  q.prepare("INSERT OR IGNORE INTO cleared_history SELECT id FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;
+  q.prepare("DELETE FROM history WHERE id=?"+retained);q.addBindValue(id);if(!(ok=q.exec()))break;if(q.numRowsAffected()>0){count+=q.numRowsAffected();taken<<id;}
+ }
+ if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+ if(removed)*removed=count;
+ if(removedIds)*removedIds=taken;
+ return {};
+}
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"delete_not_found","Deletion not found",{}};return {};}return decode(q.value(0));}
-Error HistoryStore::saveDeletion(const QJsonObject& doc) {
+// Takes the write lock before reading (#1759): a read transaction that later writes can fail
+// SQLITE_BUSY without waiting when another writer went first; this one waits its turn.
+bool HistoryStore::beginWrite() {QSqlQuery q(db_);return q.exec("BEGIN IMMEDIATE");}
+Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
  if(error_) return error_;
- if(!db_.transaction()) return sqlError();
+ if(!(requireRecords?beginWrite():db_.transaction())) return sqlError();
+ QSqlQuery q(db_);
+ // A new deletion records its intent only while every record is still in History, in the same
+ // transaction, so Remove from History only can't race it (#1759).
+ if(requireRecords)for(const auto& v:doc["items"].toArray()){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(v.toObject()["historyId"].toString());if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{{"historyId",v.toObject()["historyId"]}}};}}
+ q.finish();
+ if(!writeDeletion(doc)||!db_.commit()) {db_.rollback();return sqlError();}return {};
+}
+// A deletion's run starts (#1759): the unfinished targets whose records were removed from History
+// only are dropped from this run and listed in "forgotten"; every other unfinished target is
+// retained while it runs. One transaction, so Remove from History only can't race it.
+Error HistoryStore::startDeletion(QJsonObject& doc) {
+ if(error_) return error_;
+ if(!beginWrite()) return sqlError();
+ QSqlQuery q(db_);QJsonArray kept;auto forgotten=doc["forgotten"].toArray();
+ for(const auto& v:doc["items"].toArray()){
+  const auto item=v.toObject();const auto status=item["status"].toString();
+  if(!QStringList{"removed","already_missing","changed"}.contains(status)){
+   q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(item["historyId"].toString());
+   if(!q.exec()){db_.rollback();return sqlError();}
+   if(!q.next()){forgotten.append(item["historyId"]);continue;}
+  }
+  kept.append(item);
+ }
+ q.finish();
+ auto proposed=doc;proposed["items"]=kept;if(!forgotten.isEmpty())proposed["forgotten"]=forgotten;
+ if(!writeDeletion(proposed)||!db_.commit()) {db_.rollback();return sqlError();}
+ doc=proposed;return {};
+}
+bool HistoryStore::writeDeletion(const QJsonObject& doc) {
  QSqlQuery q(db_);q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(doc["id"].toString());q.addBindValue(encode(doc));bool ok=q.exec();
- for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool active=status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained";
+ // While a deletion is accepted or running, each target it may still send a request for is retained.
+ const bool live=doc["state"]=="accepted"||doc["state"]=="running";
+ for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool active=live?!QStringList{"removed","already_missing","changed"}.contains(status):status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained";
   q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(doc["id"].toString());q.addBindValue(item["historyId"].toString());q.addBindValue(active?1:0);ok=q.exec();
   if(ok) {q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(item["historyId"].toString());ok=q.exec();if(ok&&q.next()){auto data=decode(q.value(0));data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=doc["id"];data["deleteProgress"]=item["progress"];ok=persistRemote(db_,item["historyId"].toString(),data);}}
  }
- if(!ok||!db_.commit()) {db_.rollback();return sqlError();}return {};
+ return ok;
 }
 QJsonObject HistoryStore::sharing(const QString& id,Error* error) const {
  if(error_){if(error)*error=error_;return {};}
@@ -400,13 +481,16 @@ QJsonObject HistoryStore::sharing(const QString& id,Error* error) const {
  if(!q.next()){if(error)*error={"share_not_found","Sharing operation not found",{}};return {};}
  return decode(q.value(0));
 }
-Error HistoryStore::saveSharing(const QJsonObject& doc) {
+Error HistoryStore::saveSharing(const QJsonObject& doc,bool requireRecord) {
  if(error_)return error_;
  const auto id=doc["id"].toString(),historyId=doc["historyId"].toString();
  const auto receipt=StorageReceipt::fromJson(doc["receipt"].toObject());
  if(id.isEmpty()||historyId.isEmpty()||receipt.validate())return {"share_journal_invalid","Incomplete sharing intent",{}};
  if(!db_.transaction())return sqlError();
- QSqlQuery q(db_);q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
+ QSqlQuery q(db_);
+ // As for a deletion: a new link change only for a record still in History (#1759).
+ if(requireRecord){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(historyId);if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{}};}}
+ q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
  if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","Uploaded item ledger not found",{}};}
  auto remote=decode(q.value(0));
  // Remember a create until it is confirmed shared or explicitly abandoned.

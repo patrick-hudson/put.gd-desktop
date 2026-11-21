@@ -148,6 +148,8 @@ bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"
 QString HistoryModel::remoteStateText(const QJsonObject& r){
  // Current outcomes outrank an earlier clipboard success, including in a batch.
  auto files=r["records"].toArray();files.prepend(r);
+ // #1759: its destination is gone from Settings; that, not a deletion needing attention, is its state.
+ for(const auto& value:std::as_const(files))if(value.toObject()["destinationRemoved"].toBool())return QStringLiteral("Destination removed");
  static const QList<std::tuple<QString,QString,QString>> outcomes{
   {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote outcome needs inspection"},{"remoteStatus","changed","Remote file changed"},
   {"remoteStatus","deleting","Deleting from destination"},{"remoteStatus","pending","Waiting for deletion"},

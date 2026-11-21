@@ -27,6 +27,26 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+ // #1759: deletion goes through the destination this picks; a wrong match deletes from the wrong place.
+ void receiptsFindTheirCurrentDestination(){
+  const QJsonObject s3{{"providerId","s3"},{"profileId","old"},{"settings",QJsonObject{{"endpoint","https://S3.example.com/"},{"bucket","shots"}}}};
+  const QJsonObject same{{"id","old"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://elsewhere.example.com"},{"bucket","other"}}}};
+  const QJsonObject readded{{"id","new"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots"}}}};
+  const QJsonObject otherBucket{{"id","b"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots2"}}}};
+  const QJsonObject otherService{{"id","r"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{same,readded})["id"].toString(),QString("old"));
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{otherBucket,readded})["id"].toString(),QString("new"));
+  QVERIFY(putgd::Settings::profileForDestination(s3,{otherBucket,otherService}).isEmpty());
+  QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
+  // A path compares exactly (a key must never go to another tenant's path); a custom uploader never moves.
+  const QJsonObject b2{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://API.example.com/Tenant-A"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","x"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant-a"},{"bucket","shots"}}}}}).isEmpty());
+  QCOMPARE(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","y"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/Tenant-A/"},{"bucket","shots"}}}}})["id"].toString(),QString("y"));
+  const QJsonObject nested{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant/a"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(nested,{QJsonObject{{"id","w"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant%2Fa"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject http{{"providerId","custom-http"},{"profileId","gone"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(http,{QJsonObject{{"id","z"},{"provider","custom-http"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}}}).isEmpty());
+ }
     void startupUnlockAndRecentColorPreferencesAreOptionalAndBounded() {
         auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
         QVERIFY(!putgd::Settings::validate(doc,validator));

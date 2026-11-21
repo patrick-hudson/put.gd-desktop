@@ -48,9 +48,19 @@ public:
  QStringList journaledOperations(Error* = nullptr) const;
  Error expireBefore(const QString& timestamp);
  Error clear(); // preserves any identities retained by in-progress deletion
- Error saveDeletion(const QJsonObject&);
+ // Removes these records from History the way clear() removes all of them (#1759).
+ // Releases the settled deletions that sent nothing and removes the records, in one transaction;
+ // `running` are the deletions running in this resident.
+ Error forget(const QStringList& ids,const QSet<QString>& running,int* removed=nullptr,QStringList* removedIds=nullptr);
+ // Why forget() would keep this record now: "sharing" (a link change pending or unknown), "deletion"
+ // (a deletion running or one that may have reached the server), or empty when it would remove it.
+ QString forgetBlocker(const QString& historyId,const QSet<QString>& running) const;
+ // requireRecords: a new deletion, recorded only while each of its records is still in History (#1759).
+ Error saveDeletion(const QJsonObject&,bool requireRecords=false);
+ // A deletion's run starts: records removed from History only are dropped from it (doc["forgotten"]).
+ Error startDeletion(QJsonObject& doc);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
- Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
+ Error saveSharing(const QJsonObject&,bool requireRecord=false); // journal and effective receipt in one transaction
  QJsonObject sharing(const QString&,Error* = nullptr) const;
  // Record a successful explicit link copy without rewriting item/deletion ledgers
  // or claiming that a copied subset recovered an entire batch.
@@ -78,6 +88,9 @@ public:
 private:
  Error ensureErrorLog();
  Error initialize();
+ bool releasable(const QString& historyId,const QSet<QString>& running,QStringList* release=nullptr) const;
+ bool writeDeletion(const QJsonObject&);
+ bool beginWrite();
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
  // Stored artifact and preview paths are absolute. A journal moved with its
  // data folder (#56) reads them under the folder it is in now.

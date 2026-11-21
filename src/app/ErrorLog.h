@@ -50,6 +50,8 @@ public:
  // From a deletion's terminal journal document and a sharing change's.
  void deletionFinished(const QJsonObject& deletion);
  void sharingFinished(const QJsonObject& sharing);
+ // Records Remove from History only removed (#1759).
+ void historyForgotten(const QStringList& historyIds);
  // From a setup job's record (setup.inspect) once it has ended.
  void setupFinished(const QJsonObject& job);
  void list(const ErrorLogQuery&,JsonReply);

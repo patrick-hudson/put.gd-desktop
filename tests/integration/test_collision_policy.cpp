@@ -313,8 +313,11 @@ private slots:
         QVERIFY(QFile::exists(uploaded.local.path));
         HistoryStore store(operations.databasePath());
         const auto originalReceipt = store.detail(uploaded.artifact.id)["receipt"].toObject();
-        // Make the profile local-only after upload; history must retain its origin.
-        QVERIFY(settings.save(putgd::test::configuration(f.directory.path(), true), settings.revision()));
+        // Make the actions local-only after upload; history must retain its origin. The destination
+        // stays in Settings: with it removed, nothing is deleted (#1759, storage_contract).
+        auto local = putgd::test::configuration(f.directory.path(), true);
+        local["profiles"] = configuration(f, "rename", true)["profiles"];
+        QVERIFY(settings.save(local, settings.revision()));
         QJsonObject preview;
         history.prepareDelete({uploaded.artifact.id}, [&](auto error, auto value) { QVERIFY(!error); preview = value; });
         PUTGD_TRY_VERIFY(!preview.isEmpty());

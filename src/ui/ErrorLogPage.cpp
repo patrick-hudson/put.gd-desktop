@@ -1,4 +1,5 @@
 #include "ErrorLogPage.h"
+#include "HistoryWindow.h"
 #include "PreviewReader.h"
 #include "Ui.h"
 #include <QApplication>
@@ -31,7 +32,7 @@ using Ui::space;
 namespace {
 enum Column {TimeColumn,ActionColumn,ItemColumn,DestinationColumn,MessageColumn,StatusColumn};
 constexpr int IdRole=Qt::UserRole+1;
-const QStringList& stepOrder() {static const QStringList order{"unlock_credentials","open_destination","retry","show_in_history","save_diagnostics"};return order;}
+const QStringList& stepOrder() {static const QStringList order{"unlock_credentials","open_destination","retry","remove_from_history","show_in_history","save_diagnostics"};return order;}
 // The details put.gd already records with an error, in plain names, in this order.
 const QList<std::pair<QString,QString>>& detailFields() {
  static const QList<std::pair<QString,QString>> fields{
@@ -57,6 +58,7 @@ QString ErrorLogPage::kindLabel(const QString& kind) {
 QString ErrorLogPage::stepLabel(const QString& step,const QString& kind) {
  if(step=="unlock_credentials")return "Unlock saved credentials";
  if(step=="open_destination")return "Open destination settings";
+ if(step=="remove_from_history")return "Remove from History only";
  if(step=="show_in_history")return "Show in History";
  if(step=="save_diagnostics")return "Save diagnostics for this operation";
  if(kind=="deletion")return "Retry deletion";
@@ -245,13 +247,13 @@ void ErrorLogPage::showDetails(const QJsonObject& entry) {
  }
  const auto steps=entry["nextSteps"].toArray();
  // A resolved problem keeps the steps that look at it, not those that fix it.
- const auto offered=[&steps,resolved](const QString& step){return steps.contains(QJsonValue(step))&&!(resolved&&(step=="unlock_credentials"||step=="retry"));};
+ const auto offered=[&steps,resolved](const QString& step){return steps.contains(QJsonValue(step))&&!(resolved&&(step=="unlock_credentials"||step=="retry"||step=="remove_from_history"));};
  QString first;for(const auto& step:stepOrder())if(offered(step)){first=step;break;}
  for(int index=0;index<steps_->count();++index){
   auto* button=qobject_cast<QPushButton*>(steps_->itemAt(index)->widget());if(!button)continue;
   const auto step=button->property("step").toString();
   button->setText(stepLabel(step,kind));button->setAccessibleName(stepLabel(step,kind));button->setVisible(offered(step));
-  const bool absent=step=="show_in_history"&&entry.contains("itemPresent")&&!entry["itemPresent"].toBool();
+  const bool absent=(step=="show_in_history"||step=="remove_from_history")&&entry.contains("itemPresent")&&!entry["itemPresent"].toBool();
   button->setEnabled(!stepRunning_&&!absent);button->setToolTip(absent?QStringLiteral("This item is no longer in History."):QString{});
   Ui::role(button,step==first?"primary":"secondary");
  }
@@ -265,6 +267,7 @@ void ErrorLogPage::runStep(const QString& step,std::function<void(Error,QJsonObj
  if(id.isEmpty()||!entry["nextSteps"].toArray().contains(QJsonValue(step))){finish({"error_action_unavailable","The selected entry doesn't offer that step.",{}},{});return;}
  if(step=="open_destination"){emit destinationRequested(entry["profileId"].toString());finish({},{{"step",step},{"profileId",entry["profileId"]}});return;}
  if(step=="show_in_history"){emit historyRequested(entry["historyId"].toString());finish({},{{"step",step},{"historyId",entry["historyId"]}});return;}
+ if(step=="remove_from_history"){openRemove(entry,finish);return;}
  stepRunning_=true;showDetails(entry);
  feedback(step=="unlock_credentials"?QStringLiteral("Unlocking saved credentials…"):step=="save_diagnostics"?QStringLiteral("Saving diagnostics for this operation…"):QStringLiteral("Starting…"),false);
  session_.request("errors.act",{{"id",id},{"action",step}},this,[g=QPointer<ErrorLogPage>(this),step,id,finish,kind=entry["kind"].toString()](Error e,QJsonObject answer){
@@ -285,6 +288,47 @@ void ErrorLogPage::runStep(const QString& step,std::function<void(Error,QJsonObj
   }
   g->feedback(kind=="deletion"?QStringLiteral("Deletion retried. This entry shows Resolved once the file is deleted."):kind=="destination_test"?QStringLiteral("Test connection started."):QStringLiteral("Retry started. This entry shows Resolved once it works."),false);
   finish({},answer);
+ });
+}
+// Remove from History only (#1759): History's own deletion dialog for the file, from a fresh
+// delete.prepare, so the wording, the button and its refusal are the ones History shows.
+void ErrorLogPage::openRemove(const QJsonObject& entry,std::function<void(Error,QJsonObject)> done) {
+ if(removeConfirm_){done({"ui_confirmation_open","A Remove from History only confirmation is already open; confirm or cancel it first.",{}},{});return;}
+ const auto historyId=entry["historyId"].toString();
+ stepRunning_=true;showDetails(entry);feedback({},false);
+ session_.request("delete.prepare",{{"ids",QJsonArray{historyId}}},this,[g=QPointer<ErrorLogPage>(this),entry,historyId,done](Error e,QJsonObject preview){
+  if(!g){done(e,{});return;}
+  g->stepRunning_=false;if(g->selected_.value("id")==entry["id"])g->showDetails(g->selected_);
+  if(e){g->feedback(e.message,true);done(e,{});return;}
+  // Added back for the same place, the file can be deleted there: History offers Delete, not this.
+  if(!preview["targets"].toArray().first().toObject()["destinationRemoved"].toBool()){
+   const Error back{"destination_not_removed","This file's destination is in Settings again, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}};
+   g->feedback(back.message,true);done(back,{});return;
+  }
+  auto* dialog=HistoryWindow::deletionConfirmation(g,preview,{{historyId,entry["itemName"].toString()}},g->session_.document()["profiles"].toArray());
+  dialog->setObjectName("errorLogRemoveConfirm");g->removeConfirm_=dialog;
+  // What an agent's refused confirmRemove reports, as delete.prepare said it.
+  const auto target=preview["targets"].toArray().first().toObject();
+  dialog->setProperty("historyId",historyId);dialog->setProperty("retainedBy",target["retainedBy"].toString());
+  connect(dialog,&QDialog::finished,g,[g,dialog,entry](int result){
+   dialog->deleteLater();if(!g)return;
+   // Closed now: the reply's state says so, though the dialog is deleted later.
+   g->removeConfirm_=nullptr;
+   g->finishRemove(result==HistoryWindow::forgetResult,entry,std::exchange(g->removeDone_,{}));
+  });
+  dialog->open();done({},{});
+ });
+}
+void ErrorLogPage::finishRemove(bool accepted,const QJsonObject& entry,std::function<void(Error,QJsonObject)> done) {
+ const auto finish=[done](Error e,QJsonObject r){if(done)done(e,r);};
+ if(!accepted){finish({},{});return;}
+ const auto id=entry["id"].toString();
+ stepRunning_=true;if(selected_.value("id")==id)showDetails(selected_);feedback(QStringLiteral("Removing from History…"),false);
+ session_.request("errors.act",{{"id",id},{"action","remove_from_history"}},this,[g=QPointer<ErrorLogPage>(this),id,finish](Error e,QJsonObject answer){
+  if(!g){finish(e,answer);return;}
+  g->stepRunning_=false;if(g->selected_.value("id")==id)g->showDetails(g->selected_);
+  g->feedback(e?e.message:QStringLiteral("Removed from History. The file stays where it was uploaded."),bool(e));
+  finish(e,answer);
  });
 }
 void ErrorLogPage::openClear(bool resolvedOnly) {
@@ -338,6 +382,12 @@ void ErrorLogPage::showEntry(const QJsonObject& target) {
   g->wanted_=e||entries.isEmpty()?QString{}:entries.first().toObject()["id"].toString();g->load();
  });
 }
+// The open Remove from History only confirmation, as its labels and buttons read; empty when none.
+QJsonObject ErrorLogPage::removeConfirmation() const {
+ if(!removeConfirm_)return {};
+ const auto text=[this](const char* name){auto* label=removeConfirm_->findChild<QLabel*>(QLatin1String(name));return label?label->text():QString{};};
+ return {{"open",true},{"heading",text("deleteConfirmationHeading")},{"text",text("deleteConfirmationText")},{"canRemove",bool(removeConfirm_->findChild<QPushButton*>("forgetHistoryRecords"))}};
+}
 QJsonObject ErrorLogPage::state() const {
  QJsonArray rows;
  for(const auto& value:entries_){const auto entry=value.toObject();rows.append(QJsonObject{{"id",entry["id"]},{"time",entry["time"]},{"kind",entry["kind"]},{"action",kindLabel(entry["kind"].toString())},
@@ -346,7 +396,7 @@ QJsonObject ErrorLogPage::state() const {
  for(int index=0;index<steps_->count();++index)if(auto* button=qobject_cast<QPushButton*>(steps_->itemAt(index)->widget());button&&!button->isHidden())
   buttons.append(QJsonObject{{"step",button->property("step").toString()},{"label",button->text()},{"enabled",button->isEnabled()}});
  QJsonObject result{{"visible",isVisible()},{"filter",QJsonObject{{"kind",kind_->currentData().toString()},{"search",search_->text()},{"showResolved",!openOnly_->isChecked()}}},
-  {"page",QJsonObject{{"offset",offset_},{"total",total_},{"size",pageSize}}},{"rows",rows},{"loading",loading_},{"confirming",bool(confirm_)},
+  {"page",QJsonObject{{"offset",offset_},{"total",total_},{"size",pageSize}}},{"rows",rows},{"loading",loading_},{"confirming",bool(confirm_)},{"removeConfirmation",removeConfirmation()},
   {"feedback",feedback_->isHidden()?QString{}:feedback_->text()},{"feedbackError",feedback_->property("feedbackTone").toString()=="error"}};
  if(!selected_.isEmpty()&&details_->isVisible())result["selected"]=QJsonObject{{"entry",selected_},{"title",detailTitle_->text()},{"buttons",buttons},{"resolution",resolution_->isHidden()?QString{}:resolution_->text()}};
  if(!packagePath_.isEmpty())result["package"]=packagePath_;
@@ -370,6 +420,8 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
   const auto step=params["step"].toString();
   if(stepRunning_){reply({"error_step_running","A step for this entry is still running; inspect until it ends.",{}},state());return;}
   if(selected_.isEmpty()||!selected_["nextSteps"].toArray().contains(QJsonValue(step))){reply({"error_action_unavailable","The selected entry doesn't offer that step.",{}},state());return;}
+  // Remove from History only answers once its confirmation is open (or refused).
+  if(step=="remove_from_history"){runStep(step,[answer](Error e,QJsonObject r){answer(e,r);});return;}
   runStep(step);reply({},state());return;
  }
  if(action=="setFilter"){
@@ -383,6 +435,15 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
   load([answer](Error e){answer(e,{});});return;
  }
  if(action=="clear"){if(confirm_){reply({"ui_confirmation_open","A Clear confirmation is already open; confirm or cancel it first.",{}},state());return;}openClear(params["resolvedOnly"].toBool());reply({},state());return;}
+ if(action=="confirmRemove"||action=="cancelRemove"){
+  if(!removeConfirm_){reply({"ui_no_confirmation","No Remove from History only confirmation is open.",{}},{});return;}
+  auto* forget=removeConfirm_->findChild<QPushButton*>("forgetHistoryRecords");
+  // Without the button the record stays, and the dialog says why, as on screen.
+  if(action=="confirmRemove"&&!forget){QJsonObject details{{"historyId",removeConfirm_->property("historyId").toString()}};if(const auto by=removeConfirm_->property("retainedBy").toString();!by.isEmpty())details["retainedBy"]=by;reply({"history_record_retained",removeConfirmation()["text"].toString(),details},state());return;}
+  removeDone_=[answer](Error e,QJsonObject r){answer(e,r);};
+  if(action=="confirmRemove")forget->click();else removeConfirm_->reject();
+  return;
+ }
  if(action=="confirmClear"||action=="cancelClear"){
   if(!confirm_){reply({"ui_no_confirmation","No Clear confirmation is open.",{}},{});return;}
   finishClear(action=="confirmClear",[answer](Error e,QJsonObject){answer(e,{});});return;

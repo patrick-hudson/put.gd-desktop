@@ -268,6 +268,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('list_errors', {'kind': 'deletion', 'resolved': False, 'history_id': 'synthetic-entry'},
                      'errors.list', {'kind': 'deletion', 'resolved': False, 'historyId': 'synthetic-entry'}),
                     ('drive_error_log', {'action': 'step', 'step': 'show_in_history'}, 'ui.errorLog', {'action': 'step', 'step': 'show_in_history'}),
+                    # #1759: Remove from History only from an error log entry, and its confirmation.
+                    ('act_on_error', {'id': 'synthetic-error', 'action': 'remove_from_history'}, 'errors.act', {'id': 'synthetic-error', 'action': 'remove_from_history'}),
+                    ('drive_error_log', {'action': 'confirmRemove'}, 'ui.errorLog', {'action': 'confirmRemove'}),
                 ]:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)

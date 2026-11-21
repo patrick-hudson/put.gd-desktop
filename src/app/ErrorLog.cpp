@@ -107,6 +107,8 @@ void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QStrin
  const bool outcome=!entry.value("details").toObject().contains("method");
  if(outcome&&!removed&&((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId"))))add("retry");
  for(const auto& step:entry.value("nextSteps").toArray())add(step.toString());
+ // Remove from History only, as History's deletion dialog offers it for a removed destination (#1759).
+ if(removed&&has("historyId"))add("remove_from_history");
  if(has("historyId"))add("show_in_history");
  if(has("operationId"))add("save_diagnostics");
  entry["nextSteps"]=QJsonArray::fromStringList(steps);
@@ -223,6 +225,10 @@ void ErrorLog::deletionFinished(const QJsonObject& doc) {
   auto error=errorFrom(item["error"].toObject());if(error.code.isEmpty())error={"delete_"+status,outcomes.value(status),{}};
   record("deletion",error,context);
  }
+}
+// Remove from History only took these records (#1759): their deletion problems are settled with them.
+void ErrorLog::historyForgotten(const QStringList& ids) {
+ for(const auto& id:ids)for(const auto* prefix:{"deletion:","delete.confirm:"})resolve(QLatin1String(prefix)+id,QStringLiteral("Removed from History"));
 }
 void ErrorLog::sharingFinished(const QJsonObject& doc) {
  const auto historyId=doc["historyId"].toString(),status=doc["status"].toString();
