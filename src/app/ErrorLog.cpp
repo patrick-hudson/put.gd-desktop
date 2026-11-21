@@ -20,9 +20,13 @@ QString oneLine(const QString& message) {
  if(line.size()>200)line=line.left(199)+QChar(0x2026);
  return line;
 }
-bool credentialCode(const QString& code) {
- return code=="credential_setup_required"||code.startsWith("credential")||code.startsWith("credentials_")||code.contains("access_denied")||code.contains("permission_denied")||code.contains("unauthorized");
+// Three different problems with three different next steps (#1753, #1759): credentials that
+// aren't loaded (unlocking them helps), credentials the destination refused (only its settings
+// help), and a destination removed from Settings (nothing to unlock or open).
+bool credentialsNotLoaded(const QString& code) {
+ return QStringList{"credential_setup_required","credential_store_unavailable","credential_store_timeout","credential_access_denied"}.contains(code);
 }
+bool destinationRemoved(const QString& code) {return code=="destination_removed";}
 QString providerName(const QString& provider) {
  if(provider=="s3")return "Amazon S3";
  if(provider=="backblaze-b2")return "Backblaze B2";
@@ -95,12 +99,13 @@ void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QStrin
  QStringList steps;const auto add=[&steps](const QString& step){if(!steps.contains(step))steps<<step;};
  const auto kind=entry.value("kind").toString(),code=entry.value("code").toString();
  const auto has=[&entry](const char* key){return !entry.value(QLatin1String(key)).toString().isEmpty();};
- if(credentialCode(code)&&(has("historyId")||has("profileId")))add("unlock_credentials");
- if(has("profileId")&&kind!="settings_save")add("open_destination");
+ const bool removed=destinationRemoved(code);
+ if(credentialsNotLoaded(code)&&(has("historyId")||has("profileId")))add("unlock_credentials");
+ if(has("profileId")&&kind!="settings_save"&&!removed)add("open_destination");
  // Retry repeats a failed outcome. A refused session call (its details name the method) offers no
  // Retry: repeating a refused cancel or a share-only retry as an upload retry would change its effect.
  const bool outcome=!entry.value("details").toObject().contains("method");
- if(outcome&&((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId"))))add("retry");
+ if(outcome&&!removed&&((QStringList{"upload","local_save","copy"}.contains(kind)&&has("operationId"))||(kind=="deletion"&&has("deletionId"))||(kind=="destination_test"&&has("profileId"))))add("retry");
  for(const auto& step:entry.value("nextSteps").toArray())add(step.toString());
  if(has("historyId"))add("show_in_history");
  if(has("operationId"))add("save_diagnostics");

@@ -371,6 +371,8 @@ private slots:
   QCOMPARE(entry["kind"].toString(),QString("upload"));QCOMPARE(entry["code"].toString(),QString("s3_permission_denied"));QCOMPARE(entry["operationId"].toString(),id);
   QCOMPARE(entry["details"].toObject()["requestId"].toString(),QString("SYNTHREQ0123ABCD"));QVERIFY(!entry["resolved"].toBool());
   for(const auto* step:{"retry","show_in_history","save_diagnostics"})QVERIFY2(entry["nextSteps"].toArray().contains(QJsonValue(QString(step))),step);
+  // A key the destination refused is not fixed by unlocking it (#1759): no Unlock step.
+  QVERIFY(!entry["nextSteps"].toArray().contains(QJsonValue("unlock_credentials")));
   // An entry is redacted like a log record before it is stored: no secret reaches the journal.
   ErrorLog::Entry leaky;leaky.subject="synthetic";leaky.details={{"secretKey","synthetic-private-secret"},{"url","https://s3.example/b/o?X-Amz-Signature=synthetic-private-signature"}};
   errors.record("upload",{"synthetic_failure","Authorization: Bearer synthetic-private-token rejected",leaky.details},leaky);
