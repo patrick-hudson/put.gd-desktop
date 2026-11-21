@@ -703,14 +703,15 @@ operation, item, deletion, link change or setup IDs, and its next steps as butto
 
 | Button | Does |
 | --- | --- |
-| Unlock saved credentials | `history.unlockCredentials` for the item's original destination (the keyring may prompt), or `setup.unlockCredentials` for the destination |
+| Unlock saved credentials | `history.unlockCredentials` for the item's original destination (the keyring may prompt), or `setup.unlockCredentials` for the destination. Offered only when the credentials aren't loaded (`credential_setup_required`, or the keyring didn't answer or refused access), never for a key the destination refused (`s3_permission_denied`, `credential_invalid` …), which offers Open destination settings |
 | Open destination settings | opens Destinations on that destination |
 | Retry deletion, Retry upload, Retry local copy, Copy again, Test connection again | `delete.retry`, `operation.retry`, `operation.retryLocalSave`, `operation.copy` or `setup.testDestination`; offered only for a failed outcome, never for a refused call, whose repeat could do something else (a refused share-only retry is not an upload retry) |
 | Show in History | opens History with the item selected |
 | Save diagnostics for this operation | a local package for that operation |
 
 A resolved entry keeps Show in History and Save diagnostics, not the steps that would
-fix it. **Technical details** shows the entry as recorded, with **Copy details**.
+fix it. An entry whose destination was removed from Settings (`destination_removed`)
+offers neither Unlock, Open destination settings nor Retry. **Technical details** shows the entry as recorded, with **Copy details**.
 
 ### History
 
