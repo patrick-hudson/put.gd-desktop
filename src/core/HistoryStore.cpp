@@ -419,6 +419,9 @@ Error HistoryStore::forget(const QStringList& ids,const QSet<QString>& running,i
  QSqlQuery q(db_);int count=0;bool ok=true;QStringList taken;
  const auto retained=QStringLiteral(" AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  for(const auto& id:ids){
+  // A share link change still pending keeps the record, and with it any deletion's hold (#1763).
+  q.prepare("SELECT 1 FROM item_state WHERE id=? AND json_extract(data,'$.shareStatus') IN ('pending','unknown')");q.addBindValue(id);if(!(ok=q.exec()))break;
+  if(q.next())continue;
   QStringList release;
   if(releasable(id,running,&release))for(const auto& deletionId:release){q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(id);if(!(ok=q.exec()))break;}
   if(!ok)break;
