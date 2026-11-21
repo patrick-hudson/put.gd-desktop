@@ -2,6 +2,7 @@
 """Offline S3 wire oracle. Fake credentials only; no AWS network access."""
 import base64, hashlib, hmac, json, os, socket, threading, time, urllib.parse, uuid
 import xml.etree.ElementTree as ElementTree
+from xml.sax.saxutils import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -103,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/__reset':
                 state['normalisePath'] = False
                 blobs.clear()
-                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versioningReported': None, 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -186,12 +187,24 @@ class Handler(BaseHTTPRequestHandler):
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
             current = versions[-1] if versions else None
-            selected = next((v for v in versions if v['version'] == query['versionId'][0]), None) if 'versionId' in query else current
+            # An object written before versioning was on has the version ID "null", as in S3.
+            selected = next((v for v in versions if (v['version'] or 'null') == query['versionId'][0]), None) if 'versionId' in query else current
             if 'uploads' in query or 'uploadId' in query:
                 return self.multipart(key, query, body, versions, rule)
             if self.command == 'GET' and 'versioning' in query:
-                xml = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + ('<Status>' + state['versioning'] + '</Status>' if state['versioning'] else '') + '</VersioningConfiguration>'
+                # 'versioningReported': the status the bucket reports, when it differs from what it does.
+                status = state['versioning'] if state.get('versioningReported') is None else state['versioningReported']
+                xml = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + ('<Status>' + status + '</Status>' if status else '') + '</VersioningConfiguration>'
                 self.respond(200, xml.encode()); return
+            if self.command == 'GET' and 'versions' in query:
+                # ListObjectVersions, newest first for each key, in one page.
+                prefix, entries = query.get('prefix', [''])[0], ''
+                for name in sorted(k for k in state['objects'] if k.startswith(prefix)):
+                    for v in reversed(state['objects'][name]):
+                        common = '<Key>' + escape(name) + '</Key><VersionId>' + (v['version'] or 'null') + '</VersionId>'
+                        entries += ('<DeleteMarker>' + common + '</DeleteMarker>' if v.get('marker') else
+                                    '<Version>' + common + '<ETag>' + escape(v['etag']) + '</ETag><Size>' + str(len(payload(v))) + '</Size></Version>')
+                return xml_reply(self, 'ListVersionsResult', '<Name>' + escape(bucket) + '</Name><Prefix>' + escape(prefix) + '</Prefix><IsTruncated>false</IsTruncated>' + entries)
             if self.command in ('GET', 'HEAD'):
                 if self.command == 'GET' and state.get('private') and not signed:
                     if state.get('unsignedAuthError'):
@@ -203,7 +216,7 @@ class Handler(BaseHTTPRequestHandler):
                     headers = {'x-amz-delete-marker': 'true', 'x-amz-version-id': selected['version']} if selected else {}
                     self.error(404, 'NoSuchKey', headers); return
                 headers = {'ETag': selected['etag'], 'Content-Length': len(payload(selected))}
-                if selected.get('version'): headers['x-amz-version-id'] = selected['version']
+                if selected.get('version') or 'versionId' in query: headers['x-amz-version-id'] = selected['version'] or 'null'
                 for k,v in selected['metadata'].items(): headers['x-amz-meta-' + k] = v
                 self.respond(200, payload(selected), headers); return
             # Like Garage and Zenko CloudServer (#1583): If-None-Match and If-Match are accepted and ignored.

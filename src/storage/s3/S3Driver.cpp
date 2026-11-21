@@ -31,6 +31,7 @@
 #include <aws/s3/model/UploadPartRequest.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetBucketVersioningRequest.h>
+#include <aws/s3/model/ListObjectVersionsRequest.h>
 #include <aws/s3/model/ObjectCannedACL.h>
 #include <aws/s3/model/StorageClass.h>
 #include <QCryptographicHash>
@@ -83,6 +84,7 @@ QString deniedGuidance(S3Stage stage) {
     case S3Stage::UploadListParts: return "S3 denied listing the parts of an interrupted multipart upload, so put.gd sends every part again. Check s3:ListMultipartUploadParts in IAM and the bucket policy.";
     case S3Stage::DeleteVersioning: return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
     case S3Stage::DeleteVersion: return "S3 denied deletion of the recorded object version. Check s3:DeleteObjectVersion in IAM and the bucket policy, plus Object Lock, retention and MFA restrictions.";
+    case S3Stage::DeleteVersionList: return "S3 denied listing this file's versions, so put.gd can't tell whether its kept version was removed. Check s3:ListBucketVersions in IAM and the bucket policy.";
     case S3Stage::DeleteObject:
     case S3Stage::DeleteMarker: return "S3 denied object cleanup. Check s3:DeleteObject in IAM and the bucket policy, and s3:DeleteObjectVersion when targeting a recorded version (including the null version). Also check Object Lock, retention and MFA restrictions.";
     case S3Stage::NameHead:
@@ -111,6 +113,7 @@ QString unsupportedGuidance(S3Stage stage) {
     case S3Stage::DeleteMarker: request = "hiding the object behind a delete marker (DeleteObject with If-Match)"; break;
     case S3Stage::DeleteVersion: request = "deleting the recorded object version (DeleteObject with a version ID)"; break;
     case S3Stage::DeleteObject: request = "deleting the object only if it is unchanged (DeleteObject with If-Match)"; break;
+    case S3Stage::DeleteVersionList: request = "listing the file's versions (ListObjectVersions)"; break;
     }
     return "The storage service does not implement " + request + ", which put.gd needs here. Check that the endpoint supports it.";
 }
@@ -130,7 +133,8 @@ bool conditionalWrite(S3Stage stage) {
     case S3Stage::DeleteCurrentHead:
     case S3Stage::DeleteMarker:
     case S3Stage::DeleteVersion:
-    case S3Stage::DeleteObject: return false;
+    case S3Stage::DeleteObject:
+    case S3Stage::DeleteVersionList: return false;
     }
     Q_UNREACHABLE();
     return false;
@@ -427,6 +431,66 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
 StorageReceipt withoutVersion(StorageReceipt receipt) {
     receipt.objectReference.remove("versionId");
     return receipt;
+}
+// After an unversioned delete was answered with a delete marker (#1690), whether the recorded
+// upload is still kept as a version at its key (#1771). Read-only: it lists the key's versions
+// and checks each one with the recorded ETag against the recorded identity, by its version ID.
+// Kept: one of them is the upload. Gone: none is. Unknown: a read failed or didn't answer for
+// what it asked, named by error.
+struct Hidden { enum Kind { Kept, Gone, Unknown } kind = Unknown; Error error = {}; };
+Hidden keptVersion(Client& client, const StorageReceipt& expected, const std::shared_ptr<std::atomic_bool>& cancellation) {
+    const auto key = s3StoredKey(expected.objectReference["key"].toString());
+    const auto& destination = expected.destination;
+    const auto unquoted = [](QString etag) { return etag.remove(QLatin1Char('"')); };
+    const auto etag = unquoted(expected.concurrencyToken);
+    const Error unanswered{"delete_unknown", "The bucket didn't answer for the version put.gd asked about.", {}};
+    Aws::S3::Model::ListObjectVersionsRequest request;
+    request.SetBucket(aws(destination.settings["bucket"].toString()));
+    request.SetPrefix(aws(key));
+    // Whether the listing showed any version or marker at the key. A reply that isn't a
+    // version listing (a service that ignored the request's versions query) shows none.
+    bool listedAny = false;
+    // Versions list in key order, so the key's own come before any longer key it prefixes.
+    for (int page = 0; page < 100; ++page) {
+        if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
+        QElapsedTimer timer;
+        timer.start();
+        const auto listed = client.ListObjectVersions(request);
+        if (!listed.IsSuccess()) return {Hidden::Unknown, wireError(listed.GetError(), S3Stage::DeleteVersionList, timer.elapsed())};
+        const auto& result = listed.GetResult();
+        for (const auto& marker : result.GetDeleteMarkers()) listedAny = listedAny || qt(marker.GetKey()) == key;
+        for (const auto& version : result.GetVersions()) {
+            if (qt(version.GetKey()) != key) continue;
+            listedAny = true;
+            if (unquoted(qt(version.GetETag())) != etag) continue;
+            if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
+            const auto id = qt(version.GetVersionId());
+            timer.restart();
+            const auto found = head(client, destination, key, id, cancellation);
+            if (!found.IsSuccess()) return {Hidden::Unknown, absent(found.GetError()) ? unanswered : wireError(found.GetError(), S3Stage::ObjectHead, timer.elapsed())};
+            // A service that ignores the version ID answers for the current object instead.
+            const auto answered = qt(found.GetResult().GetVersionId());
+            if (found.GetResult().GetDeleteMarker() || (answered != id && !(answered.isEmpty() && id == "null"))) return {Hidden::Unknown, unanswered};
+            const auto& object = found.GetResult();
+            if (metadata(object, "putgd-publication") == expected.publicationId &&
+                metadata(object, "putgd-sha256") == expected.objectReference["sha256"].toString() &&
+                object.GetContentLength() == qint64(expected.objectReference["bytes"].toDouble()) &&
+                qt(object.GetETag()) == expected.concurrencyToken) return {Hidden::Kept};
+        }
+        if (result.GetIsTruncated() && qt(result.GetNextKeyMarker()) == key) {
+            request.SetKeyMarker(result.GetNextKeyMarker());
+            request.SetVersionIdMarker(result.GetNextVersionIdMarker());
+            continue;
+        }
+        if (listedAny) return {Hidden::Gone};
+        // Nothing listed: gone only if the key holds nothing at all, not even a marker.
+        timer.restart();
+        const auto current = head(client, destination, key, {}, cancellation);
+        if (!current.IsSuccess() && absent(current.GetError()) && !current.GetError().GetResponseHeaders().count("x-amz-delete-marker")) return {Hidden::Gone};
+        if (!current.IsSuccess() && !absent(current.GetError())) return {Hidden::Unknown, wireError(current.GetError(), S3Stage::CurrentHead, timer.elapsed())};
+        return {Hidden::Unknown, {"delete_unknown", "The bucket listed no versions of this file, yet something is still at its name.", {}}};
+    }
+    return {Hidden::Unknown, {"delete_unknown", "This file has too many versions in the bucket for put.gd to check them all.", {}}};
 }
 // Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
 // a request naming a version gets 501, and the bucket reports no versioning status. Garage
@@ -1429,10 +1493,26 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         finish("unknown", {"delete_unknown", "Marker creation may have completed; its identity is unresolved", {}});
         return;
     }
-    // An earlier attempt found a delete marker in place of the removal: the object's bytes are
-    // still kept as a version, whatever the current HEAD says now (#1690).
+    // An earlier attempt found a delete marker in place of the removal: the object's bytes were
+    // kept as a version, whatever the current HEAD says now (#1690). Retry only reads whether
+    // that version is still there, so someone can remove it in the bucket and settle the
+    // deletion here (#1771). It never sends another DELETE.
     if (objectPhase && progress.value("markerVersionId").isString()) {
-        finish("hidden_version_retained", {"delete_marker_created", "An earlier deletion left the object behind a delete marker: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}});
+        Error retained{"delete_marker_created", "An earlier deletion left the object behind a delete marker: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
+        const auto kept = keptVersion(*client, expected, request.cancellation);
+        if (kept.kind == Hidden::Gone) {
+            if (auto error = persist(S3DeletePhase::Done)) {
+                finish("unknown", error);
+                return;
+            }
+            finish("removed");
+            return;
+        }
+        if (kept.kind == Hidden::Unknown) {
+            retained.message += " put.gd could not check whether it is still there: " + kept.error.message;
+            retained.details = kept.error.details;
+        }
+        finish("hidden_version_retained", retained);
         return;
     }
     auto identity = inspect(*client, expected);

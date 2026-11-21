@@ -40,6 +40,7 @@
 "delete_marker"
 "delete_object"
 "delete_version"
+"delete_version_list"
 "delete_versioning"
 "destination"
 "details"

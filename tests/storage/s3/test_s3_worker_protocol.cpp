@@ -410,7 +410,8 @@ private slots:
             QVERIFY(!parse(QJsonValue(1)));
         };
         check({"name_head", "object_head", "current_head", "upload_put", "upload_create", "upload_part", "upload_list_parts", "upload_complete",
-               "upload_abort", "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"},
+               "upload_abort", "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object",
+               "delete_version_list"},
               s3StageNames, s3Stage, s3StageName);
         check({"parts", "completing"}, s3UploadPhaseNames, s3UploadPhase, s3UploadPhaseName);
         check({"", "marker_intent", "marker_unknown", "marker_failed", "marker_cancelled", "marker_done", "version_ready", "version_intent",
