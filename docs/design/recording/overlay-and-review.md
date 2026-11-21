@@ -206,7 +206,7 @@ push the details out of view. The details follow the selection:
 | Edited, nothing selected | The Edits list alone. |
 | A time selection | "Selected time", its span and length, and **Cut**, **Redact**, **Blur**. |
 | A cover | Its name; "Covered pixels are removed from the saved and uploaded clip." (Blur shows the warning sentence instead); **Shows from →** and **Until →** with m:ss.s fields and **Set to playhead** (⇧I / ⇧O); a Redact / Blur choice, with strength for blur. The arrow buttons (Home / End) seek to the first and last *kept* covered frame, so you can check the frames either side; they are disabled with "Excluded from output" when no covered frame stays in the clip. |
-| A cut | Its span and "n s left out of the clip", **Restore** (the default button) and **Play across** (from 1 s of kept footage before the join), then **Starts** and **Ends** with m:ss.s fields and **Set to playhead**, as a cover has: a typed time goes to the resident as typed, which snaps it as it snaps a dragged edge; the field then shows the cut's answer, or its old time when the change is refused. Set to playhead uses the frame on screen: it is the cut's first frame for Starts and its last for Ends. |
+| A cut | Its span and "n s left out of the clip", **Restore** (the default button) and **Play across** (from 1 s of kept footage before the join), then **Starts** and **Ends** with m:ss.s fields and **Set to playhead**, as a cover has: a typed time goes to the resident as typed, which snaps it as it snaps a dragged edge; the field then shows the cut's answer, or its old time when the change is refused. Set to playhead uses the frame on screen: it is the cut's first frame for Starts (falling back to the playhead's time when no frame can be resolved) and its last for Ends (refused when no frame can be resolved). |
 
 The **Edits** list shows every trim, cut and cover in source order with an icon, a
 name and its span. Each row's verb (trim: Reset, cut: Restore, cover: Remove) is a
@@ -230,9 +230,11 @@ row switches to the short span form. Controls update in place:
   two (a cut's bar and row likewise); nothing changes layout.
 - **Shows from**, **Until** (and a cut's **Starts** and **Ends**) commit on Enter and hand
   the keys back to the timeline (the folded overlay when it is open). A time or strength
-  typed but not yet committed is committed first by anything that acts on the clip: Upload,
-  Save a copy…, and a press anywhere in the window outside the field (which also hands the
-  keys to the timeline before the pressed control acts). Esc reverts changed text, and a second Esc
+  typed but not yet committed is committed by anything that acts on the clip: a typed time
+  is committed when you press **Upload** or **Save a copy…**, and if that change is refused
+  before you release the button, nothing is uploaded or saved and a status line says so. A
+  press anywhere in the window outside the field commits it too and hands the keys to the
+  timeline before the pressed control acts. Esc reverts changed text, and a second Esc
   (or Esc on unchanged text) hands the keys back and keeps the cover selected. The
   blur **Strength** field coalesces its steps for 350 ms into one edit (one undo
   step; a held arrow keeps stepping), the picture previews the new strength at once,
@@ -294,7 +296,8 @@ unselected bar, a cut body or the "+n" chip, the arrow elsewhere.
 - **Empty strip.** A press seeks at once. Dragging past 6 px, mostly horizontally, makes
   a time selection anchored at the press: the playhead stays at the anchor while the
   viewer shows the moving edge's frame. Once armed the range is at least one frame, toward
-  where the pointer went. On release the selection stays, whatever its length, and the playhead lands on the moving edge's frame (for
+  where the pointer went; a selection can be just the recording's final partial frame, and when
+  a recording boundary blocks that direction it extends one frame the other way. On release the selection stays, whatever its length, and the playhead lands on the moving edge's frame (for
   an end, the frame before it). A click that never armed is a click: it clears a **time
   selection** only, and a selected cut or cover stays selected, so Set to playhead and
   Shift+I or Shift+O work after seeking. Shift+click moves the selection's nearer edge
@@ -329,7 +332,8 @@ unselected bar, a cut body or the "+n" chip, the arrow elsewhere.
   answers (a new revision), refuses (the same revision again) or 1 s passes; the last
   two ease back over 120 ms, so nothing snaps back. A new revision that leaves the
   dragged item alone does not stop the drag; one that changes it ends the drag and
-  proposes nothing. A press on a trim bracket, or on a cut or cover, whose last proposal is
+  proposes nothing. An unrelated revision (one that leaves the dropped item as it was)
+  leaves the released drop pending: it settles on its own answer, a refusal, or the 1 s. A press on a trim bracket, or on a cut or cover, whose last proposal is
   still unanswered starts no second drag, so it cannot carry a change the resident may
   yet refuse. Zoom (the keys, the menu, the wheel, a pinch, and the `timelineZoom`,
   `timelineFit`, `zoomIn` and `zoomOut` actions) is ignored while a timeline drag is in
@@ -434,9 +438,11 @@ playhead.
 - **What the viewer shows.** The viewer keeps its picture until an exact decoded frame
   with its covers applied arrives; it never shows a thumbnail, so a skim frame is never
   uncovered. The skim line and its flag move at once, and the flag reads "≈0:05.3"
-  until the exact frame for that time is shown. One skim request is in flight at a time
-  and the newest time replaces a queued one; while the pointer moves, an exact-frame
-  request goes out at most every 50 ms and one more 40 ms after it rests. An answer
+  until the exact frame for that time is shown. The window's skim worker keeps
+  one decode in flight and one replaceable queued request: a newer time replaces the queued one
+  without stopping the decode in progress, and that decode hands over the frame it has
+  reached. Separately, the timeline tells the window the skim time as the pointer moves and asks
+  for the exact frame at most every 50 ms while it moves and once more 40 ms after it rests. An answer
   that arrives after the pointer has moved on is shown (the flag keeping "≈") when its
   frame lies within 2 strip pixels, or 250 ms, whichever is wider, of the skim time **and
   no cover starts or ends between the two times**; the newest time is asked for at once,
@@ -494,7 +500,8 @@ playhead.
   mid-drag does not move the box unless that cover itself changed.
 - **Placement.** X or B arms a cover (crosshair; a busy cursor while the frame it will be
   drawn on is still loading, and a placement waits for that frame on every path,
-  including after a seek, so you never draw on the wrong frame). A drag may start up to
+  including after a seek, so you never draw on the wrong frame). The guard applies to
+  placement by pointer and by keyboard (Enter), not to the `placeMask` and `addMask` actions. A drag may start up to
   8 px outside the picture and is clamped to it. What the drag will make is previewed as
   it goes, and the release makes exactly that: a drag under 8 × 8 view px is a click and
   places the default box, about 20 % × 8 % of the frame, centred at the press (kept in the
@@ -608,7 +615,10 @@ These were weighed and left as they are:
 - **Trim** with the brackets or I and O at the playhead. The end actions (Set Out, O,
   Shift+O, **Set to playhead** on a cover's or cut's end, `setOut`, `setCoverEdgeToPlayhead`,
   `setMaskOut`) end after **the frame on screen**; the start actions (I, Shift+I and Set to
-  playhead on a start) begin at that frame too. The window takes that frame's stored
+  playhead on a start, `setCutEdge` with `start`) begin at the shown frame's start too, and fall
+  back to the playhead's time when no frame can be resolved. An end action needs a resolved
+  frame after the window's decode attempt, else it is refused ("The frame at the playhead isn't
+  shown yet. Try again once it is."). The window takes that frame's stored
   time, rounds it to the nearest grid index (Matroska keeps 33,333 µs as 33,000, and the
   exporter puts that frame on 33,333), and the end is the next frame edge,
   round((*k* + 1) × 10⁶ / `fps`), bounded by the recording's end. If a seek has not been
@@ -641,11 +651,16 @@ These were weighed and left as they are:
   selects the item it brought back and scrolls it into view; the playhead stays.
 - **Commit and upload.** A timeline drag, or a move or resize on the picture, proposes its
   edit when the pointer is released; a keyboard nudge of a cover is proposed 350 ms after
-  the last key. **Save a copy…** waits for such changes like Upload does: it commits a typed
-  time, a pending nudge and a pending blur strength first, and saves the copy only once the
-  resident has answered every proposal made before the press. If any of them is refused, or
-  2 s pass without an answer, nothing is saved and the status line says "No copy was saved:
-  … Check the edits, then save again." Two different things
+  the last key. **Save a copy…** waits for such changes like Upload does: the press
+  commits a typed time, a pending nudge and a pending blur strength, and records how many
+  refusals there had been. A refusal between the press and the release opens no chooser and
+  saves nothing, and the status line says "No copy was saved: … Check the edits, then save
+  again." Once a file is chosen the copy is saved only after the resident has answered every
+  proposal made before the press; the 2 s wait starts then, and if any of them is refused or
+  2 s pass without an answer, nothing is saved. A typed time that **Upload** commits is
+  treated the same way: if its change is refused before you release the button, nothing is
+  uploaded. `saveCopyDialog` answers `recording_state` when it detects a refusal, or when a
+  chosen copy is already waiting. Two different things
   can stop an upload:
   - **What blocks a new Upload press** (Upload, Ctrl+Enter, Enter on the focused Upload
     button): a cover being placed, a
@@ -683,7 +698,7 @@ These were weighed and left as they are:
   be sent during an export anyway). The actions are `setIn`, `setOut`, `resetTrim`, `addMask`, `placeMask`,
   `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`, `strength`, `removeMask`, `cut`,
   `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
-  `coverKind` and `setTrim`.
+  `coverKind`, `setTrim`, `retimeCover` and `setCutEdge`.
   **On the window path** the resident refuses an upload at any other revision
   (`recording_stale`) and, for the window's own upload, an output other than the one shown
   (`recording_config`). It also refuses an export request in **two different situations**:
