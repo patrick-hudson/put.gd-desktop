@@ -607,8 +607,9 @@ Each resident runs with private `XDG_CONFIG_HOME`,
       older), with no prompt.
 - **U7. AppImage in-app update N → N+1**, through Settings → **Download and install** with a real click
   on at least one desktop, and `update.install` elsewhere. Each leg starts from N: when both run on one
-  desktop, put N back before the fallback leg, or the install finds N+1 already in place and returns
-  `method: none` without reaching the Range request.
+  desktop, put N back and start it before the fallback leg. Otherwise the install never reaches the
+  Range request: it refuses with `update_restart_required` before the restart, or
+  `update_not_available` once N+1 runs.
   - **zsync:** put.gd's own client, with no `appimageupdatetool` installed. The mirror's `.zsync` is
     used, `install.result.zsync.used` is true and `downloadedBytes` is a small part of the image.
   - **The fallback, forced once per desktop:** `PUTGD_UPDATE_MIRROR_URL` at a loopback stand-in that
