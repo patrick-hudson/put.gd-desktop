@@ -1005,6 +1005,18 @@ private slots:
         QCOMPARE(selected.size(), 2);
         QCOMPARE(selected[1][0].toLongLong(), 0);
         QCOMPARE(selected[1][1].toLongLong(), 33333);
+        // ...and at the end of a 10,030,000 µs recording the final partial frame is a selection, not a click.
+        t->setDuration(10030000, fps);
+        reset(t.get());
+        t->zoomFit();
+        t->setZoom(t->zoomLevels().last(), qint64(10030000));
+        const int end = t->xFor(10025000);
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, QPoint(end, y));
+        move(t.get(), QPoint(end + 6, y));
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, QPoint(end + 6, y));
+        QCOMPARE(selected.size(), 3);
+        QCOMPARE(selected[2][0].toLongLong(), 10000000);
+        QCOMPARE(selected[2][1].toLongLong(), 10030000);
     }
     // T7: a small move onto a grip restarts the rest timer, so the skim does not
     // end on a timer started off the grip.
