@@ -455,6 +455,7 @@ private:
     quint64 refusals_ = 0, saveRefusalMark_ = 0;  // changes not applied, counted
     // refusals_ at a press on Save or Upload, and which (W5).
     std::optional<std::pair<const QWidget*, quint64>> pressRefusals_;
+    std::optional<std::pair<const QWidget*, quint64>> lastPressRefusals_;  // kept for a double-click's second press (U1)
     std::optional<quint64> takePressRefusals(const QWidget* button);
     QTimer saveWait_;
     quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited

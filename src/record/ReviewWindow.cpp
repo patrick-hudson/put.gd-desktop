@@ -3716,19 +3716,28 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
     QWidget::hideEvent(e);
 }
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
+    // W5: a press on Save or Upload commits a typed time (P9, below); its
+    // answer can come back before the release clicks the button, so that click
+    // counts refusals from the press. A double-click's second press is part
+    // of the same activation and keeps the first press's count (U1). After
+    // any release the count is gone once the click (if any) has used it, so a
+    // release outside the button leaves nothing for a later key (U2).
+    if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) {
+        auto* target = qobject_cast<QWidget*>(watched);
+        if (target && target->window() == this) {
+            if (target != save_ && target != upload_) pressRefusals_.reset();
+            else if (event->type() == QEvent::MouseButtonDblClick && lastPressRefusals_ && lastPressRefusals_->first == target) pressRefusals_ = lastPressRefusals_;
+            else pressRefusals_ = lastPressRefusals_ = std::pair<const QWidget*, quint64>(target, refusals_);
+        }
+    }
+    if (event->type() == QEvent::MouseButtonRelease && pressRefusals_)
+        QMetaObject::invokeMethod(this, [this] { pressRefusals_.reset(); }, Qt::QueuedConnection);
     // P9: a press anywhere in the window outside the panel field being typed
     // in commits that field and hands the keys to the timeline before the
     // pressed control acts (Tab-only controls don't take focus by click).
     if (event->type() == QEvent::MouseButtonPress) {
         auto* target = qobject_cast<QWidget*>(watched);
         auto* focus = focusWidget();
-        // W5: a press on Save or Upload commits a typed time below; its answer
-        // can come back before the release clicks the button, so the button
-        // counts refusals from here.
-        if (target && target->window() == this) {
-            if (target == save_ || target == upload_) pressRefusals_ = {target, refusals_};
-            else pressRefusals_.reset();
-        }
         if (target && target->window() == this && focus && textField(focus) && panel_->isAncestorOf(focus) && target != focus && !focus->isAncestorOf(target) && !(focus->parentWidget() && focus->parentWidget()->isAncestorOf(target) && qobject_cast<QAbstractSpinBox*>(focus))) {
             panel_->commitFields();
             timeline_->setFocus(Qt::MouseFocusReason);
