@@ -900,7 +900,7 @@ its default button.
 the main window and the file manager's menu entry (which names its installation) ask a person, with
 `prompt`. Any other request defaults to `report`, which covers `putgd-cli`, MCP and scripts. In report
 mode no panel opens. The operation waits in `sensitive_text_found` until `operation.decide {id,
-choice}`, where `choice` is `redact`, `upload` or `cancel` (MCP `decide_upload`). The same method also
+choice, prompt?}`, where `choice` is `redact`, `upload` or `cancel` (MCP `decide_upload`). A file selection can ask once per file: `sensitive.prompt` numbers each prompt, the phase returns to `checking` as soon as a decision is accepted, and a decision whose optional `prompt` names an earlier prompt is refused with `sensitive_decision_unavailable`. The same method also
 settles a prompt that a person is looking at. A report-mode decision that doesn't come within 5 minutes
 is taken as Cancel. After `redact` the operation is an open editor, and the `editor.*` methods drive it
 by the same ID. `operation.decide` answers `sensitive_check_running` while the check runs,
