@@ -591,7 +591,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
   {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
   {"diagnostics.bundle","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
-  {"history.clear","history"},{"cache.clear","history"},{"action.invoke",""}};
+  {"history.clear","history"},{"history.forget","history"},{"cache.clear","history"},{"action.invoke",""}};
  if(!kinds.contains(method))return;
  // A diagnostics preview writes nothing; its refusal is the dialog's own message.
  if(method=="diagnostics.bundle"&&p["preview"].toBool())return;
@@ -600,6 +600,8 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
  if(method.startsWith("history.")||method.startsWith("operation.")||method.startsWith("recording.")||method=="delete.retry"||method=="delete.cancel")key=p["id"].toString();
  else if(method=="delete.prepare"||method=="delete.confirm"){key=error.details.value("historyId").toString();if(key.isEmpty()&&p["ids"].toArray().size()==1)key=p["ids"].toArray().first().toString();}
  else if(method.startsWith("setup."))key=p["profileId"].toString();
+ // Remove from History only takes a list; an entry names its one record.
+ if(method=="history.forget")key=error.details.value("historyId").toString(p["ids"].toArray().size()==1?p["ids"].toArray().first().toString():QString());
  else if(method=="action.invoke")key=p["action"].toString();
  else if(method=="text.recognize")key=p["historyId"].toString(p["source"].toString());
  else if(method=="upload.files")key=p["profileId"].toString();

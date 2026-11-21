@@ -307,8 +307,13 @@ void ErrorLogPage::openRemove(const QJsonObject& entry,std::function<void(Error,
   }
   auto* dialog=HistoryWindow::deletionConfirmation(g,preview,{{historyId,entry["itemName"].toString()}},g->session_.document()["profiles"].toArray());
   dialog->setObjectName("errorLogRemoveConfirm");g->removeConfirm_=dialog;
+  // What an agent's refused confirmRemove reports, as delete.prepare said it.
+  const auto target=preview["targets"].toArray().first().toObject();
+  dialog->setProperty("historyId",historyId);dialog->setProperty("retainedBy",target["retainedBy"].toString());
   connect(dialog,&QDialog::finished,g,[g,dialog,entry](int result){
    dialog->deleteLater();if(!g)return;
+   // Closed now: the reply's state says so, though the dialog is deleted later.
+   g->removeConfirm_=nullptr;
    g->finishRemove(result==HistoryWindow::forgetResult,entry,std::exchange(g->removeDone_,{}));
   });
   dialog->open();done({},{});
@@ -434,7 +439,7 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
   if(!removeConfirm_){reply({"ui_no_confirmation","No Remove from History only confirmation is open.",{}},{});return;}
   auto* forget=removeConfirm_->findChild<QPushButton*>("forgetHistoryRecords");
   // Without the button the record stays, and the dialog says why, as on screen.
-  if(action=="confirmRemove"&&!forget){reply({"history_record_retained",removeConfirmation()["text"].toString(),{}},state());return;}
+  if(action=="confirmRemove"&&!forget){QJsonObject details{{"historyId",removeConfirm_->property("historyId").toString()}};if(const auto by=removeConfirm_->property("retainedBy").toString();!by.isEmpty())details["retainedBy"]=by;reply({"history_record_retained",removeConfirmation()["text"].toString(),details},state());return;}
   removeDone_=[answer](Error e,QJsonObject r){answer(e,r);};
   if(action=="confirmRemove")forget->click();else removeConfirm_->reject();
   return;
