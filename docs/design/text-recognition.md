@@ -1330,8 +1330,9 @@ and 54 and 56 wrong, and the third 1,268 right.
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
-- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found, nor were 🇬🇧 at
-  the tested editors' default size and Noto's ☕ on white at 150% zoom, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
+- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found. In desktop
+  acceptance, 🇬🇧 at the tested editors' default size and Noto's ☕ on white at 150% zoom were
+  missed too. Plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
   draws in its own design are named only where they look like Noto's or Twemoji's. Neighbouring
   skin tones, and the man, woman and person forms of one emoji, are sometimes swapped at text
   size. See [emoji](#emoji).
