@@ -349,6 +349,38 @@ private slots:
         QCOMPARE(cut.size(), 2);
     }
 
+    // W8: a typed cut time goes out as typed (the resident snaps it, as a
+    // dragged edge); refused, the field shows the cut's time again.
+    void aRefusedCutTimeShowsTheCutAgain() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        layout->addWidget(panel);
+        auto s = edited();
+        s.selectedKind = "cut";
+        s.selectedId = "c1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QSignalSpy adjust(panel, &ReviewPanel::cutAdjustRequested);
+        auto* field = panel->findChild<QLineEdit*>("reviewPanelCutStartsTime");
+        QVERIFY(field);
+        QCOMPARE(field->text(), QString("0:13.0"));
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "13.52");
+        QTest::keyClick(field, Qt::Key_Return);
+        QCOMPARE(adjust.size(), 1);
+        QCOMPARE(adjust[0][1].toLongLong(), 13520000LL);
+        QCOMPARE(adjust[0][2].toLongLong(), 19500000LL);
+        panel->setState(s);  // nothing changed yet: the typed time stays
+        QCOMPARE(field->text(), QString("13.52"));
+        panel->revertFields();
+        QCOMPARE(field->text(), QString("0:13.0"));
+    }
+
     // r5-neon H5: in the folded overlay an edit rebuilds the list at the
     // height a fresh open gives it, so the details below stay in view.
     void overlayListKeepsItsFitAfterAnEdit() {

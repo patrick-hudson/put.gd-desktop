@@ -586,6 +586,13 @@ void FrameView::setUncovered(const QString& id, const QImage& image, qint64 time
     composite_ = {};
     update();
 }
+void FrameView::dropUncovered() {
+    if (uncovered_.isNull()) return;
+    uncovered_ = {};
+    uncoveredId_.clear();
+    composite_ = {};
+    update();
+}
 bool FrameView::livePending() const { return !liveId_.isEmpty() && !(uncoveredId_ == liveId_ && uncoveredUs_ == timeUs_ && !uncovered_.isNull()); }
 // The picture with the live cover's effect where its box is now: the frame
 // without that cover once it has arrived, else the shown frame (its old place
@@ -1402,6 +1409,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     });
     connect(frames_, &FrameSkimmer::frameFailed, this, [this](qint64 requested, const QString& message) {
         if (playing_ || !frameAsked_ || frameAsked_->at != requested) return;
+        // An Enter waiting for this frame expires (W6).
+        enterPlacePending_ = false;
+        enterPlaceTimer_.stop();
         // A placement keeps waiting: the error (with Retry preview) says why (R18).
         showFrameError(requested, message);
     });
@@ -1541,14 +1551,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // F6: a cut's typed times go through the same adjust as dragging its edges.
     connect(panel_, &ReviewPanel::cutAdjustRequested, this, [this](const QString& id, qint64 start, qint64 end) { stopPlayback(); adjustCut(id, start, end); });
     connect(panel_, &ReviewPanel::cutEdgeToPlayhead, this, [this](const QString& id, bool start) {
-        const auto it = std::find_if(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == id; });
-        if (it == edit_.cuts.cend()) return;
-        stopPlayback();
-        // The frame on screen is the cut's first (Starts) or last (Ends) frame, as a cover's.
-        if (start) { adjustCut(id, shownFrameStart(), it->end); return; }
-        const auto end = shownFrameEnd();
-        if (!end) { refuseChange(QStringLiteral("The frame at the playhead isn't shown yet. Try again once it is.")); return; }
-        adjustCut(id, it->start, *end);
+        if (const auto why = cutEdgeToPlayhead(id, start); !why.isEmpty()) refuseChange(why);
     });
     connect(panel_, &ReviewPanel::playAcross, this, &ReviewWindow::playAcross);
     connect(panel_, &ReviewPanel::seekCoverEdge, this, &ReviewWindow::seekCoverEdge);
@@ -1609,13 +1612,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         skimmer_->cancel();
         view_->clearSkim();
         timeline_->skimAt(std::nullopt);
-        auto without = edit_;
-        without.revision = uncoveredRevision;
-        without.masks.erase(std::remove_if(without.masks.begin(), without.masks.end(), [&](const RecordingMask& m) { return m.id == id; }), without.masks.end());
-        uncoveredAsked_ = std::pair<QString, qint64>(id, at);
         liveWaitRevision_.reset();
         liveProposal_ = 0;
-        skimmer_->request(at, without, viewEdge());
+        askUncovered(id, at);
     });
     connect(view_, &FrameView::maskSelected, this, [this](const QString& id) { if (id.isEmpty()) clearSelection(); else selectCover(id, false); });
     // W3: a click on the picture while playing pauses, nothing else.
@@ -1668,9 +1667,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(previousFrame_, &QToolButton::clicked, this, [this] { stepFrames(-1); });
     connect(nextFrame_, &QToolButton::clicked, this, [this] { stepFrames(1); });
     // The timeline zoom menu: Fit and every level of the ladder (A13).
-    connect(timelineZoomMenu_, &QMenu::aboutToShow, this, [this] {
+    // One group for the menu's life; clear() deletes the actions, which leave it.
+    auto* zoomGroup = new QActionGroup(timelineZoomMenu_);
+    connect(timelineZoomMenu_, &QMenu::aboutToShow, this, [this, group = zoomGroup] {
         timelineZoomMenu_->clear();
-        auto* group = new QActionGroup(timelineZoomMenu_);
         for (const int level : timeline_->zoomLevels()) {
             auto* action = timelineZoomMenu_->addAction(level <= 1 ? QStringLiteral("Fit") : QStringLiteral("%1×").arg(level));
             action->setCheckable(true);
@@ -1715,6 +1715,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     uploadWait_.setSingleShot(true);
     uploadWait_.setInterval(2000);
     connect(&uploadWait_, &QTimer::timeout, this, [this] { cancelUpload(QStringLiteral("your last change wasn't confirmed in time")); });
+    saveWait_.setSingleShot(true);
+    saveWait_.setInterval(2000);
+    connect(&saveWait_, &QTimer::timeout, this, [this] { cancelSaveCopy(QStringLiteral("your last change wasn't confirmed in time")); });
     // Space plays and pauses from any focus but a text field or spin box (they
     // claim it in ShortcutOverride); a clicked button never takes it (E2).
     // A row or button reached with Tab (its focus ring shown) takes Space as its
@@ -1739,7 +1742,13 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
 
     enterPlaceTimer_.setSingleShot(true);
     enterPlaceTimer_.setInterval(1000);
-    connect(&enterPlaceTimer_, &QTimer::timeout, this, &ReviewWindow::placePendingEnter);
+    // Its second is up with the frame still loading (the banner says so) or
+    // failed (the error says so): the Enter expires and nothing is placed on a
+    // frame it wasn't meant for (W6).
+    connect(&enterPlaceTimer_, &QTimer::timeout, this, [this] {
+        if (enterPlacePending_ && placing_ && !view_->placeWaiting()) { placePendingEnter(); return; }
+        enterPlacePending_ = false;
+    });
     placeWaitTimer_.setSingleShot(true);
     placeWaitTimer_.setInterval(100);
     connect(&placeWaitTimer_, &QTimer::timeout, this, [this] { if (view_->placeWaiting()) { loadingFrame_ = true; refreshNote(); } });
@@ -2120,6 +2129,31 @@ void ReviewWindow::playAcross(const QString& id) {
     seek(from, false);
     startPlayback(from);
 }
+// A cut's Set to playhead (the panel's button, recording.review setCutEdge):
+// the frame on screen is its first (Starts) or last (Ends) frame, as a
+// cover's. The reason when it can't, else empty.
+QString ReviewWindow::cutEdgeToPlayhead(const QString& id, bool start) {
+    const auto it = std::find_if(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == id; });
+    if (it == edit_.cuts.cend()) return QStringLiteral("No cut has this ID");
+    stopPlayback();
+    if (start) { adjustCut(id, shownFrameStart(), it->end); return {}; }
+    const auto end = shownFrameEnd();
+    if (!end) return QStringLiteral("The frame at the playhead isn't shown yet. Try again once it is.");
+    adjustCut(id, it->start, *end);
+    return {};
+}
+// Q10, F2: a key or action that acts at a frame takes a live skim's frame
+// first; with none, what is shown is the playhead.
+void ReviewWindow::takeSkimForKey() {
+    if (!adoptSkim() && !skimUs_ && view_->skimming()) { skimReturn_.stop(); view_->clearSkim(); }
+}
+void ReviewWindow::askUncovered(const QString& id, qint64 at) {
+    auto without = edit_;
+    without.revision = uncoveredRevision;
+    without.masks.erase(std::remove_if(without.masks.begin(), without.masks.end(), [&](const RecordingMask& m) { return m.id == id; }), without.masks.end());
+    uncoveredAsked_ = std::pair<QString, qint64>(id, at);
+    skimmer_->request(at, without, viewEdge());
+}
 void ReviewWindow::seekCoverEdge(const QString& id, bool start) {
     const auto* mask = maskById(id);
     if (!mask) return;
@@ -2129,7 +2163,9 @@ void ReviewWindow::seekCoverEdge(const QString& id, bool start) {
 // A change refused here was never proposed: a waiting Upload is cancelled so
 // it never goes out without it (#1635 V3).
 QString ReviewWindow::refuseChange(const QString& message) {
+    ++refusals_;
     cancelUpload(QStringLiteral("a change wasn't applied"));
+    cancelSaveCopy(QStringLiteral("a change wasn't applied"));
     showError(message, false);
     return message;
 }
@@ -2190,6 +2226,14 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     QStringList before;
     for (const auto& mask : std::as_const(edit_.masks)) before.append(mask.id);
     const bool changed = edit.revision != edit_.revision;
+    // W3: the covers other than the live one, before and after.
+    const QString live = view_->liveId();
+    const auto others = [&live](const RecordingEdit& e) {
+        QJsonArray all;
+        for (const auto& mask : e.masks) if (mask.id != live) all.append(mask.toJson());
+        return all;
+    };
+    const bool othersChanged = changed && !live.isEmpty() && others(edit) != others(edit_);
     // An accepted edit answers a refusal or an earlier result in the status row.
     if (changed && !exporting_) message_ = {};
     maskNames_->observe(edit.masks);
@@ -2226,6 +2270,12 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     timeline_->setSelectedEdit(selectedKind_, selectedId_);
     if (timeSelection_) timeline_->setTimeSelection(timeSelection_);
     view_->setMasks(edit_.masks, selectedKind_ == "cover" ? selectedId_ : QString());
+    // W3: another cover changed under the live one: its base, the frame
+    // without it, is asked for again with the other covers as they are now.
+    if (othersChanged && view_->liveId() == live) {
+        view_->dropUncovered();
+        askUncovered(live, view_->frameTime());
+    }
     // Opens paused on the first kept frame. Later accepted edits keep the
     // user's playhead, except right after making a cut: 1 s before its seam.
     if (!isVisible() && !initialFitDone_) {
@@ -2287,7 +2337,13 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
         while (why.endsWith('.')) why.chop(1);
         showError(why.isEmpty() ? QStringLiteral("That change wasn't applied.") : QStringLiteral("That change wasn't applied: %1.").arg(why), false);
     }
-    if (!refused.isEmpty()) cancelUpload(QStringLiteral("a change wasn't applied"));
+    if (!refused.isEmpty()) {
+        ++refusals_;
+        cancelUpload(QStringLiteral("a change wasn't applied"));
+        cancelSaveCopy(QStringLiteral("a change wasn't applied"));
+        panel_->revertFields();
+    }
+    trySaveCopy();
     if (tryUpload()) return;
     refreshAll();
     requestFrame();
@@ -2894,7 +2950,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     // dialog open, an export running) is a change not applied: like a refused
     // gesture it cancels a waiting Upload (#1635 W2). The error code is kept.
     static const QSet<QString> edits{"setIn", "setOut", "resetTrim", "addMask", "placeMask", "useSolidCover", "trimToLimit", "setMaskIn", "setMaskOut",
-        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim", "retimeCover"};
+        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim", "retimeCover", "setCutEdge"};
     if (!result.code.isEmpty() && edits.contains(params["action"].toString())) refuseChange(result.message);
     if (result.code.isEmpty() && proposalSeq_ != before) {
         QJsonArray made;
@@ -3012,11 +3068,12 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         // While a cover is armed: the box a pointer drag draws (one addMask). Otherwise
         // the selected cover's box, as a pointer drag or the frame's arrow keys set it.
         const auto r = params["rect"].toArray();
+        if (params.contains("rect") == params.contains("at")) return invalid("placeMask takes exactly one of rect [x, y, width, height] or, while placing, at [x, y]");
         if (!placing_ && !selectedMask()) return invalid("Arm Redact or Blur to draw a box, or select a mask first");
         // A click while placing (W6): the default box centred at a canvas point.
         if (placing_ && params.contains("at")) {
             const auto at = params["at"].toArray();
-            const QPointF point(at[0].toDouble(-1), at[1].toDouble(-1));
+            const QPointF point(at[0].toInt(-1), at[1].toInt(-1));  // whole canvas pixels, as rect
             if (at.size() != 2 || point.x() < 0 || point.y() < 0 || (!options_.canvas.isEmpty() && (point.x() >= options_.canvas.width() || point.y() >= options_.canvas.height()))) return invalid("placeMask at takes [x, y] in canvas pixels inside the canvas");
             stopPlayback();
             emit view_->maskCreated(placing_->kind, view_->defaultMaskRectAt(point));
@@ -3186,6 +3243,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "markSelection") {
         if (params["edge"] != "start" && params["edge"] != "end") return invalid("markSelection takes edge start|end");
         if (placing_) return state("Place or cancel the cover first");
+        takeSkimForKey();
         timeline_->markSelectionEdge(params["edge"] == "start");
         return done();
     }
@@ -3193,6 +3251,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "editPoint") {
         const auto delta = whole("delta");
         if (!delta || (*delta != 1 && *delta != -1)) return invalid("editPoint takes delta 1 or -1");
+        takeSkimForKey();
         stepEditPoint(int(*delta));
         return done();
     }
@@ -3216,6 +3275,24 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         const auto mode = params["mode"].toString();
         if (mode != "fit" && mode != "actual") return invalid("viewerZoom takes mode fit|actual");
         view_->setActualSize(mode == "actual");
+        return done();
+    }
+    // A selected cut's Set to playhead (Starts or Ends).
+    if (action == "setCutEdge") {
+        const auto id = idParam("cutId");
+        if (id.isEmpty() || !cutById(id)) return invalid("No cut has this ID");
+        if (params["edge"] != "start" && params["edge"] != "end") return invalid("setCutEdge takes edge start|end");
+        if (placing_) return state("Place or cancel the cover first");
+        if (const auto why = cutEdgeToPlayhead(id, params["edge"] == "start"); !why.isEmpty()) return state(why);
+        return done();
+    }
+    // The overview track: the zoomed timeline's view from a source time.
+    if (action == "scrollTimeline") {
+        const auto start = whole("start");
+        if (!start || *start < 0 || *start > options_.durationUs) return invalid("scrollTimeline takes start in microseconds within the recording");
+        if (timeline_->zoom() <= 1) return state("The timeline is at Fit: the whole recording is in view");
+        const auto view = timeline_->visibleSpan();
+        timeline_->reveal({*start, *start + view.length()});
         return done();
     }
     if (action == "viewerPan") {
@@ -3281,6 +3358,9 @@ void ReviewWindow::askFrame() {
     const FrameAsk ask{at, edit_.revision, viewEdge(), variant};
     // Asked already and answered or on its way: nothing new to decode.
     if (frameAsked_ && frameAsked_->at == ask.at && frameAsked_->revision == ask.revision && frameAsked_->edge == ask.edge && frameAsked_->variant == ask.variant) return;
+    // Answers carry only their time and revision: another picture for the
+    // same time (100 %, a cover edge's proposed span) drops the one on its way (W4).
+    if (frameAsked_ && frameAsked_->at == ask.at && frameAsked_->revision == ask.revision) frames_->cancel();
     frameAsked_ = ask;
     // A cover edge being dragged is previewed with its proposed span (W4).
     frames_->request(at, edgeEdit_ && edgePreview_ ? *edgeEdit_ : edit_, ask.edge);
@@ -3533,21 +3613,43 @@ void ReviewWindow::stopPlayback() {
 // ---- save, discard, close, keys ----
 bool ReviewWindow::chooseCopy() {
     panel_->commitFields();  // P9
-    if (exporting_ || placing_ || chooser_->isOpen()) return false;
+    if (exporting_ || placing_ || chooser_->isOpen() || !saveWaitingPath_.isEmpty()) return false;
+    view_->commitNudge();
+    panel_->flushStrength();
+    // The copy holds the changes made before Save, or is not saved (W5).
+    saveAwaits_ = proposalSeq_;
+    saveRefusalMark_ = refusals_;
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
         if (result.failed()) { showError("Couldn't save a copy there: " + result.error, false); return; }
         if (!result.chosen() || exporting_) return;
+        if (refusals_ != saveRefusalMark_) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return; }
         const auto& path = result.path;
-        emit saveCopyRequested(path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension, edit_.revision);
+        saveWaitingPath_ = path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension;
+        saveWait_.start();
+        trySaveCopy();
     });
+}
+void ReviewWindow::trySaveCopy() {
+    if (saveWaitingPath_.isEmpty() || answeredSeq_ < saveAwaits_) return;
+    const QString path = std::exchange(saveWaitingPath_, QString());
+    saveWait_.stop();
+    emit saveCopyRequested(path, edit_.revision);
+}
+void ReviewWindow::cancelSaveCopy(const QString& why) {
+    if (saveWaitingPath_.isEmpty()) return;
+    saveWaitingPath_.clear();
+    saveWait_.stop();
+    showError(QStringLiteral("No copy was saved: %1. Check the edits, then save again.").arg(why), false);
 }
 void ReviewWindow::hideEvent(QHideEvent* e) {
     // Upload, cancel and a stop elsewhere hide the review: its chooser goes too
     // (minimizing is a spontaneous hide and leaves it open).
     if (!e->spontaneous()) {
         chooser_->cancel();
+        saveWaitingPath_.clear();
+        saveWait_.stop();
         if (discard_) answerDiscard(false);
         if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); }
         if (overlay_->isOpen()) overlay_->dismiss();
@@ -3594,7 +3696,7 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
     static const QSet<int> takesSkim{Qt::Key_I, Qt::Key_O, Qt::Key_BracketLeft, Qt::Key_BracketRight, Qt::Key_L, Qt::Key_J,
         Qt::Key_Left, Qt::Key_Right, Qt::Key_Comma, Qt::Key_Period, Qt::Key_Up, Qt::Key_Down};
     // With no live skim the key acts at the playhead, and that is what is shown (F2).
-    if (takesSkim.contains(e->key()) && (plain || shift) && !adoptSkim() && !skimUs_ && view_->skimming()) { skimReturn_.stop(); view_->clearSkim(); }
+    if (takesSkim.contains(e->key()) && (plain || shift)) takeSkimForKey();
     switch (e->key()) {
     case Qt::Key_Space: if (plain) { if (playing_) stopPlayback(); else startPlayback(); return; } break;
     case Qt::Key_Escape:

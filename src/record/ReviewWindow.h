@@ -118,6 +118,8 @@ public:
     // liveEditStarted), and the end of the live state once the frame for the
     // committed edit is shown (or the gesture changed nothing).
     void setUncovered(const QString& id, const QImage& image, qint64 timeUs);
+    // Another cover changed under the live one: its base is pending again (W3).
+    void dropUncovered();
     void endLive();
     // R29: the selected blur's strength while the panel coalesces it, shown at once.
     void previewStrength(const QString& id, int strength);
@@ -268,8 +270,9 @@ public:
     // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
     // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, and the
     // feel controls: setSkimming|setSnapping {on}|zoomIn|zoomOut|retimeCover|
-    // moreCovers|markSelection {edge}|editPoint {delta}; placeMask {at} places
-    // the default box a click places, ...}.
+    // moreCovers|markSelection {edge}|editPoint {delta}|setCutEdge {cutId, edge}|
+    // scrollTimeline {start}; placeMask {at} places the default box a click
+    // places (exactly one of rect and at), ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error. A state that
     // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
@@ -332,6 +335,9 @@ private:
     bool tryUpload();  // sends once nothing is unanswered; true when it did
     // The one way a waiting upload stops, with its own status line (why: what happened).
     void cancelUpload(const QString& why = {});
+    // Save a copy waits, as Upload does, for the changes made before it (W5).
+    void trySaveCopy();
+    void cancelSaveCopy(const QString& why);
     void emitConfig();
     int viewEdge() const;
     // The frame at the playhead (or a dragged edge) from the frame worker: asked
@@ -386,6 +392,10 @@ private:
     void selectTime(qint64 start, qint64 end);
     void selectEdit(const QString& kind, const QString& id);
     void selectCover(const QString& id, bool seekToIt = true);
+    // The frame without live cover `id`, every other cover as the edit has it (D4, W3).
+    void askUncovered(const QString& id, qint64 at);
+    QString cutEdgeToPlayhead(const QString& id, bool start);
+    void takeSkimForKey();
     void selectCut(const QString& id, bool seekToIt);
     void clearSelection();
     void stepEdit(int direction);
@@ -438,6 +448,10 @@ private:
     bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
     StatusEntry uploadNotice_;    // "Upload cancelled: …" until dismissed or Upload again
     quint64 configSeq_ = 0;
+    QString saveWaitingPath_;  // a chosen copy waiting for earlier changes to be answered
+    quint64 saveAwaits_ = 0;
+    quint64 refusals_ = 0, saveRefusalMark_ = 0;  // changes not applied, counted
+    QTimer saveWait_;
     quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
     qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }

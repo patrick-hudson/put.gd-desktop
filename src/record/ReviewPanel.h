@@ -58,6 +58,8 @@ public:
     explicit ReviewPanel(std::shared_ptr<MaskNames> names, QWidget* parent = nullptr);
     void setState(const State&);
     const State& state() const { return state_; }
+    // A change was refused: fields that sent it show the edit's times again (W8).
+    void revertFields();
     // {mode: empty|selection|cut|cover|edits, title, rows: [{kind, id, name,
     //  span: {start, end}, selected}], buttons: [{name, enabled}]}
     QJsonObject inspect() const;

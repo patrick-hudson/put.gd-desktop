@@ -465,6 +465,21 @@ void ReviewPanel::updateInPlace() {
     }
     updateRows();
 }
+// A refused change (W8): a cut's Starts / Ends show its times again, unless
+// something new is being typed there.
+void ReviewPanel::revertFields() {
+    if (const auto* cut = selectedCut(); cut && top_) {
+        for (const bool start : {true, false}) {
+            auto* field = top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelCutStartsTime") : QStringLiteral("reviewPanelCutEndsTime"));
+            const qint64 time = start ? cut->start : cut->end;
+            if (field && (!field->hasFocus() || field->text() == field->property("shown").toString())) {
+                field->setText(clockText(time));
+                field->setProperty("shown", field->text());
+                field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(time, state_.fps)));
+            }
+        }
+    }
+}
 void ReviewPanel::updateRows() {
     if (!list_) return;
     const auto& e = state_.edit;
@@ -919,14 +934,13 @@ void ReviewPanel::addCutEdge(QVBoxLayout* v, const RecordingCut& cut, bool start
     fieldRow->addStretch(1);
     v->addLayout(fieldRow);
 }
+// The time typed goes to the resident as typed, which snaps it as it snaps a
+// dragged edge; the field shows the cut's answer, or its old time once refused (W8).
 void ReviewPanel::commitCutEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs) {
     const auto* cut = selectedCut();
     if (!cut) return;
-    const qint64 snapped = snapToFrame(sourceUs, state_.fps, state_.durationUs);
-    field->setText(clockText(snapped));
     field->setProperty("shown", field->text());
-    field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(snapped, state_.fps)));
-    emit cutAdjustRequested(id, start ? snapped : cut->start, start ? cut->end : snapped);
+    emit cutAdjustRequested(id, start ? sourceUs : cut->start, start ? cut->end : sourceUs);
 }
 void ReviewPanel::commitEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs) {
     const qint64 snapped = snapToFrame(sourceUs, state_.fps, state_.durationUs);

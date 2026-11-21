@@ -3,6 +3,7 @@
 #include "record/ClipExporter.h"
 #include "record/ReviewPanel.h"
 #include "ui/Ui.h"
+#include "ui/FileDialog.h"
 #include <atomic>
 #include <QThread>
 #include <QToolTip>
@@ -470,7 +471,7 @@ private slots:
         QCOMPARE(proposals.size(), count + 2);
         QCOMPARE(proposals.last().at(1).toJsonArray(), typed);
     }
-    // U13, E3, R19: Enter by focus and state: placing, it places the centred cover; a
+    // U13, E3, R19: Enter by focus and state: placing, it waits for the frame (W6); a
     // selected cut is restored only by its Restore button (a row only selects); a focused
     // time field keeps it; it uploads only when Upload has focus.
     void enterFollowsFocusAndState() {
@@ -485,27 +486,28 @@ private slots:
         window.setEdit(edit);
         window.drive({{"action", "armBlur"}});
         QTest::keyClick(&window, Qt::Key_Return);
-        // P12: Enter waits (at most 1 s) for the placement frame; this clip never decodes.
-        PUTGD_TRY_COMPARE(proposals.size(), 1);
-        QCOMPARE(proposed(proposals)["op"].toString(), QString("addMask"));
-        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), (QJsonArray{320, 180, 640, 360}));
+        // P12, W6: Enter waits (at most 1 s) for the placement frame; this clip
+        // never decodes, so the Enter expires and nothing is placed.
+        PUTGD_COMPARE_STEADY(proposals.size(), 0, 1300);
+        QVERIFY(window.inspect()["placement"].isObject());
+        window.drive({{"action", "cancelPlacement"}});
         window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
         timeline(window)->setFocus();
         QTest::keyClick(&window, Qt::Key_Enter);
-        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposals.size(), 0);
         window.activateWindow();
         auto* restore = window.findChild<QAbstractButton*>("reviewPanelRestore");
         QVERIFY(restore);
         restore->setFocus();
         QTest::keyClick(restore, Qt::Key_Enter);
-        QCOMPARE(proposals.size(), 2);
+        QCOMPARE(proposals.size(), 1);
         QCOMPARE(proposed(proposals)["op"].toString(), QString("removeCut"));
         auto* cutRow = window.findChild<ReviewPanel*>()->rowFor("cut", "c1");
         QVERIFY(cutRow);
         cutRow->setFocus();
         // R19: Enter on a row only selects it.
         QTest::keyClick(cutRow, Qt::Key_Return);
-        QCOMPARE(proposals.size(), 2);
+        QCOMPARE(proposals.size(), 1);
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
         QVERIFY(field);
@@ -1317,6 +1319,72 @@ private slots:
         window.setEdit(typed, answer(1));
         QCOMPARE(uploads.size(), 1);
         QCOMPARE(uploads[0][0].toULongLong(), 3ull);
+    }
+    // A7: placeMask takes exactly one of rect and at, both in whole canvas pixels.
+    void placeMaskTakesOneShapeInWholePixels() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        QVERIFY(window.drive({{"action", "armRedact"}}).code.isEmpty());
+        QCOMPARE(window.drive({{"action", "placeMask"}, {"rect", QJsonArray{10, 10, 100, 50}}, {"at", QJsonArray{40, 40}}}).code, QString("invalid_request"));
+        QCOMPARE(window.drive({{"action", "placeMask"}, {"at", QJsonArray{40.5, 40}}}).code, QString("invalid_request"));
+        QCOMPARE(window.drive({{"action", "placeMask"}}).code, QString("invalid_request"));
+        QCOMPARE(proposals.size(), 0);
+        const auto placed = window.drive({{"action", "placeMask"}, {"at", QJsonArray{40, 40}}});
+        QVERIFY2(placed.code.isEmpty(), qPrintable(placed.message));
+        QCOMPARE(proposals.size(), 1);
+    }
+    // W5 (real bug): Save a copy after a typed change waits for its answer;
+    // refused, no copy is saved (never the earlier edit); accepted, the copy
+    // is saved at the new revision.
+    void saveACopyWaitsForTypedChanges() {
+        qputenv("PUTGD_FILE_DIALOG", "fallback");
+        const auto restore = qScopeGuard([] { qunsetenv("PUTGD_FILE_DIALOG"); });
+        QTemporaryDir dir;
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), saves(&window, &ReviewWindow::saveCopyRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
+        const auto chooseFile = [&](const QString& name) {
+            QFileDialog* chooser = nullptr;
+            PUTGD_TRY_VERIFY((chooser = window.findChild<FileDialog*>()->fallbackDialog()) && chooser->isVisible());
+            chooser->selectFile(dir.filePath(name));
+            QMetaObject::invokeMethod(chooser, "accept");
+        };
+        for (const bool refused : {true, false}) {
+            field->setFocus();
+            field->selectAll();
+            QTest::keyClicks(field, refused ? "0:05.0" : "0:04.0");
+            const auto before = proposals.size();
+            QVERIFY(window.drive({{"action", "saveCopyDialog"}}).code.isEmpty());
+            QCOMPARE(proposals.size(), before + 1);
+            chooseFile(refused ? "refused" : "accepted");
+            QCOMPARE(saves.size(), 0);  // waits for the typed change's answer
+            const auto seq = proposals.last().at(2).toULongLong();
+            if (refused) {
+                window.setEdit(edit, answer(seq, "invalid_request"));
+                QCOMPARE(saves.size(), 0);
+                QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
+            } else {
+                auto typed = edit;
+                typed.revision = 3;
+                typed.masks[0].start = 4000000;
+                window.setEdit(typed, answer(seq));
+                QCOMPARE(saves.size(), 1);
+                QCOMPARE(saves[0][1].toULongLong(), 3ull);
+            }
+        }
     }
     // P18: with trims or cuts the transport shows the recording time too.
     void transportShowsRecordingTime() {
