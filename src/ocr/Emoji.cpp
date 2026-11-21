@@ -275,16 +275,6 @@ Buffer<float> crop(const ColourView& image,const Box& b,const Colour& bg){
  return out;
 }
 
-// The share of a box's ink that is colour.
-double colourShare(const ColourView& image,const Box& b,const Colour& bg){
- qint64 inked=0,coloured=0;
- for(int y=std::max(0,b.y0);y<=std::min(image.height-1,b.y1);++y){
-  const auto* row=image.row(y);
-  for(int x=std::max(0,b.x0);x<=std::min(image.width-1,b.x1);++x){const auto* p=row+3*x;if(!ink(p,bg))continue;++inked;coloured+=colour(p);}
- }
- return inked>0?double(coloured)/double(inked):0;
-}
-
 class Matcher {
 public:
  Matcher(const ColourView& image,const EmojiTemplates& templates,const EmojiOptions& options):image_(image),t_(templates),o_(options){}
@@ -337,7 +327,7 @@ public:
  // size, then the closest of those at the full size. Summed absolute
  // differences, abandoned once over the worst one kept. Returns the closest
  // full-size template's mean difference (0 to 1).
- double shortlist(const Box& b,const Colour& bg,double share,int keep,std::set<int>& out)const{
+ double shortlist(const Box& b,const Colour& bg,int keep,std::set<int>& out)const{
   if(keep<1)return 9;
   const auto c=crop(image_,b,bg);
   const auto target=[&](int side){
@@ -348,7 +338,12 @@ public:
   using Kept=std::priority_queue<std::pair<int,int>>;  // largest kept sum on top
   const auto take=[](Kept& best,int sum,int t,int count){best.push({sum,t});if(int(best.size())>count)best.pop();};
   // Coarse: bytes against the templates laid on bg.
-  const int stride=laidBytes(),coarseKeep=std::max(1,o_.coarseShortlist);auto small=target(t_.coarseSide());small.resize(size_t(stride),0);const auto& laid=laidOn(bg);
+  const int stride=laidBytes(),coarseKeep=std::max(1,o_.coarseShortlist);auto small=target(t_.coarseSide());const auto& laid=laidOn(bg);
+  // The glyph's colour share as the templates' is counted: at the coarse size.
+  int inked=0,coloured=0;
+  for(size_t i=0;i+2<small.size();i+=3)if(ink(&small[i],bg)){++inked;coloured+=colour(&small[i]);}
+  const double share=inked>0?double(coloured)/inked:0;
+  small.resize(size_t(stride),0);
   Kept coarse;
   for(int t=0;t<t_.count();++t){
    if(std::abs(laid.share[size_t(t)]-share)>o_.colourShare)continue;
@@ -422,14 +417,13 @@ public:
  Fit best(const Box& b,const Colour& bg)const{
   // The float copies are kept for one glyph only, so a scan's memory stays small.
   masters_.clear();
-  const double share=colourShare(image_,b,bg);
-  std::set<int> list;double stretched=shortlist(b,bg,share,o_.shortlist,list);
+  std::set<int> list;double stretched=shortlist(b,bg,o_.shortlist,list);
   // A box much wider than tall can hold a glued letter or a second glyph: its
   // two ends, squared, are shortlisted too.
   if(b.width()>1.15*b.height()){
    const Box left{b.x0,b.y0,b.x0+b.height()-1,b.y1},right{b.x1-b.height()+1,b.y0,b.x1,b.y1};
-   stretched=std::min(stretched,shortlist(left,bg,colourShare(image_,left,bg),std::max(1,o_.shortlist/2),list));
-   stretched=std::min(stretched,shortlist(right,bg,colourShare(image_,right,bg),std::max(1,o_.shortlist/2),list));
+   stretched=std::min(stretched,shortlist(left,bg,std::max(1,o_.shortlist/2),list));
+   stretched=std::min(stretched,shortlist(right,bg,std::max(1,o_.shortlist/2),list));
   }
   lastStretched_=stretched;
   // Nothing close even stretched: not worth drawing each at the glyph's size.
@@ -534,6 +528,9 @@ EmojiScan findEmoji(const ColourView& image,const EmojiTemplates& templates,cons
   const auto box=grow(image,g,bg);
   letGo(g,g.side());
   if(box.side()<options.minimumSize||box.side()>options.maximumSize)continue;
+  // A sliver (a coloured rule, the edge of a glyph found whole elsewhere) is
+  // no glyph, and a template-shaped box grown from it would fit a part of one.
+  if(std::min(box.width(),box.height())<4)continue;
   if(int(candidates.size())>=options.maximumCandidates){scan.cut=true;break;}
   candidates.push_back({box,bg});
  }
