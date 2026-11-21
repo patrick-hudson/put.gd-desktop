@@ -2383,8 +2383,8 @@ void testPlayingVideo() {
 
     // 9b. Lazy-loaded image fading in over scroll frames with a short mid-fade
     // plateau (4 frames held at 224/256 opacity) before finishing at 256/256:
-    // restarting settling when the region changes again replaces the plateau
-    // snapshot with the final crisp artwork (#1537).
+    // test continuous scrolling, finishing the fade during a pause at rest,
+    // and finishing while clipped before scrolling back to full view (#1537).
     Image settledDoc = doc.img;
     const int lx0 = 80, lx1 = 400, ly0 = 520, ly1 = 680;
     Rng artRng(173);
@@ -2397,40 +2397,59 @@ void testPlayingVideo() {
       }
     for (int y = ly0 + 16; y + 10 < ly1 - 12; y += 22) drawTextLine(settledDoc, y, lx0 + 16, lx1 - 16, artRng, 0xF8F8F8);
     const Scene settledScene(settledDoc, ss);
-    std::vector<int> lpos{0};
-    while (lpos.back() < end) lpos.push_back(std::min(end, lpos.back() + 16));
-    int fullSeen = 0;
-    const Played lr = play(settledScene, lpos, {}, [&](size_t i, Image& f) {
-      const int p = lpos[i];
-      if (p + V <= ly0 || p >= ly1) return false;
-      int alpha = 256;  // 100% settled
-      if (p + V < ly1) {
-        alpha = 0;  // blank placeholder before fully in view
-      } else if (fullSeen < 7) {
-        static constexpr int kFade[7] = {48, 112, 176, 224, 224, 224, 224};
-        alpha = kFade[fullSeen++];
-      }
-      if (alpha < 256) {
-        const int y0 = std::max(0, ly0 - p);
-        const int y1 = std::min(V, ly1 - p);
-        for (int y = y0; y < y1; ++y)
-          for (int x = lx0; x < lx1; ++x) {
-            const uint32_t dst = settledDoc.at(x, p + y);
-            const auto blend = [&](int shift) {
-              const int bgC = int((kBg >> shift) & 0xFF);
-              const int fgC = int((dst >> shift) & 0xFF);
-              return uint32_t(bgC + ((fgC - bgC) * alpha) / 256);
-            };
-            f.at(x, y) = (blend(16) << 16) | (blend(8) << 8) | blend(0);
-          }
-      }
-      return false;
-    });
-    int lFirstBad = 0;
-    const long long lBad = differing(lr, pageRows(settledDoc, 0, settledDoc.h, W), {}, 0, &lFirstBad);
-    report("lazy-loaded image fading in while scrolling settles to crisp artwork",
-           lr.wrong == 0 && lBad == 0 && lr.totals.bottom == settledDoc.h,
-           counts(lr) + fmt(", %d wrong%s, %lld px differ (row %d)", lr.wrong, lr.firstWrong.c_str(), lBad, lFirstBad));
+    const auto runLazy = [&](const std::vector<int>& lpos, const char* label) {
+      int fullSeen = 0;
+      const Played lr = play(settledScene, lpos, {}, [&](size_t i, Image& f) {
+        const int p = lpos[i];
+        if (p + V <= ly0 || p >= ly1) return false;
+        int alpha = 256;  // 100% settled
+        if (p + V < ly1) {
+          alpha = 0;  // blank placeholder before fully in view
+        } else if (fullSeen < 7) {
+          static constexpr int kFade[7] = {48, 112, 176, 224, 224, 224, 224};
+          alpha = kFade[fullSeen++];
+        }
+        if (alpha < 256) {
+          const int y0 = std::max(0, ly0 - p);
+          const int y1 = std::min(V, ly1 - p);
+          for (int y = y0; y < y1; ++y)
+            for (int x = lx0; x < lx1; ++x) {
+              const uint32_t dst = settledDoc.at(x, p + y);
+              const auto blend = [&](int shift) {
+                const int bgC = int((kBg >> shift) & 0xFF);
+                const int fgC = int((dst >> shift) & 0xFF);
+                return uint32_t(bgC + ((fgC - bgC) * alpha) / 256);
+              };
+              f.at(x, y) = (blend(16) << 16) | (blend(8) << 8) | blend(0);
+            }
+        }
+        return false;
+      });
+      int lFirstBad = 0;
+      const long long lBad = differing(lr, pageRows(settledDoc, 0, settledDoc.h, W), {}, 0, &lFirstBad);
+      report(label, lr.wrong == 0 && lBad == 0 && lr.totals.bottom == settledDoc.h,
+             counts(lr) + fmt(", %d wrong%s, %lld px differ (row %d)", lr.wrong, lr.firstWrong.c_str(), lBad, lFirstBad));
+    };
+    {
+      std::vector<int> lpos{0};
+      while (lpos.back() < end) lpos.push_back(std::min(end, lpos.back() + 16));
+      runLazy(lpos, "lazy-loaded image fading in with plateau settles to crisp artwork");
+    }
+    {
+      std::vector<int> lpos{0};
+      while (lpos.back() < 384) lpos.push_back(std::min(384, lpos.back() + 16));
+      for (int k = 0; k < 4; ++k) lpos.push_back(384);  // finish fade during pause
+      while (lpos.back() < end) lpos.push_back(std::min(end, lpos.back() + 16));
+      runLazy(lpos, "lazy-loaded image finishing fade during pause settles to crisp artwork");
+    }
+    {
+      std::vector<int> lpos{0};
+      while (lpos.back() < 384) lpos.push_back(std::min(384, lpos.back() + 16));
+      lpos.push_back(536);  // clip top while finishing fade, then return
+      for (int p = 520; p >= 456; p -= 16) lpos.push_back(p);
+      while (lpos.back() < end) lpos.push_back(std::min(end, lpos.back() + 16));
+      runLazy(lpos, "lazy-loaded image finishing fade while clipped settles on return");
+    }
   }
 }
 

@@ -538,7 +538,7 @@ class ScrollTracker {
     int k0 = 0, k1 = 0;
     long long coveredCells = 0;
     uint8_t settledCount = 0;
-    bool settled = false;
+    std::vector<uint16_t> bands;  // saved band values over [p0, p1) x [k0, k1]
   };
   bool hasDyn_ = false;
   std::vector<DynSnap> dynSnaps_;

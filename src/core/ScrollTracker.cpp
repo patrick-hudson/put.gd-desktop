@@ -1965,41 +1965,45 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const
           }
         }
       bool replace = unblockedCells > prevBest;
-      bool settledNow = false;
       // If a transient change (e.g. a lazy-loaded image fading in or a hover
       // popup dismissing) stops changing across 2 consecutive placed frames at
-      // full coverage, replace the mid-transition snapshot once with the
-      // settled frame; if the region changes again after a plateau, allow a
-      // later stable frame to replace it too (#1537).
-      if (!replace && prevSnap && d != 0 && frameCovered == prevBest && frameCovered > 0) {
+      // full coverage and differs from the saved snapshot, replace the saved
+      // snapshot with the newly settled frame (#1537).
+      if (!replace && prevSnap && !prevSnap->bands.empty() && d != 0 && frameCovered == prevBest && frameCovered > 0) {
         const int bTol = bandTol_;
-        int agreed = 0, total = 0;
+        const int prevW = prevSnap->k1 - prevSnap->k0 + 1;
+        int agreed = 0, total = 0, snapAgreed = 0, snapTotal = 0;
         for (long long p = c0; p < c1; ++p) {
           const int y = int(p - pos);
           const int oy = y + d;
           if (oy < 0 || oy >= H) continue;
           const uint16_t* ba = cur.bandRow(y);
           const uint16_t* bb = ref.bandRow(oy);
+          const uint16_t* sb = (p >= prevSnap->p0 && p < prevSnap->p1)
+                                   ? &prevSnap->bands[size_t(p - prevSnap->p0) * size_t(prevW)]
+                                   : nullptr;
           for (int k = minK; k <= maxK; ++k) {
             ++total;
             if (absDiff(ba[k], bb[k]) <= unsigned(bTol)) ++agreed;
+            if (sb && k >= prevSnap->k0 && k <= prevSnap->k1) {
+              ++snapTotal;
+              if (absDiff(ba[k], sb[k - prevSnap->k0]) <= unsigned(bTol)) ++snapAgreed;
+            }
           }
         }
-        if (total >= 8 && agreed * 100 >= total * 95) {
-          if (!prevSnap->settled) {
-            prevSnap->settledCount = uint8_t(std::min(255, int(prevSnap->settledCount) + 1));
-            if (prevSnap->settledCount >= 2) {
-              chosenCopy = nullptr;
-              w0 = c0;
-              w1 = c1;
-              unblockedCells = frameCovered;
-              replace = true;
-              settledNow = true;
-            }
+        const bool stable = total >= 8 && agreed * 100 >= total * 95;
+        const bool differsFromSnap = snapTotal >= 8 && snapAgreed * 100 < snapTotal * 95;
+        if (stable && differsFromSnap) {
+          prevSnap->settledCount = uint8_t(std::min(255, int(prevSnap->settledCount) + 1));
+          if (prevSnap->settledCount >= 2) {
+            chosenCopy = nullptr;
+            w0 = c0;
+            w1 = c1;
+            unblockedCells = frameCovered;
+            replace = true;
           }
         } else {
           prevSnap->settledCount = 0;
-          prevSnap->settled = false;
         }
       }
       // When replacing from a retained copy (`topCopy_` / `bottomCopy_`), also
@@ -2080,10 +2084,19 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const
         flushSpan(writeHi);
       }
       if (replace) {
+        std::vector<uint16_t> snapBands;
+        if (!chosenCopy && w1 > w0) {
+          const int bandW = maxK - minK + 1;
+          snapBands.resize(size_t(w1 - w0) * size_t(bandW));
+          for (long long p = w0; p < w1; ++p) {
+            const uint16_t* ba = cur.bandRow(int(p - pos));
+            std::memcpy(&snapBands[size_t(p - w0) * size_t(bandW)], ba + minK, size_t(bandW) * sizeof(uint16_t));
+          }
+        }
         std::erase_if(dynSnaps_, [&](const DynSnap& s) {
           return s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK;
         });
-        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedCells, uint8_t(settledNow ? 2 : 0), settledNow});
+        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedCells, 0, std::move(snapBands)});
       }
     }
   }
