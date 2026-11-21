@@ -11,7 +11,7 @@ namespace putgd {
 // Qt-only; no AWS types.
 enum class S3Stage {
     NameHead, ObjectHead, CurrentHead, UploadPut, UploadCreate, UploadPart, UploadListParts, UploadComplete, UploadAbort,
-    DeleteVersioning, DeleteCurrentHead, DeleteMarker, DeleteVersion, DeleteObject
+    DeleteVersioning, DeleteCurrentHead, DeleteMarker, DeleteVersion, DeleteObject, DeleteVersionList
 };
 // A multipart upload journal names its phase once the upload exists.
 enum class S3UploadPhase { Parts, Completing };
@@ -26,7 +26,8 @@ inline constexpr std::pair<S3Stage, const char*> s3StageNames[] {
     {S3Stage::UploadPut, "upload_put"}, {S3Stage::UploadCreate, "upload_create"}, {S3Stage::UploadPart, "upload_part"},
     {S3Stage::UploadListParts, "upload_list_parts"}, {S3Stage::UploadComplete, "upload_complete"}, {S3Stage::UploadAbort, "upload_abort"},
     {S3Stage::DeleteVersioning, "delete_versioning"}, {S3Stage::DeleteCurrentHead, "delete_current_head"},
-    {S3Stage::DeleteMarker, "delete_marker"}, {S3Stage::DeleteVersion, "delete_version"}, {S3Stage::DeleteObject, "delete_object"}};
+    {S3Stage::DeleteMarker, "delete_marker"}, {S3Stage::DeleteVersion, "delete_version"}, {S3Stage::DeleteObject, "delete_object"},
+    {S3Stage::DeleteVersionList, "delete_version_list"}};
 inline constexpr std::pair<S3UploadPhase, const char*> s3UploadPhaseNames[] {
     {S3UploadPhase::Parts, "parts"}, {S3UploadPhase::Completing, "completing"}};
 inline constexpr std::pair<S3DeletePhase, const char*> s3DeletePhaseNames[] {

@@ -264,6 +264,33 @@ private slots:
         QCOMPARE(versions.size(), 1);
         QCOMPARE(versions[0].toObject()["version"], marker);
     }
+    // #1771: an unversioned delete answered with a delete marker leaves the object's bytes as a
+    // version. Retry only reads whether that version is still there, so once it is removed in the
+    // bucket the deletion ends removed instead of staying hidden_version_retained.
+    void retryAfterMarkerSettlesOnceTheKeptVersionIsRemoved() {
+        S3Fixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.request());
+        QVERIFY(uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        // Versioning was turned on later, and the bucket still reports it off.
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", "Enabled"}, {"versioningReported", ""}});
+        const auto marked = f.remove(uploaded.receipt);
+        QCOMPARE(marked.status, QString("hidden_version_retained"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        auto versions = f.state()["objects"].toObject()["prefix é/a b.txt"].toArray();
+        QCOMPARE(versions.size(), 2);
+        const auto stillThere = f.remove(uploaded.receipt, marked.progress);
+        QCOMPARE(stillThere.status, QString("hidden_version_retained"));
+        QCOMPARE(stillThere.error.code, QString("delete_marker_created"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        // The kept version is removed in the bucket; the marker stays.
+        versions.removeAt(0);
+        f.reset({{"objects", QJsonObject{{"prefix é/a b.txt", versions}}}, {"versioning", "Enabled"}, {"versioningReported", ""}});
+        const auto settled = f.remove(uploaded.receipt, stillThere.progress);
+        QCOMPARE(settled.status, QString("removed"));
+        QCOMPARE(settled.progress["phase"].toString(), QString("done"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
     void cancellationAfterMarkerRetainsExactHiddenVersion() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});
