@@ -88,7 +88,9 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
    if(stopped())return {};
    const int rows=std::min(strip,header.height-y);
    QImage flat(width,rows,QImage::Format_RGB32);if(flat.isNull()){error=textjob::failure("text_job_failed");return {};}
-   flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QPoint(0,0),image,QRect(0,y,width,rows));}
+   // An explicit target: drawn at a point, an image with a device pixel ratio
+   // (a scaled screen's capture) would be drawn at its logical size.
+   flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QRect(0,0,width,rows),image,QRect(0,y,width,rows));}
    const auto greyRows=flat.convertToFormat(QImage::Format_Grayscale8),colourRows=flat.convertToFormat(QImage::Format_RGB888);
    if(greyRows.isNull()||colourRows.isNull()){error=textjob::failure("text_job_failed");return {};}
    grey.resize(qsizetype(width)*rows);colour.resize(qsizetype(width)*3*rows);
