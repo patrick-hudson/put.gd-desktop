@@ -140,9 +140,12 @@ installs on its own: not on the daily check, not from a notification.
    image inside a hidden folder `.putgd-update-XXXXXX` beside it, against the release's `.zsync`
    on `pkg.put.gd`.
 3. **Otherwise the whole file:** without such a tool, or when it fails, stalls or produces
-   something else, put.gd downloads the whole AppImage from `pkg.put.gd` (then from the GitHub
-   release, when `pkg.put.gd` lacks the image, sends a short file or fails) with its own TLS.
-   Settings and `update.status` say which path and source were taken and why.
+   something else, put.gd downloads the whole AppImage from `pkg.put.gd` with its own TLS. It
+   tries the GitHub release next when `pkg.put.gd` doesn't have the image, the transfer fails, or
+   the file is shorter or larger than the release says. A complete file of the right size that
+   fails the checks below stops the install without trying GitHub. Settings names the source
+   while it downloads and the method afterwards; `update.status` records the method, why zsync
+   wasn't used, and each download attempt with its source and transfer details.
 4. **Checked before anything changes:** the new file must match the release's `SHA256SUMS`
    line, be an AppImage, and carry the same update information (the same channel). A download
    that doesn't match is refused and nothing is changed.
