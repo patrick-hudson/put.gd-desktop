@@ -245,18 +245,19 @@ def main():
     entries, strings, coarse, pixels = [], bytearray(), bytearray(), bytearray()
     shapes = [text for text in sequences(arguments.emoji_test) if plain_shape(text)]
     print(f'{len(shapes)} plain shapes', file=sys.stderr)
-    drawn = {}
+    shipped = {}  # each style's drawings that went into the file
     for style, (name, family) in enumerate(styles):
         if name in drawn_files:
             made = drawn_in(drawn_files[name], arguments.emoji_test, arguments.side, arguments.coarse)
         else:
             made = drawn_with(fonts.get(name), arguments.emoji_test, family, arguments.side, arguments.coarse)
-        drawn[name] = {text: image for text, image, *_ in made}
+        shipped[name] = {}
         kept = 0
         for text, image, small, aspect, share in made:
-            if any(text in drawn[other] and np.abs(on_white(image) - on_white(drawn[other][text])).mean() / 255
+            if any(text in shipped[other] and np.abs(on_white(image) - on_white(shipped[other][text])).mean() / 255
                    <= CHANGED for other in changed.get(name, [])):
                 continue
+            shipped[name][text] = image
             encoded = text.encode('utf-8')
             entries.append((len(strings), len(encoded), style, min(65535, round(aspect * 1024)), share,
                             1 if plain_shape(text) else 0))

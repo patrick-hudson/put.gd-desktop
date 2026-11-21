@@ -37,14 +37,14 @@ give 20 by 20 and 10 by 10 pixel templates.
 | `Noto-COLRv1.ttf` (Fedora 44 `google-noto-color-emoji-fonts` 20260921-1.fc44, the same file in Fedora 45 and Aurora) | 2.057 | `b8e25ea68db82f9e4d0aee921f4420be2be39887bd5c893a2ad98710531f9d0c` |
 | `TwemojiMozilla.ttf` (bundled with Firefox, the same file in Firefox ESR 153 and Firefox 158 and 159) | 0.7.0 | `6d90152ee0d29e82fe2a87793af5aa4b7ad13e6538360889e141e81ed299ee8e` |
 | `noto-2.057-qt.records` (Noto 2.057 as Qt 6.11.2 draws it, 148,023,912 bytes, not kept) | | `ed8d380385c9b6f7684245a9713e31d9f5757f2244da04b7c4a1617e85b1c8fb` |
-| `templates.bin`: 3,781 Noto 2.051, 3,417 Twemoji, 445 Noto 2.047, 291 Noto 2.057 and 221 Noto 2.057 as Qt draws it; 315 of them plain shapes | | `99bcdbc104663455b1e706792858f93ca04fa27f718924243114f1f6b2d95990` |
+| `templates.bin`: 3,781 Noto 2.051, 3,417 Twemoji, 445 Noto 2.047, 291 Noto 2.057 and 261 Noto 2.057 as Qt draws it; 315 of them plain shapes | | `4a41765e63917efafd4622e54452e540ee84ab4ce47f270135397f45c8fae64e` |
 
 Noto Color Emoji redraws some emoji in each release. Against 2.051, 445 of 2.047's emoji and
 291 of 2.057's differ by more than `CHANGED` (0.03, a mean colour difference on white; the
 🚀 of 2.057 differs by 0.16), so they are templates of their own. Ubuntu 26.04's 2.051 build
 (`2.051-1build1`) is a different file of the same release; its emoji differ from Debian's by
 0.02 at most, so they need none. Qt draws a COLRv1 font such as 2.057 itself, without some of
-its shading (flags and 🍳 come out flat), so the 221 emoji Qt draws differently are templates
+its shading (flags and 🍳 come out flat), so the 261 emoji Qt draws differently from those are templates
 too: a Plasma desktop on Fedora or Aurora shows those.
 
 Noto Color Emoji is the emoji font of Fedora, Debian, Ubuntu, Kubuntu, Linux Mint, Arch and
