@@ -163,7 +163,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  // stays until it has, so a retry never forgets a partly written image. One left
  // in another folder (the image moved) doesn't block this image's update.
  if(const auto earlier=state["staging"].toString();!earlier.isEmpty()&&!appimage::removeStaging(earlier)
-    &&QDir::cleanPath(QFileInfo(earlier).absolutePath())==QDir::cleanPath(QFileInfo(image.directory).absoluteFilePath())){
+    &&QFileInfo(QFileInfo(earlier).absolutePath()).canonicalFilePath()==QFileInfo(image.directory).canonicalFilePath()){
   error={"update_install_failed","An earlier update's staging folder can't be removed",{{"staging",earlier}}};return {};
  }
  QTemporaryDir staging(QDir(image.directory).filePath(QString(appimage::stagingPrefix)+"XXXXXX"));

@@ -199,6 +199,16 @@ private slots:
   error={};const auto result=installUpdate(build(),options(),{},error);
   QVERIFY2(!error,qPrintable(error.message));QVERIFY(!QFileInfo::exists(earlier));QCOMPARE(read(image()),next_);QCOMPARE(result["installed"].toBool(),true);
  }
+ // The same folder named through a symlink (renamed, old path linked) still blocks.
+ void anEarlierStagingFolderThroughASymlinkStillBlocks(){
+  ReleaseServer server;publish(server,next_);
+  QVERIFY(QFile::link(images,dir.filePath("Linked")));
+  const auto earlier=dir.filePath("Linked/.putgd-update-LnK456");
+  QVERIFY(QDir().mkpath(earlier+"/not-ours"));
+  QVERIFY(appimage::writeState(state,QJsonObject{{"staging",earlier}}));
+  Error error;installUpdate(build(),options(),{},error);
+  QCOMPARE(error.code,QString("update_install_failed"));QCOMPARE(appimage::readState(state)["staging"].toString(),earlier);QCOMPARE(read(image()),old_);
+ }
  // One left in another folder (the image moved) doesn't block this image's update.
  void anEarlierStagingFolderElsewhereDoesNotBlock(){
   ReleaseServer server;publish(server,next_);
