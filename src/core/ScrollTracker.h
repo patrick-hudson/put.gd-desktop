@@ -508,6 +508,9 @@ class ScrollTracker {
   std::unique_ptr<Signature> prev_;
   long long prevPos_ = 0;
   bool prevIsLast_ = false, prevHasPos_ = false, prevViewMoved_ = false;
+  // prev_'s place is known (placed, standing still) or was found in the image,
+  // not a pair's guess while lost (#1795).
+  bool prevPlaceKnown_ = false;
   long long lastPos_ = 0;
   long long top_ = 0, bottom_ = 0;            // extent written
   // Expectation: the last movement per frame, and the hints since the last
