@@ -246,7 +246,12 @@ SHORTCUT = re.compile(r'\b(?:ctrl|shift|alt|super|meta)\s*\+\S*', re.I)
 
 
 def ocr_lines(tsv):
-    """Tesseract TSV as text lines top to bottom: dict(text, rect=[x, y, w, h])."""
+    """Tesseract TSV as text lines top to bottom: dict(text, rect=[x, y, w, h]).
+
+    A line's box is that of its words with a letter or digit. Tesseract reads a popup's corner or
+    border as a mark (Budgie's menu corner as '‘') and puts it on the nearest line; boxed with
+    the words, it moved the first row's centre into the menu's top padding, where a click hits no row.
+    """
     lines = {}
     rows = tsv.splitlines()
     for row in rows[1:]:
@@ -255,12 +260,16 @@ def ocr_lines(tsv):
             continue
         key = tuple(int(v) for v in cells[2:5])
         left, top, width, height = (int(v) for v in cells[6:10])
-        line = lines.setdefault(key, dict(words=[], box=[left, top, left + width, top + height]))
-        line['words'].append(cells[11].strip())
-        box = line['box']
-        line['box'] = [min(box[0], left), min(box[1], top), max(box[2], left + width), max(box[3], top + height)]
-    result = [dict(text=' '.join(v['words']), rect=[v['box'][0], v['box'][1], v['box'][2] - v['box'][0],
-                                                     v['box'][3] - v['box'][1]]) for v in lines.values()]
+        line = lines.setdefault(key, dict(words=[], boxes=[], marks=[]))
+        word = cells[11].strip()
+        line['words'].append(word)
+        line['boxes' if re.search(r'[^\W_]', word) else 'marks'].append((left, top, left + width, top + height))
+    result = []
+    for v in lines.values():
+        boxes = v['boxes'] or v['marks']
+        x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+        x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+        result.append(dict(text=' '.join(v['words']), rect=[x0, y0, x1 - x0, y1 - y0]))
     return sorted(result, key=lambda line: (line['rect'][1], line['rect'][0]))
 
 

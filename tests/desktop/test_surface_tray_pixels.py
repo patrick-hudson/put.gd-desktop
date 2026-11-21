@@ -196,6 +196,24 @@ class TheOpenMenu(unittest.TestCase):
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 
+    def test_a_mark_read_from_the_menu_corner_does_not_move_the_row_box(self):
+        # Budgie, 2026-11-21: the menu's corner read as '‘' (15x43 px) on the first line moved the
+        # Capture region box up into the menu's padding, and the click hit no row.
+        tsv = ['level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext',
+               '5\t1\t1\t1\t1\t1\t0\t0\t15\t43\t40\t‘',
+               '5\t1\t1\t1\t1\t2\t48\t33\t54\t14\t95\tCapture',
+               '5\t1\t1\t1\t1\t3\t108\t33\t42\t14\t95\tregion',
+               '5\t1\t1\t1\t2\t1\t48\t61\t30\t14\t95\tEdit',
+               '5\t1\t1\t1\t2\t2\t84\t61\t40\t14\t95\timage',
+               '5\t1\t1\t1\t2\t3\t200\t60\t8\t16\t60\t»',
+               '5\t1\t2\t1\t1\t1\t5\t90\t6\t6\t30\t·']
+        lines = tp.ocr_lines('\n'.join(tsv))
+        self.assertEqual([l['text'] for l in lines], ['‘ Capture region', 'Edit image »', '·'])
+        self.assertEqual(lines[0]['rect'], [48, 33, 102, 14])
+        self.assertEqual(lines[1]['rect'], [48, 61, 76, 14])
+        self.assertEqual(lines[2]['rect'], [5, 90, 6, 6])  # A line of marks only keeps their box.
+        self.assertEqual(tp.align(['Capture region'], lines)[0]['rect'], [48, 33, 102, 14])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -543,17 +543,21 @@ def _press_drawn_row(ctx, opened, label):
     ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same(opened['image'], image, opened['box']))
 
 
-def _dismiss_drawn_menu(ctx, opened):
+def _dismiss_drawn_menu(ctx, opened, *, pressed=False):
     """Close a menu _pixel_menu() opened: Esc, then a second right-click on the icon (Omarchy keeps its
-    card open on Esc). Quiet when it is already gone or has changed."""
-    from tools.lab.surface_driver import tray_pixels
+    card open on Esc). Quiet when it is already gone or has changed.
+
+    PRESSED: a row was clicked, which closes the menu when the host takes it. A popup still drawn
+    by the icon is then the same menu (with the pointer's hover over a row), and must be closed:
+    left open, it holds the pointer and keyboard grab, and every later cell of the row fails.
+    """
     import time
     box = opened['box']
     def showing(image):
         # A popup is still drawn next to the icon, and it is the one the cell read.
         if opened['showing'](image) is None:
             return False
-        return 'image' not in opened or _same(opened['image'], image, box)
+        return pressed or 'image' not in opened or _same(opened['image'], image, box)
     for attempt in ('key', 'icon'):
         try:
             if attempt == 'key':
