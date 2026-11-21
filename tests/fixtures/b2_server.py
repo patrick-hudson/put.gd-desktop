@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Offline Backblaze B2 native-API (b2api v3) oracle for #282. Synthetic keys only; loopback only.
 
-Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace}, /__rules {rules}, GET /__state.
+Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace}, /__rules {rules}, GET /__state
+(state includes maxPartsInFlight, the most part bodies read at once).
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "noFileId": true (act, then answer 2xx without a fileId), "competitor": true (another upload of the same name lands first),
 "partNumber": n, "after": n (let n matching requests through first), "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
@@ -30,6 +31,7 @@ ALL_CAPS = ['listBuckets', 'listFiles', 'readFiles', 'shareFiles', 'writeFiles',
 
 def fresh():
     return {'events': [], 'rules': [], 'capabilities': list(ALL_CAPS), 'restricted': None, 'arrived': 0, 'stored': 0, 'race': 0, 'verified': 0,
+            'partsInFlight': 0, 'maxPartsInFlight': 0,
             'buckets': {'bucket-public-id': {'name': 'putgd-fixture-public', 'type': 'allPublic'},
                         'bucket-private-id': {'name': 'putgd-fixture-private', 'type': 'allPrivate'}},
             'versions': [], 'clock': 1700000000000}
@@ -105,8 +107,21 @@ class Handler(BaseHTTPRequestHandler):
     def body(self):
         length = int(self.headers.get('Content-Length', 0))
         # 'uploadPace' (reset option): read file and part bodies at that many bytes per second.
+        # 'maxPartsInFlight' (state): the most part bodies read at the same time (#1792).
+        part = self.path.startswith('/upload_part/')
         with lock:
             pace = state.get('uploadPace') if self.path.startswith('/upload') else None
+            if part:
+                state['partsInFlight'] += 1
+                state['maxPartsInFlight'] = max(state['maxPartsInFlight'], state['partsInFlight'])
+        try:
+            return self.read_body(length, pace)
+        finally:
+            if part:
+                with lock:
+                    state['partsInFlight'] -= 1
+
+    def read_body(self, length, pace):
         if not pace:
             return self.rfile.read(length)
         data = bytearray()

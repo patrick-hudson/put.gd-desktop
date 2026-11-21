@@ -29,9 +29,14 @@
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
+#include <algorithm>
+#include <array>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <memory>
+#include <vector>
 namespace putgd::b2 {
 namespace {
 constexpr qint64 maximumLine = 256 * 1024;
@@ -39,6 +44,11 @@ worker::Stdio stdio{maximumLine, "b2", "upload"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
+// A part lane's own thread (#1792): Qt Network objects belong to one thread, so each lane
+// sends through its own manager (one connection, as each B2 upload part URL expects), and
+// another lane's error cuts its request in flight. Unset on the main thread.
+thread_local QNetworkAccessManager* laneNetwork = nullptr;
+thread_local const std::atomic_bool* laneStop = nullptr;
 
 // A request body that can be read exactly once. Qt Network silently sends a request
 // again when the server closes the connection before replying; a body it cannot
@@ -108,9 +118,11 @@ public:
         credentials_ = {};
     }
     Session session;
-    std::function<void(qint64)> sentBytes;  // body bytes the transport has read for this request
 
-    Response send(const QByteArray& verb, const QUrl& url, const QList<QPair<QByteArray, QByteArray>>& headers, const QByteArray& body = {}, QIODevice* device = nullptr) {
+    // `sentBytes` hears the body bytes the transport has read for this request.
+    Response send(const QByteArray& verb, const QUrl& url, const QList<QPair<QByteArray, QByteArray>>& headers, const QByteArray& body = {},
+                  QIODevice* device = nullptr, const std::function<void(qint64)>& sentBytes = {}) {
+        auto& nam = laneNetwork ? *laneNetwork : nam_;
         QNetworkRequest request(url);
         for (const auto& [name, value] : headers) request.setRawHeader(name, value);
         // A request that sends file data (a file or a part) has no whole-request deadline
@@ -118,11 +130,11 @@ public:
         // attempt starts again from the first byte. It runs while data moves; the transfer
         // timeout ends one that stalls, and Cancel cuts it. Every other request keeps the deadline.
         const bool fileData = device != nullptr;
-        const int deadline = settings_["requestTimeoutMs"].toInt(600000);
-        request.setTransferTimeout(qMax(settings_["connectTimeoutMs"].toInt(10000), 30000));
+        const int deadline = settings_.value("requestTimeoutMs").toInt(600000);
+        request.setTransferTimeout(qMax(settings_.value("connectTimeoutMs").toInt(10000), 30000));
         QNetworkReply* reply = nullptr;
         std::unique_ptr<OneShot> owned;
-        if (verb == "GET") reply = nam_.get(request);
+        if (verb == "GET") reply = nam.get(request);
         else {
             if (!device) {
                 owned = std::make_unique<OneShot>(body);
@@ -131,18 +143,18 @@ public:
                 request.setHeader(QNetworkRequest::ContentLengthHeader, body.size());
             }
             request.setAttribute(QNetworkRequest::DoNotBufferUploadDataAttribute, true);
-            reply = nam_.sendCustomRequest(request, verb, device);
+            reply = nam.sendCustomRequest(request, verb, device);
         }
         QEventLoop loop;
         Response out;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        if (sentBytes) QObject::connect(reply, &QNetworkReply::uploadProgress, &loop, [this](qint64 sent, qint64) { sentBytes(sent); });
+        if (sentBytes) QObject::connect(reply, &QNetworkReply::uploadProgress, &loop, [&sentBytes](qint64 sent, qint64) { sentBytes(sent); });
         QTimer poll;
         poll.setInterval(50);
         QElapsedTimer clock;
         clock.start();
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
-            if (cancelled.load() || (!fileData && clock.elapsed() > deadline)) { out.aborted = true; reply->abort(); }
+            if (cancelled.load() || (laneStop && laneStop->load()) || (!fileData && clock.elapsed() > deadline)) { out.aborted = true; reply->abort(); }
         });
         poll.start();
         if (!reply->isFinished()) loop.exec();
@@ -154,21 +166,27 @@ public:
             out.transport = true;
             // Qt 6.4 reports the transfer timeout as OperationCanceledError, later Qt as TimeoutError.
             const bool timedOut = !out.aborted && (reply->error() == QNetworkReply::OperationCanceledError || reply->error() == QNetworkReply::TimeoutError);
-            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline")
+            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : laneStop && laneStop->load() ? "stopped" : "deadline")
                        : timedOut ? QString("the transfer timed out")
                                   : QString("network error %1").arg(int(reply->error()));
         }
         reply->deleteLater();
         return out;
     }
-    QUrl api(const QString& name) const { return QUrl(session.apiUrl + "/b2api/v3/" + name); }
     // A JSON API call with the account token. Reads retry transient failures; writes
-    // are sent once and the caller reconciles an uncertain outcome.
+    // are sent once and the caller reconciles an uncertain outcome. Part lanes call it
+    // too, so the API address and token are read, and renewed, under the session lock.
     Response call(const QString& name, const QJsonObject& body, bool idempotent) {
         Response out;
         for (int attempt = 0; attempt < (idempotent ? 3 : 1); ++attempt) {
             if (attempt) QThread::msleep(400 * attempt);
-            out = send("POST", api(name), {{"Authorization", session.token.toUtf8()}, {"Content-Type", "application/json"}},
+            QString apiUrl, token;
+            {
+                std::lock_guard lock(sessionMutex_);
+                apiUrl = session.apiUrl;
+                token = session.token;
+            }
+            out = send("POST", QUrl(apiUrl + "/b2api/v3/" + name), {{"Authorization", token.toUtf8()}, {"Content-Type", "application/json"}},
                        QJsonDocument(body).toJson(QJsonDocument::Compact));
             if (out.aborted || out.ok()) return out;
             if (out.status == 401 && out.code() == "expired_auth_token" && !authorize()) continue;
@@ -177,14 +195,15 @@ public:
         return out;
     }
     Error authorize() {
-        const auto basic = QByteArray(credentials_["keyId"].toString().toUtf8() + ':' + credentials_["applicationKey"].toString().toUtf8()).toBase64();
+        const auto basic = QByteArray(credentials_.value("keyId").toString().toUtf8() + ':' + credentials_.value("applicationKey").toString().toUtf8()).toBase64();
         Response r;
         for (int attempt = 0; attempt < 3; ++attempt) {
-            r = send("GET", QUrl(settings_["apiUrl"].toString() + "/b2api/v3/b2_authorize_account"), {{"Authorization", "Basic " + basic}});
+            r = send("GET", QUrl(settings_.value("apiUrl").toString() + "/b2api/v3/b2_authorize_account"), {{"Authorization", "Basic " + basic}});
             if (r.aborted || r.ok() || !(r.transport || r.status >= 500 || r.status == 429)) break;
             QThread::msleep(400 * (attempt + 1));
         }
         if (!r.ok()) return failure(r, "authorize");
+        std::lock_guard lock(sessionMutex_);
         const auto storage = r.json["apiInfo"].toObject()["storageApi"].toObject();
         session.apiUrl = storage["apiUrl"].toString();
         session.downloadUrl = storage["downloadUrl"].toString();
@@ -263,6 +282,7 @@ public:
 private:
     QJsonObject credentials_;
     QNetworkAccessManager nam_;
+    std::mutex sessionMutex_;
 };
 
 // File info travels percent-encoded in X-Bz-Info-* headers and as plain JSON for large
@@ -475,9 +495,8 @@ private:
             headers += {{"Authorization", url.json["authorizationToken"].toString().toUtf8()}, {"X-Bz-File-Name", encodeName(name).toUtf8()},
                         {"Content-Type", artifact.mime.isEmpty() ? QByteArray("b2/x-auto") : artifact.mime.toUtf8()},
                         {"Content-Length", QByteArray::number(artifact.bytes)}, {"X-Bz-Content-Sha1", sha1}};
-            client_.sentBytes = [&](qint64 sent) { progress("uploading", sent, artifact.bytes); };
-            const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
-            client_.sentBytes = {};
+            const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body,
+                                        [&](qint64 sent) { progress("uploading", sent, artifact.bytes); });
             const auto stored = r.json["fileId"].toString();
             if (r.ok() && !stored.isEmpty()) return stored;
             // A success without a usable file ID (a cut-off reply, or an empty ID) stored a file this
@@ -565,45 +584,156 @@ private:
             if (auto e = checkpoint(journal)) { cancelLarge(fileId); error = e; return {}; }
         }
         const auto count = partCount(artifact.bytes, part);
-        QJsonArray sha1s;
-        QString uploadUrl, uploadToken;
-        qint64 done = 0;
-        for (qint64 n = 1; n <= count; ++n) {
+        // Parts go up on lanes (#1792): lane 0 always, and one more per upload slot the
+        // resident lends, up to maximumPartLanes. Each lane has its own connection and its
+        // own upload part URL; B2 takes parts in any order, and the finish lists their SHA-1s
+        // in part order. A lane past a shrunken width finishes its part and starts no other.
+        // The first error stops every lane, cutting parts in flight, before the large file
+        // is cancelled.
+        struct Lanes {
+            std::mutex mutex;
+            std::condition_variable changed;
+            qint64 next = 1;
+            int width = 1;
+            std::array<bool, maximumPartLanes> busy{};
+            std::array<std::atomic<qint64>, maximumPartLanes> sending{};
+            std::atomic<qint64> done{0};
+            std::mutex progressMutex;  // the credit of a sent part and the progress snapshot
+            std::vector<QString> sha1s;
+            Error error;
+            std::atomic_bool ended{false};
+        } lanes;
+        lanes.sha1s.resize(size_t(count));
+        // One part on one lane; false with an empty error when another lane's error stopped it.
+        const auto sendPart = [&](qint64 n, int lane, QString& uploadUrl, QString& uploadToken, Error& failed) -> bool {
             const qint64 offset = (n - 1) * part, length = qMin(part, artifact.bytes - offset);
             const auto hash = hashFile(artifact.path, offset, length, false);
-            if (!hash || hash->bytes != length) return abortLarge(fileId, cancelled.load() ? stoppedError() : Error{"artifact_invalid", "Retained artifact is unavailable", {}}, error);
+            if (!hash || hash->bytes != length) { failed = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "Retained artifact is unavailable", {}}; return false; }
             const auto sha1 = QString::fromLatin1(hash->sha1);
-            sha1s.append(sha1);
-            if (stored.value(int(n)).first == length && stored.value(int(n)).second == sha1) { done += length; progress("uploading", done, artifact.bytes); continue; }
-            bool sent = false;
+            lanes.sha1s[size_t(n - 1)] = sha1;
+            if (stored.value(int(n)).first == length && stored.value(int(n)).second == sha1) { lanes.done += length; return true; }
             Error last;
-            for (int attempt = 0; attempt < 3 && !sent; ++attempt) {
-                if (cancelled.load()) return abortLarge(fileId, stoppedError(), error);
+            for (int attempt = 0; attempt < 3; ++attempt) {
+                if (cancelled.load()) { failed = stoppedError(); return false; }
+                if (lanes.ended.load()) return false;
                 if (uploadUrl.isEmpty()) {
                     const auto u = client_.call("b2_get_upload_part_url", {{"fileId", fileId}}, true);
-                    if (!u.ok()) return abortLarge(fileId, Client::failure(u, "part_url"), error);
+                    // A cut reply is never a URL, even when its 200 status arrived first.
+                    if (u.aborted) {
+                        if (cancelled.load()) failed = stoppedError();
+                        else if (!lanes.ended.load()) {
+                            auto cut = u;
+                            cut.transport = true;
+                            if (cut.detail.isEmpty()) cut.detail = "deadline";
+                            failed = Client::failure(cut, "part_url");
+                        }
+                        return false;
+                    }
+                    if (!u.ok()) { failed = Client::failure(u, "part_url"); return false; }
                     uploadUrl = u.json["uploadUrl"].toString();
                     uploadToken = u.json["authorizationToken"].toString();
+                    // Cancel or another lane's error may have come while the URL was fetched.
+                    if (cancelled.load()) { failed = stoppedError(); return false; }
+                    if (lanes.ended.load()) return false;
                 }
                 OneShot body(artifact.path, offset, length);
-                if (!body.open(QIODevice::ReadOnly)) return abortLarge(fileId, {"artifact_invalid", "Retained artifact is unavailable", {}}, error);
-                client_.sentBytes = [&](qint64 bytes) { progress("uploading", done + bytes, artifact.bytes); };
+                if (!body.open(QIODevice::ReadOnly)) { failed = {"artifact_invalid", "Retained artifact is unavailable", {}}; return false; }
                 const auto r = client_.send("POST", QUrl(uploadUrl), {{"Authorization", uploadToken.toUtf8()}, {"X-Bz-Part-Number", QByteArray::number(n)},
-                                                                      {"Content-Length", QByteArray::number(length)}, {"X-Bz-Content-Sha1", sha1.toUtf8()}}, {}, &body);
-                client_.sentBytes = {};
-                if (r.ok()) { sent = true; break; }
+                                                                      {"Content-Length", QByteArray::number(length)}, {"X-Bz-Content-Sha1", sha1.toUtf8()}}, {}, &body,
+                                            [&](qint64 bytes) { lanes.sending[size_t(lane)] = bytes; });
+                {
+                    // Credit and clear together, as the progress snapshot sees them: no dip, no double count.
+                    std::lock_guard counted(lanes.progressMutex);
+                    if (r.ok()) lanes.done += length;
+                    lanes.sending[size_t(lane)] = 0;
+                }
+                if (r.ok()) return true;
+                if (r.aborted) { if (cancelled.load()) failed = stoppedError(); return false; }
                 last = Client::failure(r, "upload_part");
                 last.details["partNumber"] = int(n);
-                if (r.aborted && cancelled.load()) return abortLarge(fileId, stoppedError(), error);
                 // Parts never publish: send again under the same number, with a new URL.
                 if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429 ||
                     (r.status == 401 && (r.code() == "expired_auth_token" || r.code() == "bad_auth_token"))) { uploadUrl.clear(); continue; }
-                return abortLarge(fileId, last, error);
+                break;
             }
-            if (!sent) return abortLarge(fileId, last, error);
-            done += length;
-            progress("uploading", done, artifact.bytes);
+            failed = last;
+            return false;
+        };
+        const auto runLane = [&](int lane) {
+            QNetworkAccessManager network;
+            network.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+            laneNetwork = &network;
+            laneStop = &lanes.ended;
+            QString uploadUrl, uploadToken;
+            std::unique_lock lock(lanes.mutex);
+            // The loan is read as each part is claimed: a slot taken back starts no new part.
+            const auto width = [&] { return qMin<qint64>(qMin(lanes.width, 1 + qBound(0, stdio.lanes.load(), maximumPartLanes - 1)), count); };
+            while (!lanes.error && !lanes.ended.load() && !cancelled.load() && lanes.next <= count && lane < width()) {
+                const qint64 n = lanes.next++;
+                lock.unlock();
+                Error failed;
+                const bool sent = sendPart(n, lane, uploadUrl, uploadToken, failed);
+                lock.lock();
+                if (!sent && !lanes.ended.load()) {
+                    lanes.error = failed ? failed : Error{"b2_protocol", "A large-file part ended without a result", {{"partNumber", int(n)}}};
+                    lanes.ended = true;
+                }
+            }
+            lanes.busy[size_t(lane)] = false;
+            lanes.changed.notify_all();
+            lock.unlock();
+            laneNetwork = nullptr;
+            laneStop = nullptr;
+        };
+        std::array<std::unique_ptr<QThread>, maximumPartLanes> threads;
+        const auto report = [&] {
+            qint64 sent = 0;
+            {
+                std::lock_guard counted(lanes.progressMutex);
+                sent = lanes.done.load();
+                for (const auto& bytes : lanes.sending) sent += bytes.load();
+            }
+            progress("uploading", qMin(sent, artifact.bytes), artifact.bytes);
+        };
+        {
+            std::unique_lock lock(lanes.mutex);
+            for (;;) {
+                const int lent = qBound(0, stdio.lanes.load(), maximumPartLanes - 1);
+                lanes.width = int(qMin<qint64>(1 + lent, count));
+                const bool more = !lanes.ended.load() && !cancelled.load() && lanes.next <= count;
+                for (int lane = 0; more && lane < lanes.width; ++lane) {
+                    if (lanes.busy[size_t(lane)]) continue;
+                    // An idle lane's thread has left the lock behind: reap it before a new one.
+                    if (threads[size_t(lane)]) { threads[size_t(lane)]->wait(); threads[size_t(lane)].reset(); }
+                    threads[size_t(lane)].reset(QThread::create(runLane, lane));
+                    lanes.busy[size_t(lane)] = true;
+                    threads[size_t(lane)]->start();
+                    // The lane waits for this lock, so it cannot have finished yet: not running means
+                    // the system refused the thread. Other lanes carry on; without lane 0 the upload ends.
+                    if (!threads[size_t(lane)]->isRunning()) {
+                        lanes.busy[size_t(lane)] = false;
+                        threads[size_t(lane)].reset();
+                        if (lane == 0 && !lanes.error) {
+                            lanes.error = {"b2_protocol", "The large-file upload could not start sending parts", {}};
+                            lanes.ended = true;
+                        }
+                    }
+                }
+                if (std::none_of(lanes.busy.begin(), lanes.busy.end(), [](bool busy) { return busy; })) break;
+                lanes.changed.wait_for(lock, std::chrono::milliseconds(100));
+                lock.unlock();
+                report();
+                lock.lock();
+            }
         }
+        for (auto& thread : threads)
+            if (thread) thread->wait();
+        if (cancelled.load()) return abortLarge(fileId, stoppedError(), error);
+        if (lanes.error) return abortLarge(fileId, lanes.error, error);
+        if (lanes.done.load() != artifact.bytes) return abortLarge(fileId, {"b2_protocol", "A large-file part ended without a result", {}}, error);
+        progress("uploading", artifact.bytes, artifact.bytes);
+        QJsonArray sha1s;
+        for (const auto& sha1 : lanes.sha1s) sha1s.append(sha1);
         if (cancelled.load()) return abortLarge(fileId, stoppedError(), error);
         const auto finish = client_.call("b2_finish_large_file", {{"fileId", fileId}, {"partSha1Array", sha1s}}, false);
         if (!finish.ok()) {
@@ -821,6 +951,7 @@ private:
 }
 
 int main(int argc, char** argv) {
+    putgd::b2::stdio.maximumLanes = putgd::b2::maximumPartLanes;
     return putgd::b2::stdio.run(argc, argv, "putgd-b2-worker", putgd::buildManifestJson(), putgd::useHostCaBundle,
         [](QJsonObject& request, putgd::Error& error, bool& uncertain) {
             putgd::b2::Worker worker(request);

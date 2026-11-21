@@ -12,6 +12,9 @@ inline constexpr qint64 maximumPartBytes = 5'000'000'000LL;
 inline constexpr qint64 maximumParts = 10000;
 inline constexpr int maximumNameBytes = 1024;                      // UTF-8 bytes per file name
 inline constexpr int maximumLinkDays = 7;                          // b2_get_download_authorization limit
+// Parts of one large file in flight at once: its own request plus up to three upload
+// slots the resident lends while no other file waits (#1792), as for S3 (#174).
+inline constexpr int maximumPartLanes = 4;
 // Files above the threshold use b2_start_large_file and parts; smaller files one
 // b2_upload_file. Tests may lower both; the worker still refuses parts under 5 MB.
 struct UploadPolicy {

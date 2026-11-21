@@ -49,7 +49,7 @@ Error B2Provider::validateSettings(const QJsonObject& settings) const { return b
 
 QJsonObject B2Provider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
                              std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                             DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill) {
+                             DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill, std::function<int()> lanes) {
     if (uncertain) *uncertain = false;
     if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
     if (auto e = b2::validateSettings(destination.settings)) { error = e; return {}; }
@@ -70,7 +70,7 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
     // while one of its requests may still be inside that limit.
     const auto perRequest = qMax(destination.settings["requestTimeoutMs"].toInt(600000), qMax(destination.settings["connectTimeoutMs"].toInt(10000), 30000));
     const auto final = worker::exchange(workerPath(), method, std::move(params), perRequest,
-                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);
+                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill, std::move(lanes));
     if (error) return {};
     if (!final["ok"].toBool()) {
         error = parseError(final["error"].toObject());
@@ -94,12 +94,20 @@ void B2Provider::upload(const UploadRequest& request, std::function<void(UploadR
     auto resume = request.resume;
     if (resume.isEmpty())
         if (const auto part = b2::partBytes(request.artifact.bytes, policy_)) resume = {{"schemaVersion", 1}, {"partBytes", double(part)}};
+    // A large file borrows idle upload slots for extra parts (#1792), at most one per
+    // part beyond the first and three in all; the resident takes them back when a file waits.
+    std::function<int()> lanes;
+    const auto planned = qint64(resume["partBytes"].toDouble());
+    if (request.extraLanes && planned > 0 && b2::partCount(request.artifact.bytes, planned) > 1) {
+        const int wanted = int(qMin<qint64>(b2::maximumPartLanes - 1, b2::partCount(request.artifact.bytes, planned) - 1));
+        lanes = [extra = request.extraLanes, wanted] { return qBound(0, extra(wanted), wanted); };
+    }
     Error e;
     bool uncertain = false;
     const auto r = call("upload", request.destination,
                         {{"artifact", request.artifact.toJson()}, {"candidate", request.candidate}, {"publicationId", request.publicationId},
                          {"condition", request.condition}, {"objectReference", request.objectReference}, {"resume", resume}},
-                        e, &uncertain, request.cancellation, request.progress, request.checkpoint);
+                        e, &uncertain, request.cancellation, request.progress, request.checkpoint, {}, std::move(lanes));
     const auto status = r["status"].toString();
     if (status == "uploaded" && !e) { reply({"uploaded", StorageReceipt::fromJson(r["receipt"].toObject()), {}}); return; }
     if (status == "collision") { reply({"collision", {}, e}); return; }

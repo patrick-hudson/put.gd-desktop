@@ -247,6 +247,64 @@ private slots:
         QVERIFY(f.versions("prefix é/denied.bin").isEmpty());
         QVERIFY(journal.last().isEmpty());
     }
+    // #1792. Lent upload slots carry extra parts of one large file at once, each on its own
+    // connection and part URL; the finish still lists the SHA-1s in part order, so the stored
+    // file is the artifact. Without a loan, parts go one at a time as before.
+    void largeFileSendsPartsOnLentSlots() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 5 * mib}});
+        const auto bytes = synthetic(16 * mib, 1792);
+        auto request = f.request("lanes.bin", bytes);
+        std::atomic_int asked{-1};
+        request.extraLanes = [&asked](int wanted) { asked = wanted; return wanted; };
+        const auto result = f.upload(request);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + " " + result.error.message));
+        QCOMPARE(asked.load(), b2::maximumPartLanes - 1);
+        QCOMPARE(f.state()["maxPartsInFlight"].toInt(), b2::maximumPartLanes);
+        QCOMPARE(f.events("upload_part").size(), 4);
+        QCOMPARE(f.events("b2_get_upload_part_url").size(), 4);
+        const auto stored = f.versions("prefix é/lanes.bin");
+        QCOMPARE(stored.size(), 1);
+        QCOMPARE(qint64(stored[0].toObject()["contentLength"].toDouble()), bytes.size());
+    }
+    // The first part error stops every lane, cutting parts still in flight, and only then is
+    // the large file cancelled: nothing unfinished is left, and the error names that part.
+    void partErrorStopsEveryLaneBeforeTheCancel() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 1 * mib}});
+        auto request = f.request("lane-error.bin", synthetic(16 * mib + 512 * 1024, 1793));
+        request.extraLanes = [](int wanted) { return wanted; };
+        // Part 4 is the short last part: refused after half a second, while 5 MiB parts still need seconds.
+        f.rules({QJsonObject{{"call", "upload_part"}, {"partNumber", 4}, {"status", 401}, {"code", "unauthorized"}}});
+        QElapsedTimer clock;
+        clock.start();
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("b2_permission_denied"));
+        QCOMPARE(result.error.details["partNumber"].toInt(), 4);
+        QVERIFY2(clock.elapsed() < 4000 * test::timeScale(), qPrintable(QString::number(clock.elapsed())));
+        QVERIFY(f.state()["maxPartsInFlight"].toInt() > 1);
+        QCOMPARE(f.events("b2_cancel_large_file").size(), 1);
+        QCOMPARE(f.events("b2_finish_large_file").size(), 0);
+        QVERIFY(f.versions("prefix é/lane-error.bin").isEmpty());
+    }
+    // Cancel cuts every lane's part in flight and cancels the large file.
+    void cancelStopsEveryLaneAndCancelsTheLargeFile() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 1 * mib}});
+        auto request = f.request("lane-cancel.bin", synthetic(16 * mib, 1794));
+        request.extraLanes = [](int wanted) { return wanted; };
+        auto cancel = request.cancellation;
+        std::thread stopper([cancel] { std::this_thread::sleep_for(std::chrono::milliseconds(1500)); cancel->store(true); });
+        const auto result = f.upload(request);
+        stopper.join();
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QVERIFY(f.state()["maxPartsInFlight"].toInt() > 1);
+        QCOMPARE(f.events("b2_cancel_large_file").size(), 1);
+        QCOMPARE(f.events("b2_finish_large_file").size(), 0);
+        QVERIFY(f.versions("prefix é/lane-cancel.bin").isEmpty());
+    }
     void authorizedLinksCarryATokenForExactlyTheName() {
         B2Fixture f;
         f.reset();
@@ -427,6 +485,8 @@ private slots:
         const auto large = f.upload(f.request("slow-large.bin", synthetic(7 * mib, 1782)));
         QVERIFY2(large.status == "uploaded", qPrintable(large.status + " " + large.error.code + " " + large.error.message));
         QCOMPARE(f.events("upload_part").size(), 2);
+        // No lent slots: one part at a time.
+        QCOMPARE(f.state()["maxPartsInFlight"].toInt(), 1);
     }
     // #1782. Cancel cuts a slow upload in flight before the transport has read the whole file.
     // B2 can't have stored it, so the upload ends failed, not unknown, with nothing to look up.
