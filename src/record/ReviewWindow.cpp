@@ -256,9 +256,26 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
 }
 void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); announce(); update(); }
 void FrameView::setSkim(const QImage& image, qint64 timeUs) { skim_ = image; skimUs_ = timeUs; update(); }
-void FrameView::clearSkim() { if (skim_.isNull()) return; skim_ = {}; update(); }
+void FrameView::clearSkim() { fading_ = {}; if (skim_.isNull()) return; skim_ = {}; update(); }
+// F2: the skim picture gives way to the frame with a short crossfade.
+void FrameView::fadeOutSkim(int ms) {
+    if (skim_.isNull()) return;
+    fading_ = skim_;
+    skim_ = {};
+    fadeMs_ = std::max(1, ms);
+    fadeClock_.start();
+    auto* tick = new QTimer(this);
+    tick->setInterval(16);
+    connect(tick, &QTimer::timeout, this, [this, tick] {
+        if (fading_.isNull() || fadeClock_.elapsed() >= fadeMs_) { fading_ = {}; tick->deleteLater(); }
+        update();
+    });
+    tick->start();
+    update();
+}
 // Q10: the skim picture becomes the playhead's picture (no flash of the old frame).
 void FrameView::promoteSkim() {
+    fading_ = {};
     if (skim_.isNull()) return;
     frame_ = skim_;
     timeUs_ = skimUs_;
@@ -596,6 +613,11 @@ void FrameView::paintEvent(QPaintEvent*) {
     if (skimming) painter.drawImage(target, skim_);
     else if (live) painter.drawImage(target, livePicture());
     else if (!frame_.isNull()) painter.drawImage(target, frame_);
+    if (!skimming && !fading_.isNull() && fadeClock_.isValid()) {
+        painter.setOpacity(std::clamp(1.0 - double(fadeClock_.elapsed()) / fadeMs_, 0.0, 1.0));
+        painter.drawImage(target, fading_);
+        painter.setOpacity(1.0);
+    }
     // An earlier frame under a preview error is dimmed so it never reads as current.
     if (stale() && !skimming) painter.fillRect(target, QColor(0, 0, 0, 140));
     const qint64 at = skimming ? skimUs_ : timeUs_;
@@ -621,8 +643,9 @@ void FrameView::paintEvent(QPaintEvent*) {
         }
     }
     if (drag_ == Drag::Create) {
-        // The area being dragged, clipped to the frame like the cover it becomes.
-        const auto pending = QRectF(anchor_, current_).normalized().intersected(target);
+        // The cover the release will make (F5): the default box while the
+        // drag is under 8 × 8 px, else the drawn box, clipped to the frame.
+        const auto pending = toView(placementAt(current_)).intersected(target);
         painter.setPen(Qt::NoPen);
         painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 200)) : QBrush(QColor(255, 255, 255, 60)));
         painter.drawRect(pending);
@@ -648,6 +671,24 @@ void FrameView::setPlaceWaiting(bool waiting) {
     placeWaiting_ = waiting;
     if (!armed_.isEmpty()) setCursor(waiting ? Qt::BusyCursor : Qt::CrossCursor);
 }
+// The cover a placing drag from the press to p makes (P12, F5): under 8 × 8
+// view px it is a click and places the default box at the press; anything
+// larger (a thin one too) is the drawn box, clamped to the picture (W22),
+// at least 2 source px each way. Empty when nothing would be made.
+QRect FrameView::placementAt(const QPointF& p) const {
+    const QRectF dragged = QRectF(anchor_, p).normalized();
+    if (dragged.width() < 8 && dragged.height() < 8) {
+        const QRect image = imageRect();
+        const QPointF at(std::clamp<qreal>(anchor_.x(), image.left(), image.right()), std::clamp<qreal>(anchor_.y(), image.top(), image.bottom()));
+        return defaultMaskRectAt(toCanvas(at));
+    }
+    QRect r = QRectF(toCanvas(anchor_), toCanvas(p)).normalized().toAlignedRect().intersected(bounds());
+    const QRect all = bounds();
+    if (r.width() < 2) { r.setWidth(2); r.moveLeft(std::clamp(r.left(), 0, std::max(0, all.width() - 2))); }
+    if (r.height() < 2) { r.setHeight(2); r.moveTop(std::clamp(r.top(), 0, std::max(0, all.height() - 2))); }
+    return r.width() >= 2 && r.height() >= 2 && all.contains(r) ? r : QRect();
+}
+QRect FrameView::placementPreview() const { return drag_ == Drag::Create ? placementAt(current_) : QRect(); }
 // A click while armed (W6): a box about 20 % × 8 % of the frame centred on the point, kept in the frame.
 QRect FrameView::defaultMaskRectAt(const QPointF& canvasPoint) const {
     const QRect all = bounds();
@@ -861,22 +902,9 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
         const auto kind = armed_;
         drag_ = Drag::None;
         update();
-        const QRectF dragged = QRectF(anchor_, p).normalized();
-        // P12: from the press and release alone: under 8 × 8 view px it is a
-        // click and places the default box at the press; anything larger
-        // (a thin one too) is drawn.
+        // Exactly what the preview showed (F5).
         Q_UNUSED(previewed);
-        if (dragged.width() < 8 && dragged.height() < 8) {
-            const QPointF at = imageRect().contains(anchor_.toPoint()) ? anchor_ : QPointF(std::clamp<qreal>(anchor_.x(), imageRect().left(), imageRect().right()), std::clamp<qreal>(anchor_.y(), imageRect().top(), imageRect().bottom()));
-            if (const QRect r = defaultMaskRectAt(toCanvas(at)); !r.isEmpty()) emit maskCreated(kind, r);
-            return;
-        }
-        // Clamped to the picture (W22), at least 2 source px each way.
-        QRect r = QRectF(toCanvas(anchor_), toCanvas(p)).normalized().toAlignedRect().intersected(bounds());
-        const QRect all = bounds();
-        if (r.width() < 2) { r.setWidth(2); r.moveLeft(std::clamp(r.left(), 0, std::max(0, all.width() - 2))); }
-        if (r.height() < 2) { r.setHeight(2); r.moveTop(std::clamp(r.top(), 0, std::max(0, all.height() - 2))); }
-        if (r.width() >= 2 && r.height() >= 2 && all.contains(r)) emit maskCreated(kind, r);
+        if (const QRect r = placementAt(p); !r.isEmpty()) emit maskCreated(kind, r);
         return;
     }
     if (!moved) {
@@ -1443,6 +1471,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         if (playing_ || !timeline_->skimming()) return;
         skimUs_ = at;
         skimMovedClock_.restart();
+        skimReturn_.stop();
         if (const auto* hit = cachedSkim(at)) { view_->setSkim(hit->image, at); timeline_->setSkimExact(true); return; }
         timeline_->setSkimExact(false);
         // R16: the newest time is queued at once; the decode in flight is not
@@ -1456,11 +1485,16 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // P10: a skim that ends while the pointer is still on the timeline (it
     // rests on a grip, or pauses) keeps its picture until a press or until
     // the pointer leaves the timeline: no flash back to the playhead frame.
+    // F2: a skim that ends without a press returns to the playhead frame after
+    // 250 ms with a 100 ms crossfade; a skim back within 250 ms carries on.
+    skimReturn_.setSingleShot(true);
+    skimReturn_.setInterval(250);
+    connect(&skimReturn_, &QTimer::timeout, this, [this] { if (!skimUs_) view_->fadeOutSkim(100); });
     connect(timeline_, &FilmstripTimeline::skimLeft, this, [this] {
         skimUs_.reset();
         skimAsked_.reset();
         skimmer_->cancel();
-        if (!timeline_->underMouse()) view_->clearSkim();
+        if (view_->skimming()) skimReturn_.start();
     });
     connect(timeline_, &FilmstripTimeline::skimmingChanged, this, [this](bool on) {
         sessionSkimming = on;
@@ -1489,6 +1523,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // The panel's Redact / Blur toggle placement as the tool row's do (R28).
     connect(panel_, &ReviewPanel::coverRequested, this, [this](const QString& kind) { if (placing_ && placing_->kind == kind) cancelPlacement(); else arm(kind); });
     connect(panel_, &ReviewPanel::restoreCut, this, &ReviewWindow::restoreCut);
+    // F6: a cut's typed times go through the same adjust as dragging its edges.
+    connect(panel_, &ReviewPanel::cutAdjustRequested, this, [this](const QString& id, qint64 start, qint64 end) { stopPlayback(); adjustCut(id, start, end); });
+    connect(panel_, &ReviewPanel::cutEdgeToPlayhead, this, [this](const QString& id, bool start) {
+        const auto it = std::find_if(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == id; });
+        if (it == edit_.cuts.cend()) return;
+        stopPlayback();
+        // The frame on screen is the cut's first (Starts) or last (Ends) frame, as a cover's.
+        if (start) { adjustCut(id, shownFrameStart(), it->end); return; }
+        const auto end = shownFrameEnd();
+        if (!end) { refuseChange(QStringLiteral("The frame at the playhead isn't shown yet. Try again once it is.")); return; }
+        adjustCut(id, it->start, *end);
+    });
     connect(panel_, &ReviewPanel::playAcross, this, &ReviewWindow::playAcross);
     connect(panel_, &ReviewPanel::seekCoverEdge, this, &ReviewWindow::seekCoverEdge);
     connect(panel_, &ReviewPanel::coverEdgeToPlayhead, this, [this](const QString& id, bool start) { stopPlayback(); setMaskAt(start, id); });
@@ -3228,6 +3274,14 @@ void ReviewWindow::askFrame() {
     frames_->request(at, edgeEdit_ && edgePreview_ ? *edgeEdit_ : edit_, ask.edge);
 }
 void ReviewWindow::beginEdgePreview() {
+    // F1: an edge drag shows its edge frame for the whole drag: any skim goes now.
+    if (skimUs_ || view_->skimming()) {
+        skimUs_.reset();
+        skimAsked_.reset();
+        skimmer_->cancel();
+        skimReturn_.stop();
+        view_->clearSkim();
+    }
     if (!edgePreview_ || edgeHoldProposal_) edgeDragSeq_ = proposalSeq_;
     edgeHoldProposal_ = 0;
     edgeHoldTimer_.stop();
@@ -3499,10 +3553,7 @@ bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
             panel_->commitFields();
             timeline_->setFocus(Qt::MouseFocusReason);
         }
-        // P10: a held skim picture lets go at a press (a seeking timeline press promotes it first).
-        if (target && target->window() == this && !skimUs_ && view_->skimming()) QMetaObject::invokeMethod(this, [this] { if (!skimUs_) view_->clearSkim(); }, Qt::QueuedConnection);
     }
-    if (watched == timeline_ && event->type() == QEvent::Leave && !skimUs_) view_->clearSkim();
     if (watched == view_ && (event->type() == QEvent::Resize || event->type() == QEvent::Move)) placeBanners();
     if (watched == bannerArea_ && event->type() == QEvent::LayoutRequest) QMetaObject::invokeMethod(this, &ReviewWindow::placeBanners, Qt::QueuedConnection);
     // Delete and Backspace cut or remove only from the viewer and the timeline
@@ -3530,7 +3581,8 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
     // Q10: these act at the skimmed frame when a skim is present.
     static const QSet<int> takesSkim{Qt::Key_I, Qt::Key_O, Qt::Key_BracketLeft, Qt::Key_BracketRight, Qt::Key_L, Qt::Key_J,
         Qt::Key_Left, Qt::Key_Right, Qt::Key_Comma, Qt::Key_Period, Qt::Key_Up, Qt::Key_Down};
-    if (takesSkim.contains(e->key()) && (plain || shift)) adoptSkim();
+    // With no live skim the key acts at the playhead, and that is what is shown (F2).
+    if (takesSkim.contains(e->key()) && (plain || shift) && !adoptSkim() && !skimUs_ && view_->skimming()) { skimReturn_.stop(); view_->clearSkim(); }
     switch (e->key()) {
     case Qt::Key_Space: if (plain) { if (playing_) stopPlayback(); else startPlayback(); return; } break;
     case Qt::Key_Escape:

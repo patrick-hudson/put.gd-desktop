@@ -1110,10 +1110,28 @@ private slots:
         QCOMPARE(proposals.size(), 4);
         const auto thin = proposed(proposals)["mask"].toObject()["rect"].toArray();
         QVERIFY2(thin[2].toInt() > 100 && thin[3].toInt() >= 2 && thin[3].toInt() < 10, qPrintable(QJsonDocument(thin).toJson()));
+        // F5: the preview is what the release makes: the default box under 8 × 8 px, then the drawn box.
+        window.drive({{"action", "armRedact"}});
+        QTest::mousePress(view, Qt::LeftButton, {}, inside);
+        {
+            QMouseEvent small(QEvent::MouseMove, QPointF(inside + QPoint(5, 4)), view->mapToGlobal(QPointF(inside + QPoint(5, 4))), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(view, &small);
+        }
+        const QRect clickBox = view->placementPreview();
+        QCOMPARE(clickBox.size(), QSize(256, 57));
+        {
+            QMouseEvent large(QEvent::MouseMove, QPointF(inside + QPoint(60, 30)), view->mapToGlobal(QPointF(inside + QPoint(60, 30))), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(view, &large);
+        }
+        const QRect drawnBox = view->placementPreview();
+        QVERIFY(drawnBox.size() != clickBox.size());
+        QTest::mouseRelease(view, Qt::LeftButton, {}, inside + QPoint(60, 30));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), (QJsonArray{drawnBox.x(), drawnBox.y(), drawnBox.width(), drawnBox.height()}));
+        const auto beforeClick = proposals.size();
         // P12: under 8 × 8 view px (press to release) is a click: the default box at the press.
         window.drive({{"action", "armRedact"}});
         drag(view, inside, inside + QPoint(7, 7));
-        QCOMPARE(proposals.size(), 5);
+        QCOMPARE(proposals.size(), beforeClick + 1);
         QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray()[2].toInt(), 256);
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
@@ -1263,6 +1281,64 @@ private slots:
         QCOMPARE(caption->text(), QString("clip · rec 0:05.0"));
         window.drive({{"action", "seek"}, {"time", 3500000}});
         QCOMPARE(caption->text(), QString("rec 0:03.5 · excluded"));
+    }
+    // F1, F2 on a real clip: an edge drag drops the skim picture at once; a
+    // skim that ends without a press gives way to the playhead frame after
+    // 250 ms, and one that comes back within 250 ms carries on.
+    void skimPictureEndsCleanly() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 3, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 3000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        auto* view = window.findChild<FrameView*>("frame");
+        auto* strip = timeline(window);
+        QVERIFY(window.drive({{"action", "skim"}, {"time", 1500000}}).code.isEmpty());
+        PUTGD_TRY_VERIFY(view->skimming());
+        emit strip->trimEdgeDragged(true, 1000000);
+        QVERIFY(!view->skimming());
+        QCOMPARE(window.inspect()["preview"].toObject()["edgePreviewUs"].toDouble(), 1000000.0);
+        emit strip->edgeDragFinished();
+        QCoreApplication::processEvents();
+        QVERIFY(window.drive({{"action", "skim"}, {"time", 2000000}}).code.isEmpty());
+        PUTGD_TRY_VERIFY(view->skimming());
+        window.drive({{"action", "skimEnd"}});
+        QVERIFY(view->skimming());
+        QVERIFY(window.drive({{"action", "skim"}, {"time", 2000000}}).code.isEmpty());
+        PUTGD_VERIFY_STEADY(view->skimming(), 400);
+        window.drive({{"action", "skimEnd"}});
+        PUTGD_TRY_VERIFY(!view->skimming());
+    }
+    // F6: a selected cut's Starts / Ends fields adjust it as dragging its edges does.
+    void cutTimesAreTyped() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        window.setEdit(edit);
+        window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
+        auto* starts = window.findChild<QLineEdit*>("reviewPanelCutStartsTime");
+        QVERIFY(starts && window.findChild<QLineEdit*>("reviewPanelCutEndsTime"));
+        starts->setFocus();
+        starts->selectAll();
+        QTest::keyClicks(starts, "0:02.5");
+        QTest::keyClick(starts, Qt::Key_Return);
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("updateCut"));
+        QCOMPARE(proposed(proposals)["start"].toDouble(), 2500000.0);
+        QCOMPARE(proposed(proposals)["end"].toDouble(), 4000000.0);
     }
     // R28, P13: a placement follows a new time selection; a click that clears
     // the selection leaves its time as it was.

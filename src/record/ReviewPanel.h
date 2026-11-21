@@ -25,7 +25,7 @@ namespace putgd::record {
 //    whole clip." · the five gestures;
 //  - a time selection: its span and length · Cut · Redact · Blur;
 //  - a cut: its span and "n s left out of the clip" · Restore (default) ·
-//    Play across;
+//    Play across · Starts / Ends with m:ss.s fields and Set to playhead;
 //  - a cover: its name · the privacy sentence (Blur: the warning sentence) ·
 //    Shows from → / Until → with m:ss.s fields and Set to playhead · Redact |
 //    Blur (Blur adds its strength).
@@ -88,6 +88,9 @@ signals:
     void cutRequested();                 // a time selection's Cut
     void coverRequested(const QString& kind);  // "solid" (Redact) | "blur"
     void restoreCut(const QString& id);
+    // F6: a selected cut's Starts / Ends typed (the new span), or Set to playhead.
+    void cutAdjustRequested(const QString& id, qint64 startUs, qint64 endUs);
+    void cutEdgeToPlayhead(const QString& id, bool start);
     void playAcross(const QString& id);
     // Shows from → / Until →: seek to the first / last kept covered frame.
     void seekCoverEdge(const QString& id, bool start);
@@ -122,6 +125,8 @@ private:
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
     void addEdge(QVBoxLayout*, const RecordingMask&, bool start);
+    void addCutEdge(QVBoxLayout*, const RecordingCut&, bool start);
+    void commitCutEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs);
     void commitEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs);
     const RecordingMask* selectedCover() const;
     const RecordingCut* selectedCut() const;
