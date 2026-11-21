@@ -2215,7 +2215,9 @@ void FilmstripTimeline::mouseReleaseEvent(QMouseEvent* e) {
     case Drag::Select: {
         emit edgeDragFinished();
         // Once armed, a selection stays whatever its length, from one frame (R10).
-        if (dragEnd_ - dragStart_ < frameUs() - 1) { stripClick(held); break; }
+        // Its ends are frame edges or the duration, so anything non-empty is a
+        // frame or the recording's final partial frame (T3).
+        if (dragEnd_ <= dragStart_) { stripClick(held); break; }
         const bool startMoved = dragStart_ != snap(anchorUs_);
         selection_ = recording::Span{dragStart_, dragEnd_};
         selectedKind_.clear();
