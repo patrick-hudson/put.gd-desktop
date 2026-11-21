@@ -359,8 +359,19 @@ class PixelWitness(unittest.TestCase):
             self.assertFalse(probe.app_id_names('', 1))
         import os
         import subprocess
+        import time
         kiosk = subprocess.Popen(['sleep', '30'], env=dict(os.environ, MOZ_APP_REMOTINGNAME='putgdsurfacexyz'))
         try:
+            # Until the child has exec'd, /proc/<pid>/environ still shows the parent's
+            # environment; wait for the exec before reading it.
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                try:
+                    if os.path.basename(os.readlink('/proc/%d/exe' % kiosk.pid)) == 'sleep':
+                        break
+                except OSError:
+                    pass
+                time.sleep(0.01)
             self.assertTrue(probe.app_id_names('putgdsurfacexyz', kiosk.pid))
             self.assertFalse(probe.app_id_names('putgdsurfaceother', kiosk.pid))
         finally:
