@@ -468,7 +468,10 @@ bool HistoryStore::writeDeletion(const QJsonObject& doc) {
  QSqlQuery q(db_);q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(doc["id"].toString());q.addBindValue(encode(doc));bool ok=q.exec();
  // While a deletion is accepted or running, each target it may still send a request for is retained.
  const bool live=doc["state"]=="accepted"||doc["state"]=="running";
- for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool active=live?!QStringList{"removed","already_missing","changed"}.contains(status):status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained";
+ for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool final=QStringList{"removed","already_missing","changed"}.contains(status);
+  // A finished one keeps a target that may still need a request, and one whose saved "phase" checkpoint
+  // has no final outcome yet (#1763): until then its record can't leave History and a retry keeps it.
+  const bool active=live?!final:status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained"||(!final&&item["progress"].toObject().contains("phase"));
   q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(doc["id"].toString());q.addBindValue(item["historyId"].toString());q.addBindValue(active?1:0);ok=q.exec();
   if(ok) {q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(item["historyId"].toString());ok=q.exec();if(ok&&q.next()){auto data=decode(q.value(0));data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=doc["id"];data["deleteProgress"]=item["progress"];ok=persistRemote(db_,item["historyId"].toString(),data);}}
  }
