@@ -1365,8 +1365,15 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         report("uploading", transferred);
         // A request that sends a file runs while its bytes move (#1758), so Cancel cuts it
         // instead of waiting for the transfer, as it cuts a part (#203).
+        // Whether Cancel cut this attempt: the SDK also asks after curl returns, so a cut can
+        // follow a reply's status. A Cancel that only comes later leaves the reply standing.
+        bool cut = false;
         if (request.cancellation)
-            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) { return !stopped(request.cancellation); });
+            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) {
+                if (!stopped(request.cancellation)) return true;
+                cut = true;
+                return false;
+            });
         // A new signed SDK request or our bounded outer retry sends the body
         // afresh. Keep each attempt's total equal to the retained artifact.
         put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
@@ -1401,8 +1408,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
         // A 408 doesn't prove the service refused the synthetic file (#1690). A request cut on
         // Cancel proves nothing either, even with the status of a reply that arrived first.
-        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408) ||
-                             stopped(request.cancellation);
+        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408) || cut;
         if (!unclear && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;
