@@ -917,7 +917,11 @@ def local_failure_attention(ctx):
     fixture = ctx.fixture('tray-attention')
     original = fixture.operation_id
     # The failure badge leaves the icon after eight seconds; the menu row stays until opened.
-    if ctx.call('ui.snapshot')['diagnostics'].get('trayIcon', {}).get('activity') == 'failed':
+    # The tray's own history proves the badge showed; frame it while it still does.
+    tray = lambda: ctx.call('ui.snapshot')['diagnostics'].get('trayIcon', {})
+    ctx.wait(lambda: any(step.get('activity') == 'failed' for step in tray().get('history', [])),
+             'the failure badge showed on the tray icon')
+    if tray().get('activity') == 'failed':
         _frame(ctx, 'failure-badge')
     else:
         ctx.note('failure badge had already timed out before the first frame')

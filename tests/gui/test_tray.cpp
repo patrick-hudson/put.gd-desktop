@@ -93,6 +93,7 @@ private slots:
   QTest::newRow("reading text")<<op("text","recognizing","recognizing")<<int(A::Processing);
   QTest::newRow("saving a local copy only")<<op("region","running","saving_local")<<int(A::Processing);
   QTest::newRow("captured, its artifact being prepared")<<op("region","acquiring","preparing")<<int(A::Processing);
+  QTest::newRow("captured, queued for import")<<op("region","acquiring","queued")<<int(A::Processing);
   QTest::newRow("stored, still preparing its artifact")<<op("region","stored","preparing",upload)<<int(A::Processing);
   QTest::newRow("checking the destination")<<op("region","running","preflight",upload)<<int(A::Processing);
   QTest::newRow("upload phase")<<op("region","running","uploading",upload)<<int(A::Uploading);

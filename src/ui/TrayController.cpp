@@ -215,8 +215,8 @@ TrayController::Activity TrayController::stageOf(const QJsonObject& operation) {
  // A recording shows its own badge until Upload hands it over.
  if(operation["action"]=="record"&&!recordingHandedOver(operation))return Activity::Idle;
  const auto state=operation["state"].toString();
- // Once the source has handed over its picture, the import or encoding is processing.
- if(state=="accepted"||(state=="acquiring"&&operation["phase"]!="preparing"))return Activity::Capturing;
+ // Once the source has handed over its picture (queued for import, or preparing it), it is processing.
+ if(state=="accepted"||(state=="acquiring"&&!QStringList{"queued","preparing"}.contains(operation["phase"].toString())))return Activity::Capturing;
  // Only a running operation uploads: a stored one may still be "preparing" its artifact.
  if(state!="running")return Activity::Processing;
  if(operation["destination"].toObject()["providerId"].toString().isEmpty())return Activity::Processing;
@@ -576,14 +576,21 @@ void TrayController::refreshActivity() {
  calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;Activity working=Activity::Idle;bool transferring=false,confirmed=false,fresh=false;
+ QSet<QString> activeIds;Activity working=Activity::Idle;bool transferring=false,confirmed=true,fresh=false;int uploadItems=0;
  for(const auto& value:observations) {
   const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
   auto stage=stageOf(op);
-  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];transferring|=status=="uploading";confirmed|=status=="uploaded";}
+  // Full only when every file of the uploading operations is confirmed: one finished file
+  // while another waits for a transfer slot keeps the level.
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];++uploadItems;transferring|=status=="uploading";confirmed&=status=="uploaded";}
   // A recording handed over to Upload is new work; one handed back to review (its
   // export failed) shows its badge again instead of the stage it had reached.
-  if(const auto known=opStages_.constFind(id);known==opStages_.cend())fresh=true;
+  if(const auto known=opStages_.constFind(id);known==opStages_.cend()){
+   fresh=true;
+   // An operation first seen with a file already uploaded is a later attempt (Retry local
+   // save): its own outcome, not the earlier upload, decides what it shows.
+   for(const auto& item:op["items"].toArray())if(item.toObject()["uploadStatus"]=="uploaded"){reattempts_.insert(id);break;}
+  }
   else if(stage!=Activity::Idle){if(*known==Activity::Idle)fresh=true;else if(int(*known)>int(stage))stage=*known;}
   opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
  }
@@ -591,9 +598,11 @@ void TrayController::refreshActivity() {
  // New work replaces a failure or a completion still on the icon.
  if(fresh){failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();}
  QStringList finished;for(auto it=opStages_.begin();it!=opStages_.end();)if(activeIds.contains(it.key()))++it;else{finished.append(it.key());it=opStages_.erase(it);}
+ confirmed&=uploadItems>0;
  for(const auto& id:finished) {
   ++pendingFinishes_;finishingTimer_.start();
-  operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
+  const bool reattempt=reattempts_.remove(id);
+  operations_.inspect(id,[guard=QPointer<TrayController>(this),reattempt](Error error,QJsonObject operation) {
    if(!guard)return;
    if(--guard->pendingFinishes_==0)guard->finishingTimer_.stop();
    // Only the last work to finish shows Complete: an earlier one must not flash it after a later cancel.
@@ -604,6 +613,7 @@ void TrayController::refreshActivity() {
    if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy&&!problem) {
     bool uploaded=false,saved=false;
     for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();uploaded|=item["uploadStatus"]=="uploaded";saved|=item["local"].toObject()["status"]=="saved";}
+    uploaded&=!reattempt;
     if(uploaded||saved){
      // Observations are batched, so a quick operation can end before its processing or upload
      // was seen; its outcome proves which stages ran, and the icon walks them before Complete.
