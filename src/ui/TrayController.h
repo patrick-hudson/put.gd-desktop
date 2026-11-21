@@ -174,8 +174,8 @@ private:
  // has passed, so a copy after the upload stays green), and finished ones still
  // being inspected for Complete.
  QHash<QString,Activity> opStages_;
- // Operations first seen with a file already uploaded (a Retry local save attempt).
- QSet<QString> reattempts_;
+ // Operations whose live attempt is a Retry local save.
+ QSet<QString> localRetries_;
  int pendingFinishes_=0;
  // Unset until the first refresh, which tints for the panel.
  QColor iconColor_;
