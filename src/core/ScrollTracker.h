@@ -390,7 +390,8 @@ class ScrollTracker {
   void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
   void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
                       long long from, Tally& t) const;
-  void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const;
+  void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1,
+             bool allowAllMovingCols = false) const;
   bool stillTile(size_t i) const;
   bool boxed(const Candidate& c) const;
   int texturedRowCount(const Signature& sig) const;
@@ -413,7 +414,7 @@ class ScrollTracker {
              bool* byExpectation, SkipReason* why, int* unexplainedPick = nullptr) const;
   bool observeDynamic(const Signature& cur, const Signature& other, long long curPos, long long otherPos,
                       const std::vector<Candidate>* cands, int pick, bool verifyAgreement);
-  void snapshotDynamic(const FrameView& frame, long long pos);
+  void snapshotDynamic(const FrameView& frame, long long pos, const Signature& cur, const Signature& ref, int d);
   const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
@@ -521,11 +522,13 @@ class ScrollTracker {
   // playing video scrolled slowly or back and forth through the page's area
   // cannot build up pinning evidence until the page actually moves a full
   // frame height across it (#1537).
-  std::vector<long long> wanderingMinPos_, wanderingMaxPos_;
+  std::vector<long long> wanderingMinPos_, wanderingMaxPos_, wanderingEdgePos_;
   // Whether the current wandering_ episode overlapped a confirmed scrolling
   // page column (remembered until wandering_ resets so margin edges of a
-  // full-width in-page video keep page membership as the video scrolls past).
-  std::vector<uint8_t> wanderingPage_;
+  // full-width in-page video keep page membership as the video scrolls past),
+  // and consecutive learn() steps a wandering block sat directly beside
+  // cleanly moving text (stationary edge -> fixed floating overlay, not page).
+  std::vector<uint8_t> wanderingPage_, wanderingEdge_;
   // Blocks that have shown textured motion with the page (`move >= 3`), never
   // expiring while scrolling back and forth over an in-page video (#1537).
   std::vector<uint8_t> pageMoved_;
@@ -534,6 +537,8 @@ class ScrollTracker {
     long long p0 = 0, p1 = 0;
     int k0 = 0, k1 = 0;
     long long coveredCells = 0;
+    uint8_t settledCount = 0;
+    bool settled = false;
   };
   bool hasDyn_ = false;
   std::vector<DynSnap> dynSnaps_;

@@ -933,7 +933,8 @@ int ScrollTracker::texturedRowCount(const Signature& sig) const {
 
 bool ScrollTracker::stillTile(size_t i) const { return stillTile_[i] >= 2 && 2 * stillTile_[i] >= texCellTile_[i]; }
 
-void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const {
+void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1,
+                          bool allowAllMovingCols) const {
   const int B = bands.bands;
   const size_t tiles = bands.inf.size();
   unsigned ka = 0, ki = 0, ca = 0, ci = 0;
@@ -987,10 +988,11 @@ void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, 
     }
   };
   countCoverage(false);
-  // A large full-width playing video (>50% of viewport height) can drop every
-  // column below 50% agreement even though the surrounding page moves cleanly
-  // and nothing stands still; fall back to columns with agreeing bands (#1537).
-  if (movedRows + stillRows == 0) countCoverage(true);
+  // When dynamic bands exist or during the low-floor dynamic retry, a large
+  // full-width playing video (>50% of viewport height) can drop every column
+  // below 50% agreement even though the surrounding page moves cleanly and
+  // nothing stands still; fall back to columns with agreeing bands (#1537).
+  if (movedRows + stillRows == 0 && (hasDyn_ || allowAllMovingCols)) countCoverage(true);
   c.bands = bands.share();
   c.cells = cells.share();
   c.area = shown ? double(moving) / shown : 0.0;
@@ -1127,7 +1129,7 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     cellTally(cur, ref, f.d, tc);
     Candidate c;
     c.d = f.d;
-    judge(c, f.bands, tc, std::max(0, -f.d), std::min(H, H - f.d));
+    judge(c, f.bands, tc, std::max(0, -f.d), std::min(H, H - f.d), floorOverride > 0.0);
     out.push_back(c);
   }
   // The best by cells, and any that ties with it, to the row: a neighbour
@@ -1147,7 +1149,7 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
         bandTally(cur, ref, d, t);
         Candidate n;
         n.d = d;
-        judge(n, t, tc, std::max(0, -d), std::min(H, H - d));
+        judge(n, t, tc, std::max(0, -d), std::min(H, H - d), floorOverride > 0.0);
         c = n;
       }
     }
@@ -1486,7 +1488,7 @@ void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const st
 
 // The rows a frame placed at pos shares with the image must agree with it
 // (the second opinion after the pair: wayscrollshot's check against the
-// long image). Lenient: content that changes in place is taken as first seen.
+// long image). Dynamic bands (such as playing video) are excluded here.
 bool ScrollTracker::contradicted(const Signature& cur, long long pos, double keepShare) const {
   Tally t;
   storeBandTally(cur, pos, 1, t);
@@ -1674,7 +1676,7 @@ bool ScrollTracker::observeDynamic(const Signature& cur, const Signature& other,
   // the last placed frame were themselves proved to move with the page on that
   // placement (`proofAt_ == frameSerial_`, with `frameSerial_ >= 2`). Checking
   // `!= 0` is not enough because late sticky chrome can appear over screen
-  // blocks that showed the page on an earlier step (#1537 S2).
+  // blocks that showed the page on an earlier step (#1537).
   const int C = cells_;
   bool useProof = false;
   if (dp == 0 && verifyAgreement) {
@@ -1832,7 +1834,8 @@ bool ScrollTracker::observeDynamic(const Signature& cur, const Signature& other,
 // than any earlier snapshot, it replaces the region's pixels cleanly; when a
 // dynamic region is taller than the viewport, later frames only fill rows not
 // yet written.
-void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
+void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const Signature& cur, const Signature& ref,
+                                    int d) {
   if (!hasDyn_ || !store_) return;
   const int H = height_, B = int(bandLo_.size()) - 1, P = opts_.cellPx;
   const int words = store_->words;
@@ -1899,7 +1902,7 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
       // can write across [writeLo, writeHi) over the confirmed dynamic rows
       // [p0, p1), so clearing an exclusion in an outer margin or widening the
       // dynamic region replaces an earlier partial snapshot without letting a
-      // permanently pinned scrollbar zero out the score (#1537 S3).
+      // permanently pinned scrollbar zero out the score (#1537).
       long long frameCovered = 0;
       for (long long p = c0; p < c1; ++p) {
         const int y = int(p - pos);
@@ -1911,7 +1914,7 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
       // Also consider the retained topmost (`topCopy_`) and bottommost
       // (`bottomCopy_`) frames over the confirmed dynamic rows [p0, p1) so a
       // video that started leaving the top or bottom of the viewport before
-      // being marked dynamic is still written cleanly from one frame (#1537 S4).
+      // being marked dynamic is still written cleanly from one frame (#1537).
       const auto scoreCopy = [&](const FrameCopy& copy, long long r0, long long r1) {
         long long cov = 0;
         for (long long p = r0; p < r1; ++p) {
@@ -1953,14 +1956,53 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
       }
       if (unblockedCells <= 0) continue;
       long long prevBest = 0;
-      for (const DynSnap& s : dynSnaps_)
-        if (s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK) prevBest = std::max(prevBest, s.coveredCells);
-      const bool replace = unblockedCells > prevBest;
+      DynSnap* prevSnap = nullptr;
+      for (DynSnap& s : dynSnaps_)
+        if (s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK) {
+          if (s.coveredCells > prevBest) {
+            prevBest = s.coveredCells;
+            prevSnap = &s;
+          }
+        }
+      bool replace = unblockedCells > prevBest;
+      bool settledNow = false;
+      // If a transient change (e.g. a lazy-loaded image fading in or a hover
+      // popup dismissing) stops changing across 2 consecutive placed frames at
+      // full coverage, replace the mid-transition snapshot once with the final
+      // settled frame (#1537).
+      if (!replace && prevSnap && !prevSnap->settled && d != 0 && frameCovered == prevBest && frameCovered > 0) {
+        const int bTol = bandTol_;
+        int agreed = 0, total = 0;
+        for (long long p = c0; p < c1; ++p) {
+          const int y = int(p - pos);
+          const int oy = y + d;
+          if (oy < 0 || oy >= H) continue;
+          const uint16_t* ba = cur.bandRow(y);
+          const uint16_t* bb = ref.bandRow(oy);
+          for (int k = minK; k <= maxK; ++k) {
+            ++total;
+            if (absDiff(ba[k], bb[k]) <= unsigned(bTol)) ++agreed;
+          }
+        }
+        if (total >= 8 && agreed * 100 >= total * 95) {
+          prevSnap->settledCount = uint8_t(std::min(255, int(prevSnap->settledCount) + 1));
+          if (prevSnap->settledCount >= 2) {
+            chosenCopy = nullptr;
+            w0 = c0;
+            w1 = c1;
+            unblockedCells = frameCovered;
+            replace = true;
+            settledNow = true;
+          }
+        } else {
+          prevSnap->settledCount = 0;
+        }
+      }
       // When replacing from a retained copy (`topCopy_` / `bottomCopy_`), also
       // include contiguous boundary rows just outside [p0, p1) that were
       // already observed changing (`dynHits >= 1` across at least half the
-      // dynamic bands) before scrolling off the viewport edge, without ever
-      // touching unobserved rows or locking them as verified (#1537 S4).
+      // dynamic bands) before scrolling off the viewport edge, stopping at any
+      // static or zero-hit row and never locking them as verified (#1537).
       long long extW0 = w0, extW1 = w1;
       if (replace && chosenCopy) {
         const auto rowIsStatic = [&](long long p) {
@@ -2037,7 +2079,7 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
         std::erase_if(dynSnaps_, [&](const DynSnap& s) {
           return s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK;
         });
-        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedCells});
+        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedCells, uint8_t(settledNow ? 2 : 0), settledNow});
       }
     }
   }
@@ -2165,20 +2207,89 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
         for (int k = r; k < e; ++k) confirmedPage[size_t(k) * C + c] = 1;
       r = e;
     }
+  // Detect fixed/floating animated overlays sitting over the moving page:
+  // an in-page video's boundary can only remain at the same viewport block
+  // row while the page stays within ~2 block rows of where that boundary first
+  // appeared there, whereas a viewport-fixed animated player or bottom ad
+  // keeps the same boundary block row beside cleanly moving text across
+  // >= 3 block rows of net page movement (#1537).
+  const long long newPos = lastPos_ + d;
+  for (size_t i = 0; i < stay.size(); ++i) {
+    if (excl_[i] || ghost_[i]) {
+      wanderingEdge_[i] = 0;
+      wanderingEdgePos_[i] = 0;
+      continue;
+    }
+    const unsigned s = stay[i], m = move[i], x = astray[i];
+    if (x >= 3 && m == 0 && s < x) {
+      const int br = int(i) / C;
+      const bool aboveMoving = br > 0 && astray[i - size_t(C)] == 0 &&
+                               (move[i - size_t(C)] >= 3 ||
+                                (br > 1 && astray[i - size_t(2 * C)] == 0 && move[i - size_t(2 * C)] >= 3));
+      const bool belowMoving =
+          br + 1 < blockRowCount_ && astray[i + size_t(C)] == 0 &&
+          (move[i + size_t(C)] >= 3 ||
+           (br + 2 < blockRowCount_ && astray[i + size_t(2 * C)] == 0 && move[i + size_t(2 * C)] >= 3));
+      if (aboveMoving || belowMoving) {
+        if (wanderingEdge_[i] == 0) wanderingEdgePos_[i] = lastPos_;
+        wanderingEdge_[i] = uint8_t(std::min(255, int(wanderingEdge_[i]) + 1));
+      } else {
+        wanderingEdge_[i] = 0;
+        wanderingEdgePos_[i] = 0;
+      }
+    } else if (m >= 3 || x == 0) {
+      wanderingEdge_[i] = 0;
+      wanderingEdgePos_[i] = 0;
+    }
+  }
+  // Mark any 4-connected wandering component with >= 2 stationary-edge blocks
+  // whose edge stayed fixed across >= 3 block rows of page travel as a fixed
+  // overlay so it does not inherit scrolling-page membership.
+  std::vector<uint8_t> fixedOverlay(stay.size(), 0);
+  {
+    const long long minFixedTravel = 3LL * opts_.blockRows;
+    std::vector<uint8_t> seenW(stay.size(), 0);
+    std::vector<size_t> comp;
+    for (size_t start = 0; start < stay.size(); ++start) {
+      if (seenW[start] || !isWand(start)) continue;
+      seenW[start] = 1;
+      comp.clear();
+      comp.push_back(start);
+      int fixedEdges = 0;
+      for (size_t head = 0; head < comp.size(); ++head) {
+        const size_t curI = comp[head];
+        fixedEdges += wanderingEdge_[curI] >= 2 && std::llabs(newPos - wanderingEdgePos_[curI]) >= minFixedTravel;
+        const int br = int(curI) / C, c = int(curI) % C;
+        const auto visit = [&](int nbr, int nc) {
+          if (nbr < 0 || nbr >= blockRowCount_ || nc < 0 || nc >= C) return;
+          const size_t ni = size_t(nbr) * C + size_t(nc);
+          if (seenW[ni] || !isWand(ni)) return;
+          seenW[ni] = 1;
+          comp.push_back(ni);
+        };
+        visit(br - 1, c);
+        visit(br + 1, c);
+        visit(br, c - 1);
+        visit(br, c + 1);
+      }
+      if (fixedEdges >= 2)
+        for (size_t idx : comp) fixedOverlay[idx] = 1;
+    }
+  }
   // Carry confirmed page membership across the same 4-connected wandering
   // object (a full-width in-page playing video extending past text margins),
-  // without leaking into a separate sticky rail because only wandering blocks
-  // already inside a confirmed page column seed propagation (#1537 S3).
+  // without leaking into a separate sticky rail or a fixed-edge floating
+  // overlay over the article (#1537).
   std::vector<size_t> wandQ;
   for (size_t i = 0; i < stay.size(); ++i)
-    if (confirmedPage[i] && isWand(i)) wandQ.push_back(i);
+    if (confirmedPage[i] && isWand(i) && !fixedOverlay[i]) wandQ.push_back(i);
   for (size_t head = 0; head < wandQ.size(); ++head) {
     const size_t i = wandQ[head];
     const int br = int(i) / C, c = int(i) % C;
     const auto visit = [&](int nbr, int nc) {
       if (nbr < 0 || nbr >= blockRowCount_ || nc < 0 || nc >= C) return;
       const size_t ni = size_t(nbr) * C + size_t(nc);
-      if (confirmedPage[ni] || !isWand(ni)) return;
+      if (confirmedPage[ni] || fixedOverlay[ni] || !isWand(ni)) return;
       confirmedPage[ni] = 1;
       wandQ.push_back(ni);
     };
@@ -2187,29 +2298,34 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
     visit(br, c - 1);
     visit(br, c + 1);
   }
-  const long long newPos = lastPos_ + d;
   std::vector<uint8_t> weak(stay.size(), 0);
   for (size_t i = 0; i < stay.size(); ++i) {
     if (excl_[i] || ghost_[i]) {  // the excluded rectangle and a loose part learn nothing
-      stayed_[i] = wandering_[i] = wanderingPage_[i] = 0;
-      wanderingMinPos_[i] = wanderingMaxPos_[i] = 0;
+      stayed_[i] = wandering_[i] = wanderingPage_[i] = wanderingEdge_[i] = 0;
+      wanderingMinPos_[i] = wanderingMaxPos_[i] = wanderingEdgePos_[i] = 0;
       continue;
     }
     const unsigned s = stay[i], m = move[i], x = astray[i];
     // A block that keeps changing at its own place while the page moves (an
-    // animated advertisement in a column that sticks) is not the page either.
-    // Inside the confirmed scrolling page, an in-page playing video scrolled
-    // slowly or back and forth stays over the same viewport block: require a
-    // full frame of net page displacement span before pinning it (#1537).
+    // animated advertisement in a column that sticks or a floating player) is
+    // not the page either. Inside the confirmed scrolling page, an in-page
+    // playing video scrolled slowly or back and forth stays over the same
+    // viewport block: require a full frame of net page displacement span before
+    // pinning it unless its edge stayed stationary against moving text (#1537).
     if (x >= 3 && m == 0 && s < x) {
+      if (fixedOverlay[i]) {
+        wanderingPage_[i] = 0;
+      } else if (wandering_[i] == 0) {
+        wanderingPage_[i] = confirmedPage[i];
+      } else {
+        wanderingPage_[i] |= confirmedPage[i];
+      }
       if (wandering_[i] == 0) {
         wanderingMinPos_[i] = std::min(lastPos_, newPos);
         wanderingMaxPos_[i] = std::max(lastPos_, newPos);
-        wanderingPage_[i] = confirmedPage[i];
       } else {
         wanderingMinPos_[i] = std::min({wanderingMinPos_[i], lastPos_, newPos});
         wanderingMaxPos_[i] = std::max({wanderingMaxPos_[i], lastPos_, newPos});
-        wanderingPage_[i] |= confirmedPage[i];
       }
       wandering_[i] = uint8_t(std::min(255, wandering_[i] + 1));
       const long long span = wanderingMaxPos_[i] - wanderingMinPos_[i];
@@ -2218,8 +2334,8 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
         changed = true;
       }
     } else if (m >= 3) {
-      wandering_[i] = wanderingPage_[i] = 0;
-      wanderingMinPos_[i] = wanderingMaxPos_[i] = 0;
+      wandering_[i] = wanderingPage_[i] = wanderingEdge_[i] = 0;
+      wanderingMinPos_[i] = wanderingMaxPos_[i] = wanderingEdgePos_[i] = 0;
     }
     const unsigned all = s + stayFlat[i];
     if (all >= 3 && all >= 3 * m) {
@@ -3202,8 +3318,8 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
         for (int c = part.c0; c <= part.c1; ++c) {
           const size_t i = size_t(br) * C + c;
           if (groupOf[i] != g) continue;
-          pinned_[i] = stayed_[i] = wandering_[i] = wanderingPage_[i] = 0;
-          wanderingMinPos_[i] = wanderingMaxPos_[i] = 0;
+          pinned_[i] = stayed_[i] = wandering_[i] = wanderingPage_[i] = wanderingEdge_[i] = 0;
+          wanderingMinPos_[i] = wanderingMaxPos_[i] = wanderingEdgePos_[i] = 0;
           picAt_[i] = 0;
           blocked_[i] = 0;
           released_[i] = 1;
@@ -3285,8 +3401,8 @@ void ScrollTracker::applyExcluded() {
   }
   for (size_t i = 0; i < excl_.size(); ++i)
     if (excl_[i]) {
-      pinned_[i] = stayed_[i] = wandering_[i] = wanderingPage_[i] = stillNow_[i] = 0;
-      wanderingMinPos_[i] = wanderingMaxPos_[i] = 0;
+      pinned_[i] = stayed_[i] = wandering_[i] = wanderingPage_[i] = wanderingEdge_[i] = stillNow_[i] = 0;
+      wanderingMinPos_[i] = wanderingMaxPos_[i] = wanderingEdgePos_[i] = 0;
       if (i < picAt_.size()) picAt_[i] = 0;
     }
   closeMask();
@@ -3497,6 +3613,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
           if (lead[size_t(br) * C + c] < 0) lone[size_t(br) * words + size_t(c >> 6)] |= 1ull << (c & 63);
     }
     std::vector<uint64_t> dynWords(static_cast<size_t>(words), 0);
+    std::vector<uint64_t> blockProved(size_t(blockRowCount_) * size_t(words), 0);
     const int B = cur.bands;
     for (int y = std::max(0, -d); y < std::min(H, H - d); ++y) {
       const long long p = pos + y;
@@ -3535,14 +3652,10 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
         // pushing the header down) or as a column that lets go. Also leave
         // dynamic page bands (#1537) to snapshotDynamic so video frames are
         // never mixed cell by cell.
-        // Record motion proof even on already-verified cells so revisiting a
-        // previously captured section and then pausing over a newly playing
-        // video refreshes `proofAt_` to `frameSerial_`, while never rewriting
-        // cells already verified (#1537).
+        const uint64_t blockedMask = vc[w] | vr[w] | blk[w] | blkRef[w] | lone[size_t(brow) * words + size_t(w)] |
+                                     (rowHasDyn ? dynWords[size_t(w)] : 0ull);
         const uint64_t alreadyVer = store_->ver[at + size_t(w)];
-        uint64_t need = ~(vc[w] | vr[w] | blk[w] | blkRef[w] | lone[size_t(brow) * words + size_t(w)] |
-                          (rowHasDyn ? dynWords[size_t(w)] : 0ull)) &
-                        full[size_t(w)];
+        uint64_t need = ~(alreadyVer | blockedMask) & full[size_t(w)];
         uint64_t take = 0, moved = 0;
         while (need) {
           const int bit = std::countr_zero(need);
@@ -3550,16 +3663,31 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
           const int c = w * 64 + bit;
           if (absDiff(a[c], b[c]) > tol) continue;
           if (absDiff(a[c], there[c]) > tol) {
-            if (!((alreadyVer >> bit) & 1ull)) take |= 1ull << bit;
+            take |= 1ull << bit;
             moved |= 1ull << bit;
           } else if ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= tol / 8) {
             // Repeating at the step's distance repeats exactly (a table's
             // equal rows): what stays put a shade off the page there (a
             // toolbar's edge, a banner that has just stopped) is not it.
             moved |= 1ull << bit;
-            if (!youngMask && !((alreadyVer >> bit) & 1ull)) take |= 1ull << bit;
+            if (!youngMask) take |= 1ull << bit;
           }
         }
+        // Refresh `proofAt_` at most once per block on already-verified cells
+        // so revisiting a captured section and pausing over a newly playing
+        // video stays Following without scanning every verified row (#1537).
+        uint64_t bp = blockProved[size_t(brow) * words + size_t(w)] | moved;
+        uint64_t verNeed = alreadyVer & ~bp & ~blockedMask & full[size_t(w)];
+        while (verNeed) {
+          const int bit = std::countr_zero(verNeed);
+          verNeed &= verNeed - 1;
+          const int c = w * 64 + bit;
+          if (absDiff(a[c], b[c]) > tol) continue;
+          if (absDiff(a[c], there[c]) > tol || ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= tol / 8))
+            moved |= 1ull << bit;
+        }
+        blockProved[size_t(brow) * words + size_t(w)] |= moved;
+        blockProved[size_t(bref) * words + size_t(w)] |= moved;
         mask[size_t(w)] = take;
         proved[size_t(w)] = moved;
         any |= take != 0;
@@ -3628,7 +3756,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
       uint64_t m = ~(store_->prov[at + size_t(w)] | blkW) & full[size_t(w)];
       // Plain cells on an unverified provisional cell (e.g. a 1-frame transient
       // overlay edge flushed before a second plain frame arrived) still flow to
-      // flushPending so 2+ plain votes can overrule it (#1537 S4).
+      // flushPending so 2+ plain votes can overrule it (#1537).
       uint64_t provUnver = store_->prov[at + size_t(w)] & ~store_->ver[at + size_t(w)] & ~blkW &
                            ~veto[size_t(brow) * words + size_t(w)] & full[size_t(w)];
       while (provUnver) {
@@ -4030,7 +4158,9 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     wandering_.assign(blocks, 0);
     wanderingMinPos_.assign(blocks, 0);
     wanderingMaxPos_.assign(blocks, 0);
+    wanderingEdgePos_.assign(blocks, 0);
     wanderingPage_.assign(blocks, 0);
+    wanderingEdge_.assign(blocks, 0);
     pageMoved_.assign(blocks, 0);
     pinned_.assign(blocks, 0);
     closed_.assign(blocks, 0);
@@ -4108,7 +4238,6 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (prevHasPos_ && prevPos_ == lastPos_ && prevSig())
       observeOnce(cur, *prevSig(), lastPos_, lastPos_, nullptr, -1, !still);
     if (still) {
-      if (!viewMoved_ && hasDyn_) snapshotDynamic(frame, lastPos_);
       std::swap(last_, work_);
       prevIsLast_ = true;
       prevPos_ = lastPos_;
@@ -4531,7 +4660,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   learn(cur, ref, d);
   placeFrame(frame, cur, &ref, d, pos, r);
   if (d != 0 && !viewMoved_ && !r.onHint) observeOnce(*last_, *work_, pos, prevLastPos, &cands, pick, false);
-  if (!viewMoved_ && !r.onHint && hasDyn_) snapshotDynamic(frame, pos);
+  if (!viewMoved_ && !r.onHint && hasDyn_) snapshotDynamic(frame, pos, *last_, *work_, d);
   prevIsLast_ = true;
   prevPos_ = pos;
   prevHasPos_ = true;
