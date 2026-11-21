@@ -290,6 +290,48 @@ private slots:
         QCOMPARE(restore.size() + reset.size(), 0);
     }
 
+    // r5-neon #4: a pointer click on a row's Remove hands the keys back to the
+    // window (no silent focus on the next row); Delete from the keyboard moves
+    // focus to the next surviving row.
+    void removeByPointerReturnsFocusAndByKeyMovesOn() {
+        QWidget window;
+        window.resize(320, 700);
+        auto* layout = new QVBoxLayout(&window);
+        auto* panel = new ReviewPanel(std::make_shared<MaskNames>(), &window);
+        layout->addWidget(panel);
+        auto s = edited();
+        s.selectedKind = "cover";
+        s.selectedId = "m1";
+        panel->setState(s);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QSignalSpy remove(panel, &ReviewPanel::removeCover), back(panel, &ReviewPanel::focusReturnRequested);
+        QAbstractButton* verb = nullptr;
+        for (auto* b : row(*panel, "cover/m1")->findChildren<QAbstractButton*>("reviewPanelRowVerb")) verb = b;
+        QVERIFY(verb && verb->isVisibleTo(panel));
+        QTest::mouseClick(verb, Qt::LeftButton);
+        QCOMPARE(remove.size(), 1);
+        s.edit.masks.removeFirst();
+        s.edit.revision += 1;
+        s.selectedKind.clear();
+        s.selectedId.clear();
+        panel->setState(s);
+        QCOMPARE(back.size(), 1);
+        QVERIFY(!panel->isAncestorOf(QApplication::focusWidget()));
+
+        auto* last = row(*panel, "cover/m2");
+        last->setFocus(Qt::TabFocusReason);
+        QTest::keyClick(last, Qt::Key_Delete);
+        QCOMPARE(remove.size(), 2);
+        s.edit.masks.removeFirst();
+        s.edit.revision += 1;
+        panel->setState(s);
+        QCOMPARE(back.size(), 1);
+        QVERIFY(QApplication::focusWidget() && QApplication::focusWidget()->objectName() == QString("reviewPanelRow"));
+    }
+
     // U4: with a time selection, Delete on any row cuts the selection (as in the
     // viewer and the timeline) and never removes the row's cover.
     void deleteOnARowCutsATimeSelection() {
