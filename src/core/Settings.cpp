@@ -591,6 +591,14 @@ QJsonObject Settings::profileForDestination(const QJsonObject& destination, cons
                                                     {"backblaze-b2", {"apiUrl", "bucket"}}};
     const auto value = [](const QJsonObject& settings, const QString& key) {
         auto text = settings[key].toString().trimmed();
+        if (key == "addressing") {
+            // The addressing requests use, by the S3 driver's rule (s3VirtualAddressing in
+            // src/storage/s3/PublicUrl.cpp): auto is virtual-hosted only on an amazonaws.com host for a
+            // bucket without dots, so auto and path reach the same host elsewhere. Anything else never matches.
+            if (text == "auto")
+                return QUrl(settings["endpoint"].toString()).host().endsWith("amazonaws.com") && !settings["bucket"].toString().contains('.') ? QStringLiteral("virtual") : QStringLiteral("path");
+            return text == "path" || text == "virtual" ? text : QString();
+        }
         if (key == "endpoint" || key == "apiUrl") {
             // Scheme and host compare without case; port and path exactly as the provider uses them.
             QUrl url(text);

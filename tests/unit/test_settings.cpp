@@ -40,6 +40,10 @@ private slots:
   QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
   // #1778: addressing picks the host S3 requests go to, and an IPv6 literal keeps its brackets.
   QVERIFY(putgd::Settings::profileForDestination(s3,{QJsonObject{{"id","v"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","virtual"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject r2{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(r2,{QJsonObject{{"id","a"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","auto"},{"bucket","shots"}}}}})["id"].toString(),QString("a"));
+  const QJsonObject aws{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(aws,{QJsonObject{{"id","c"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","auto"},{"bucket","shots"}}}}}).isEmpty());
   const QJsonObject ipv6{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1]:443"},{"bucket","shots"}}}};
   QVERIFY(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","u"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1:443]"},{"bucket","shots"}}}}}).isEmpty());
   QCOMPARE(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","t"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:DB8::1]:443/"},{"bucket","shots"}}}}})["id"].toString(),QString("t"));
