@@ -202,8 +202,8 @@ helper's on all 176 captures on aurora-amd and 50 on k72, and the largest peak, 
 24-megapixel page with four engines, was 258 MiB. That page also ran normally with
 `RLIMIT_DATA` at 320 MiB. Through the packaged helper of #1809, which first spends about a second
 of a 4K job on one thread for the emoji scan and page analysis, the gain is smaller. On k72 the
-CI DEB's resident was compared with today's helper built from the research tree, linked to the
-same distro Tesseract and driven by `test_ocr_run`. The screens of 4 megapixels or more went from
+CI DEB ran through its own resident and packaged helper. The baseline was today's helper built
+from the #1805 research tree, linked to the same distro Tesseract and driven by `test_ocr_run`. The screens of 4 megapixels or more went from
 4.07 s on average to 3.14 s and 3.06 s in two runs. The dense page read 66,138 to 70,602
 characters before the time budget instead of 48,546, and the highest peak was 172 MiB. On
 aurora-amd the candidate AppImage was compared with the nightly AppImage. Its bundled engine
