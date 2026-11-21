@@ -45,6 +45,8 @@ REVIEW = ' — open the tray menu to review'
 ATTENTION_LABELS = {'local-save': ('Local save needs attention',), 'proton-busy': ('Failed uploads',)}
 # A latched failure must survive at least this long without being opened.
 LATCH_SECONDS = 3
+# The failure badge leaves the icon after this long (TrayController::failureMs); the menu row stays.
+FAILURE_SECONDS = 8
 LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local copy',
           'sharing': 'Creating share link', 'reconciling': 'Checking previous upload'}
 # Theme::trayTints (src/ui/Theme.cpp): the panel the icon sits on, not the app
@@ -798,10 +800,11 @@ class Replay:
                 self.witness(label + '-attention', hover=False)
             expected['lastAttentionAt'] = now
         elif 'attentionObservedAt' in expected:
-            # Only opening the attention item clears a local failure; a Proton
-            # busy latch also clears once its retried items have uploaded.
-            require('acknowledgedAt' in expected or expected['kind'] == 'proton-busy',
-                    'Tray cleared a latched failure before its attention item was opened')
+            # The badge leaves the icon after FAILURE_SECONDS, or when the attention item
+            # is opened; a Proton busy latch also clears once its retried items have uploaded.
+            require('acknowledgedAt' in expected or expected['kind'] == 'proton-busy'
+                    or now - expected['attentionObservedAt'] >= FAILURE_SECONDS - 1,
+                    'Tray cleared a failure badge before its time or its attention item was opened')
             expected['clearedAt'] = now
 
     def tray_menu(self, snapshot, label=None):
@@ -866,9 +869,11 @@ class Replay:
             lab.pointer(self.run, self.width // 2, self.height // 2, self.width, self.height)
             time.sleep(.8)
             before = self.witness(label + '-menu-before', hover=False)
-            found = locate_tinted_icon(before, self.tints['error'], (x, y))
+            # The badge may have timed out by now; the menu row it points to stays.
+            found = locate_tinted_icon(before, self.tints['error'], (x, y)) \
+                or locate_tinted_icon(before, self.tints['idle'], (x, y))
             if found is None:
-                raise VisibleMenuFailed('the latched tray icon is not near the supplied position')
+                raise VisibleMenuFailed('the tray icon is not near the supplied position')
             x, y = attempt['iconAt'] = found
             if settings['primeOpen']:
                 # GNOME's AppIndicator applies a LayoutUpdated received while

@@ -216,7 +216,8 @@ TrayController::Activity TrayController::stageOf(const QJsonObject& operation) {
  if(operation["action"]=="record"&&!recordingHandedOver(operation))return Activity::Idle;
  const auto state=operation["state"].toString();
  if(state=="accepted"||state=="acquiring")return Activity::Capturing;
- if(state!="stored"&&state!="running")return Activity::Processing;
+ // Only a running operation uploads: a stored one may still be "preparing" its artifact.
+ if(state!="running")return Activity::Processing;
  if(operation["destination"].toObject()["providerId"].toString().isEmpty())return Activity::Processing;
  if(QStringList{"uploading","finalizing","preparing","sharing","reconciling"}.contains(operation["phase"].toString()))return Activity::Uploading;
  for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploading")return Activity::Uploading;
@@ -332,7 +333,7 @@ TrayController::TrayController(OperationService& operations,
   t.setParent(this);t.setObjectName(QString::fromLatin1(name));t.setSingleShot(true);t.setTimerType(Qt::PreciseTimer);if(ms>0)t.setInterval(ms);
   connect(&t,&QTimer::timeout,this,[this,fired=std::move(fired)]{if(fired)fired();refreshActivity();});
  };
- timer(startTimer_,"trayStartTimer",startBoundMs,[this]{startPending_=false;});
+ timer(startTimer_,"trayStartTimer",startBoundMs,[this]{startPending_=0;});
  timer(dwellTimer_,"trayDwellTimer",0,{});
  timer(completeTimer_,"trayCompleteTimer",completeMs,[this]{completeShown_=false;});
  timer(failureTimer_,"trayFailureTimer",failureMs,[this]{failureShown_=false;});
@@ -578,10 +579,13 @@ void TrayController::refreshActivity() {
  for(const auto& value:observations) {
   const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
   auto stage=stageOf(op);uploadingNow|=stage==Activity::Uploading;
-  if(const auto known=opStages_.constFind(id);known==opStages_.cend())fresh=true;else if(int(*known)>int(stage))stage=*known;
+  // A recording handed over to Upload is new work; one handed back to review (its
+  // export failed) shows its badge again instead of the stage it had reached.
+  if(const auto known=opStages_.constFind(id);known==opStages_.cend())fresh=true;
+  else if(stage!=Activity::Idle){if(*known==Activity::Idle)fresh=true;else if(int(*known)>int(stage))stage=*known;}
   opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
  }
- if(startPending_&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
+ if(startPending_>0&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
  // New work replaces a failure or a completion still on the icon.
  if(fresh){failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();}
  QStringList finished;for(auto it=opStages_.begin();it!=opStages_.end();)if(activeIds.contains(it.key()))++it;else{finished.append(it.key());it=opStages_.erase(it);}
@@ -590,7 +594,9 @@ void TrayController::refreshActivity() {
   operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
    if(!guard)return;
    if(--guard->pendingFinishes_==0)guard->finishingTimer_.stop();
-   if(!error&&operation["state"]=="completed"&&!guard->failureShown_) {
+   // Only the last work to finish shows Complete: an earlier one must not flash it after a later cancel.
+   bool busy=guard->startPending_>0;for(const auto stage:std::as_const(guard->opStages_))busy|=workingStage(stage);
+   if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy) {
     bool uploaded=false,saved=false;
     for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();uploaded|=item["uploadStatus"]=="uploaded";saved|=item["local"].toObject()["status"]=="saved";}
     if(uploaded||saved){guard->completeShown_=true;guard->completeUploaded_=uploaded;}
@@ -607,10 +613,13 @@ void TrayController::refreshActivity() {
  if(workingStage(shown_)&&next!=shown_) {
   // Walk forward through each stage this run reached, so none is skipped.
   if(int(shown_)<int(reached_)&&(!workingStage(next)||int(next)>int(shown_)+1))next=Activity(int(shown_)+1);
-  const auto held=shownClock_.isValid()?shownClock_.elapsed():qint64(stageDwellMs);
-  if(held<stageDwellMs){if(!dwellTimer_.isActive())dwellTimer_.start(int(stageDwellMs-held));next=shown_;}
+  if(shownClock_.isValid()&&shownClock_.elapsed()<stageDwellMs)next=shown_;
  }
  if(next!=shown_)showStage(next);
+ // A working stage that is not yet the target moves on when its dwell ends, even if
+ // nothing else changes (a stage stepped through after the work already finished).
+ if(workingStage(shown_)&&shown_!=target){if(!dwellTimer_.isActive())dwellTimer_.start(int(qMax(qint64(1),stageDwellMs-shownClock_.elapsed())));}
+ else dwellTimer_.stop();
  const auto shown=shown_;
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused"&&!recording)recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
@@ -658,8 +667,9 @@ void TrayController::flashError() {
  refreshActivity();
 }
 void TrayController::showStage(Activity stage) {
+ // A run that steps back (its furthest operation finished first) walks on only from here.
+ if(!workingStage(stage))reached_=Activity::Idle;else if(int(stage)<int(shown_))reached_=stage;
  shown_=stage;shownClock_.start();
- if(!workingStage(stage))reached_=Activity::Idle;
  if(stage==Activity::Complete)completeTimer_.start();
  if(stage==Activity::Failed)failureTimer_.start();
  stageHistory_.append(QJsonObject{{"activity",activityName(stage)},{"at",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
@@ -709,10 +719,10 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  // The icon answers the press itself, before the service has accepted the work: a
  // recording has its own bar and badge instead.
  const bool capture=action!=Settings::recordingActionName();
- if(capture){startPending_=true;startTimer_.start();failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();refreshActivity();}
+ if(capture){++startPending_;startTimer_.start();failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();refreshActivity();}
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action,capture](Error error, QJsonObject) {
   // Accepted work is an observation by now; a refusal ends the press.
-  if (guard && capture) {guard->startPending_=false;guard->startTimer_.stop();guard->refreshActivity();}
+  if (guard && capture) {guard->startPending_=qMax(0,guard->startPending_-1);if(!guard->startPending_)guard->startTimer_.stop();guard->refreshActivity();}
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
    // A second Copy text press while one runs: say so and change nothing else.

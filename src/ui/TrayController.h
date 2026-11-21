@@ -160,8 +160,8 @@ private:
  // errorPending_ keeps the menu's attention row until it is reviewed; the icon's
  // failure badge is failureShown_, which clears after failureMs or with new work.
  bool errorPending_=false,failureShown_=false,completeShown_=false,completeUploaded_=false;
- // A hotkey or tray press whose operation the service has not yet answered.
- bool startPending_=false;
+ // Hotkey or tray presses whose operations the service has not yet answered.
+ int startPending_=0;
  QTimer startTimer_,dwellTimer_,completeTimer_,failureTimer_,finishingTimer_;
  Activity shown_=Activity::Idle;
  // The furthest working stage the current run has reached, so a stage that

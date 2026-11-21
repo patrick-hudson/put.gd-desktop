@@ -45,6 +45,21 @@ private slots:
   QStringList seen;for(const auto& value:controller.trayIconState()["history"].toArray())seen<<value.toObject()["activity"].toString();
   QCOMPARE(seen,(QStringList{"failed","idle"}));
  }
+ // An upload that finishes inside the capture stage's dwell still walks every stage it
+ // reached and ends idle: nothing else happens after it, so only the dwell timer moves it.
+ void aFastUploadStepsThroughEveryStageAndEndsIdle() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});
+  PUTGD_TRY_COMPARE(provider->requests.size(),1);provider->completions.takeFirst()();
+  PUTGD_TRY_COMPARE(controller.trayIconState()["activity"].toString(),QString("complete"));
+  PUTGD_TRY_COMPARE(controller.trayIconState()["activity"].toString(),QString("idle"));
+  QStringList seen;for(const auto& value:controller.trayIconState()["history"].toArray())seen<<value.toObject()["activity"].toString();
+  QCOMPARE(seen,(QStringList{"capturing","processing","uploading","complete","idle"}));
+ }
  // New work always shows; a failure or completion shows only once the work has ended.
  // A wrong row here shows an old error over a new upload, or a finished glyph for work still running.
  void activityFollowsTheInputs_data() {
@@ -77,6 +92,7 @@ private slots:
   QTest::newRow("editing")<<op("edit","editing","editing")<<int(A::Processing);
   QTest::newRow("reading text")<<op("text","recognizing","recognizing")<<int(A::Processing);
   QTest::newRow("saving a local copy only")<<op("region","running","saving_local")<<int(A::Processing);
+  QTest::newRow("stored, still preparing its artifact")<<op("region","stored","preparing",upload)<<int(A::Processing);
   QTest::newRow("checking the destination")<<op("region","running","preflight",upload)<<int(A::Processing);
   QTest::newRow("upload phase")<<op("region","running","uploading",upload)<<int(A::Uploading);
   QTest::newRow("an item uploading")<<op("region","running","saving_local",upload,QJsonArray{QJsonObject{{"uploadStatus","uploading"}}})<<int(A::Uploading);
