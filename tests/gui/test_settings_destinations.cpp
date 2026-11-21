@@ -480,6 +480,25 @@ private slots:
   PUTGD_VERIFY_STEADY(banner->isVisible()&&fixture.client.held.isEmpty(),800);
   QVERIFY(read.open(QIODevice::ReadOnly));QCOMPARE(read.readAll(),written);
  }
+ // #1762: removing the default destination leaves no unsaved edits behind, so a change made
+ // elsewhere afterwards updates the window quietly instead of showing "Settings changed elsewhere".
+ // Each file holds routes the form would write differently: actions naming the destination with no
+ // default output, and a shared-link default that inheriting actions don't repeat.
+ void removingTheDefaultLeavesNothingUnsaved_data(){QTest::addColumn<bool>("sharedDefault");QTest::newRow("no default output")<<false;QTest::newRow("shared-link default")<<true;}
+ void removingTheDefaultLeavesNothingUnsaved(){
+  QFETCH(bool,sharedDefault);
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();if(sharedDefault)doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","share"}};
+  else{doc.remove("captureDefaults");auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames())if(name!="record"){auto action=actions[name].toObject();action["destination"]="upload";action["profileId"]="development-s3";actions[name]=action;}doc["actions"]=actions;}
+  QVERIFY(service.save(doc,{}));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  PUTGD_TRY_VERIFY(!profileIds(service.document()).contains("development-s3")&&window.settings()->flushAutosave());
+  auto elsewhere=service.document();auto preferences=elsewhere["preferences"].toObject();preferences["captureDelaySeconds"]=5;elsewhere["preferences"]=preferences;QVERIFY(service.save(elsewhere,service.revision()));
+  auto* delay=window.settings()->findChild<QComboBox*>("captureDelaySeconds");QVERIFY(delay);
+  PUTGD_TRY_COMPARE(delay->currentData().toInt(),5);
+  PUTGD_VERIFY_STEADY(!window.settings()->saveViewState()["conflict"].toBool()&&!window.findChild<QWidget*>("destinationConflictBanner")->isVisible(),500);
+ }
  // #1704: removing the destination the default route uses falls back only the routes the file still
  // has on it when the removal is sent: a route changed elsewhere to another destination meanwhile
  // stays after Retry saving.
