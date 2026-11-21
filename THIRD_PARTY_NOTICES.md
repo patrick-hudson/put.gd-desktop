@@ -14,7 +14,8 @@ their runtime notices.
 
 The text-recognition helper `putgd-ocr` embeds small pictures of each emoji as
 two fonts draw them, used only to recognize emoji on the screen (#1748). No font
-is included. They are drawn from Noto Color Emoji 2.051, copyright Google Inc.,
+is included. They are drawn from Noto Color Emoji 2.051 (and 2.047 and 2.057,
+where those draw an emoji differently), copyright Google Inc.,
 under SIL OFL 1.1, and from Twemoji Mozilla 0.7.0, graphics copyright Twitter,
 Inc and other contributors, under CC-BY 4.0, for the emoji sequences of Unicode
 Emoji 16.0 (`emoji-test.txt`), copyright Unicode, Inc., under the Unicode License

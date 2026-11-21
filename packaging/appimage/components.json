@@ -24,7 +24,7 @@
          "licenseText": "usr/share/doc/putgd/fonts/OFL-sans.txt"},
         {"name": "IBM Plex Mono Regular", "license": "OFL-1.1",
          "licenseText": "usr/share/doc/putgd/fonts/OFL-mono.txt"},
-        {"name": "Emoji templates drawn from Noto Color Emoji 2.051 (in putgd-ocr)", "license": "OFL-1.1",
+        {"name": "Emoji templates drawn from Noto Color Emoji 2.047, 2.051 and 2.057 (in putgd-ocr)", "license": "OFL-1.1",
          "licenseText": "usr/share/doc/putgd/emoji/OFL.txt"},
         {"name": "Emoji templates drawn from Twemoji Mozilla 0.7.0 (in putgd-ocr)", "license": "CC-BY-4.0",
          "licenseText": "usr/share/doc/putgd/emoji/CC-BY-4.0.txt"},

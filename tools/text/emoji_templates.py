@@ -11,12 +11,27 @@ often than emoji, so putgd-ocr matches them, to keep a red dot from passing for
 a stop sign, but never names one. Nothing here runs at build time: the output is committed as
 src/ocr/emoji/templates.bin with its inputs in SOURCE.md.
 
-    FONTCONFIG_FILE=fonts.conf tools/text/emoji_templates.py \\
-      --emoji-test emoji-test.txt --style noto="Noto Color Emoji" \\
-      --style twemoji="Twemoji Mozilla" --side 20 --output templates.bin
+    tools/text/emoji_templates.py --emoji-test emoji-test.txt \\
+      --style noto="Noto Color Emoji" --fonts noto=noto-2.051.conf \\
+      --style twemoji="Twemoji Mozilla" --fonts twemoji=twemoji.conf \\
+      --style noto-2.047="Noto Color Emoji" --fonts noto-2.047=noto-2.047.conf \\
+      --changed noto-2.047=noto --output templates.bin
 
-fonts.conf must make each named family resolvable. Needs PyGObject (Pango,
-PangoCairo), pycairo and numpy.
+src/ocr/emoji/SOURCE.md has the command that made the committed file.
+
+Each style is drawn in its own process with FONTCONFIG_FILE set to its --fonts
+file (or the environment's), which must make the family resolvable, so one
+family can be drawn from different releases of a font. Pango and cairo draw it,
+as GTK and the browsers do, unless --drawn names records another program drew,
+such as tools/text/emoji_draw_qt (Qt's own renderer) fed by --list-sequences:
+
+    tools/text/emoji_templates.py --emoji-test emoji-test.txt --list-sequences |
+      putgd-emoji-draw-qt "Noto Color Emoji" 96 > noto-qt.records
+
+A style with --changed
+keeps only the emoji it draws differently from every style named there: the
+mean colour difference of the two templates on white is above CHANGED. Needs
+PyGObject (Pango, PangoCairo), pycairo and numpy.
 
 The file, little-endian:
   0  "PGEM", u32 version 1, u32 count, u32 side, u32 coarse side,
@@ -29,7 +44,7 @@ The file, little-endian:
   then the UTF-8 strings, then count x coarse x coarse x 4 bytes, then
   count x side x side x 4 bytes, each block starting on 64 bytes.
 """
-import argparse, hashlib, struct, sys
+import argparse, hashlib, os, pickle, struct, subprocess, sys
 
 import cairo
 import gi
@@ -41,6 +56,7 @@ from gi.repository import Pango, PangoCairo  # noqa: E402
 
 RENDER = 96
 CHROMA = 32  # max - min of R, G, B: a colour pixel, as putgd-ocr counts it
+CHANGED = 0.03  # well under putgd-ocr's 0.09 limit, and over what drawing one design two ways gives
 
 # Plain shapes, by code point: an emoji of one of these alone (with or without
 # its variation selector) is a shape, and so is every keycap. A sequence that
@@ -142,26 +158,105 @@ def template(premultiplied, side, coarse):
     return stretch(box, side), stretch(box, coarse), width / height, share
 
 
+def draw_style(emoji_test, family, side, coarse):
+    """Every emoji the family draws as one glyph: (text, side pixels, coarse pixels, aspect, colour share)."""
+    out = []
+    for text in sequences(emoji_test):
+        drawn = render(text, family)
+        made = None if drawn is None else template(drawn, side, coarse)
+        if made is not None:
+            out.append((text, *made))
+    return out
+
+
+def drawn_in(records, emoji_test, side, coarse):
+    """draw_style from a drawer's records: u32 text bytes, text, u32 width, u32 height, premultiplied RGBA."""
+    data, at, out = open(records, 'rb').read(), 0, []
+    for expected in sequences(emoji_test):
+        size, = struct.unpack_from('<I', data, at)
+        text = data[at + 4:at + 4 + size].decode('utf-8')
+        width, height = struct.unpack_from('<II', data, at + 4 + size)
+        at += 12 + size
+        if text != expected:
+            raise SystemExit(f'{records}: {text!r} where {expected!r} was drawn')
+        if width == 0:
+            continue
+        premultiplied = np.frombuffer(data, np.uint8, width * height * 4, at).reshape(height, width, 4)
+        at += width * height * 4
+        made = template(premultiplied.astype(np.float64), side, coarse)
+        if made is not None:
+            out.append((text, *made))
+    if at != len(data):
+        raise SystemExit(f'{records}: {len(data) - at} bytes past the last record')
+    return out
+
+
+def drawn_with(fonts, emoji_test, family, side, coarse):
+    """draw_style in a child process whose fontconfig is `fonts`."""
+    environment = dict(os.environ)
+    if fonts:
+        environment['FONTCONFIG_FILE'] = os.path.abspath(fonts)
+    child = subprocess.run([sys.executable, os.path.abspath(__file__), '--draw', family, '--emoji-test', emoji_test,
+                            '--side', str(side), '--coarse', str(coarse), '--output', '-'],
+                           env=environment, stdout=subprocess.PIPE, check=True)
+    return pickle.loads(child.stdout)
+
+
+def on_white(pixels):
+    premultiplied = np.frombuffer(pixels, np.uint8).reshape(-1, 4).astype(np.float64)
+    return premultiplied[:, :3] + (255 - premultiplied[:, 3:4])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--emoji-test', required=True)
-    parser.add_argument('--style', action='append', required=True, help='name="Font family"')
+    parser.add_argument('--style', action='append', default=[], help='name="Font family"')
+    parser.add_argument('--fonts', action='append', default=[], help='name=fonts.conf: the fontconfig to draw it with')
+    parser.add_argument('--drawn', action='append', default=[], help='name=records: drawn by another program')
+    parser.add_argument('--changed', action='append', default=[],
+                        help='name=other[,other]: keep only the emoji it draws differently from those styles')
     parser.add_argument('--side', type=int, default=20)
     parser.add_argument('--coarse', type=int, default=10)
-    parser.add_argument('--output', required=True)
+    parser.add_argument('--output')
+    parser.add_argument('--list-sequences', action='store_true', help='print the emoji drawn, one a line, and stop')
+    parser.add_argument('--draw', help=argparse.SUPPRESS)  # the child: one family, pickled to stdout
     arguments = parser.parse_args()
+    if arguments.draw:
+        sys.stdout.buffer.write(pickle.dumps(draw_style(arguments.emoji_test, arguments.draw, arguments.side,
+                                                        arguments.coarse)))
+        return
+    if arguments.list_sequences:
+        sys.stdout.write(''.join(text + '\n' for text in sequences(arguments.emoji_test)))
+        return
+    if not arguments.style or not arguments.output:
+        parser.error('at least one --style, and --output')
     styles = [s.split('=', 1) for s in arguments.style]
+    names = [name for name, _ in styles]
+    fonts = dict(f.split('=', 1) for f in arguments.fonts)
+    drawn_files = dict(d.split('=', 1) for d in arguments.drawn)
+    changed = {name: others.split(',') for name, others in (c.split('=', 1) for c in arguments.changed)}
+    for name in list(fonts) + list(drawn_files) + list(changed):
+        if name not in names:
+            parser.error(f'{name} is not a --style')
+    for name, others in changed.items():
+        for other in others:
+            if other not in names or names.index(other) >= names.index(name):
+                parser.error(f'{name}: {other} is not an earlier --style')
     entries, strings, coarse, pixels = [], bytearray(), bytearray(), bytearray()
     shapes = [text for text in sequences(arguments.emoji_test) if plain_shape(text)]
     print(f'{len(shapes)} plain shapes', file=sys.stderr)
+    drawn = {}
     for style, (name, family) in enumerate(styles):
+        if name in drawn_files:
+            made = drawn_in(drawn_files[name], arguments.emoji_test, arguments.side, arguments.coarse)
+        else:
+            made = drawn_with(fonts.get(name), arguments.emoji_test, family, arguments.side, arguments.coarse)
+        drawn[name] = {text: image for text, image, *_ in made}
         kept = 0
-        for text in sequences(arguments.emoji_test):
-            drawn = render(text, family)
-            made = None if drawn is None else template(drawn, arguments.side, arguments.coarse)
-            if made is None:
+        for text, image, small, aspect, share in made:
+            if any(text in drawn[other] and np.abs(on_white(image) - on_white(drawn[other][text])).mean() / 255
+                   <= CHANGED for other in changed.get(name, [])):
                 continue
-            image, small, aspect, share = made
             encoded = text.encode('utf-8')
             entries.append((len(strings), len(encoded), style, min(65535, round(aspect * 1024)), share,
                             1 if plain_shape(text) else 0))

@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_emoji_draw_qt LANGUAGES CXX)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Gui)
+add_executable(putgd-emoji-draw-qt main.cpp)
+target_compile_features(putgd-emoji-draw-qt PRIVATE cxx_std_20)
+target_link_libraries(putgd-emoji-draw-qt PRIVATE Qt6::Gui)

@@ -11,8 +11,9 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
   IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
   IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt
   Emoji templates drawn from Noto Color      OFL-1.1, CC-BY-4.0, below
-    Emoji 2.051 and Twemoji Mozilla 0.7.0,    Unicode-3.0
-    for Unicode Emoji 16.0 (in putgd-ocr)
+    Emoji 2.047, 2.051 and 2.057 and Twemoji  Unicode-3.0
+    Mozilla 0.7.0, for Unicode Emoji 16.0
+    (in putgd-ocr)
   zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
     (in putgd-record)
   KWin fake-input bindings                  LGPL-2.1-or-later   wayland-fake-input.xml
@@ -89,8 +90,9 @@ Emoji templates, built into putgd-ocr from src/ocr/emoji/templates.bin:
 
 Small pictures of each emoji as two fonts draw them, used only to recognize
 emoji on the screen. No font is included.
-- Noto Color Emoji 2.051, Copyright 2022 Google Inc. Licensed under the SIL Open
-  Font License, Version 1.1 (https://openfontlicense.org).
+- Noto Color Emoji 2.051, and 2.047 and 2.057 where those draw an emoji
+  differently, Copyright 2022 Google Inc. Licensed under the SIL Open Font
+  License, Version 1.1 (https://openfontlicense.org).
 - Twemoji Mozilla 0.7.0, graphics Copyright Twitter, Inc and other contributors
   (https://github.com/mozilla/twemoji-colr). Licensed under CC-BY 4.0
   (https://creativecommons.org/licenses/by/4.0/).
