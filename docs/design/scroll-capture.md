@@ -192,7 +192,12 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
 - Content that changes in place (a video, a carousel, a hover effect) is taken as first
-  seen and ends nothing.
+  seen and ends nothing. Once the tracker has lost the page, a frame matched at a guessed
+  place marks no rows as changing in place: over look-alike rows (a pull request's tables)
+  the guess is often wrong, and its marks let a sticky header be written over text the image
+  already held ([#1795](https://github.com/patrick-hudson/put.gd-desktop/issues/1795)). The
+  one exception is the comparison with the previous skipped frame when that frame's place
+  was already known or found in the image.
 - It never writes a row at a guessed offset. The one exception is a frame with nothing to
   compare (a blank stretch) while auto-scroll gives a hint, and only where that frame
   overlaps what the image holds. A frame that stood still is never placed on the hint.
