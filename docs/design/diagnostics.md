@@ -658,7 +658,7 @@ entry about it resolved, with `resolvedAt` and `resolution`. The entry stays in 
 | --- | --- |
 | A file's upload | the file uploaded (a Retry that worked) |
 | A file's local copy | the copy saved |
-| A file's deletion | the file removed or already gone |
+| A file's deletion | the file removed or already gone, or its record removed with Remove from History only |
 | A file's link change, or its share link at upload | the link shared, made private or revoked |
 | An operation | the operation completed |
 | A Test connection or credential read | the next one that passed |
@@ -706,12 +706,14 @@ operation, item, deletion, link change or setup IDs, and its next steps as butto
 | Unlock saved credentials | `history.unlockCredentials` for the item's original destination (the keyring may prompt), or `setup.unlockCredentials` for the destination. Offered only when the credentials aren't loaded (`credential_setup_required`, or the keyring didn't answer or refused access), never for a key the destination refused (`s3_permission_denied`, `credential_invalid` …), which offers Open destination settings |
 | Open destination settings | opens Destinations on that destination |
 | Retry deletion, Retry upload, Retry local copy, Copy again, Test connection again | `delete.retry`, `operation.retry`, `operation.retryLocalSave`, `operation.copy` or `setup.testDestination`; offered only for a failed outcome, never for a refused call, whose repeat could do something else (a refused share-only retry is not an upload retry) |
+| Remove from History only | offered for `destination_removed` while the item is in History. Opens History's deletion dialog for the file from a new `delete.prepare`, so it says the same and refuses the same: no button while an earlier deletion may have reached the destination or a link change hasn't finished, and none when the destination is in Settings again (`destination_not_removed`). Its button runs `history.forget`; the file stays where it was uploaded |
 | Show in History | opens History with the item selected |
 | Save diagnostics for this operation | a local package for that operation |
 
 A resolved entry keeps Show in History and Save diagnostics, not the steps that would
 fix it. An entry whose destination was removed from Settings (`destination_removed`)
-offers neither Unlock, Open destination settings nor Retry. **Technical details** shows the entry as recorded, with **Copy details**.
+offers neither Unlock, Open destination settings nor Retry, and offers Remove from
+History only. **Technical details** shows the entry as recorded, with **Copy details**.
 
 ### History
 
