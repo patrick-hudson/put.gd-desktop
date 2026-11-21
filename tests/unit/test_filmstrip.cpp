@@ -1,4 +1,5 @@
 #include "record/Filmstrip.h"
+#include "record/ClipExporter.h"
 #include <QElapsedTimer>
 #include <QSignalSpy>
 #include <QtTest>
@@ -162,6 +163,46 @@ private slots:
         PUTGD_COMPARE_STEADY(frames.count(), 0, 400);
         skimmer.request(2 * second, {}, 64);
         PUTGD_TRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
+    }
+    // W1 (memory safety): widths that are not a multiple of 16 pixels once
+    // scaled, at full size and scaled down, decode into whole pictures; the
+    // scaler's vector writes stay in FFmpeg's padded frame (run under ASan).
+    void theSkimmerConvertsOddWidthsSafely_data() {
+        QTest::addColumn<QSize>("size");
+        QTest::addColumn<int>("edge");
+        QTest::newRow("638x360 full") << QSize(638, 360) << 638;
+        QTest::newRow("650x182 full") << QSize(650, 182) << 650;
+        QTest::newRow("650x182 to 300") << QSize(650, 182) << 300;
+    }
+    void theSkimmerConvertsOddWidthsSafely() {
+        QFETCH(QSize, size);
+        QFETCH(int, edge);
+        const QString clip = dir_.filePath(QStringLiteral("odd-%1x%2.mkv").arg(size.width()).arg(size.height()));
+        QVERIFY(QFile::exists(clip) || test::gopclip::write(clip, 1, size.width(), size.height()));
+        FrameSkimmer skimmer;
+        QSignalSpy frames(&skimmer, &FrameSkimmer::frameReady);
+        skimmer.open(clip, size);
+        skimmer.request(second / 2, {}, edge);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
+        const auto image = frames.takeFirst()[2].value<QImage>();
+        QCOMPARE(std::max(image.width(), image.height()), edge);
+        const int expected = grayOf(levelOf(15));
+        for (const QPoint p : {QPoint(0, 0), QPoint(image.width() - 1, image.height() - 1)})
+            QVERIFY2(std::abs(qGray(image.pixel(p)) - expected) <= 6, qPrintable(QStringLiteral("grey %1 at (%2,%3), expected %4").arg(qGray(image.pixel(p))).arg(p.x()).arg(p.y()).arg(expected)));
+    }
+    // W2 (privacy): a blur too small to show many preview pixels is still
+    // previewed as a blur, as the export renders it, never as a black box.
+    void aSmallBlurIsPreviewedAsABlur() {
+        QImage preview(64, 36, QImage::Format_RGB32);
+        for (int x = 0; x < 64; ++x)
+            for (int y = 0; y < 36; ++y) preview.setPixel(x, y, (x % 2) ? qRgb(200, 200, 200) : qRgb(100, 100, 100));
+        RecordingMask blur;
+        blur.kind = "blur";
+        blur.strength = 12;
+        blur.rect = {200, 200, 60, 60};  // 3×3 preview pixels of a 1280×720 canvas
+        paintCoverPreview(preview, blur, {1280, 720});
+        const int grey = qGray(preview.pixel(11, 11));
+        QVERIFY2(grey > 120 && grey < 180, qPrintable(QString::number(grey)));  // averaged, not black, not untouched
     }
 };
 

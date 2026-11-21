@@ -103,6 +103,9 @@ def _add(ctx, rid, kind='solid', centered=False):
     before = _inspect(ctx, rid)['edit']
     _arm(ctx, rid, kind)
     if centered:
+        # Enter places on the frame it is meant for and expires after 1 s while
+        # that frame loads (W6): press it once the frame is shown.
+        ctx.wait(lambda: not _state(ctx, rid)['viewer']['placeWaiting'], 'the placement frame is shown')
         ctx.keys('Return')
     else:
         ctx.drag(_video(ctx, rid, .2, .25), _video(ctx, rid, .4, .5))
@@ -674,10 +677,13 @@ def edits_panel(ctx):
 @recipe('review.wheel-lanes', 'review.timeline-zoom', needs=('recording',))
 def wheel_lanes(ctx):
     rid = _open(ctx)
+    # Five overlapping covers over the first part of the recording: the "+n"
+    # chip closes only the lower lane's right end (T17), so two lanes show.
     for _ in range(5):
+        _select_time(ctx, rid, .1, .4)
         _add(ctx, rid, centered=True)
     s = _state(ctx, rid)
-    ctx.expect(s['timeline']['lanes'] == 2 and s['timeline']['hiddenCovers'] >= 1, 'overlapping covers use two lanes and a +n chip')
+    ctx.expect(s['timeline']['lanes'] == 2 and s['timeline']['hiddenCovers'] == 3, 'overlapping covers use two lanes and a +3 chip')
     ctx.expect(_drive(ctx, rid, 'timelineZoom', level=4)['timeline']['zoom'] == 4, 'timelineZoom zooms the strip')
     visible = _state(ctx, rid)['timeline']['visible']
     ctx.expect(visible['end'] - visible['start'] < _inspect(ctx, rid)['durationUs'], 'a zoomed strip shows part of the recording')

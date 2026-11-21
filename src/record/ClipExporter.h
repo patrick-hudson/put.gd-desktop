@@ -49,6 +49,10 @@ Error previewFrame(const QString& input, const RecordingEdit&, const RecordingCo
 // previewFrame renders them, long edge at most maxEdge.
 // Shared by previewFrame and the review window's FrameSkimmer.
 Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit&, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out, std::optional<qint64> requestedUs = std::nullopt);
+// One cover's effect (a redaction's fill or a blur) on a preview-sized picture:
+// the review viewer paints a cover being moved with it (#1613 D4). The rect and
+// strength are in canvas pixels, scaled to the picture. Never used for export.
+void paintCoverPreview(QImage& image, const RecordingMask& mask, const QSize& canvas);
 // The working clip's duration and frame size (lab diagnostics and tests).
 Error probeClip(const QString& input, qint64& durationUs, QSize& canvas);
 // Sequential frames for review playback: opened at a clip time, each call
@@ -60,6 +64,8 @@ public:
     FrameSequence();
     ~FrameSequence();
     Error open(const QString& input, qint64 startUs);
+    // The next kept span: the same input and decoder, sought to startUs (opened if not yet).
+    Error seek(const QString& input, qint64 startUs);
     // false at the end of the clip, or on a decode error reported through error.
     // Frames `wanted` declines are decoded (the stream must stay in order) but
     // not converted, masked or scaled, so a late player catches up cheaply.
