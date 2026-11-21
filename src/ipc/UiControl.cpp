@@ -13,6 +13,8 @@ bool knownType(const QString& type){
   "copyImage","copyResult",
   // Image editor Copy text (#1428): plain text the resident copies; copyResult answers.
   "copyText",
+  // Image editor check mode (#1804): what the sensitive text check found, kinds and counts only.
+  "checked",
   // Recording helper: unsolicited progress/stop/failure notifications, and
   // the interface scheme its overlays follow while it runs (#198).
   "event","appearance",

@@ -44,6 +44,8 @@ struct Operation {
  QString copyStatus="pending";
  bool cancelled=false;
  QString phase="accepted";
+ // #1804: what the sensitive text check found, kinds and counts only ({found, complete, reason?}); empty when none ran.
+ QJsonObject sensitive;
  std::optional<int> requestTimeoutMs; // Explicit retry budget, separate from immutable settings.
  Error error;
  QJsonObject toJson() const;

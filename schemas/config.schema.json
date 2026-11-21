@@ -1213,6 +1213,22 @@
           },
           "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering. A pattern is matched against each recognized line and against each pair of consecutive lines joined by a line feed, so ALPHA\\nBETA can match two lines. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns. Each entry: a pattern is 1 to 500 code points as written (never trimmed: its spaces can matter), on one line (no raw line feed, carriage return, U+2028 or U+2029; write \\n in the pattern to match a line break), compiles, and does not match empty text. The editor applies these rules and its answer is authoritative."
         },
+        "sensitiveTextCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "categories"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "categories": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 7,
+              "uniqueItems": true,
+              "items": {"enum": ["email", "phone", "ip", "card", "key", "name", "list"]}
+            }
+          },
+          "description": "Check captures for sensitive text before uploading (#1804). With enabled true, an image capture going to a destination has its text recognized first, with Quick redact's rules for these categories; when it shows any, put.gd asks before uploading (Redact and upload, Upload anyway, Cancel), and when it can't finish checking it asks too. Nothing found uploads as usual. Omitted means off, with the categories card, key and list. Recognized text is never stored, logged or written to diagnostics."
+        },
         "appearance": {
           "type": "object",
           "additionalProperties": false,

@@ -133,7 +133,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   Job job{op,std::move(payload),true,flag,{}};
   // The staged export stays until the artifact store has streamed it.
   job.payloadLease=std::shared_ptr<qint64>(new qint64(0),[released](qint64* value){released();delete value;});
-  enqueue(std::move(job));
+  admitUpload(std::move(job));
  };
  host.finish=[this](Operation op){finish(op);};
  host.remember=[this](const QJsonObject& preferences){settings_.patchAsync({{"preferences",preferences}},settings_.revision(),[](Result){});};
@@ -221,7 +221,7 @@ void OperationService::recoverJournal() {
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:std::as_const(active_)) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:std::as_const(itemCancels_))for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(text_)text_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:std::as_const(active_)) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:std::as_const(itemCancels_))for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(text_)text_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();for(const auto& check:std::as_const(checkSessions_))check->cancel();checkQueue_.clear();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -313,7 +313,8 @@ QJsonObject OperationService::currentObservation(QJsonObject document)const{
  if(settling(document["id"].toString()))document["settling"]=true;
  if(QStringList{"completed","partial","failed","cancelled","interrupted"}.contains(document["state"].toString()))return document;
  QJsonObject live;{std::lock_guard lock(observationsMutex_);live=observations_.value(document["id"].toString());}if(live.isEmpty())return document;
- document["phase"]=live["phase"];auto items=document["items"].toArray();QHash<QString,QJsonObject> observedItems;
+ document["phase"]=live["phase"];if(live.contains("sensitive"))document["sensitive"]=live["sensitive"]; // #1804: kinds and counts
+ auto items=document["items"].toArray();QHash<QString,QJsonObject> observedItems;
  for(const auto& value:live["items"].toArray()){const auto observed=value.toObject();const auto id=observed["artifact"].toObject()["id"].toString();if(!observedItems.contains(id))observedItems.insert(id,observed);}
  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();const auto observed=observedItems.constFind(item["artifact"].toObject()["id"].toString());if(observed!=observedItems.cend()){item["phase"]=(*observed)["phase"];item["uploadProgress"]=(*observed)["uploadProgress"]; }items[i]=item;}
  document["items"]=items;return document;
@@ -322,12 +323,16 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  // A tray click's xdg-activation token brings an open editor forward (#657);
  // only the tray passes it, session requests cannot.
  auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
+ // #1804: who answers a sensitive text finding: a person at a prompt, or the caller through operation.decide.
+ const auto sensitiveValue=stripped.take("sensitiveText");
  const QJsonObject options=stripped; // const: operator[] must not insert
  emit explicitRequest();
  if(!ready_) {reply(notReadyError(),{});return;}
+ if(!sensitiveValue.isUndefined()&&sensitiveValue!="prompt"&&sensitiveValue!="report"){reply({"invalid_request","sensitiveText is prompt or report",{}},{});return;}
+ const auto sensitiveMode=sensitiveValue.toString(QStringLiteral("report"));
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
- if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}scroll_->invoke(action=="edit",reply);return;}
+ if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}scrollSensitiveMode_=sensitiveMode;scroll_->invoke(action=="edit",reply);return;}
  if(scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
  if(action==Settings::recordingActionName()) {
   const auto mode=options["mode"].toString("open");
@@ -343,9 +348,9 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   QJsonObject params{{"source","region"},{"copy",true}};if(delay.toInt()>0)params["delaySeconds"]=delay.toInt();
   recognizeText(params,std::move(reply));return;
  }
- return invokeCapture(action,std::move(reply),options,activationToken);
+ return invokeCapture(action,std::move(reply),options,activationToken,sensitiveMode);
 }
-void OperationService::invokeCapture(const QString& requestedAction,JsonReply reply,const QJsonObject& requested,const QString& activationToken) {
+void OperationService::invokeCapture(const QString& requestedAction,JsonReply reply,const QJsonObject& requested,const QString& activationToken,const QString& sensitiveMode) {
  // Repeat last region (#1363) is a region capture of a remembered rectangle: it
  // has its own key and entry, and the region action's output, name and history.
  const bool repeat=requestedAction==Settings::repeatActionName();
@@ -374,7 +379,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
@@ -474,7 +479,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.advance(op.cancelled?OperationState::Cancelled:OperationState::Failed);guarded->finish(op);return;}
       guarded->clipboardImports_.remove(op.id);
       if(op.action=="edit")guarded->startEditing(op,flag,std::move(r.payload));
-      else guarded->enqueue({op,std::move(r.payload),true,flag,{}});
+      else guarded->admitUpload({op,std::move(r.payload),true,flag,{}});
       guarded->pumpCopies();
      },Qt::QueuedConnection);
     });
@@ -507,7 +512,7 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
   op.advance(OperationState::Acquiring);enqueue({op,std::move(payload),true,flag,{}});
  });
 }
-void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply) {
+void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply,const QString& sensitiveMode) {
  // The installation identity comes first: one install's menu entry never
  // uploads through another install's resident, whatever it asks for.
  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(error)}});reply(error,{});return;}
@@ -526,7 +531,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   if(!destination.providerId.isEmpty())if(auto provider=providers_.find(destination.providerId))objectLimit=provider->capabilities(destination).maximumObjectBytes;
   *selected=FileUploads::select(paths,snapshot,fileManagerAction,objectLimit,ArtifactStore::diskBudget(artifactsRoot));
   e=selected->error;return QJsonObject{};
- },[this,snapshot,revision,route,destination,selected,reply](Error e,QJsonObject) mutable {
+ },[this,snapshot,revision,route,destination,selected,reply,sensitiveMode](Error e,QJsonObject) mutable {
   if(!e)e=route.error;
   if(e){
    logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(e)},{"requested",selected->files.size()}});
@@ -536,15 +541,182 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
   Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
-  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);beginUploadCopies(op,false);anticipate(op);
+  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);beginUploadCopies(op,false);anticipate(op);
   ClipboardPayload payload;payload.kind="files";payload.files=selected->files;payload.zipFolders=selected->zipFolders;
   const auto origins=selected->origins;const auto database=databasePath();
   background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,payload,origins,reply](Error e,QJsonObject result) mutable {
    if(e) {abandonUploadCopies(op.id);releaseActive(op.id);reply(e,{});return;}
    observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
    logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",payload.files.size()},{"zipFolders",payload.zipFolders}});
-   op.advance(OperationState::Acquiring);op.phase="acquiring";enqueue({op,std::move(payload),true,flag,{},origins});
+   op.advance(OperationState::Acquiring);op.phase="acquiring";admitUpload({op,std::move(payload),true,flag,{},origins});
   });
+ });
+}
+namespace {
+// A PNG or JPEG by its signature: what the editor helper can open and check.
+bool checkableImage(const QString& path){
+ const QFileInfo info(path);if(!info.isFile()||info.size()<8)return false;
+ QFile file(path);if(!file.open(QIODevice::ReadOnly))return false;
+ const auto head=file.read(8);return head.startsWith("\x89PNG\r\n\x1a\n")||head.startsWith("\xff\xd8\xff");
+}
+QJsonObject sensitiveLog(const QJsonObject& findings){
+ // Kinds and counts only: what was matched never leaves the helper.
+ QJsonObject fields{{"complete",findings["complete"].toBool(true)}};
+ const auto found=findings["found"].toObject();for(auto it=found.begin();it!=found.end();++it)fields[it.key()]=it.value();
+ if(findings.contains("reason"))fields["reason"]=findings["reason"];
+ return fields;
+}
+}
+// #1804: an image capture, clipboard image or file-manager image going to a destination,
+// with Settings → Capture → Check captures for sensitive text before uploading on.
+bool OperationService::needsSensitiveCheck(const Job& job) const {
+ const auto& op=job.op;
+ if(!op.settings.sensitiveTextCheck||op.settings.sensitiveTextCategories.isEmpty()||job.sharingOnly||!job.acquire)return false;
+ static const QStringList actions{"region","window","monitor","desktop","clipboard","scroll",fileManagerAction};
+ if(!actions.contains(op.action))return false;
+ const auto route=routeOf(op);
+ if(route.destination!="upload"||route.profileId.isEmpty()||op.destination.profileId.isEmpty())return false;
+ if(job.payload.kind=="image")return !job.payload.image.isNull();
+ // Which files are images is read on the check's worker.
+ return job.payload.kind=="files"&&!job.payload.files.isEmpty();
+}
+void OperationService::admitUpload(Job job) {
+ if(!needsSensitiveCheck(job)){enqueue(std::move(job));return;}
+ if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);return;}
+ job.op.phase="checking";observe(job.op.publicJson());emit changed(job.op.id);emit observationsChanged();
+ checkQueue_.enqueue(std::move(job));pumpChecks();
+}
+void OperationService::pumpChecks() {
+ // One check at a time: a capture taken while a prompt is open waits, checking.
+ while(!stopping_&&checkingId_.isEmpty()&&!checkQueue_.isEmpty()){
+  auto job=checkQueue_.dequeue();
+  if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);continue;}
+  runCheck(std::move(job));
+ }
+}
+void OperationService::runCheck(Job job) {
+ const auto id=job.op.id;checkingId_=id;checkOperations_.insert(id,job.op);
+ auto session=std::make_shared<EditorSession>();checkSessions_.insert(id,session);
+ const bool prompt=sensitiveModes_.value(id)=="prompt";
+ QPointer<OperationService> owner(this);
+ session->setPhaseHandler([owner,id](const QString& phase,const QJsonObject& findings){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,phase,findings]{if(owner&&!owner->stopping_)owner->checkPhase(id,phase,findings);},Qt::QueuedConnection);
+ });
+ // After Redact and upload the helper is an ordinary editor: the same copy paths as Edit & upload.
+ session->setCopyHandler([owner,id](QByteArray png,std::function<void(Error)> done){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,png=std::move(png),done=std::move(done)]() mutable {
+   if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the image was copied",{}});return;}
+   owner->copyEditedImage(id,std::move(png),std::move(done));
+  },Qt::QueuedConnection);
+ });
+ session->setTextCopyHandler([owner,id](QString text,std::function<void(Error)> done){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,text=std::move(text),done=std::move(done)]() mutable {
+   if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+   owner->copyEditedText(id,std::move(text),std::move(done));
+  },Qt::QueuedConnection);
+ });
+ session->setAppearance(editorAppearance_);
+ const auto& op=job.op;
+ const auto staging=root_+"/editing",destination=editorDestination(op),appearance=editorAppearance_;
+ const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
+ const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories;
+ const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
+ const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
+ logging::info(logOperation(),"Sensitive text check started",{{"operationId",id},{"action",op.action},{"mode",prompt?"prompt":"report"}});
+ auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();
+ auto clock=std::make_shared<QElapsedTimer>();clock->start();
+ background([=](Error&){
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withCheck(std::move(check));};
+  if(shared->payload.kind=="image"){
+   // The original stays here for Upload anyway; the helper reads a staged copy.
+   QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{}}).run(copy,destination,outputBytes,session);
+   return QJsonObject{};
+  }
+  QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
+  if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
+  // The editor edits one image: Redact and upload is offered only for a selection of one.
+  const bool single=shared->payload.files.size()==1&&images.size()==1;
+  for(qsizetype index=0;index<images.size();++index){
+   if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
+   EditorJob::Check check{categories,prompt,single,{}};
+   if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
+   *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
+   if(outcome->check!="clean")break;
+  }
+  return QJsonObject{};
+ },[owner,id,shared,outcome,clock](Error,QJsonObject){if(owner)owner->checkFinished(id,shared,outcome,clock->elapsed());});
+}
+void OperationService::checkPhase(const QString& id,const QString& phase,const QJsonObject& findings) {
+ if(!checkOperations_.contains(id))return;
+ auto& op=checkOperations_[id];
+ if(phase=="prompt"){
+  op.phase="sensitive_text_found";op.sensitive=findings;
+  auto fields=sensitiveLog(findings);fields["operationId"]=id;
+  logging::info(logOperation(),"Sensitive text check needs a decision",fields);
+  observe(op.publicJson());emit changed(id);emit observationsChanged();
+  return;
+ }
+ if(phase=="editing"){
+  // Redact and upload: an edit now, outside the one-at-a-time check slot.
+  op.advance(OperationState::Editing);op.phase="editing";
+  logging::info(logOperation(),"Sensitive text check opened the editor",{{"operationId",id}});
+  const auto path=databasePath();const auto saved=op;
+  background([path,saved](Error& e){HistoryStore store(path);e=store.saveOperation(saved);return QJsonObject{};},[](Error,QJsonObject){});
+  observe(op.publicJson());emit changed(id);emit observationsChanged();
+  if(checkingId_==id){checkingId_.clear();pumpChecks();}
+ }
+}
+void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shared,std::shared_ptr<EditorResult> outcome,qint64 elapsedMs) {
+ auto job=std::move(*shared);
+ if(checkOperations_.contains(id))job.op=checkOperations_.take(id);
+ checkSessions_.remove(id);
+ if(stopping_)return;
+ if(outcome->recentColors)rememberEditorColors(*outcome->recentColors);
+ auto& op=job.op;
+ {
+  auto fields=sensitiveLog(op.sensitive);fields["operationId"]=id;fields["durationMs"]=double(elapsedMs);
+  fields["outcome"]=!outcome->png.isEmpty()?QStringLiteral("redacted"):outcome->error?QStringLiteral("failed"):outcome->check;
+  if(outcome->error)fields["error"]=logging::errorFields(outcome->error);
+  logging::info(logOperation(),"Sensitive text check ended",fields);
+ }
+ const auto next=[this,id]{if(checkingId_==id)checkingId_.clear();pumpChecks();};
+ const auto cancelled=job.cancelled->load()||outcome->error.code=="cancelled";
+ if(cancelled){job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();return;}
+ if(!outcome->png.isEmpty()){
+  // Redact and upload: only the editor's sanitized PNG goes on, as for Edit & upload.
+  ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(outcome->png);finalized.mime="image/png";
+  op.advance(OperationState::Acquiring);op.phase="queued";
+  const auto path=databasePath();auto flag=job.cancelled;
+  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,finalized=std::move(finalized)](Error e,QJsonObject) mutable {
+   if(e){op.error=e;op.advance(OperationState::Failed);finish(op);return;}
+   enqueue({op,std::move(finalized),true,flag,{}});
+  });
+  next();return;
+ }
+ if(outcome->error){
+  // The helper could not check (it is missing, failed or gave no answer in time): nothing is uploaded.
+  job.payload={};
+  op.error={"sensitive_check_failed",QStringLiteral("put.gd couldn't check this capture for sensitive text, so it wasn't uploaded: %1").arg(outcome->error.message),{{"cause",outcome->error.code}}};
+  op.advance(OperationState::Failed);finish(op);next();return;
+ }
+ if(outcome->check=="clean"||outcome->check=="upload"){enqueue(std::move(job));next();return;}
+ // Cancel, or an agent's decision that never came: nothing is uploaded; the local copy follows Keep a local copy.
+ if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
+ job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
+}
+void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply) {
+ if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}
+ const auto session=checkSessions_.value(id);
+ const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
+ if(queued||(session&&session->phase()=="checking")||(session&&session->phase()=="starting")){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
+ if(!session||session->phase()!="prompt"){reply({"sensitive_decision_unavailable","This operation is not waiting for a sensitive text decision",{{"operationId",id}}},{});return;}
+ QPointer<OperationService> owner(this);
+ session->request("decide",{{"choice",choice}},[owner,id,reply](Error error,QJsonObject result){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,reply,error,result]() mutable {
+   if(!owner||owner->stopping_)return;
+   if(!error)result["operationId"]=id;
+   reply(error,result);
+  },Qt::QueuedConnection);
  });
 }
 void OperationService::enqueue(Job job) {
@@ -635,7 +807,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  });
 }
 void OperationService::copyEditedText(const QString& id,QString text,std::function<void(Error)> done) {
- if(editingId_!=id){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+ if(editingId_!=id&&!checkSessions_.contains(id)){done({"editor_closed","The editor closed before the text was copied",{}});return;}
  // An explicit copy from the moment it is asked for: a later explicit copy, or
  // the user changing the clipboard before it lands, suppresses it.
  const auto ticket=invalidateCopyEligibility();const auto revision=source_.clipboardRevision();
@@ -644,7 +816,7 @@ void OperationService::copyEditedText(const QString& id,QString text,std::functi
  deliverCopy(payload,[id,done=std::move(done)](Error error){if(!error)logging::info(logOperation(),"Recognized text copied",{{"operationId",id}});done(error);},[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
 }
 void OperationService::copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done) {
- if(editingId_!=id){done({"editor_closed","The editor closed before the image was copied",{}});return;}
+ if(editingId_!=id&&!checkSessions_.contains(id)){done({"editor_closed","The editor closed before the image was copied",{}});return;}
  // An explicit copy supersedes pending automatic link copies, like history.copyImage.
  const auto ticket=invalidateCopyEligibility();const auto bytes=png.size();
 #ifdef __GLIBC__
@@ -669,6 +841,7 @@ void OperationService::setCaptureDelayPreference(int seconds) {
 // Recording shares the editor's exclusivity: one interactive private review at a time.
 Error OperationService::acceptScroll(Operation& op) {
  if(recording_->active())return {"recording_active","A recording is active",{}};
+ sensitiveModes_.insert(op.id,scrollSensitiveMode_);
  const auto action=op.action;
  auto e=acceptRecording(op);if(e)return e;
  op.action=action;const auto route=op.settings.actions.value(action);op.destination={};
@@ -911,9 +1084,11 @@ void OperationService::recordingCommand(const QString& command,const QJsonObject
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
- if(!editor_||editingId_!=id){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
+ // #1804: Redact and upload turns a sensitive text check into an editor with the same ID.
+ const auto session=editor_&&editingId_==id?editor_:checkSessions_.value(id);
+ if(!session||(session!=editor_&&session->phase()!="editing")){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
  QPointer<OperationService> owner(this);
- editor_->request(command,params,[owner,id,reply](Error error,QJsonObject result){
+ session->request(command,params,[owner,id,reply](Error error,QJsonObject result){
   if(!owner)return;
   QMetaObject::invokeMethod(owner,[owner,id,reply,error,result]() mutable {
    if(!owner||owner->stopping_)return;
@@ -965,7 +1140,7 @@ Operation OperationService::run(Job job) {
  // Archive every acquired item before any item in this batch is published.
  op.phase="saving_local";
  const auto route=routeOf(op);
- const bool local=route.destination=="local"||route.profileId.isEmpty();
+ const bool local=job.localOnly||route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if(!job.sharingOnly&&(local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:std::as_const(op.items)) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.advance(OperationState::Failed);save();return op;}
@@ -1280,6 +1455,7 @@ void OperationService::settled(const QString& id) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  emit uploadSettled(op);
+ sensitiveModes_.remove(op.id);
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
  finishing_.insert(op.id);
@@ -1426,7 +1602,8 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  // A text operation ends in its service, which also stops a running helper.
  if(text_&&text_->activeId()==id){text_->cancel(id,[](Error,QJsonObject){});reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Text recognition stops; nothing is copied"}});return;}
  if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
- if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
+ if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();if(const auto check=checkSessions_.value(id))check->cancel();
+  for(int index=0;index<checkQueue_.size();++index)if(checkQueue_[index].op.id==id){auto job=checkQueue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
  // A finished operation keeps its outcome: marking it cancelled would hide a live

@@ -1,6 +1,7 @@
 #include "ImageEditor.h"
 #include "core/ByteSize.h"
 #include "EditorWindow.h"
+#include "SensitivePrompt.h"
 #include "FileDialog.h"
 #include "WindowActivation.h"
 #include "StagingDirectory.h"
@@ -104,6 +105,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
  Error submissionError;QString nonce,destination;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ // #1804: check mode. The capture is recognized and matched before any window shows;
+ // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
+ bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories;QString checkFile;
+ SensitiveFindings findings;std::unique_ptr<SensitivePrompt> prompt;
+ // An agent's decision waits this long; then the capture is treated as Cancel.
+ QTimer decisionDeadline;decisionDeadline.setSingleShot(true);decisionDeadline.setInterval(5*60*1000);
+ if(const auto test=qEnvironmentVariableIntValue("PUTGD_TEST_SENSITIVE_DECISION_MS");test>=100&&test<5*60*1000)decisionDeadline.setInterval(test);
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  // Only startup is time limited; a legitimate edit may stay open indefinitely.
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
@@ -187,8 +195,34 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto stale=[&](const QJsonObject& params)->bool{const auto value=params["result"];return !value.isDouble()||value.toDouble()!=double(window->text().identity())||window->text().identity()==0;};
  const auto replyText=[](std::function<void(QJsonObject,QString,QString)> done){return [done](Error error,QJsonObject result){if(error)done({},error.code,error.message);else done(result,{},{});};};
  // Agent commands arrive from the resident's editor.* session methods.
+ std::function<bool(const QString&)> decide;
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
+  if(deciding){
+   // #1804: the capture waits for Redact and upload, Upload anyway or Cancel.
+   if(name=="inspect"){
+    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
+    auto state=findings.json();state["phase"]=terminal?"closing":"sensitive_text_found";state["prompt"]=prompt?QJsonValue(prompt->state()):QJsonValue(QJsonValue::Null);
+    QJsonArray choices{"upload","cancel"};if(checkRedact&&window)choices.prepend("redact");state["choices"]=choices;state["destination"]=destination;if(!checkFile.isEmpty())state["file"]=checkFile;
+    return state;
+   }
+   if(name=="decide"){
+    const auto choice=params["choice"].toString();
+    if(params.size()!=1||!QStringList{"redact","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact, upload or cancel");
+    if(terminal)return denied("editor_finalizing","The capture was already decided");
+    if(choice=="redact"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Redact and upload is not offered for this capture");
+    if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
+    return {{"decided",choice}};
+   }
+   if(name=="raise"&&prompt){
+    const auto token=params["activationToken"].toString();
+    if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
+    putgd::activateWindow(prompt.get(),token);deferred=true;
+    whenActivated(prompt.get(),1500,[done](bool active){done(active?QJsonObject{{"raised",true}}:QJsonObject{{"raised",false},{"reason","activation_refused"}},{},{});});
+    return {};
+   }
+   if(name!="preview"||!window)return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
+  }
   const bool open=!terminal&&!finalizing;
   if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(window->copying()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","The image is still being copied");
@@ -306,6 +340,33 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");
  };
+ // #1804: what the check found reaches the resident as kinds and counts only; then the prompt, or an agent's decision.
+ std::function<void()> checked=[&]{
+  deciding=true;auto frame=envelope(nonce);const auto json=findings.json();frame["found"]=json["found"];frame["complete"]=findings.complete;
+  if(!findings.complete)frame["reason"]=findings.reason;
+  if(control.send("checked",frame).isEmpty()){fail();return;}
+  if(!checkPrompt){decisionDeadline.start();return;}
+  SensitivePrompt::Model model;model.findings=findings;model.redactAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
+  // The capture as Redact and upload would open it: every suggestion painted black.
+  if(document)model.preview=document->render();
+  prompt=std::make_unique<SensitivePrompt>(std::move(model));
+  QObject::connect(prompt.get(),&SensitivePrompt::chosen,&app,[&](const QString& choice){decide(choice);});
+  prompt->show();prompt->raise();prompt->activateWindow();
+ };
+ decide=[&](const QString& choice)->bool{
+  if(!deciding||terminal)return false;
+  if(choice=="redact"&&!(checkRedact&&window))return false;
+  deciding=false;decisionDeadline.stop();
+  if(prompt){prompt->choose(choice);prompt->hide();}
+  if(choice=="upload"){refuse("check_upload");return true;}
+  if(choice=="cancel"){refuse("check_cancel");return true;}
+  // Redact and upload: the same document, its suggestions already placed, in the ordinary editor.
+  window->selectTool(editor::Tool::Redact);
+  window->show();window->raise();window->activateWindow();
+  if(control.send("editing",envelope(nonce)).isEmpty())fail();
+  return true;
+ };
+ QObject::connect(&decisionDeadline,&QTimer::timeout,&app,[&]{if(deciding&&!terminal){deciding=false;refuse("check_expired");}});
  QObject::connect(&deadline,&QTimer::timeout,&app,fail);
  // Parent loss discards the session; nothing is exported without its acknowledgement.
  QObject::connect(&pipes,&QIODevice::readChannelFinished,&app,fail);
@@ -328,7 +389,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      for(const auto& entry:list){if(!entry.isString()||!error(entry.toString()).isEmpty())return false;into.append(entry.toString());}
      return true;};
     if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,Settings::quickRedactPatternError)){fail();return;}}
-   if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   // #1804: check mode, its categories, whether a person is asked and whether Redact and upload is offered.
+   if(object.contains("check")){
+    const auto check=object["check"].toObject();checkCategories.clear();
+    if(!object["check"].isObject()||check.size()!=(check.contains("file")?4:3)||!check["prompt"].isBool()||!check["redact"].isBool()||!check["categories"].isArray()||(check.contains("file")&&(!check["file"].isString()||check["file"].toString().size()>300))){fail();return;}
+    for(const auto& category:check["categories"].toArray()){if(!category.isString()||!editor::quickRedact::categories().contains(category.toString())||checkCategories.contains(category.toString())){fail();return;}checkCategories.append(category.toString());}
+    if(checkCategories.isEmpty()){fail();return;}
+    checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
+   }
+   if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -369,6 +438,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto size=reader.size();
    if(!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1){refuse("source_unsupported");return;}
    const auto pixels=qint64(size.width())*size.height();
+   // #1804: an image too large to read can't be checked, and that is said, never passed over.
+   if(pixels>maxPixels&&checkMode){deadline.stop();findings.complete=false;findings.reason="too_large";checkRedact=false;checked();return;}
    if(pixels>maxPixels){refuse("input_excessive");return;}
    reader.setAllocationLimit(int(std::min<qint64>(pixels*4/(1024*1024)+2,INT_MAX)));
    const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
@@ -385,11 +456,30 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     textCopies.insert(id,std::move(copied));
    });
    deadline.stop();
+   if(checkMode){
+    // Recognition and Quick redact on the hidden editor, with the editor's own helper, deadline and limits.
+    checking=true;
+    window->quickRedact(checkCategories,[&](Error error,QJsonObject result){
+     checking=false;if(terminal)return;
+     findings={};
+     const auto counts=result["counts"].toObject();
+     for(const auto& category:checkCategories)findings.found.append({category,counts[category].toInt()});
+     static const QStringList unavailable{"text_helper_missing","engine_unavailable","helper_sandbox_unavailable","language_unavailable"};
+     if(error){findings.complete=false;findings.reason=unavailable.contains(error.code)?QStringLiteral("unavailable"):QStringLiteral("recognition_failed");}
+     else if(window->text().truncated()){findings.complete=false;findings.reason="truncated";}
+     else if(!result["skippedPatterns"].toArray().isEmpty()){findings.complete=false;findings.reason="patterns_skipped";}
+     else if(result["nameUnchecked"].toBool()){findings.complete=false;findings.reason="name_unchecked";}
+     // Nothing found, all of it read: the upload goes ahead as if there were no check.
+     if(findings.complete&&!findings.any()){refuse("check_clean");return;}
+     checked();
+    });
+    return;
+   }
    window->show();window->raise();window->activateWindow();
    if(control.send("editing",envelope(nonce)).isEmpty())fail();
    return;
   }
-  if(type=="command"&&active&&window){
+  if(type=="command"&&active&&(window||deciding)){
    const auto requestId=object["requestId"].toString();
    if(object.size()!=6||requestId.isEmpty()||requestId.size()>64||!object["command"].isString()||!object["params"].isObject()){fail();return;}
    const auto done=[&,requestId](QJsonObject result,QString code,QString message){
@@ -403,13 +493,14 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    return;
   }
   if(type=="checkpointAccepted"&&active&&terminal){
+   if(prompt)prompt->hide();
    if(window){window->allowClose();window->hide();}
    QTimer::singleShot(0,&app,&QCoreApplication::quit);return;
   }
   fail();
  });
  const auto exitCode=app.exec();control.stop();
- window.reset();document.reset();
+ prompt.reset();window.reset();document.reset();
  return exitCode;
 #endif
 }

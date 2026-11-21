@@ -88,6 +88,8 @@ QString phaseLabel(const QJsonObject& operation) {
  if(const auto recording=commandtext::recordingPhase(operation);!recording.isEmpty())return recording;
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
+ if(phase=="checking")return "Checking for sensitive text"; // #1804
+ if(phase=="sensitive_text_found")return "Waiting for your decision";
  if(phase=="sharing")return "Creating share link";
  if(phase=="reconciling")return "Checking previous upload";
  auto text=phase;text.replace('_',' ');
@@ -744,6 +746,8 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
   effective["delaySeconds"] = settings.captureDelaySeconds;
  // The icon answers the press itself, before the service has accepted the work: a
  // recording has its own bar and badge instead.
+ // A sensitive text finding (#1804) is answered by the person at the prompt.
+ effective["sensitiveText"] = "prompt";
  const bool capture=action!=Settings::recordingActionName();
  if(capture){++startPending_;startTimer_.start();failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();refreshActivity();}
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action,capture](Error error, QJsonObject) {

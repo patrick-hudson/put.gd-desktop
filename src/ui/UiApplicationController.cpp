@@ -297,7 +297,7 @@ void UiApplicationController::prepareAction(){
 void UiApplicationController::invokeAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()||actionDispatching_)return;
  actionDispatching_=true;const auto action=pendingAction_;const bool screen=action!="clipboard"&&!pendingOptions_.contains("source");
- auto params=pendingOptions_;params["action"]=action;
+ auto params=pendingOptions_;params["action"]=action;params["sensitiveText"]="prompt"; // #1804: a person answers the sensitive text prompt
  // The dashboard's captures start after the chosen delay (#1363), as the tray's do.
  if(Settings::delayableAction(action)&&(action!="edit"||Settings::delayableEditSource(params.value("source").toString("region"))))if(const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delay>0)params["delaySeconds"]=delay;
  session_.request("action.invoke",params,this,[this,screen](Error error,QJsonObject){

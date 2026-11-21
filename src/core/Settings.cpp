@@ -371,7 +371,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -474,8 +474,25 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactPatterns/%1").arg(index - 1), QStringLiteral("Pattern %1: %2").arg(index).arg(sentence(problem)));
         }
     }
+    // #1804: the check before uploading and the Quick redact categories it looks for.
+    if (preferences.contains("sensitiveTextCheck")) {
+        const auto check = preferences["sensitiveTextCheck"].toObject();
+        const char* const wrong = "The sensitive text check is an object with enabled (true or false) and categories: one to seven different names of email, phone, ip, card, key, name and list.";
+        if (!preferences["sensitiveTextCheck"].isObject() || !keys(check, {"enabled", "categories"}) || !check["enabled"].isBool() || !check["categories"].isArray())
+            return invalid("/preferences/sensitiveTextCheck", wrong);
+        const auto categories = check["categories"].toArray();
+        if (categories.isEmpty() || categories.size() > sensitiveTextCategoryNames().size()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+        QStringList seen;
+        for (const auto& category : categories) {
+            if (!category.isString() || !sensitiveTextCategoryNames().contains(category.toString()) || seen.contains(category.toString()))
+                return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+            seen << category.toString();
+        }
+    }
     return {};
 }
+QStringList Settings::sensitiveTextCategoryNames() { return {"email", "phone", "ip", "card", "key", "name", "list"}; }
+QStringList Settings::defaultSensitiveTextCategories() { return {"card", "key", "list"}; }
 
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
@@ -578,6 +595,15 @@ Settings Settings::fromValidated(const QJsonObject& original) {
         if (!term.isEmpty() && !settings.quickRedactTerms.contains(term)) settings.quickRedactTerms.append(term);
     }
     for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
+    {
+        const auto check = doc["preferences"].toObject()["sensitiveTextCheck"].toObject();
+        settings.sensitiveTextCheck = check["enabled"].toBool(false);
+        // In the editor's own order, whatever order they were saved in.
+        QStringList saved;
+        for (const auto& category : check["categories"].toArray()) saved.append(category.toString());
+        if (!check.contains("categories")) saved = defaultSensitiveTextCategories();
+        for (const auto& category : sensitiveTextCategoryNames()) if (saved.contains(category)) settings.sensitiveTextCategories.append(category);
+    }
     return settings;
 }
 QJsonObject Settings::profileForDestination(const QJsonObject& destination, const QJsonArray& profiles) {

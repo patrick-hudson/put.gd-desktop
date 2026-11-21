@@ -35,9 +35,10 @@ namespace putgd {
 void EditorSession::request(const QString& command,const QJsonObject& params,Reply reply){
  {
   std::lock_guard lock(mutex_);
-  if(phase_=="editing"&&queue_.size()<EditorJob::maximumQueuedCommands){queue_.append({command,params,std::move(reply)});return;}
+  if((phase_=="editing"||phase_=="prompt")&&queue_.size()<EditorJob::maximumQueuedCommands){queue_.append({command,params,std::move(reply)});return;}
  }
- if(phase()=="editing")reply({"editor_busy","Too many editor commands are waiting",{}},{});
+ if(phase()=="editing"||phase()=="prompt")reply({"editor_busy","Too many editor commands are waiting",{}},{});
+ else if(phase()=="checking")reply({"sensitive_check_running","The capture is still being checked for sensitive text",{}},{});
  else if(phase()=="starting")reply({"editor_starting","The editor window is still opening",{}},{});
  else reply({"editor_finalizing","The edit was already submitted or discarded",{}},{});
 }
@@ -54,6 +55,8 @@ void EditorSession::setTextCopyHandler(TextCopyHandler handler){std::lock_guard 
 EditorSession::TextCopyHandler EditorSession::textCopyHandler() const {std::lock_guard lock(mutex_);return textCopyHandler_;}
 void EditorSession::finishTextCopy(const QString& copyId,Error error){std::lock_guard lock(mutex_);textCopyResults_.append({copyId,std::move(error)});}
 QList<std::pair<QString,Error>> EditorSession::takeTextCopyResults(){std::lock_guard lock(mutex_);return std::exchange(textCopyResults_,{});}
+void EditorSession::setPhaseHandler(PhaseHandler handler){std::lock_guard lock(mutex_);phaseHandler_=std::move(handler);}
+EditorSession::PhaseHandler EditorSession::phaseHandler() const {std::lock_guard lock(mutex_);return phaseHandler_;}
 
 namespace {
 // At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
@@ -72,6 +75,7 @@ Error failure(const QString& code){
  if(code=="editor_timeout")return {code,"The image editor did not respond in time",{}};
  if(code=="editor_start")return {code,"The image editor could not start",{}};
  if(code=="edit_staging_failed")return {code,"Could not save the image for editing; check free disk space",{}};
+ if(code=="sensitive_check_timeout")return {code,"put.gd couldn't check the capture for sensitive text in time, so it wasn't uploaded",{}};
  if(code=="editor_unavailable")return {code,"The image editor is not available on this platform",{}};
  if(code=="editor_output_invalid"||code=="edit_output_invalid")return {"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
  return {code,"The image editor stopped before handing off an image",{}};
@@ -100,7 +104,8 @@ void EditorJob::discardStaging(const QString& root){
 }
 
 EditorResult EditorJob::run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
- if(image.isNull()||qint64(image.width())*image.height()>admissionPixels){
+ // A check stages an image too large to read anyway: the helper then says it couldn't check it.
+ if(image.isNull()||(!check_&&qint64(image.width())*image.height()>admissionPixels)){
   const bool excessive=!image.isNull();image=QImage();
   EditorResult result;result.error=failure(excessive?"input_excessive":"source_unsupported");session->setPhase("closed");return result;
  }
@@ -167,9 +172,14 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(sound(redactTerms_,textjob::maxRedactTerms,textjob::redactTermError))request["redactTerms"]=QJsonArray::fromStringList(redactTerms_);
   if(sound(redactPatterns_,textjob::maxRedactPatterns,Settings::quickRedactPatternError))request["redactPatterns"]=QJsonArray::fromStringList(redactPatterns_);
  }
+ if(check_){
+  QJsonObject check{{"categories",QJsonArray::fromStringList(check_->categories)},{"prompt",check_->prompt},{"redact",check_->redact}};
+  if(!check_->file.isEmpty())check["file"]=check_->file.left(300);
+  request["check"]=check;session->setPhase("checking");
+ }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -207,12 +217,22 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
   if(protocolFailed||!validEnvelope(payload,nonce)){protocolFailed=true;return;}
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
-  if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3){editing=true;session->setPhase("editing");return;}
+  // #1804: what the check found, kinds and counts only; then the prompt or an agent's decision.
+  if(type=="checked"&&checking&&ready&&!prompting&&!editing&&!checkpoint&&payload.size()==(payload.contains("reason")?6:5)){
+   const auto found=payload["found"].toObject();
+   if(!payload["found"].isObject()||!payload["complete"].isBool()||payload["complete"].toBool()==payload.contains("reason")||(payload.contains("reason")&&!QStringList{"recognition_failed","truncated","too_large","patterns_skipped","name_unchecked","unavailable"}.contains(payload["reason"].toString()))){protocolFailed=true;return;}
+   for(auto it=found.begin();it!=found.end();++it)if(!check_->categories.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt()){protocolFailed=true;return;}
+   prompting=true;result.findings={{"found",found},{"complete",payload["complete"]}};if(payload.contains("reason"))result.findings["reason"]=payload["reason"];
+   session->setPhase("prompt");phaseClock.restart();
+   if(const auto handler=session->phaseHandler())handler("prompt",result.findings);
+   return;
+  }
+  if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3&&(!checking||prompting)){editing=true;prompting=false;session->setPhase("editing");if(checking)if(const auto handler=session->phaseHandler())handler("editing",result.findings);return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
   // A preparation the helper could recover from (encoding, size): it handed
   // nothing off and editing resumes, without a deadline again.
   if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
-  if(type=="commandResult"&&editing){
+  if(type=="commandResult"&&(editing||prompting)){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
    if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
@@ -253,7 +273,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(!recentColorList(payload["recentColors"],colors)){protocolFailed=true;return;}
    if(!payload["ok"].toBool()){
     const auto code=payload["code"].toString();
-    if(payload.size()!=6||!QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code)){protocolFailed=true;return;}
+    const bool checkCode=checking&&!editing&&(code=="check_clean"?!prompting:QStringList{"check_upload","check_cancel","check_expired"}.contains(code)&&prompting);
+    if(payload.size()!=6||!(checkCode||QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code))){protocolFailed=true;return;}
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
     if(!finalizing||payload.size()!=9||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
@@ -276,7 +297,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  else{helperOutput.started(process.processId());if(control.send("bootstrap",request).isEmpty())protocolFailed=true;}
  while(error.isEmpty()&&process.state()!=QProcess::NotRunning&&!protocolFailed){
   if(session->cancelled()&&!checkpoint){error="cancelled";break;}
-  if(!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
+  if(checking&&!prompting&&!editing&&!checkpoint&&clock.elapsed()>checkTimeoutMs){error="sensitive_check_timeout";break;}
+  if(checking&&prompting&&!check_->prompt&&!checkpoint&&phaseClock.elapsed()>decisionBackstopMs){error="sensitive_check_timeout";break;}
+  if(!checking&&!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
   if(finalizing&&!checkpoint&&phaseClock.elapsed()>finalizeTimeoutMs_){error="editor_timeout";break;}
   if(checkpoint&&phaseClock.elapsed()>5000){error="editor_exit";break;}
   if(ready&&!checkpoint){
@@ -295,7 +318,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
   }
   for(auto& pending:session->take()){
-   if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
+   if(!(editing||prompting)||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
    auto frame=envelope(nonce);frame["requestId"]=id;frame["command"]=pending.command;frame["params"]=pending.params;
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
@@ -317,6 +340,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  if(error.isEmpty()&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error="editor_exit";
  control.stop();
  if(!error.isEmpty())return fail(error);
+ if(!reply["ok"].toBool()&&reply["code"].toString().startsWith("check_")){result.check=reply["code"].toString().mid(6);session->setPhase("closed");return result;}
  if(!reply["ok"].toBool())return fail(reply["code"].toString());
  // Bind the handoff to the authenticated digest and the pinned private files.
  struct stat finalDirectory{},finalOutput{},namedOutput{},finalInput{};

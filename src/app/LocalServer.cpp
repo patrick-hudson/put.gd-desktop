@@ -171,17 +171,19 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("r2Destination",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path","mode","delaySeconds"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
  // client resolves URIs first. A menu entry's client names its installation and
  // the resident refuses another's; the CLI and MCP name none.
  if(method=="upload.files") {
-  if(!fields(p,{"paths"},{"installation","profileId"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
-     ||(p.contains("installation")&&!QStringList{"system","appimage"}.contains(p["installation"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!fields(p,{"paths"},{"installation","profileId","sensitiveText"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
+     ||(p.contains("installation")&&!QStringList{"system","appimage"}.contains(p["installation"].toString()))||(p.contains("sensitiveText")&&p["sensitiveText"]!="prompt"&&p["sensitiveText"]!="report")||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
   QStringList paths;for(const auto& value:p["paths"].toArray()){if(!value.isString()||value.toString().isEmpty()||value.toString().size()>4096||!QDir::isAbsolutePath(value.toString())){reply(invalid(),{});return;}paths.append(value.toString());}
-  operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply));return;
+  // #1804: put.gd's own menu entry (it names its installation) asks a person; the CLI and MCP get operation.decide.
+  const auto sensitive=p["sensitiveText"].toString(p.contains("installation")?QStringLiteral("prompt"):QStringLiteral("report"));
+  operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive);return;
  }
  if(method=="editor.open") {
   if(!fields(p,{},{"source","path"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
@@ -294,6 +296,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
  if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
+ // #1804: Redact and upload, Upload anyway or Cancel for a capture waiting in sensitive_text_found.
+ if(method=="operation.decide") {
+  if(!fields(p,{"id","choice"})||!string(p,"id")||!string(p,"choice",16)){reply(invalid(),{});return;}
+  operations_.decideSensitive(p["id"].toString(),p["choice"].toString(),reply);return;
+ }
  if(method=="operation.cancel"&&p.contains("itemId")) {if(!fields(p,{"id","itemId"})||!string(p,"id")||!string(p,"itemId")) {reply(invalid(),{});return;}operations_.cancel(p["id"].toString(),reply,p["itemId"].toString());return;}
  if(method.startsWith("operation.")) {
   // operation.retry alone takes scope "sharing": finish wanted share links only (#1496).

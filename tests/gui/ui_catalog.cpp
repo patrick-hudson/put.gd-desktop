@@ -23,6 +23,7 @@
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
 #include "ui/QrCodeWindow.h"
+#include "ui/SensitivePrompt.h"
 #include "core/QrImage.h"
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
@@ -922,6 +923,22 @@ int main(int argc,char** argv){
   QrCodeWindow window("item","screenshot.png","https://example.com/i/Kx7Qm2Zp.png",{});window.show();putgd::test::settle(300);app.processEvents();
   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath("69-history-qr-code.png")))return 2;
   captures.append(QJsonObject{{"file","69-history-qr-code.png"},{"width",image.width()},{"height",image.height()}});window.close();
+ }
+ {
+  // #1804: the prompt before an upload whose capture shows sensitive text, and the one for a check that
+  // couldn't finish. Synthetic capture: a terminal line with a test card number already covered.
+  QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+  {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);painter.drawText(40,240,"Payment accepted");}
+  const auto prompt=[&](const QString& name,SensitivePrompt::Model model){
+   SensitivePrompt window(std::move(model));window.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,window))return false;
+   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});window.hide();return true;};
+  SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+  if(!prompt("70a-sensitive-prompt",found))return 2;
+  SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
+  if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.redactAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  if(!prompt("70c-sensitive-prompt-files",files))return 2;
  }
  {
   // Dark app content must keep a visible image boundary in either scheme.
