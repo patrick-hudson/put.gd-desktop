@@ -293,6 +293,7 @@ private:
     QPointF intentAnchor_, dwellAt_;        // where intent is measured from; where the dwell started
     double engagedY_ = 0;                   // the skim's vertical reference (follows sideways travel; P2)
     bool travelOnly_ = false;               // P4: after a press or release, intent by travel only, never dwell
+    QPointF travelFrom_;                    // G1: where that press or release was
     QElapsedTimer motionClock_;
     QList<std::pair<qint64, QPointF>> recentMotion_;  // P2: the last moves (time, delta)
     std::optional<QPointF> lastMove_, skimBlockedAt_, recentDelta_;
