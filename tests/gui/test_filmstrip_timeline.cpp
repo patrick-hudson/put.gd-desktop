@@ -141,6 +141,8 @@ private slots:
         QCOMPARE(end, 29400000);
         QVERIFY(std::abs(start - 4012345) < 2 * 1000000 / fps);
         // Brackets never cross: dragging the end past the start leaves one frame.
+        // (The first proposal is answered first: an unanswered trim takes no second drag, T4.)
+        reset(t.get());
         proposed.clear();
         drag(t.get(), t->trimHandleRect(false).center(), QPoint(t->xFor(1000000), t->trimHandleRect(false).center().y()));
         QCOMPARE(proposed.size(), 1);
@@ -784,6 +786,11 @@ private slots:
         // No answer: it lets go after a second.
         drag(t.get(), QPoint(t->xFor(answered.cuts[0].end), y), QPoint(t->xFor(answered.cuts[0].end) + 40, y));
         QVERIFY(!t->inspect()["pending"].isNull());
+        // T4: while it waits, the same edge cannot be dragged again (no carried, maybe-refused change).
+        const auto adjustedBefore = adjusted.size();
+        const int shownEnd = t->xFor(qint64(t->inspect()["pending"].toObject()["end"].toDouble()));
+        drag(t.get(), QPoint(shownEnd, y), QPoint(shownEnd + 30, y));
+        QCOMPARE(adjusted.size(), adjustedBefore);
         PUTGD_TRY_VERIFY(t->inspect()["pending"].isNull());
     }
     // Q8: a cut edge stops at its neighbour; Q6: the drop uses the last move's
@@ -905,6 +912,56 @@ private slots:
         QTest::keyClick(t.get(), Qt::Key_Escape);
         QTest::mouseRelease(t.get(), Qt::LeftButton, {}, body + QPoint(10, 0));
         QCOMPARE(t->inspect()["selectedEdit"].toObject()["id"].toString(), QString("m1"));
+    }
+    // T1: a slid cover keeps its frame count, its edges on frame boundaries,
+    // and reaches a final partial frame. T3: an armed selection is never
+    // rounded away into a click. T8: zooming during a drag is ignored.
+    void slideFramesArmedRangeAndZoomMidDrag() {
+        auto t = make();
+        t->setDuration(32010000, fps);
+        auto e = edit();
+        e.revision = 95;
+        e.masks[0].start = 66667;   // frames 2..4 (two frames)
+        e.masks[0].end = 133333;
+        e.masks[1].start = 31000000;  // to the end of a recording whose last frame is partial
+        e.masks[1].end = 32010000;
+        t->setEdit(e);
+        const auto edge = [](qint64 us) { return qRound64(std::round(us * 30.0 / 1e6) * 1e6 / 30.0); };
+        QSignalSpy retimed(t.get(), &FilmstripTimeline::coverRetimed);
+        t->setSelectedEdit("cover", "m1");
+        t->setZoom(8, qint64(0));
+        const auto bar = t->coverBarRect("m1");
+        drag(t.get(), bar.center(), bar.center() + QPoint(37, 0));
+        QCOMPARE(retimed.size(), 1);
+        const qint64 a = retimed[0][1].toLongLong(), b = retimed[0][2].toLongLong();
+        QCOMPARE(a, edge(a));
+        QCOMPARE(b, edge(b));
+        QCOMPARE(std::llround(b * 30.0 / 1e6) - std::llround(a * 30.0 / 1e6), 2LL);
+        // The partial-frame cover slides back and forth to the end without changing its count.
+        reset(t.get());
+        t->setEdit(e);
+        t->zoomFit();
+        t->setSelectedEdit("cover", "m2");
+        const auto tail = t->coverBarRect("m2");
+        drag(t.get(), tail.center(), tail.center() - QPoint(60, 0));
+        QCOMPARE(retimed.size(), 2);
+        const qint64 frames = std::llround(retimed[1][2].toLongLong() * 30.0 / 1e6) - std::llround(retimed[1][1].toLongLong() * 30.0 / 1e6);
+        QCOMPARE(frames, 31LL);  // 930..961, the last one partial
+        // T3: at the closest zoom, a 6 px drag that lands in the anchor's frame still selects one frame.
+        t->setDuration(duration, fps);
+        reset(t.get());
+        t->setZoom(8, qint64(10000000));
+        QSignalSpy selected(t.get(), &FilmstripTimeline::timeSelected), cleared(t.get(), &FilmstripTimeline::timeSelectionCleared);
+        const int y = t->stripRect().center().y(), x = t->xFor(10000000 - 8000);
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, QPoint(x, y));
+        move(t.get(), QPoint(x + 6, y));
+        // T8: zooming mid-drag is ignored.
+        const int zoom = t->zoom();
+        t->zoomOut();
+        QCOMPARE(t->zoom(), zoom);
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, QPoint(x + 6, y));
+        QCOMPARE(selected.size(), 1);
+        QVERIFY(selected[0][1].toLongLong() - selected[0][0].toLongLong() >= 1000000 / fps - 1);
     }
     // Q9: the hovered cut or cover is reported for the Edits list.
     void hoverReportsTheItemUnderThePointer() {

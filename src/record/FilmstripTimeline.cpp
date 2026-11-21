@@ -46,7 +46,6 @@ constexpr int kEdgeZone = 8;       // a cut or cover edge's zone, each side
 constexpr int kBodyKeep = 8;       // a narrow item's body keeps this much between its edge zones
 constexpr int kMinItemHit = 18;    // items narrower than this get this hit width
 constexpr int kNarrowItem = 20;    // narrower items: a press selects; edges only once selected (T11)
-constexpr int kNarrowEdgeGap = 8;  // a selected narrow item's edge targets sit at least this far apart
 constexpr int kPlayheadCap = 24;   // the playhead's zone on the ruler (T1)
 constexpr int kSelectionZone = 6;  // a time selection edge's zone each side
 constexpr int kDeadZone = 4;       // edge, bracket, selected-bar and selection-edge drags start past it (T5)
@@ -75,6 +74,7 @@ constexpr int kZoomAnimationMs = 120;    // R5: a zoom step eases over this
 constexpr int kCutEdgeOutside = 4;       // R7: an unselected cut's edge zone outside the cut
 constexpr int kNarrowOutside = 10;       // R6: a selected narrow item's edge zone outside it...
 constexpr int kNarrowInside = 2;         // ...and inside it
+constexpr int kNarrowBody = 6;           // T2: and its body keeps at least this much
 constexpr int kSelectedGrip = 5;         // R11: a selected item's grip wins within this of its edge
 constexpr int kPlayheadClickSlop = 2;    // R3: a cap click farther than this from the line seeks
 constexpr int kLateGripMs = 60;          // Q10t, P1: a press this soon after leaving a grip...
@@ -461,8 +461,9 @@ void FilmstripTimeline::setPlayhead(qint64 sourceUs) {
     playhead_ = at;
     QAccessibleValueChangeEvent changed(this, double(playhead_) / 1000000);
     QAccessible::updateAccessibility(&changed);
-    // A press or drag in progress never scrolls the timeline under the pointer.
-    if (drag_ == Drag::None) revealPlayhead();
+    // A press or drag in progress never scrolls the timeline under the pointer,
+    // nor does a cancel putting the playhead back (T5).
+    if (drag_ == Drag::None && !restoring_) revealPlayhead();
     if (drag_ == Drag::None && lastMove_ && underMouse()) updateHover(*lastMove_);
     update();
 }
@@ -626,6 +627,7 @@ void FilmstripTimeline::clearPending() {
 
 // ---- time and frames ----
 qint64 FilmstripTimeline::frameUs() const { return std::max<qint64>(1, qRound64(1e6 / fps_)); }
+qint64 FilmstripTimeline::lastFrameIndex() const { return qint64(std::ceil(double(duration_) * fps_ / 1e6 - 1e-6)); }
 qint64 FilmstripTimeline::snap(qint64 us) const {
     const qint64 n = qRound64(double(std::clamp<qint64>(us, 0, duration_)) * fps_ / 1e6);
     return std::min(duration_, qRound64(double(n) * 1e6 / fps_));
@@ -724,6 +726,8 @@ QList<int> FilmstripTimeline::zoomLevels() const {
     return levels;
 }
 void FilmstripTimeline::setZoom(int level, std::optional<qint64> anchorUs) {
+    // Zooming mid-drag would change what the pointer's travel means: ignored (T8).
+    if (drag_ != Drag::None) return;
     const auto levels = zoomLevels();
     int next = 1;
     for (const int candidate : levels) if (std::abs(candidate - level) <= std::abs(next - level)) next = candidate;
@@ -754,7 +758,7 @@ void FilmstripTimeline::startZoomAnimation(double fromStart, double fromLength, 
     continuous_ = false;
     zoomSettle_.stop();
     if (!isVisible() || (std::abs(fromLength - double(visibleLength())) < 1 && std::abs(fromStart - double(scrollUs_)) < 1)) { finishZoom(); return; }
-    fromStart_ = liveStart_ = fromStart;
+    liveStart_ = fromStart;
     fromLength_ = liveLength_ = fromLength;
     animAnchor_ = anchor;
     animFraction_ = fraction;
@@ -772,6 +776,7 @@ void FilmstripTimeline::finishZoom() {
 // R5: pinch and Ctrl+trackpad zoom continuously about the anchor, then settle
 // to the nearest ladder level when the gesture ends.
 void FilmstripTimeline::continuousZoom(double factor, qint64 anchorUs) {
+    if (drag_ != Drag::None) return;  // T8
     if (!continuous_) {
         paintLive_ = true;
         liveStart_ = viewStart();
@@ -934,9 +939,11 @@ QList<FilmstripTimeline::Zone> FilmstripTimeline::zones() const {
                 list.append({bodyT, id, box(std::max(c - half, stripL), std::min(c + half, stripR), top, bottom), c, c});
                 return;
             }
-            if (b - a > 2 * kNarrowInside) list.append({bodyT, id, box(a + kNarrowInside, b - kNarrowInside, top, bottom), c, c});
-            if (startShown) list.append({startT, id, box(a - kNarrowOutside, std::min(a + kNarrowInside, c), top, bottom), a, a});
-            if (endShown) list.append({endT, id, box(std::max(b - kNarrowInside, c), b + kNarrowOutside, top, bottom), b, b});
+            // The body keeps at least kNarrowBody at the centre, however thin the item; the grips sit outside it (T2).
+            const double bodyL = std::min(a + kNarrowInside, c - kNarrowBody / 2.0), bodyR = std::max(b - kNarrowInside, c + kNarrowBody / 2.0);
+            list.append({bodyT, id, box(bodyL, bodyR, top, bottom), c, c});
+            if (startShown) list.append({startT, id, box(a - kNarrowOutside, bodyL, top, bottom), a, a});
+            if (endShown) list.append({endT, id, box(bodyR, b + kNarrowOutside, top, bottom), b, b});
             return;
         }
         // An unselected cut's or cover's edge reaches only 4 px outside it (R7, G5).
@@ -1607,6 +1614,8 @@ void FilmstripTimeline::hoverSkim(QPointF pos) {
         }
         if (std::abs(sdy) > 2 * std::abs(sdx)) { if (std::abs(pos.y() - engagedY_) >= kSkimVertical) { disengageSkim(pos); return; } }
         else if (std::abs(sdx) >= 2 * std::abs(sdy)) engagedY_ = pos.y();
+        // Arriving on a grip starts the rest timer even without further motion (T7).
+        if (grip && !dwellTimer_.isActive()) { dwellAt_ = pos; dwellTimer_.start(); }
         if (QLineF(dwellAt_, pos).length() > kSkimDwellSlop) { dwellAt_ = pos; dwellTimer_.start(); }
         const qint64 at = std::clamp<qint64>(timeAt(pos.x()), 0, std::max<qint64>(0, duration_ - 1));
         if (skimming_) skimAt(at);
@@ -1683,7 +1692,6 @@ void FilmstripTimeline::beginDrag(Drag drag, const QString& id, QPointF pos) {
     pressPos_ = dragPos_ = pos;
     snapGuide_.reset();
     snapLock_.reset();
-    pressTimeUs_ = double(scrollUs_) + (pos.x() - stripLeft()) * usPerPixel();
     originScroll_ = scrollUs_;
     originStart_ = originEnd_ = 0;
     switch (drag) {
@@ -1850,16 +1858,26 @@ void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers)
         // The whole cover slides in time, clamped to the recording.
         const qint64 length = originEnd_ - originStart_;
         // By the pointer's travel only: an end scrolled off screen is not pulled into view (Q1).
+        // Both edges move by the same whole number of frames, so the covered
+        // frame count never changes; the recording's final partial frame
+        // counts as one (T1).
         const qint64 wanted = snapToTargets(originStart_ + delta, bypass, length);
-        dragStart_ = std::clamp<qint64>(wanted, 0, std::max<qint64>(0, duration_ - length));
-        if (dragStart_ != wanted) snapGuide_.reset();
-        dragEnd_ = std::min(duration_, dragStart_ + length);
+        const auto index = [this](qint64 t) { return t >= duration_ ? lastFrameIndex() : qint64(std::llround(double(t) * fps_ / 1e6)); };
+        const auto edgeAt = [this](qint64 k) { return std::min(duration_, qRound64(double(k) * 1e6 / fps_)); };
+        const qint64 frames = std::max<qint64>(1, index(originEnd_) - index(originStart_));
+        const qint64 first = std::clamp<qint64>(index(wanted), 0, std::max<qint64>(0, lastFrameIndex() - frames));
+        dragStart_ = edgeAt(first);
+        dragEnd_ = edgeAt(first + frames);
+        if (dragStart_ != snap(wanted)) snapGuide_.reset();
         emit editEdgeDragged(QStringLiteral("cover"), dragId_, true, dragStart_);
         break;
     }
     case Drag::Select: {
         // Anchored at the press; the moving end follows the pointer and the viewer shows its frame.
-        const qint64 anchor = snap(anchorUs_), moving = snapToTargets(timeAt(clampedX), bypass);
+        const qint64 anchor = snap(anchorUs_);
+        qint64 moving = snapToTargets(timeAt(clampedX), bypass);
+        // Armed, the range is at least one frame, toward where the pointer went (T3).
+        if (moving == anchor) moving = pos.x() < armFrom_.x() ? std::max<qint64>(0, snap(anchor - frameUs())) : std::min(duration_, snap(anchor + frameUs()));
         dragStart_ = std::min(anchor, moving);
         dragEnd_ = std::max(anchor, moving);
         emit editEdgeDragged(QStringLiteral("selection"), {}, moving < anchor, moving);
@@ -1910,8 +1928,8 @@ void FilmstripTimeline::cancelDrag() {
         break;
     default: break;
     }
-    // The view comes back as it was before the press, autoscroll or overview drag included (R12).
-    setScroll(pressScroll_);
+    // The playhead comes back without the view following it (T5)...
+    restoring_ = true;
     if ((drag == Drag::Scrub || drag == Drag::Playhead || drag == Drag::Strip || drag == Drag::Select) && playhead_ != prePlayhead_) emit seekRequested(prePlayhead_);
     // A cover or cut press that selected its item gives the earlier selection
     // back, then the playhead its selection may have moved (Q1, P7).
@@ -1922,10 +1940,14 @@ void FilmstripTimeline::cancelDrag() {
         selection_ = preSelection_;
         if (preKind_ == "cut") emit cutSelected(preId_);
         else if (preKind_ == "cover") emit coverSelected(preId_);
+        else if (preKind_ == "trim") emit trimSelected();  // T6
         else if (preSelection_) emit timeSelected(preSelection_->start, preSelection_->end);
         else emit selectionCleared();
         if (playhead_ != prePlayhead_) emit seekRequested(prePlayhead_);
     }
+    restoring_ = false;
+    // ...and the view comes back as it was before the press, autoscroll or overview drag included (R12).
+    setScroll(pressScroll_);
     // A press that held playback gives it back as it was: playing.
     if (std::exchange(pressHeldPlayback_, false)) emit playbackReleased(true);
     update();
@@ -1983,6 +2005,15 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
         if (kind == "cut") emit cutSelected(id); else emit coverSelected(id);
         return true;
     };
+    // No second drag on an item whose last proposal is still unanswered: it
+    // would carry a change the resident may yet refuse (T4).
+    if (pending_.drag != Drag::None && !pending_.easing) {
+        const bool trim = (hit.target == Target::TrimStart || hit.target == Target::TrimEnd) && (pending_.drag == Drag::TrimStart || pending_.drag == Drag::TrimEnd);
+        const bool cut = (hit.target == Target::CutStart || hit.target == Target::CutEnd) && (pending_.drag == Drag::CutStart || pending_.drag == Drag::CutEnd) && pending_.id == hit.id;
+        const bool cover = (hit.target == Target::CoverStart || hit.target == Target::CoverEnd || hit.target == Target::Cover)
+            && (pending_.drag == Drag::CoverStart || pending_.drag == Drag::CoverEnd || pending_.drag == Drag::CoverSlide) && pending_.id == hit.id;
+        if (trim || cut || cover) return;
+    }
     switch (hit.target) {
     case Target::More: emit moreCoversRequested(); return;
     case Target::TrimStart: case Target::TrimEnd:

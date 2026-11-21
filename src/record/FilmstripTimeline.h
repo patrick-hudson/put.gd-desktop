@@ -159,6 +159,9 @@ signals:
     // R18t: a plain click on the filmstrip clears only the time selection (a
     // selected cut or cover stays selected).
     void timeSelectionCleared();
+    // T6: a cancelled cut or cover press gives back a trim selection (the
+    // window selects the trim as its Edits row does).
+    void trimSelected();
     // Q9: the cut or cover (its bar or an edge) under the pointer changed;
     // kind "cut" | "cover", or empty for none.
     void hoverChanged(const QString& kind, const QString& id);
@@ -218,6 +221,7 @@ private:
     Hit hitAt(QPointF) const;
     static QString kindOf(Target);
     qint64 frameUs() const;
+    qint64 lastFrameIndex() const;  // the frame edge at the duration (a final partial frame counts)
     qint64 snap(qint64 us) const;
     qint64 visibleLength() const;
     int stripLeft() const;
@@ -315,10 +319,10 @@ private:
     std::optional<QPointF> gripAt_;         // Q10t: where the pointer last was on a grip
     QElapsedTimer gripLeft_;                // and since when it is off it
     QPointF armFrom_;                       // P1: the dead zone counts from the real press
+    bool restoring_ = false;                // T5: a cancel is putting the playhead back
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
     qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
-    double pressTimeUs_ = 0;                // content time under the press (unclamped)
     QPointF pressPos_, dragPos_;
     Qt::KeyboardModifiers dragModifiers_;
     std::optional<qint64> snapGuide_;
@@ -337,7 +341,7 @@ private:
     QPointF latchTravel_, latchBuffer_;     // R15: the signed travel before the latch
     QElapsedTimer wheelClock_;
     // R5: the live view while animating (liveLength_ > 0) and the animation's start.
-    double liveStart_ = 0, liveLength_ = 0, fromStart_ = 0, fromLength_ = 0;
+    double liveStart_ = 0, liveLength_ = 0, fromLength_ = 0;
     qint64 animAnchor_ = 0;
     double animFraction_ = 0;               // Q2: the anchor's screen fraction, held while animating
     bool continuous_ = false;               // a pinch or Ctrl+trackpad zoom is under way
