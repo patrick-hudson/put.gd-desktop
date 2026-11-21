@@ -349,7 +349,7 @@ putgd-cli errors.clear '{"resolvedOnly":true}'
 | `errors.inspect` | `id`; the entry, or `error_not_found` |
 | `errors.act` | `id`, `action` `unlock_credentials`, `retry` or `save_diagnostics`, one of the entry's `nextSteps`. Runs the session method its Settings button uses and answers `{id, action, method, result}` with that method's result, or its error (itself recorded). `error_action_unavailable` when the entry doesn't offer it. Waits up to 300 s (a keyring prompt) |
 | `errors.clear` | optional `ids` (1–500) and `resolvedOnly`; with neither, removes every entry. Answers `removed` |
-| `ui.errorLog` | drives the open Settings → Error log page: `action` `inspect`, `refresh`, `select` (`id`), `step` (`step`: `unlock_credentials`, `open_destination`, `retry`, `show_in_history`, `save_diagnostics`), `setFilter` (`kind`, empty for all; `search`; `showResolved`), `nextPage`, `previousPage`, `clear` (optional `resolvedOnly`; opens the confirmation), `confirmClear`, `cancelClear`. Answers the page's state: `filter`, `page`, `rows`, `selected` (`entry`, `buttons`, `resolution`), `feedback`, `confirming` and `package` |
+| `ui.errorLog` | drives the open Settings → Error log page: `action` `inspect`, `refresh`, `select` (`id`), `step` (`step`: `unlock_credentials`, `open_destination`, `retry`, `show_in_history`, `save_diagnostics`; answers once the step has started, and its outcome shows in `feedback` on a later `inspect`; `error_action_unavailable` when the selected entry doesn't offer it), `setFilter` (`kind`, empty for all; `search`; `showResolved`), `nextPage`, `previousPage`, `clear` (optional `resolvedOnly`; opens the confirmation; `ui_confirmation_open` while one is open), `confirmClear`, `cancelClear`. Answers the page's state: `filter`, `page`, `rows`, `selected` (`entry`, `buttons`, `resolution`), `feedback`, `confirming` and `package` |
 
 An entry is a JSON object with `id`, `time`, `firstTime`, `occurrences`, `kind`,
 `action`, `code`, `title`, `message`, `details`, `subject`, `resolved` (with
@@ -358,8 +358,9 @@ An entry is a JSON object with `id`, `time`, `firstTime`, `occurrences`, `kind`,
 `profileId`, `provider`, `destination`, `itemName`, and in a list `itemPresent` and
 `previewPath`. `ui.snapshot` carries `errorLog` (`revision`, `total`, `unresolved`), and
 `ui.show` takes the view `errors`. A session method's error that the log recorded names
-its entry in `details.errorLogId`. `errors.record` is reserved for put.gd's own windows;
-`putgd-cli` refuses it.
+its entry in `details.errorLogId`. `errors.record` is reserved for put.gd's own windows (its `code` is lowercase letters,
+digits and `_`); `putgd-cli` refuses it. Show in History opens History filtered to the
+moment the item was stored, with the item selected.
 
 ## Text recognition and QR codes
 

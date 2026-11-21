@@ -608,9 +608,12 @@ it, and `errors.list` reads it ([cli.md](../automation/cli.md#error-log)).
 An entry is added for:
 
 - an operation that ends failed, partial or interrupted: one entry for each file whose
-  upload failed or whose outcome is unknown, one for a local copy that failed, and one
-  for the operation itself when no file says more (a capture, recording, Copy text or
-  diagnostics upload that failed before it had files); a link the upload couldn't copy;
+  upload failed or whose outcome is unknown, one for a file that uploaded but whose share
+  link wasn't made, one for a local copy that failed (also after Retry local save), and
+  one for the operation itself when no file says more (a capture, recording, Copy text or
+  diagnostics upload that failed before it had files); a link the upload couldn't copy,
+  as one entry with the copy's own error. Entries are taken from the operation's
+  committed result, never read back later, so a newer attempt can't hide them;
 - a deletion item that ends failed, unknown, changed, with a version left behind or
   not safely removable, and a share link change that fails;
 - a Test connection, credential read or store, or Proton account step that fails;
@@ -655,11 +658,13 @@ entry about it resolved, with `resolvedAt` and `resolution`. The entry stays in 
 | A file's upload | the file uploaded (a Retry that worked) |
 | A file's local copy | the copy saved |
 | A file's deletion | the file removed or already gone |
-| A file's link change | the link shared, made private or revoked |
+| A file's link change, or its share link at upload | the link shared, made private or revoked |
 | An operation | the operation completed |
 | A Test connection or credential read | the next one that passed |
 | A refused session call | the same call, for the same item or destination, answered without an error |
-| Settings saves | the next save that worked |
+
+A refused settings save is kept per field and never resolved by itself: a later save
+that works carries the whole document and says nothing about the field that was refused.
 
 ### Storage, limits and privacy
 
@@ -672,7 +677,10 @@ records** leaves it alone. One resident queue writes it, so an entry and the suc
 that resolves it keep their order.
 
 The newest 500 entries recorded in the last 90 days are kept; each write removes the
-rest. **Clear…** in Settings and `errors.clear` remove all entries, the given ones or
+rest. Writes wait while the journal is still recovering, up to 1,000 of them (later ones
+are dropped and counted in the log record `Error log write dropped`), and the ones still
+waiting at quit are written before the resident exits. Reads answer at once with the
+journal's not-ready error while it recovers. **Clear…** in Settings and `errors.clear` remove all entries, the given ones or
 only resolved ones. A message is redacted, and its details are redacted field by field,
 as log records are (see [Redaction](#redaction)), before anything is stored; details
 over 16 KiB are replaced by `{"truncated": true}`. A diagnostics package never
@@ -695,7 +703,7 @@ operation, item, deletion, link change or setup IDs, and its next steps as butto
 | --- | --- |
 | Unlock saved credentials | `history.unlockCredentials` for the item's original destination (the keyring may prompt), or `setup.unlockCredentials` for the destination |
 | Open destination settings | opens Destinations on that destination |
-| Retry deletion, Retry upload, Retry local copy, Copy again, Test connection again | `delete.retry`, `operation.retry`, `operation.retryLocalSave`, `operation.copy` or `setup.testDestination` |
+| Retry deletion, Retry upload, Retry local copy, Copy again, Test connection again | `delete.retry`, `operation.retry`, `operation.retryLocalSave`, `operation.copy` or `setup.testDestination`; offered only for a failed outcome, never for a refused call, whose repeat could do something else (a refused share-only retry is not an upload retry) |
 | Show in History | opens History with the item selected |
 | Save diagnostics for this operation | a local package for that operation |
 
@@ -705,10 +713,13 @@ fix it. **Technical details** shows the entry as recorded, with **Copy details**
 ### History
 
 History shows an error for 12 seconds in a notice at the bottom (hovering keeps it),
-with **Open error log**, which opens Settings → Error log on that entry, and ×. Notes
+with **Open error log**, which opens Settings → Error log on that entry, and ×. The link
+appears only for an error the log recorded; a read that failed (an item's details that
+couldn't be loaded) shows without it. Leaving History dismisses the notice, and an error
+that arrives while History is hidden is only in the log. Notes
 about the selected item (a superseded link, a resend warning) and progress stay on the
-status line. A deletion or link change shows its outcome once, when it ends while
-History is open; reopening History never brings an old error back, and the deletion
+status line. A deletion or link change shows its outcome once, when it is seen running in History
+and then ends; reopening History never brings an old error back, and the deletion
 says which file it was and where: "Couldn't delete “Screenshot 18:25:53.png” from
 Work S3 · put-gd-shots: Credentials for this file's destination aren't loaded. …".
 Failed rows, their inspector and the Failed uploads category are unchanged. When a
