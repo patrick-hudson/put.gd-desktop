@@ -1329,8 +1329,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(qMax(0,captureProfile_->findData(back(accepted.value("captureDefaults")))));updateCaptureInheritance();}
   {// Quietly: the removal's own fallback, worked out from the file when it is sent, covers these.
    const QScopedValueRollback quiet(loading_,true);for(const auto& action:Settings::presentationOrder())if(actionProfiles_[action]->currentData()==id)actionProfiles_[action]->setCurrentIndex(qMax(0,actionProfiles_[action]->findData(back(accepted.value("actions").toObject().value(action)))));}
-  updateCaptureInheritance();captureDefaultsEnabled_=true;captureRoutingEdited_=true;
-  // Routes the draft itself holds, such as a recording route the form hasn't touched, stop naming it.
+  updateCaptureInheritance();
+  // Routes the draft itself holds stop naming it, as the removal saves them, so nothing of it is
+  // left unsaved (#1762); the form's routes stay unedited unless they were edited already.
+  if(auto capture=draft_.value("captureDefaults").toObject();capture.value("profileId")==QJsonValue(id)){const auto file=accepted.value("captureDefaults");if(file.isObject()&&file.toObject().value("profileId")!=QJsonValue(id))draft_["captureDefaults"]=file;else{capture["destination"]="local";capture["profileId"]=QJsonValue::Null;draft_["captureDefaults"]=capture;}}
   {auto actions=draft_.value("actions").toObject();const auto saved=accepted.value("actions").toObject();for(auto it=actions.begin();it!=actions.end();++it){auto action=it.value().toObject();if(action.value("profileId")!=QJsonValue(id))continue;const auto file=saved.value(it.key()).toObject();if(file.value("profileId")!=QJsonValue(id)&&file.contains("destination")){for(const auto* key:{"destination","profileId","publicationMode"}){if(file.contains(key))action[key]=file.value(key);else action.remove(key);}}else{action["destination"]="local";action["profileId"]=QJsonValue::Null;}it.value()=action;}draft_["actions"]=actions;}
   profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));queueRemoval(id);refreshDestinationList();});
  connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
