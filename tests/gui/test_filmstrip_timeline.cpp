@@ -499,6 +499,8 @@ private slots:
         QCOMPARE(t->zoom(), 3);
         t->zoomOut();
         QCOMPARE(t->zoom(), 2);
+        // reveal scrolls the least amount: a span across the view's end ends at its end.
+        { const auto view = t->visibleSpan(); t->reveal({view.end - 500000, view.end + 1000000}); QCOMPARE(t->visibleSpan().end, view.end + 1000000); }
         t->setZoom(16);
         QCOMPARE(t->zoom(), 8);
         QVERIFY(!t->overviewRect().isNull());

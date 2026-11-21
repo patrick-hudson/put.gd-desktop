@@ -3034,13 +3034,14 @@ void ReviewWindow::refreshNote() {
 void ReviewWindow::noteUndo() {
     const auto span = [](qint64 a, qint64 b) { return QStringLiteral("%1–%2").arg(durationText(a), durationText(b)); };
     QString what, kind, id;
+    recording::Span item;  // the span the step changed, scrolled into view
     for (const auto& cut : std::as_const(edit_.cuts)) {
         const auto old = std::find_if(undoBefore_.cuts.cbegin(), undoBefore_.cuts.cend(), [&](const RecordingCut& c) { return c.id == cut.id; });
-        if (old == undoBefore_.cuts.cend() || old->start != cut.start || old->end != cut.end) { what = QStringLiteral("Cut ") + span(cut.start, cut.end); kind = QStringLiteral("cut"); id = cut.id; break; }
+        if (old == undoBefore_.cuts.cend() || old->start != cut.start || old->end != cut.end) { what = QStringLiteral("Cut ") + span(cut.start, cut.end); kind = QStringLiteral("cut"); id = cut.id; item = {cut.start, cut.end}; break; }
     }
     if (what.isEmpty()) for (const auto& mask : std::as_const(edit_.masks)) {
         const auto old = std::find_if(undoBefore_.masks.cbegin(), undoBefore_.masks.cend(), [&](const RecordingMask& m) { return m.id == mask.id; });
-        if (old == undoBefore_.masks.cend() || old->toJson() != mask.toJson()) { what = maskNames_->name(mask) + QLatin1Char(' ') + span(mask.start, mask.end); kind = QStringLiteral("cover"); id = mask.id; break; }
+        if (old == undoBefore_.masks.cend() || old->toJson() != mask.toJson()) { what = maskNames_->name(mask) + QLatin1Char(' ') + span(mask.start, mask.end); kind = QStringLiteral("cover"); id = mask.id; item = {mask.start, mask.end}; break; }
     }
     if (what.isEmpty()) for (const auto& cut : std::as_const(undoBefore_.cuts))
         if (std::none_of(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == cut.id; })) { what = QStringLiteral("Cut ") + span(cut.start, cut.end); break; }
@@ -3052,6 +3053,7 @@ void ReviewWindow::noteUndo() {
     // An item the step brought back (or changed) is selected; the playhead stays.
     if (kind == "cut") selectCut(id, false);
     else if (kind == "cover") selectCover(id, false);
+    if (!kind.isEmpty()) timeline_->reveal(item);
 }
 void ReviewWindow::showFrameError(qint64 at, const QString& message) {
     // Never a silent old frame: say so over it until a refresh succeeds.
