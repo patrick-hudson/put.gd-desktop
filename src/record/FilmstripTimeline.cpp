@@ -56,6 +56,7 @@ constexpr int kSelectStart = 6;    // a press on empty strip turns into a time s
 constexpr int kSkimClickMove = 2;  // no skim after a click until the pointer moves this far
 constexpr int kSnapReach = 6;      // snapping reach in screen pixels at every zoom (R16t)
 constexpr int kSnapRelease = 3;    // a held snap lets go this far past its reach
+constexpr int kScrubSnapReach = 3; // F3: a scrub's reach, with no hold
 constexpr int kAutoscrollZone = 12;      // T9: the inner zone
 constexpr int kAutoscrollPast = 60;      // full speed this far past the strip end
 constexpr int kAutoscrollDelayMs = 120;  // entry waits this long
@@ -1566,10 +1567,11 @@ void FilmstripTimeline::updateHover(QPointF pos) {
     default: setCursor(Qt::ArrowCursor); break;
     }
 }
-// Hover intent (T8): 6 px of net horizontal travel, or 150 ms dwelling, over
-// the ruler or strip and off the grips. Before it nothing shows; after it the
-// skim follows the pointer until it reaches a grip, leaves vertically by 8 px
-// or leaves the ruler and strip.
+// Hover intent (T8, Q3): 12 px of net horizontal travel at three times any
+// vertical, or 150 ms dwelling (not after a press or release, P4), over the
+// ruler or strip and off the grips. Before it nothing shows; after it the skim
+// follows the pointer until it rests on a grip, leaves vertically by 8 px or
+// leaves the ruler and strip.
 void FilmstripTimeline::hoverSkim(QPointF pos) {
     const auto strip = stripRect();
     const bool area = !playing_ && pos.y() >= 0 && pos.y() <= strip.bottom() + 4 && pos.x() >= strip.left() && pos.x() <= strip.right() + 1;
@@ -1743,8 +1745,10 @@ qint64 FilmstripTimeline::snapToTargets(qint64 us, bool bypass, std::optional<qi
     }
     const qint64 frame = frameUs();
     targets.erase(std::remove_if(targets.begin(), targets.end(), [&](qint64 t) { return std::any_of(origins.cbegin(), origins.cend(), [&](qint64 o) { return std::abs(t - o) <= frame; }); }), targets.end());
-    // Reach in screen pixels at every zoom (R16t).
-    const double reach = kSnapReach * usPerPixel(), hold = reach + kSnapRelease * usPerPixel();
+    // Reach in screen pixels at every zoom (R16t). A scrub snaps within 3 px
+    // and never holds, so the frames next to an edit point stay reachable (F3).
+    const bool scrub = drag_ == Drag::Scrub || drag_ == Drag::Playhead;
+    const double reach = (scrub ? kScrubSnapReach : kSnapReach) * usPerPixel(), hold = scrub ? reach : reach + kSnapRelease * usPerPixel();
     std::optional<qint64> result;
     // A held target stays until the pointer is past its release reach.
     if (snapLock_ && targets.contains(*snapLock_)) {
@@ -1824,7 +1828,8 @@ void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers)
     switch (drag_) {
     case Drag::None: case Drag::Strip: case Drag::Overview: return;
     case Drag::Scrub: emit seekRequested(snapToTargets(timeAt(clampedX), bypass)); break;
-    case Drag::Playhead: emit seekRequested(snapToTargets(std::clamp<qint64>(prePlayhead_ + delta, 0, duration_), bypass)); break;
+    // Once armed, a cap drag is absolute like a ruler scrub: the playhead goes to the pointer's time (F4).
+    case Drag::Playhead: emit seekRequested(snapToTargets(timeAt(clampedX), bypass)); break;
     case Drag::TrimStart: moveStart(inView(originStart_ + delta)); emit trimEdgeDragged(true, dragStart_); break;
     case Drag::TrimEnd: moveEnd(inView(originEnd_ + delta)); emit trimEdgeDragged(false, dragEnd_); break;
     case Drag::CutStart: case Drag::CoverStart: case Drag::SelectionStart:
