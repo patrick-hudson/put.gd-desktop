@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QRegularExpression>
+#include <QTextBoundaryFinder>
 #include <QtEndian>
 #include <algorithm>
 #include <cstring>
@@ -68,6 +69,20 @@ bool decodeWords(const QJsonValue& value,bool wanted,const InputHeader& input,QL
  return true;
 }
 bool format(char32_t c){return QChar::category(c)==QChar::Other_Format;}
+// The three recommended flags that are tag sequences (#1748): U+1F3F4, the tag
+// letters of England, Scotland or Wales, then U+E007F. `at` is just after the
+// U+1F3F4; the answer is how many UTF-16 units the tags take, or 0. Any other
+// tag character is removed as before: tags can carry hidden text.
+qsizetype subdivisionFlag(const QString& text,qsizetype at){
+ QString letters;
+ for(qsizetype i=at;i+1<text.size()&&text.at(i).isHighSurrogate()&&text.at(i+1).isLowSurrogate();i+=2){
+  const char32_t c=QChar::surrogateToUcs4(text.at(i),text.at(i+1));
+  if(c==0xE007F)return letters==QLatin1String("gbeng")||letters==QLatin1String("gbsct")||letters==QLatin1String("gbwls")?i+2-at:0;
+  if(c<0xE0061||c>0xE007A||letters.size()>=5)return 0;
+  letters.append(QChar(char16_t(c-0xE0000)));
+ }
+ return 0;
+}
 QString sanitize(const QString& input,bool joiners){
  QString out;out.reserve(input.size());
  const auto text=input.normalized(QString::NormalizationForm_C);
@@ -82,6 +97,7 @@ QString sanitize(const QString& input,bool joiners){
   if(QChar::category(c)==QChar::Other_Control||c==0xFFFE||c==0xFFFF)continue;
   if(format(c)&&!(joiners&&(c==0x200C||c==0x200D)))continue;
   out.append(QChar::fromUcs4(c));
+  if(joiners&&c==0x1F3F4)if(const auto tags=subdivisionFlag(text,i+1)){out.append(text.mid(i+1,tags));i+=tags;}
  }
  return out;
 }
@@ -143,35 +159,41 @@ Error failure(const QString& code,const QString& language){
 }
 QByteArray encodeInputHeader(const InputHeader& header){
  QByteArray bytes(inputHeaderBytes,'\0');std::memcpy(bytes.data(),inputMagic,4);
- const quint32 words[]={inputVersion,quint32(header.width),quint32(header.height),quint32(header.stride)};
- for(int i=0;i<4;++i)qToLittleEndian<quint32>(words[i],bytes.data()+4+4*i);
+ const quint32 words[]={inputVersion,quint32(header.width),quint32(header.height),quint32(header.stride),quint32(header.colourStride)};
+ for(int i=0;i<5;++i)qToLittleEndian<quint32>(words[i],bytes.data()+4+4*i);
  return bytes;
 }
-bool admitted(int width,int height,int stride){return width>=1&&height>=1&&width<=maximumEdge&&height<=maximumEdge&&stride>=width&&stride<=maximumEdge+3&&qint64(width)*height<=maximumInputPixels;}
-qint64 inputBytes(const InputHeader& header){return inputHeaderBytes+qint64(header.stride)*header.height;}
+bool admitted(int width,int height,int stride,int colourStride){
+ // Packed rows only, as the parent writes them: no stride can make the memfd
+ // larger than the pixels it carries.
+ return width>=1&&height>=1&&width<=maximumEdge&&height<=maximumEdge&&stride==width
+  &&qint64(colourStride)==3*qint64(width)&&qint64(width)*height<=maximumInputPixels;
+}
+qint64 inputBytes(const InputHeader& header){return colourOffset(header)+qint64(header.colourStride)*header.height;}
+qint64 colourOffset(const InputHeader& header){return inputHeaderBytes+qint64(header.stride)*header.height;}
 bool decodeInputHeader(const QByteArray& bytes,qint64 total,InputHeader& header){
  if(bytes.size()!=inputHeaderBytes||std::memcmp(bytes.constData(),inputMagic,4)!=0||qFromLittleEndian<quint32>(bytes.constData()+4)!=inputVersion)return false;
- for(qsizetype i=20;i<inputHeaderBytes;++i)if(bytes.at(i)!='\0')return false;
- const auto width=qFromLittleEndian<quint32>(bytes.constData()+8),height=qFromLittleEndian<quint32>(bytes.constData()+12),stride=qFromLittleEndian<quint32>(bytes.constData()+16);
- if(width>quint32(maximumEdge)||height>quint32(maximumEdge)||stride>quint32(maximumEdge+3)||!admitted(int(width),int(height),int(stride)))return false;
- header={int(width),int(height),int(stride)};return inputBytes(header)==total;
+ for(qsizetype i=24;i<inputHeaderBytes;++i)if(bytes.at(i)!='\0')return false;
+ const auto width=qFromLittleEndian<quint32>(bytes.constData()+8),height=qFromLittleEndian<quint32>(bytes.constData()+12),stride=qFromLittleEndian<quint32>(bytes.constData()+16),colour=qFromLittleEndian<quint32>(bytes.constData()+20);
+ if(width>quint32(maximumEdge)||height>quint32(maximumEdge)||stride>quint32(maximumEdge+3)||colour>quint32(3*maximumEdge+3)||!admitted(int(width),int(height),int(stride),int(colour)))return false;
+ header={int(width),int(height),int(stride),int(colour)};return inputBytes(header)==total;
 }
 QJsonObject envelope(const QString& nonce){return {{"role",role},{"nonce",nonce},{"generation",generation}};}
 bool validEnvelope(const QJsonObject& payload,const QString& nonce){return !nonce.isEmpty()&&payload["role"]==QLatin1String(role)&&payload["nonce"]==nonce&&payload["generation"]==QLatin1String(generation);}
 QJsonObject bootstrap(const QString& nonce,const QJsonObject& build,const InputHeader& input,const Options& options){
  auto payload=envelope(nonce);payload["build"]=build;payload["task"]="recognize";
- payload["input"]=QJsonObject{{"bytes",decimal(inputBytes(input))},{"width",decimal(input.width)},{"height",decimal(input.height)},{"stride",decimal(input.stride)}};
+ payload["input"]=QJsonObject{{"bytes",decimal(inputBytes(input))},{"width",decimal(input.width)},{"height",decimal(input.height)},{"stride",decimal(input.stride)},{"colourStride",decimal(input.colourStride)}};
  payload["options"]=QJsonObject{{"words",options.words},{"candidates",options.candidates},{"languages",strings(options.languages)},{"languagesRequired",options.languagesRequired}};
  payload["limits"]=limits();return payload;
 }
 bool decodeBootstrap(const QJsonObject& payload,const QJsonObject& build,QString& nonce,InputHeader& input,Options& options){
- const auto described=payload["input"].toObject(),wanted=payload["options"].toObject();qint64 bytes=0,width=0,height=0,stride=0;
+ const auto described=payload["input"].toObject(),wanted=payload["options"].toObject();qint64 bytes=0,width=0,height=0,stride=0,colour=0;
  if(!keys(payload,{"role","nonce","generation","build","task","input","options","limits"})||!payload["nonce"].isString()||!validEnvelope(payload,payload["nonce"].toString())
     ||!payload["build"].isObject()||payload["build"].toObject()!=build||payload["task"]!=QLatin1String("recognize")||payload["limits"].toObject()!=limits()
-    ||!keys(described,{"bytes","width","height","stride"})||!number(described["bytes"],bytes)||!number(described["width"],width)||!number(described["height"],height)||!number(described["stride"],stride)
-    ||width>maximumEdge||height>maximumEdge||stride>maximumEdge+3||!admitted(int(width),int(height),int(stride))
+    ||!keys(described,{"bytes","width","height","stride","colourStride"})||!number(described["bytes"],bytes)||!number(described["width"],width)||!number(described["height"],height)||!number(described["stride"],stride)
+    ||!number(described["colourStride"],colour)||width>maximumEdge||height>maximumEdge||stride>maximumEdge+3||colour>3*maximumEdge+3||!admitted(int(width),int(height),int(stride),int(colour))
     ||!keys(wanted,{"words","candidates","languages","languagesRequired"})||!wanted["words"].isBool()||!wanted["candidates"].isBool()||!wanted["languagesRequired"].isBool()||!languageList(wanted["languages"],1,options.languages))return false;
- input={int(width),int(height),int(stride)};if(inputBytes(input)!=bytes)return false;
+ input={int(width),int(height),int(stride),int(colour)};if(inputBytes(input)!=bytes)return false;
  options.words=wanted["words"].toBool();options.candidates=wanted["candidates"].toBool();options.languagesRequired=wanted["languagesRequired"].toBool();nonce=payload["nonce"].toString();return true;
 }
 QJsonObject ready(const QString& nonce,const QJsonObject& build){auto payload=envelope(nonce);payload["build"]=build;return payload;}
@@ -249,6 +271,12 @@ bool decodeResult(const QByteArray& json,const InputHeader& input,const Options&
  }
  result.truncated=object["truncated"].toBool();result.banded=object["banded"].toBool();return true;
 }
+qsizetype characters(const QString& text){
+ // Grapheme clusters: a flag, a skin tone or a family is one character.
+ QTextBoundaryFinder finder(QTextBoundaryFinder::Grapheme,text);qsizetype count=0;
+ while(finder.toNextBoundary()>0)++count;
+ return count;
+}
 QString sanitizeText(const QString& text){return sanitize(text,true);}
 QString sanitizeCodeContent(const QString& text){return sanitize(text,false);}
 QString copyText(const TextResult& result){
@@ -263,7 +291,7 @@ QString copyText(const TextResult& result){
 }
 QString notification(const TextResult& result,const QString& copyStatus,const QStringList& missing){
  const auto plural=[](qsizetype count,const QString& noun){return QStringLiteral("%1 %2%3").arg(count).arg(noun,count==1?QString():QStringLiteral("s"));};
- const auto characters=result.text.toUcs4().size();const int codes=result.textCodes();QString message;
+ const auto characters=textjob::characters(result.text);const int codes=result.textCodes();QString message;
  if(!characters&&!codes)message=QStringLiteral("No text found");
  else if(copyStatus=="suppressed")return QStringLiteral("Text not copied: the clipboard changed");
  else if(copyStatus!="copied")return QStringLiteral("Text could not be copied");

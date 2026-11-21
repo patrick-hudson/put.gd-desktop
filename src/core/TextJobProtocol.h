@@ -67,18 +67,23 @@ inline constexpr qint64 maximumLanguageDataBytes=64*1024*1024;
 // The data path is a colon-separated list of directories in lookup order.
 inline constexpr char dataPathVariable[]="PUTGD_TEXT_DATA";
 // The input memfd: a 32-byte little-endian header (magic, version, width,
-// height, stride, three reserved zero words), then stride*height bytes of
-// 8-bit grey. Sealed against write, shrink and grow before the child starts.
+// height, stride, colour stride, two reserved zero words), then stride*height
+// bytes of 8-bit grey, then colourStride*height bytes of 8-bit RGB, both
+// flattened onto white (#1748: the colour finds emoji). Rows are packed: the
+// stride is the width and the colour stride three times it. Sealed against write,
+// shrink and grow before the child starts.
 inline constexpr char inputMagic[4]={'P','G','T','J'};
-inline constexpr quint32 inputVersion=1;
+inline constexpr quint32 inputVersion=2;
 inline constexpr qsizetype inputHeaderBytes=32;
 inline constexpr int requiredSeals=0x0002|0x0004|0x0008; // F_SEAL_SHRINK|F_SEAL_GROW|F_SEAL_WRITE
-struct InputHeader {int width=0,height=0,stride=0;};
+struct InputHeader {int width=0,height=0,stride=0,colourStride=0;};
 QByteArray encodeInputHeader(const InputHeader&);
 // False unless the header is well formed, admitted and `bytes` is exactly its size.
 bool decodeInputHeader(const QByteArray& header,qint64 bytes,InputHeader&);
-bool admitted(int width,int height,int stride);
+bool admitted(int width,int height,int stride,int colourStride);
+// The whole memfd: header, grey plane and colour plane.
 qint64 inputBytes(const InputHeader&);
+qint64 colourOffset(const InputHeader&);
 
 struct Options {
  bool words=false; // word boxes of the copied text
@@ -139,9 +144,15 @@ QJsonArray codesJson(const QList<TextCode>&);
 // except tab and newline, C1 controls and every format character (bidirectional
 // overrides, embeddings and isolates, zero-width, invisible and tag characters)
 // are removed, U+2028 and U+2029 become newlines and the text is put in NFC.
-// Recognized text keeps U+200C and U+200D; code content keeps no format character.
+// Recognized text keeps U+200C and U+200D, and the tags of the three flags that
+// are tag sequences (England, Scotland, Wales); code content keeps no format
+// character.
 QString sanitizeText(const QString&);
 QString sanitizeCodeContent(const QString&);
+// Characters as a person counts them (grapheme clusters): an emoji with a skin
+// tone, a flag or a family is one (#1748). What notifications, characterCount
+// and the editor's copy report.
+qsizetype characters(const QString&);
 // The clipboard text of the action and of Copy all text: the text with each
 // text code's content on a line of its own, before the first text line whose
 // top edge is below the code's centre. Binary codes are left out.

@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QTimer>
+#include <algorithm>
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -17,15 +18,25 @@ namespace {
 struct Input {
  void* map=MAP_FAILED;size_t bytes=0;
  ~Input(){if(map!=MAP_FAILED)::munmap(map,bytes);}
- bool open(const InputHeader& expected,GreyImage& image){
+ bool open(const InputHeader& expected,InputImage& image){
   struct stat status{};const int seals=::fcntl(inputDescriptor,F_GET_SEALS);
   // Only a sealed memfd of exactly the announced size is read.
   if(seals<0||(seals&requiredSeals)!=requiredSeals||::fstat(inputDescriptor,&status)!=0||status.st_size!=inputBytes(expected))return false;
   bytes=size_t(status.st_size);map=::mmap(nullptr,bytes,PROT_READ,MAP_PRIVATE,inputDescriptor,0);
   if(map==MAP_FAILED)return false;
   InputHeader header;
-  if(!decodeInputHeader(QByteArray(static_cast<const char*>(map),inputHeaderBytes),status.st_size,header)||header.width!=expected.width||header.height!=expected.height||header.stride!=expected.stride)return false;
-  image={static_cast<const unsigned char*>(map)+inputHeaderBytes,header.width,header.height,header.stride};return true;
+  if(!decodeInputHeader(QByteArray(static_cast<const char*>(map),inputHeaderBytes),status.st_size,header)||header.width!=expected.width||header.height!=expected.height
+     ||header.stride!=expected.stride||header.colourStride!=expected.colourStride)return false;
+  const auto* base=static_cast<const unsigned char*>(map);
+  image={base+inputHeaderBytes,header.width,header.height,header.stride,base+colourOffset(header),header.colourStride,{}};
+  // Whole pages inside the rows only: a page shared with a row still to be read stays.
+  const auto start=reinterpret_cast<quintptr>(map);const qint64 colour=colourOffset(header),colourStride=header.colourStride,end=qint64(bytes);
+  image.releaseColour=[start,colour,colourStride,end](int top,int bottom){
+   const qint64 page=::sysconf(_SC_PAGESIZE);if(page<=0||bottom<=top)return;
+   const qint64 first=(colour+qint64(top)*colourStride+page-1)/page*page,last=std::min(end,colour+qint64(bottom)*colourStride)/page*page;
+   if(last>first)::madvise(reinterpret_cast<void*>(start+quintptr(first)),size_t(last-first),MADV_DONTNEED);
+  };
+  return true;
  }
 };
 bool writeOutput(const QByteArray& bytes){
@@ -49,7 +60,7 @@ int runChild(int& argc,char** argv,const Engine& engine,const QString& startupFa
    bootstrapped=true;control.send("ready",ready(nonce,build));return;
   }
   if(type=="activate"&&bootstrapped&&!activated&&payload.size()==3&&validEnvelope(payload,nonce)){
-   activated=true;ChildFailure failure{startupFailure,{}};Input input;GreyImage image;TextResult result;QByteArray output;
+   activated=true;ChildFailure failure{startupFailure,{}};Input input;InputImage image;TextResult result;QByteArray output;
    if(!failure&&!input.open(header,image))failure={"text_job_io",{}};
    if(!failure)failure=engine(image,options,qEnvironmentVariable(dataPathVariable).split(':',Qt::SkipEmptyParts),result);
    if(!failure){output=encodeResult(std::move(result),options);if(!writeOutput(output))failure={"text_job_io",{}};}

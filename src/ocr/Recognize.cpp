@@ -27,6 +27,18 @@ qint64 residentBytes(){
  return fields.value(1).toLongLong()*::sysconf(_SC_PAGESIZE);
 }
 void raise(std::atomic<qint64>& value,qint64 seen){qint64 now=value.load();while(seen>now&&!value.compare_exchange_weak(now,seen)){}}
+// Inside a code's corners (in order around it, either way); never inside a
+// degenerate code, all of whose corners are on one line.
+bool insideCode(const Quad& q,QPoint p){
+ int sign=0;
+ for(int i=0;i<4;++i){
+  const QPoint a=q[size_t(i)],b=q[size_t((i+1)%4)];
+  const qint64 cross=qint64(b.x()-a.x())*(p.y()-a.y())-qint64(b.y()-a.y())*(p.x()-a.x());
+  if(cross==0)continue;
+  const int s=cross>0?1:-1;if(sign!=0&&s!=sign)return false;sign=s;
+ }
+ return sign!=0;
+}
 }
 int workerThreads(int requested){
  // The CPUs this process may run on (affinity, a container's cpuset), not the
@@ -43,6 +55,24 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.recognition.codes=readCodes(image);
  QList<Quad> areas;for(const auto& code:std::as_const(result.recognition.codes))areas.append(code.quad);
  result.timings.codesMs=stage.elapsed();
+ // Emoji (#1748): Tesseract has no emoji, so it reads one as stray symbols or
+ // glued letters. Colour glyphs are named from the templates now, before any
+ // engine starts, so the pages read here are given back before recognition
+ // reaches its peak; what was found replaces Tesseract's reading at the end.
+ EmojiScan emoji;
+ if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
+  stage.restart();
+  emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
+  options.emojiTemplates->release();
+  // A colour glyph inside a code (a logo in a QR code) is part of the code,
+  // which is copied as its own line.
+  emoji.hits.removeIf([&](const EmojiHit& hit){
+   for(const auto& q:std::as_const(areas))if(insideCode(q,hit.rect.center()))return true;
+   return false;
+  });
+  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
+  result.timings.emojiMs=stage.elapsed();
+ }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
 
@@ -321,11 +351,17 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const int lineBase=int(result.recognition.lines.size());
   const int blockBase=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block+=blockBase;result.recognition.lines.append(line);}
-  for(auto word:std::as_const(part.words)){word.rect.translate(p.rect.topLeft());word.line+=lineBase;result.recognition.words.append(std::move(word));}
+  for(auto word:std::as_const(part.words)){
+   word.rect.translate(p.rect.topLeft());word.line+=lineBase;
+   for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
+   result.recognition.words.append(std::move(word));
+  }
   result.recognition.banded|=p.plan.banded();
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
+ // Emoji, found before recognition, take the place of what Tesseract made of them.
+ placeEmoji(result.recognition,emoji.hits);
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);
@@ -335,7 +371,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
 TextResult toTextResult(const JobResult& job,const JobOptions& options){
  TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
- out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs;
+ out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence))};};
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));

@@ -27,6 +27,11 @@ private slots:
   row("embeddings and isolates",QString("a")+QChar(0x202A)+QChar(0x202B)+QChar(0x202C)+QChar(0x2066)+QChar(0x2067)+QChar(0x2068)+QChar(0x2069)+"b","ab");
   row("marks and zero-width space",QString("a")+QChar(0x200E)+QChar(0x200F)+QChar(0x200B)+QChar(0x2060)+QChar(0xFEFF)+QChar(0x00AD)+"b","ab");
   row("tag characters",QString("a")+QString::fromUcs4(U"\U000E0001\U000E0041\U000E007F")+"b","ab");
+  // #1748: the flags of England, Scotland and Wales are tag sequences, and only
+  // they keep their tags; any other tag sequence loses them.
+  row("England's flag",QString::fromUcs4(U"a\U0001F3F4\U000E0067\U000E0062\U000E0065\U000E006E\U000E0067\U000E007Fb"),
+      QString::fromUcs4(U"a\U0001F3F4\U000E0067\U000E0062\U000E0065\U000E006E\U000E0067\U000E007Fb"),QString::fromUcs4(U"a\U0001F3F4b"));
+  row("another tag sequence",QString::fromUcs4(U"a\U0001F3F4\U000E0075\U000E0073\U000E0063\U000E0061\U000E007Fb"),QString::fromUcs4(U"a\U0001F3F4b"));
   row("line and paragraph separators",QString("a")+QChar(0x2028)+"b"+QChar(0x2029)+"c","a\nb\nc");
   row("decomposed becomes composed",QString("e")+QChar(0x0301),QString(QChar(0x00E9)));
   // Persian and Indic text needs the joiners; a code's content keeps no format character.

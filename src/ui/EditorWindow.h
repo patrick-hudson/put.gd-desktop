@@ -33,7 +33,7 @@ class EditorTextRecognition final:public QObject {
  Q_OBJECT
 public:
  // How a job runs: TextJob in production, a fake in tests.
- using Runner=std::function<TextResult(const QImage& grey,const textjob::Options&,Error&,TextJob::Cancel)>;
+ using Runner=std::function<TextResult(QImage image,const textjob::Options&,Error&,TextJob::Cancel)>;
  explicit EditorTextRecognition(editor::EditDocument&,QObject* parent=nullptr);
  ~EditorTextRecognition() override;
  void setRunner(Runner);
@@ -72,7 +72,7 @@ public:
  static QUrl openableLink(const QString& content);
  // Code content as its row shows it: any unusual character escaped as \u{XXXX}.
  static QString shown(const QString& content);
- // The input of the current revision: the crop, with Redact marks black, in grey.
+ // The input of the current revision: the crop, with Redact marks black.
  static QImage input(const QImage& base,const QRect& crop,const QList<QRect>& redactions);
 signals:
  void changed();

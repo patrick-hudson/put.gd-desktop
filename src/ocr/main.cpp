@@ -63,8 +63,10 @@ int main(int argc,char** argv){
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
  QString failed;int abi=0;
  const bool confined=confine(confinement,failed,abi);
- const textjob::Engine engine=[&](const textjob::GreyImage& image,const textjob::Options& options,const QStringList&,TextResult& result)->textjob::ChildFailure {
+ const textjob::Engine engine=[&](const textjob::InputImage& image,const textjob::Options& options,const QStringList&,TextResult& result)->textjob::ChildFailure {
   JobOptions job;job.languages=options.languages;job.strictLanguages=options.languagesRequired;
+  // Emoji from the colour plane (#1748), named by the templates built in.
+  job.colour={image.colour,image.width,image.height,image.colourStride,image.releaseColour};job.emojiTemplates=&EmojiTemplates::builtIn();
   job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.memoryBudget=baseBudget;job.memoryCeiling=largestBudget;
   if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(baseBudget*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);

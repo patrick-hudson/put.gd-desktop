@@ -19,7 +19,8 @@ public:
  // The installed languages by identifier, from the names of the data files.
  virtual QList<textjob::Language> languages() const=0;
  // Synchronous: TextService calls it on a worker thread, one job at a time.
- virtual TextResult recognize(const QImage& grey,const textjob::Options&,Error&,TextJob::Cancel)=0;
+ // The image is taken, so the job can let it go once its pixels are written.
+ virtual TextResult recognize(QImage image,const textjob::Options&,Error&,TextJob::Cancel)=0;
 };
 // The helper next to this executable, reading the fixed data directories.
 class HelperTextBackend final:public TextBackend {
@@ -28,7 +29,7 @@ public:
  explicit HelperTextBackend(QString helperPath={},int timeoutMs=textjob::maximumDeadlineMs,QStringList dataDirectories={});
  QJsonObject capabilities() const override;
  QList<textjob::Language> languages() const override;
- TextResult recognize(const QImage& grey,const textjob::Options& options,Error& error,TextJob::Cancel cancel) override {return job_.recognize(grey,options,error,std::move(cancel));}
+ TextResult recognize(QImage image,const textjob::Options& options,Error& error,TextJob::Cancel cancel) override {return job_.recognize(std::move(image),options,error,std::move(cancel));}
  // The kernel's Landlock ABI, 0 without Landlock: the resident's own query.
  static int landlockAbi();
 private:

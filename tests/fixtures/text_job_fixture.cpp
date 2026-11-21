@@ -80,18 +80,19 @@ int main(int argc,char** argv) {
  const auto mode=plan["mode"].toString("describe");
  {QFile pid(directory+"/fixture.pid");if(pid.open(QIODevice::WriteOnly|QIODevice::Truncate))pid.write(QByteArray::number(qint64(::getpid())));}
  if(mode=="wrong-build"||mode=="oversize")return raw(argc,argv,mode);
- const Engine engine=[&](const GreyImage& image,const Options& options,const QStringList& directories,TextResult& result)->ChildFailure {
+ const Engine engine=[&](const InputImage& image,const Options& options,const QStringList& directories,TextResult& result)->ChildFailure {
   if(mode=="stall")for(;;)::pause();
   if(mode=="child-error")return {plan["code"].toString(),plan["language"].toString()};
   if(plan.contains("delayMs"))QThread::msleep(static_cast<unsigned long>(plan["delayMs"].toInt()));
   if(mode=="result"){result=canned(plan["result"].toObject());return {};}
   // describe: what arrived, so a test sees the transfer end to end.
-  quint64 sum=0;for(int y=0;y<image.height;++y)for(int x=0;x<image.width;++x)sum+=image.data[qsizetype(y)*image.stride+x];
+  quint64 sum=0,colourSum=0;for(int y=0;y<image.height;++y)for(int x=0;x<image.width;++x)sum+=image.data[qsizetype(y)*image.stride+x];
+  for(int y=0;y<image.height;++y)for(int x=0;x<3*image.width;++x)colourSum+=image.colour[qsizetype(y)*image.colourStride+x];
   // The input is sealed: a write through the inherited descriptor has to fail.
   const char byte=0;const bool writable=::pwrite(inputDescriptor,&byte,1,0)==1;
-  result.text=QStringLiteral("image %1x%2 stride %3 sum %4\noptions words=%5 candidates=%6 required=%7 languages=%8\ndescriptors %9\nenvironment %10\ndirectories %11\ninput %12")
-   .arg(image.width).arg(image.height).arg(image.stride).arg(sum).arg(options.words).arg(options.candidates).arg(options.languagesRequired).arg(options.languages.join('+'),inherited,environment())
-   .arg(directories.size()).arg(writable?"writable":"sealed");
+  result.text=QStringLiteral("image %1x%2 stride %3 sum %4\ncolour stride %5 sum %6\noptions words=%7 candidates=%8 required=%9 languages=%10\ndescriptors %11\nenvironment %12\ndirectories %13\ninput %14")
+   .arg(image.width).arg(image.height).arg(image.stride).arg(sum).arg(image.colourStride).arg(colourSum).arg(options.words).arg(options.candidates).arg(options.languagesRequired)
+   .arg(options.languages.join('+'),inherited,environment()).arg(directories.size()).arg(writable?"writable":"sealed");
   result.lineTops={0,1,2,3,4,5};result.languagesUsed=options.languages;result.engineStartMs=1;result.recognizeMs=2;
   return {};
  };

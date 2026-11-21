@@ -231,13 +231,27 @@ BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs
    if(it->IsAtBeginningOf(tesseract::RIL_BLOCK))++block;
    if(out.lines.isEmpty()||it->IsAtBeginningOf(tesseract::RIL_TEXTLINE)){
     int l=0,t=0,r=0,b=0;it->BoundingBox(tesseract::RIL_TEXTLINE,&l,&t,&r,&b);
-    out.lines.append({QRect(l,t,std::max(1,r-l),std::max(1,b-t)),std::max(0,block)});
+    out.lines.append({QRect(l,t,std::max(1,r-l),std::max(1,b-t)),std::max(0,block),!it->ParagraphIsLtr()});
    }
    std::unique_ptr<char[]> text(it->GetUTF8Text(tesseract::RIL_WORD));
    // After a deadline, words it never reached have no text.
    if(!text||!*text.get())continue;
    int l=0,t=0,r=0,b=0;it->BoundingBox(tesseract::RIL_WORD,&l,&t,&r,&b);
-   out.words.append({QString::fromUtf8(text.get()),QRect(l,t,std::max(1,r-l),std::max(1,b-t)),it->Confidence(tesseract::RIL_WORD),int(out.lines.size()-1)});
+   BandText::Item item{QString::fromUtf8(text.get()),QRect(l,t,std::max(1,r-l),std::max(1,b-t)),it->Confidence(tesseract::RIL_WORD),int(out.lines.size()-1),{},{}};
+   // The word's characters, in its own order (#1748: an emoji glued to a word
+   // takes only the characters its glyph covers).
+   {
+    tesseract::ResultIterator symbol(*it);
+    for(;;){
+     std::unique_ptr<char[]> character(symbol.GetUTF8Text(tesseract::RIL_SYMBOL));
+     if(!character||!*character.get()){item.symbols.clear();item.characters.clear();break;}
+     int sl=0,st=0,sr=0,sb=0;symbol.BoundingBox(tesseract::RIL_SYMBOL,&sl,&st,&sr,&sb);
+     item.characters.append(QString::fromUtf8(character.get()));
+     item.symbols.append({QRect(sl,st,std::max(1,sr-sl),std::max(1,sb-st)),symbol.Confidence(tesseract::RIL_SYMBOL),int(item.characters.last().size())});
+     if(symbol.IsAtFinalElement(tesseract::RIL_WORD,tesseract::RIL_SYMBOL)||!symbol.Next(tesseract::RIL_SYMBOL))break;
+    }
+   }
+   out.words.append(std::move(item));
   }while(it->Next(tesseract::RIL_WORD));
  }
  api_->Clear();

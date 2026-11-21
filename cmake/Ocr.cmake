@@ -37,16 +37,27 @@ if(putgd_ocr_missing)
   return()
 endif()
 
-# The engine-free parts: scale and bands, band copies, words and the copied
-# text. The contract (putgd_text_protocol) owns the sanitizers and the result.
-add_library(putgd_ocr_logic STATIC src/ocr/Layout.cpp src/ocr/Words.cpp)
+# The engine-free parts: scale and bands, band copies, words, emoji and the
+# copied text. The contract (putgd_text_protocol) owns the sanitizers and the result.
+add_library(putgd_ocr_logic STATIC src/ocr/Layout.cpp src/ocr/Words.cpp src/ocr/Emoji.cpp)
 target_include_directories(putgd_ocr_logic PUBLIC src)
 target_link_libraries(putgd_ocr_logic PUBLIC putgd_text_protocol Qt6::Core putgd_build_options)
+# The emoji templates (#1748), built into the binary that links this. The
+# file's hash is a definition, so a compiler cache rebuilds the object when
+# only the file changed, and a changed file configures again.
+set(putgd_emoji_templates "${CMAKE_CURRENT_SOURCE_DIR}/src/ocr/emoji/templates.bin")
+file(SHA256 "${putgd_emoji_templates}" putgd_emoji_templates_sha256)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${putgd_emoji_templates}")
+add_library(putgd_ocr_emoji_data STATIC src/ocr/EmojiData.cpp)
+target_link_libraries(putgd_ocr_emoji_data PUBLIC putgd_ocr_logic)
+target_compile_definitions(putgd_ocr_emoji_data PRIVATE
+  "PUTGD_EMOJI_TEMPLATES=\"${putgd_emoji_templates}\"" "PUTGD_EMOJI_TEMPLATES_SHA256=\"${putgd_emoji_templates_sha256}\"")
+set_source_files_properties(src/ocr/EmojiData.cpp PROPERTIES OBJECT_DEPENDS "${putgd_emoji_templates}")
 # The engines and the confinement.
 add_library(putgd_ocr_engine STATIC src/ocr/TextEngine.cpp src/ocr/CodeReader.cpp src/ocr/Recognize.cpp src/ocr/Confinement.cpp)
 target_link_libraries(putgd_ocr_engine PUBLIC putgd_ocr_logic PRIVATE PkgConfig::PUTGD_TESSERACT PkgConfig::PUTGD_ZXING)
 add_executable(putgd-ocr src/ocr/main.cpp)
-target_link_libraries(putgd-ocr PRIVATE putgd_ocr_engine putgd_text_child Qt6::Core)
+target_link_libraries(putgd-ocr PRIVATE putgd_ocr_engine putgd_ocr_emoji_data putgd_text_child Qt6::Core)
 # Some distributions' tesseract.pc lists libcurl and libarchive among its own
 # Libs; the helper needs neither directly.
 target_link_options(putgd-ocr PRIVATE "LINKER:--as-needed")
@@ -71,11 +82,11 @@ install(TARGETS putgd-ocr RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(BUILD_TESTING)
   # Blanked code areas, band seams and the input limit.
   add_executable(test_ocr_logic tests/unit/test_ocr_logic.cpp)
-  target_link_libraries(test_ocr_logic PRIVATE putgd_ocr_logic Qt6::Test)
+  target_link_libraries(test_ocr_logic PRIVATE putgd_ocr_logic putgd_ocr_emoji_data Qt6::Test)
   add_test(NAME ocr_logic_contract COMMAND test_ocr_logic)
   # The real helper driven by the contract's TextJob: one smoke test.
   add_executable(test_ocr_helper tests/integration/test_ocr_helper.cpp)
-  target_link_libraries(test_ocr_helper PRIVATE putgd_core Qt6::Gui Qt6::Test)
+  target_link_libraries(test_ocr_helper PRIVATE putgd_core putgd_ocr_emoji_data Qt6::Gui Qt6::Test)
   target_compile_definitions(test_ocr_helper PRIVATE "PUTGD_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
   add_dependencies(test_ocr_helper putgd-ocr)
   add_test(NAME ocr_helper_integration COMMAND test_ocr_helper)
@@ -94,5 +105,8 @@ if(BUILD_TESTING)
   add_executable(test_ocr_run tests/integration/ocr/ocr_run.cpp)
   target_link_libraries(test_ocr_run PRIVATE putgd_core Qt6::Gui)
   add_executable(bench_ocr_method tests/integration/ocr/ocr_method.cpp)
-  target_link_libraries(bench_ocr_method PRIVATE putgd_ocr_engine Qt6::Gui)
+  target_link_libraries(bench_ocr_method PRIVATE putgd_ocr_engine putgd_ocr_emoji_data Qt6::Gui)
+  # Emoji matching alone on PNG files (#1748), no engine.
+  add_executable(bench_emoji tests/integration/ocr/emoji_bench.cpp)
+  target_link_libraries(bench_emoji PRIVATE putgd_ocr_logic putgd_ocr_emoji_data Qt6::Gui)
 endif()

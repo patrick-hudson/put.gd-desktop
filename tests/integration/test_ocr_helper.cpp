@@ -1,10 +1,11 @@
 // One smoke test of the real putgd-ocr (#1428), driven by the contract's
 // TextJob as the resident and the editor drive it: confined, it reads large
-// clear text and one QR code; and its handling of models that carry the
-// legacy engine's data. Recognition quality is scored on the corpus,
+// clear text, one QR code and one emoji from the colour plane (#1748); and its
+// handling of models that carry the legacy engine's data. Recognition quality is scored on the corpus,
 // never here: Tesseract differs by distribution. TextJob's refusals (wrong
 // build, a result over the cap) are tested against the contract's fake helper.
 #include "core/TextJob.h"
+#include "ocr/Emoji.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -64,11 +65,27 @@ private slots:
   job.setDataDirectories(data);
   auto image=helloWorld();
   {QPainter painter(&image);painter.drawImage(QRect(40,140,300,300),QImage(QStringLiteral(PUTGD_SOURCE_DIR "/tests/fixtures/ocr/qr-url.png")));}
+  // An emoji after a line of text, drawn from the built-in templates at their
+  // own size, so no emoji font is needed: it reaches the helper only through
+  // the colour plane, and Tesseract alone would read it as a stray symbol.
+  {
+   const auto& templates=putgd::ocr::EmojiTemplates::builtIn();int face=-1;
+   for(int i=0;i<templates.count()&&face<0;++i)if(templates.text(i)==QString::fromUtf8("\U0001F602")&&templates.style(i)==0)face=i;
+   QVERIFY(face>=0);
+   const int side=templates.side();
+   const QImage glyph(templates.pixels(face),side,side,side*4,QImage::Format_RGBA8888_Premultiplied);
+   QPainter painter(&image);QFont font(QStringLiteral("DejaVu Sans"));font.setPixelSize(16);painter.setFont(font);painter.setPen(Qt::black);
+   painter.drawText(400,220,QStringLiteral("Great job"));
+   painter.drawImage(QPoint(400+painter.fontMetrics().horizontalAdvance(QStringLiteral("Great job "))+2,205),glyph.copy());
+  }
   putgd::TextJob::Options options;options.languages={QStringLiteral("eng")};options.languagesRequired=true;
   putgd::Error error;
-  const auto result=job.recognize(putgd::TextJob::grey(image),options,error);
+  const auto result=job.recognize(image,options,error);
   QVERIFY2(!error,qPrintable(error.code));
   QVERIFY2(result.text.contains(QLatin1String("WORLD")),qPrintable(result.text));
+  // The emoji, wherever the line it lands on: how Tesseract reads the small
+  // text beside it differs between distributions.
+  QVERIFY2(result.text.contains(QString::fromUtf8("\U0001F602")),qPrintable(result.text));
   // ZXing's format names differ between 2.x and 3.x; a mismatch would drop every code.
   QCOMPARE(result.codes.size(),1);
   QCOMPARE(result.codes.first().format,QStringLiteral("QRCode"));
@@ -100,7 +117,7 @@ private slots:
   putgd::TextJob job(qEnvironmentVariable("PUTGD_OCR_HELPER"));job.setDataDirectories({directory.path()});
   putgd::TextJob::Options options;options.languages={QStringLiteral("eng")};options.languagesRequired=true;
   putgd::Error error;
-  const auto result=job.recognize(putgd::TextJob::grey(helloWorld()),options,error);
+  const auto result=job.recognize(helloWorld(),options,error);
   if(lstm){
    QVERIFY2(!error,qPrintable(error.code));
    QVERIFY2(result.text.contains(QLatin1String("WORLD")),qPrintable(result.text));
