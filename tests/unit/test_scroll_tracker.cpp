@@ -2450,6 +2450,55 @@ void testPlayingVideo() {
       while (lpos.back() < end) lpos.push_back(std::min(end, lpos.back() + 16));
       runLazy(lpos, "lazy-loaded image finishing fade while clipped settles on return");
     }
+    // 9c. Same fading lazy-loaded image near the top of the capture [160, 320):
+    // even when the initial snapshot comes from retained topCopy_, its saved
+    // bands still allow the settled crisp artwork to replace it cleanly (#1537).
+    {
+      Image topDoc = doc.img;
+      const int ty0 = 160, ty1 = 320;
+      Rng topRng(175);
+      for (int y = ty0; y < ty1; ++y)
+        for (int x = lx0; x < lx1; ++x) {
+          const uint32_t rC = uint32_t(40 + ((x - lx0) * 180) / (lx1 - lx0));
+          const uint32_t gC = uint32_t(60 + ((y - ty0) * 160) / (ty1 - ty0));
+          const uint32_t bC = uint32_t(120 + (((x + y) / 8) % 80));
+          topDoc.at(x, y) = (rC << 16) | (gC << 8) | bC;
+        }
+      for (int y = ty0 + 16; y + 10 < ty1 - 12; y += 22) drawTextLine(topDoc, y, lx0 + 16, lx1 - 16, topRng, 0xF8F8F8);
+      const Scene topScene(topDoc, ss);
+      std::vector<int> tpos{0};
+      while (tpos.back() < end) tpos.push_back(std::min(end, tpos.back() + 16));
+      int tSeen = 0;
+      const Played tr = play(topScene, tpos, {}, [&](size_t i, Image& f) {
+        const int p = tpos[i];
+        if (p + V <= ty0 || p >= ty1) return false;
+        int alpha = 256;
+        if (tSeen < 7) {
+          static constexpr int kFade[7] = {48, 112, 176, 224, 224, 224, 224};
+          alpha = kFade[tSeen++];
+        }
+        if (alpha < 256) {
+          const int y0 = std::max(0, ty0 - p);
+          const int y1 = std::min(V, ty1 - p);
+          for (int y = y0; y < y1; ++y)
+            for (int x = lx0; x < lx1; ++x) {
+              const uint32_t dst = topDoc.at(x, p + y);
+              const auto blend = [&](int shift) {
+                const int bgC = int((kBg >> shift) & 0xFF);
+                const int fgC = int((dst >> shift) & 0xFF);
+                return uint32_t(bgC + ((fgC - bgC) * alpha) / 256);
+              };
+              f.at(x, y) = (blend(16) << 16) | (blend(8) << 8) | blend(0);
+            }
+        }
+        return false;
+      });
+      int tFirstBad = 0;
+      const long long tBad = differing(tr, pageRows(topDoc, 0, topDoc.h, W), {}, 0, &tFirstBad);
+      report("lazy-loaded image in first viewport (retained topCopy_) settles crisp",
+             tr.wrong == 0 && tBad == 0 && tr.totals.bottom == topDoc.h,
+             counts(tr) + fmt(", %d wrong%s, %lld px differ (row %d)", tr.wrong, tr.firstWrong.c_str(), tBad, tFirstBad));
+    }
   }
 }
 

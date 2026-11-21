@@ -2085,11 +2085,13 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const
       }
       if (replace) {
         std::vector<uint16_t> snapBands;
-        if (!chosenCopy && w1 > w0) {
+        const bool haveCopyBands = chosenCopy && chosenCopy->bands.size() == size_t(H) * size_t(B);
+        if ((!chosenCopy || haveCopyBands) && w1 > w0) {
           const int bandW = maxK - minK + 1;
           snapBands.resize(size_t(w1 - w0) * size_t(bandW));
           for (long long p = w0; p < w1; ++p) {
-            const uint16_t* ba = cur.bandRow(int(p - pos));
+            const int y = int(p - srcPos);
+            const uint16_t* ba = chosenCopy ? &chosenCopy->bands[size_t(y) * size_t(B)] : cur.bandRow(y);
             std::memcpy(&snapBands[size_t(p - w0) * size_t(bandW)], ba + minK, size_t(bandW) * sizeof(uint16_t));
           }
         }
@@ -3429,7 +3431,8 @@ void ScrollTracker::applyExcluded() {
 // is in the image once, as they show it. While the mask is young the whole
 // frame is kept; afterwards only its blocks that are pinned or stood still
 // (a frame copy per frame of a 60 Hz stream would cost more than the rest).
-void ScrollTracker::keepCopy(const FrameView& f, FrameCopy& copy, long long pos, bool all, int fromRow) {
+void ScrollTracker::keepCopy(const FrameView& f, const Signature& cur, FrameCopy& copy, long long pos, bool all,
+                             int fromRow) {
   const int C = cells_, R = blockRowCount_, P = opts_.cellPx, BR = opts_.blockRows;
   copy.px.resize(size_t(width_) * height_ * 4);
   copy.tag.resize(size_t(R) * C, 0);
@@ -3437,6 +3440,9 @@ void ScrollTracker::keepCopy(const FrameView& f, FrameCopy& copy, long long pos,
   copy.pos = pos;
   if (all) {
     for (int y = 0; y < height_; ++y) std::memcpy(&copy.px[size_t(y) * width_ * 4], f.row(y), size_t(width_) * 4);
+    copy.bands.resize(size_t(height_) * size_t(cur.bands));
+    for (int y = 0; y < height_; ++y)
+      std::memcpy(&copy.bands[size_t(y) * size_t(cur.bands)], cur.bandRow(y), size_t(cur.bands) * sizeof(uint16_t));
     std::fill(copy.tag.begin(), copy.tag.end(), copy.serial);
     // What the excluded rectangle covers is never drawn from a copy, nor
     // where a loose part lies.
@@ -3444,6 +3450,7 @@ void ScrollTracker::keepCopy(const FrameView& f, FrameCopy& copy, long long pos,
       if (excl_[i] || ghost_[i]) copy.tag[i] = 0;
     return;
   }
+  copy.bands.clear();
   for (int r = std::max(0, fromRow) / BR; r < R; ++r)
     for (int c = 0; c < C;) {
       const size_t bi = size_t(r) * C + c;
@@ -4112,10 +4119,11 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
   const bool young = learnedSteps_ < opts_.pinAfterSteps + 1;
   // Nor the first or the last screen: a frame of a move of the whole view
   // shows what stays on the screen out of place.
-  if (first || (!viewMoved_ && pos <= topCopy_.pos)) keepCopy(f, topCopy_, pos, first || young, 0);
+  if (first || (!viewMoved_ && pos <= topCopy_.pos)) keepCopy(f, cur, topCopy_, pos, first || young, 0);
   // Only parts that start in the lower half are drawn from the bottommost
   // frame (see finish).
-  if (first || (!viewMoved_ && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
+  if (first || (!viewMoved_ && pos >= bottomCopy_.pos))
+    keepCopy(f, cur, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
   const int frames = std::max(1, framesSincePlaced_);
   if (!first) velocity_ = double(d) / frames;
   if (!first && d != 0) lastMove_ = d;

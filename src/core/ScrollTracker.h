@@ -442,12 +442,13 @@ class ScrollTracker {
   void compose(const FrameView& frame, const Signature& cur, const Signature* ref, int d, long long pos,
                TrackResult& r);
   struct FrameCopy {
-    std::vector<uint8_t> px;     // the frame's pixels, where tag says so
-    std::vector<uint32_t> tag;   // per block: the serial of the copy that wrote it
+    std::vector<uint8_t> px;       // the frame's pixels, where tag says so
+    std::vector<uint32_t> tag;     // per block: the serial of the copy that wrote it
+    std::vector<uint16_t> bands;   // full-frame band values when all blocks were kept
     uint32_t serial = 0;
     long long pos = 0;
   };
-  void keepCopy(const FrameView& frame, FrameCopy& copy, long long pos, bool all, int fromRow);
+  void keepCopy(const FrameView& frame, const Signature& cur, FrameCopy& copy, long long pos, bool all, int fromRow);
   void placeFrame(const FrameView& frame, Signature& cur, const Signature* ref, int d, long long pos,
                   TrackResult& r);
   // Pinned parts that move again (#1538): a column that sticks beside the
