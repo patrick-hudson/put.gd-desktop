@@ -1442,6 +1442,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // A press on a cover's bar or edge selects it and leaves the playhead where
     // it is (r5-neon #2); seeking on select stays for the Edits list and keys.
     connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id, false); });
+    // T6: a cancelled cut or cover press gives back the trim selection, as its Edits row selects it.
+    connect(timeline_, &FilmstripTimeline::trimSelected, this, [this] { selectEdit(QStringLiteral("trim"), {}); });
     connect(timeline_, &FilmstripTimeline::moreCoversRequested, this, &ReviewWindow::revealHiddenCovers);
     connect(timeline_, &FilmstripTimeline::hoverChanged, this, [this](const QString& kind, const QString& id) {
         view_->setLinkedHover(kind == "cover" ? id : QString());
@@ -3215,6 +3217,9 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         }
         return done();
     }
+    // T8: the timeline ignores zoom during a drag; say so rather than claim it.
+    if ((action == "timelineZoom" || action == "timelineFit" || action == "zoomIn" || action == "zoomOut") && timeline_->dragging())
+        return state("The timeline is being dragged; zoom is ignored until the drag ends");
     if (action == "timelineZoom") {
         // A level of the zoom button's menu: inspect's timeline.zoomLevels.
         const auto levels = timeline_->zoomLevels();

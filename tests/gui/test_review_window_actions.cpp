@@ -1320,6 +1320,29 @@ private slots:
         QCOMPARE(uploads.size(), 1);
         QCOMPARE(uploads[0][0].toULongLong(), 3ull);
     }
+    // T6, T8 wiring: a cancelled bar press's trimSelected selects the trim as
+    // its Edits row does; zoom actions during a timeline drag say they were
+    // ignored instead of claiming success.
+    void timelineTrimSelectionAndZoomDuringADrag() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.trimStart = 1000000;
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        emit strip->trimSelected();
+        QCOMPARE(window.inspect()["selectedEdit"].toObject()["kind"].toString(), QString("trim"));
+        const QPoint at = strip->stripRect().center();
+        QTest::mousePress(strip, Qt::LeftButton, {}, at);
+        QVERIFY(strip->dragging());
+        for (const char* zoom : {"zoomIn", "zoomOut", "timelineFit"})
+            QCOMPARE(window.drive({{"action", zoom}}).code, QString("recording_state"));
+        QTest::mouseRelease(strip, Qt::LeftButton, {}, at);
+        QVERIFY(!strip->dragging());
+        QVERIFY(window.drive({{"action", "zoomIn"}}).code.isEmpty());
+    }
     // A7: placeMask takes exactly one of rect and at, both in whole canvas pixels.
     void placeMaskTakesOneShapeInWholePixels() {
         ReviewWindow window(options(), config());
