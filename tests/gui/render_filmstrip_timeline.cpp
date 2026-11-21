@@ -69,7 +69,7 @@ RecordingEdit edit() {
     e.masks = {redact, blur};
     return e;
 }
-enum class State { Skim, Drag, Hover, Zoom, More };
+enum class State { Skim, Drag, Hover, Zoom, More, Select, Slide, Scrub };
 void render(const QString& path, bool tiles, bool selectCut, State state = State::Skim) {
     FilmstripTimeline timeline(std::make_shared<MaskNames>());
     timeline.setDuration(duration, 30);
@@ -87,6 +87,7 @@ void render(const QString& path, bool tiles, bool selectCut, State state = State
     timeline.setEdit(e);
     timeline.setSelectedEdit(selectCut ? "cut" : "cover", selectCut ? "c1" : "m1");
     timeline.setPlayhead(10400000);
+    QObject::connect(&timeline, &FilmstripTimeline::seekRequested, &timeline, &FilmstripTimeline::setPlayhead);  // as the window does
     if (tiles) timeline.setTileSource(footage);
     timeline.resize(1160, timeline.sizeHint().height());
     timeline.show();
@@ -104,6 +105,27 @@ void render(const QString& path, bool tiles, bool selectCut, State state = State
         break;
     }
     case State::Hover: send(QEvent::MouseMove, QPointF(timeline.coverBarRect("m2").center()), Qt::NoButton, Qt::NoButton); break;
+    case State::Select: {
+        // A time selection being dragged: the moving edge's time and the length.
+        const QPointF from(timeline.xFor(20500000), timeline.stripRect().center().y());
+        send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        for (int i = 1; i <= 4; ++i) send(QEvent::MouseMove, from + QPointF(30.0 * i, 0), Qt::NoButton, Qt::LeftButton);
+        break;
+    }
+    case State::Slide: {
+        // The selected cover slid: its flag sits just above the Covers track.
+        const QPointF from = timeline.coverBarRect("m1").center();
+        send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        for (int i = 1; i <= 4; ++i) send(QEvent::MouseMove, from + QPointF(12.0 * i, 0), Qt::NoButton, Qt::LeftButton);
+        break;
+    }
+    case State::Scrub: {
+        // Scrubbing from the ruler: the recording-time flag over the playhead.
+        const QPointF from(timeline.xFor(10400000), timeline.rulerRect().center().y());
+        send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        for (int i = 1; i <= 4; ++i) send(QEvent::MouseMove, from + QPointF(10.0 * i, 0), Qt::NoButton, Qt::LeftButton);
+        break;
+    }
     case State::Zoom: timeline.setZoom(3, qint64(10400000)); timeline.skimAt(11000000); break;
     }
     QImage image(timeline.size() * 2, QImage::Format_ARGB32_Premultiplied);
@@ -132,6 +154,9 @@ int main(int argc, char** argv) {
         render(QStringLiteral("%1/timeline-%2-%3-hover-cover.png").arg(out, Theme::name(scheme), scale), true, false, State::Hover);
         render(QStringLiteral("%1/timeline-%2-%3-zoom.png").arg(out, Theme::name(scheme), scale), true, false, State::Zoom);
         render(QStringLiteral("%1/timeline-%2-%3-more.png").arg(out, Theme::name(scheme), scale), true, false, State::More);
+        render(QStringLiteral("%1/timeline-%2-%3-select-drag.png").arg(out, Theme::name(scheme), scale), true, false, State::Select);
+        render(QStringLiteral("%1/timeline-%2-%3-slide.png").arg(out, Theme::name(scheme), scale), true, false, State::Slide);
+        render(QStringLiteral("%1/timeline-%2-%3-scrub.png").arg(out, Theme::name(scheme), scale), true, false, State::Scrub);
     }
     return 0;
 }
