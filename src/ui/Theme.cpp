@@ -79,7 +79,10 @@ const TrayTints& trayTints(bool lightPanel){
   const auto& p=palette(scheme);const bool lightPanel=scheme==Scheme::Light;
   const QColor panels[]= {lightPanel?QColor(0xffffff):QColor(0x141414),lightPanel?QColor(0xdedee2):QColor(0x3b3b3f)};
   const auto readable=[&](QColor color){for(int step=0;step<100&&(contrast(color,panels[0])<3.0||contrast(color,panels[1])<3.0);++step)color=lightPanel?color.darker(105):color.lighter(105);return color;};
-  return TrayTints{readable(p.icon),readable(p.success),readable(p.accent),readable(p.danger),readable(p.live)};
+  // Processing's blue and the upload green are the tray's own: the window palette has no blue,
+  // and its success green sits too close to the idle glyph to read as finished at 16 px.
+  return TrayTints{readable(p.icon),readable(p.accent),readable(lightPanel?QColor(0x2F5E9E):QColor(0x8DB4E8)),
+                   readable(lightPanel?QColor(0x1F7A4A):QColor(0x62D69B)),readable(p.danger),readable(p.live)};
  };
  static const auto dark=adjusted(Scheme::Dark),light=adjusted(Scheme::Light);
  return lightPanel?light:dark;

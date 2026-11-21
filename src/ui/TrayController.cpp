@@ -33,6 +33,7 @@
 #include <QSystemTrayIcon>
 #include <QScreen>
 #include <QDir>
+#include <QDateTime>
 #include <QHash>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -44,7 +45,6 @@ namespace {
 bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
-constexpr int finishingBoundMs=5000;
 const QString idleTooltip = QStringLiteral("put.gd");
 const QString seasonalTooltip = QStringLiteral("put.gd - Happy Holidays!");
 // Which way a link or folder opened on the host (#326), never the target itself.
@@ -158,54 +158,78 @@ QString activityText(const QJsonArray& observations) {
  if(observations.size()>3)lines.append(QString("%1 more active operations").arg(observations.size()-3));
  return lines.join('\n');
 }
-// The tooltip's title, its text, the icon's colour and its ring each switch on the
-// one Activity, with no default: a new value fails to compile until all four say what it shows.
+// The tooltip's title, its text and the icon's colour each switch on the one
+// Activity, with no default: a new value fails to compile until all three say what it shows.
 using Activity=TrayController::Activity;
-QString activityTitle(Activity activity,const QString& identity) {
+bool workingStage(Activity activity){return activity==Activity::Capturing||activity==Activity::Processing||activity==Activity::Uploading;}
+QString activityName(Activity activity) {
  switch(activity) {
- case Activity::NeedsAttention: return "Needs attention";
- case Activity::Complete: return "Upload complete";
- case Activity::Starting: case Activity::Uploading: case Activity::Finishing: return "Uploading";
+ case Activity::Idle: return "idle";
+ case Activity::Capturing: return "capturing";
+ case Activity::Processing: return "processing";
+ case Activity::Uploading: return "uploading";
+ case Activity::Complete: return "complete";
+ case Activity::Failed: return "failed";
+ }
+ return "idle";
+}
+// uploaded: the work that completed sent something to its destination, not only a local copy.
+QString completeText(bool uploaded){return uploaded?QStringLiteral("Upload complete"):QStringLiteral("Saved");}
+QString activityTitle(Activity activity,const QString& identity,bool uploaded) {
+ switch(activity) {
+ case Activity::Failed: return "Needs attention";
+ case Activity::Complete: return completeText(uploaded);
+ case Activity::Uploading: return "Uploading";
+ case Activity::Processing: return "Processing";
+ case Activity::Capturing: return "Capturing";
  case Activity::Idle: return identity;
  }
  return identity;
 }
-QString activityStatus(Activity activity,const QString& attentionLabel,const QString& lines) {
+QString activityStatus(Activity activity,const QString& attentionLabel,const QString& lines,bool uploaded) {
  switch(activity) {
- case Activity::NeedsAttention: return attentionLabel+QString(" — open the tray menu to review")+(lines.isEmpty()?QString{}:"\n"+lines);
- case Activity::Complete: return "Upload complete";
- case Activity::Finishing: return "Finishing upload";
- case Activity::Starting: case Activity::Uploading: case Activity::Idle: return lines;
+ case Activity::Failed: return attentionLabel+QString(" — open the tray menu to review")+(lines.isEmpty()?QString{}:"\n"+lines);
+ case Activity::Complete: return completeText(uploaded);
+ case Activity::Capturing: case Activity::Processing: case Activity::Uploading: case Activity::Idle: return lines;
  }
  return lines;
 }
-// Active work keeps the idle glyph; only a confirmed completion turns green.
+// Uploading keeps the processing blue under the climbing upload fill, so a full
+// fill is the finished glyph.
 QColor activityColor(Activity activity,const Theme::TrayTints& tints) {
  switch(activity) {
- case Activity::NeedsAttention: return tints.error;
+ case Activity::Failed: return tints.error;
  case Activity::Complete: return tints.upload;
- case Activity::Starting: case Activity::Uploading: case Activity::Finishing: case Activity::Idle: return tints.idle;
+ case Activity::Uploading: case Activity::Processing: return tints.process;
+ case Activity::Capturing: return tints.capture;
+ case Activity::Idle: return tints.idle;
  }
  return tints.idle;
 }
-// -2 is the attention badge, -1 no ring. Finishing keeps the ring where it stood;
-// so does an upload no storage request is moving at the moment.
-int activityPercent(Activity activity,bool storageActive,const QJsonArray& observations,int shown) {
- switch(activity) {
- case Activity::NeedsAttention: return -2;
- case Activity::Complete: case Activity::Starting: case Activity::Idle: return -1;
- case Activity::Uploading: return storageActive?uploadPercent(observations):shown;
- case Activity::Finishing: return shown;
- }
- return -1;
+// The upload fill never starts empty: a sliver of green says bytes are going out.
+constexpr int minimumUploadFill=10;
+constexpr int finishingBoundMs=5000,startBoundMs=10000;
 }
+
+TrayController::Activity TrayController::stageOf(const QJsonObject& operation) {
+ // A recording shows its own badge until Upload hands it over.
+ if(operation["action"]=="record"&&!recordingHandedOver(operation))return Activity::Idle;
+ const auto state=operation["state"].toString();
+ // Once the source has handed over its picture (queued for import, or preparing it), it is processing.
+ if(state=="accepted"||(state=="acquiring"&&!QStringList{"queued","preparing"}.contains(operation["phase"].toString())))return Activity::Capturing;
+ // Only a running operation uploads: a stored one may still be "preparing" its artifact.
+ if(state!="running")return Activity::Processing;
+ if(operation["destination"].toObject()["providerId"].toString().isEmpty())return Activity::Processing;
+ if(QStringList{"uploading","finalizing","preparing","sharing","reconciling"}.contains(operation["phase"].toString()))return Activity::Uploading;
+ for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploading")return Activity::Uploading;
+ return Activity::Processing;
 }
 
 TrayController::Activity TrayController::activityFor(const ActivityInputs& in) {
- if(in.errorPending)return Activity::NeedsAttention;
- if(in.uploadCompleted)return Activity::Complete;
- if(in.uploadVisible)return in.storageActive||in.uploadsTracked?Activity::Uploading:Activity::Finishing;
- return in.storageActive?Activity::Starting:Activity::Idle;
+ if(workingStage(in.working))return in.working;
+ if(in.failure)return Activity::Failed;
+ if(in.complete)return Activity::Complete;
+ return Activity::Idle;
 }
 
 TrayController::TrayController(OperationService& operations,
@@ -305,16 +329,18 @@ TrayController::TrayController(OperationService& operations,
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
  }
- uploadRevealTimer_.setSingleShot(true);uploadRevealTimer_.setInterval(200);
- uploadRevealTimer_.setTimerType(Qt::PreciseTimer);
- connect(&uploadRevealTimer_,&QTimer::timeout,this,[this] {
-  if(operations_.storageActive()&&!errorPending_) {uploadVisible_=true;uploadVisibleClock_.start();}
-  refreshActivity();
- });
- uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setTimerType(Qt::PreciseTimer);
- connect(&uploadCompleteTimer_,&QTimer::timeout,this,[this] {
-  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();refreshActivity();
- });
+ // The icon's timers are children so a test can find them by name and shorten them.
+ const auto timer=[this](QTimer& t,const char* name,int ms,std::function<void()> fired){
+  t.setParent(this);t.setObjectName(QString::fromLatin1(name));t.setSingleShot(true);t.setTimerType(Qt::PreciseTimer);if(ms>0)t.setInterval(ms);
+  connect(&t,&QTimer::timeout,this,[this,fired=std::move(fired)]{if(fired)fired();refreshActivity();});
+ };
+ timer(startTimer_,"trayStartTimer",startBoundMs,[this]{startPending_=0;});
+ timer(dwellTimer_,"trayDwellTimer",0,{});
+ timer(completeTimer_,"trayCompleteTimer",completeMs,[this]{completeShown_=false;});
+ timer(failureTimer_,"trayFailureTimer",failureMs,[this]{failureShown_=false;});
+ // "Finishing" holds the last stage while finished operations are inspected for
+ // Complete; an inspection that never answers must not hold it for ever.
+ timer(finishingTimer_,"trayFinishingTimer",finishingBoundMs,{});
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
@@ -504,7 +530,10 @@ QJsonObject TrayController::trayMenuState()const {
 }
 QJsonObject TrayController::trayIconState()const {
  const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
- return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()}};
+ // activity is the stage the icon shows; history its last changes, oldest first, so a lab
+ // run can check the sequence on trays that expose nothing to accessibility tools.
+ return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()},
+         {"activity",activityName(shown_)},{"history",stageHistory_}};
 }
 void TrayController::cancelUploads() {
  QStringList ids;for(const auto& value:operations_.activeObservations()){
@@ -513,7 +542,7 @@ void TrayController::cancelUploads() {
  if(ids.size()>1){showView("historyCancelAll:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(ids)).toJson(QJsonDocument::Compact)));return;}
  if(ids.size()==1)operations_.cancel(ids.first(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
 }
-void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
+void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;failureShown_=false;failureTimer_.stop();attentionOperation_.clear();refreshActivity();showView(view);}
 void TrayController::refreshMenu() {
  QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::shortcutOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
  const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
@@ -547,65 +576,100 @@ void TrayController::refreshActivity() {
  calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;
+ QSet<QString> activeIds;Activity working=Activity::Idle;bool transferring=false,outstanding=false,fresh=false;int uploadedItems=0;
  for(const auto& value:observations) {
-  const auto op=value.toObject();
-  activeIds.insert(op["id"].toString());
-  if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
+  const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
+  auto stage=stageOf(op);
+  // A recording handed over to Upload is new work; one handed back to review (its
+  // export failed) shows its badge again instead of the stage it had reached.
+  if(const auto known=opStages_.constFind(id);known==opStages_.cend()){
+   fresh=true;
+   // Retry local save publishes a bare live observation (no items, saving_local): its own
+   // attempt only saves, so the operation's earlier upload must not decide what it shows.
+   if(op["phase"]=="saving_local"&&!op.contains("items"))localRetries_.insert(id);
+  }
+  else if(stage!=Activity::Idle){if(*known==Activity::Idle)fresh=true;else if(int(*known)>int(stage))stage=*known;}
+  opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
+  // Full only when no file of the uploading operations still waits, transfers or checks a
+  // name (a skipped or failed file is settled): one finished file while another waits keeps below full.
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject().value("uploadStatus").toString();transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending"||status=="stored";uploadedItems+=status=="uploaded";}
  }
- auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
- const bool working=operations_.storageActive()||!activeUploads_.isEmpty();
- if(errorPending_) {
-  uploadRevealTimer_.stop();uploadCompleteTimer_.stop();
-  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();
- } else if(working) {
-  uploadCompleteTimer_.stop();uploadCompleted_=false;
-  if(!uploadVisible_&&operations_.storageActive()&&!uploadRevealTimer_.isActive())uploadRevealTimer_.start();
- } else uploadRevealTimer_.stop();
+ if(startPending_>0&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
+ // New work replaces a failure or a completion still on the icon.
+ if(fresh){failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();}
+ QStringList finished;for(auto it=opStages_.begin();it!=opStages_.end();)if(activeIds.contains(it.key()))++it;else{finished.append(it.key());it=opStages_.erase(it);}
+ const bool confirmed=uploadedItems>0&&!outstanding;const int ceiling=outstanding?99:100;
  for(const auto& id:finished) {
-  ++pendingUploadFinishes_;
-  operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
+  ++pendingFinishes_;finishingTimer_.start();
+  const bool localRetry=localRetries_.remove(id);
+  operations_.inspect(id,[guard=QPointer<TrayController>(this),localRetry](Error error,QJsonObject operation) {
    if(!guard)return;
-   if(--guard->pendingUploadFinishes_==0)guard->uploadCompleteTimer_.stop();
-   if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorPending_&&
-      !guard->operations_.storageActive()&&guard->operations_.activeObservations().isEmpty()) {
-    for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
-     guard->uploadCompleted_=true;break;
+   if(--guard->pendingFinishes_==0)guard->finishingTimer_.stop();
+   // Only the last work to finish shows Complete: an earlier one must not flash it after a later cancel.
+   bool busy=guard->startPending_>0;for(const auto stage:std::as_const(guard->opStages_))busy|=workingStage(stage);
+   // A completed operation with an item or local-copy error is a failure (resultReady latches it), never Complete.
+   bool problem=meaningfulError(operation["error"].toObject());
+   for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();problem|=meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());}
+   if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy&&!problem) {
+    bool uploaded=false,saved=false;
+    for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();uploaded|=item["uploadStatus"]=="uploaded";saved|=item["local"].toObject()["status"]=="saved";}
+    uploaded&=!localRetry;
+    if(uploaded||saved){
+     // Observations are batched, so a quick operation can end before its processing or upload
+     // was seen; its outcome proves which stages ran, and the icon walks them before Complete.
+     const auto ran=uploaded?Activity::Uploading:Activity::Processing;
+     if(workingStage(guard->shown_)&&int(ran)>int(guard->reached_))guard->reached_=ran;
+     guard->completeShown_=true;guard->completeUploaded_=uploaded;
     }
    }
    guard->refreshActivity();
   });
  }
- // "Finishing upload" ends when the finished operations have been inspected. An
- // inspection that never answers (a journal read stuck on a worker) must not leave it
- // showing: the same timer ends it after finishingBoundMs. Each answer restarts the timer.
- if(uploadVisible_&&!working&&!uploadCompleteTimer_.isActive())
-  uploadCompleteTimer_.start(pendingUploadFinishes_==0?int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())):finishingBoundMs);
+ if(workingStage(working)&&int(working)>int(reached_))reached_=working;
+ auto target=activityFor({working,failureShown_,completeShown_});
+ // While finished operations are still being inspected, hold the stage the run
+ // reached instead of dropping to Idle before Complete is known.
+ if(target==Activity::Idle&&pendingFinishes_>0&&finishingTimer_.isActive()&&workingStage(reached_))target=reached_;
+ auto next=target;
+ if(workingStage(shown_)&&next!=shown_) {
+  // Walk forward through each stage this run reached, so none is skipped.
+  if(int(shown_)<int(reached_)&&(!workingStage(next)||int(next)>int(shown_)+1))next=Activity(int(shown_)+1);
+  if(shownClock_.isValid()&&shownClock_.elapsed()<stageDwellMs)next=shown_;
+ }
+ if(next!=shown_)showStage(next);
+ // A working stage that is not yet the target moves on when its dwell ends, even if
+ // nothing else changes (a stage stepped through after the work already finished).
+ if(workingStage(shown_)&&shown_!=target){if(!dwellTimer_.isActive())dwellTimer_.start(int(qMax(qint64(1),stageDwellMs-shownClock_.elapsed())));}
+ else dwellTimer_.stop();
+ const auto shown=shown_;
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused"&&!recording)recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
- const auto shown=activityFor({errorPending_,uploadCompleted_,uploadVisible_,operations_.storageActive(),!activeUploads_.isEmpty()});
- auto text=activityStatus(shown,attentionLabel_,activity);
+ auto text=activityStatus(shown,attentionLabel_,activity,completeUploaded_);
  const auto color=activityColor(shown,Theme::trayTints(panel_.light()));
- const int percent=activityPercent(shown,operations_.storageActive(),observations,iconPercent_);
+ // Uploading fills with the real progress while bytes move. Once they are confirmed (a share
+ // link being made, or the walk to Complete) it is full; in a gap between transfers it keeps its level.
+ const int percent=shown==Activity::Failed?-2:shown!=Activity::Uploading?-1:transferring?qBound(minimumUploadFill,uploadPercent(observations),ceiling):
+                   confirmed||completeShown_?100:qBound(minimumUploadFill,iconPercent_,ceiling);
+ const bool done=shown==Activity::Complete;
  const auto glyph=calendar_.glyph();const bool seasonal=glyph!=IconArt::TrayGlyph::Mark;
  // Only an idle tray makes the greeting its title. Preparation, recording,
  // review and local saving keep their ordinary title above the activity rows.
  const auto& identity=seasonal&&text.isEmpty()?seasonalTooltip:idleTooltip;
- const auto tooltipTitle=activityTitle(shown,identity);
+ const auto tooltipTitle=activityTitle(shown,identity,completeUploaded_);
  // Status keeps the title; the greeting stays on as the last line, so the season doesn't hide it.
  if(seasonal&&tooltipTitle!=seasonalTooltip)text=text.isEmpty()||text==tooltipTitle?seasonalTooltip:text+"\n"+seasonalTooltip;
- if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_)return;
+ if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_&&done==iconDone_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph);
+ if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph,done);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph}));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_||done!=iconDone_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph,done}));
   if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_||tooltipTitle!=activityTitle_)logging::debug(logUi(),"Tray tooltip changed",{{"title",tooltipTitle},{"activity",text}});
- iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;activityText_=text;activityTitle_=tooltipTitle;
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;iconDone_=done;activityText_=text;activityTitle_=tooltipTitle;
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";
@@ -618,8 +682,21 @@ void TrayController::latchFailure(const Error& error,const QJsonObject& operatio
  flashError();
 }
 void TrayController::flashError() {
- uploadCompleteTimer_.stop();
- errorPending_=true;refreshActivity();
+ completeShown_=false;completeTimer_.stop();
+ errorPending_=true;failureShown_=true;
+ // A second failure while the badge shows gives it its full time again.
+ if(shown_==Activity::Failed)failureTimer_.start();
+ refreshActivity();
+}
+void TrayController::showStage(Activity stage) {
+ // A run that steps back (its furthest operation finished first) walks on only from here.
+ if(!workingStage(stage))reached_=Activity::Idle;else if(int(stage)<int(shown_))reached_=stage;
+ shown_=stage;shownClock_.start();
+ if(stage==Activity::Complete)completeTimer_.start();
+ if(stage==Activity::Failed)failureTimer_.start();
+ stageHistory_.append(QJsonObject{{"activity",activityName(stage)},{"at",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
+ while(stageHistory_.size()>16)stageHistory_.removeFirst();
+ logging::debug(logUi(),"Tray activity changed",{{"activity",activityName(stage)}});
 }
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
@@ -661,7 +738,13 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  // captures the screen (the clipboard and a file have nothing to wait for).
  if (const auto settings = operations_.settingsSnapshot(); (!fromShortcut || settings.captureDelayShortcuts) && settings.captureDelaySeconds > 0 && Settings::delayableAction(action) && !effective.contains("delaySeconds") && (action != "edit" || Settings::delayableEditSource(effective.value("source").toString("region"))))
   effective["delaySeconds"] = settings.captureDelaySeconds;
- operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
+ // The icon answers the press itself, before the service has accepted the work: a
+ // recording has its own bar and badge instead.
+ const bool capture=action!=Settings::recordingActionName();
+ if(capture){++startPending_;startTimer_.start();failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();refreshActivity();}
+ operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action,capture](Error error, QJsonObject) {
+  // Accepted work is an observation by now; a refusal ends the press.
+  if (guard && capture) {guard->startPending_=qMax(0,guard->startPending_-1);if(!guard->startPending_)guard->startTimer_.stop();guard->refreshActivity();}
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
    // A second Copy text press while one runs: say so and change nothing else.

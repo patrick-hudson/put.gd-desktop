@@ -216,7 +216,7 @@ def _icon_node(ctx, timeout=10):
         return None
 
 
-TRAY_TITLES = ('Uploading', 'Upload complete', 'Needs attention')
+TRAY_TITLES = ('Capturing', 'Processing', 'Uploading', 'Upload complete', 'Saved', 'Needs attention')
 
 
 def _published_glyphs(ctx):
@@ -916,9 +916,18 @@ def saved_locally(ctx):
 def local_failure_attention(ctx):
     fixture = ctx.fixture('tray-attention')
     original = fixture.operation_id
+    # The failure badge leaves the icon after eight seconds; the menu row stays until opened.
+    # The tray's own history proves the badge showed; frame it while it still does.
+    tray = lambda: ctx.call('ui.snapshot')['diagnostics'].get('trayIcon', {})
+    ctx.wait(lambda: any(step.get('activity') == 'failed' for step in tray().get('history', [])),
+             'the failure badge showed on the tray icon')
+    if tray().get('activity') == 'failed':
+        _frame(ctx, 'failure-badge')
+    else:
+        ctx.note('failure badge had already timed out before the first frame')
     _menu(ctx)
     _node(ctx, 'Local save needs attention', 'menu item')
-    _frame(ctx, 'latched-attention')
+    _frame(ctx, 'attention-row')
     fixture.retry()
     retried = _settled(ctx, fixture.state)
     ctx.expect(retried['id'] == original and all(i['local']['status'] == 'saved' for i in retried['items']), 'retry retains operation and saves each item')
