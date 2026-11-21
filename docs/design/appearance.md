@@ -211,16 +211,20 @@ reached:
 | Stage | When | Icon |
 | --- | --- | --- |
 | Idle | nothing running | the glyph in the idle tint |
-| Capturing | from the hotkey or tray press itself, before the operation is accepted, through the region picker, the capture delay and the capture | the glyph in the capture tint |
-| Processing | editing, encoding (a recording after Upload), saving the local copy, checking the destination, reading text | the glyph in the processing tint |
-| Uploading | the operation's upload phase, or a file uploading | the processing glyph with the green fill climbing with the real progress, never below a tenth |
-| Complete | a finished operation uploaded or saved something, for 1.5 s | the green glyph with the check badge |
+| Capturing | from the hotkey or tray press itself, before the operation is accepted, through the region picker, the capture delay and the capture, until the source hands over its picture | the glyph in the capture tint |
+| Processing | importing or encoding the capture, editing, encoding a recording after Upload, saving the local copy, checking the destination, reading text, Retry local save | the glyph in the processing tint |
+| Uploading | a running operation's upload phase, or a file uploading | the processing glyph with the green fill climbing with the real progress, never below a tenth, and full only once no file still waits, transfers or checks its name |
+| Complete | the last running operation finished and uploaded or saved something without an error, for 1.5 s (`Saved` when that attempt only saved, as Retry local save does) | the green glyph with the check badge |
 | Failed | an operation or action failed, for 8 s | the error glyph with its badge |
 
 An operation never goes back to a stage it has passed, so a copy after the
 upload stays green. Each working stage shows for at least 250 ms, and the icon
 steps through every stage the run reached, so a short upload reads Capturing,
-Processing, Uploading, Complete instead of skipping one. A recording shows its
+Processing, Uploading, Complete instead of skipping one. The service batches
+its observations, so a quick operation can end before the tray saw its
+processing or upload; its outcome then says which ran (something uploaded, or
+only saved) and the icon walks those stages before Complete. A failure goes to
+its badge from the stage the tray last saw. A recording shows its
 own badge, not a stage, until Upload hands it over.
 
 New work always shows: it replaces a failure or completion still on the icon,
