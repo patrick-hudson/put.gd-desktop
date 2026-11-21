@@ -32,6 +32,10 @@ void Stdio::readControl() {
         if (!line.isEmpty()) {
             const auto value = QJsonDocument::fromJson(line).object();
             if (value["cancel"].toBool()) cancelled = true;
+            else if (value["lanes"].isDouble()) {
+                const auto n = value["lanes"].toDouble(-1);
+                if (n >= 0 && n < maximumLanes && n == int(n)) lanes = int(n);
+            }
             else if (value.contains("ack")) {
                 std::lock_guard lock(controlMutex);
                 acks.push_back(value);

@@ -26,7 +26,8 @@ QString startFailureMessage(StartFailure failure, const QString& installationMes
 }
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
-                     std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill) {
+                     std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill,
+                     std::function<int()> lanes) {
     QProcess process;
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start(program, {"--stdio"});
@@ -53,6 +54,9 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
     QJsonObject final;
     bool got = false, cancelSent = false;
     QElapsedTimer cancelClock;
+    QElapsedTimer lanesPoll;
+    lanesPoll.start();
+    int lentLanes = 0;
     const auto handle = [&](const QJsonObject& value) -> bool {
         if (value["event"] == "progress") {
             auto fields = value;
@@ -109,6 +113,15 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
             process.waitForFinished(5000);
             error = {policy.unknownCode, "put.gd quit while the " + policy.name + " helper was working; reconcile before retrying", {{"reason", "quit"}}};
             return {};
+        }
+        if (lanes && !cancelSent && lanesPoll.elapsed() >= 100) {
+            lanesPoll.restart();
+            int lent = 0;
+            try { lent = qMax(0, lanes()); } catch (...) {}
+            if (lent != lentLanes) {
+                process.write("{\"lanes\":" + QByteArray::number(lent) + "}\n");
+                lentLanes = lent;
+            }
         }
         if (!cancelSent && (stopping_.load() || (cancellation && cancellation->load()))) {
             process.write("{\"cancel\":true}\n");

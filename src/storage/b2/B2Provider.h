@@ -37,7 +37,8 @@ public:
 private:
     QJsonObject call(const QString& method, const Destination&, QJsonObject params, Error&, bool* uncertain = nullptr,
                      std::shared_ptr<std::atomic_bool> cancellation = {}, std::function<void(const UploadProgress&)> progress = {},
-                     DurableCheckpoint checkpoint = {}, std::shared_ptr<std::atomic_bool> kill = {});
+                     DurableCheckpoint checkpoint = {}, std::shared_ptr<std::atomic_bool> kill = {},
+                     std::function<int()> lanes = {});
     CredentialStore& credentials_;
     b2::UploadPolicy policy_;
     std::atomic_int active_{0};

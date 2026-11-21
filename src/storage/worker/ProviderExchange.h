@@ -23,8 +23,12 @@ StartFailure classifyStartFailure(const QString& program, const QString& reason)
 // start, as the user knows it). It never repeats Qt's reason, which belongs in the error details.
 QString startFailureMessage(StartFailure, const QString& installationMessage,
                             const QString& subject = QStringLiteral("put.gd couldn't start its upload helper"));
+// `lanes`, when set, is polled every 100 ms while the helper works: how many extra
+// requests it may run beside its own (upload slots lent to it, #1792). Each change goes
+// to the helper as a {"lanes":n} control line.
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                     DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill = {});
+                     DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill = {},
+                     std::function<int()> lanes = {});
 }
