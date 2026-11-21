@@ -381,11 +381,12 @@ Error HistoryStore::clear() {
  const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  if(!q.exec("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+retained)||!q.exec("DELETE FROM history"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
-// Which deletions hold a record in History (#1759), and whether each of them provably sent
-// nothing that deletes: not running here, ended in its journal, and the record's item failed,
-// unknown or pending without a request checkpoint ("phase": no driver sends a destructive request
-// before one; a "target" alone is recorded before anything is sent). Answers false when one may have
-// reached the server; the deletions that may be released go in `release`.
+// Which deletions hold a record in History (#1759), and whether each of them may let it go: not running
+// here, ended in its journal, and the record's item failed, unknown or pending without a request checkpoint
+// ("phase": no driver sends a destructive request before one; a "target" alone is recorded before anything
+// is sent), or ended unsupported_safe_removal or version_retained. A retry can't finish those two unless the
+// destination changes, so asking to remove one from History drops its checkpoint on purpose (#1763); expiry
+// and Clear History still keep it. Answers false otherwise; the deletions that may be released go in `release`.
 bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& running,QStringList* release) const {
  QSqlQuery q(db_);q.prepare("SELECT deletion_id FROM deletion_targets WHERE history_id=? AND active=1");q.addBindValue(historyId);
  if(!q.exec())return false;
@@ -395,7 +396,8 @@ bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& runn
   Error error;const auto doc=deletion(id,&error);if(error||doc["state"]=="running"||doc["state"]=="accepted")return false;
   bool settled=false;
   for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]!=historyId)continue;
-   settled=QStringList{"failed","unknown","pending"}.contains(item["status"].toString())&&!item["progress"].toObject().contains("phase");}
+   const auto status=item["status"].toString();
+   settled=(QStringList{"failed","unknown","pending"}.contains(status)&&!item["progress"].toObject().contains("phase"))||status=="unsupported_safe_removal"||status=="version_retained";}
   if(!settled)return false;
  }
  if(release)*release=held;

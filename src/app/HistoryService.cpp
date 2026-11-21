@@ -196,6 +196,8 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   const auto current=Settings::profileForDestination(receipt.destination.toJson(),profiles);
   if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){const auto blocker=store.forgetBlocker(id,running);targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",blocker.isEmpty()},{"retainedBy",blocker},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
   if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
+  // An earlier deletion that may have sent a request keeps its checkpoint for Retry (#1763): a new one would start without it.
+  if(data["deleteProgress"].toObject().contains("phase")&&!QStringList{"removed","already_missing","changed"}.contains(remote)) {e={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",id},{"deleteOperationId",data["deleteOperationId"]}}};return {};}
   auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
   // A destination added back for the same place under another ID deletes it with its own
   // credentials when the deletion runs (runDelete); the receipt stays as recorded.

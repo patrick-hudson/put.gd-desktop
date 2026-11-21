@@ -104,24 +104,24 @@ private slots:
   QCOMPARE(store.forgetBlocker("unsupported",{}),QString("deletion"));
   QVERIFY(!store.forget({"unsupported"},{"delete"},&removed));QCOMPARE(removed,0);
  }
- // #1763: a retry that ends unsupported_safe_removal or version_retained keeps the "phase" checkpoint an
- // interrupted attempt saved. The record stays in History and a later retry keeps the target, until a
- // final outcome.
+ // #1763: a deletion that ends unsupported_safe_removal or version_retained keeps the "phase" checkpoint an
+ // interrupted attempt saved: expiry and Clear History keep the record, and a retry keeps the checkpoint.
+ // Removing it from History is the way out: the record goes and the next retry drops the target.
  void checkpointedTargetStaysUntilFinalOutcome() {
   for(const auto* outcome:{"unsupported_safe_removal","version_retained"}){
-   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());
+   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.restore(OperationState::Completed);op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());
    OperationItem item;item.artifact.id="item";item.artifact.name="item.png";item.uploadStatus="uploaded";op.items.append(item);QVERIFY(!store.saveOperation(op));
    const QJsonObject checkpoint{{"schemaVersion",1},{"phase","delete_intent"}};
    QJsonObject doc{{"id","delete"},{"state","running"},{"items",QJsonArray{QJsonObject{{"historyId","item"},{"status","deleting"},{"progress",checkpoint}}}}};
    QVERIFY(!store.saveDeletion(doc));
    doc["state"]="completed";doc["items"]=QJsonArray{QJsonObject{{"historyId","item"},{"status",outcome},{"progress",checkpoint}}};QVERIFY(!store.saveDeletion(doc));
-   QCOMPARE(store.forgetBlocker("item",{}),QString("deletion"));
-   int removed=-1;QVERIFY(!store.forget({"item"},{},&removed));QCOMPARE(removed,0);
+   QVERIFY(!store.expireBefore("2100-01-01T00:00:00.000Z"));QVERIFY(!store.clear());QVERIFY(!store.detail("item").isEmpty());
    doc["state"]="running";QVERIFY(!store.startDeletion(doc));
    QVERIFY(doc["forgotten"].toArray().isEmpty());QCOMPARE(doc["items"].toArray().first().toObject()["progress"].toObject(),checkpoint);
-   // Removed at last: the record is released.
-   doc["state"]="completed";doc["items"]=QJsonArray{QJsonObject{{"historyId","item"},{"status","removed"},{"progress",checkpoint}}};QVERIFY(!store.saveDeletion(doc));
-   QCOMPARE(store.forgetBlocker("item",{}),QString());
+   doc["state"]="completed";QVERIFY(!store.saveDeletion(doc));
+   QCOMPARE(store.forgetBlocker("item",{"delete"}),QString("deletion"));
+   int removed=-1;QVERIFY(!store.forget({"item"},{},&removed));QCOMPARE(removed,1);
+   doc["state"]="running";QVERIFY(!store.startDeletion(doc));QCOMPARE(doc["forgotten"].toArray(),QJsonArray{"item"});QVERIFY(doc["items"].toArray().isEmpty());
   }
  }
  void knownRemovalSurvivesClearAndExpiry() {

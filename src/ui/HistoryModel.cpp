@@ -144,7 +144,8 @@ bool HistoryModel::retryLocalSave(const QJsonObject& r){return !settlingRow(r)&&
 bool HistoryModel::copyLocalResult(const QJsonObject& r){return r["uploadStatus"]=="local_only"&&!localSaveFailed(r)&&r["local"].toObject()["status"]=="saved"&&!active(r)&&!r["operationId"].toString().isEmpty();}
 // delete.prepare accepts confirmed uploads whose remote outcome is settled;
 // a target already gone has nothing left to delete.
-bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"]=="uploaded"&&!QStringList{"pending","deleting","unknown","changed","hidden_version_retained","removed","already_missing"}.contains(f["remoteStatus"].toString());}
+// An earlier deletion's saved progress is retried, not replaced (#1763).
+bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"]=="uploaded"&&!QStringList{"pending","deleting","unknown","changed","hidden_version_retained","removed","already_missing"}.contains(f["remoteStatus"].toString())&&!f["deleteProgress"].toObject().contains("phase");}
 QString HistoryModel::remoteStateText(const QJsonObject& r){
  // Current outcomes outrank an earlier clipboard success, including in a batch.
  auto files=r["records"].toArray();files.prepend(r);
