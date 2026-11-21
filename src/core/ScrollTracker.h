@@ -401,7 +401,8 @@ class ScrollTracker {
                   std::vector<Candidate>& out, double floorOverride = -1.0) const;
   double storeCoarseShare(const Signature& cur, long long pos, double abortBelow) const;
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
-  bool stillFrame(const Signature& cur, const Signature& ref, double* share) const;
+  // redrawn: not still, yet the same picture drawn anew in place (see kRedrawTolerance).
+  bool stillFrame(const Signature& cur, const Signature& ref, double* share, bool* redrawn = nullptr) const;
   std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected,
                                     double floorOverride = -1.0) const;
   std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,

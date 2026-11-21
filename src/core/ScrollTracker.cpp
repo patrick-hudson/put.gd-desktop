@@ -821,9 +821,20 @@ void ScrollTracker::cellTally(const Signature& cur, const Signature& ref, int d,
 // Whether the frame shows what ref showed (no movement), by the share of
 // textured cells that are where they were, pinned blocks (and dynamic page
 // bands, where enough static content remains) left out.
-bool ScrollTracker::stillFrame(const Signature& cur, const Signature& ref, double* share) const {
+// A browser can draw a page's text anew while it rests: Chrome turns greyscale
+// antialiasing into subpixel (LCD) antialiasing some time after scrolling
+// stopped, and keeps drawing it so (#1537's A-first row: 16% of the textured
+// cells changed in place, every later frame in the new look). Each cell moves
+// a little: within twice the cell tolerance nearly all agree where they were,
+// where a page moved by even a pixel or a playing video agrees on far fewer.
+constexpr unsigned kRedrawTolerance = 2;
+
+bool ScrollTracker::stillFrame(const Signature& cur, const Signature& ref, double* share, bool* redrawn) const {
   const int H = cur.h, C = cur.cells, B = cur.bands;
   unsigned agree = 0, inf = 0, differ = 0;
+  unsigned looseAgree = 0, looseInf = 0, looseDiffer = 0;
+  const unsigned looseTol = kRedrawTolerance * unsigned(opts_.cellTolerance);
+  if (redrawn) *redrawn = false;
   const int lo = cellLo_, n = cellHi_ - cellLo_;
   std::vector<uint16_t> pinRow;
   bool skippedDyn = false;
@@ -846,19 +857,28 @@ bool ScrollTracker::stillFrame(const Signature& cur, const Signature& ref, doubl
     }
     stillCounts(cur.cellRow(y) + lo, ref.cellRow(y) + lo, cur.cellTexRow(y) + lo, ref.cellTexRow(y) + lo, pin, n,
                 unsigned(opts_.cellTolerance), differ, inf, agree);
+    if (redrawn)
+      stillCounts(cur.cellRow(y) + lo, ref.cellRow(y) + lo, cur.cellTexRow(y) + lo, ref.cellTexRow(y) + lo, pin, n,
+                  looseTol, looseDiffer, looseInf, looseAgree);
   }
   if (skippedDyn && inf < 32) {
     agree = inf = differ = 0;
+    looseAgree = looseInf = looseDiffer = 0;
     for (int y = 0; y < H; ++y) {
       const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
       stillCounts(cur.cellRow(y) + lo, ref.cellRow(y) + lo, cur.cellTexRow(y) + lo, ref.cellTexRow(y) + lo,
                   &closed16_[size_t(brow) * C + lo], n, unsigned(opts_.cellTolerance), differ, inf, agree);
+      if (redrawn)
+        stillCounts(cur.cellRow(y) + lo, ref.cellRow(y) + lo, cur.cellTexRow(y) + lo, ref.cellTexRow(y) + lo,
+                    &closed16_[size_t(brow) * C + lo], n, looseTol, looseDiffer, looseInf, looseAgree);
     }
   }
   const double s = inf > 0 ? double(agree) / inf : (differ == 0 ? 1.0 : 0.0);
   if (share) *share = s;
   if (inf < 32) return differ * 50u < unsigned(H) * unsigned(n) / 20u + 1;  // blank: nothing changed
-  return s >= opts_.stillShare;
+  if (s >= opts_.stillShare) return true;
+  if (redrawn) *redrawn = double(looseAgree) / looseInf >= opts_.stillShare;
+  return false;
 }
 
 namespace {
@@ -4243,6 +4263,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   };
   std::vector<ObservedPair> observedPairs;
   bool observedMarked = false;
+  // The frame is the page drawn anew where it rests (stillFrame's redrawn).
+  bool redrawn = false;
   const auto observeOnce = [&](const Signature& a, const Signature& b, long long aPos, long long bPos,
                                const std::vector<Candidate>* cs, int pk, bool verify) {
     if (observedMarked) return false;
@@ -4263,7 +4285,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // placed frame stays: if the page did move after all, the next frame is
     // placed against the last placed one, never off by this frame's movement.
     if (prevHasPos_ && prevPos_ == lastPos_ && prevSig())
-      observeOnce(cur, *prevSig(), lastPos_, lastPos_, nullptr, -1, !still);
+      observeOnce(cur, *prevSig(), lastPos_, lastPos_, nullptr, -1, !still || redrawn);
     if (still) {
       std::swap(last_, work_);
       prevIsLast_ = true;
@@ -4292,7 +4314,14 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     r.state = state_ = TrackState::Following;
     return r;
   };
-  bool still = stillFrame(cur, ref, &share);
+  // The page drawn anew where it rests is the same picture: it becomes the
+  // reference like a still frame, so the next movement is matched against
+  // how the page looks now. Kept as an unproved frame, the next frames (drawn
+  // the new way and moving) matched neither it nor the image, and the capture
+  // lost the page at its last step (#1537's A-first row on Aurora and Mint).
+  // Its changes are no playing video: only a verified look may mark them.
+  bool still = stillFrame(cur, ref, &share, &redrawn);
+  still = still || redrawn;
   // Still, unless the frame was not quite the same picture and a movement
   // explains it better: content that nearly repeats at the step's distance
   // (a pull request's table of near-equal rows, moved by two of them, 68

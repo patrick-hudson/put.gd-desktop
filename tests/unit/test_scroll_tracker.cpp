@@ -930,6 +930,55 @@ void testChangesAndRecovery() {
            counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
   }
   {
+    // The page drawn anew while it rests (#1537's A-first row: Chrome turns
+    // greyscale antialiasing into subpixel antialiasing a while after
+    // scrolling stopped): wheel notches of 120 rows with rests between them,
+    // then, at the rest before the last, short step to the end, the text's
+    // grey ink comes out a little lighter, and stays so. The picture drawn
+    // anew is the reference for that step; the capture reaches the end,
+    // nothing lost.
+    constexpr int kLighter = 18;
+    const Scene scene = scene_of(doc.img, base);
+    const int notch[] = {2, 5, 9, 12, 16, 17, 17, 15, 12, 9, 5, 1};
+    const int lastRest = (end - 1) / 120 * 120;
+    std::vector<int> pos{0};
+    size_t redrawFrom = 0;
+    const auto step = [&](int dist) {
+      const int from = pos.back();
+      int moved = 0;
+      for (const int n : notch) {
+        moved += n;
+        pos.push_back(from + int(std::lround(double(moved) * dist / 120)));
+      }
+      for (int k = 0; k < 3; ++k) pos.push_back(pos.back());
+    };
+    while (pos.back() < lastRest) step(120);
+    redrawFrom = pos.size();
+    for (int k = 0; k < 3; ++k) pos.push_back(pos.back());
+    step(end - lastRest);
+    const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+      if (i < redrawFrom) return false;
+      const Image plain = f;
+      for (int y = 0; y < f.h; ++y)
+        for (int x = 0; x < f.w; ++x) {
+          const uint32_t v = plain.at(x, y);
+          const int cr = int(v >> 16) & 255, cg = int(v >> 8) & 255, cb = int(v) & 255;
+          if (v == kBg || std::max({cr, cg, cb}) - std::min({cr, cg, cb}) > 12 || std::max({cr, cg, cb}) > 0xE8) continue;
+          auto ch = [&](int c) { return uint32_t(std::min(255, c + kLighter)); };
+          f.at(x, y) = (ch(cr) << 16) | (ch(cg) << 8) | ch(cb);
+        }
+      return false;
+    });
+    int lostFrames = 0;
+    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {}, kLighter, &firstBad);
+    report("page drawn anew at the last rest: the last step placed, full page",
+           r.wrong == 0 && lostFrames == 0 && r.totals.skipped == 0 && bad == 0,
+           counts(r) + fmt(", redrawn share %.2f, %d lost, %d wrong%s, %lld pixels differ (row %d)",
+                           r.results[redrawFrom].confidence, lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+  {
     // The capture begins halfway down; the reader scrolls up past where it
     // began, to the top, and then down to the end: the image grows at both
     // ends and has every row once.
