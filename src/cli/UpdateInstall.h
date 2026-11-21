@@ -11,10 +11,12 @@ namespace putgd {
 // confirm. It prints {"event":"progress",...} lines, then one result line in
 // the --check-update format.
 //
-// zsync path: appimageupdatetool (or zsync2) on the host, run with the host's
-// environment and CA bundle on a hard link of the image in a private staging
-// folder, pinned to the release's mirrored .zsync. Fallback: the whole image
-// from the mirror (then the GitHub release) through put.gd's own TLS. Either
+// zsync path (#1766): put.gd's own client (Zsync.h) reads the release's .zsync
+// on the mirror, copies the blocks the running image already has into a
+// private staging folder and fetches the rest from the mirror's image with
+// Range requests; the result must match the .zsync's SHA-1. Fallback, after
+// any zsync failure: the whole image from the mirror (then the GitHub
+// release). Both go through put.gd's own TLS. Either
 // way the file must match the release's SHA256SUMS line before it is renamed
 // onto the image's path; the old image is kept as a hidden backup. That
 // SHA256SUMS must carry the release signer's minisign signature
@@ -26,7 +28,7 @@ namespace putgd {
 // permalink instead of the running image's; an older version also needs
 // --allow-older. Without --switch another channel's image is refused.
 struct InstallOptions {
- QString channel,method="auto",stateRoot,image,caBundle;
+ QString channel,method="auto",stateRoot,image;
  bool switchChannel=false,allowOlder=false;
  // The minisign key SHA256SUMS must be signed with, by channel; a channel
  // without one uses the release key compiled in (tests pass their own).

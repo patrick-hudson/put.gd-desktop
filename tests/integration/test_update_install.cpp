@@ -25,11 +25,15 @@ void write(const QString& path,const QByteArray& bytes,QFile::Permissions permis
  QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly|QIODevice::Truncate));file.write(bytes);file.close();QVERIFY(file.setPermissions(permissions));
 }
 QByteArray read(const QString& path) {QFile file(path);return file.open(QIODevice::ReadOnly)?file.readAll():QByteArray{};}
-// A loopback stand-in for app.put.gd's feed, the GitHub release and pkg.put.gd's mirror.
+// A loopback stand-in for app.put.gd's feed, the GitHub release and pkg.put.gd's
+// mirror. Range requests get a 206: one part, or multipart/byteranges as
+// CloudFront sends for several; ignoreRanges answers them with the whole file,
+// corruptRanges flips the first byte of every part.
 class ReleaseServer final:public QObject {
  Q_OBJECT
 public:
- QHash<QByteArray,QByteArray> files;QList<QByteArray> requests;
+ QHash<QByteArray,QByteArray> files;QList<QByteArray> requests,ranges;
+ bool ignoreRanges=false,corruptRanges=false;
  ReleaseServer(){QVERIFY(server_.listen(QHostAddress::LocalHost));connect(&server_,&QTcpServer::newConnection,this,&ReleaseServer::accept);}
  QByteArray base() const {return "http://127.0.0.1:"+QByteArray::number(server_.serverPort());}
  bool requested(const QByteArray& line) const {for(const auto& r:requests)if(r.startsWith(line))return true;return false;}
@@ -40,54 +44,89 @@ private:
    connect(socket,&QTcpSocket::readyRead,socket,[this,socket,request]{
     *request+=socket->readAll();if(!request->contains("\r\n\r\n"))return;
     const auto line=request->left(request->indexOf("\r\n"));requests.append(line);
+    QByteArray range;
+    for(const auto& header:request->left(request->indexOf("\r\n\r\n")).split('\n'))if(header.toLower().startsWith("range:"))range=header.mid(6).trimmed();
     const auto parts=line.split(' ');const bool head=parts.value(0)=="HEAD";const auto path=parts.value(1);
     const auto found=files.constFind(path);
-    const QByteArray status=found==files.cend()?"404 Not Found":"200 OK";const auto body=found==files.cend()?QByteArray("missing"):*found;
-    socket->write("HTTP/1.1 "+status+"\r\nContent-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+(head?QByteArray():body));
+    QByteArray status=found==files.cend()?"404 Not Found":"200 OK",headers,body=found==files.cend()?QByteArray("missing"):*found;
+    if(found!=files.cend()&&range.startsWith("bytes=")&&!ignoreRanges) {
+     ranges.append(range);
+     QList<std::pair<qint64,qint64>> spans;
+     for(const auto& spec:range.mid(6).split(',')){const auto dash=spec.indexOf('-');spans.append({spec.left(dash).toLongLong(),spec.mid(dash+1).toLongLong()});}
+     const auto piece=[&](const std::pair<qint64,qint64>& span){auto bytes=found->mid(span.first,span.second-span.first+1);if(corruptRanges)bytes[0]=char(bytes[0]^0x55);return bytes;};
+     const auto contentRange=[&](const std::pair<qint64,qint64>& span){return "bytes "+QByteArray::number(span.first)+"-"+QByteArray::number(span.second)+"/"+QByteArray::number(found->size());};
+     status="206 Partial Content";
+     if(spans.size()==1){headers="Content-Range: "+contentRange(spans[0])+"\r\n";body=piece(spans[0]);}
+     else {
+      headers="Content-Type: multipart/byteranges; boundary=CloudFront:TEST\r\n";body.clear();
+      for(const auto& span:spans)body+="\r\n--CloudFront:TEST\r\nContent-Type: application/vnd.appimage\r\nContent-Range: "+contentRange(span)+"\r\n\r\n"+piece(span);
+      body+="\r\n--CloudFront:TEST--\r\n";
+     }
+    }
+    socket->write("HTTP/1.1 "+status+"\r\n"+headers+"Content-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+(head?QByteArray():body));
     socket->disconnectFromHost();
    });
   }
  }
  QTcpServer server_;
 };
+// The release's .zsync as zsync 0.6.2's zsyncmake writes it: the header, then
+// per block (the last zero-padded) the trailing rsum bytes of its big-endian
+// a and b and the leading bytes of its MD4.
+QByteArray zsyncmake(const QByteArray& file,const QString& filename,int blocksize=1024,const QByteArray& hashLengths="2,2,5",const QByteArray& sha1={}) {
+ const auto lengths=hashLengths.split(',');const int rsumBytes=lengths.value(1).toInt(),checksumBytes=lengths.value(2).toInt();
+ QByteArray out="zsync: 0.6.2\nFilename: "+filename.toUtf8()+"\nMTime: Fri, 20 Nov 2026 08:45:04 +0000\nBlocksize: "+QByteArray::number(blocksize)+
+  "\nLength: "+QByteArray::number(file.size())+"\nHash-Lengths: "+hashLengths+"\nURL: https://pkg.put.gd/releases/x/"+filename.toUtf8()+
+  "\nSHA-1: "+(sha1.isEmpty()?QCryptographicHash::hash(file,QCryptographicHash::Sha1).toHex():sha1)+"\n\n";
+ for(qsizetype at=0;at<file.size();at+=blocksize) {
+  auto block=file.mid(at,blocksize);block.append(QByteArray(blocksize-block.size(),'\0'));
+  quint16 a=0,b=0;
+  for(int i=0;i<blocksize;++i){a=quint16(a+uchar(block[i]));b=quint16(b+(blocksize-i)*uchar(block[i]));}
+  uchar rsum[4]{uchar(a>>8),uchar(a),uchar(b>>8),uchar(b)};
+  out.append(reinterpret_cast<const char*>(rsum)+4-rsumBytes,rsumBytes);
+  out.append(QCryptographicHash::hash(block,QCryptographicHash::Md4).left(checksumBytes));
+ }
+ return out;
+}
+// Bytes that don't repeat, so blocks only match where they were copied.
+QByteArray noise(int bytes,quint32 seed) {QByteArray out(bytes,'\0');for(auto& c:out){seed=seed*1664525u+1013904223u;c=char(seed>>24);}return out;}
 }
 // The install child (#293 phase 3): zsync through the host's tool, the full
 // download as fallback, SHA256SUMS before any swap, and what a refusal leaves.
 class UpdateInstallTest:public QObject {
  Q_OBJECT
- QTemporaryDir dir;QString images,tools,state;QByteArray path_;
+ QTemporaryDir dir;QString images,state;
  // The release signer's key for these tests.
  MinisignKey signer_;
  // The stable channel's own key (#344).
  MinisignKey stableSigner_{QByteArray::fromHex("a4388fb41f96a6d7")};
- const QByteArray old_=elfImage("800"),next_=elfImage("801 with changes");
+ // The next version moves the old one's bytes by an odd offset, changes some
+ // and grows a short last block: most of it is in the old image, not aligned.
+ const QByteArray payload_=noise(200*1024,7);
+ const QByteArray old_=elfImage("800"+payload_),
+  next_=elfImage("801"+payload_.left(1000)+"abc"+payload_.mid(1000,99000)+noise(6000,9)+payload_.mid(106000)+noise(2000,11));
  static update::Build build(){
   return update::build(QJsonObject{{"version","0.1.1-nightly.800"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"appimage",true);
  }
  QString image() const {return images+"/putgd-0.1.1-nightly.800-x86_64.AppImage";}
- void publish(ReleaseServer& server,const QByteArray& served,const QString& feedSha=QString()) {
+ void publish(ReleaseServer& server,const QByteArray& served,const QString& feedSha=QString(),const QByteArray& listed={}) {
+  // listed is the release SHA256SUMS and the .zsync describe; served is what the image URLs return.
+  const auto release=listed.isEmpty()?next_:listed;
   const auto releaseUrl="https://github.com/patrick-hudson/put.gd-desktop/releases/download/"+tag+"/"+name;
-  QJsonObject asset{{"name",name},{"url",releaseUrl},{"size",next_.size()}};
-  asset["sha256"]=feedSha.isEmpty()?hex(next_):feedSha;
+  QJsonObject asset{{"name",name},{"url",releaseUrl},{"size",release.size()}};
+  asset["sha256"]=feedSha.isEmpty()?hex(release):feedSha;
   server.files["/update/v1/nightly.json"]=QJsonDocument(QJsonObject{{"schema",1},{"channel","nightly"},{"release",QJsonObject{{"tag",tag},{"version","0.1.1-nightly.801"},
    {"assets",QJsonObject{{"appimage",asset}}}}}}).toJson();
-  const auto sums=(hex(next_)+"  "+name+"\n"+hex("zsync")+"  "+name+".zsync\n").toUtf8();
+  const auto sums=(hex(release)+"  "+name+"\n"+hex("zsync")+"  "+name+".zsync\n").toUtf8();
   server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=sums;
   server.files["/mirror/"+tag.toUtf8()+"/SHA256SUMS.minisig"]=signer_.signature(sums,"put.gd "+tag.toUtf8()+" nightly");
   server.files["/release/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
-  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"]="zsync";
+  server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"]=zsyncmake(release,name);
   server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
   qputenv("PUTGD_UPDATE_FEED_URL",server.base()+"/update/v1");qputenv("PUTGD_UPDATE_RELEASE_URL",server.base()+"/release");qputenv("PUTGD_UPDATE_MIRROR_URL",server.base()+"/mirror");
  }
- // A host appimageupdatetool: records its arguments and SSL_CERT_FILE, writes
- // tool.out under the .zsync's file name in its folder, exits with tool.code.
- void fakeTool(const QByteArray& output,int code) {
-  write(tools+"/appimageupdatetool",QString("#!/bin/sh\nprintf '%s\\n' \"$@\" > '%1/tool.args'\nprintf '%s' \"$SSL_CERT_FILE\" > '%1/tool.ca'\n"
-   "seed=$3\n/bin/cp '%1/tool.out' \"${seed%/*}/%2\"\nexit %3\n").arg(dir.path(),name).arg(code).toUtf8());
-  write(dir.filePath("tool.out"),output);
- }
  InstallOptions options(const QString& method="auto") const {
-  InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();o.caBundle="/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem";
+  InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();
   o.publicKeys={{"nightly",signer_.publicFile()},{"stable",stableSigner_.publicFile()}};return o;
  }
  // #344: a release of either channel, its SHA256SUMS signed by signer with trusted comment.
@@ -107,25 +146,22 @@ class UpdateInstallTest:public QObject {
  }
  QStringList leftovers() const {return QDir(images).entryList({".putgd-update-*"},QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot);}
 private slots:
- void initTestCase(){path_=qgetenv("PATH");}
  void init(){
   QVERIFY(dir.isValid());
   for(const auto& name:QDir(dir.path()).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot))QFileInfo(dir.filePath(name)).isDir()?QDir(dir.filePath(name)).removeRecursively():QFile::remove(dir.filePath(name));
-  images=dir.filePath("Applications");tools=dir.filePath("bin");state=dir.filePath("state");
-  QVERIFY(QDir().mkpath(images));QVERIFY(QDir().mkpath(tools));
+  images=dir.filePath("Applications");state=dir.filePath("state");
+  QVERIFY(QDir().mkpath(images));
   write(image(),old_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner|QFile::ReadGroup|QFile::ExeGroup);
-  // Only the fake tools: no real appimageupdatetool of the build host.
-  qputenv("PATH",tools.toUtf8());
  }
- void cleanup(){qputenv("PATH",path_);for(const char* name:{"PUTGD_UPDATE_FEED_URL","PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);}
- void withoutZsyncToolDownloadsFromTheMirrorAndKeepsABackup(){
+ void cleanup(){for(const char* name:{"PUTGD_UPDATE_FEED_URL","PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);}
+ void aDownloadInstallsFromTheMirrorAndKeepsABackup(){
   ReleaseServer server;publish(server,next_);
   QList<QJsonObject> progress;Error error;
-  const auto result=installUpdate(build(),options(),[&](const QJsonObject& line){progress.append(line);},error);
+  const auto result=installUpdate(build(),options("download"),[&](const QJsonObject& line){progress.append(line);},error);
   QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
   QCOMPARE(result["installed"].toBool(),true);QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("mirror"));
-  QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("not_installed"));
-  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
+  QVERIFY(result["zsync"].isNull());QCOMPARE(result["downloadedBytes"].toInteger(),qint64(next_.size()));
+  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QVERIFY(!server.requested("GET /mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"));
   QCOMPARE(read(image()),next_);QCOMPARE(QFileInfo(image()).permissions()&QFile::ExeGroup,QFile::ExeGroup);
   QCOMPARE(read(result["backup"].toString()),old_);
   QCOMPARE(leftovers(),QStringList{".putgd-update-backup-0.1.1-nightly.800.AppImage"});
@@ -145,49 +181,66 @@ private slots:
    if(mirror=="missing")server.files.remove(mirrored);
    else if(mirror=="short")server.files[mirrored]=next_.left(next_.size()/2);
    else {auto wrong=next_;wrong[wrong.size()-1]=char(wrong.at(wrong.size()-1)^1);server.files[mirrored]=wrong;}
-   Error error;const auto result=installUpdate(build(),options(),{},error);
+   Error error;const auto result=installUpdate(build(),options("download"),{},error);
    QVERIFY2(!error,qPrintable(mirror+": "+error.message+" "+QJsonDocument(error.details).toJson()));
    QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("release"));
    QCOMPARE(result["downloads"].toArray().first().toObject()["sha256"].toString(),mirror=="wrong"?QString("mismatch"):QString());
    QVERIFY(server.requested("GET "+mirrored));QCOMPARE(read(image()),next_);
   }
  }
- void zsyncRunsTheHostToolWithItsCaBundleOnThePinnedRelease(){
-  ReleaseServer server;publish(server,next_);fakeTool(next_,0);
-  Error error;const auto result=installUpdate(build(),options(),{},error);
-  QVERIFY2(!error,qPrintable(error.message));
-  QCOMPARE(result["method"].toString(),QString("zsync"));QCOMPARE(result["zsync"].toObject()["used"].toBool(),true);QCOMPARE(read(image()),next_);
-  const auto arguments=QString::fromUtf8(read(dir.filePath("tool.args"))).split('\n',Qt::SkipEmptyParts);
-  QCOMPARE(arguments.value(0),QString("-u"));
-  QCOMPARE(arguments.value(1),"zsync|"+server.base()+"/mirror/"+tag+"/"+name+".zsync");
-  // It works on a link of the image in the private staging folder, never beside the user's files.
-  QVERIFY(arguments.value(2).startsWith(QFileInfo(image()).canonicalPath()+"/.putgd-update-"));QVERIFY(arguments.value(2).endsWith("/seed.AppImage"));
-  QCOMPARE(read(dir.filePath("tool.ca")),QByteArray("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"));
-  // No image download: the tool did it.
-  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QVERIFY(!server.requested("GET /mirror/"+tag.toUtf8()+"/"+name.toUtf8()+" "));QVERIFY(server.requested("HEAD /mirror/"));
-  QCOMPARE(leftovers().size(),1);
+ // The running image supplies most blocks; only the rest is fetched, several
+ // runs per request (multipart) or one (a single 206 part).
+ void zsyncReusesTheRunningImageAndFetchesOnlyTheRest(){
+  for(const bool oneRun:{false,true}) {
+   init();
+   const auto next=oneRun?QByteArray(old_).replace(5000,4,"5678"):next_;
+   ReleaseServer server;publish(server,next,{},next);
+   QList<QJsonObject> progress;Error error;
+   const auto result=installUpdate(build(),options("zsync"),[&](const QJsonObject& line){progress.append(line);},error);
+   QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
+   QCOMPARE(result["method"].toString(),QString("zsync"));QCOMPARE(read(image()),next);QCOMPARE(read(result["backup"].toString()),old_);
+   const auto zsync=result["zsync"].toObject();
+   QCOMPARE(zsync["used"].toBool(),true);QVERIFY(!zsync.contains("fallbackReason"));
+   QVERIFY2(zsync["reusedBytes"].toInteger()>next.size()*85/100,qPrintable(QJsonDocument(zsync).toJson()));
+   QCOMPARE(zsync["reusedBytes"].toInteger()+zsync["downloadedBytes"].toInteger(),qint64(next.size()));
+   QCOMPARE(result["reusedBytes"],zsync["reusedBytes"]);
+   QCOMPARE(appimage::readState(state)["installed"].toObject()["method"].toString(),QString("zsync"));
+   // Only ranges of the mirror's image: never the whole file, from either source.
+   QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QVERIFY(!server.ranges.isEmpty());
+   QCOMPARE(server.ranges.size(),zsync["requests"].toInt());QCOMPARE(server.requests.count("GET /mirror/"+tag.toUtf8()+"/"+name.toUtf8()+" HTTP/1.1"),server.ranges.size());
+   QCOMPARE(server.ranges.first().contains(','),!oneRun);
+   QStringList steps;for(const auto& line:progress)if(line["phase"]=="zsync"&&!steps.contains(line["step"].toString()))steps.append(line["step"].toString());
+   QCOMPARE(steps,(QStringList{"reading","fetching"}));
+   cleanup();
+  }
  }
- void aFailedZsyncFallsBackToTheDownload(){
-  ReleaseServer server;publish(server,next_);fakeTool(next_,1);
-  Error error;auto result=installUpdate(build(),options(),{},error);
-  QVERIFY2(!error,qPrintable(error.message));
-  QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("exit_1"));QCOMPARE(read(image()),next_);
- }
- void zsyncOutputThatIsNotTheReleaseFallsBack(){
-  ReleaseServer server;publish(server,next_);fakeTool(elfImage("something else"),0);
-  Error error;const auto result=installUpdate(build(),options(),{},error);
-  QVERIFY2(!error,qPrintable(error.message));
-  QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("verification_failed:sha256"));QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(read(image()),next_);
- }
- void withoutTheMirrorTheToolIsNotRun(){
-  ReleaseServer server;publish(server,next_);server.files.remove("/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync");fakeTool(next_,0);
-  Error error;const auto result=installUpdate(build(),options(),{},error);
-  QVERIFY(!error);QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("mirror_unavailable"));QVERIFY(!QFileInfo::exists(dir.filePath("tool.args")));
+ // A server that answers ranges with the whole file or sends wrong bytes, a
+ // .zsync put.gd can't use, one whose SHA-1 is another file's, and none at
+ // all: each falls back to the whole download, with the reason.
+ void aZsyncThatCantFinishFallsBackToTheDownload(){
+  const auto control="/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync";
+  const QList<std::pair<QString,std::function<void(ReleaseServer&)>>> cases{
+   {"range_refused",[](ReleaseServer& server){server.ignoreRanges=true;}},
+   {"range_checksum",[](ReleaseServer& server){server.corruptRanges=true;}},
+   {"bad_header",[&](ReleaseServer& server){server.files[control]="zsync";}},
+   {"unsupported_hash_lengths",[&](ReleaseServer& server){server.files[control]=zsyncmake(next_,name,1024,"3,2,5");}},
+   {"sha1_mismatch",[&](ReleaseServer& server){server.files[control]=zsyncmake(next_,name,1024,"2,2,5",QByteArray(40,'0'));}},
+   {"mirror_unavailable",[&](ReleaseServer& server){server.files.remove(control);}}};
+  for(const auto& [reason,breakIt]:cases) {
+   init();
+   ReleaseServer server;publish(server,next_);breakIt(server);
+   Error error;const auto result=installUpdate(build(),options(),{},error);
+   QVERIFY2(!error,qPrintable(reason+": "+error.message));
+   QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),reason);QCOMPARE(result["zsync"].toObject()["used"].toBool(),false);
+   QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(read(image()),next_);QCOMPARE(leftovers().size(),1);
+   cleanup();
+  }
  }
  void zsyncOnlyDoesNotFallBack(){
-  ReleaseServer server;publish(server,next_);fakeTool(next_,3);
+  ReleaseServer server;publish(server,next_);server.ignoreRanges=true;
   Error error;installUpdate(build(),options("zsync"),{},error);
-  QCOMPARE(error.code,QString("update_zsync_failed"));QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());
+  QCOMPARE(error.code,QString("update_zsync_failed"));QCOMPARE(error.details["zsync"].toObject()["fallbackReason"].toString(),QString("range_refused"));
+  QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
  }
  void aTamperedDownloadIsRefusedAndNothingChanges(){
   ReleaseServer server;auto tampered=next_;tampered[tampered.size()-1]='X';publish(server,tampered);
@@ -217,7 +270,7 @@ private slots:
    QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());QVERIFY(!QFileInfo::exists(appimage::statePath(state)));
   }
   QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/SHA256SUMS"));QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
-  QVERIFY(!server.requested("HEAD /mirror/"));
+  QVERIFY(!server.requested("GET /mirror/"+tag.toUtf8()+"/"+name.toUtf8()));
   // A folder without write access, for real.
   if(::getuid()==0)QSKIP("root writes anywhere");
   QVERIFY(QFile::setPermissions(images,QFile::ReadOwner|QFile::ExeOwner));

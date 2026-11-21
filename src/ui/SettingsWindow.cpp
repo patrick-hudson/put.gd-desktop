@@ -771,7 +771,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
   {"updateChannel","Starts on the channel of this build: a nightly build follows nightly, a release or release candidate follows stable. Choose the other one to watch it instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself. A DEB or RPM that updates from put.gd's apt or dnf repository follows that repository's channel instead, which only you change, in a terminal."},
   {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
-  {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started. When you watch the other channel, the same steps switch to that channel's release, checked with its own signing key; an older version is installed only after you confirm."},
+  {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It downloads only the parts that changed (a zsync update), and the whole file if that doesn't work. The current version is kept beside it as a hidden backup until the new one has started. When you watch the other channel, the same steps switch to that channel's release, checked with its own signing key; an older version is installed only after you confirm."},
   {"otherChannel","This installation updates from put.gd's apt or dnf repository, so your system decides which channel it installs. These commands put the package's copy of the other channel's repository file in place, then install that channel's package. put.gd never runs them for you."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
   {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
@@ -2008,25 +2008,29 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
   else installProgress_->setRange(0,0);
   const auto phase=install["phase"].toString();const auto method=install["method"].toString();
   const auto amount=total>0?" "+ByteSize::summary(bytes)+" of "+ByteSize::summary(total):QString();
-  QString text=phase=="zsync"?"Updating with "+method+", which downloads only what changed:"+amount:
+  // zsync first reads this version for the parts it can reuse, then fetches the rest (#1766).
+  const auto reused=install["reused"].toInteger();
+  QString text=phase=="zsync"?(install["step"]=="fetching"?"Downloading only what changed:"+amount+(reused>0?" ("+ByteSize::summary(reused)+" reused from this version)":QString()):
+   "Finding the parts this version already has:"+amount):
    phase=="download"?(method=="mirror"?QString("Downloading from pkg.put.gd:"):QString("Downloading from the GitHub release:"))+amount:
    phase=="verifying"?QString("Checking against the release's SHA256SUMS…"):phase=="installing"?QString("Putting the new version in place…"):QString("Checking the release…");
   Ui::feedback(installStatus_,text);return;
  }
  // A switch says so (#344): the record names both channels.
  const auto from=installed["previousChannel"].toString(),to=installed["channel"].toString();
+ const auto how=installed["method"].toString();
+ const auto downloaded=installed["downloadedBytes"];
+ const QString howText=how=="zsync"?" with a zsync update"+(downloaded.isDouble()?" that downloaded "+ByteSize::summary(downloaded.toInteger()):QString()):how=="download"?QString(" from a full download"):QString();
  const bool switched=!from.isEmpty()&&!to.isEmpty()&&from!=to;
  if(restart){
-  const auto how=installed["method"].toString();
-  QString text=(switched?"Switched to "+to+" ":QString("Installed "))+installed["version"].toString()+(how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+". Restart put.gd to use it.";
+  QString text=(switched?"Switched to "+to+" ":QString("Installed "))+installed["version"].toString()+howText+". Restart put.gd to use it.";
   if(install["backup"].isString())text+=" The previous version is kept as "+QFileInfo(install["backup"].toString()).fileName()+" until the new one has started.";
   Ui::success(installStatus_,text);return;
  }
  const auto error=install["error"].toObject();
  if(state!="failed"&&updated){
-  const auto how=installed["method"].toString();
   Ui::success(installStatus_,(switched?"Switched from "+from+" "+installed["previousVersion"].toString()+" to "+to+" ":"Updated from "+installed["previousVersion"].toString()+" to ")+installed["version"].toString()+
-   (how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+" on "+localTime(installed["installedAt"].toString())+".");
+   howText+" on "+localTime(installed["installedAt"].toString())+".");
   return;
  }
  Ui::feedback(installStatus_,"The update wasn't installed: "+error["message"].toString()+".",true);

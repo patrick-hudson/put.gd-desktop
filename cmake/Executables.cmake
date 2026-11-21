@@ -22,7 +22,7 @@ if(OpenSSL_FOUND)
   target_compile_definitions(putgd_minisign PRIVATE PUTGD_MINISIGN_OPENSSL=1)
   target_link_libraries(putgd_minisign PRIVATE OpenSSL::Crypto)
 endif()
-add_executable(putgd-cli src/cli/main.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp)
+add_executable(putgd-cli src/cli/main.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp src/cli/Zsync.cpp)
 target_link_libraries(putgd-cli PRIVATE putgd_app putgd_minisign Qt6::Network)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 # The file manager's `putgd --upload` client (#1105). DEB/RPM builds resolve

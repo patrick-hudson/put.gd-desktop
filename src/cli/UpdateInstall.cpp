@@ -1,10 +1,10 @@
 #include "UpdateInstall.h"
 #include "UpdateCheck.h"
 #include "Minisign.h"
+#include "Zsync.h"
 #include "app/AppImageInstall.h"
 #include "core/BuildInfo.h"
 #include "core/CaBundle.h"
-#include "core/HostEnvironment.h"
 #include "core/Log.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -18,9 +18,7 @@
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QProcess>
 #include <QTemporaryDir>
-#include <QTimer>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -29,9 +27,8 @@ namespace {
 constexpr qint64 maximumSumsBytes=1024*1024,maximumSignatureBytes=16*1024;
 // No bytes for this long ends a transfer; Qt measures it between reads.
 constexpr int stallTimeoutMs=60000;
-// A zsync tool whose output doesn't grow for this long, or that runs longer, is stopped.
-constexpr qint64 zsyncStallMs=2*60*1000,zsyncTotalMs=15*60*1000;
-constexpr int progressIntervalMs=500;
+// A .zsync names 7 bytes per 4 KiB block of an image no larger than this.
+constexpr qint64 maximumControlBytes=8*1024*1024;
 void printLine(const QJsonObject& object) {
  const auto bytes=QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n';std::fwrite(bytes.constData(),1,bytes.size(),stdout);std::fflush(stdout);
 }
@@ -73,49 +70,17 @@ QByteArray fetch(QNetworkAccessManager& network,const QUrl& url,qint64 limit,QIO
 QJsonObject transferDetails(const QUrl& url,const Transfer& transfer) {
  return {{"url",url.toString()},{"httpStatus",transfer.status?QJsonValue(transfer.status):QJsonValue()},{"network",transfer.network.isEmpty()?QJsonValue():QJsonValue(transfer.network)},{"tooLarge",transfer.tooLarge}};
 }
-// Bytes the tool has written in the staging folder so far, besides the seed.
-qint64 written(const QString& staging,const QString& seed) {
- qint64 total=0;
- for(const auto& entry:QDir(staging).entryInfoList(QDir::Files|QDir::Hidden|QDir::NoDotAndDotDot))if(entry.absoluteFilePath()!=seed)total+=entry.size();
- return total;
-}
-// Runs the zsync tool; true when it exited 0. reason says why not.
-bool runZsync(const appimage::ZsyncTool& tool,const QStringList& arguments,const QString& staging,const QString& seed,const QProcessEnvironment& environment,
-              qint64 total,const std::function<void(qint64)>& progress,QString& reason,QByteArray& output) {
- QProcess process;process.setProgram(tool.path);process.setArguments(arguments);process.setWorkingDirectory(staging);
- process.setProcessEnvironment(environment);process.setProcessChannelMode(QProcess::MergedChannels);process.setStandardInputFile(QProcess::nullDevice());
- QEventLoop loop;QTimer tick;tick.setInterval(progressIntervalMs);
- QElapsedTimer started,grew;started.start();grew.start();qint64 last=-1;bool stopped=false;
- QObject::connect(&process,&QProcess::readyRead,&process,[&]{output+=process.readAll();if(output.size()>8192){output=output.right(4096);const auto cut=std::find_if(output.cbegin(),output.cend(),[](char c){return c=='\n'||c=='\r';});if(cut!=output.cend())output.remove(0,cut-output.cbegin()+1);}});
- QObject::connect(&process,&QProcess::finished,&loop,&QEventLoop::quit);
- QObject::connect(&process,&QProcess::errorOccurred,&loop,[&](QProcess::ProcessError error){if(error==QProcess::FailedToStart)loop.quit();});
- QObject::connect(&tick,&QTimer::timeout,&loop,[&]{
-  const auto bytes=written(staging,seed);
-  if(bytes!=last){last=bytes;grew.restart();if(progress)progress(qMin(bytes,total));}
-  if(!stopped&&(grew.elapsed()>zsyncStallMs||started.elapsed()>zsyncTotalMs)){
-   stopped=true;reason=grew.elapsed()>zsyncStallMs?"stalled":"timeout";
-   process.terminate();QTimer::singleShot(5000,&process,[&process]{process.kill();});
-  }
- });
- process.start();
- if(!process.waitForStarted(10000)){reason="failed_to_start";return false;}
- tick.start();
- if(process.state()!=QProcess::NotRunning)loop.exec();
- tick.stop();
- output+=process.readAll();
- if(stopped)return false;
- if(process.exitStatus()!=QProcess::NormalExit){reason="crashed";return false;}
- if(process.exitCode()!=0){reason=QString("exit_%1").arg(process.exitCode());return false;}
- return true;
-}
 }
 QJsonObject installUpdate(const update::Build& build,const InstallOptions& options,const std::function<void(const QJsonObject&)>& emitLine,Error& error) {
- // A new phase is reported at once; byte counts at most every 250 ms.
+ // A new phase (or zsync step) is reported at once; byte counts at most every 250 ms.
  QString lastPhase;QElapsedTimer sinceLast;
- const auto progress=[&](const QString& phase,const QString& method,qint64 bytes,qint64 total){
-  if(!emitLine||(phase==lastPhase&&sinceLast.isValid()&&sinceLast.elapsed()<250&&bytes<total))return;
-  lastPhase=phase;sinceLast.restart();
-  emitLine({{"event","progress"},{"phase",phase},{"method",method.isEmpty()?QJsonValue():QJsonValue(method)},{"bytes",bytes},{"total",total}});
+ const auto progress=[&](const QString& phase,const QString& method,qint64 bytes,qint64 total,const QJsonObject& extra={}){
+  const auto key=phase+'/'+extra["step"].toString();
+  if(!emitLine||(key==lastPhase&&sinceLast.isValid()&&sinceLast.elapsed()<250&&bytes<total))return;
+  lastPhase=key;sinceLast.restart();
+  QJsonObject line{{"event","progress"},{"phase",phase},{"method",method.isEmpty()?QJsonValue():QJsonValue(method)},{"bytes",bytes},{"total",total}};
+  for(auto it=extra.begin();it!=extra.end();++it)line[it.key()]=it.value();
+  emitLine(line);
  };
  if(build.target!="appimage"||!build.supported){error={"update_install_unavailable","Only AppImage builds install updates themselves",{{"packageTarget",build.target},{"reason",build.reason}}};return {};}
  if(!QStringList{"auto","zsync","download"}.contains(options.method)){error={"invalid_request","method is auto, zsync or download",{}};return {};}
@@ -191,37 +156,50 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  const auto candidatePath=QDir(staging.path()).filePath(name);
  QString candidate;QJsonObject zsync;
 
+ // zsync (#1766): the blocks the running image already has, at any offset,
+ // and only the rest from the mirror's image with Range requests. Any
+ // failure falls back to the whole file.
+ qint64 downloaded=0,reused=0;
  if(options.method!="download") {
-  const auto host=host::environment();
-  const auto tool=appimage::findZsyncTool(host);
-  zsync={{"tool",tool?QJsonValue(tool.kind):QJsonValue()}};
-  QString reason;
-  if(!tool)reason="not_installed";
-  Error urlError;const auto zsyncUrl=update::mirrorFileUrl(tag,name+".zsync",urlError);
-  if(reason.isEmpty()&&urlError)reason="mirror_invalid";
-  // The mirror must hold this release before the tool is asked to use it.
-  if(reason.isEmpty()){Transfer probe;fetch(network,zsyncUrl,4*1024*1024,nullptr,nullptr,{},probe,true);if(!probe.ok)reason="mirror_unavailable";}
+  QElapsedTimer took;took.start();
+  QString reason;QJsonObject details;zsync::Control control;
+  zsync={{"used",false},{"reusedBytes",0},{"downloadedBytes",0},{"controlBytes",0},{"requests",0},{"ranges",0}};
+  Error urlError;const auto controlUrl=update::mirrorFileUrl(tag,name+".zsync",urlError);const auto imageUrl=update::mirrorFileUrl(tag,name,urlError);
+  if(urlError)reason="mirror_invalid";
   if(reason.isEmpty()) {
-   const auto seed=QDir(staging.path()).filePath("seed.AppImage");
-   if(!appimage::linkOrCopy(image.path,seed))reason="seed_failed";
-   else {
-    QByteArray output;progress("zsync",tool.kind,0,size);
-    const bool ran=runZsync(tool,appimage::zsyncArguments(tool,seed,candidatePath,zsyncUrl.toString()),staging.path(),seed,
-                            appimage::zsyncEnvironment(host,options.caBundle),size,[&](qint64 bytes){progress("zsync",tool.kind,bytes,size);},reason,output);
-    zsync["output"]=appimage::zsyncOutputTail(output);
-    if(ran&&!QFileInfo(candidatePath).isFile())reason="no_output";
-    else if(ran) {
-     progress("verifying",tool.kind,size,size);
-     if(const auto failed=appimage::verify(candidatePath,expected,information))reason="verification_failed:"+failed.details["check"].toString();
+   progress("zsync","zsync",0,image.size,{{"step","reading"}});
+   Transfer transfer;const auto data=fetch(network,controlUrl,maximumControlBytes,nullptr,nullptr,{},transfer);
+   downloaded+=transfer.bytes;zsync["controlBytes"]=transfer.bytes;
+   if(!transfer.ok){reason=transfer.tooLarge?"control_too_large":"mirror_unavailable";details=transferDetails(controlUrl,transfer);}
+   // The .zsync must describe the file SHA256SUMS names.
+   else if(zsync::parse(data,control,reason)&&(control.filename!=name||control.length!=size)){reason="control_mismatch";details={{"filename",control.filename},{"length",control.length}};}
+  }
+  if(reason.isEmpty()) {
+   QFile seed(image.path),output(candidatePath);
+   zsync::Assembly assembly;zsync::Fetch fetched;
+   if(!seed.open(QIODevice::ReadOnly|QIODevice::Unbuffered))reason="seed_unreadable";
+   else if(!output.open(QIODevice::ReadWrite|QIODevice::Truncate)||!output.resize(size))reason="write_failed";
+   else if(zsync::reuse(control,seed,output,assembly,[&](qint64 bytes,qint64 total){progress("zsync","zsync",bytes,total,{{"step","reading"}});},reason)) {
+    reused=assembly.reusedBytes;zsync["reusedBytes"]=reused;
+    const auto ranges=zsync::missing(control,assembly);zsync["ranges"]=qint64(ranges.size());
+    const auto wanted=size-reused;
+    progress("zsync","zsync",0,wanted,{{"step","fetching"},{"reused",reused}});
+    const bool ok=zsync::fetch(network,imageUrl,control,ranges,output,fetched,[&](qint64 bytes){progress("zsync","zsync",bytes,wanted,{{"step","fetching"},{"reused",reused}});},reason,details);
+    downloaded+=fetched.downloadedBytes;zsync["downloadedBytes"]=fetched.downloadedBytes;zsync["requests"]=fetched.requests;
+    if(ok&&!output.flush())reason="write_failed";
+    output.close();
+    if(ok&&reason.isEmpty()) {
+     progress("verifying","zsync",size,size);
+     if(zsync::sha1(candidatePath)!=control.sha1)reason="sha1_mismatch";
+     else if(const auto failed=appimage::verify(candidatePath,expected,information))reason="verification_failed:"+failed.details["check"].toString();
      else candidate=candidatePath;
     }
-    QFile::remove(seed);
    }
   }
-  zsync["used"]=!candidate.isEmpty();
-  if(candidate.isEmpty())zsync["fallbackReason"]=reason;
+  zsync["used"]=!candidate.isEmpty();zsync["seconds"]=double(took.elapsed())/1000;
+  if(candidate.isEmpty()){zsync["fallbackReason"]=reason;if(!details.isEmpty())zsync["details"]=details;}
   result["zsync"]=zsync;
-  if(candidate.isEmpty()&&options.method=="zsync"){clearStaging();error={"update_zsync_failed","The zsync update didn't work: "+reason,{{"zsync",zsync}}};return {};}
+  if(candidate.isEmpty()&&options.method=="zsync"){QFile::remove(candidatePath);clearStaging();error={"update_zsync_failed","The zsync update didn't work: "+reason,{{"zsync",zsync}}};return {};}
  }
 
  if(candidate.isEmpty()) {
@@ -237,7 +215,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    QCryptographicHash hash(QCryptographicHash::Sha256);Transfer transfer;
    progress("download",source,0,size);
    fetch(network,url,size,&file,&hash,[&](qint64 received,qint64){progress("download",source,received,size);},transfer);
-   file.close();
+   file.close();downloaded+=transfer.bytes;
    attempts.append(QJsonObject{{"source",source},{"transfer",transferDetails(url,transfer)}});
    if(!transfer.ok||transfer.bytes!=size){lastFailure=transfer.tooLarge?"larger than the release says":transfer.network.isEmpty()?QString("HTTP %1").arg(transfer.status):transfer.network;continue;}
    // A mirror copy with the wrong bytes falls back to GitHub; wrong bytes from GitHub stop the install.
@@ -249,7 +227,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    progress("verifying",source,size,size);
    if(!QFile::rename(part,candidatePath)){clearStaging();error={"update_install_failed","Cannot prepare the download beside the AppImage",{}};return {};}
    if(auto failed=appimage::verify(candidatePath,expected,information)){clearStaging();error=failed;error.details["source"]=source;return {};}
-   candidate=candidatePath;result["method"]="download";result["source"]=source;
+   candidate=candidatePath;result["method"]="download";result["source"]=source;reused=0;
    break;
   }
   result["downloads"]=attempts;
@@ -262,10 +240,10 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  state=appimage::readState(options.stateRoot);
  state["staging"]=QJsonValue();state["backup"]=backup;
  state["installed"]=QJsonObject{{"image",image.path},{"version",version},{"previousVersion",build.version},{"channel",options.channel},{"previousChannel",build.channel},
-  {"sha256",expected},{"method",result["method"]},
+  {"sha256",expected},{"method",result["method"]},{"downloadedBytes",downloaded},{"reusedBytes",reused},
   {"installedAt",QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
  appimage::writeState(options.stateRoot,state);
- result["installed"]=true;result["backup"]=backup["path"];
+ result["installed"]=true;result["backup"]=backup["path"];result["downloadedBytes"]=downloaded;result["reusedBytes"]=reused;
  progress("done",result["method"].toString(),size,size);
  return result;
 }
@@ -282,9 +260,9 @@ int runInstallMode(int argc,char** argv) {
   else if(arguments[index]=="--state")options.stateRoot=arguments[++index];
   else {printLine({{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",Error{"invalid_request","Unknown option "+arguments[index].left(40),{}}.toJson()}});return 2;}
  }
- // The image this process runs from, and the host CA bundle AppRun found (#329):
- // for put.gd's own downloads and, as SSL_CERT_FILE, for zsync2.
- options.image=qEnvironmentVariable("APPIMAGE");options.caBundle=hostCaBundle();
+ // The image this process runs from, and the host CA bundle AppRun found
+ // (#329) for put.gd's own downloads.
+ options.image=qEnvironmentVariable("APPIMAGE");
  useHostCaBundle();
  const auto build=update::build(QJsonDocument::fromJson(buildManifestJson()).object());
  Error error;const auto result=installUpdate(build,options,printLine,error);

@@ -16,7 +16,7 @@
   target_link_libraries(test_appimage_install PRIVATE putgd_app Qt6::Test)
   add_test(NAME update_appimage_install_files COMMAND test_appimage_install)
   if(TARGET OpenSSL::Crypto)
-    add_executable(test_update_install tests/integration/test_update_install.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp)
+    add_executable(test_update_install tests/integration/test_update_install.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp src/cli/Zsync.cpp)
     target_include_directories(test_update_install PRIVATE src tests)
     target_link_libraries(test_update_install PRIVATE putgd_app putgd_minisign OpenSSL::Crypto Qt6::Network Qt6::Test)
     add_executable(test_minisign tests/unit/test_minisign.cpp)

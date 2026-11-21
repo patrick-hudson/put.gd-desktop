@@ -231,7 +231,8 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
 void UpdateService::installLine(const QByteArray& line) {
  const auto event=QJsonDocument::fromJson(line).object();
  if(event["event"]!="progress")return;
- for(const auto& key:{"phase","method","bytes","total"})install_[key]=event[key];
+ // step (reading or fetching) and reused only come with zsync's progress (#1766).
+ for(const auto& key:{"phase","method","bytes","total","step","reused"}){if(event.contains(key))install_[key]=event[key];else install_.remove(key);}
  emit changed();
 }
 void UpdateService::installFinished(const QByteArray& last,const Error& failure) {
