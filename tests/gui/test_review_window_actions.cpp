@@ -1573,8 +1573,30 @@ private slots:
                 window.setEdit(typed, answer(seq));
                 QCOMPARE(saves.size(), 1);
                 QCOMPARE(saves[0][1].toULongLong(), 3ull);
+                edit = typed;
             }
         }
+        // The acceptance run (Plasma, recording_cut_empty): a typed cut Ends
+        // is committed by the press on Save, and its refusal comes back before
+        // the release clicks Save. No dialog opens and no copy is saved.
+        edit.revision = 4;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        window.setEdit(edit);
+        window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
+        auto* ends = window.findChild<QLineEdit*>("reviewPanelCutEndsTime");
+        QVERIFY(ends);
+        ends->setFocus();
+        ends->selectAll();
+        QTest::keyClicks(ends, "0:32.0");
+        auto* save = window.findChild<QPushButton*>("saveCopy");
+        const auto before = proposals.size();
+        QTest::mousePress(save, Qt::LeftButton);
+        QCOMPARE(proposals.size(), before + 1);
+        window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "recording_cut_empty"));
+        QTest::mouseRelease(save, Qt::LeftButton);
+        QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
+        QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
+        QCOMPARE(saves.size(), 1);
     }
     // P18: with trims or cuts the transport shows the recording time too.
     void transportShowsRecordingTime() {

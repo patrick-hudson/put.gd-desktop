@@ -1717,7 +1717,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // export and upload continue in the background, reported like any upload.
     connect(upload_, &QPushButton::clicked, this, &ReviewWindow::upload);
     chooser_ = new FileDialog(this);
-    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(); });
+    // The refusals counted from the press on Save, when a typed time was committed (W5).
+    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(std::exchange(savePressRefusals_, std::nullopt)); });
     connect(cancel_, &QPushButton::clicked, this, &ReviewWindow::askDiscard);
 
     // Keys with modifiers; the plain keys arrive in keyPressEvent so a focused
@@ -3006,7 +3007,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "saveCopyDialog") {
         if (placing_) return {"recording_state", "Place or cancel the cover first", {}};
         if (!saveWaitingPath_.isEmpty()) return {"recording_state", "A chosen copy is waiting for your last change to be saved", {}};
-        chooseCopy();
+        if (!chooseCopy() && !chooser_->isOpen()) return {"recording_state", "No copy was saved: a change wasn't applied. Check the edits, then save again.", {}};
         return done();
     }
     if (action == "discard") { askDiscard(); return done(); }
@@ -3650,14 +3651,17 @@ void ReviewWindow::stopPlayback() {
 }
 
 // ---- save, discard, close, keys ----
-bool ReviewWindow::chooseCopy() {
+bool ReviewWindow::chooseCopy(std::optional<quint64> refusalsAtPress) {
+    // The copy holds the changes made before Save, or is not saved (W5):
+    // refusals count from the press on Save, or from now.
+    const quint64 mark = refusalsAtPress.value_or(refusals_);
     panel_->commitFields();  // P9
     if (exporting_ || placing_ || chooser_->isOpen() || !saveWaitingPath_.isEmpty()) return false;
     view_->commitNudge();
     panel_->flushStrength();
-    // The copy holds the changes made before Save, or is not saved (W5).
+    if (refusals_ != mark) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return false; }
     saveAwaits_ = proposalSeq_;
-    saveRefusalMark_ = refusals_;
+    saveRefusalMark_ = mark;
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
@@ -3702,6 +3706,9 @@ bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
     if (event->type() == QEvent::MouseButtonPress) {
         auto* target = qobject_cast<QWidget*>(watched);
         auto* focus = focusWidget();
+        // W5: a press on Save commits a typed time below; its answer can come
+        // back before the release clicks Save, so Save counts refusals from here.
+        if (target && target->window() == this) savePressRefusals_ = target == save_ ? std::optional<quint64>(refusals_) : std::nullopt;
         if (target && target->window() == this && focus && textField(focus) && panel_->isAncestorOf(focus) && target != focus && !focus->isAncestorOf(target) && !(focus->parentWidget() && focus->parentWidget()->isAncestorOf(target) && qobject_cast<QAbstractSpinBox*>(focus))) {
             panel_->commitFields();
             timeline_->setFocus(Qt::MouseFocusReason);

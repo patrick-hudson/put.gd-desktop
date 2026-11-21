@@ -329,7 +329,7 @@ private:
     void askDiscard();
     void answerDiscard(bool discard);
     // Save a copy…: the desktop's chooser (#259); false while one is open or exporting.
-    bool chooseCopy();
+    bool chooseCopy(std::optional<quint64> refusalsAtPress = std::nullopt);
     // Upload, Ctrl+Enter and Enter: never during a pointer drag or while placing;
     // with proposals unanswered, only once the resident accepted the last of
     // them (a refusal or 2 s without an answer cancels it, with a status line).
@@ -453,6 +453,7 @@ private:
     QString saveWaitingPath_;  // a chosen copy waiting for earlier changes to be answered
     quint64 saveAwaits_ = 0;
     quint64 refusals_ = 0, saveRefusalMark_ = 0;  // changes not applied, counted
+    std::optional<quint64> savePressRefusals_;  // refusals_ at a press on Save (W5)
     QTimer saveWait_;
     quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
     qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
