@@ -1247,7 +1247,7 @@ private slots:
   QVERIFY2(window.findChild<QToolButton*>("s3StorageClassHelp"),"Storage class has an ⓘ");
   window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");QVERIFY(tabs);
   for(int i=0;i<tabs->count();++i)if(auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(i))){tabs->setCurrentIndex(i);putgd::test::settle(30);check(scroll);}
-  for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
+  for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference","customEndpoint","customFileNamePatternToggle"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
   QVERIFY2(checked.size()>=20,qPrintable("only checked "+checked.join(", ")));
   QVERIFY2(misplaced.isEmpty(),qPrintable(misplaced.join("\n")));
  }
