@@ -10,6 +10,7 @@
 #include "ui/Theme.h"
 #include "ui/Ui.h"
 #include <QApplication>
+#include <QElapsedTimer>
 #include <QImage>
 #include <QMouseEvent>
 #include <QPainter>
@@ -128,6 +129,10 @@ void render(const QString& path, bool tiles, bool selectCut, State state = State
     }
     case State::Zoom: timeline.setZoom(3, qint64(10400000)); timeline.skimAt(11000000); break;
     }
+    // Let a zoom's 120 ms animation finish before drawing.
+    QElapsedTimer settle;
+    settle.start();
+    while (settle.elapsed() < 200) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
     QImage image(timeline.size() * 2, QImage::Format_ARGB32_Premultiplied);
     image.setDevicePixelRatio(2);
     image.fill(Theme::current().bg);

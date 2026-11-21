@@ -154,7 +154,10 @@ signals:
     // A drag (4 px or more) on empty strip, a selection edge drag, Shift+click
     // or markSelectionEdge makes or changes a time selection.
     void timeSelected(qint64 startUs, qint64 endUs);
-    void selectionCleared();  // a click that seeks
+    void selectionCleared();  // a press on empty Covers-lane background
+    // R18t: a plain click on the filmstrip clears only the time selection (a
+    // selected cut or cover stays selected).
+    void timeSelectionCleared();
     // A press on a cut or a cover bar (its body or an edge) selects it.
     void cutSelected(const QString& id);
     void coverSelected(const QString& id);
@@ -195,8 +198,9 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
     void wheelEvent(QWheelEvent*) override;
     void leaveEvent(QEvent*) override;
+    void focusOutEvent(QFocusEvent*) override;
     void resizeEvent(QResizeEvent*) override;
-    bool event(QEvent*) override;  // pinch zoom
+    bool event(QEvent*) override;  // pinch zoom, window deactivation
 private:
     // What a point hits, in priority order (A1). Empty areas last.
     enum class Target { None, TrimStart, TrimEnd, SelectionStart, SelectionEnd, CutStart, CutEnd, CoverStart, CoverEnd, Playhead, More, Cut, Cover, Overview, Ruler, Strip, Lane };
@@ -213,6 +217,16 @@ private:
     int stripWidth() const;
     int maxZoom() const;
     double usPerPixel() const;
+    // R5: the view that paints. While a zoom animates or a pinch is under
+    // way, paint uses the live (fractional) view; the model (zoom(),
+    // visibleSpan(), hit tests) is already the target.
+    double viewStart() const;
+    double viewLength() const;
+    bool zoomLive() const { return liveLength_ > 0; }
+    void startZoomAnimation(double fromStart, double fromLength);
+    void finishZoom();
+    void continuousZoom(double factor, qint64 anchorUs);
+    void settleContinuousZoom();
     // What the timeline paints and hit-tests for an item: the drag's live span,
     // a released drag's pending span (T4), or the committed one.
     recording::Span shownTrim() const;
@@ -246,6 +260,7 @@ private:
     void hoverSkim(QPointF);
     void leaveSkimArea();
     void engageSkim();
+    void disengageSkim(QPointF);
     void emitRested();
     bool onGrip(Target) const;
     TileSource tiles_;
@@ -279,6 +294,9 @@ private:
     bool armed_ = false;                    // past the dead zone
     bool pressSelected_ = false;            // the press selected the item (a slide needs 8 px)
     bool pressHeldPlayback_ = false;        // T15: the press paused playback
+    bool deferredSelect_ = false;           // R7: an unselected cut's edge selects only once the drag arms
+    bool selectFromCut_ = false;            // R8: a time selection started on a cut body (a click only selected it)
+    qint64 pressScroll_ = 0;                // R12: the scroll before the press
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
     qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
@@ -298,10 +316,16 @@ private:
     int wheelRemainder_ = 0;
     // Trackpad gestures (T12): the latched axis (0 none, 1 x, 2 y) and its 6 px decision.
     int latchedAxis_ = 0;
-    QPointF latchTravel_;
+    QPointF latchTravel_, latchBuffer_;     // R15: the signed travel before the latch
     QElapsedTimer wheelClock_;
-    double pixelZoom_ = 0, pinchScale_ = 1;
-    int pinchFrom_ = 0;  // the level a pinch started from; 0 between pinches
+    // R5: the live view while animating (liveLength_ > 0) and the animation's start.
+    double liveStart_ = 0, liveLength_ = 0, fromStart_ = 0, fromLength_ = 0;
+    bool continuous_ = false;               // a pinch or Ctrl+trackpad zoom is under way
+    double continuousZoom_ = 1;
+    qint64 continuousAnchor_ = 0;
+    mutable bool paintLive_ = false;
+    QTimer zoomAnimation_, zoomSettle_;
+    QElapsedTimer zoomClock_;
     QList<int> coverLane_;  // per edit_.masks entry: 0, 1, or -1 when hidden
     int lanesUsed_ = 0, hiddenCovers_ = 0;
 };
