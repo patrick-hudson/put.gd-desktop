@@ -3409,7 +3409,10 @@ void ReviewWindow::beginEdgePreview() {
         skimReturn_.stop();
         view_->clearSkim();
     }
-    if (!edgePreview_ || edgeHoldProposal_) edgeDragSeq_ = proposalSeq_;
+    // A new edge drag takes over (none before, or the last one's frame held
+    // for its answer): its preview gets a tag of its own, so a late frame
+    // from the earlier drag never paints during it (W4).
+    if (!edgePreview_ || edgeHoldProposal_) { edgeDragSeq_ = proposalSeq_; edgeTag_ = 0; }
     edgeHoldProposal_ = 0;
     edgeHoldTimer_.stop();
 }

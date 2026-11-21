@@ -1420,6 +1420,34 @@ private slots:
         emit frames->frameReady(edge + 500000, edge + 500000, frame, tag, true);
         QCOMPARE(preview()["frameTimeUs"].toDouble(), double(edge));
     }
+    // Sol r3 W4: a second edge drag that takes over while the first one's
+    // frame is held for its answer has a tag of its own: the first drag's
+    // late frame never paints during it.
+    void aNewEdgeDragTakesANewTag() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 1000000, 3000000)};
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        auto* frames = window.findChild<FrameSkimmer*>("playheadFrames");
+        const auto preview = [&] { return window.inspect()["preview"].toObject(); };
+        QImage frame(1280, 720, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        constexpr quint64 top = std::numeric_limits<quint64>::max();
+        emit strip->editEdgeDragged("cover", "m1", true, 2000000);
+        emit strip->coverRetimed("m1", 2000000, 3000000);  // the first drag's proposal
+        emit strip->edgeDragFinished();
+        PUTGD_TRY_VERIFY(preview()["edgeHeld"].toBool());
+        emit strip->editEdgeDragged("cover", "m1", true, 1500000);
+        const auto edge = qint64(preview()["edgePreviewUs"].toDouble());
+        emit frames->frameReady(edge, edge, frame, top - 1, true);  // the first drag's, late
+        QVERIFY(preview()["frameTimeUs"].isNull());
+        emit frames->frameReady(edge, edge, frame, top - 2, true);
+        QCOMPARE(preview()["frameTimeUs"].toDouble(), double(edge));
+    }
     // Sol r2 W8: a typed cut time the resident snaps back to the edge it had
     // is accepted with no change; the field shows the cut's time again.
     void anAcceptedTypedCutTimeShowsTheCut() {
