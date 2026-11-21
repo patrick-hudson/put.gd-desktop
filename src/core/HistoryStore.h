@@ -9,6 +9,11 @@ struct HistoryQuery {
  QString search,category,mime,profileId,uploadStatus,localStatus,remoteStatus,from,to;
 };
 struct HistoryPage { QJsonArray records; qint64 total=0; Error error; QJsonObject toJson() const; };
+// The error log (#1753): user-facing errors, newest first. resolved -1 is either.
+struct ErrorLogQuery {
+ int limit=50,offset=0,resolved=-1;
+ QString kind,search,historyId,operationId;
+};
 // Instances belong to the creating worker thread; never share a Qt SQL connection.
 class HistoryStore {
 public:
@@ -62,7 +67,26 @@ public:
  Error refreshLink(const QString& historyId,const StorageReceipt& before,const StorageReceipt& after);
  Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
+ // The error log (#1753), a table beside the journal: entries are already redacted
+ // JSON objects with id, time, kind and subject. saveError inserts or replaces one by
+ // ID, and then keeps
+ // the newest `keep` entries written at or after `notBefore`.
+ Error saveError(QJsonObject entry,int keep,const QString& notBefore,QJsonObject* saved=nullptr);
+ // An item's name (from History, or its operation once History was cleared) and the
+ // destination its receipt names: {name, profileId, providerId}, each when known.
+ QJsonObject errorItem(const QString& historyId,const QString& operationId) const;
+ // Marks every open entry about `subject` resolved, recorded before now; answers their IDs.
+ Error resolveErrors(const QString& subject,const QString& at,const QString& resolution,QStringList* ids=nullptr);
+ // {entries, total, unresolved}: the page newest first, each entry with the item's current
+ // name, previewPath and itemPresent when it names a History item.
+ QJsonObject listErrors(const ErrorLogQuery&,Error* = nullptr) const;
+ QJsonObject errorEntry(const QString& id,Error* = nullptr) const;
+ // Removes the given entries (all when ids is empty), or only resolved ones.
+ Error clearErrors(const QStringList& ids,bool resolvedOnly,int* removed=nullptr);
+ // {total, unresolved, subjects}: the open subjects, so a later success can resolve them.
+ QJsonObject errorSummary(Error* = nullptr) const;
 private:
+ Error ensureErrorLog();
  Error initialize();
  bool releasable(const QString& historyId,const QSet<QString>& running,QStringList* release=nullptr) const;
  bool writeDeletion(const QJsonObject&);

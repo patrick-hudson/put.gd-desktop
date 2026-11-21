@@ -218,7 +218,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 5. A local-only file batch whose new private archive root is intentionally a
    regular file. Its real save must fail and latch the tray: "Needs attention",
    the error glyph and badge, and "Local save needs attention — open the tray
-   menu to review". The latch must hold for 3 seconds untouched. The runner
+   menu to review". The badge must hold for 3 seconds untouched (it leaves the
+   icon after 8; the menu row stays until opened). The runner
    then opens it from the desktop's own tray menu (see
    [opening a latched failure](#opening-a-latched-failure)) and requires the
    exact original idle icon afterwards. Replacing that owned blocker with a
@@ -240,9 +241,12 @@ the rejected SNI text is redacted from failure evidence.
 
 Icon colours are checked against the tint set for the panel the resident sees
 (#229). put.gd tints its tray icon for the panel, not the app theme
-(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, upload `#91bca2`,
-encoding `#e8b66d` and error `#e59b93`; light panels get `#383834`, `#386a4b`,
-`#8f5b20` and `#a44139`. At setup the runner reads the panel
+(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, capture `#e8b66d`,
+process `#8db4e8`, upload `#62d69b` and error `#e59b93`; light panels get
+`#383834`, `#8f5b20`, `#2f5e9e`, `#1f7a4a` and `#a44139`. Each tooltip title
+must carry its stage's tint: Capturing the capture tint, Processing the process
+tint, Uploading the upload fill over the process tint, Upload complete or Saved
+the upload tint alone. At setup the runner reads the panel
 tone the way `PanelTone` does, in the resident's own environment: the KDE
 configuration cascade (`plasmarc`, `kdeglobals`, the Plasma style's `colors`),
 Cinnamon's `org.cinnamon.theme`, or GNOME's dark top bar. It then waits until
@@ -251,23 +255,29 @@ both in `panel-tone.json`. Every read, attention included, is checked
 against that one set. The resident and the reader get the desktop session's
 `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`: Plasma lists `~/.config/kdedefaults`
 there, and without it a Breeze Dark panel reads as Plasma's light default.
-`TRAY_TINTS` in `tray_progress.py` mirrors `Theme.cpp`; the contracts read the
-C++ table and `PanelTone`'s rule rows back, so the two can't drift.
+`TRAY_TINTS` in `tray_progress.py` is kept by hand in step with
+`Theme::trayTints` (no contract compares them since the replay's host tests were
+removed); the replay checks the expected tints of the activity states it observes against what the resident publishes.
 
-The tooltip title is `put.gd` when idle or preparing, `Uploading` while an upload
-is shown, `Upload complete` for a confirmed upload and `Needs attention` for a
-latched failure (`TrayController::refreshActivity`). In November and December,
-only the idle title becomes `put.gd - Happy Holidays!`. During preparation,
-recording, pause, review, saving or upload, the ordinary title and activity rows
-stay first and the greeting is appended as the last line (see
-[seasonal glyphs](../design/appearance.md#seasonal-glyphs)). Working icons keep the idle
-glyph, with an encoding-colour fill for upload progress; the upload colour is
-reserved for a confirmed completion. The reveal and hold timings stay with the
-product: activity appears after 200 ms, a shown upload holds at least 600 ms,
-and "Finishing upload" covers the short hold after the last transfer. Rounded
-tooltip sizes use the app's MB/GB format (`ByteSize::summary`).
+The tooltip title follows the [activity stage](../design/appearance.md#activity-stages)
+(`TrayController::refreshActivity`): `put.gd` when idle (also while recording,
+paused or reviewing a recording; recording and pause add their own badge, review
+shows the idle glyph alone), `Capturing` with the glyph in
+the capture tint, `Processing` in the processing tint, `Uploading` with the
+upload-tint fill over the processing tint, `Upload complete` or `Saved` with the
+whole glyph in the upload tint and the check badge, and `Needs attention` with
+the error glyph and badge. In November and December, only the idle title
+becomes `put.gd - Happy Holidays!`; with work running, the ordinary title and
+activity rows stay first and the greeting is appended as the last line (see
+[seasonal glyphs](../design/appearance.md#seasonal-glyphs)). The timings stay with the
+product: each working stage shows for at least 250 ms, Complete for 1.5 s and
+the failure badge for 8 s. Rounded tooltip sizes use the app's MB/GB format
+(`ByteSize::summary`).
 
-A failure latches until it is opened. Only the runner's original local-save
+The failure badge and the menu's attention row are separate. The badge leaves
+the icon after 8 seconds (`FAILURE_SECONDS`), when new work starts or when the
+row is opened; the row stays until it is opened (or a retry uploads every failed
+file). Only the runner's original local-save
 failure ID, or explicit `proton_account_busy` failures on original concurrent or
 retry IDs, may latch. Independent terminal CLI items must prove that failure
 before the attention state is accepted; until then a frame showing it gets only
@@ -275,8 +285,11 @@ the two-second batching grace. Attention without an expected failure is fatal.
 While latched, every icon must carry the error colour without a progress or
 completion fill, and the first tooltip row must name the expected item, such as
 "Local save needs attention — open the tray menu to review". Later rows are
-ordinary activity, checked against observations. A local-save latch that clears
-before its item is opened fails the replay. A Proton busy latch clears by itself
+ordinary activity, checked against observations. The runner holds the badge
+for 3 seconds untouched (`LATCH_SECONDS`). A local-save badge that clears before
+its item is opened and less than 7 seconds after it was first seen (the 8-second
+badge less a second of margin, `FAILURE_SECONDS - 1`) fails the replay; one that
+clears later is accepted, and the attention row must still be in the menu. A Proton busy latch clears by itself
 once its retried items upload. The `attention` results record the failure IDs,
 when the latch was first and last seen, how it was opened and when it cleared.
 
@@ -289,8 +302,9 @@ tray menu, and watches the result:
    other clients make to put.gd's menu. The guest needs `busctl` and `stdbuf`.
 2. Tray icons move when other items come and go, so `--tray-x/--tray-y` is
    only a hint: the runner parks the pointer (Plasma lightens a hovered icon),
-   then finds the latched icon's error-tint pixels near the hint in the frame
-   taken just before, and fails over (below) if there are none. The profile's
+   then looks for the icon's error-tint pixels near the hint in the frame taken
+   just before, then for its idle-tint pixels (the badge may have timed out), and
+   fails over (below) if there are neither. The profile's
    button (right by default) opens the menu there. The monitor must show the
    desktop asking for the menu (`AboutToShow`, `AboutToShowGroup` or an
    `opened` event) addressed to the resident: Cinnamon uses its unique bus
@@ -325,7 +339,7 @@ integer percentage. A source-size fallback must be labelled `Estimated`, match
 the actual counters/source bytes, and stop at 99% while awaiting finalization or
 receipt. No elapsed-time percentage is accepted. Concurrent transfer fills are
 weighted by their acquired source sizes; local preparation and queued transfers
-do not contribute. A latched failure supersedes all fills.
+do not contribute. The failure badge supersedes all fills while it shows.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
 

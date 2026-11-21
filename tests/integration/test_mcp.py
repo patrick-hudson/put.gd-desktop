@@ -78,6 +78,11 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('drive_r2_destination', {'action': 'inspect', 'field': None}),
             ('drive_r2_destination', {'action': 'move', 'text': None}),
             ('drive_r2_destination', {'action': 'set', 'field': 'bucket', 'value': None}),
+            # #1753: an error log step the resident does not take, an empty clear, a filter outside setFilter.
+            ('act_on_error', {'id': 'synthetic-error', 'action': 'open_destination'}),
+            ('clear_errors', {'ids': []}),
+            ('drive_error_log', {'action': 'inspect', 'kind': 'upload'}),
+            ('list_errors', {'kind': 'everything'}),
         ]:
             result = await server.call_tool(name, args)
             envelope = result.structured_content or json.loads(result.content[0].text)
@@ -260,6 +265,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
                     ('drive_r2_destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profile_id': 'synthetic-r2'},
                      'ui.r2Destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profileId': 'synthetic-r2'}),
+                    ('list_errors', {'kind': 'deletion', 'resolved': False, 'history_id': 'synthetic-entry'},
+                     'errors.list', {'kind': 'deletion', 'resolved': False, 'historyId': 'synthetic-entry'}),
+                    ('drive_error_log', {'action': 'step', 'step': 'show_in_history'}, 'ui.errorLog', {'action': 'step', 'step': 'show_in_history'}),
                 ]:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)
@@ -464,11 +472,24 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(self.stored()), 1)
                 entry = await call('get_history_entry', {'id': record['id']})
                 self.assertTrue(entry['result']['capabilities']['serverNamesObjects'])
-                retried = await call('retry_operation', {'id': operation})
+                # #1753: the error log keeps it, open, with Retry; its Retry step is operation.retry, and
+                # the upload that then works marks the same entry resolved.
+                logged = await until('list_errors', {'operation_id': operation}, lambda result: result['entries'])
+                problem = logged['result']['entries'][0]
+                self.assertEqual((problem['kind'], problem['code'], problem['historyId'], problem['resolved']),
+                                 ('upload', 'http_outcome_unknown', record['id'], False), problem)
+                self.assertIn('retry', problem['nextSteps'])
+                retried = await call('act_on_error', {'id': problem['id'], 'action': 'retry'})
                 self.assertTrue(retried['ok'], retried)
+                self.assertEqual(retried['result']['method'], 'operation.retry')
                 finished = await until('get_operation', {'id': operation}, lambda result: result['state'] in ('completed', 'failed', 'cancelled'))
                 self.assertEqual(finished['result']['state'], 'completed', finished)
                 self.assertEqual(len(self.stored()), 2)
+                resolved = await until('get_error', {'id': problem['id']}, lambda result: result['resolved'])
+                self.assertTrue(resolved['result']['resolved'], resolved)
+                cleared = await call('clear_errors', {'resolved_only': True})
+                self.assertGreaterEqual(cleared['result']['removed'], 1, cleared)
+                self.assertEqual((await call('get_error', {'id': problem['id']}))['error']['code'], 'error_not_found')
 
                 # Diagnostics packages, with names kept and hashed: neither carries the token.
                 for index, names in enumerate((True, False)):

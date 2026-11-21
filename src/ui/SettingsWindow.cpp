@@ -1,5 +1,6 @@
 #include <cmath>
 #include "SettingsWindow.h"
+#include "ErrorLogPage.h"
 #include "CustomUploaderPanel.h"
 #include "MainWindow.h"
 #include "storage/proton/ProtonProvider.h"
@@ -870,8 +871,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // No title: the header navigation already names the page.
  
  auto* navigation=new QListWidget(rail);settingsNavigation_=navigation;navigation->setObjectName("settingsNavigation");navigation->setAccessibleName("Settings categories");navigation->setFrameShape(QFrame::NoFrame);navigation->setItemDelegate(new Ui::NavigationDelegate(navigation));navigation->setMouseTracking(true);navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);navigation->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
- for(const auto& [glyph,label]:QList<QPair<QString,QString>>{{"preferences","General"},{"region","Capture"},{"shortcuts","Hotkeys"},{"settings","Advanced"}})new QListWidgetItem(Ui::icon(glyph),label,navigation);
- navigation->setFixedHeight(4*Ui::scaled(Ui::Metric::navRow)+4);Ui::transparentView(navigation);railBox->addWidget(navigation);railBox->addStretch();outer->addWidget(rail);
+ for(const auto& [glyph,label]:QList<QPair<QString,QString>>{{"preferences","General"},{"region","Capture"},{"shortcuts","Hotkeys"},{"settings","Advanced"},{"alert","Error log"}})new QListWidgetItem(Ui::icon(glyph),label,navigation);
+ navigation->setFixedHeight(5*Ui::scaled(Ui::Metric::navRow)+4);Ui::transparentView(navigation);railBox->addWidget(navigation);railBox->addStretch();outer->addWidget(rail);
  auto* content=new QWidget(this);outer->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  tabs_=new QTabWidget(this);tabs_->setObjectName("settingsTabs");tabs_->setAccessibleName("Settings categories");tabs_->tabBar()->installEventFilter(this);tabs_->tabBar()->hide();tabs_->setDocumentMode(true);layout->addWidget(tabs_,1);
  connect(navigation,&QListWidget::currentRowChanged,tabs_,[this](int row){if(row>=0)tabs_->setCurrentIndex(row);});connect(tabs_,&QTabWidget::currentChanged,this,[this]{clearCompletedFeedback();});connect(tabs_,&QTabWidget::currentChanged,navigation,[navigation](int index){const QSignalBlocker block(navigation);navigation->setCurrentRow(index);});
@@ -881,7 +882,15 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const QHash<QString,QString> pageNames{{"Shortcuts","Hotkeys"}};
  QHash<QString,QHBoxLayout*> pageTitles;
  auto scrollPage=[&](const QString& title){auto* body=new Ui::Surface("preferencePage");auto* box=new QVBoxLayout(body);box->setContentsMargins(space(Space::xxl),qMin(Ui::pageHeaderTop(),space(Space::l)),space(Space::xxl),space(Space::xl));box->setSpacing(space(Space::xxl));box->setAlignment(Qt::AlignTop);auto* header=new QWidget(body);header->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Maximum);header->setMaximumWidth(Ui::scaled(760));auto* headerBox=new QVBoxLayout(header);headerBox->setContentsMargins(0,0,0,0);headerBox->setSpacing(space(Space::s));auto* heading=new QLabel(pageNames.value(title,title),header);Ui::role(heading,"title");heading->setMinimumHeight(Ui::scaled(Ui::Metric::control));heading->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);auto* titleRow=pageTitles[title]=new QHBoxLayout;titleRow->setContentsMargins(0,0,0,0);titleRow->setSpacing(space(Space::l));titleRow->addWidget(heading,1,Qt::AlignVCenter);headerBox->addLayout(titleRow);auto* intro=new QLabel(pageIntros.value(title),header);intro->setWordWrap(true);Ui::role(intro,"muted");headerBox->addWidget(intro);addPreferenceWidget(box,header);auto* scroll=new QScrollArea;scroll->setWidgetResizable(true);scroll->setFrameShape(QFrame::NoFrame);scroll->setWidget(body);heading->setObjectName("settingsPageHeading"+title);intro->setObjectName("settingsPageDescription"+title);new CompactPageHeading(scroll,heading,intro);Ui::responsiveColumns(titleRow,scroll->viewport(),400);tabs_->addTab(scroll,title);return box;};
- auto* general=scrollPage("General");auto* capture=scrollPage("Capture");auto* shortcutsPage=scrollPage("Shortcuts");auto* advancedPage=scrollPage("Advanced");navigation->setCurrentRow(0);
+ auto* general=scrollPage("General");auto* capture=scrollPage("Capture");auto* shortcutsPage=scrollPage("Shortcuts");auto* advancedPage=scrollPage("Advanced");
+ // #1753: the Error log, a page of its own after Advanced (index 4), so earlier pages keep their indexes.
+ errorLogPage_=new ErrorLogPage(settings_,this);tabs_->addTab(errorLogPage_,"Errors");
+ connect(errorLogPage_,&ErrorLogPage::destinationRequested,this,&SettingsWindow::destinationSettingsRequested);
+ connect(errorLogPage_,&ErrorLogPage::historyRequested,this,&SettingsWindow::historyItemRequested);
+ connect(errorLogPage_,&ErrorLogPage::unresolvedChanged,navigation,[navigation](int open){auto* item=navigation->item(4);if(!item)return;item->setData(Ui::NavigationDelegate::TrailingRole,open>0?QString::number(open):QString{});item->setData(Qt::AccessibleDescriptionRole,open>0?QStringLiteral("%1 open").arg(open):QString{});});
+ // The rail counts open problems from the first snapshot, before the page has loaded.
+ if(const int open=settings_.errorLog()["unresolved"].toInt();open>0)emit errorLogPage_->unresolvedChanged(open);
+ navigation->setCurrentRow(0);
  QList<QFormLayout*> preferenceForms;
  auto section=[&](QVBoxLayout* box,const QString& heading,const QString& description=QString{}){if(box==general||box==capture||box==advancedPage){auto* form=PreferenceRows::card(box,heading,description);preferenceForms.append(form);return form;}auto* card=Ui::card(heading,description,this);card->layout()->setSizeConstraint(QLayout::SetMinimumSize);box->addWidget(card);auto* form=new QFormLayout;Ui::styleForm(form);qobject_cast<QVBoxLayout*>(card->layout())->addLayout(form);return form;};
  auto bind=[&](QWidget* widget,const QString& path){widget->setProperty("configPath",path);};
@@ -3694,5 +3703,19 @@ void SettingsWindow::refreshUploadedCount(){
  // Until it answers, the confirmation uses its unknown-count wording, not an older count.
  const auto ticket=++countSerial_;countRequests_[id]=ticket;uploadedCounts_.remove(id);
  settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id,ticket](Error e,QJsonObject counts){if(g&&!e&&ticket==g->countRequests_.value(id))g->uploadedCounts_[id]=counts["total"].toInt();});
+}
+void SettingsWindow::showErrorLog(const QJsonObject& target){
+ tabs_->setCurrentWidget(errorLogPage_);
+ errorLogPage_->showEntry(target);
+}
+void SettingsWindow::errorLogCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
+ if(params["action"]!="inspect")tabs_->setCurrentWidget(errorLogPage_);
+ errorLogPage_->command(params,std::move(reply));
+}
+bool SettingsWindow::selectDestination(const QString& profileId){
+ if(!destinationList_||profileId.isEmpty())return false;
+ const auto profiles=candidate()["profiles"].toArray();
+ for(int row=0;row<profiles.size()&&row<destinationList_->count();++row)if(profiles[row].toObject()["id"]==profileId){destinationList_->setCurrentRow(row);return true;}
+ return false;
 }
 }

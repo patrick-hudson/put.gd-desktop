@@ -189,6 +189,7 @@
   {"id": "settings-capture", "label": "Settings · Capture", "kind": "window", "capture": "08-settings-capture"},
   {"id": "settings-shortcuts", "label": "Settings · Hotkeys", "kind": "window", "capture": "06-settings-shortcuts"},
   {"id": "settings-advanced", "label": "Settings · Advanced and Diagnostics", "kind": "window", "capture": "05-settings-advanced"},
+  {"id": "settings-error-log", "label": "Settings · Error log", "kind": "window", "capture": "05f-settings-error-log"},
   {"id": "diagnostics-dialog", "label": "Diagnostics package dialog", "kind": "dialog", "capture": "58-diagnostics-package"},
   {"id": "about", "label": "About", "kind": "dialog", "capture": "about"},
   {"id": "editor", "label": "Image editor", "kind": "window", "capture": "26-editor-selected"},
@@ -476,6 +477,10 @@
   {"id": "advanced.desktop-support", "surface": "settings-advanced", "kind": "button", "label": "Desktop support details: Refresh desktop support, Copy details", "control": "desktopSupportDetailsToggle", "method": "ui.diagnostics", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "advanced.config-file", "surface": "settings-advanced", "kind": "button", "label": "Config file: Show in folder, Open in editor, Reload from file…, Copy path", "to": "confirm", "method": "settings.reload", "source": "src/ui/SettingsWindow.cpp"},
 
+  {"id": "errors.table", "surface": "settings-error-log", "kind": "state", "label": "Error log rows (time, action, item, destination, message, status)", "control": "errorLogTable", "method": "errors.list", "source": "src/ui/ErrorLogPage.cpp"},
+  {"id": "errors.filter", "surface": "settings-error-log", "kind": "field", "label": "Kind of action, search and Open problems only", "control": "errorLogSearch", "method": "ui.errorLog", "source": "src/ui/ErrorLogPage.cpp"},
+  {"id": "errors.clear", "surface": "settings-error-log", "kind": "button", "label": "Clear… (resolved entries or all)", "control": "errorLogClear", "method": "errors.clear", "source": "src/ui/ErrorLogPage.cpp"},
+  {"id": "errors.unlock", "surface": "settings-error-log", "kind": "button", "label": "Unlock saved credentials (a selected entry's next step)", "control": "errorLogStep_unlock_credentials", "capture": "05g-settings-error-log-entry", "method": "errors.act", "source": "src/ui/ErrorLogPage.cpp"},
   {"id": "diagnostics.include-names", "surface": "diagnostics-dialog", "kind": "button", "label": "Include file names", "method": "ui.diagnostics", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "diagnostics.folder", "surface": "diagnostics-dialog", "kind": "button", "label": "Choose folder… / Use default / Try again", "to": "dialogs", "method": "ui.fileDialog", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "diagnostics.upload", "surface": "diagnostics-dialog", "kind": "button", "label": "Also upload and copy a link (needs a working destination)", "method": "diagnostics.uploadTarget", "source": "src/ui/SettingsWindow.cpp"},

@@ -142,10 +142,21 @@ is read with `gsettings`, which reads dconf's database under the resident's own
 session's `~/.config/dconf` for this, as the events recipe does. The resident's own session environment matters: it needs the
 session's `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`. Lab tools that start it over SSH
 through `tools/lab/lab.py`'s `guest_session` take both from the desktop shell's
-environment (#243). Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),
-`#F3C66F` (encoding) and `#FFB4AB` (error); light panels `#2759B8`,
-`#146C42`, `#8A5300` and `#B4312A`, each at least 3:1 on typical panels. The
-menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`
+environment (#243). Each stage of the work has its own tint (`Theme::trayTints`),
+each at least 3:1 on typical panels of its kind:
+
+| Stage | Dark panels | Light panels | Source |
+| --- | --- | --- | --- |
+| Idle | `#D6D6D2` | `#383834` | the `icon` token |
+| Capturing | `#E8B66D` | `#8F5B20` | the `accent` token |
+| Processing | `#8DB4E8` | `#2F5E9E` | the tray's own blue |
+| Uploading fill, Complete | `#62D69B` | `#1F7A4A` | the tray's own green |
+| Failed | `#E59B93` | `#A44139` | the `danger` token |
+| Recording dot | `#F0524F` | `#C8302B` | the `live` token |
+
+The window palette has no blue, and its `success` green is too close to the idle
+glyph to read as finished at 16 px, so the tray keeps those two of its own. The
+menu glyphs use the idle tint. The resident's full diagnostics (`ui.snapshot`
 `diagnostics`, and diagnostics packages) report the choice as
 `trayTint {panel, source, color}`.
 
@@ -179,22 +190,61 @@ the tree. Nothing else about the app icon changes.
 | State | What the icon shows | Tooltip title |
 | --- | --- | --- |
 | Idle | the seasonal glyph, still | `put.gd - Happy Holidays!` (`put.gd` in other months) |
-| Uploading | the amber fill climbs the glyph's own height, head or star included | `Uploading`, with the real progress rows |
-| Confirmed complete | the glyph in the success tint, briefly | `Upload complete` |
+| Working stages | the seasonal glyph in the stage's tint; Uploading's green fill climbs the glyph's own height, head or star included | `Capturing`, `Processing` or `Uploading`, with the real activity rows |
+| Complete | the seasonal glyph in green with the check badge, bottom-right (the ordinary mark while a recording or pause badge also shows) | `Upload complete`, or `Saved` |
 | Failure, recording or paused | the ordinary mark with its badge | the status as usual |
 
 In the seasons, active work keeps its ordinary title and activity rows, with the
-greeting as the last line. Preparation, recording, pause, review and local saving
-keep `put.gd` above their activity; only a truly idle tray makes the greeting its
-title. A badge always draws on the ordinary mark because its halo would
-erase the turkey's head; the seasonal glyph returns when the badge clears. No
-glyph animates, and no timer runs for one.
+greeting as the last line; only a truly idle tray makes the greeting its title.
+The top-right badges (failure, recording, paused) draw on the ordinary mark
+because their halo would erase the turkey's head; the seasonal glyph returns
+when the badge clears. The check badge sits bottom-right, clear of the turkey's
+head and the tree's star, so the seasonal glyph stays when no top-right badge
+shows. No glyph animates.
+
+### Activity stages
+
+The icon shows one stage at a time, worked out from the active operations'
+own states (`TrayController::stageOf`), and the furthest stage any of them has
+reached:
+
+| Stage | When | Icon |
+| --- | --- | --- |
+| Idle | nothing running | the glyph in the idle tint |
+| Capturing | from the hotkey or tray press itself, before the operation is accepted, through the region picker, the capture delay and the capture, until the source hands over its picture | the glyph in the capture tint |
+| Processing | importing or encoding the capture, editing, encoding a recording after Upload, saving the local copy (Retry local save included), checking the destination, reading text | the glyph in the processing tint |
+| Uploading | a running operation with a destination in its `preparing`, `uploading`, `finalizing`, `sharing` or `reconciling` phase, or with a file uploading; so also while no bytes move (provider setup, finalizing, making a share link, checking an earlier upload) | the processing glyph with the green fill climbing with the real progress, never below a tenth; between transfers it keeps its level, and it is full once at least one file of the operations at this stage has uploaded and none still waits, transfers or checks its name (also while a share link is still being made), or once the upload is known to have completed |
+| Complete | the last running operation finished `completed` and uploaded or saved something without an error, for 1.5 s; `Saved` when that attempt only saved (a local-only capture, or a Retry local save of an operation that is `completed`) | the green glyph with the check badge |
+| Failed | an operation or action failed, for 8 s | the error glyph with its badge |
+
+An operation never goes back to a stage it has passed, so a copy after the
+upload stays green. Each working stage shows for at least 250 ms, and the icon
+steps through every stage the run reached from the first one it showed. The
+service batches its observations, so a quick operation can end before the tray
+saw its processing or upload. Only a successful outcome fills that gap: it says
+which stages ran (something uploaded, or only saved), so a short successful
+upload from a hotkey reads Capturing, Processing, Uploading, Complete. A failure
+waits out the stage on screen, steps through any higher stage the tray did see,
+then shows its badge. A recording shows its own badge, not a stage, until
+Upload hands it over.
+
+New work always shows: it replaces a failure or completion still on the icon,
+and a failure from other work waits until the running work has ended. The
+failure badge leaves the icon after 8 seconds, when new work starts, or when
+its attention row is opened. The tray menu's attention row (**Failed uploads
+(N)** and the others) stays until it is opened, or, for failed uploads, until a
+retry has uploaded every failed file, so nothing is lost when the icon resets.
 
 `TrayCalendar` picks the glyph, and a running resident changes it without a
 restart: at local midnight, on logind's resume signal, on each tray refresh, and
 within five minutes of a clock or time zone change. `ui.snapshot`
-`diagnostics.trayIcon` reports `{glyph, shown, localDate, calendarOverride}`:
-`glyph` is the calendar's choice, `shown` is what a badge leaves on screen.
+`diagnostics.trayIcon` reports `{glyph, shown, localDate, calendarOverride,
+activity, history}`: `glyph` is the calendar's choice, `shown` is what a badge
+leaves on screen, `activity` the stage the icon shows (`idle`, `capturing`,
+`processing`, `uploading`, `complete` or `failed`) and `history` its last
+sixteen changes, oldest first, each `{activity, at}` with a UTC timestamp. Lab
+runs check the stage sequence with it on trays that expose nothing to
+accessibility tools.
 `diagnostics.trayMenu` reports what tray hosts asked of the StatusNotifier menu: `shows`
 (root `AboutToShow` or `AboutToShowGroup` calls), `opened` and `closed` (the root's events,
 which not every host sends), `clicked` (the last eight rows a host reported clicked, each

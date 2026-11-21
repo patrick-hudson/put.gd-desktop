@@ -19,6 +19,8 @@ public:
  void forget(const QStringList& ids,JsonReply);
  void copyImage(const QString&,JsonReply);
  void unlockLinkCredentials(const QString&,JsonReply);
+ // Unlocks the saved credentials of the destination the item was uploaded to.
+ void unlockItemCredentials(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
  // Several stored links at once, one per line in selection order: all of
  // them, or none when any is no longer available.
@@ -44,6 +46,9 @@ public:
  void stopDeletions();
 signals:
  void changed();
+ // A deletion or sharing change ended; its terminal journal document (#1753).
+ void deletionFinished(const QJsonObject& deletion);
+ void sharingFinished(const QJsonObject& sharing);
 private:
  QJsonObject copyableLink(const QString&,Error&);
  void notifyChanged();
