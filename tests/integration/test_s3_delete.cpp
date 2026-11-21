@@ -282,6 +282,8 @@ private slots:
         const auto stillThere = f.remove(uploaded.receipt, marked.progress);
         QCOMPARE(stillThere.status, QString("hidden_version_retained"));
         QCOMPARE(stillThere.error.code, QString("delete_marker_created"));
+        QVERIFY(!stillThere.error.message.contains("could not check"));
+        QVERIFY(f.events("HEAD").last().toObject()["path"].toString().contains("versionId=null"));
         QCOMPARE(f.events("DELETE").size(), 1);
         // The kept version is removed in the bucket; the marker stays.
         versions.removeAt(0);

@@ -435,15 +435,21 @@ StorageReceipt withoutVersion(StorageReceipt receipt) {
 // After an unversioned delete was answered with a delete marker (#1690), whether the recorded
 // upload is still kept as a version at its key (#1771). Read-only: it lists the key's versions
 // and checks each one with the recorded ETag against the recorded identity, by its version ID.
-// Kept: one of them is the upload. Gone: none is. Unknown: a read failed, named by error.
+// Kept: one of them is the upload. Gone: none is. Unknown: a read failed or didn't answer for
+// what it asked, named by error.
 struct Hidden { enum Kind { Kept, Gone, Unknown } kind = Unknown; Error error = {}; };
 Hidden keptVersion(Client& client, const StorageReceipt& expected, const std::shared_ptr<std::atomic_bool>& cancellation) {
     const auto key = s3StoredKey(expected.objectReference["key"].toString());
+    const auto& destination = expected.destination;
     const auto unquoted = [](QString etag) { return etag.remove(QLatin1Char('"')); };
     const auto etag = unquoted(expected.concurrencyToken);
+    const Error unanswered{"delete_unknown", "The bucket didn't answer for the version put.gd asked about.", {}};
     Aws::S3::Model::ListObjectVersionsRequest request;
-    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
+    request.SetBucket(aws(destination.settings["bucket"].toString()));
     request.SetPrefix(aws(key));
+    // Whether the listing showed any version or marker at the key. A reply that isn't a
+    // version listing (a service that ignored the request's versions query) shows none.
+    bool listedAny = false;
     // Versions list in key order, so the key's own come before any longer key it prefixes.
     for (int page = 0; page < 100; ++page) {
         if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
@@ -452,17 +458,37 @@ Hidden keptVersion(Client& client, const StorageReceipt& expected, const std::sh
         const auto listed = client.ListObjectVersions(request);
         if (!listed.IsSuccess()) return {Hidden::Unknown, wireError(listed.GetError(), S3Stage::DeleteVersionList, timer.elapsed())};
         const auto& result = listed.GetResult();
+        for (const auto& marker : result.GetDeleteMarkers()) listedAny = listedAny || qt(marker.GetKey()) == key;
         for (const auto& version : result.GetVersions()) {
-            if (qt(version.GetKey()) != key || unquoted(qt(version.GetETag())) != etag) continue;
-            auto exact = expected;
-            exact.objectReference["versionId"] = qt(version.GetVersionId());
-            const auto found = inspect(client, exact);
-            if (found.status == "own") return {Hidden::Kept};
-            if (found.status == "unknown") return {Hidden::Unknown, found.error};
+            if (qt(version.GetKey()) != key) continue;
+            listedAny = true;
+            if (unquoted(qt(version.GetETag())) != etag) continue;
+            if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
+            const auto id = qt(version.GetVersionId());
+            timer.restart();
+            const auto found = head(client, destination, key, id, cancellation);
+            if (!found.IsSuccess()) return {Hidden::Unknown, absent(found.GetError()) ? unanswered : wireError(found.GetError(), S3Stage::ObjectHead, timer.elapsed())};
+            // A service that ignores the version ID answers for the current object instead.
+            const auto answered = qt(found.GetResult().GetVersionId());
+            if (found.GetResult().GetDeleteMarker() || (answered != id && !(answered.isEmpty() && id == "null"))) return {Hidden::Unknown, unanswered};
+            const auto& object = found.GetResult();
+            if (metadata(object, "putgd-publication") == expected.publicationId &&
+                metadata(object, "putgd-sha256") == expected.objectReference["sha256"].toString() &&
+                object.GetContentLength() == qint64(expected.objectReference["bytes"].toDouble()) &&
+                qt(object.GetETag()) == expected.concurrencyToken) return {Hidden::Kept};
         }
-        if (!result.GetIsTruncated() || qt(result.GetNextKeyMarker()) != key) return {Hidden::Gone};
-        request.SetKeyMarker(result.GetNextKeyMarker());
-        request.SetVersionIdMarker(result.GetNextVersionIdMarker());
+        if (result.GetIsTruncated() && qt(result.GetNextKeyMarker()) == key) {
+            request.SetKeyMarker(result.GetNextKeyMarker());
+            request.SetVersionIdMarker(result.GetNextVersionIdMarker());
+            continue;
+        }
+        if (listedAny) return {Hidden::Gone};
+        // Nothing listed: gone only if the key holds nothing at all, not even a marker.
+        timer.restart();
+        const auto current = head(client, destination, key, {}, cancellation);
+        if (!current.IsSuccess() && absent(current.GetError()) && !current.GetError().GetResponseHeaders().count("x-amz-delete-marker")) return {Hidden::Gone};
+        if (!current.IsSuccess() && !absent(current.GetError())) return {Hidden::Unknown, wireError(current.GetError(), S3Stage::CurrentHead, timer.elapsed())};
+        return {Hidden::Unknown, {"delete_unknown", "The bucket listed no versions of this file, yet something is still at its name.", {}}};
     }
     return {Hidden::Unknown, {"delete_unknown", "This file has too many versions in the bucket for put.gd to check them all.", {}}};
 }
