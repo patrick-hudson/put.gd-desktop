@@ -251,6 +251,7 @@ private slots:
         const auto driven = spy.last().at(1).toJsonArray();
         QCOMPARE(driven.first().toObject()["mask"].toObject()["start"].toDouble(), 4033333.0);
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        window.drive({{"action", "seekCoverStart"}});
         window.drive({{"action", "frameStep"}, {"delta", 1}});
         window.findChild<QAbstractButton*>("reviewPanelShowsFromPlayhead")->click();
         QCOMPARE(spy.last().at(1).toJsonArray(), driven);
@@ -409,6 +410,8 @@ private slots:
         window.setEdit(edit);
         window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
         auto* view = window.findChild<FrameView*>("frame");
+        window.activateWindow();
+        view->setFocus(Qt::TabFocusReason);  // W8: Tab gives the viewer the arrows
         QTest::keyClick(view, Qt::Key_Right);
         QVERIFY(view->nudging());
         const auto undo = [&] { for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated(); };
@@ -801,6 +804,8 @@ private slots:
         edit.masks = {mask("m1", "solid", 0, 12000000)};
         window.setEdit(edit);
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        window.activateWindow();
+        window.findChild<FrameView*>("frame")->setFocus(Qt::TabFocusReason);
         QTest::keyClick(window.findChild<FrameView*>("frame"), Qt::Key_Right);
         ctrlEnter(window);
         QCOMPARE(proposals.size(), 1);
@@ -981,9 +986,10 @@ private slots:
         window.setEdit(cut, answer(2));
         QCOMPARE(window.inspect()["playheadUs"].toDouble(), 3000000.0);
     }
-    // D1: every handle resizes from the opposite edge or corner; the nearest
-    // handle within its 20 × 20 px target wins; a small box keeps its inside
-    // for the body.
+    // D1, W1: every handle resizes from the opposite side, and past it the box
+    // flips; corners win with 16 × 16 px targets, a band along each side (6 px
+    // outside, 4 px inside) takes that side anywhere along it, and a tiny box
+    // keeps a 6 px body at its centre.
     void everyHandleResizesFromTheOppositeSide() {
         const QRect r(100, 80, 320, 120), all(0, 0, 1280, 720);
         const QPoint d(10, -5);
@@ -992,14 +998,19 @@ private slots:
                                     QRect(100, 80, 330, 115), QRect(100, 80, 320, 115), QRect(110, 80, 310, 115), QRect(110, 80, 310, 120)};
         for (int h = 0; h < 8; ++h) QCOMPARE(FrameView::resizedRect(r, h, d, all), expected[h]);
         QCOMPARE(FrameView::resizedRect(r, 0, QPoint(-500, -500), all), QRect(0, 0, 420, 200));
-        QCOMPARE(FrameView::resizedRect(r, 4, QPoint(-1000, -1000), all), QRect(100, 80, 2, 2));
-        const QRectF big(100, 100, 200, 100), small(100, 100, 40, 30);
-        QCOMPARE(FrameView::handleAt(big, QPointF(108, 104)), 0);
-        QCOMPARE(FrameView::handleAt(big, QPointF(200, 95)), 1);
-        QCOMPARE(FrameView::handleAt(big, QPointF(309, 209)), 4);
-        QCOMPARE(FrameView::handleAt(big, QPointF(311, 205)), -1);
-        QCOMPARE(FrameView::handleAt(small, QPointF(104, 104)), -1);
-        QCOMPARE(FrameView::handleAt(small, QPointF(95, 95)), 0);
+        // Past the opposite corner it flips rather than leaving a sliver.
+        QCOMPARE(FrameView::resizedRect(r, 4, QPoint(-420, -160), all), QRect(0, 40, 100, 40));
+        QCOMPARE(FrameView::resizedRect(r, 3, QPoint(-320, 0), all), QRect(100, 80, 2, 120));
+        const QRectF big(100, 100, 200, 100), tiny(100, 100, 12, 10);
+        QCOMPARE(FrameView::handleAt(big, QPointF(106, 106)), 0);   // corner, inside
+        QCOMPARE(FrameView::handleAt(big, QPointF(93, 94)), 0);     // corner, outside
+        QCOMPARE(FrameView::handleAt(big, QPointF(150, 96)), 1);    // top band, anywhere along it
+        QCOMPARE(FrameView::handleAt(big, QPointF(250, 203)), 5);   // bottom band
+        QCOMPARE(FrameView::handleAt(big, QPointF(297, 150)), 3);   // right band, inside
+        QCOMPARE(FrameView::handleAt(big, QPointF(160, 150)), -1);  // the body
+        QCOMPARE(FrameView::handleAt(big, QPointF(150, 92)), -1);   // beyond the band
+        QCOMPARE(FrameView::handleAt(tiny, QPointF(106, 105)), -1); // a tiny box keeps its centre
+        QCOMPARE(FrameView::handleAt(tiny, QPointF(98, 98)), 0);
     }
     // D1, D3, D5, D7, D8 through the pointer: a press on an unselected cover
     // selects it and nothing moves inside 3 px; the top-left handle keeps the
@@ -1029,7 +1040,9 @@ private slots:
             QApplication::sendEvent(view, &event);
         };
         const QPoint body = box().center().toPoint();
-        drag(view, body, body + QPoint(2, 2));
+        // W2: the first press on an unselected cover selects; 6 px of travel doesn't move it.
+        window.drive({{"action", "clearSelection"}});
+        drag(view, body, body + QPoint(6, 0));
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         QCOMPARE(proposals.size(), 0);
         // Just outside the corner: there the handle wins at any box size.
@@ -1054,17 +1067,27 @@ private slots:
         QCOMPARE(proposals.size(), 1);
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         QCOMPARE(window.inspect()["masks"].toArray().first().toObject()["id"].toString(), QString("m1"));
-        // Placing: a 4 px drag, or one from beside the picture, stays armed.
+        // W20: Ctrl+Z mid-move cancels only the move.
+        QTest::mousePress(view, Qt::LeftButton, {}, body);
+        move(body + QPoint(30, 30));
+        for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated();
+        QTest::mouseRelease(view, Qt::LeftButton, {}, body + QPoint(30, 30));
+        QCOMPARE(proposals.size(), 1);
+        // W22: a placing drag from more than 8 px beside the picture does nothing.
         window.drive({{"action", "armRedact"}});
         const QPoint inside = view->imageRect().center();
-        drag(view, inside, inside + QPoint(4, 40));
-        QVERIFY(!window.inspect()["armed"].isNull());
-        const QPoint beside(view->imageRect().left() - 4, view->imageRect().center().y());
+        const QPoint beside(view->imageRect().left() - 12, view->imageRect().center().y());
         QVERIFY(view->rect().contains(beside));
         drag(view, beside, inside + QPoint(100, 60));
         QVERIFY(!window.inspect()["armed"].isNull());
         QCOMPARE(proposals.size(), 1);
-        window.drive({{"action", "cancelPlacement"}});
+        // W6: a click places a box about 20 % × 8 % of the frame centred on it.
+        drag(view, inside, inside + QPoint(2, 1));
+        QCOMPARE(proposals.size(), 2);
+        const auto placed = proposed(proposals)["mask"].toObject()["rect"].toArray();
+        QCOMPARE(placed[2].toInt(), 256);
+        QCOMPARE(placed[3].toInt(), 57);
+        QVERIFY2(std::abs(placed[0].toInt() + 128 - 640) <= 4 && std::abs(placed[1].toInt() + 28 - 360) <= 4, qPrintable(QJsonDocument(placed).toJson()));
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
@@ -1215,6 +1238,104 @@ private slots:
         moved.masks[0].rect = QRect(rect[0].toInt(), rect[1].toInt(), rect[2].toInt(), rect[3].toInt());
         window.setEdit(moved, answer(1));
         PUTGD_TRY_VERIFY(live().isNull());
+    }
+    // W4: a released edge drag keeps its frame until the proposal is answered,
+    // then switches once; a cut edge shows the kept side. W9: a refused cut
+    // gives its range back.
+    void edgeFramesHoldUntilTheAnswer() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        const auto preview = [&] { return window.inspect()["preview"].toObject(); };
+        emit strip->editEdgeDragged("cut", "c1", true, 2500000);
+        QCOMPARE(preview()["edgePreviewUs"].toDouble(), 2466667.0);  // the last kept frame before the cut
+        emit strip->editEdgeDragged("cut", "c1", false, 4500000);
+        QCOMPARE(preview()["edgePreviewUs"].toDouble(), 4500000.0);  // the first kept frame after it
+        emit strip->cutAdjusted("c1", 3000000, 4500000);
+        emit strip->edgeDragFinished();
+        QCoreApplication::processEvents();
+        QVERIFY(preview()["edgeHeld"].toBool());
+        QCOMPARE(preview()["edgePreviewUs"].toDouble(), 4500000.0);
+        auto adjusted = edit;
+        adjusted.revision = 3;
+        adjusted.cuts[0].end = 4500000;
+        window.setEdit(adjusted, answer(proposals.last().at(2).toULongLong()));
+        QVERIFY(preview()["edgePreviewUs"].isNull());
+        QVERIFY(!preview()["edgeHeld"].toBool());
+        // A drag that proposes nothing lets go at once.
+        emit strip->trimEdgeDragged(true, 1000000);
+        emit strip->edgeDragFinished();
+        QCoreApplication::processEvents();
+        QVERIFY(preview()["edgePreviewUs"].isNull());
+        // W9.
+        window.drive({{"action", "selectRange"}, {"start", 6000000}, {"end", 7000000}});
+        QVERIFY(window.drive({{"action", "cut"}}).code.isEmpty());
+        QVERIFY(window.inspect()["selection"].isNull());
+        window.setEdit(adjusted, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
+        QCOMPARE(window.inspect()["selection"].toObject()["start"].toDouble(), 6000000.0);
+        QCOMPARE(window.inspect()["selection"].toObject()["end"].toDouble(), 7000000.0);
+    }
+    // T15 (window side), W3: a click on the timeline while playing seeks and
+    // plays on, a drag there stays paused; a click on the picture while
+    // playing pauses and selects nothing.
+    void pressesWhilePlaying() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 3, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 3000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 0, 3000000)};
+        edit.masks[0].rect = QRect(0, 0, 320, 180);
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        const auto playing = [&] { return window.inspect()["playing"].toBool(); };
+        QVERIFY(window.drive({{"action", "play"}}).code.isEmpty());
+        const QPoint middle = strip->stripRect().center();
+        QTest::mouseClick(strip, Qt::LeftButton, {}, middle);
+        PUTGD_TRY_VERIFY(playing());
+        QVERIFY(std::abs(window.inspect()["playheadUs"].toDouble() - double(strip->timeAt(middle.x()))) < 400000);
+        auto* view = window.findChild<FrameView*>("frame");
+        QTest::mouseClick(view, Qt::LeftButton, {}, view->imageRect().center());
+        QVERIFY(!playing());
+        QVERIFY(window.inspect()["selectedMaskId"].isNull());
+    }
+    // W17: Enter in a panel time field commits and hands the keys back to the
+    // timeline; Esc on changed text reverts it first.
+    void panelFieldsHandTheKeysBack() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
+        QVERIFY(field);
+        field->setFocus();
+        field->setText("0:05.0");
+        QTest::keyClick(field, Qt::Key_Escape);
+        QCOMPARE(field->text(), QString("0:06.0"));
+        QVERIFY(field->hasFocus());
+        field->setText("0:05.0");
+        QTest::keyClick(field, Qt::Key_Return);
+        QCOMPARE(proposals.size(), 1);
+        PUTGD_TRY_VERIFY(timeline(window)->hasFocus());
     }
     // U27: the resident's retry asks only for the window's guard; the window
     // then doesn't ask for a second retry itself.

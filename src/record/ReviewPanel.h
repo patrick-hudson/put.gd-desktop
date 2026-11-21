@@ -4,6 +4,7 @@
 #include "MaskNames.h"
 #include <QFrame>
 #include <QJsonObject>
+#include <QElapsedTimer>
 #include <QPointer>
 #include <QTimer>
 #include <QWidget>
@@ -29,7 +30,7 @@ namespace putgd::record {
 //    Shows from → / Until → with m:ss.s fields and Set to playhead · Redact |
 //    Blur (Blur adds its strength).
 // Below, once anything is edited: Edits, every trim, cut and cover in source
-// order (icon, name, span, and a 24 px trailing icon button for the row's verb,
+// order (icon, name, span, and a 28 px trailing icon button for the row's verb,
 // shown on hover, focus or selection, in space the row always keeps; the part
 // above offers Restore for a selected cut, so its row shows it only on hover).
 // Controls update in place while what they are made of stays the same; the
@@ -51,6 +52,7 @@ public:
         // time), computed by the window; absent: "Excluded from output".
         std::optional<qint64> coverFirstKept, coverLastKept;
         qint64 playheadUs = 0;
+        bool placing = false;  // a cover is being placed: Cut waits (W21)
     };
     explicit ReviewPanel(std::shared_ptr<MaskNames> names, QWidget* parent = nullptr);
     void setState(const State&);
@@ -88,13 +90,19 @@ signals:
     // A row's verb: Reset (trim), Restore (cut), Remove (cover).
     void resetTrim();
     void removeCover(const QString& id);
+    // Enter in a time field or the strength (or Esc on unchanged text): the
+    // window hands the keys back to the timeline or the Edits overlay (W17).
+    void focusReturnRequested();
 protected:
     void paintEvent(QPaintEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
 private:
-    QString structure(const State&) const;
+    QString topStructure(const State&) const;
+    QString listStructure(const State&) const;
+    QString neighbourOf(const QString& rowKey) const;
     void updateInPlace();
-    void rebuild();
+    void updateRows();
+    void rebuild(bool rebuildTop = true, bool rebuildList = true);
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
     void addEdge(QVBoxLayout*, const RecordingMask&, bool start);
@@ -109,7 +117,10 @@ private:
     QVBoxLayout* root_ = nullptr;
     QWidget* defaultControl_ = nullptr;
     bool building_ = false;
-    QString built_;  // structure() of the controls on screen
+    QString builtTop_, builtList_;  // what the controls on screen are made of
+    std::optional<QString> focusAfter_;  // the row to focus after a Restore or Remove ("" : the timeline)
+    QElapsedTimer activated_;
+    QString activatedKey_;
     QTimer strengthTimer_;
     std::optional<std::pair<QString, int>> strengthPending_;
 };
@@ -124,6 +135,8 @@ class EditsOverlay final : public QFrame {
 public:
     explicit EditsOverlay(QWidget* window);
     void openFor(ReviewPanel* panel, QWidget* toggle);
+    // The widget it ends 8 px above (the transport).
+    void setFloor(QWidget* floor);
     void dismiss();
     bool isOpen() const;
 signals:
@@ -135,7 +148,7 @@ protected:
 private:
     void place();
     void giveBack();
-    QPointer<QWidget> window_, toggle_, previousParent_;
+    QPointer<QWidget> window_, toggle_, previousParent_, floor_;
     QPointer<QLayout> previousLayout_;
     QPointer<ReviewPanel> panel_;
     QScrollArea* scroll_ = nullptr;

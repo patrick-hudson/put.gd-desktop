@@ -41,9 +41,14 @@ class ViewerBanner;
 // lets the user draw a cover's box, select a cover and move or resize it, in
 // canvas pixels, with the pointer or, with focus, the keyboard: arrows move
 // the selected cover, Shift+arrows resize it (1 px steps, 10 px with Ctrl).
-// The selected cover's eight handles resize it from the opposite edge or
-// corner (20 × 20 px targets, as the image editor's); its body moves it. A
-// move or resize starts 3 px from the press; Esc or a right press reverts it.
+// The selected cover's corners (16 × 16 px targets) and a band along each side
+// (6 px outside, 4 px inside) resize it from the opposite side, flipping past
+// it; its body moves it. A press on an unselected cover selects it (a move
+// then needs 8 px); moves and resizes of the selected one start 4 px from the
+// press and apply the release point; Esc, a right press, Ctrl+Z or a lost
+// window reverts the gesture (pan included). While playing a click only pauses.
+// A click while placing places a default box at it; the arrows belong to the
+// viewer only after a click on a cover or Tab into it.
 // While a cover moves, its effect follows the box (the "live" cover): the
 // window supplies the frame without that cover, and until it arrives the
 // shown frame keeps the old place covered under a pending outline.
@@ -107,6 +112,16 @@ public:
     void setUncovered(const QString& id, const QImage& image, qint64 timeUs);
     void endLive();
     QString liveId() const { return liveId_; }
+    // Esc, a right press, Ctrl+Z or a lost window: the gesture in progress
+    // goes back to its start (W5, W20). False with none.
+    bool cancelGesture();
+    // The viewer has the arrow keys (a click on a cover or Tab into it, W8).
+    bool arrowsClaimed() const { return arrowsClaimed_; }
+    // Placing waits for the frame it is drawn on (W6).
+    void setPlaceWaiting(bool waiting);
+    bool placeWaiting() const { return placeWaiting_; }
+    // A click while placing: the box it places, centred on a canvas point.
+    QRect defaultMaskRectAt(const QPointF& canvasPoint) const;
     bool livePending() const;
     // Geometry shared by hover, cursor and press (tests).
     static int handleAt(const QRectF& viewRect, const QPointF& p);
@@ -118,6 +133,11 @@ signals:
     void maskSelected(const QString& id);
     // A cover shown at timeUs started to move: the window asks for the frame without it.
     void liveEditStarted(const QString& id, qint64 timeUs);
+    // A click on the picture while playing (W3).
+    void pauseRequested();
+    void arrowsClaimedChanged(bool claimed);
+    // Esc gave the arrows back: the window returns focus to the timeline.
+    void arrowsReleased();
     void previewErrorChanged();
     void zoomChanged();
 protected:
@@ -144,7 +164,9 @@ private:
     void updateHover(const QPointF&);
     void beginLive(const QString& id);
     const QImage& livePicture();
-    void cancelDrag();
+    void applyDrag(const QPointF&);
+    bool pastDeadZone(const QPointF&) const;
+    void claimArrows(bool);
     QImage frame_, skim_;
     qint64 timeUs_ = 0, skimUs_ = 0;
     QSize canvas_;
@@ -159,7 +181,8 @@ private:
     QRect original_;
     QString dragId_;
     int handle_ = -1, hoveredHandle_ = -1;
-    bool moved_ = false;  // the pointer passed the 3 px dead zone
+    bool moved_ = false;  // the pointer passed the dead zone
+    bool pressedSelected_ = false, arrowsClaimed_ = false, placeWaiting_ = false;
     QString liveId_, uncoveredId_;
     QImage uncovered_, composite_;
     qint64 uncoveredUs_ = -1;
@@ -222,7 +245,8 @@ public:
     // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
     // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, and the
     // feel controls: setSkimming|setSnapping {on}|zoomIn|zoomOut|retimeCover|
-    // moreCovers|markSelection {edge}|editPoint {delta}, ...}.
+    // moreCovers|markSelection {edge}|editPoint {delta}; placeMask {at} places
+    // the default box a click places, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error. A state that
     // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
@@ -297,6 +321,13 @@ private:
     // the frame at the playhead isn't shown yet (they need its own time).
     void decodeFrameNow();
     void placeBanners();
+    void beginEdgePreview();
+    void endEdgePreview();
+    bool cancelDrags();
+    void stopPlaceWait();
+    void showNote(const QString& text, int ms);
+    void refreshNote();
+    void noteUndo();
     void stepEditPoint(int direction);
     void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
@@ -407,6 +438,15 @@ private:
     quint64 pendingTrimProposal_ = 0;
     bool pendingTrimStart_ = false;
     std::optional<qint64> edgePreview_;  // a dragged bracket or edge: the frame shown
+    std::optional<RecordingEdit> edgeEdit_;  // a cover edge drag: the edit with its proposed span (W4)
+    quint64 edgeDragSeq_ = 0, edgeHoldProposal_ = 0;  // proposals before the drag; the one its release made
+    QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
+    QString transientNote_;
+    bool loadingFrame_ = false;
+    bool resumeAfterClick_ = false, timelineGestureChanged_ = false;  // T15
+    quint64 undoProposal_ = 0;
+    bool undoWasUndo_ = true;
+    RecordingEdit undoBefore_;
     std::optional<qint64> skimUs_;
     QString savedPath_;
     quint64 savedRevision_ = 0;
@@ -431,13 +471,13 @@ private:
     QTimer tileTimer_;
     QLabel *notice_ = nullptr, *time_ = nullptr, *clipTime_ = nullptr, *silent_ = nullptr;
     QWidget* noticeBand_ = nullptr;
-    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr, *frameError_ = nullptr;
+    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr, *frameError_ = nullptr, *toolNote_ = nullptr;
     QWidget* toolMessages_ = nullptr;
     QList<StatusEntry> shownStatus_;
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
     QToolButton *select_ = nullptr, *cut_ = nullptr, *redact_ = nullptr, *blur_ = nullptr, *undo_ = nullptr, *redo_ = nullptr, *pictureZoom_ = nullptr, *editsToggle_ = nullptr;
-    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr, *skimToggle_ = nullptr;
+    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr, *skimToggle_ = nullptr, *snapToggle_ = nullptr, *playSpeed_ = nullptr;
     QMenu* timelineZoomMenu_ = nullptr;
     QWidget* bannerArea_ = nullptr;
     QToolButton *format_ = nullptr, *destinationMenu_ = nullptr;

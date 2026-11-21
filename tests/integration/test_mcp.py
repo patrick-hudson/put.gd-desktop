@@ -142,13 +142,15 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ({'action': 'moreCovers'}, {'action': 'moreCovers'}),
             ({'action': 'markSelection', 'edge': 'end'}, {'action': 'markSelection', 'edge': 'end'}),
             ({'action': 'editPoint', 'delta': -1}, {'action': 'editPoint', 'delta': -1}),
+            ({'action': 'placeMask', 'at': [320, 180]}, {'action': 'placeMask', 'at': [320, 180]}),
         ]:
             adapter.call.reset_mock()
             result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
             adapter.call.assert_awaited_once_with('recording.review', {'id': 'r', **params})
         for args in [{'action': 'selectRange', 'start_us': 1}, {'action': 'selectEdit', 'kind': 'cover'}, {'action': 'timelineZoom', 'level': 0},
                      {'action': 'setSkimming'}, {'action': 'retimeCover', 'start_us': 2}, {'action': 'markSelection'},
-                     {'action': 'editPoint', 'delta': 3},
+                     {'action': 'editPoint', 'delta': 3}, {'action': 'placeMask'}, {'action': 'placeMask', 'at': [1]},
+                     {'action': 'seek', 'time_us': 1, 'at': [1, 2]},
                      {'action': 'frameStep', 'delta': 2}, {'action': 'viewerZoom', 'mode': 'big'}, {'action': 'panel'}, {'action': 'resize', 'width': 10, 'height': 900},
                      {'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0}, {'action': 'cut', 'edge': 'middle'}]:
             adapter.call.reset_mock()
