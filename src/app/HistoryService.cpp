@@ -169,18 +169,18 @@ void HistoryService::qr(const QString& id,const QString& mode,const QString& pat
 }
 namespace {
 // A destination_readded refusal (#1760) after the read-only check through the destination added back
-// (#1772): `found` is what that check answered, own or unknown; with none, a version may be left whatever the
-// current object says, so it was not asked. A deletion that ended unsupported_safe_removal or version_retained
-// can also be removed from History only after a warning (#1763); any other may still be reaching the file.
+// (#1772): `found` is what that check answered, own or unknown, or empty when it couldn't be asked. A
+// deletion that ended unsupported_safe_removal or version_retained can also be removed from History only
+// after a warning (#1763); any other may still be reaching the file.
 QString readdedMessage(const QString& status,const QString& found,bool credentials,const Error& checkError) {
  const bool wayOut=status=="unsupported_safe_removal"||status=="version_retained";
  const QString why=credentials?QStringLiteral("This deletion started with other credentials for the destination added back, so put.gd won't finish it with its current ones. "):QStringLiteral("This deletion started before its destination was removed, so put.gd won't finish it through the destination added back. ");
  const QString restore=credentials?QStringLiteral(" Restore those credentials in Destinations to finish it."):QString();
  const QString forget=wayOut?QStringLiteral(" You can also remove it from History only."):QString();
- if(found=="own")return why+QStringLiteral("The file is still there. Delete it at the destination, then choose Retry deletion: put.gd checks again and ends this deletion once the file is gone.")+restore+forget;
+ if(found=="own")return why+QStringLiteral("The recorded file is still there. Delete it at the destination yourself, then choose Retry deletion: put.gd checks again and ends this deletion once it is gone.")+restore+forget;
  if(found=="unknown"){auto reason=checkError.message.trimmed();while(reason.endsWith('.'))reason.chop(1);
   return why+QStringLiteral("put.gd couldn't check whether the file is still there")+(reason.isEmpty()?QString():QStringLiteral(" (")+reason+QStringLiteral(")"))+QStringLiteral(". Choose Retry deletion to check again.")+restore+forget;}
- return why+QStringLiteral("An earlier version may be left there. Check the file at the destination")+(wayOut?QStringLiteral(", or remove it from History only."):QStringLiteral("; Remove from History only is not offered while it may be there."))+restore;
+ return why+QStringLiteral("Check the file at the destination")+(wayOut?QStringLiteral(", or remove it from History only."):QStringLiteral("; Remove from History only is not offered while it may be there."))+restore;
 }
 Error destinationRemovedError(const QString& historyId) {
  return {"destination_removed","This file's destination was removed from Settings, so put.gd can't delete it there. The file stays where it was uploaded; add a destination for the same place to delete it, or remove it from History only.",{{"historyId",historyId}}};
@@ -356,13 +356,16 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     // (drivers treat a different target as a changed object): another destination added back, or other
     // credentials on it, can't finish that attempt. Retry through the same one goes on.
     else if(checkpointed&&(serving["id"].toString()!=bound||(serving["id"].toString()!=receipt.destination.profileId&&progress["target"].toObject()["destination"].toObject()["credentials"].toObject()!=serving["credentials"].toObject()))){
-     // The recorded object is checked read-only through the destination serving it now (#1772), which
-     // still points at the recorded place: gone, the deletion ends; there or not known, it is left as it
-     // was with its checkpoint. A hidden or retained version stays behind a missing current object, so
-     // those outcomes are not asked.
+     // The recorded object is checked read-only through the destination serving it now (#1772): gone, the
+     // deletion ends; there or not known, it is left as it was with its checkpoint. Only a destination that
+     // points at the recorded place is asked, so its credentials never go to another address (a profile can
+     // serve by its ID after being edited). A version can stay behind a missing current object, so neither
+     // an outcome that says so nor a checkpoint naming a delete marker (S3's markerVersionId, which a Quit
+     // can leave on an unknown item) is asked.
      const bool credentials=serving["id"].toString()==bound;
+     auto place=receipt.destination.toJson();place["profileId"]=QString();
      StatResult found{"",{},{}};
-     if(status!="hidden_version_retained"&&status!="version_retained"){
+     if(!Settings::profileForDestination(place,QJsonArray{serving}).isEmpty()&&status!="hidden_version_retained"&&status!="version_retained"&&!progress.contains("markerVersionId")){
       auto check=receipt;check.destination.profileId=serving["id"].toString();check.destination.credentialReference=serving["credentials"].toObject();
       found=awaitProvider<StatResult>([&](auto cb){provider->statForRemoval(check,quitting,cb);});
       if(found.status=="unknown"&&quitting->load())return doc;
