@@ -414,6 +414,20 @@ private slots:
         QCOMPARE(HistoryStore(operations.databasePath()).deletion(deletion)["items"].toArray()[0].toObject()["status"].toString(), QString("pending"));
         QVERIFY(f.events("b2_delete_file_version").isEmpty());
     }
+    // #1782. A file or part whose bytes take longer than the request timeout still uploads, in
+    // one request each: the timeout bounds only requests that carry no file data. On the fast
+    // links developers and CI use the cut never shows; on a slow uplink an upload never finished.
+    void uploadOutlastsTheRequestTimeoutWhileItsBytesMove() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 2 * mib}});
+        f.destination.settings["requestTimeoutMs"] = 1000;
+        const auto small = f.upload(f.request("slow-small.bin", synthetic(4 * mib)));
+        QVERIFY2(small.status == "uploaded", qPrintable(small.status + " " + small.error.code + " " + small.error.message));
+        QCOMPARE(f.events("upload_file").size(), 1);
+        const auto large = f.upload(f.request("slow-large.bin", synthetic(7 * mib, 1782)));
+        QVERIFY2(large.status == "uploaded", qPrintable(large.status + " " + large.error.code + " " + large.error.message));
+        QCOMPARE(f.events("upload_part").size(), 2);
+    }
     void changedVersionIsNotDeleted() {
         B2Fixture f;
         f.reset();

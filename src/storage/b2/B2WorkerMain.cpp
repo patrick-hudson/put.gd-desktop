@@ -110,8 +110,14 @@ public:
     Response send(const QByteArray& verb, const QUrl& url, const QList<QPair<QByteArray, QByteArray>>& headers, const QByteArray& body = {}, QIODevice* device = nullptr) {
         QNetworkRequest request(url);
         for (const auto& [name, value] : headers) request.setRawHeader(name, value);
+        // A request that sends file data (a file or a part) has no whole-request deadline
+        // (#1782): on a slow link its bytes can need longer than any fixed limit, and every
+        // attempt starts again from the first byte. It runs while data moves; the transfer
+        // timeout ends one that stalls, and Cancel cuts it. Every other request keeps the deadline.
+        const bool fileData = device != nullptr;
         const int deadline = settings_["requestTimeoutMs"].toInt(600000);
-        request.setTransferTimeout(qMax(settings_["connectTimeoutMs"].toInt(10000), 30000));
+        const int stall = qMax(settings_["connectTimeoutMs"].toInt(10000), 30000);
+        request.setTransferTimeout(stall);
         QNetworkReply* reply = nullptr;
         std::unique_ptr<OneShot> owned;
         if (verb == "GET") reply = nam_.get(request);
@@ -134,7 +140,7 @@ public:
         QElapsedTimer clock;
         clock.start();
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
-            if (cancelled.load() || clock.elapsed() > deadline) { out.aborted = true; reply->abort(); }
+            if (cancelled.load() || (!fileData && clock.elapsed() > deadline)) { out.aborted = true; reply->abort(); }
         });
         poll.start();
         if (!reply->isFinished()) loop.exec();
@@ -144,7 +150,11 @@ public:
         out.json = QJsonDocument::fromJson(out.body).object();
         if (out.status == 0) {
             out.transport = true;
-            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline") : QString("network error %1").arg(int(reply->error()));
+            // Only the transfer timeout cancels a reply this loop did not abort.
+            const bool stalled = !out.aborted && (reply->error() == QNetworkReply::OperationCanceledError || reply->error() == QNetworkReply::TimeoutError);
+            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline")
+                       : stalled ? QString("no data moved for %1 s").arg(stall / 1000)
+                                 : QString("network error %1").arg(int(reply->error()));
         }
         reply->deleteLater();
         return out;
