@@ -1124,9 +1124,14 @@ def _tray_menu_by_pixels(ctx):
                                'put.gd recording the row its tray host reported clicked', timeout=5)
             ctx.expect(clicked[-1].get('name') == 'region',
                        'the tray host reported the Capture region row clicked, not ' + str(clicked[-1].get('label')))
-        finally:
-            if not pressed:
-                tray._dismiss_drawn_menu(ctx, opened)
+        except BaseException:
+            # Also after a press: a click the host ignored leaves the menu open, holding the grab
+            # the row's later cells need. Never on success, where the press opened the selector.
+            try:
+                tray._dismiss_drawn_menu(ctx, opened, pressed='Capture region' if pressed else None)
+            except Exception as error:  # The cell's own result stands; the cleanup's failure is a note.
+                ctx.note('tray menu dismissal failed: ' + type(error).__name__ + ': ' + str(error))
+            raise
 
 
 TEXT_WORDS = ('QUARTZ', 'HARBOR', 'VIOLET', 'MESA', 'LANTERN', 'COPPER', 'MEADOW', 'TIMBER')

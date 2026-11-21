@@ -196,6 +196,60 @@ class TheOpenMenu(unittest.TestCase):
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 
+    def test_a_mark_read_from_the_menu_corner_does_not_move_the_row_box(self):
+        # Budgie, 2026-11-21: the menu's corner read as '‘' (15x43 px) on the first line moved the
+        # Capture region box up into the menu's padding, and the click hit no row.
+        tsv = ['level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext',
+               '5\t1\t1\t1\t1\t1\t0\t0\t15\t43\t40\t‘',
+               '5\t1\t1\t1\t1\t2\t48\t33\t54\t14\t95\tCapture',
+               '5\t1\t1\t1\t1\t3\t108\t33\t42\t14\t95\tregion',
+               '5\t1\t1\t1\t2\t1\t48\t61\t30\t14\t95\tEdit',
+               '5\t1\t1\t1\t2\t2\t84\t61\t40\t14\t95\timage',
+               '5\t1\t1\t1\t2\t3\t200\t60\t8\t16\t60\t»',
+               '5\t1\t2\t1\t1\t1\t5\t90\t6\t6\t30\t·']
+        lines = tp.ocr_lines('\n'.join(tsv))
+        self.assertEqual([l['text'] for l in lines], ['‘ Capture region', 'Edit image »', '·'])
+        self.assertEqual(lines[0]['rect'], [48, 33, 102, 14])
+        self.assertEqual(lines[1]['rect'], [48, 61, 76, 14])
+        self.assertEqual(lines[2]['rect'], [5, 90, 6, 6])  # A line of marks only keeps their box.
+        self.assertEqual(tp.align(['Capture region'], lines)[0]['rect'], [48, 33, 102, 14])
+
+    def test_after_a_press_only_the_clicked_rows_hover_may_differ(self):
+        # The menu is closed after a click put.gd did not record only while it is still the menu
+        # the cell read: the pressed row's hover is allowed, any other change is another popup.
+        from tools.lab.surface_driver.recipes import tray
+        before = Image.new('RGB', (1280, 800), (120, 140, 160))
+        ImageDraw.Draw(before).rectangle((0, 760, 1279, 799), fill=(22, 22, 22))
+        menu = before.copy()
+        ImageDraw.Draw(menu).rectangle((864, 272, 1115, 767), fill=(50, 50, 60))
+        showing = lambda image: tp.menu_box(before, image, (0, 760, 1280, 800), (1100, 771, 23, 23))
+        opened = dict(box=showing(menu), image=menu, showing=showing,
+                      lines={'Capture region': dict(rect=[900, 293, 102, 14])})
+
+        class Ctx:
+            def key_drawn(self, chord, head, still_drawn):
+                self.sent = still_drawn(self.image)
+                if not self.sent:
+                    raise tray.RecipeBlocked('the drawn popup closed or changed before the key')
+
+            class target:
+                capture_image = staticmethod(lambda head: before)  # Esc closed it.
+
+        def esc_sent(image):
+            ctx = Ctx()
+            ctx.image = image
+            tray._dismiss_drawn_menu(ctx, opened, pressed='Capture region')
+            return ctx.sent
+        hovered = menu.copy()
+        ImageDraw.Draw(hovered).rectangle((865, 288, 1114, 312), fill=(80, 80, 120))
+        self.assertTrue(esc_sent(hovered))
+        changed = hovered.copy()  # Another row changed: not the menu the cell read.
+        ImageDraw.Draw(changed).rectangle((900, 500, 1000, 520), fill=(200, 0, 0))
+        self.assertFalse(esc_sent(changed))
+        joined = hovered.copy()  # A popup drawn against it widens the bounds.
+        ImageDraw.Draw(joined).rectangle((724, 300, 863, 500), fill=(200, 200, 200))
+        self.assertFalse(esc_sent(joined))
+
 
 if __name__ == '__main__':
     unittest.main()

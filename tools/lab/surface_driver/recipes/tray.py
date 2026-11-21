@@ -517,6 +517,15 @@ def _same(first, second, box):
     return ImageChops.difference(first.crop(box).convert('RGB'), second.crop(box).convert('RGB')).getbbox() is None
 
 
+def _same_but_row(first, second, box, row, pad=10):
+    """BOX is unchanged except in the band of the menu row ROW [x, y, w, h] (its hover highlight)."""
+    from PIL import ImageChops
+    difference = ImageChops.difference(first.crop(box).convert('RGB'), second.crop(box).convert('RGB'))
+    difference.paste((0, 0, 0), (0, max(0, row[1] - pad - box[1]), difference.width,
+                                 min(difference.height, row[1] + row[3] + pad - box[1])))
+    return difference.getbbox() is None
+
+
 def _ocr(ctx, image):
     """Text lines in IMAGE, read by tesseract in the guest, as for Omarchy's banners (_ocr_notice)."""
     import base64
@@ -543,17 +552,30 @@ def _press_drawn_row(ctx, opened, label):
     ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same(opened['image'], image, opened['box']))
 
 
-def _dismiss_drawn_menu(ctx, opened):
+def _dismiss_drawn_menu(ctx, opened, *, pressed=None):
     """Close a menu _pixel_menu() opened: Esc, then a second right-click on the icon (Omarchy keeps its
-    card open on Esc). Quiet when it is already gone or has changed."""
-    from tools.lab.surface_driver import tray_pixels
+    card open on Esc). Quiet when it is already gone or has changed.
+
+    PRESSED: the label of a row that was clicked, which closes the menu when the host takes it. A
+    click the host ignored leaves the menu open, holding the pointer and keyboard grab every later
+    cell of the row needs, and with that row hovered: the menu still counts as the one the cell
+    read when only that row's band changed.
+    """
     import time
     box = opened['box']
+    row = (opened['lines'].get(pressed) or {}).get('rect') if pressed else None
     def showing(image):
         # A popup is still drawn next to the icon, and it is the one the cell read.
-        if opened['showing'](image) is None:
+        drawn = opened['showing'](image)
+        if drawn is None:
             return False
-        return 'image' not in opened or _same(opened['image'], image, box)
+        if 'image' not in opened:
+            return True
+        if row is None:
+            return _same(opened['image'], image, box)
+        # The same bounds (menu_box works in 4 px steps), so no popup joined it, and the same pixels.
+        return (all(abs(a - b) <= 4 for a, b in zip(drawn, box))
+                and _same_but_row(opened['image'], image, box, row))
     for attempt in ('key', 'icon'):
         try:
             if attempt == 'key':
