@@ -159,6 +159,8 @@ struct ScrollTracker::Signature {
 namespace {
 
 inline unsigned absDiff(unsigned a, unsigned b) { return a > b ? a - b : b - a; }
+// Cells with texture a row needs to be taken for a line along the frame's edge (#1796).
+constexpr int kEdgeLineCells = 16;
 
 // Rows of a tile: what may disagree as one piece (a sticky header strip that
 // moved by its own distance, a box, a side bar) without the page around it
@@ -3761,7 +3763,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   // holds up to a whole frame of pixels, at most 8 of them, and spare_ keeps
   // their buffers: about 9 frames at the peak (at 3840x2160 some 300 MB),
   // whatever the session's length.
-  if (!pending_.empty()) narrowPending(pending_.back(), blocked);
+  if (!pending_.empty()) narrowPending(pending_.back(), blocked, cur, pos);
   const bool young = youngMask && pending_.size() < 8;
   if (!young) {
     std::vector<uint64_t> area;
@@ -4107,12 +4109,43 @@ void ScrollTracker::pageArea(std::vector<uint64_t>& out, std::vector<uint64_t>* 
 }
 
 // What a waiting frame's next pair found pinned or standing still is not
-// written from it, whenever it is written.
-void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& blocked) const {
-  const int words = store_->words;
+// written from it, whenever it is written. Nor, in the frame's first and last
+// block rows, a cell with texture that the next frame, the page moved, shows
+// the same at the same place of the screen: a line along the region's edge
+// (the dark row under Firefox's page on Cinnamon) stays there, one row of a
+// block that moves with the page, so the block is never held back, and it
+// was written into the page's rows as seen once (#1796). The page's own new
+// rows at the edge are where the next frame shows other rows, and that pair
+// proves them where they moved to.
+void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& blocked, const Signature& cur,
+                                  long long pos) const {
+  const int words = store_->words, C = cells_, R = opts_.blockRows;
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  const bool moved = pend.pos != pos && !viewMoved_;
   for (size_t slot = 0; slot < pend.rows.size(); ++slot) {
-    const int brow = std::min(pend.rows[slot] / opts_.blockRows, blockRowCount_ - 1);
-    for (int w = 0; w < words; ++w) pend.open[slot * size_t(words) + size_t(w)] &= ~blocked[size_t(brow) * words + size_t(w)];
+    const int y = pend.rows[slot];
+    const int brow = std::min(y / R, blockRowCount_ - 1);
+    uint64_t* open = &pend.open[slot * size_t(words)];
+    for (int w = 0; w < words; ++w) open[w] &= ~blocked[size_t(brow) * words + size_t(w)];
+    if (!moved || (y >= R && y < (blockRowCount_ - 1) * R)) continue;
+    // A line along the edge: most of the row's cells with texture stay, not
+    // a few cells of text that happen to look alike.
+    const uint64_t* plain = &pend.plain[slot * size_t(words)];
+    const uint16_t* was = &pend.cells[slot * size_t(C)];
+    const uint16_t* now = cur.cellRow(y);
+    std::vector<uint64_t> same(static_cast<size_t>(words), 0);
+    int tex = 0, kept = 0;
+    for (int w = 0; w < words; ++w)
+      for (uint64_t bits = open[w] & ~plain[w]; bits; bits &= bits - 1) {
+        const int c = w * 64 + std::countr_zero(bits);
+        ++tex;
+        if (absDiff(was[c], now[c]) <= tol) {
+          ++kept;
+          same[size_t(w)] |= 1ull << (c & 63);
+        }
+      }
+    if (kept >= kEdgeLineCells && 10 * kept >= 9 * tex)
+      for (int w = 0; w < words; ++w) open[w] &= ~same[size_t(w)];
   }
 }
 
