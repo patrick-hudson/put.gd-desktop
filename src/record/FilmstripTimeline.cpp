@@ -430,9 +430,17 @@ void FilmstripTimeline::setEdit(const RecordingEdit& edit) {
     }
     // A released drag's pending span (T4): a new revision answers it; the same
     // revision again is a refusal, which eases back.
+    // An edit that leaves the item as it was is someone else's answer: the
+    // proposal is still out (T4).
     if (pending_.drag != Drag::None && !pending_.easing) {
-        if (edit.revision != pending_.revision) clearPending();
-        else { edit_ = edit; easePendingBack(); }
+        if (edit.revision == edit_.revision) { edit_ = edit; easePendingBack(); }
+        else {
+            std::optional<recording::Span> now;
+            if (pending_.drag == Drag::TrimStart || pending_.drag == Drag::TrimEnd) now = recording::Span{edit.trimStart, edit.exportEnd(duration_)};
+            else if (pending_.drag == Drag::CutStart || pending_.drag == Drag::CutEnd) { for (const auto& c : edit.cuts) if (c.id == pending_.id) now = recording::Span{c.start, c.end}; }
+            else { for (const auto& m : edit.masks) if (m.id == pending_.id) now = recording::Span{m.start, m.end}; }
+            if (!now || *now != recording::Span{pending_.fromStart, pending_.fromEnd}) clearPending();
+        }
     }
     edit_ = edit;
     if (cancelDrag) {
@@ -605,7 +613,7 @@ recording::Span FilmstripTimeline::shownCover(const RecordingMask& mask) const {
 // kPendingMs passes; the last two ease back.
 void FilmstripTimeline::setPending(Drag drag, const QString& id, qint64 start, qint64 end) {
     easeTimer_.stop();
-    pending_ = {drag, id, start, end, 0, 0, edit_.revision, false};
+    pending_ = {drag, id, start, end, originStart_, originEnd_, edit_.revision, false};
     pendingTimer_.start();
     update();
 }
@@ -627,7 +635,13 @@ void FilmstripTimeline::clearPending() {
 
 // ---- time and frames ----
 qint64 FilmstripTimeline::frameUs() const { return std::max<qint64>(1, qRound64(1e6 / fps_)); }
-qint64 FilmstripTimeline::lastFrameIndex() const { return qint64(std::ceil(double(duration_) * fps_ / 1e6 - 1e-6)); }
+// The first frame edge at or past the duration: the duration's own edge when it
+// is a rounded frame boundary, else the final partial frame's (T1).
+qint64 FilmstripTimeline::lastFrameIndex() const {
+    qint64 k = std::llround(double(duration_) * fps_ / 1e6);
+    if (qRound64(double(k) * 1e6 / fps_) < duration_) ++k;
+    return k;
+}
 qint64 FilmstripTimeline::snap(qint64 us) const {
     const qint64 n = qRound64(double(std::clamp<qint64>(us, 0, duration_)) * fps_ / 1e6);
     return std::min(duration_, qRound64(double(n) * 1e6 / fps_));
@@ -1620,7 +1634,8 @@ void FilmstripTimeline::hoverSkim(QPointF pos) {
         if (std::abs(sdy) > 2 * std::abs(sdx)) { if (std::abs(pos.y() - engagedY_) >= kSkimVertical) { disengageSkim(pos); return; } }
         else if (std::abs(sdx) >= 2 * std::abs(sdy)) engagedY_ = pos.y();
         // Arriving on a grip starts the rest timer even without further motion (T7).
-        if (grip && !dwellTimer_.isActive()) { dwellAt_ = pos; dwellTimer_.start(); }
+        if (grip && !skimOnGrip_) { dwellAt_ = pos; dwellTimer_.start(); }  // restarted on entering, never inherited
+        skimOnGrip_ = grip;
         if (QLineF(dwellAt_, pos).length() > kSkimDwellSlop) { dwellAt_ = pos; dwellTimer_.start(); }
         const qint64 at = std::clamp<qint64>(timeAt(pos.x()), 0, std::max<qint64>(0, duration_ - 1));
         if (skimming_) skimAt(at);
@@ -1649,6 +1664,7 @@ void FilmstripTimeline::engageSkim() {
     if (!lastMove_) return;
     skimIntent_ = true;
     engagedY_ = lastMove_->y();
+    skimOnGrip_ = false;
     dwellTimer_.stop();
     const qint64 at = std::clamp<qint64>(timeAt(lastMove_->x()), 0, std::max<qint64>(0, duration_ - 1));
     if (skimming_) skimAt(at);
@@ -1882,7 +1898,11 @@ void FilmstripTimeline::updateDrag(QPointF pos, Qt::KeyboardModifiers modifiers)
         const qint64 anchor = snap(anchorUs_);
         qint64 moving = snapToTargets(timeAt(clampedX), bypass);
         // Armed, the range is at least one frame, toward where the pointer went (T3).
-        if (moving == anchor) moving = pos.x() < armFrom_.x() ? std::max<qint64>(0, snap(anchor - frameUs())) : std::min(duration_, snap(anchor + frameUs()));
+        // A clip boundary in that direction takes the next frame the other way (T3).
+        if (moving == anchor) {
+            const qint64 before = std::max<qint64>(0, snap(anchor - frameUs())), after = std::min(duration_, snap(anchor + frameUs()));
+            moving = pos.x() < armFrom_.x() ? (before != anchor ? before : after) : (after != anchor ? after : before);
+        }
         dragStart_ = std::min(anchor, moving);
         dragEnd_ = std::max(anchor, moving);
         emit editEdgeDragged(QStringLiteral("selection"), {}, moving < anchor, moving);
