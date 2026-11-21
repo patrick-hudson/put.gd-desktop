@@ -185,6 +185,20 @@ private slots:
   error={};installUpdate(build(),options(),{},error);QCOMPARE(error.code,QString("update_restart_required"));
  }
  // #1765: a mirror without the image, with a short one or with wrong bytes falls back to GitHub.
+ // An earlier install's staging folder that can't be removed keeps its record:
+ // the next install refuses instead of forgetting a partly written image.
+ void anEarlierStagingFolderIsRemovedBeforeANewOne(){
+  ReleaseServer server;publish(server,next_);
+  const auto earlier=QDir(images).filePath(".putgd-update-AbC123");
+  QVERIFY(QDir().mkpath(earlier+"/not-ours"));write(earlier+"/partial.AppImage","partial");
+  QVERIFY(appimage::writeState(state,QJsonObject{{"staging",earlier}}));
+  Error error;installUpdate(build(),options(),{},error);
+  QCOMPARE(error.code,QString("update_install_failed"));QCOMPARE(appimage::readState(state)["staging"].toString(),earlier);QCOMPARE(read(image()),old_);
+  // Once it can go, it goes, and the install runs.
+  QVERIFY(QDir(earlier+"/not-ours").removeRecursively());
+  error={};const auto result=installUpdate(build(),options(),{},error);
+  QVERIFY2(!error,qPrintable(error.message));QVERIFY(!QFileInfo::exists(earlier));QCOMPARE(read(image()),next_);QCOMPARE(result["installed"].toBool(),true);
+ }
  void aMirrorWithoutTheImageFallsBackToTheRelease(){
   for(const QString mirror:{"missing","short","wrong"}){
    init();

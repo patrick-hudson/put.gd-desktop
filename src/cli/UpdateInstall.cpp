@@ -157,6 +157,11 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
   return result;
  }
 
+ // An earlier install's staging folder goes first; its record stays until it has,
+ // so a retry never forgets a partly written image.
+ if(const auto earlier=state["staging"].toString();!earlier.isEmpty()&&!appimage::removeStaging(earlier)){
+  error={"update_install_failed","An earlier update's staging folder can't be removed",{{"staging",earlier}}};return {};
+ }
  QTemporaryDir staging(QDir(image.directory).filePath(QString(appimage::stagingPrefix)+"XXXXXX"));
  if(!staging.isValid()){error={"update_image_not_writable","Cannot create a staging folder beside the AppImage",{{"directory",image.directory}}};return {};}
  state["staging"]=staging.path();state["backup"]=QJsonValue();
@@ -205,7 +210,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
     output.close();
     if(ok&&reason.isEmpty()) {
      progress("verifying","zsync",size,size);
-     if(zsync::sha1(candidatePath)!=control.sha1)reason="sha1_mismatch";
+     if(deadline.hasExpired())reason="timeout";
+     else if(zsync::sha1(candidatePath)!=control.sha1)reason="sha1_mismatch";
      else if(const auto failed=appimage::verify(candidatePath,expected,information))reason="verification_failed:"+failed.details["check"].toString();
      else candidate=candidatePath;
     }

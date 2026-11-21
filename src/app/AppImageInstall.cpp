@@ -177,7 +177,7 @@ QJsonObject settle(const QString& stateRoot,const QString& runningImage,const QS
  if(state.isEmpty())return state;
  bool changed=false;
  const auto staging=state.value("staging").toString();
- if(!staging.isEmpty()){removeStaging(staging);state["staging"]=QJsonValue();changed=true;}
+ if(!staging.isEmpty()&&removeStaging(staging)){state["staging"]=QJsonValue();changed=true;}
  const auto installed=state.value("installed").toObject();const auto backup=state.value("backup").toObject();
  // The backup moved back onto the path by hand, because the new version
  // didn't start (#412).

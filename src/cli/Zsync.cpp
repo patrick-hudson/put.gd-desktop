@@ -378,6 +378,7 @@ bool fetch(QNetworkAccessManager& network,const QUrl& url,const Control& control
  QByteArray block(control.blocksize,'\0');
  const auto* records=reinterpret_cast<const uchar*>(control.records.constData());const auto record=control.rsumBytes+control.checksumBytes;
  for(const auto& run:ranges) {
+  if(deadline.hasExpired()){reason="timeout";return false;}
   for(qint64 id=run.start/control.blocksize;id*control.blocksize<run.end;++id) {
    const auto bytes=qMin<qint64>(control.blocksize,control.length-id*control.blocksize);
    block.fill('\0');
