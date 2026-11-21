@@ -211,7 +211,7 @@ With it on, each region, window, monitor, desktop and scrolling capture, each im
   - **Cancel** (Escape) uploads nothing. With **Keep a local copy** on, the capture is saved to your archive and shows in History as a local item.
 - **Couldn't finish checking:** if recognition failed or ran out of time, the image is over 24 megapixels or couldn't be read, a pattern in your list didn't finish, or a language you chose in Settings has no data installed, put.gd asks anyway, with the title "put.gd couldn't finish checking this capture" and the reason. It never uploads a capture it couldn't check without asking you.
 
-For several files from your file manager, the panel names the file it found something in, and offers only **Upload anyway** (every file) and **Cancel** (none of them), since the editor edits one image at a time.
+For several files from your file manager, the panel names the file it found something in, and offers only **Upload anyway** and **Cancel**, since the editor edits one image at a time. **Upload anyway** keeps that file and goes on checking the others, so you may be asked again. **Cancel** uploads none of them. If a file changes after put.gd checked it and before it is uploaded, nothing is uploaded and History says why: upload it again to have it checked again.
 
 While one panel is open, a capture you take next waits until you answer. The tray and History show "Checking for sensitive text" and then "Waiting for your decision". The panel has no title bar. Drag it by its body to move it.
 
