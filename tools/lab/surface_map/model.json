@@ -199,7 +199,8 @@
   {"id": "scrollbar", "label": "Scrolling capture bar", "kind": "overlay", "capture": "scroll-bar-following"},
   {"id": "review", "label": "Recording review", "kind": "window", "capture": "30-review"},
   {"id": "dialogs", "label": "File dialogs", "kind": "dialog", "placeholder": "Portal dialogs are the desktop's own; the themed fallback is a plain Qt dialog."},
-  {"id": "confirm", "label": "Confirmations and notices", "kind": "dialog", "capture": "19-editor-discard-confirm"}
+  {"id": "confirm", "label": "Confirmations and notices", "kind": "dialog", "capture": "19-editor-discard-confirm"},
+  {"id": "sensitive-prompt", "label": "Sensitive text prompt", "kind": "dialog", "capture": "70a-sensitive-prompt", "notes": "#1804: put.gd's own frameless panel, shown only when Check captures for sensitive text before uploading finds something or cannot finish. Drawn by the editor helper."}
  ],
  "interactions": [
   {"id": "shortcut.region", "surface": "shortcuts", "kind": "shortcut", "label": "Capture region", "keys": ["Ctrl+Shift+1"], "method": "action.invoke", "to": "region", "source": "src/core/Settings.cpp"},
@@ -239,6 +240,7 @@
   {"id": "mcp.recording-review", "surface": "mcp", "kind": "mcp", "label": "drive_recording_review, save_recording_copy, upload_recording", "method": "recording.review", "to": "review", "source": "tools/mcp/share_mcp/server.py"},
   {"id": "mcp.scroll", "surface": "mcp", "kind": "mcp", "label": "prepare_scroll_capture {driver}, control_scroll_capture select | start | auto_scroll | pause | resume | stop | cancel, get_scroll_capture", "method": "scroll.*", "to": "scrollbar", "source": "tools/mcp/share_mcp/server.py"},
   {"id": "mcp.operations", "surface": "mcp", "kind": "mcp", "label": "get_operation, retry_operation, copy_result, cancel_operation", "method": "operation.*", "source": "tools/mcp/share_mcp/server.py"},
+  {"id": "mcp.decide-upload", "surface": "mcp", "kind": "mcp", "label": "decide_upload", "method": "operation.decide", "source": "tools/mcp/share_mcp/server.py"},
   {"id": "mcp.history", "surface": "mcp", "kind": "mcp", "label": "list_history, get_history_entry, make_history_preview, copy_history_link(s), change_history_link, open_history_link, delete_history_uploads, drive_history, history_save_diagnostics", "method": "history.*", "to": "history", "source": "tools/mcp/share_mcp/server.py"},
   {"id": "mcp.configuration", "surface": "mcp", "kind": "mcp", "label": "reload_configuration, patch_configuration, reorder_destinations, move_destination", "method": "settings.*", "source": "tools/mcp/share_mcp/server.py"},
   {"id": "mcp.diagnostics", "surface": "mcp", "kind": "mcp", "label": "create_diagnostics_bundle, get_diagnostics_upload_target, show_diagnostics_package, settings_diagnostics, clear_logs", "method": "diagnostics.*", "source": "tools/mcp/share_mcp/server.py"},
@@ -568,6 +570,11 @@
   {"id": "region.backends", "surface": "region", "kind": "state", "label": "Backend per desktop: Qt overlay (X11), xcb native (Cinnamon), KDE layer-shell, GNOME Shell extension", "source": "src/platform/x11/X11SourceAdapter.cpp"},
   {"id": "region.to-upload", "surface": "region", "kind": "edge", "label": "Release → upload straight away (link on clipboard, notification)", "source": "src/app/OperationService.cpp"},
   {"id": "region.to-editor", "surface": "region", "kind": "edge", "label": "Release → editor (Capture region & edit)", "to": "editor", "source": "src/app/OperationService.cpp"},
+  {"id": "region.to-sensitive-prompt", "surface": "region", "kind": "edge", "label": "Release \u2192 sensitive text found \u2192 prompt before uploading", "to": "sensitive-prompt", "source": "src/app/OperationService.cpp"},
+  {"id": "sensitive.redact", "surface": "sensitive-prompt", "kind": "button", "label": "Redact and upload", "control": "sensitiveRedact", "keys": ["Return"], "method": "operation.decide", "to": "editor", "source": "src/ui/SensitivePrompt.cpp"},
+  {"id": "sensitive.upload", "surface": "sensitive-prompt", "kind": "button", "label": "Upload anyway", "control": "sensitiveUpload", "method": "operation.decide", "source": "src/ui/SensitivePrompt.cpp"},
+  {"id": "sensitive.cancel", "surface": "sensitive-prompt", "kind": "button", "label": "Cancel", "control": "sensitiveCancel", "keys": ["Escape"], "method": "operation.decide", "source": "src/ui/SensitivePrompt.cpp"},
+  {"id": "capture.sensitive-check", "surface": "settings-capture", "kind": "field", "label": "Check captures for sensitive text before uploading, and the kinds it looks for", "control": "sensitiveTextCheck", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "region.to-local", "surface": "region", "kind": "edge", "label": "Release → local save only", "source": "src/app/OperationService.cpp"},
 
   {"id": "recsel.drag", "surface": "recsel", "kind": "gesture", "label": "Drag chooses the recording area; release under 4 px cancels", "method": "recording.select", "source": "src/record/Overlays.cpp"},
