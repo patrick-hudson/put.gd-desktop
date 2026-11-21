@@ -159,22 +159,29 @@ and a fresh Upload (`upload_recording`).
 | `speed` | `speed` | `speed` (0.5, 1, 2, 4) |
 | `kind` | `kind` | `addMask`, `coverKind` (blur, solid); `selectEdit` (cut, cover, trim) |
 | `rect` | `rect` | `addMask`, `placeMask` (`[x, y, w, h]`, canvas pixels) |
+| `at` | `at` | `placeMask` only, with no `rect`: `[x, y]` canvas pixels, a click while a cover is armed that places the default box centred there |
 | `mask_id` | `maskId` | `selectMask` (omitted: clear) |
 | `strength`, `format`, `codec` | same | `strength`, `format` |
-| `start_us`, `end_us` | `start`, `end` | `selectRange`, `adjustCut`, `setTrim`; **only `setTrim` accepts an omitted `end_us`** (the recording's end), the others need both |
+| `start_us`, `end_us` | `start`, `end` | `selectRange`, `adjustCut`, `retimeCover`, `setTrim`; **only `setTrim` accepts an omitted `end_us`** (the recording's end), the others need both |
 | `cut_id` | `cutId` | `selectCut`, `adjustCut`, `restoreCut`, `playAcross` |
 | `edit_id` | `editId` | `selectEdit` (none for a trim) |
-| `edge` | `edge` | `setCoverEdge`, `setCoverEdgeToPlayhead` (start, end) |
-| `level` | `level` | `timelineZoom` (1, 2, 4, 8, 16) |
+| `edge` | `edge` | `setCoverEdge`, `setCoverEdgeToPlayhead`, `markSelection` (start, end) |
+| `level` | `level` | `timelineZoom`: a level of `inspect`'s `timeline.zoomLevels` (1 is Fit; the ladder depends on the clip, so the tool accepts 1–4096 and the window checks the level) |
+| `on` | `on` | `setSkimming`, `setSnapping` (boolean) |
 | `mode` | `mode` | `viewerZoom` (fit, actual) |
 | `dx`, `dy` | `dx`, `dy` | `viewerPan` (source pixels) |
-| `delta` | `delta` | `frameStep` (1 or −1) |
+| `delta` | `delta` | `frameStep`, `editPoint` (1 or −1) |
 | `panel_open` | `open` | `panel` |
 | `width`, `height` | `width`, `height` | `resize` |
 
 The old window's `showMaskOptions`, `closeMaskOptions`, `nextMaskLanes`,
 `previousMaskLanes`, `dismissBlurTip` and `showFormatTips` are gone, and `inspect`'s
 `selection` is now the time selection `{start, end, lengthUs}` or `null`.
+
+The timeline's feel controls are review actions: `setSkimming` and `setSnapping` (S and N),
+`zoomIn` and `zoomOut` (`=` and `-`), `retimeCover` (sliding a cover's bar), `moreCovers` (the
+"+n" chip), `markSelection` (`[` and `]`) and `editPoint` (Up and Down). `at` is refused on any action
+but `placeMask`, and `placeMask` needs a `rect` or an `at`.
 
 Upload retry delegates to the shared operation service: completed uploads are not repeated,
 unknown publication reconciles its original identity, and terminal uploads can instead copy

@@ -109,85 +109,128 @@ design was agreed by a council in the
   other put.gd window follows is lifted for this window only. Below about
   1180×720 the right panel folds into an overlay (below).
 - Rows from the top: title (40 px) · tool row (52) · viewer (all the remaining
-  height) · transport (42) · timeline (142 px at normal text, growing with the
+  height) · transport (42) · timeline (168 px at normal text, growing with the
   font) · footer (56). Text sizes and row heights come from `QFontMetrics`, so 150 %
   text lays out the same way. The right panel is 280 px wide and runs from the
   tool row to the footer; the viewer, transport and timeline use the width left of it.
 - **Folded** (the window is narrower than 1180 px or lower than 720 px): the panel is
   hidden and the toolbar's **Edits** toggle (focusable, labelled "Edits") opens it as
   a 300 px overlay under the button, in the checked style while open. The overlay
-  scrolls, takes focus on its default button, and Esc closes it with focus back on
-  the toggle. While it is open the picture fits the uncovered width, left-aligned,
-  so nothing plays under it; Play across closes it first.
+  ends 8 px above the transport and scrolls inside, takes focus on its default
+  button, and Esc closes it with focus back on the toggle. While it is open the
+  picture fits the uncovered width, left-aligned, so nothing plays under it; Play
+  across closes it first. A press outside it on the picture only closes it; a
+  press on the timeline, transport or tool row closes it **and** does what it
+  would have done.
 - **Title:** "Review recording" · "Not uploaded". Duration, resolution, frame rate and
   codec are not in the window; they stay in History details and `recording.inspect`.
 
 ### Tool row and viewer
 
 The tool row has the image editor's tools and keys: Select **V** · Cut **C** ·
-Redact **X** · Blur **B** · Undo · Redo, then **Fit · n%** (Fit or 100 %; at 100 %
-the picture pans by drag and arrows, one source pixel per device pixel) and the
-Edits toggle when folded. Selecting an existing cover activates Select. Cut is
-enabled only with a time selection.
+Redact **X** · Blur **B** · Undo · Redo, then the tool row's one message (below),
+**Fit · n%** (Fit or 100 %; at 100 % the picture pans by drag and arrows, one
+source pixel per device pixel) and the Edits toggle when folded. Selecting an
+existing cover activates Select. Cut is enabled only with a time selection, and
+not while a cover is being placed. Save a copy and Upload are disabled until the
+box is placed or cancelled.
 
-The viewer shows the frame at the playhead, or the skim position while the pointer
-hovers the paused timeline, with the covers active at that time drawn over it.
-Banners take space from the well along its top edge and never sit over the picture:
-
-- **Placing a cover:** "Draw the redaction · 0:08.2 – 0:12.6" (or "· whole
-  recording") with a **Cancel** button (Esc). Save a copy and Upload are disabled
-  until the box is placed or cancelled.
-- **Blur armed or a blur selected:** "Blur may be reversible. Use Redact for private
-  information." (the image editor's wording, in the warning colours).
+The viewer shows the frame at the playhead, or the skim frame while the pointer
+skims the paused timeline, with the covers active at that time drawn over it. A
+skim frame is an exact decoded frame with its covers applied, never a thumbnail
+(see [Skimming](#skimming)). Nothing changes the picture's size or position while
+the window is open: the notice and status lines overlay the viewer's top edge, and
+the placement prompt, the blur warning, a frame error and short notes share the
+tool row's free middle, one at a time (see [Tool-row messages](#tool-row-messages)).
+While a frame is being decoded the viewer keeps the last one, never black and never
+an upscaled tile. Seeking by a scrub, an edge drag or a held key delivers frames
+continuously: one decode in flight on a worker with its decoder kept open, the
+newest time asked for next, and an exact frame after the release; nothing decodes
+on the interface thread.
 
 ### Transport
 
-Play is a split button whose menu holds the speeds 0.5×–4× (1× by default).
-Previous and next frame (`,` and `.`, named in their tooltips) follow, then **one
-clock**: output time / output length (m:ss.s, the kept time, what the exported clip
-will show). Hover it for the recording time, the source time the ruler and the trim
-brackets use. Beside it a muted caption reads "clip time" (with "· Excluded from
-output" while the playhead is on footage the export drops), then "Preview is silent"
-with a speaker glyph. The timeline zoom button (magnifier and level) cycles Fit, 2×
-and 4× and back; Ctrl+wheel steps through Fit, 2×, 4×, 8× and 16×, around the
-pointer. Playback skips every cut and the footage outside the trim: the output clock
-runs only over what the export keeps, and the preview never plays the audio.
+Play and its speed arrow are two buttons side by side, each answering over its whole
+visible half. The arrow opens the speeds 0.5×–4× (1× by default) and, at any speed
+other than 1×, shows it ("2×"). Previous and next frame (`,` and `.`, named in their
+tooltips) follow, then **one clock**: output time / output length (m:ss.s, the kept
+time, what the exported clip will show). Hover it for the recording time, the source
+time the ruler and the trim brackets use. Beside it a muted caption reads "clip time"
+(with "· Excluded from output" while the playhead is on footage the export drops),
+then "Preview is silent" with a speaker glyph. At the right are the **Skim** and
+**Snap** toggles (S and N, see [Skimming](#skimming) and
+[Snapping, readouts and autoscroll](#snapping-readouts-and-autoscroll)) and the
+timeline zoom button, which shows Fit or the level ("4×") and opens a menu of Fit and
+every level of the [zoom ladder](#zoom). Playback skips every cut and the footage
+outside the trim: the output clock runs only over what the export keeps, and the
+preview never plays the audio.
 
 ### Timeline
 
 - A ruler in recording (source) time, captioned "recording time" at its right end
-  (ruler labels under the caption or the skim flag are skipped); a filmstrip of
-  about 72 px thumbnails; the trim brackets in the accent colour with the part
-  outside dimmed.
+  (ruler labels under the caption are skipped; the skim flag has its own background,
+  so labels never blink under it); a filmstrip of about 72 px thumbnails; the trim
+  brackets in the accent colour with the part outside dimmed.
 - **Cuts** are hatched in place with a "Cut · n s" chip (a scissors glyph when the
-  chip does not fit). **Covers** have their own track under the filmstrip: two lanes
-  of named bars (the selected cover in the accent colour with handles, idle ones
-  neutral), names elided, "+n" for covers past the second lane, and "No covers yet"
-  when empty. The selected cover's span is also tinted 20 % accent with a 3 px base
-  line.
+  chip does not fit). **Covers** have their own track under the filmstrip: two lanes,
+  each at least 20 px tall, of named bars that fill the lane (the selected cover in
+  the accent colour with grips, idle ones neutral), names elided, a "+n" chip in its
+  own reserved space at the lower lane's right end for covers past the second lane
+  (it opens the Edits list at the first hidden cover), and "No covers yet" when
+  empty. The selected cover's span is also tinted 20 % accent with a 3 px base line.
 - A **time selection** is a dashed, accent-outlined range. A time selection and a
   selected edit never exist together.
-- The **playhead** has a cap on the ruler and a two-tone stroke that stops above the
-  covers track. While paused, hovering shows a thin **skim line** with its own time
-  flag on the ruler, painted "≈0:05.3" until the exact frame has arrived.
+- The **playhead** has a cap on the ruler and a two-tone stroke that runs down
+  through the covers track; a selected cut's grips are drawn above it. While paused,
+  skimming shows a thin **skim line** with its own time flag on the ruler, painted
+  "≈0:05.3" until the exact frame has arrived (see [Skimming](#skimming)).
+- Above Fit, an **overview track** under the lanes shows where the visible span sits
+  in the recording and drags it (see [Zoom](#zoom)).
+- Hovering a part highlights it without changing any layout: edges and trim grips
+  brighten and widen from 2 to 3 px, a bar or cut body lifts. Timeline parts have
+  no tooltips; they keep their accessible names and descriptions.
 - Every colour is a `Theme` token, so the timeline follows the light and dark schemes.
 
 ### Right panel
 
-What it shows follows the selection:
+Once anything is edited the **Edits** list comes first, in its own scroll area about
+4½ rows tall (it scrolls beyond that), and the details of what is selected are pinned
+below it and always fully visible, so selecting a row never moves a row under the
+pointer. In the folded overlay the list shrinks (to as little as 1½ rows) rather than
+push the details out of view. The details follow the selection:
 
 | Selection | Panel |
 | --- | --- |
-| Nothing edited | "No edits yet" · "Upload sends the whole clip." and five gestures: brackets trim, drag selects time, C or Del cuts, X or B redacts or blurs, Ctrl+Z undoes. No clip facts or keyboard help. |
+| Nothing edited | "No edits yet" · "Upload sends the whole clip." and six gestures: I and O trim at the playhead (or drag a bracket), drag selects time, `[` and `]` start or end the selected time at the playhead, C or Del cuts, X or B redacts or blurs, Ctrl+Z undoes. No clip facts or keyboard help. |
+| Edited, nothing selected | The Edits list alone. |
 | A time selection | "Selected time", its span and length, and **Cut**, **Redact**, **Blur**. |
 | A cover | Its name; "Covered pixels are removed from the saved and uploaded clip." (Blur shows the warning sentence instead); **Shows from →** and **Until →** with m:ss.s fields and **Set to playhead** (⇧I / ⇧O); a Redact / Blur choice, with strength for blur. The arrow buttons (Home / End) seek to the first and last *kept* covered frame, so you can check the frames either side; they are disabled with "Excluded from output" when no covered frame stays in the clip. |
 | A cut | Its span and "n s left out of the clip", **Restore** (the default button) and **Play across** (from 1 s of kept footage before the join). |
 
-Below that, once anything is edited, the **Edits** list shows every trim, cut and
-cover in source order with an icon, a name and its span. A selected row shows its
-verb in place of the span (Trim: Reset, cover: Remove) only when the panel above
-does not already offer it; a selected cut keeps its span because Restore is above;
-other rows show their verb on hover.
+The **Edits** list shows every trim, cut and cover in source order with an icon, a
+name and its span. Each row's verb (trim: Reset, cut: Restore, cover: Remove) is a
+28 px trailing icon button in space the row always keeps, 8 px clear of the span, so
+it never replaces or squeezes the span. It shows on the selected row, on a focused
+row, and on a hovered row only after 150 ms of hover (no flicker while the pointer
+crosses the list). The name has priority; when name and span do not both fit, every
+row switches to the short span form. Controls update in place:
+
+- Selecting a row changes it without rebuilding the list, and a second activation of
+  the same row within the double-click interval is ignored. A click, Enter or Space
+  on a row selects it; Enter never restores a cut (Restore is its own button, with
+  its own Enter and Space). Up and Down move between rows. Delete on a row cuts a
+  time selection, else removes that cover, and never restores a cut.
+- After Restore or Remove, focus goes to the next surviving row, else the timeline.
+  A cut or cover selected on the timeline, the picture or with Alt+← and Alt+→
+  scrolls its row into view.
+- Hovering a cover's bar, its box on the picture or its row highlights the other
+  two (a cut's bar and row likewise); nothing changes layout.
+- **Shows from** and **Until** commit on Enter and hand the keys back to the timeline
+  (the folded overlay when it is open); Esc reverts changed text, and a second Esc
+  (or Esc on unchanged text) hands the keys back and keeps the cover selected. The
+  blur **Strength** field coalesces its steps for 350 ms into one edit (one undo
+  step; a held arrow keeps stepping), the picture previews the new strength at once,
+  Ctrl+Z during the wait takes back only that step, and Enter commits it.
 
 ### Footer
 
@@ -204,13 +247,303 @@ when it was captured **and** the window asks for it. It has no review action: `i
 reports it as `audioRequested` and `audioEffective`, and the format menu's `format`
 action does not change it.
 
+### Timeline pointer rules
+
+Sizes are logical pixels at 100 % scale. The code is `src/record/FilmstripTimeline.cpp`;
+the window turns its signals into edits.
+
+**What a point hits.** One hit test serves hover, cursor, press and the accessible
+parts, and painting uses the same geometry. In priority order it finds (1) the nearest
+edge grip within its zone (a trim bracket, a cut edge, a cover-bar edge, a time
+selection's edge), (2) the playhead's cap on the ruler, (3) a cut or cover-bar body,
+(4) the overview track, (5) empty ruler, empty strip or an empty cover lane. The "+n"
+chip owns its reserved space before any of these. The zones:
+
+| Target | Zone |
+| --- | --- |
+| Trim bracket | its 13 px body plus 8 px each side, from 3 px above the strip to 4 px below it, and both 16 px arms; never the ruler |
+| Playhead | the cap, 24 px wide over the whole ruler height. On the strip a press seeks or selects, even on the playhead's line |
+| Time selection edge | 6 px each side, from 3 px above the strip to the middle of the gap above the lanes |
+| Cut or cover edge (item 20 px or wider) | 8 px each side, without selecting first (outside an unselected cut only 4 px); shrunk toward the outside so the body keeps 8 px; overlapping zones split at the midpoint |
+| Item narrower than 20 px | unselected: only its body, at least 18 px wide, so a press selects it. Selected: its edges just outside it (10 px outside, 2 px inside) and the body between them, so a short cover can still be slid |
+| Cover bar | its whole lane row for its x-range (the upper lane reaches up to the middle of the gap above the lanes) |
+| Overview track | drawn 8 px, hit 16 px |
+
+Two grips within 1 px of each other (abutting covers, a cut on the trim start, a
+selection on a trim edge) are both grabbable: the selected item's grip wins, otherwise
+the side of the seam the pointer is on (left of it the `*-end` grip, right of it the
+`*-start` grip). A selected cut's grip wins over a trim bracket's body within 5 px of
+its edge. The cursor follows the hit: a split cursor on every edge and bracket, a
+horizontal-resize cursor on the playhead's cap and the ruler, an I-beam on the empty
+strip (playing or not, since a drag there selects), an open hand on the selected cover's
+bar (closed while sliding) and on the overview's thumb, a pointing hand over an
+unselected bar, a cut body or the "+n" chip, the arrow elsewhere.
+
+**Press, click and drag.**
+
+- **Ruler.** A press seeks at once (on release when playing, see below); dragging
+  past 3 px scrubs. Dragging the playhead's cap scrubs by the pointer's travel from
+  where the playhead was, and a plain click on the cap more than 2 px from its line seeks
+  to the click. A scrub keeps the selection.
+- **Empty strip.** A press seeks at once. Dragging past 6 px, mostly horizontally, makes
+  a time selection anchored at the press: the playhead stays at the anchor while the
+  viewer shows the moving edge's frame. On release the selection stays, whatever its
+  length (one frame at least), and the playhead lands on the moving edge's frame (for
+  an end, the frame before it). A click that never armed is a click: it clears a **time
+  selection** only, and a selected cut or cover stays selected, so Set to playhead and
+  Shift+I or Shift+O work after seeking. Shift+click moves the selection's nearer edge
+  (with none, from the playhead). Esc, a click on an empty cover lane (which also
+  seeks) or a new drag selection clears a selected cut or cover.
+- **Cuts.** A press on a cut's body selects it, and a drag from it past 6 px (mostly
+  horizontal) selects time from the press. A click inside an unselected cut's painted
+  span selects it; in the 4 px outside, it seeks. A press on an unselected cut's edge
+  selects the cut only once the drag arms; released without arming it is a strip click.
+- **Covers.** A press on an unselected cover's edge selects it and starts the edge drag
+  in the same gesture. A press on an unselected bar only selects it; sliding the whole
+  cover in time needs a press on the already selected bar (4 px dead zone) or 8 px of
+  travel on the first press, clamps to the recording, and is one `coverRetimed` on
+  release. A click on a bar selects it and seeks only when the playhead is outside its
+  span; a click never scrolls the timeline under the pointer. Selecting a hidden
+  cover brings it into a lane; selecting a shown one never re-lays the lanes out.
+- **Edge drags** (a trim bracket, a cut edge, a cover edge, a selection edge). Nothing
+  changes until the pointer has moved 4 px horizontally from the press (the **dead
+  zone**; a scrub's is 3 px). From then on the edge moves by the pointer's **delta** from the
+  press, never to the pointer's absolute x (the **grab offset** is kept). The delta uses
+  the unclamped pointer position and only the resulting time is clamped, so a bracket
+  grabbed by its body moves from the first pixel past the dead zone and can be dragged
+  back to 0:00 or the clip's end. Trim drags also snap to 0 and the duration. A cut's
+  edge stops at a neighbouring cut's edge. Every edge keeps at least one frame between
+  its two ends. The edit is proposed once, on release (one undo step); a release outside
+  the widget uses the clamped position.
+- **After the release** the item is painted where it was dropped until the resident
+  answers (a new revision), refuses (the same revision again) or 1 s passes; the last
+  two ease back over 120 ms, so nothing snaps back. A new revision that leaves the
+  dragged item alone does not stop the drag; one that changes it ends the drag and
+  proposes nothing.
+- **A late press.** A press that arrives within 80 ms of the pointer leaving a grip, and
+  within 12 px of where it left, takes that grip, counted from where the pointer was on
+  it (an input stack that holds the button back, such as middle-button emulation,
+  delivers it late at a moved position). The picture's handles follow the same rule.
+- **Playback hold.** A press on the ruler, the strip or the playhead's cap while playing
+  pauses playback for the press. A plain click seeks (on release) and resumes playing; a
+  scrub or a time-selection drag stays paused. An edge drag pauses for its duration and
+  does not resume.
+
+**Cancel.** Esc, a right-button press and Ctrl+Z each cancel the drag in progress and
+do nothing else, as does a release the widget never saw (a move arriving with the left
+button up), the window losing activation, or focus going to a popup. The pre-drag state
+comes back, nothing is proposed and the selection is kept; the scroll position from
+before the press is restored (an autoscroll included); a cover press that selected the
+cover gives back the earlier selection and the playhead; held playback resumes.
+
+### Snapping, readouts and autoscroll
+
+- **Snapping.** Edge, selection and scrub drags snap to the playhead (not for scrubs),
+  the trim ends (a trim drag instead snaps to 0 and the duration), cut edges, the edges
+  of covers shown in the lanes and the selection's edges: never to the dragged item,
+  and never to a target within one frame of the item's own starting point, so a drag
+  that starts on the playhead moves from its first armed pixel. Reach is in **screen
+  pixels at every zoom**: a target is taken within 6 px and held until the pointer is
+  3 px beyond that (hysteresis); frames still snap underneath. While snapped, a 1 px
+  accent guide spans the ruler to the lanes at the snapped frame. **N**, or the **Snap**
+  toggle, turns snapping off and on (on by default, remembered for the session);
+  holding **Ctrl** during a drag bypasses it, hides the guide, and uses the Ctrl state
+  of the last move, so releasing Ctrl just before the mouse-up does not snap on the
+  drop. Picture boxes do not snap.
+- **Readouts.** While a drag is armed a small flag in the skim flag's style names
+  what is being set; its width is reserved from the widest possible text (tabular
+  digits), so it never jitters. A scrub shows the recording time above the playhead; a
+  trim bracket shows `0:08.2 · 24.1 s clip` beside it (never covering it); a cut or
+  cover edge shows `0:08.2 · +0.4 s` (`+3 f` in whole frames once a frame spans 2 px or
+  more) and, for a cover, sits just above the Covers track near the pointer; a time
+  selection shows the moving edge and the length, `0:12.6 · 4.4 s`.
+- **Autoscroll.** Above Fit, a drag within 12 px of a strip end (or past it) waits 120 ms
+  and then scrolls on a 16 ms timer, on a quadratic ramp from about 0.05 visible
+  spans a second at the zone's inner edge to 2.5 at 60 px past the strip end. The
+  dragged edge keeps following and is clamped to the visible whole frames, so
+  autoscroll never pushes it out of view; a cover slide whose far end is off screen moves
+  by the pointer's travel only, with no jump when it arms.
+
+### Zoom
+
+- **The ladder** is Fit (1), then 2, 3, 4, 6, 8, 12, 16, 24, 32, 48 and so on, up to the
+  first level at which a frame is about 8 px wide for the clip's length, frame rate and
+  the strip's width. `recording.review` `inspect` lists the levels as
+  `timeline.zoomLevels`, and the zoom button's menu offers Fit and every one.
+- **Ctrl+wheel** moves one level a notch, anchored at the pointer's time. A trackpad pinch
+  or Ctrl with a two-finger scroll zooms continuously about the pointer and settles on the
+  nearest level 150 ms after the gesture ends. **`=`** (or `+`) and **`-`**, plain or with Ctrl,
+  zoom one level and **Shift+Z** fits; with no pointer to anchor to (keys, the menu,
+  `zoomIn`, `zoomOut`, `timelineZoom`) the anchor is the playhead when it is on screen,
+  else the middle of the view. Zooming never loses an on-screen playhead.
+- A zoom step eases over 120 ms with the anchor holding its place on screen; tiles are
+  requested when it settles, not per animation frame. A press or a scroll ends the
+  animation at once.
+- Above Fit the wheel and Shift+wheel scroll a tenth of the visible span a notch, and a
+  trackpad scrolls by its pixels along the axis it latches after 6 px (the travel buffered
+  before the latch counts). While playing, the view follows the playhead with a 10 % lead;
+  a manual scroll or an overview drag suspends that until playback restarts or the
+  playhead is back in view. A seek that lands off screen centres the view on it. Undo and
+  redo scroll the item they brought back into view.
+- The **overview track** draws 8 px tall (16 px to hit) with a thumb of at least 24 px and
+  a mark at the playhead. Dragging the thumb scrolls; a press beside it centres the view
+  there and carries on as a drag.
+
+### Skimming
+
+Skimming shows the frame under the pointer on the paused timeline without moving the
+playhead.
+
+- **Intent.** It starts only on purpose: with the pointer over the ruler or the strip
+  and off every grip, either net horizontal travel of at least 12 px and at least three
+  times the vertical travel since entering, or 150 ms resting there (within 3 px).
+  Before intent nothing shows, so a pointer crossing the timeline on its way to
+  something else changes nothing in the viewer. After a click nothing skims until the
+  pointer has moved 2 px, and after any key step or seek the skim needs fresh intent.
+  Once engaged it ends when the pointer leaves the ruler and strip, departs vertically
+  by 8 px or rests 150 ms on a grip; passing over a grip while moving horizontally does
+  not end it. There is no skimming while playing or during any drag.
+- **What the viewer shows.** The viewer keeps its picture until an exact decoded frame
+  with its covers applied arrives; it never shows a thumbnail, so a skim frame is never
+  uncovered. The skim line and its flag move at once, and the flag reads "≈0:05.3"
+  until the exact frame for that time is shown. One skim request is in flight at a time
+  and the newest time replaces a queued one; while the pointer moves, an exact-frame
+  request goes out at most every 50 ms and one more 40 ms after it rests. An answer
+  that arrives after the pointer has moved on is shown (the flag keeping "≈") when its
+  frame lies within 2 strip pixels, or 250 ms, whichever is wider, of the skim time **and
+  no cover starts or ends between the two times**; the newest time is asked for at once,
+  so a steady sweep updates the viewer several times a second. An exact answer for the
+  time asked is accepted even when its stored frame time is slightly earlier
+  (Matroska rounding, the clip's last frame). The last 30 exact frames (at most 64 MB) are
+  kept, and one answers any time from its request to its own time when no cover edge
+  lies between.
+- **Leaving** the strip restores the playhead's picture at once, with no flash when the
+  pointer never had intent. An edit made meanwhile cancels the skim frame and asks again.
+- **S**, or the **Skim** toggle, turns skimming off and on (on by default, remembered for
+  the session). Off, hovering shows only the hairline and its time and the viewer never
+  changes on hover.
+- **A present skim wins for keys.** When a skim is showing and I, O, Shift+I, Shift+O,
+  `[`, `]`, Space, L, J, the arrows, `,`, `.`, Up, Down or a timeline click arrives,
+  the playhead first goes to the frame-snapped skim time and the skim picture becomes the
+  playhead's picture, with no flash of the old frame; then the action runs.
+
+### Covers on the picture
+
+- **Select, hover and handles.** Hovering a cover active at the playhead outlines it
+  (as does hovering its bar or row); its handles appear only when it is selected. A
+  selected cover has **eight handles** drawn 8 px (10 px when hovered or dragged):
+  corners resize both sides, edge middles one, and the opposite edge or corner stays
+  fixed. Hit targets are generous: a corner has a 16 × 16 px target, and a band along
+  each side (6 px outside the box, 6 px inside when the box is at least 40 px across that
+  way, 4 px otherwise) resizes that side anywhere along it; a box too small keeps a body of
+  at least 6 px at its centre. The nearest handle wins, and the selected cover's handles
+  win over other covers'. Dragging a handle past the opposite side flips the box; a box
+  keeps at least 2 × 2 source pixels and stays in the canvas. Cursors: diagonal resize on
+  corners, vertical or horizontal resize on edge middles, an all-direction cursor over a
+  movable body, a crosshair while placing, an open hand over the picture at 100 %
+  (closed while panning), the arrow elsewhere.
+- **First press selects.** A press on an unselected cover only selects it (and gives the
+  viewer the arrow keys); moving it needs a press on the selected cover (4 px dead zone)
+  or 8 px of travel on the first press. A press never grabs a handle it cannot see.
+  Moves and resizes apply by the pointer's delta, also at the release point. Esc, a right
+  press, Ctrl+Z or a lost window put the box back (a pan too) and keep the selection.
+  While playing, the picture grabs nothing: a click only pauses. A late press takes the
+  handle the pointer just left (see [Timeline pointer rules](#timeline-pointer-rules)).
+- **Live effect.** While a cover is moved, resized or nudged its effect (the redaction's
+  fill or the blur) follows the box, and the old place is not left covered: the window
+  decodes the frame without that cover (`inspect` `viewer.live`), and until it arrives the
+  shown frame keeps the old place covered under a dotted outline that marks it pending.
+  The committed preview replaces it once the edit is answered. An answer that arrives
+  mid-drag does not move the box unless that cover itself changed.
+- **Placement.** X or B arms a cover (crosshair; a busy cursor while the frame it will be
+  drawn on is still loading, and a placement waits for that frame on every path,
+  including after a seek, so you never draw on the wrong frame). A drag may start up to
+  8 px outside the picture and is clamped to it. A **click** that never showed a drawn
+  area (under 3 px) places a default box, about 20 % × 8 % of the frame, centred on
+  it (kept in the frame) and selected with its handles. A drag that showed an area but
+  is under 6 px both ways creates nothing, stays armed and says "Drag a larger box, or
+  click to place one" for 2 s; a thin drag (one side 6 px or more, for example 100 × 5 px
+  over a line of text) creates that box, at least 2 source pixels each way.
+- **Keyboard.** After a click on a cover, or Tab into the viewer, the arrows belong to the
+  viewer and the tool row says "Arrows move the box · Esc for frames". They move the
+  selected cover 1 px (10 px with Ctrl), Shift+arrows resize it from the bottom-right,
+  and at 100 % with no cover selected they pan (40 px, or a quarter of the view with
+  Shift). The nudge shows at once and is proposed as one edit 350 ms after the last key.
+  The first Esc during a nudge takes it back, the next gives the arrows back to the frames
+  (focus returns to the timeline), and the next deselects. After a mouse placement the
+  arrows keep stepping frames.
+- **At 100 %** a click outside a selected cover deselects it; a drag there pans.
+
+### Keys
+
+Keys act from any focus inside the window except a text field or spin box, which keeps its
+own keys (no single-key action fires while one has focus, even one it passes on). Buttons
+and Edits rows take focus by Tab only, so a click never steals the keys; a Tab-focused
+button or row takes Space and Enter as its own activation.
+
+| Keys | What they do |
+| --- | --- |
+| Space | play or pause, from the skim frame when one is showing |
+| K, L, J | K pauses and returns to 1×; L plays, and again steps to the next faster speed (a note "Speed 2×" shows for 1 s); J steps back one second (it does not play backward) |
+| `,` `.`, ← → | previous or next frame |
+| Shift+← → | one second back or forward |
+| ↑ ↓ | the previous or next edit point: the trim ends, the kept side of each cut boundary, every cover's edges (never a point inside a cut) |
+| Alt+← Alt+→ | the previous or next entry of the Edits list |
+| Home, End | the selected cover's first or last kept frame, else the first or last kept frame of the clip |
+| I, O | the trim's start or end at the playhead (the end after the frame on screen). They set the export's in and out; `[` and `]` mark a range |
+| Shift+I, Shift+O | the selected cover's start or end at the playhead |
+| `[`, `]` | the time selection's start or end at the playhead, always a time selection whatever is selected (a cover's times are Shift+I and Shift+O, a cut's edges are dragged); with no selection the other end is the trim's start or end; not while placing |
+| V, C, X, B | Select (cancels a placement), Cut, Redact, Blur |
+| Delete, Backspace | in the viewer or timeline: cut a time selection, else remove the selected cover; with a cut selected it only says "Delete doesn't restore a cut — use Restore or Ctrl+Z". In the Edits list, see [Right panel](#right-panel) |
+| S, N | skimming and snapping on or off |
+| `=` or `+`, `-`, Shift+Z | zoom the timeline in, out, or to Fit |
+| Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y | undo, redo (see "Undo and redo" below) |
+| Enter | presses a focused button or row; while placing, places a centred cover (half the frame's width and height); a field keeps it. It **never uploads** unless the Upload button itself has focus |
+| Ctrl+Enter | uploads, from anywhere; not with a menu open |
+| Esc | cancels a drag, else a placement, else clears the selection; in the picture it also takes back a nudge, gives the arrows back, then deselects |
+| Arrows, in the viewer once it has them | move the selected cover, Shift+arrows resize it, at 100 % pan |
+
+### Tool-row messages
+
+The tool row's free middle shows one message at a time; a lower one waits instead of being
+squeezed in, and nothing is truncated to an unreadable fragment at 1440 px. In order:
+
+1. **Placing a cover:** "Draw the redaction · 0:08.2 – 0:12.6" (or "· whole recording"), or
+   "Draw the blur (may be reversible) · …", with a **Cancel** button (Esc); "Loading the frame
+   to draw on…" while the frame waits more than 100 ms. While placing it also carries
+   "Drag a larger box, or click to place one" (2 s).
+2. **A frame error** with **Retry preview**. While a placement waits for its frame the error
+   comes before the prompt, so the reason shows.
+3. **A short note,** for its time only: what an undo or redo changed ("Undid: Cut 0:13.0–0:19.5",
+   "Redid: …", 1.5 s), the new speed ("Speed 2×", 1 s), the Delete note above (2 s), and
+   "Arrows move the box · Esc for frames".
+4. **The blur warning** "Blur may be reversible. Use Redact for private information.", when a
+   blur is armed or selected; not repeated here while the side panel already shows it.
+
+### Known limits
+
+These were weighed and left as they are:
+
+- A fast sweep of a 4K clip updates the viewer about once a second when the decode is in
+  software; faster needs hardware decode or shorter keyframe intervals.
+- J steps back one second; there is no reverse playback.
+- Picture boxes have no snapping or alignment guides, and keyboard nudges move in source
+  pixels.
+- While a cover is moved, the uncovered frame takes a moment to decode: for under a second
+  the old place can show covered as well, under the dotted pending outline.
+- A release over another widget after leaving the timeline vertically still commits the
+  clamped edge, as in other editors.
+- Two time bases are shown, both labelled: clip time in the transport, recording time on
+  the ruler.
+
 ### Interaction rules
 
 - The window opens paused on the first frame.
 - **Select time** by dragging on the filmstrip (a half-open source-time span), or with
-  `[` and `]` while the timeline has focus: `[` sets the selection's start at the
+  `[` and `]` from any focus but a text field: `[` sets the selection's start at the
   playhead and `]` its end, and with no selection the other end is the trim's start or
-  end. A click seeks and clears the selection; Esc clears it.
+  end. A click seeks and clears the time selection; Esc clears it. The gestures are in
+  [Timeline pointer rules](#timeline-pointer-rules).
 - **Cut** (C, or Delete or Backspace on a time selection). Delete and Backspace act in
   the viewer, the timeline and the Edits list, never in a focused field. The cut stays
   in place, hatched; playback jumps it; the output length drops. After making a cut the
@@ -220,14 +553,16 @@ action does not change it.
   from Edits seeks to the first kept frame after it (the last kept frame before a
   trailing cut).
 - **Cover** (X Redact, B Blur): arms a cover for the time selection (snapped outward to
-  whole frames), or for the whole recording with no selection; the banner says which. An
-  agent's `addMask` does the same, so with nothing selected it covers the whole
+  whole frames), or for the whole recording with no selection; the tool row's prompt says
+  which. An agent's `addMask` does the same, so with nothing selected it covers the whole
   recording. The viewer then pauses on the playhead frame if that lies in the selection's
   kept footage, else on the first kept frame in it, else (all excluded) on its first
-  source frame marked "Excluded from output". Dragging a box places it; one command
+  source frame marked "Excluded from output". Dragging a box, or clicking for a default
+  one, places it ([Covers on the picture](#covers-on-the-picture)); one command
   creates the cover's rectangle and span. Selecting a cover seeks to its first visible
-  frame; one wholly outside the kept footage shows its start paused as "Excluded from
-  output". Drags clamp to the clip and do not scroll. Delete on a selected cover in the
+  frame only when the playhead is outside its span; one wholly outside the kept footage
+  shows its start paused as "Excluded from output". Drags clamp to the clip and do not
+  scroll. Delete on a selected cover in the
   viewer or timeline removes it; **Delete on a focused Edits row** removes that row's
   cover, except that with a time selection it cuts the selection instead.
 - **Trim** with the brackets or I and O at the playhead. The end actions (Set Out, O,
@@ -240,21 +575,17 @@ action does not change it.
   playhead it refuses with "The frame at the playhead isn't shown yet. Try again once it
   is." and never falls back to a nominal frame. `inspect.preview.shownUs` reports the shown
   frame's time. Shift+I and Shift+O retime the selected cover the same way. Dragging an edge
-  of a cut or cover retimes it.
-- **Keys.** The keys act on the window unless a text field has focus, which keeps its
-  own. Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s, except
-  in the focused viewer, where the arrows move the selected cover (Shift+arrows resize
-  it, 1 px a step, 10 px with Ctrl) or, at 100 %, pan the picture. Home and End go to the
-  selected cover's first and last kept frame, else the kept ends. Alt+← and Alt+→ step
-  through edits in any layout. Ctrl+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes. Esc
-  cancels a placement, or clears a selection.
+  of a cut or cover retimes it, and dragging a cover's bar slides it. After a trim drag
+  (or `setTrim`) that leaves the playhead outside the kept footage, the playhead moves to
+  the edge just set, the frame the drag showed.
+- **Keys.** The keys, their focus rules and what each does are in the [Keys](#keys) table.
 - **Enter** depends on focus. A focused text field keeps it; a focused button presses
-  itself; a focused row of the Edits list activates (selects) the row; while a cover is
-  being placed it places a centred cover (half the frame's width and height); with a cut
-  selected it restores the cut; otherwise it uploads. Ctrl+Enter always uploads, and does
-  nothing with a menu open. The initial press can upload; an **auto-repeated** Enter is
-  ignored (and Ctrl+Enter does not auto-repeat), so a held key cannot trigger a second
-  action.
+  itself (so Enter uploads only when the Upload button has focus); a focused row of the
+  Edits list activates (selects) the row; while a cover is being placed it places a
+  centred cover (half the frame's width and height); otherwise it does nothing. It never
+  restores a cut: Restore is its own button. Ctrl+Enter always uploads, and does nothing
+  with a menu open. An **auto-repeated** Enter is ignored (and Ctrl+Enter does not
+  auto-repeat), so a held key cannot trigger a second action.
 - **100 % view** shows source pixels: the helper decodes the clip at its own size rather
   than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
   Changing the zoom refreshes the paused frame or the skim frame at the new size, and
@@ -262,12 +593,17 @@ action does not change it.
 - **Undo and redo** run in the resident: one step per committed gesture (a run of
   nudges is one), covering trim, cuts and covers only. Every undo or redo is a new
   revision (see [the edit model](session-contract.md#time-geometry-and-the-edit-model)).
-  Ctrl+Z while placing cancels the placement, and while a keyboard nudge is pending it
-  drops the nudge.
-- **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
-  a keyboard nudge of a cover is proposed 350 ms after the last key. Two different things
+  Ctrl+Z while placing cancels the placement, while a keyboard nudge is pending it
+  drops the nudge, during a timeline or picture drag it cancels only that drag, and
+  during the blur strength's 350 ms wait it takes back only that step. A step the
+  resident answers says what it changed in the tool row ("Undid: Cut 0:13.0–0:19.5"),
+  selects the item it brought back and scrolls it into view; the playhead stays.
+- **Commit and upload.** A timeline drag, or a move or resize on the picture, proposes its
+  edit when the pointer is released; a keyboard nudge of a cover is proposed 350 ms after
+  the last key. Two different things
   can stop an upload:
-  - **What blocks a new Upload press** (Upload, Ctrl+Enter, Enter): a cover being placed, a
+  - **What blocks a new Upload press** (Upload, Ctrl+Enter, Enter on the focused Upload
+    button): a cover being placed, a
     drag in progress (its edit has not been proposed), an export running or the window
     closing. Pressing does nothing then.
   - **What cancels an Upload that is already waiting** (`inspect` shows `uploadWaiting`):
@@ -327,10 +663,10 @@ action does not change it.
   Save a copy again" for a copy. A failed **Save a copy…** is retried with its stored output
   at the current revision. Try again is refused while a cover is being placed, and blocked
   while a change or gesture is still unanswered.
-- **Held keys.** The first Enter press can place, restore or upload, as the Enter rules
-  above say, and on a focused Edits row it activates the row. An **auto-repeated** Enter is
-  ignored, so a held key acts once and never uploads on repeat, and Ctrl+Enter does not
-  auto-repeat.
+- **Held keys.** The first Enter press can place or press a focused button, as the Enter
+  rules above say, and on a focused Edits row it activates the row. An **auto-repeated**
+  Enter is ignored, so a held key acts once and never uploads on repeat, and Ctrl+Enter
+  does not auto-repeat.
 
 ### Thumbnails and skimming
 
@@ -341,7 +677,7 @@ action does not change it.
   that keyframe packet and scales straight to the thumbnail size; the two end
   thumbnails come first, and results are cached by keyframe time. A placeholder shows
   until each arrives. Thumbnails are keyframe pictures, not exact frames: exact frames
-  come only from the skim worker, below. The strip never decodes the whole clip, and
+  come only from the frame workers, below. The strip never decodes the whole clip, and
   scrubbing, playback and Upload never wait for it. It draws the recorded picture
   **without covers**. (`putgd-record --filmstrip` times the production worker on a build
   in a standalone diagnostic, not through the review window, see
@@ -358,17 +694,15 @@ action does not change it.
   490 ms and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip
   takes 24 s, which is why there is no whole-clip pass
   ([results](https://github.com/patrick-hudson/put.gd-evidence/blob/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test/results.md)).
-- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once, but
-  only when the tile of the keyframe before that time is already cached; on a miss the
-  viewer keeps what it showed, the playhead frame or an earlier skim picture, until the
-  exact frame arrives. As a tile has no covers,
-  **the viewer can show a picture without its covers** until the next step. After about 120 ms at rest, one exact-frame request goes out (at most one in
-  flight, cancelled when the pointer moves, the decoder kept open) and replaces the
-  thumbnail when it arrives, with the covers active at that time applied; the time flag
-  then drops its "≈". On m74 that frame takes 217 ms median and 328 ms p95 at 4K
-  (130 ms and 199 ms at 1080p), measured in the same harness. Leaving the strip restores
-  the playhead frame, and skimming never moves the playhead. An edit made meanwhile
-  cancels the skim frame and asks for it again, so a stale frame is never marked exact.
+- **Skim.** The viewer never shows a thumbnail: see [Skimming](#skimming) for when it
+  skims and what it shows. Each exact frame is decoded by a worker (one for the skim, one
+  for the playhead's frames) that keeps its input open, with the covers active at that
+  time applied; a later time in the same group of pictures decodes forward from the last
+  frame without a seek, and a time the last frame already answers (a new edit at the same
+  playhead) is drawn again without decoding. On m74 a seek and decode took 217 ms median and
+  328 ms p95 at 4K (130 ms and 199 ms at 1080p), measured in the same harness before the
+  frame was scaled straight to the preview size. Leaving the strip restores the playhead
+  frame, and skimming never moves the playhead.
 
 ### Previews, edits and the resident
 
@@ -394,7 +728,11 @@ uploading sensitive footage:** the preview and the export are separate renderers
 `recording.review {id, action, ...}` (MCP `drive_recording_review`) works the
 window's controls as a user does, one action per call, in `reviewing` (and
 `inspect` while `exporting`). The answer is the window's state after the action plus
-the resident's `state` and `edit`. Not every control has an action: the Format menu's
+the resident's `state` and `edit`. Every user control of the timeline and the picture is
+an action too: skimming and snapping (`setSkimming`, `setSnapping`), zoom levels
+(`timelineZoom`, `zoomIn`, `zoomOut`, `timelineFit`), sliding a cover (`retimeCover`), the
+"+n" chip (`moreCovers`), `[` and `]` (`markSelection`), Up and Down (`editPoint`) and a
+placement click (`placeMask` with `at`). Not every control has an action: the Format menu's
 audio toggle (the footer's "with system audio") has none, and neither does a fresh Upload
 (`recording.upload`; see
 [Review window actions](agent-control-and-tests.md#review-window-actions)). Errors:
