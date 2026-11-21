@@ -12,12 +12,9 @@ namespace putgd::ocr {
 // (#1812: six engines on six cores read 4 MP screens in 1.09 s against 1.78 s
 // on four). The memory budget still decides how many engines start.
 inline constexpr int maximumWorkerThreads=8;
-// The CPUs this process may use: its affinity mask, lowered to its cgroup's
-// CPU quota (cpu.max, rounded up). The quota is read from /sys/fs/cgroup, so
-// call this before confinement; under Landlock only the affinity counts.
-int availableCores();
-// The threads a job uses: requested, or one per available core, at most
-// maximumWorkerThreads.
+// The threads a job uses: requested, or one per CPU the process may use (its
+// affinity, lowered to its cgroup's cpu.max quota), at most
+// maximumWorkerThreads. Count before confinement: Landlock hides the quota.
 int workerThreads(int requested=0);
 
 struct JobOptions {

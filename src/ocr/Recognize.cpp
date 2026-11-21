@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <sched.h>
+#include <system_error>
 #include <thread>
 #include <unistd.h>
 
@@ -40,7 +41,10 @@ bool insideCode(const Quad& q,QPoint p){
  return sign!=0;
 }
 }
-int availableCores(){
+// The CPUs this process may use: its affinity mask, lowered to its cgroup's
+// CPU quota (cpu.max, rounded up). The quota is read from /sys/fs/cgroup, so
+// main() counts before confinement; under Landlock only the affinity counts.
+static int availableCores(){
  // The CPUs this process may run on (affinity, a container's cpuset), not the
  // machine's: glibc's hardware_concurrency counts every online CPU.
  cpu_set_t set;CPU_ZERO(&set);
@@ -49,20 +53,24 @@ int availableCores(){
  // process's cgroup or any parent: the tightest one, rounded up to whole CPUs.
  QFile self(QStringLiteral("/proc/self/cgroup"));
  if(!self.open(QIODevice::ReadOnly))return cores;
- QString path;
- for(const auto& line:self.readAll().split('\n'))if(line.startsWith("0::")){path=QString::fromUtf8(line.mid(3)).trimmed();break;}
- if(!path.startsWith(QLatin1Char('/'))||path.contains(QLatin1String("..")))return cores;
+ QStringList parts;bool found=false;
+ for(const auto& line:self.readAll().split('\n'))if(line.startsWith("0::/")){parts=QString::fromUtf8(line.mid(4)).split(QLatin1Char('/'),Qt::SkipEmptyParts);found=true;break;}
+ if(!found||parts.contains(QLatin1String(".."))||parts.contains(QLatin1String(".")))return cores;
+ // When /sys/fs/cgroup shows a subtree (bind-mounted, not a cgroup
+ // namespace), the path's leading components are above it: drop them until
+ // the cgroup is there.
+ const QString root=QStringLiteral("/sys/fs/cgroup/");
+ while(!parts.isEmpty()&&!QFile::exists(root+parts.join(QLatin1Char('/'))))parts.removeFirst();
  for(;;){
-  QFile max(QStringLiteral("/sys/fs/cgroup")+(path==QLatin1String("/")?QString():path)+QStringLiteral("/cpu.max"));
+  QFile max(root+parts.join(QLatin1Char('/'))+QStringLiteral("/cpu.max"));
   if(max.open(QIODevice::ReadOnly)){
    const auto fields=max.readAll().simplified().split(' ');
    bool quotaOk=false,periodOk=false;
    const qint64 quota=fields.value(0).toLongLong(&quotaOk),period=fields.value(1).toLongLong(&periodOk);
-   if(quotaOk&&periodOk&&quota>0&&period>0)cores=std::min<qint64>(cores,std::max<qint64>(1,(quota+period-1)/period));
+   if(quotaOk&&periodOk&&quota>0&&period>0)cores=int(std::min<qint64>(cores,std::max<qint64>(1,(quota+period-1)/period)));
   }
-  if(path==QLatin1String("/"))break;
-  const auto slash=path.lastIndexOf(QLatin1Char('/'));
-  path=slash<=0?QStringLiteral("/"):path.left(slash);
+  if(parts.isEmpty())break;
+  parts.removeLast();
  }
  return cores;
 }
@@ -290,10 +298,14 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
    shared->running.fetch_add(1);
    const int worker=int(shared->extra.size());
-   pool.emplace_back([shared,engine,work,worker]{
-    if(engine->startLike(shared->first).isEmpty())work(engine,worker,{});
-    std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
-   });
+   // A thread the system refuses (RLIMIT_DATA counts each stack, which the
+   // memory gate does not see) ends the pool here; the engines running go on.
+   try{
+    pool.emplace_back([shared,engine,work,worker]{
+     if(engine->startLike(shared->first).isEmpty())work(engine,worker,{});
+     std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
+    });
+   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->extra.pop_back();break;}
   }
  };
  // How many extra engines fit in the memory budget when each costs this much.
