@@ -333,7 +333,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  const auto sensitiveMode=sensitiveValue.toString(QStringLiteral("report"));
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
- if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}scrollSensitiveMode_=sensitiveMode;scroll_->invoke(action=="edit",reply);return;}
+ if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}if(!scroll_->active())scrollSensitiveMode_=sensitiveMode; /* a running capture keeps the mode it started with */scroll_->invoke(action=="edit",reply);return;}
  if(scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
  if(action==Settings::recordingActionName()) {
   const auto mode=options["mode"].toString("open");
@@ -703,7 +703,8 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   // With Keep a local copy on, the capture is still kept, as Cancel keeps it.
   if(op.settings.archive.keepUploads&&op.state()!=OperationState::Editing&&(!job.payload.image.isNull()||!job.payload.bytes.isEmpty()||!job.payload.files.isEmpty())){
    logging::warning(logOperation(),"Sensitive text check failed; saving the capture locally only",{{"operationId",id},{"error",logging::errorFields(outcome->error)}});
-   op.note=QStringLiteral("Not uploaded: put.gd couldn't check it for sensitive text.");
+   // Added to a note the capture already has (a scrolling capture's), never in place of it.
+   const auto why=QStringLiteral("Not uploaded: put.gd couldn't check it for sensitive text.");op.note=op.note.isEmpty()?why:op.note+" "+why;
    job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;
   }
   job.payload={};
