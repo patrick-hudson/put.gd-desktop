@@ -340,6 +340,15 @@ void ReviewPanel::commitFields() {
         }
         if (auto* spin = top_->findChild<QSpinBox*>(QStringLiteral("reviewPanelStrength"))) spin->interpretText();
     }
+    if (const auto* cut = selectedCut(); cut && top_) {
+        const QString id = cut->id;
+        for (const bool start : {true, false}) {
+            auto* field = top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelCutStartsTime") : QStringLiteral("reviewPanelCutEndsTime"));
+            if (!field || field->text().trimmed() == field->property("shown").toString()) continue;
+            if (const auto parsed = parseClock(field->text())) commitCutEdge(field, id, start, *parsed);
+            else field->setText(field->property("shown").toString());
+        }
+    }
     flushStrength();
 }
 bool ReviewPanel::cancelPendingStrength() {
@@ -726,6 +735,9 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         buttons->addWidget(across);
         buttons->addStretch(1);
         v->addLayout(buttons);
+        // F6: the cut's own times, as a cover's (frame-snapped, Enter commits, Esc reverts).
+        addCutEdge(v, *cut, true);
+        addCutEdge(v, *cut, false);
         const QString id = cut->id;
         connect(restore, &QPushButton::clicked, this, [this, id] { focusAfter_ = neighbourOf(QStringLiteral("cut/") + id); emit restoreCut(id); });
         connect(across, &QPushButton::clicked, this, [this, id] { emit playAcross(id); });
@@ -843,6 +855,55 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
     v->addLayout(fieldRow);
 }
 
+// A selected cut's Starts / Ends field with Set to playhead (F6); a commit
+// adjusts the cut through the same path as dragging its edge.
+void ReviewPanel::addCutEdge(QVBoxLayout* v, const RecordingCut& cut, bool start) {
+    const QString edge = start ? QStringLiteral("Starts") : QStringLiteral("Ends");
+    const QString key = QStringLiteral("reviewPanelCut") + edge;
+    const QString id = cut.id;
+    const qint64 time = start ? cut.start : cut.end;
+    v->addSpacing(Ui::space(Space::xs));
+    v->addWidget(Ui::label(edge, "meta", top_));
+    auto* fieldRow = new QHBoxLayout;
+    fieldRow->setContentsMargins(0, 0, 0, 0);
+    fieldRow->setSpacing(Ui::space(Space::s));
+    auto* field = new QLineEdit(clockText(time), top_);
+    field->setObjectName(key + QStringLiteral("Time"));
+    Ui::setMono(field, Ui::Type::technical);
+    field->setAccessibleName(QStringLiteral("Cut %1 time").arg(edge.toLower()));
+    field->setAccessibleDescription(QStringLiteral("Minutes:seconds.tenths in recording time; snaps to a whole frame"));
+    field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(time, state_.fps)));
+    field->setFixedWidth(std::max(Ui::scaled(84), QFontMetrics(field->font()).horizontalAdvance(QStringLiteral("000:00.0")) + Ui::scaled(24)));
+    field->setFixedHeight(std::max(Ui::scaled(32), QFontMetrics(field->font()).height() + Ui::scaled(14)));
+    field->setProperty("shown", field->text());
+    field->setProperty("cutEdge", start ? QStringLiteral("start") : QStringLiteral("end"));
+    field->installEventFilter(this);
+    connect(field, &QLineEdit::editingFinished, this, [this, field, id, start] {
+        if (building_) return;
+        const QString shown = field->property("shown").toString();
+        if (field->text().trimmed() == shown) return;
+        const auto parsed = parseClock(field->text());
+        if (!parsed) { field->setText(shown); return; }
+        commitCutEdge(field, id, start, *parsed);
+    });
+    fieldRow->addWidget(field);
+    auto* playhead = makeButton(top_, QStringLiteral("Set to playhead"), {}, nullptr, QStringLiteral("Set cut %1 to playhead").arg(edge.toLower()), key + QStringLiteral("Playhead"));
+    playhead->setToolTip(QStringLiteral("Set where the cut %1 to the frame at the playhead").arg(start ? QStringLiteral("starts") : QStringLiteral("ends")));
+    connect(playhead, &QPushButton::clicked, this, [this, id, start] { emit cutEdgeToPlayhead(id, start); });
+    playhead->setFixedHeight(field->height());
+    fieldRow->addWidget(playhead);
+    fieldRow->addStretch(1);
+    v->addLayout(fieldRow);
+}
+void ReviewPanel::commitCutEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs) {
+    const auto* cut = selectedCut();
+    if (!cut) return;
+    const qint64 snapped = snapToFrame(sourceUs, state_.fps, state_.durationUs);
+    field->setText(clockText(snapped));
+    field->setProperty("shown", field->text());
+    field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(snapped, state_.fps)));
+    emit cutAdjustRequested(id, start ? snapped : cut->start, start ? cut->end : snapped);
+}
 void ReviewPanel::commitEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs) {
     const qint64 snapped = snapToFrame(sourceUs, state_.fps, state_.durationUs);
     field->setText(clockText(snapped));

@@ -67,6 +67,9 @@ public:
     void setSkim(const QImage&, qint64 timeUs);
     void clearSkim();
     void promoteSkim();
+    void fadeOutSkim(int ms);
+    // The cover a placing drag would make now (canvas px), or empty (F5).
+    QRect placementPreview() const;
     void setLinkedHover(const QString& coverId);
     bool skimming() const { return !skim_.isNull(); }
     qint64 skimTime() const { return skimUs_; }
@@ -177,6 +180,7 @@ private:
     const QImage& livePicture();
     void applyDrag(const QPointF&);
     bool pastDeadZone(const QPointF&) const;
+    QRect placementAt(const QPointF& p) const;
     void claimArrows(bool);
     QImage frame_, skim_;
     qint64 timeUs_ = 0, skimUs_ = 0;
@@ -200,6 +204,9 @@ private:
     std::tuple<qint64, QRect, QString, int> compositeKey_;
     std::optional<int> liveStrength_;
     QString linkedHover_;
+    QImage fading_;
+    QElapsedTimer fadeClock_;
+    int fadeMs_ = 100;
     struct HoverSample { qint64 t; QPointF p; int handle; QString id; };
     QList<HoverSample> hoverTrail_;
     QElapsedTimer trailClock_;
@@ -467,6 +474,7 @@ private:
     QTimer placeHintTimer_, enterPlaceTimer_;
     bool enterPlacePending_ = false;
     QElapsedTimer skimMovedClock_;  // P11
+    QTimer skimReturn_;  // F2
     std::optional<std::pair<QString, QString>> revealRow_;  // Q20
     int noteMs_ = 1500;
     bool loadingFrame_ = false;
