@@ -1,7 +1,9 @@
 // Not a test and not shipped. Draws the review timeline the way
 // mock/review4.html does (1160 px wide; a trim, one cut, two covers with one
 // selected, the playhead and a skim flag) in both themes, with placeholder
-// tiles and with generated pictures, at 2x so details are readable.
+// tiles and with generated pictures, at 2x so details are readable; plus the
+// feel states: a trim drag's readout and snap guide with the bracket lit, a
+// hovered cover bar, zoom with the overview track, and the "+n" chip.
 //   render_filmstrip_timeline <out-dir>      (PUTGD_TEXT_SCALE=1.5 for 150 % text)
 #include "record/FilmstripTimeline.h"
 #include "ui/Fonts.h"
@@ -67,18 +69,43 @@ RecordingEdit edit() {
     e.masks = {redact, blur};
     return e;
 }
-void render(const QString& path, bool tiles, bool selectCut) {
+enum class State { Skim, Drag, Hover, Zoom, More };
+void render(const QString& path, bool tiles, bool selectCut, State state = State::Skim) {
     FilmstripTimeline timeline(std::make_shared<MaskNames>());
     timeline.setDuration(duration, 30);
-    timeline.setEdit(edit());
+    auto e = edit();
+    if (state == State::More) {
+        for (const char* id : {"m3", "m4"}) {
+            RecordingMask extra = e.masks[0];
+            extra.id = id;
+            extra.kind = "blur";
+            extra.start = 8000000;
+            extra.end = 13000000;
+            e.masks.append(extra);
+        }
+    }
+    timeline.setEdit(e);
     timeline.setSelectedEdit(selectCut ? "cut" : "cover", selectCut ? "c1" : "m1");
     timeline.setPlayhead(10400000);
     if (tiles) timeline.setTileSource(footage);
     timeline.resize(1160, timeline.sizeHint().height());
     timeline.show();
-    // Hover at 5.3 s: the skim line and its flag.
-    QMouseEvent move(QEvent::MouseMove, QPointF(timeline.xFor(5300000), timeline.stripRect().center().y()), QPointF(), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
-    QApplication::sendEvent(&timeline, &move);
+    const auto send = [&](QEvent::Type type, QPointF at, Qt::MouseButton button, Qt::MouseButtons buttons) {
+        QMouseEvent event(type, at, timeline.mapToGlobal(at), button, buttons, Qt::NoModifier);
+        QApplication::sendEvent(&timeline, &event);
+    };
+    switch (state) {
+    case State::Skim: case State::More: timeline.skimAt(5300000); break;  // the skim line and its flag
+    case State::Drag: {
+        // The trim start dragged toward the cover at 8.2 s: lit bracket, readout, snap guide.
+        const QPointF from = timeline.trimHandleRect(true).center();
+        send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        for (int i = 1; i <= 4; ++i) send(QEvent::MouseMove, from + QPointF((timeline.xFor(8200000) - 3 - timeline.xFor(2600000)) * i / 4.0, 0), Qt::NoButton, Qt::LeftButton);
+        break;
+    }
+    case State::Hover: send(QEvent::MouseMove, QPointF(timeline.coverBarRect("m2").center()), Qt::NoButton, Qt::NoButton); break;
+    case State::Zoom: timeline.setZoom(3, qint64(10400000)); timeline.skimAt(11000000); break;
+    }
     QImage image(timeline.size() * 2, QImage::Format_ARGB32_Premultiplied);
     image.setDevicePixelRatio(2);
     image.fill(Theme::current().bg);
@@ -101,6 +128,10 @@ int main(int argc, char** argv) {
             render(base + ".png", tiles, false);
         }
         render(QStringLiteral("%1/timeline-%2-%3-cut-selected.png").arg(out, Theme::name(scheme), scale), true, true);
+        render(QStringLiteral("%1/timeline-%2-%3-trim-drag.png").arg(out, Theme::name(scheme), scale), true, false, State::Drag);
+        render(QStringLiteral("%1/timeline-%2-%3-hover-cover.png").arg(out, Theme::name(scheme), scale), true, false, State::Hover);
+        render(QStringLiteral("%1/timeline-%2-%3-zoom.png").arg(out, Theme::name(scheme), scale), true, false, State::Zoom);
+        render(QStringLiteral("%1/timeline-%2-%3-more.png").arg(out, Theme::name(scheme), scale), true, false, State::More);
     }
     return 0;
 }

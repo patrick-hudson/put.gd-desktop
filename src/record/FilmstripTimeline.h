@@ -2,6 +2,7 @@
 #include "core/KeptSpans.h"
 #include "core/RecordingModel.h"
 #include "MaskNames.h"
+#include <QElapsedTimer>
 #include <QImage>
 #include <QJsonObject>
 #include <QTimer>
@@ -28,6 +29,16 @@ namespace putgd::record {
 // It shows and proposes only. Each committed gesture is one signal on release
 // (one undo step in the resident); the window turns signals into edits, and
 // setEdit() is what it then paints.
+//
+// Pointer model (feel spec A1-A13, B1-B4): one hit test (hitAt) drives hover,
+// cursor, press and parts(), in priority order: the nearest edge within its
+// zone (trim brackets, every cut edge, every cover-bar edge, the time
+// selection's edges), the playhead, a cut or cover-bar body, then empty ruler,
+// strip or lane. Edge, bar and selection-edge drags change nothing for the
+// first 3 px, then move by the pointer's delta from the press; they snap to the
+// other edges and the playhead within 6 px (Ctrl bypasses, N toggles), show a
+// readout flag, autoscroll near the strip ends above Fit, and Esc or a right
+// press cancels them.
 class FilmstripTimeline final : public QWidget {
     Q_OBJECT
 public:
@@ -53,15 +64,36 @@ public:
     std::optional<recording::Span> timeSelection() const { return selection_; }
     // kind "cut" | "cover" | "trim" | "" (none).
     void setSelectedEdit(const QString& kind, const QString& id);
-    // Zoom levels 1 (Fit), 2, 4, 8, 16. Zooming keeps `anchorUs` under the
-    // same x (Ctrl+wheel passes the pointer's time; the zoom button passes the
-    // playhead). Above Fit the strip scrolls horizontally (wheel / Shift+wheel)
-    // and follows the playhead while playing.
+    // Zoom ladder (A13): integer levels {1,2,3,4,6,8,12,16,24,32,...} up to
+    // about 8 px per frame for the current duration, fps and width; 1 is Fit.
+    // setZoom snaps to the nearest level. Zooming keeps `anchorUs` under the
+    // same x (Ctrl+wheel and pinch pass the pointer's time; without one, the
+    // playhead when it is on screen, else the view's centre) and never loses a
+    // playhead that was on screen. Above Fit the strip scrolls horizontally
+    // (wheel / Shift+wheel / trackpad), follows the playhead while playing, and
+    // an overview track under the lanes shows and drags the visible span.
     void setZoom(int level, std::optional<qint64> anchorUs = std::nullopt);
     int zoom() const { return zoom_; }
+    QList<int> zoomLevels() const;
+    void zoomIn(std::optional<qint64> anchorUs = std::nullopt);
+    void zoomOut(std::optional<qint64> anchorUs = std::nullopt);
+    void zoomFit();
+    // Snapping (A7) and skimming (B4): on by default; the window's N / S keys
+    // and the transport's skim toggle call the setters. Each emits its
+    // *Changed signal only on a change. Skimming off: hover shows only the
+    // hairline and its time; no skim signals.
+    void setSnapping(bool on);
+    bool snapping() const { return snapping_; }
+    void setSkimming(bool on);
+    bool skimming() const { return skimming_; }
+    // [ and ] (E4, the window calls it from any focus): the time selection's
+    // start or end at the playhead; with none, it runs to the kept footage's
+    // other end. Emits timeSelected.
+    void markSelectionEdge(bool start);
     // Paused hover at a source time, as the pointer over the ruler or strip
-    // makes it (skimMoved, then skimRested after ~120 ms), or nullopt for the
-    // pointer leaving (skimLeft). recording.review skim / skimEnd call it.
+    // makes it after hover intent (skimMoved, then skimRested 40 ms after it
+    // rests), or nullopt for the pointer leaving (skimLeft). recording.review
+    // skim / skimEnd call it.
     void skimAt(std::optional<qint64> sourceUs);
     std::optional<qint64> skimTime() const { return skim_; }
     // The skim flag reads "≈m:ss.s" until the exact frame for the skim time has
@@ -80,50 +112,63 @@ public:
     QRect trimHandleRect(bool start) const;
     QRect cutRect(const QString& id) const;
     QRect coverBarRect(const QString& id) const;  // empty when the bar is in a hidden lane
-    // {zoom, visible: {start, end}, selection, selectedEdit: {kind, id},
-    //  skim: {time, exact} | null, lanes, hiddenCovers, tiles: {shown, placeholders}}
+    QRect overviewRect() const;  // the overview track; empty at Fit
+    // {zoom, zoomLevels, visible: {start, end}, selection, selectedEdit: {kind, id},
+    //  skim: {time, exact} | null, snapping, skimming, hover: {kind, id} | null,
+    //  lanes, hiddenCovers, tiles: {shown, placeholders}}
     QJsonObject inspect() const;
-    // The things a pointer or a screen reader can name: both trim handles, every
-    // cut, every shown cover bar, the "+n" chip, and the edge handles of the
-    // selected cut or cover. Tooltips and the accessible children come from it.
-    // kind: trim-start | trim-end | cut | cut-start | cut-end | cover |
-    // cover-start | cover-end | more.
+    // The things a pointer or a screen reader can name, with the hit zones the
+    // pointer uses: both trim handles, the playhead, the time selection's
+    // edges, every cut and its edges, every shown cover bar and its edges, the
+    // "+n" chip and the overview track. The accessible children come from it.
+    // kind: trim-start | trim-end | playhead | selection-start | selection-end |
+    // cut | cut-start | cut-end | cover | cover-start | cover-end | more | overview.
     struct Part { QString kind, id, name; QRect rect; };
     QList<Part> parts() const;
-    QSize sizeHint() const override;         // height 142 at normal text
+    // The index in parts() of what a widget-local point hits (the pointer's
+    // priority), or -1 over empty space; the accessible childAt uses it.
+    int partAt(QPoint) const;
+    QSize sizeHint() const override;         // height 166 at normal text
     QSize minimumSizeHint() const override;
 signals:
-    // A click on the ruler or the strip (not on a handle or a chip): seek and
-    // clear any selection. A drag on the ruler scrubs: scrubStarted, then
-    // seekRequested as it moves.
+    // A press on empty ruler, strip or covers lane seeks at once. A click there
+    // clears any selection (the lane on press, the ruler and strip on release).
+    // Dragging from the ruler or the playhead past 3 px scrubs: scrubStarted,
+    // then seekRequested as it moves.
     void seekRequested(qint64 sourceUs);
     void scrubStarted();
     // Dragging a trim bracket: the edge time while dragging (the viewer shows
     // the frame the clip will start or end on), then trimProposed on release.
     void trimEdgeDragged(bool start, qint64 sourceUs);
     void trimProposed(qint64 startUs, qint64 endUs);
-    // A drag on the strip, or [ and ] at the playhead, makes a time selection.
+    // A drag (4 px or more) on empty strip, a selection edge drag, Shift+click
+    // or markSelectionEdge makes or changes a time selection.
     void timeSelected(qint64 startUs, qint64 endUs);
-    void selectionCleared();  // Esc, or a click that seeks
-    // A click on a cut or a cover bar selects it.
+    void selectionCleared();  // a click that seeks
+    // A press on a cut or a cover bar (its body or an edge) selects it.
     void cutSelected(const QString& id);
     void coverSelected(const QString& id);
-    // Dragging a selected cut's edge, or a selected cover bar's end, on release.
+    // Dragging a cut's edge, or a cover bar's end or body, on release.
     void cutAdjusted(const QString& id, qint64 startUs, qint64 endUs);
     void coverRetimed(const QString& id, qint64 startUs, qint64 endUs);
-    // Dragging a selected cut's edge or a selected cover bar's end: kind "cut" |
-    // "cover", the edge time while dragging (the viewer shows that frame, as
-    // trimEdgeDragged does for the brackets).
+    // While dragging: kind "cut" | "cover" | "selection" (id empty), the
+    // moving edge's time (a cover slide reports its start); the viewer shows
+    // that frame, as trimEdgeDragged does for the brackets.
     void editEdgeDragged(const QString& kind, const QString& id, bool start, qint64 sourceUs);
-    // Any edge drag (trim, cut or cover) was released, changed or not.
+    // Any edge, slide or selection drag was released or cancelled, changed or not.
     void edgeDragFinished();
-    // Paused hover over the ruler or strip. skimMoved at once with the time
-    // under the pointer (the window shows the tile); skimRested after ~120 ms
-    // without movement (the window asks FrameSkimmer for the exact frame);
-    // skimLeft when the pointer leaves (the window restores the playhead frame).
+    // Paused hover over the ruler or strip, after hover intent (80 ms over it
+    // with mostly horizontal motion). skimMoved with the time under the
+    // pointer; skimRested 40 ms after it rests (the window asks FrameSkimmer
+    // for the exact frame); skimLeft when the pointer leaves (the window
+    // restores the playhead frame).
     void skimMoved(qint64 sourceUs);
     void skimRested(qint64 sourceUs);
     void skimLeft();
+    void snappingChanged(bool on);
+    void skimmingChanged(bool on);
+    // The "+n" hidden-covers chip was clicked (the window opens the Edits list).
+    void moreCoversRequested();
     void zoomChanged(int level);
     // The visible span changed (zoom, scroll, resize): request tileTimes().
     void visibleSpanChanged();
@@ -136,18 +181,23 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void leaveEvent(QEvent*) override;
     void resizeEvent(QResizeEvent*) override;
-    bool event(QEvent*) override;  // tooltips
+    bool event(QEvent*) override;  // pinch zoom
 private:
-    enum class Drag { None, Scrub, TrimStart, TrimEnd, CutStart, CutEnd, CoverStart, CoverEnd, Strip, Select };
-    struct Handle { Drag drag = Drag::None; QString id; };
-    Handle handleAt(QPointF) const;
-    QString cutAt(QPointF) const;
-    QString coverAt(QPointF) const;
+    // What a point hits, in priority order (A1). Empty areas last.
+    enum class Target { None, TrimStart, TrimEnd, SelectionStart, SelectionEnd, CutStart, CutEnd, CoverStart, CoverEnd, Playhead, More, Cut, Cover, Overview, Ruler, Strip, Lane };
+    struct Zone { Target target = Target::None; QString id; QRect rect; double edgeX = 0, edgeX2 = 0; };
+    struct Hit { Target target = Target::None; QString id; QRect rect; bool operator==(const Hit& o) const { return target == o.target && id == o.id; } };
+    enum class Drag { None, Scrub, Playhead, TrimStart, TrimEnd, CutStart, CutEnd, CoverStart, CoverEnd, CoverSlide, SelectionStart, SelectionEnd, Strip, Select, Overview };
+    QList<Zone> zones() const;
+    Hit hitAt(QPointF) const;
+    static QString kindOf(Target);
     qint64 frameUs() const;
     qint64 snap(qint64 us) const;
     qint64 visibleLength() const;
     int stripLeft() const;
     int stripWidth() const;
+    int maxZoom() const;
+    double usPerPixel() const;
     void setScroll(qint64 startUs);
     void revealPlayhead();
     void layoutCovers();
@@ -156,6 +206,22 @@ private:
     void clearSelections();
     void restartSkimTimer();
     QRect laneRect(int lane) const;
+    QRect moreRect() const;
+    QRect overviewThumb() const;
+    // Drags.
+    void beginDrag(Drag, const QString& id, QPointF pos);
+    void updateDrag(QPointF pos, Qt::KeyboardModifiers);
+    void cancelDrag();
+    void autoscrollTick();
+    bool edgeDrag() const;
+    qint64 snapToTargets(qint64 us, bool bypass, std::optional<qint64> second = std::nullopt);
+    // Hover.
+    void updateHover(QPointF);
+    void setHover(const Hit&);
+    bool hovered(Target, const QString& id = {}) const;
+    void hoverSkim(QPointF);
+    void leaveSkimArea();
+    bool horizontalIntent() const;
     TileSource tiles_;
     std::shared_ptr<MaskNames> names_;
     qint64 duration_ = 1;
@@ -170,11 +236,30 @@ private:
     std::optional<qint64> skim_;
     bool skimExact_ = false;
     QTimer skimRest_;
+    bool snapping_ = true, skimming_ = true;
+    // Hover and skim intent (B1).
+    Hit hover_;
+    std::optional<qint64> hoverLine_;      // the hairline before intent, or with skimming off
+    bool inSkimArea_ = false, skimIntent_ = false;
+    QElapsedTimer skimEntered_;
+    QTimer skimIntentTimer_;
+    QList<QPointF> recentMoves_;           // the last few pointer deltas
+    std::optional<QPointF> lastMove_, skimBlockedAt_;
+    // The drag in progress.
     Drag drag_ = Drag::None;
+    bool armed_ = false;                    // past the dead zone
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
-    qreal pressX_ = 0;
+    qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
+    double pressTimeUs_ = 0;                // content time under the press
+    QPointF pressPos_, dragPos_;
+    Qt::KeyboardModifiers dragModifiers_;
+    std::optional<qint64> snapGuide_;
+    QTimer autoscroll_;
+    QElapsedTimer autoscrollClock_;
     int wheelRemainder_ = 0;
+    double pixelZoom_ = 0, pinchScale_ = 1;
+    int pinchFrom_ = 0;  // the level a pinch started from; 0 between pinches
     QList<int> coverLane_;  // per edit_.masks entry: 0, 1, or -1 when hidden
     int lanesUsed_ = 0, hiddenCovers_ = 0;
 };
