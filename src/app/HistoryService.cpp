@@ -322,6 +322,9 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     // A worker's checkpoint is bound to the destination it went through: another destination added
     // back can't finish that attempt, so it is said and left as it was. Retry through the same one goes on.
     else if(serving["id"].toString()!=bound&&checkpointed){e={"destination_readded","This deletion started before its destination was removed and can't be finished through the destination added back. Check the file at the destination; Remove from History only is not offered while it may be there.",{{"historyId",item["historyId"]}}};outcome=status;}
+    // A worker's checkpoint also records the credentials it used, and drivers treat a different target as a
+    // changed object: credentials changed on the destination added back leave the attempt as it was.
+    else if(checkpointed&&serving["id"].toString()!=receipt.destination.profileId&&progress["target"].toObject()["destination"].toObject()["credentials"].toObject()!=serving["credentials"].toObject()){e={"destination_readded","This deletion started with other credentials for the destination added back and can't be finished with its current ones. Restore those credentials in Destinations, or check the file at the destination; Remove from History only is not offered while it may be there.",{{"historyId",item["historyId"]}}};outcome=status;}
     else {
     // A destination added back for the same place under another ID deletes with its own credentials;
     // the journal keeps the recorded receipt and names the destination used (deletingProfileId).
