@@ -129,7 +129,7 @@ QImage liftTrayAtSize(const TrayIcon& icon,int pixels) {
  const qreal scale=pixels/24.0;
  const auto& color=icon.color;const int percent=icon.percent,recording=icon.recording;
  QImage image(pixels,pixels,QImage::Format_ARGB32);image.fill(Qt::transparent);QPainter p(&image);p.scale(scale,scale);p.setRenderHint(QPainter::Antialiasing);
- const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
+ const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.capture||color==light.process||color==light.upload||color==light.error);
  const bool failed=percent==-2;
  const auto glyph=failed?tints.error:color;
  const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const bool small=pixels==16&&shown==TrayGlyph::Turkey;const auto& shape=glyphShape(shown,small);
@@ -142,11 +142,20 @@ QImage liftTrayAtSize(const TrayIcon& icon,int pixels) {
   // Replace the small optical frame's band: painting over idle twice can turn
   // a nearly opaque edge into an opaque pixel carrying both status tints.
   if(small){p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(QRectF(0,0,24,24),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);}
-  p.fillPath(shape,tints.encoding);p.restore();
+  p.fillPath(shape,tints.upload);p.restore();
  }
  // Thinner on the seasonal art, whose feathers and gap the full contour would close.
  p.setPen(QPen(Theme::trayOutline(),shown==TrayGlyph::Mark?0.65:0.45,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);if(!small)p.drawPath(glyphOutline(shown));
+ // The done badge: bottom-right, so the seasonal glyph's head or star stays whole,
+ // a disc in the upload tint with a check cut out of it.
+ if(icon.done){
+  const QRectF done(13.5,13.5,10.5,10.5);
+  p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setPen(Qt::NoPen);p.setBrush(Qt::black);p.drawEllipse(done.adjusted(-1.5,-1.5,1.5,1.5));p.restore();
+  p.setPen(Qt::NoPen);p.setBrush(tints.upload);p.drawEllipse(done);
+  p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setBrush(Qt::NoBrush);p.setPen(QPen(Qt::black,1.5,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+  QPainterPath tick;tick.moveTo(16.1,18.9);tick.lineTo(18,20.7);tick.lineTo(21.4,17.1);p.drawPath(tick);p.restore();
+ }
  // A 7 px disc at 16 px, with a 1 px transparent ring, always top-right.
  const QRectF badge=failed||recording?QRectF(13.5,0,10.5,10.5):QRectF();
  if(!badge.isEmpty()){

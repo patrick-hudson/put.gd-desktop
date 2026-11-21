@@ -11,6 +11,7 @@
 #include <QSet>
 #include <QHash>
 #include <QUrl>
+#include <QJsonArray>
 #include <functional>
 #include <memory>
 
@@ -50,16 +51,26 @@ public:
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
  // What the tray icon and tooltip are showing, as one value. The tooltip's title
- // and text, the icon's colour and its progress ring each switch on it.
- // Starting: storage work has begun but has not yet lasted long enough to show
- // (a short upload must not flash the ring), so only the tooltip title says so.
- enum class Activity {Idle,Starting,Uploading,Finishing,Complete,NeedsAttention};
+ // and text, the icon's colour, its fill and its badge each switch on it.
+ // Capturing, Processing and Uploading are working stages, in pipeline order:
+ // a hotkey or tray action is taking its picture; the capture is being edited,
+ // encoded, saved or read; bytes are going to the destination. Complete and
+ // Failed show briefly after the work ends, then the icon returns to Idle.
+ enum class Activity {Idle,Capturing,Processing,Uploading,Complete,Failed};
+ // The working stage one active operation observation has reached; Idle when it
+ // shows none (a recording before Upload is clicked has its own badge).
+ static Activity stageOf(const QJsonObject& observation);
  struct ActivityInputs {
-  bool errorPending=false,uploadCompleted=false,uploadVisible=false,storageActive=false;
-  // An upload operation is still active, though storage may not be working on it.
-  bool uploadsTracked=false;
+  // The furthest working stage across active operations and a press not yet answered.
+  Activity working=Activity::Idle;
+  // A failure or a completion still within its time on the icon.
+  bool failure=false,complete=false;
  };
+ // New work always shows: it hides a failure or completion still on the icon.
  static Activity activityFor(const ActivityInputs&);
+ // Each working stage stays at least this long, so a short pipeline reads as
+ // Capturing, Processing, Uploading, Complete instead of skipping a stage.
+ static constexpr int stageDwellMs=250,completeMs=1500,failureMs=8000;
  void invokeShortcut(const QString&);
  // Builds a diagnostics package for one operation (#122); main wires it to
  // DiagnosticsBundles. Failure notifications offer it when it is set.
@@ -150,22 +161,40 @@ private:
  void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();void acknowledgeFailures();
  void latchFailure(const Error&,const QJsonObject& operation = {});
+ // Sets shown_ and records the change for diagnostics.
+ void showStage(Activity stage);
  QString attentionLabel_="Action needs attention",attentionView_="history",attentionOperation_;
- QTimer uploadRevealTimer_,uploadCompleteTimer_;
- QElapsedTimer uploadVisibleClock_;
- bool uploadVisible_=false,uploadCompleted_=false;
- int pendingUploadFinishes_=0;
- bool errorPending_=false;
+ // errorPending_ keeps the menu's attention row until it is reviewed; the icon's
+ // failure badge is failureShown_, which clears after failureMs or with new work.
+ bool errorPending_=false,failureShown_=false,completeShown_=false,completeUploaded_=false;
+ // Hotkey or tray presses whose operations the service has not yet answered.
+ int startPending_=0;
+ QTimer startTimer_,dwellTimer_,completeTimer_,failureTimer_,finishingTimer_;
+ Activity shown_=Activity::Idle;
+ // The furthest working stage the current run has reached, so a stage that
+ // passed between two refreshes still shows for its dwell.
+ Activity reached_=Activity::Idle;
+ QElapsedTimer shownClock_;
+ // The last few stage changes, for diagnostics.trayIcon (lab checks the sequence).
+ QJsonArray stageHistory_;
+ // Each active operation's furthest stage (an operation never shows a stage it
+ // has passed, so a copy after the upload stays green), and finished ones still
+ // being inspected for Complete.
+ QHash<QString,Activity> opStages_;
+ // Operations whose live attempt is a Retry local save.
+ QSet<QString> localRetries_;
+ int pendingFinishes_=0;
  // Unset until the first refresh, which tints for the panel.
  QColor iconColor_;
  PanelTone panel_;
  void retintMenu();
  int iconPercent_=-1;
  int iconRecording_=0;
+ bool iconDone_=false;
  TrayCalendar calendar_;
  IconArt::TrayGlyph iconGlyph_=IconArt::TrayGlyph::Mark;
  QString activityText_,activityTitle_="put.gd";
- QSet<QString> activeUploads_,failedItems_;
+ QSet<QString> failedItems_;
  // The fallback QMenu's rows by native menu ID (TrayMenu), for refreshMenu.
  QHash<int,QAction*> menuRows_;
  // A tray row's command, from either tray: an action ID or a TrayMenu command.

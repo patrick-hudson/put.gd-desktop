@@ -45,8 +45,8 @@ int memfd(const char* name,bool sealable){
  if(fd>=0&&fd<=textjob::outputDescriptor){const int moved=::fcntl(fd,F_DUPFD_CLOEXEC,textjob::outputDescriptor+1);::close(fd);fd=moved;}
  return fd;
 }
-bool writeAll(int fd,const char* data,qint64 size){
- while(size>0){const auto written=::write(fd,data,size_t(size));if(written<0&&errno==EINTR)continue;if(written<=0)return false;data+=written;size-=written;}
+bool writeAt(int fd,const char* data,qint64 size,qint64 offset){
+ while(size>0){const auto written=::pwrite(fd,data,size_t(size),off_t(offset));if(written<0&&errno==EINTR)continue;if(written<=0)return false;data+=written;size-=written;offset+=written;}
  return true;
 }
 #endif
@@ -59,21 +59,7 @@ QStringList TextJob::dataDirectories() const {
  QStringList paths;for(const auto& directory:textjob::dataDirectories(QDir::homePath(),QCoreApplication::applicationDirPath()))paths.append(directory.path);
  return paths;
 }
-QImage TextJob::grey(const QImage& source){
- if(source.isNull()||source.format()==QImage::Format_Grayscale8)return source;
- QImage out(source.size(),QImage::Format_Grayscale8);if(out.isNull())return {};
- // In strips, so a large capture never has a second full-colour copy.
- constexpr int strip=256;
- for(int y=0;y<source.height();y+=strip){
-  const int rows=std::min(strip,source.height()-y);
-  QImage flat(source.width(),rows,QImage::Format_RGB32);if(flat.isNull())return {};
-  flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QPoint(0,0),source,QRect(0,y,source.width(),rows));}
-  const auto grey=flat.convertToFormat(QImage::Format_Grayscale8);
-  for(int row=0;row<rows;++row)std::memcpy(out.scanLine(y+row),grey.constScanLine(row),size_t(source.width()));
- }
- return out;
-}
-TextResult TextJob::recognize(const QImage& image,const Options& options,Error& error,Cancel cancelled) const {
+TextResult TextJob::recognize(QImage image,const Options& options,Error& error,Cancel cancelled) const {
  error={};
 #ifndef Q_OS_LINUX
  Q_UNUSED(image);Q_UNUSED(options);Q_UNUSED(cancelled);
@@ -85,18 +71,39 @@ TextResult TextJob::recognize(const QImage& image,const Options& options,Error& 
  struct Release {~Release(){running.store(false);}} release;
  const auto stopped=[&]{if(cancelled&&cancelled->load()){error=textjob::failure("cancelled");return true;}if(clock.elapsed()>=timeoutMs_){error=textjob::failure("text_job_timeout");return true;}return false;};
  if(stopped())return {};
- if(image.isNull()||image.format()!=QImage::Format_Grayscale8){error=textjob::failure("text_job_failed");return {};}
- const textjob::InputHeader header{image.width(),image.height(),int(image.bytesPerLine())};
- if(!textjob::admitted(header.width,header.height,header.stride)){error=textjob::failure("input_excessive");return {};}
+ if(image.isNull()){error=textjob::failure("text_job_failed");return {};}
+ const textjob::InputHeader header{image.width(),image.height(),image.width(),3*image.width()};
+ if(!textjob::admitted(header.width,header.height,header.stride,header.colourStride)){error=textjob::failure("input_excessive");return {};}
  if(!textjob::validLanguages(options.languages)){error=textjob::failure("language_unavailable",options.languages.value(0));return {};}
  const QFileInfo helper(helperPath_);if(!helper.isFile()||!helper.isExecutable()){error=textjob::failure("text_helper_missing");return {};}
  Descriptor input{memfd("putgd-text-input",true)},output{memfd("putgd-text-output",false)};
- if(input.fd<0||output.fd<0||!writeAll(input.fd,textjob::encodeInputHeader(header).constData(),textjob::inputHeaderBytes)){error=textjob::failure("text_job_failed");return {};}
- const auto* pixels=reinterpret_cast<const char*>(image.constBits());const qint64 total=qint64(header.stride)*header.height;
- for(qint64 offset=0;offset<total;offset+=1024*1024){
-  if(stopped())return {};
-  if(!writeAll(input.fd,pixels+offset,std::min<qint64>(1024*1024,total-offset))){error=textjob::failure("text_job_failed");return {};}
+ if(input.fd<0||output.fd<0||!writeAt(input.fd,textjob::encodeInputHeader(header).constData(),textjob::inputHeaderBytes,0)){error=textjob::failure("text_job_failed");return {};}
+ // In strips of 256 rows, so the parent never holds a second full copy: each
+ // strip is flattened onto white, then written as packed grey rows and packed
+ // RGB rows at their places in the two planes.
+ {
+  constexpr int strip=256;const int width=header.width;
+  QByteArray grey,colour;
+  for(int y=0;y<header.height;y+=strip){
+   if(stopped())return {};
+   const int rows=std::min(strip,header.height-y);
+   QImage flat(width,rows,QImage::Format_RGB32);if(flat.isNull()){error=textjob::failure("text_job_failed");return {};}
+   // An explicit target: drawn at a point, an image with a device pixel ratio
+   // (a scaled screen's capture) would be drawn at its logical size.
+   flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QRect(0,0,width,rows),image,QRect(0,y,width,rows));}
+   const auto greyRows=flat.convertToFormat(QImage::Format_Grayscale8),colourRows=flat.convertToFormat(QImage::Format_RGB888);
+   if(greyRows.isNull()||colourRows.isNull()){error=textjob::failure("text_job_failed");return {};}
+   grey.resize(qsizetype(width)*rows);colour.resize(qsizetype(width)*3*rows);
+   for(int row=0;row<rows;++row){
+    std::memcpy(grey.data()+qsizetype(row)*width,greyRows.constScanLine(row),size_t(width));
+    std::memcpy(colour.data()+qsizetype(row)*width*3,colourRows.constScanLine(row),size_t(width)*3);
+   }
+   if(!writeAt(input.fd,grey.constData(),grey.size(),textjob::inputHeaderBytes+qint64(y)*header.stride)
+      ||!writeAt(input.fd,colour.constData(),colour.size(),textjob::colourOffset(header)+qint64(y)*header.colourStride)){error=textjob::failure("text_job_failed");return {};}
+  }
  }
+ // The memfd holds the pixels now; the image never counts in this process again.
+ image=QImage();
  // Sealed, so the child reads exactly what was written here and nothing can change under it.
  if(::fcntl(input.fd,F_ADD_SEALS,textjob::requiredSeals|F_SEAL_SEAL)!=0){error=textjob::failure("text_job_failed");return {};}
  const auto nonce=QUuid::createUuid().toString(QUuid::WithoutBraces);

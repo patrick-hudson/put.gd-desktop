@@ -9,11 +9,16 @@
 // (tests/fixtures/text_job_fixture.cpp) calls it with a canned engine. Qt Core
 // only. Everything about recognition itself belongs to the engine.
 namespace putgd::textjob {
-// The mapped input: `stride` bytes a row of 8-bit grey, read-only (the memfd is
-// sealed), valid until the engine returns.
-struct GreyImage {
+// The mapped input, read-only (the memfd is sealed), valid until the engine
+// returns: `stride` bytes a row of 8-bit grey and `colourStride` bytes a row of
+// 8-bit RGB. releaseColour(top, bottom) lets the mapped colour rows go once read
+// (the pages leave the resident set; reading them again maps them again).
+struct InputImage {
  const unsigned char* data=nullptr;
  int width=0,height=0,stride=0;
+ const unsigned char* colour=nullptr;
+ int colourStride=0;
+ std::function<void(int,int)> releaseColour;
 };
 // A child error of childErrorCodes(); language is named only for language_unavailable.
 struct ChildFailure {
@@ -22,7 +27,7 @@ struct ChildFailure {
 };
 // Recognizes one image. dataDirectories is the parent's data path in lookup
 // order. Returns no failure and fills the result, or one child error.
-using Engine=std::function<ChildFailure(const GreyImage&,const Options&,const QStringList& dataDirectories,TextResult&)>;
+using Engine=std::function<ChildFailure(const InputImage&,const Options&,const QStringList& dataDirectories,TextResult&)>;
 // Runs one job over standard input and output and the two fixed descriptors,
 // then returns the process's exit status: 0 only after the parent accepted the
 // checkpoint. startupFailure is a child error found before any input was read

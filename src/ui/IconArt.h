@@ -4,17 +4,18 @@
 #include <QString>
 
 namespace putgd::IconArt {
-// Seasonal tray artwork uses a smaller bowl or stand. A badge always draws
-// on the ordinary mark.
+// Seasonal tray artwork uses a smaller bowl or stand. The top-right badges
+// (error, recording, paused) draw on the ordinary mark, since they would cover the
+// turkey's head; the bottom-right done badge keeps the seasonal glyph.
 enum class TrayGlyph {Mark,Turkey,Tree};
-// What one tray frame shows.
-struct TrayIcon {QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;};
+// What one tray frame shows. done adds the bottom-right check badge in the upload tint.
+struct TrayIcon {QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;bool done=false;};
 QImage liftTray(const TrayIcon& icon,int scale=1);
 // Direct rasterization avoids a second antialiasing pass at small panel sizes.
 QImage liftTrayAtSize(const TrayIcon& icon,int pixels);
 // Software rendering also serves the Core-only StatusNotifier resident.
 // -1 is solid; -2 tints the glyph error and adds a badge when not recording.
-// 0..100 fills bottom to top. Badge priority: recording dot (1), paused bars (2), error.
+// 0..100 fills bottom to top in the upload tint. Badge priority: recording dot (1), paused bars (2), error.
 QImage liftTray(const QColor& color, int percent = -1, int scale = 1, int recording = 0);
 QImage liftApp(const QColor& color, int scale = 1);
 // 24-unit outline glyphs; secondary supplies an optional 18% interior wash.

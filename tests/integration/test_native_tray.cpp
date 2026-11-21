@@ -321,33 +321,40 @@ private slots:
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});
   PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Acquiring"));
-  QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
+  // The capture shows at once, in its own tint.
+  QCOMPARE(controller.trayIconState()["activity"].toString(),QString("capturing"));
+  QVERIFY(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes!=idleIcon);
   source.acquisitions.takeFirst()({source.payload,{}});
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   PUTGD_TRY_COMPARE(provider->requests.size(),1);
   auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
-  auto amber=[](const QByteArray& bytes){const auto color=Theme::trayTints(false).encoding;int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==color.red()&&uchar(bytes[i+2])==color.green()&&uchar(bytes[i+3])==color.blue())++count;return count;};
+  auto green=[](const QByteArray& bytes){const auto color=Theme::trayTints(false).upload;int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==color.red()&&uchar(bytes[i+2])==color.green()&&uchar(bytes[i+3])==color.blue())++count;return count;};
   provider->requests.first().progress({"uploading",0,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
-  const auto emptyIcon=pixels();
+  PUTGD_TRY_COMPARE(controller.trayIconState()["activity"].toString(),QString("uploading"));
+  const auto emptyIcon=pixels();QVERIFY(green(emptyIcon)>0);
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MB of 4 MB"));
-  PUTGD_TRY_VERIFY(amber(pixels())>amber(emptyIcon));const auto activeIcon=pixels();QVERIFY(activeIcon!=idleIcon);
+  PUTGD_TRY_VERIFY(green(pixels())>green(emptyIcon));const auto activeIcon=pixels();QVERIFY(activeIcon!=idleIcon);
   provider->requests.first().progress({"uploading",4*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
-  QVERIFY(amber(pixels())>amber(activeIcon));
+  QVERIFY(green(pixels())>green(activeIcon));
   provider->requests.first().progress({"uploading",2*1024*1024,{}});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Estimated 50%"));
   QCOMPARE(pixels(),activeIcon);
   QVERIFY(views.isEmpty());QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
+  // A failure from other work never hides an upload still running; its menu row is there at once.
   controller.notifyFailure({"fixture_failed","Synthetic error",{}});
-  const auto redIcon=pixels();QVERIFY(redIcon!=idleIcon);QVERIFY(redIcon!=activeIcon);
-  const auto error=Theme::trayTints(false).error;int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
-   if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==error.red()&&uchar(redIcon[index+2])==error.green()&&uchar(redIcon[index+3])==error.blue())++opaqueRed;
-  QVERIFY(opaqueRed>10);
-  PUTGD_COMPARE_STEADY(pixels(),redIcon,3400);click(22);PUTGD_TRY_VERIFY(views.contains("history"));PUTGD_TRY_COMPARE(pixels(),activeIcon);
+  PUTGD_COMPARE_STEADY(pixels(),activeIcon,400);click(22);PUTGD_TRY_VERIFY(views.contains("history"));
   provider->completions.takeFirst()();
+  // The finished upload turns the glyph green with its check, then the icon is idle again.
+  PUTGD_TRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,QString("Upload complete"));
+  {const auto done=pixels();const auto upload=Theme::trayTints(false).upload;int opaqueGreen=0;for(int index=0;index<done.size();index+=4)
+    if(uchar(done[index])==255&&uchar(done[index+1])==upload.red()&&uchar(done[index+2])==upload.green()&&uchar(done[index+3])==upload.blue())++opaqueGreen;
+   QVERIFY(opaqueGreen>10);}
   PUTGD_TRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
+  {QStringList seen;for(const auto& value:controller.trayIconState()["history"].toArray())seen<<value.toObject()["activity"].toString();
+   QCOMPARE(seen,(QStringList{"capturing","processing","uploading","complete","idle"}));}
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
   logging::flush();QList<QJsonObject> records;
   const QDir logs(directory.filePath("logs"));
@@ -380,9 +387,9 @@ private slots:
   auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
   const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
   QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MB of 4 MB (100%)"));
-  const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;const auto amber=Theme::trayTints(false).encoding;int opaqueAmber=0;
-  for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==amber.red()&&uchar(pixels[index+2])==amber.green()&&uchar(pixels[index+3])==amber.blue())++opaqueAmber;
-  QVERIFY(opaqueAmber>10);
+  const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;const auto fill=Theme::trayTints(false).upload;int opaqueFill=0;
+  for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==fill.red()&&uchar(pixels[index+2])==fill.green()&&uchar(pixels[index+3])==fill.blue())++opaqueFill;
+  QVERIFY(opaqueFill>10);
   const auto tooltips=observer.tooltips;
   tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MB of 4 MB (100%)",100);PUTGD_TRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);

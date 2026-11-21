@@ -1,4 +1,5 @@
 #pragma once
+#include "Emoji.h"
 #include "Layout.h"
 #include "OcrImage.h"
 #include "TextEngine.h"
@@ -36,6 +37,13 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
 // letter or digit, or when the next word starts with / ? # & =, and the gap is
 // under half the line height.
 void joinUrls(Recognition& job);
+// Puts each emoji into the text where its glyph stands: the characters its
+// glyph covers (at least 40% of each) leave their words, a word left empty
+// goes and one cut in two becomes two, and the emoji becomes a word of the
+// nearest line beside it (or a line of its own), in that line's order. With a
+// gap under a quarter of its height to a neighbour it joins it without a space
+// ("Hello👋").
+void placeEmoji(Recognition& job,const QList<EmojiHit>& hits);
 void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& filter);
 // Kept words joined by spaces, lines by newlines, with a blank line between
 // blocks. lineTops gets the top edge of each line of the text, a blank line

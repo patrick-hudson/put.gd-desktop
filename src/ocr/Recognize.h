@@ -48,8 +48,15 @@ struct JobOptions {
  qint64 memoryBudget=0;
  bool panels=true;          // method comparisons only: false reads the image as one panel
  qint64 memoryCeiling=0;
+ // Emoji (#1748): the input's colour plane and the templates to name its
+ // colour glyphs by. Without either, no emoji are looked for.
+ ColourView colour;
+ const EmojiTemplates* emojiTemplates=nullptr;
+ EmojiOptions emoji;
+ // The emoji scan stops this long after the job starts and keeps what it found.
+ int emojiBudgetMs=3000;
 };
-struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,totalMs=0; };
+struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,emojiMs=0,totalMs=0; };
 struct JobResult {
  QString error;             // input_excessive, language_unavailable, engine_unavailable
  QString failedLanguage;
@@ -59,6 +66,8 @@ struct JobResult {
  bool truncated=false;
  QStringList used,skipped,dataFiles;
  JobTimings timings;
+ int emoji=0,emojiCandidates=0;   // emoji placed, colour glyphs examined
+ bool emojiCut=false;
  Profile profile;
 };
 JobResult recognizeImage(const GreyView& image,const JobOptions& options);

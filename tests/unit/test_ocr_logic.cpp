@@ -1,15 +1,47 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips cut between lines and joined in page order, and the input limit. The
-// contract's own tests cover the character filter.
-// Synthetic data only.
+// strips cut between lines and joined in page order, the input limit, and
+// emoji (#1748) put in place of what Tesseract made of them but never over
+// confident letters. The contract's own tests cover the character filter.
+// Synthetic data only: the emoji are drawn from the built-in templates.
 #include "ocr/Layout.h"
 #include "ocr/Words.h"
 #include <QTest>
+#include <cmath>
 #include <iterator>
 
 using namespace putgd::ocr;
 namespace {
+// A colour image of `width` x `height` on `background`, with templates drawn
+// into it (nearest pixel from the template's side x side ink box).
+struct Rgb { int r=255,g=255,b=255; };
+struct Canvas {
+ int width=0,height=0;QByteArray rgb;
+ Canvas(int w,int h,Rgb background):width(w),height(h),rgb(QByteArray(w*h*3,'\0')){
+  for(int i=0;i<w*h;++i){rgb[3*i]=char(background.r);rgb[3*i+1]=char(background.g);rgb[3*i+2]=char(background.b);}
+ }
+ void draw(const EmojiTemplates& t,int index,const QRect& at){
+  const int side=t.side();const uint8_t* p=t.pixels(index);
+  for(int y=0;y<at.height();++y)for(int x=0;x<at.width();++x){
+   const uint8_t* q=p+4*((y*side/at.height())*side+x*side/at.width());
+   char* o=rgb.data()+3*((at.y()+y)*width+at.x()+x);
+   for(int c=0;c<3;++c)o[c]=char(q[c]+(255-q[3])*uchar(o[c])/255);
+  }
+ }
+ ColourView view()const{return {reinterpret_cast<const uint8_t*>(rgb.constData()),width,height,width*3,{}};}
+};
+int find(const EmojiTemplates& t,const QString& text,int style=0){for(int i=0;i<t.count();++i)if(t.text(i)==text&&t.style(i)==style)return i;return -1;}
+// A word whose characters each have a box, as Tesseract gives them; the
+// character at `unsure` (what it made of an emoji) has a low confidence.
+Word word(const QString& text,const QList<QRect>& boxes,float confidence,int unsure=-1){
+ Word w;w.text=text;w.confidence=confidence;w.lineHeight=24;w.rect=boxes.first();
+ for(int i=0;i<boxes.size();++i){w.symbols.append({boxes[i],i==unsure?30.f:confidence,1});w.rect=w.rect.united(boxes[i]);}
+ return w;
+}
+QString recognized(Recognition job,const ColourView& colour){
+ placeEmoji(job,findEmoji(colour,EmojiTemplates::builtIn()).hits);
+ return copiedText(job);
+}
 Profile lines(int width,int height,int lineHeight,int gap){
  Profile p;p.lineHeight=lineHeight;p.rowInk.fill(0,height);
  for(int y=0;y<height;++y)if(gap==0||(y%(lineHeight+gap))<lineHeight)p.rowInk[y]=width/4;
@@ -141,6 +173,86 @@ private slots:
    }
   }
   QCOMPARE(panels({reinterpret_cast<const uint8_t*>(tallPage.constData()),tallWidth,tall,tallWidth},{},12),QList<QRect>{QRect(0,0,tallWidth,tall)});
+ }
+ // An emoji takes the place of what Tesseract read for it, a stray letter
+ // glued to a word or a symbol of its own, and joins a neighbour without a
+ // space when its glyph touches it: "I ❤️ this" and "Hello👋", whatever the
+ // background.
+ void emojiReplaceWhatTesseractMadeOfThem(){
+  const auto& t=EmojiTemplates::builtIn();QVERIFY(t.count()>6000);
+  const int heart=find(t,QString::fromUtf8("\u2764\ufe0f")),wave=find(t,QString::fromUtf8("\U0001F44B"),1);
+  QVERIFY(heart>=0&&wave>=0);
+  // White, a dark theme, and a saturated chat bubble the emoji sit inside.
+  for(const Rgb background:{Rgb{255,255,255},Rgb{49,51,56},Rgb{20,90,165}}){
+   Canvas canvas(220,40,background);
+   canvas.draw(t,heart,QRect(40,10,22,20));canvas.draw(t,wave,QRect(147,10,20,21));
+   Recognition job;job.lines={{QRect(0,8,220,24),0,0}};
+   // "IW this Hellow": the W is the heart, the last w the wave, glued to "Hello".
+   job.words={word("IW",{QRect(20,12,6,16),QRect(40,10,22,20)},43,1),word("this",{QRect(70,12,6,16),QRect(77,12,6,16),QRect(84,12,6,16),QRect(91,12,6,16)},96),
+              word("Hellow",{QRect(110,12,6,16),QRect(117,12,6,16),QRect(124,12,6,16),QRect(131,12,6,16),QRect(138,12,8,16),QRect(147,10,20,21)},88,5)};
+   QCOMPARE(recognized(job,canvas.view()),QString::fromUtf8("I \u2764\ufe0f this Hello\U0001F44B"));
+  }
+ }
+ // A plain shape such as a red dot is matched, so it is not taken for a stop
+ // sign, but never named; a glyph that only roughly fits a template that stands
+ // out little from the background (a faint letter against a dark disc) is not
+ // named; and emoji on no line of text get a line of their own, a tall narrow
+ // one included.
+ void emojiNeverNameShapesOrFaintFits(){
+  const auto& t=EmojiTemplates::builtIn();
+  const int face=find(t,QString::fromUtf8("\U0001F602")),dot=find(t,QString::fromUtf8("\U0001F534")),moon=find(t,QString::fromUtf8("\U0001F311")),merperson=find(t,QString::fromUtf8("\U0001F9DC"));
+  QVERIFY(face>=0&&dot>=0&&moon>=0&&merperson>=0&&t.shape(dot)&&!t.shape(face));
+  Canvas canvas(200,100,Rgb{30,30,30});
+  canvas.draw(t,dot,QRect(100,10,20,20));canvas.draw(t,face,QRect(60,50,20,20));
+  canvas.draw(t,merperson,QRect(90,45,int(std::lround(40*t.aspect(merperson))),40));
+  // A dim blue letter-sized blob where a dark disc would fit loosely.
+  for(int y=12;y<26;++y)for(int x=20;x<32;++x)if((x-26)*(x-26)+(y-19)*(y-19)<=30){char* o=canvas.rgb.data()+3*(y*200+x);o[0]=char(40);o[1]=char(60);o[2]=char(110);}
+  Recognition job;job.lines={{QRect(0,8,200,24),0,0}};
+  job.words={word("o",{QRect(20,12,12,14)},95),word("@",{QRect(100,10,20,20)},60),word("end",{QRect(130,12,6,16),QRect(137,12,6,16),QRect(144,12,6,16)},96)};
+  QCOMPARE(recognized(job,canvas.view()),QString::fromUtf8("o @ end\n\U0001F602 \U0001F9DC"));
+ }
+ // An emoji goes where the line reads past it: between two words of a
+ // right-to-left line in their logical order, after the one word of a
+ // right-to-left line when it stands left of it, inside a left-to-right run of
+ // a right-to-left paragraph as that run reads, and at the run's edges as the
+ // paragraph reads.
+ void emojiFollowTheLineDirection(){
+  const QString face=QString::fromUtf8("\U0001F602");
+  const auto place=[&](bool rightToLeft,const QList<Word>& words,int x=60){
+   Recognition job;job.lines={{QRect(0,10,260,20),0,0,rightToLeft}};job.words=words;
+   placeEmoji(job,{{face,QRect(x,10,20,20),0.02,0}});
+   return copiedText(job);
+  };
+  const auto hebrew=[](const char* text,int x){return word(QString::fromUtf8(text),{QRect(x,12,30,16)},95);};
+  QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100),hebrew("\u05D3\u05D4\u05D5",20)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face+QString::fromUtf8(" \u05D3\u05D4\u05D5"));
+  QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face);
+  QCOMPARE(place(true,{word("foo",{QRect(20,12,30,16)},95),word("bar",{QRect(100,12,30,16)},95)}),"foo "+face+" bar");
+  // Hebrew A (right), "foo bar" (a left-to-right run), Hebrew B (left), in Tesseract's order A foo bar B.
+  const auto a=QString::fromUtf8("\u05D0\u05D1\u05D2"),b=QString::fromUtf8("\u05D3\u05D4\u05D5");
+  const QList<Word> mixed{hebrew("\u05D0\u05D1\u05D2",220),word("foo",{QRect(70,12,30,16)},95),word("bar",{QRect(140,12,30,16)},95),hebrew("\u05D3\u05D4\u05D5",0)};
+  QCOMPARE(place(true,mixed,112),a+" foo "+face+" bar "+b);   // inside the run, nearer bar
+  QCOMPARE(place(true,mixed,40),a+" foo bar "+face+" "+b);    // left of the run: after it
+  QCOMPARE(place(true,mixed,190),a+" "+face+" foo bar "+b);   // right of the run: before it
+  // Touching the run's edge on the page joins the word next to it in that order.
+  QCOMPARE(place(true,mixed,50),a+" foo bar"+face+" "+b);
+  QCOMPARE(place(true,mixed,170),a+" "+face+"foo bar "+b);
+  // A row of emoji on a line of its own stays one line, however long.
+  Recognition row;row.lines={{QRect(0,10,60,20),0,0,false}};row.words={word("Hi",{QRect(0,12,20,16)},95)};
+  QList<EmojiHit> five;for(int i=0;i<5;++i)five.append({face,QRect(22*i,50,20,20),0.02,0});
+  placeEmoji(row,five);
+  QCOMPARE(copiedText(row),"Hi\n"+face.repeated(5));
+  // ...also with a line of text beside the row.
+  Recognition beside;beside.lines={{QRect(160,50,40,20),0,0,false}};beside.words={word("text",{QRect(160,52,40,16)},95)};
+  QList<EmojiHit> fiveMore;for(int i=0;i<5;++i)fiveMore.append({face,QRect(22*i,50,20,20),0.02,0});
+  placeEmoji(beside,fiveMore);
+  QCOMPARE(copiedText(beside),"text\n"+face.repeated(5));
+  // Between two columns, an emoji goes with the nearer one as recognition
+  // left it, not with a line an earlier emoji drew towards it.
+  Recognition columns;columns.lines={{QRect(0,10,40,20),0,0,false},{QRect(120,10,40,20),0,0,false}};
+  auto right=word("right",{QRect(120,12,40,16)},95);right.line=1;
+  columns.words={word("left",{QRect(0,12,40,16)},95),right};
+  placeEmoji(columns,{{face,QRect(43,10,20,20),0.02,0},{face,QRect(79,10,20,20),0.02,0}});
+  QCOMPARE(copiedText(columns),"left"+face+"\n"+face+" right");
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

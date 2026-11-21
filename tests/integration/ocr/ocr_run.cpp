@@ -12,7 +12,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QElapsedTimer>
 #include <cstdio>
 #include <sys/resource.h>
 
@@ -40,11 +39,10 @@ int main(int argc,char** argv){
  for(const auto& path:images){
   QImageReader reader(path);reader.setAllocationLimit(0);const auto image=reader.read();
   if(image.isNull()){std::fprintf(stderr,"cannot read %s\n",qPrintable(path));++failures;continue;}
-  QElapsedTimer clock;clock.start();
-  const auto grey=putgd::TextJob::grey(image);const auto greyMs=clock.elapsed();
-  putgd::Error error;const auto result=job.recognize(grey,options,error);
+  // The grey and colour planes are written inside the job, so its totalMs covers them.
+  putgd::Error error;const auto result=job.recognize(image,options,error);
   struct rusage usage{};::getrusage(RUSAGE_CHILDREN,&usage);
-  QJsonObject line{{"image",path},{"width",image.width()},{"height",image.height()},{"error",error.code},{"greyMs",greyMs},
+  QJsonObject line{{"image",path},{"width",image.width()},{"height",image.height()},{"error",error.code},
                    {"spawnMs",result.spawnMs},{"engineStartMs",result.engineStartMs},{"recognizeMs",result.recognizeMs},{"totalMs",result.totalMs},
                    {"peakRssKiB",qint64(usage.ru_maxrss)},{"chars",result.text.size()},{"codes",result.codes.size()},{"banded",result.banded},{"truncated",result.truncated}};
   if(printText)line["text"]=result.text;

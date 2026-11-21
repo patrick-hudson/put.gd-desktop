@@ -16,7 +16,7 @@ QList<editor::RecognizedWord> words(const QList<TextWord>& found,const QPoint& o
 }
 }
 EditorTextRecognition::EditorTextRecognition(editor::EditDocument& doc,QObject* parent):QObject(parent),doc_(doc),signature_(editor::TextLayer::inputSignature(doc)) {
- runner_=[](const QImage& grey,const textjob::Options& options,Error& error,TextJob::Cancel cancel){return TextJob().recognize(grey,options,error,std::move(cancel));};
+ runner_=[](QImage image,const textjob::Options& options,Error& error,TextJob::Cancel cancel){return TextJob().recognize(std::move(image),options,error,std::move(cancel));};
 }
 EditorTextRecognition::~EditorTextRecognition() {
  // The helper is the worker's child: cancel it and wait until it is reaped.
@@ -47,7 +47,7 @@ QImage EditorTextRecognition::input(const QImage& base,const QRect& crop,const Q
   QPainter painter(&part);painter.setCompositionMode(QPainter::CompositionMode_Source);
   for(const auto& mark:redactions)if(const auto area=mark.intersected(crop);!area.isEmpty())painter.fillRect(area.translated(-crop.topLeft()),Qt::black);
  }
- return TextJob::grey(part);
+ return part;
 }
 void EditorTextRecognition::setActive(bool active) {
  if(active_==active)return;
@@ -87,9 +87,10 @@ void EditorTextRecognition::run() {
  const auto revision=revision_;const auto runner=runner_;const auto cancel=cancel_;
  // The worker starts and reaps the helper, so it outlives it.
  auto* thread=QThread::create([base,crop,redactions,options,runner,cancel,result,error]{
-  const auto grey=input(base,crop,redactions);
+  auto pixels=input(base,crop,redactions);
   if(cancel->load()){*error=textjob::failure("cancelled");return;}
-  *result=runner(grey,options,*error,cancel);
+  // Taken by the job, which lets it go once its pixels are written.
+  *result=runner(std::move(pixels),options,*error,cancel);
  });
  worker_=thread;
  connect(thread,&QThread::finished,this,[this,thread,revision,result,error]{
