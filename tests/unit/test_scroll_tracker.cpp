@@ -979,6 +979,41 @@ void testChangesAndRecovery() {
                            r.results[redrawFrom].confidence, lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad));
   }
   {
+    // Soft grey text scrolled a pixel a frame (#1747's round 11): each frame
+    // agrees in place within the redraw tolerance, yet the page moved; the
+    // steps add up and every row reaches the image.
+    constexpr int kView = 160, kSteps = 80;
+    // Ink spread over 7 rows and 60% faded into the background; text here
+    // (from row 2000) still shows each pixel's step to the cell tolerance.
+    constexpr int kSoftR = 3, kSoftMix = 60, from = 2000;
+    Image soft = doc.img;
+    for (int y = 0; y < soft.h; ++y)
+      for (int x = 0; x < soft.w; ++x) {
+        int sum[3] = {0, 0, 0}, n = 0;
+        for (int k = -kSoftR; k <= kSoftR; ++k) {
+          const int yy = std::clamp(y + k, 0, doc.img.h - 1);
+          const uint32_t v = doc.img.at(x, yy);
+          for (int c = 0; c < 3; ++c) sum[c] += int(v >> (8 * c)) & 255;
+          ++n;
+        }
+        const int bg[3] = {int(kBg) & 255, int(kBg >> 8) & 255, int(kBg >> 16) & 255};
+        uint32_t out = kBg & 0xFF000000u;
+        for (int c = 0; c < 3; ++c) out |= uint32_t((sum[c] / n * (100 - kSoftMix) + bg[c] * kSoftMix) / 100) << (8 * c);
+        soft.at(x, y) = out;
+      }
+    SceneSpec ss = base;
+    ss.height = kView;
+    const Scene scene(soft, ss);
+    std::vector<int> pos;
+    for (int i = 0; i <= kSteps; ++i) pos.push_back(from + i);
+    const Played r = play(scene, pos);
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(soft, from, from + kView + kSteps, W), {}, 0, &firstBad);
+    report("soft text a pixel a frame: the steps add up, every row kept", r.wrong == 0 && bad == 0,
+           counts(r) + fmt(", %lld rows, %d wrong%s, %lld pixels differ (row %d)", (long long)(r.totals.bottom - r.totals.top),
+                           r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+  {
     // The capture begins halfway down; the reader scrolls up past where it
     // began, to the top, and then down to the end: the image grows at both
     // ends and has every row once.

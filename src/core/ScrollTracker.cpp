@@ -4327,9 +4327,20 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // (a pull request's table of near-equal rows, moved by two of them, 68
   // rows, looked still to 0.97 of its cells; the position stayed and every
   // later frame was off by the step, #1515's acceptance on Cinnamon).
-  const bool stillish = still && (!hinted || std::abs(expected) <= uncertainty);
+  bool stillish = still && (!hinted || std::abs(expected) <= uncertainty);
   if (stillish && share >= kStillSure) return noMovement(true);
   std::vector<Candidate> cands = searchPair(cur, ref, expected);
+  // Only drawn anew, not still at the cell tolerance: a movement that agrees
+  // clearly better than standing still is the page's. Soft text scrolled a
+  // pixel a frame agrees in place within the redraw tolerance too; made the
+  // reference every frame, the steps never added up to a placeable move and
+  // the page stood still in the image (#1747's round 11).
+  if (redrawn)
+    for (const Candidate& c : cands)
+      if (c.d != 0 && c.cells >= share + kStillMargin) {
+        still = stillish = redrawn = false;
+        break;
+      }
   bool byExp = false;
   SkipReason why = SkipReason::None;
   int unexplainedPick = -1;
