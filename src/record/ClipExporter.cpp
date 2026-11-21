@@ -1234,7 +1234,8 @@ void paintCoverPreview(QImage& image, const RecordingMask& mask, const QSize& ca
     const double sx = double(image.width()) / source.width(), sy = double(image.height()) / source.height();
     const QRect r = QRectF(mask.rect.x() * sx, mask.rect.y() * sy, mask.rect.width() * sx, mask.rect.height() * sy).toAlignedRect().intersected(image.rect());
     if (r.width() < 1 || r.height() < 1) return;
-    if (mask.kind == "solid" || r.width() < 4 || r.height() < 4) { QPainter painter(&image); painter.fillRect(r, Qt::black); return; }
+    // Any blur, however small, is previewed as a blur: what the export does (W2).
+    if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); return; }
     if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32 && image.format() != QImage::Format_ARGB32_Premultiplied) image = image.convertToFormat(QImage::Format_RGB32);
     const int radius = std::clamp(int(std::lround(std::clamp(mask.strength, 2, 64) * std::min(sx, sy))), 1, std::max(1, std::min(r.width(), r.height()) / 2 - 1));
     boxBlur(image, r, radius);

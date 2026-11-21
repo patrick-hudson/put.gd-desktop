@@ -401,6 +401,7 @@ struct FrameSkimmer::Private final : QThread {
         bool haveKept = false, decoderFollowsKept = false;
         qint64 keptRequest = 0, keptPts = 0;
         SwsContext* scaler = nullptr;
+        FramePtr scaled;  // the scaler's padded output, reused while the size holds
         while (true) {
             qint64 time = 0;
             RecordingEdit edit;
@@ -470,7 +471,7 @@ struct FrameSkimmer::Private final : QThread {
             }
             const qint64 frameUs = source.clipTime(keptPts);
             QImage image;
-            if (!renderScaled(scaler, kept.get(), edit, frameUs, time, canvasSize, edge, image)) {
+            if (!renderScaled(scaler, scaled, kept.get(), edit, frameUs, time, canvasSize, edge, image)) {
                 if (!abort()) fail(time, generation, QStringLiteral("Cannot convert the frame"));
                 continue;
             }
@@ -488,16 +489,25 @@ struct FrameSkimmer::Private final : QThread {
     // as fitPreview sizes it) with the covers active at its time, or at the
     // time it is shown for, painted at that size: a 4K frame is never
     // converted at full size for a 1280 px viewer.
-    static bool renderScaled(SwsContext*& scaler, const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, qint64 requestedUs, const QSize& canvas, int maxEdge, QImage& out) {
+    static bool renderScaled(SwsContext*& scaler, FramePtr& scaled, const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, qint64 requestedUs, const QSize& canvas, int maxEdge, QImage& out) {
         const QSize full(frame->width, frame->height);
         const QSize size = recording::outputSize(full, maxEdge);
         if (size.isEmpty()) return false;
         scaler = sws_getCachedContext(scaler, frame->width, frame->height, AVPixelFormat(frame->format), size.width(), size.height(), AV_PIX_FMT_BGRA, size == full ? SWS_POINT : SWS_AREA, nullptr, nullptr, nullptr);
         if (!scaler) return false;
+        // libswscale's SIMD paths write whole vectors past a row that is not a
+        // multiple of 16 pixels: scale into a frame FFmpeg pads, then copy rows.
+        if (!scaled || scaled->width != size.width() || scaled->height != size.height()) {
+            scaled.reset(av_frame_alloc());
+            if (!scaled) return false;
+            scaled->format = AV_PIX_FMT_BGRA;
+            scaled->width = size.width();
+            scaled->height = size.height();
+            if (av_frame_get_buffer(scaled.get(), 64) < 0) { scaled.reset(); return false; }
+        }
+        sws_scale(scaler, frame->data, frame->linesize, 0, frame->height, scaled->data, scaled->linesize);
         QImage image(size, QImage::Format_RGB32);
-        uint8_t* planes[4] = {image.bits(), nullptr, nullptr, nullptr};
-        const int strides[4] = {int(image.bytesPerLine()), 0, 0, 0};
-        sws_scale(scaler, frame->data, frame->linesize, 0, frame->height, planes, strides);
+        for (int y = 0; y < size.height(); ++y) std::memcpy(image.scanLine(y), scaled->data[0] + qint64(y) * scaled->linesize[0], size_t(size.width()) * 4);
         for (const auto& mask : edit.masks) {
             const auto active = [&](qint64 t) { return mask.start <= t && t < mask.end; };
             if (active(frameUs) || active(requestedUs)) paintCoverPreview(image, mask, canvas.isEmpty() ? full : canvas);

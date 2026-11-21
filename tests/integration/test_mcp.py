@@ -143,6 +143,9 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ({'action': 'markSelection', 'edge': 'end'}, {'action': 'markSelection', 'edge': 'end'}),
             ({'action': 'editPoint', 'delta': -1}, {'action': 'editPoint', 'delta': -1}),
             ({'action': 'placeMask', 'at': [320, 180]}, {'action': 'placeMask', 'at': [320, 180]}),
+            ({'action': 'setCutEdge', 'cut_id': 'c1', 'edge': 'start'}, {'action': 'setCutEdge', 'cutId': 'c1', 'edge': 'start'}),
+            ({'action': 'scrollTimeline', 'start_us': 4000000}, {'action': 'scrollTimeline', 'start': 4000000}),
+            ({'action': 'timelineZoom', 'level': 6144}, {'action': 'timelineZoom', 'level': 6144}),
         ]:
             adapter.call.reset_mock()
             result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
@@ -152,7 +155,9 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                      {'action': 'editPoint', 'delta': 3}, {'action': 'placeMask'}, {'action': 'placeMask', 'at': [1]},
                      {'action': 'seek', 'time_us': 1, 'at': [1, 2]},
                      {'action': 'frameStep', 'delta': 2}, {'action': 'viewerZoom', 'mode': 'big'}, {'action': 'panel'}, {'action': 'resize', 'width': 10, 'height': 900},
-                     {'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0}, {'action': 'cut', 'edge': 'middle'}]:
+                     {'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0}, {'action': 'cut', 'edge': 'middle'},
+                     {'action': 'setCutEdge', 'cut_id': 'c1'}, {'action': 'setCutEdge', 'edge': 'end'}, {'action': 'scrollTimeline'},
+                     {'action': 'placeMask', 'rect': [1, 2, 30, 40], 'at': [5, 6]}, {'action': 'placeMask', 'at': [5.5, 6]}]:
             adapter.call.reset_mock()
             result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
             envelope = result.structured_content or json.loads(result.content[0].text)

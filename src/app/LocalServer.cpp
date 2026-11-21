@@ -282,7 +282,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
    // #1613: the redesigned window's controls.
    "selectRange","clearSelection","cut","selectCut","adjustCut","restoreCut","playAcross","undo","redo","armRedact","armBlur","cancelPlacement","selectEdit","nextEdit","previousEdit","seekCoverStart","seekCoverEnd","setCoverEdgeToPlayhead","setCoverEdge","coverKind","timelineZoom","timelineFit","viewerZoom","viewerPan","frameStep","skim","skimEnd","panel","resize","setTrim",
    // The review window's feel controls (S, N, = / -, a cover bar's slide, the "+n" chip, [ ], Up / Down).
-   "setSkimming","setSnapping","zoomIn","zoomOut","retimeCover","moreCovers","markSelection","editPoint"};
+   "setSkimming","setSnapping","zoomIn","zoomOut","retimeCover","moreCovers","markSelection","editPoint",
+   // A cut's Set to playhead and the overview track.
+   "setCutEdge","scrollTimeline"};
   // The numbers are plain JSON numbers (the window checks ranges and whole values); the strings are bounded.
   const auto number=[&](const char* key){return !p.contains(key)||p[key].isDouble();};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec","start","end","cutId","editId","edge","level","mode","dx","dy","delta","open","width","height","on","at"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
