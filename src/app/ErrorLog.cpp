@@ -24,7 +24,7 @@ QString oneLine(const QString& message) {
 // aren't loaded (unlocking them helps), credentials the destination refused (only its settings
 // help), and a destination removed from Settings (nothing to unlock or open).
 bool credentialsNotLoaded(const QString& code) {
- return QStringList{"credential_setup_required","credential_store_unavailable","credential_store_timeout","credential_access_denied"}.contains(code);
+ return QStringList{"credential_setup_required","credential_incomplete","credential_store_unavailable","credential_store_timeout","credential_access_denied"}.contains(code);
 }
 bool destinationRemoved(const QString& code) {return code=="destination_removed";}
 QString providerName(const QString& provider) {

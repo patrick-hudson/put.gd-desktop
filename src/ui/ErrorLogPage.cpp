@@ -359,8 +359,9 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
   const auto id=params["id"].toString();
   bool onPage=false;for(const auto& value:std::as_const(entries_))onPage|=value.toObject()["id"]==id;
   if(onPage){select(id);reply({},state());return;}
-  const auto ticket=++selection_;wanted_.clear();
-  session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),reply,answer,ticket](Error e,QJsonObject entry){if(!g)return;if(e){reply(e,{});return;}if(g->selection_==ticket)g->showDetails(entry);answer({},{});});return;
+  // Pending like a link (wanted_): a reload meanwhile keeps it instead of reselecting the old row.
+  const auto ticket=++selection_;wanted_=id;
+  session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),reply,answer,ticket,id](Error e,QJsonObject entry){if(!g)return;const bool current=g->selection_==ticket&&g->wanted_==id;if(current)g->wanted_.clear();if(e){reply(e,{});return;}if(current)g->showDetails(entry);answer({},{});});return;
  }
  // A step answers once it has started; its outcome shows in feedback (inspect), as on screen.
  if(action=="step"){
