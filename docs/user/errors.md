@@ -29,6 +29,7 @@ filenames, history URLs, authorization values or credential references.
 | `unknown` upload / `publication_unknown` | Reconcile the saved publication identity before another PUT |
 | copy `suppressed` / `failed` | Explicitly copy the existing result; no new PUT is needed |
 | `delete_confirmation_changed`, `delete_target_changed` | Review the exact original targets/effects again |
+| `destination_removed` | The destination the file was uploaded to was removed from Settings, so put.gd can't delete it there; the file stays where it was uploaded. Choose **Remove from History only**, or add a destination for the same place again (same service, and the same endpoint and bucket, account and folder, or request address) and delete it through that |
 | remote `changed` | Replacement is preserved; no destructive request was sent |
 | remote `unknown` / `hidden_version_retained` | Explicitly retry the recorded deletion/progress |
 | `history_migration`, `history_version` | Preserve the database and restore a supported version; no partial migration is committed |
