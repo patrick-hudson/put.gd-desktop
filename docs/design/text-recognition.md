@@ -864,8 +864,9 @@ only when the check finds something. Don't extend it into a general "are you sur
 | One at a time | Checks run one after another. A capture taken while a prompt is open waits in the `checking` phase |
 | Nothing found | The helper ends at once, and the capture goes to the upload queue unchanged: same format, name, copy and history |
 | Found | The operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {card: 1, key: 1}, complete: true}`, kinds and counts only. A person sees the prompt. An agent decides with `operation.decide` |
-| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers recognition failing or timing out, a result cut at its time or size limit, an image over 24 megapixels, text recognition being unavailable, a pattern from the list that didn't finish, and an account lookup that didn't answer. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped` or `name_unchecked`. It also lists whatever was found |
-| Helper failure | If the helper is missing, crashes, or gives no result within 40 seconds of starting, nothing is uploaded or kept. The operation fails with `sensitive_check_failed`, its `details.cause` names what failed, and the failure notification says the capture wasn't uploaded |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers recognition failing or timing out, a result cut at its time or size limit, an image over 24 megapixels, text recognition being unavailable, a pattern from the list that didn't finish, and an account lookup that didn't answer, matching cut at its deadline, and an image the helper can't decode. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked` or `matching_unfinished`. It also lists whatever was found |
+| Helper failure | If the helper is missing, crashes, or gives no result within 40 seconds of starting, there is no panel to ask with, and nothing is uploaded. With **Keep a local copy** on, the capture is saved locally, as Cancel saves it, and the resident logs the failure. Otherwise the operation fails with `sensitive_check_failed`, and its `details.cause` names what failed |
+| Files that change | A file-manager upload is checked, then uploaded from its path. A file the user changes between the check and the upload is uploaded as it then is. The check is a warning about what was selected, not a guarantee about the bytes |
 
 ### The prompt
 
@@ -916,7 +917,8 @@ and nothing more. Tests and evidence use only test values.
 
 Each checked capture adds the time to stage it, start the helper, recognize it and match it,
 before its upload starts. Measured on the lab builders with today's engine:
-MEASUREMENTS_PENDING. A capture that is not checked (the option off, Edit & upload, a local-only
+MEASUREMENTS_PENDING. A faster recognizer is tracked separately in
+[#1805](https://github.com/patrick-hudson/put.gd-desktop/issues/1805). A capture that is not checked (the option off, Edit & upload, a local-only
 capture) costs nothing.
 
 ## History
