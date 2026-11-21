@@ -60,7 +60,23 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // engine starts, so the pages read here are given back before recognition
  // reaches its peak; what was found replaces Tesseract's reading at the end.
  EmojiScan emoji;
- if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
+ // Research #1805: the scan on its own thread, overlapping engine start and recognition.
+ std::thread emojiThread;
+ struct Joiner { std::thread& t; ~Joiner(){if(t.joinable())t.join();} } joiner{emojiThread};
+ const auto scanEmoji=[&]{
+  QElapsedTimer clock;clock.start();
+  emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
+  options.emojiTemplates->release();
+  emoji.hits.removeIf([&](const EmojiHit& hit){
+   for(const auto& q:std::as_const(areas))if(insideCode(q,hit.rect.center()))return true;
+   return false;
+  });
+  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
+  result.timings.emojiMs=clock.elapsed();
+ };
+ if(researchEmojiParallel&&options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
+  emojiThread=std::thread(scanEmoji);
+ }else if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
   stage.restart();
   emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
   options.emojiTemplates->release();
@@ -375,6 +391,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
+ if(emojiThread.joinable())emojiThread.join();
  // Emoji, found before recognition, take the place of what Tesseract made of them.
  placeEmoji(result.recognition,emoji.hits);
  joinUrls(result.recognition);
