@@ -466,17 +466,18 @@ limited to 60 s: trim the clip") using the limits the resident sends with every
 
 ### Tray feedback
 
-The tray follows the operation's observations. Through capture, pause,
-review and Save copy the icon keeps its idle glyph with the recording or pause
-badge, and only the tooltip changes ("Ready to record", "Recording", "Recording
-paused", "Reviewing the recording", "Saving a copy of the recording"). Upload is
+The tray follows the operation's observations. Before Upload the icon keeps its
+idle glyph: it carries the recording badge while recording and the pause badge
+while paused, and otherwise only the tooltip changes ("Ready to record",
+"Reviewing the recording", "Saving a copy of the recording"). Upload is
 the hand-over: the helper's export then reports the `encoding` phase and the
 icon shows the Processing stage (the blue glyph, see
 [appearance](../appearance.md#activity-stages)) while the clip is encoded and
 stored and the local copy saved. Once the upload phase starts the ordinary
 stages take over: the green fill climbing with the transferred fraction, then
-Complete (green with the check badge) and idle. Failures show the error badge as
-for any operation. No automated test has walked this chain since the second
+Complete (green with the check badge) and idle. A failed export goes back to
+review, which shows the error (`lastExport`), with no tray badge. A failure after
+the clip has entered the upload pipeline shows the error badge as for any operation. No automated test has walked this chain since the second
 round of [removed tests](../../testing/removed-tests.md#second-round).
 
 ### Helper events

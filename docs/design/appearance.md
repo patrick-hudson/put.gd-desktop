@@ -191,16 +191,16 @@ the tree. Nothing else about the app icon changes.
 | --- | --- | --- |
 | Idle | the seasonal glyph, still | `put.gd - Happy Holidays!` (`put.gd` in other months) |
 | Working stages | the seasonal glyph in the stage's tint; Uploading's green fill climbs the glyph's own height, head or star included | `Capturing`, `Processing` or `Uploading`, with the real activity rows |
-| Complete | the seasonal glyph in green with the check badge, bottom-right | `Upload complete`, or `Saved` |
+| Complete | the seasonal glyph in green with the check badge, bottom-right (the ordinary mark while a recording or pause badge also shows) | `Upload complete`, or `Saved` |
 | Failure, recording or paused | the ordinary mark with its badge | the status as usual |
 
 In the seasons, active work keeps its ordinary title and activity rows, with the
 greeting as the last line; only a truly idle tray makes the greeting its title.
 The top-right badges (failure, recording, paused) draw on the ordinary mark
 because their halo would erase the turkey's head; the seasonal glyph returns
-when the badge clears. The check badge sits bottom-right, where it clips only
-the bowl's corner or the tree's lowest boughs, so the seasonal glyph stays. No
-glyph animates.
+when the badge clears. The check badge sits bottom-right, clear of the turkey's
+head and the tree's star, so the seasonal glyph stays when no top-right badge
+shows. No glyph animates.
 
 ### Activity stages
 
@@ -212,26 +212,28 @@ reached:
 | --- | --- | --- |
 | Idle | nothing running | the glyph in the idle tint |
 | Capturing | from the hotkey or tray press itself, before the operation is accepted, through the region picker, the capture delay and the capture, until the source hands over its picture | the glyph in the capture tint |
-| Processing | importing or encoding the capture, editing, encoding a recording after Upload, saving the local copy, checking the destination, reading text, Retry local save | the glyph in the processing tint |
-| Uploading | a running operation's upload phase, or a file uploading | the processing glyph with the green fill climbing with the real progress, never below a tenth, and full only once no file still waits, transfers or checks its name |
-| Complete | the last running operation finished and uploaded or saved something without an error, for 1.5 s (`Saved` when that attempt only saved, as Retry local save does) | the green glyph with the check badge |
+| Processing | importing or encoding the capture, editing, encoding a recording after Upload, saving the local copy (Retry local save included), checking the destination, reading text | the glyph in the processing tint |
+| Uploading | a running operation with a destination in its `preparing`, `uploading`, `finalizing`, `sharing` or `reconciling` phase, or with a file uploading; so also while no bytes move (provider setup, finalizing, making a share link, checking an earlier upload) | the processing glyph with the green fill climbing with the real progress, never below a tenth; between transfers it keeps its level, and it is full once no file of the operations at this stage still waits, transfers or checks its name, also while a share link is still being made |
+| Complete | the last running operation finished `completed` and uploaded or saved something without an error, for 1.5 s; `Saved` when that attempt only saved (a local-only capture, or a Retry local save of an operation that is `completed`) | the green glyph with the check badge |
 | Failed | an operation or action failed, for 8 s | the error glyph with its badge |
 
 An operation never goes back to a stage it has passed, so a copy after the
 upload stays green. Each working stage shows for at least 250 ms, and the icon
-steps through every stage the run reached, so a short upload reads Capturing,
-Processing, Uploading, Complete instead of skipping one. The service batches
-its observations, so a quick operation can end before the tray saw its
-processing or upload; its outcome then says which ran (something uploaded, or
-only saved) and the icon walks those stages before Complete. A failure goes to
-its badge from the stage the tray last saw. A recording shows its
-own badge, not a stage, until Upload hands it over.
+steps through every stage the run reached from the first one it showed. The
+service batches its observations, so a quick operation can end before the tray
+saw its processing or upload. Only a successful outcome fills that gap: it says
+which stages ran (something uploaded, or only saved), so a short successful
+upload from a hotkey reads Capturing, Processing, Uploading, Complete. A failure
+waits out the stage on screen, steps through any higher stage the tray did see,
+then shows its badge. A recording shows its own badge, not a stage, until
+Upload hands it over.
 
 New work always shows: it replaces a failure or completion still on the icon,
 and a failure from other work waits until the running work has ended. The
-failure badge leaves the icon after 8 seconds, or when new work starts; the tray
-menu's attention row (**Failed uploads (N)** and the others) stays until it is
-opened, so nothing is lost when the icon resets.
+failure badge leaves the icon after 8 seconds, when new work starts, or when
+its attention row is opened. The tray menu's attention row (**Failed uploads
+(N)** and the others) stays until it is opened, or, for failed uploads, until a
+retry has uploaded every failed file, so nothing is lost when the icon resets.
 
 `TrayCalendar` picks the glyph, and a running resident changes it without a
 restart: at local midnight, on logind's resume signal, on each tray refresh, and
