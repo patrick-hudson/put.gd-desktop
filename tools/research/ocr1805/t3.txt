@@ -1,0 +1,3 @@
+nomem-emojipar -- --memory 0 --emoji-parallel
+nomem-rows16-emojipar -- --memory 0 --target-rows 16 --emoji-parallel
+baseline4 -- 

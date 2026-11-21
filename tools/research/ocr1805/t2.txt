@@ -1,0 +1,7 @@
+noemoji -- --no-emoji
+nomem-noemoji -- --memory 0 --no-emoji
+nomem-rows16 -- --memory 0 --target-rows 16
+nomem-rows16-noemoji -- --memory 0 --target-rows 16 --no-emoji
+nomem-strips1 -- --memory 0 --strips 1
+nomem-strips4 -- --memory 0 --strips 4
+baseline3 -- 

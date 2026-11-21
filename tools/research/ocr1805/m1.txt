@@ -1,0 +1,18 @@
+noinv -- --no-invert-lines
+rows16 -- --target-rows 16
+rows20 -- --target-rows 20
+maxs1 -- --max-scale 1
+maxs2 -- --max-scale 2
+lines7 -- --line-tasks --psm 7
+lines13 -- --line-tasks --psm 13
+threads1 -- --threads 1
+threads2 -- --threads 2
+threads3 -- --threads 3
+nomem -- --memory 0
+nodict -- --no-dict
+psm4 -- --psm 4
+strips1 -- --strips 1
+strips4 -- --strips 4
+sauvola -- --threshold 2
+omp4t1 OMP_THREAD_LIMIT=4 -- --threads 1
+largecap8 -- --large-cap 8

@@ -1,0 +1,7 @@
+threads6 -- --max-threads 6 --threads 6 --memory 0
+threads8 -- --max-threads 8 --threads 8 --memory 0
+lines7t6 -- --line-tasks --psm 7 --max-threads 6 --threads 6 --memory 0
+baseline-r -- 
+nomem -- --memory 0
+nomem-rows16 -- --memory 0 --target-rows 16
+nomem-noemoji -- --memory 0 --no-emoji

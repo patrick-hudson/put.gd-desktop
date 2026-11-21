@@ -1,0 +1,2 @@
+nomem-emojipar -- --memory 0 --emoji-parallel
+threads6-emojipar -- --max-threads 6 --threads 6 --memory 0 --emoji-parallel
