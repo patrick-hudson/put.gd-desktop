@@ -236,6 +236,11 @@ private slots:
   // Touching the run's edge on the page joins the word next to it in that order.
   QCOMPARE(place(true,mixed,50),a+" foo bar"+face+" "+b);
   QCOMPARE(place(true,mixed,170),a+" "+face+"foo bar "+b);
+  // A row of emoji on a line of its own stays one line, however long.
+  Recognition row;row.lines={{QRect(0,10,60,20),0,0,false}};row.words={word("Hi",{QRect(0,12,20,16)},95)};
+  QList<EmojiHit> five;for(int i=0;i<5;++i)five.append({face,QRect(22*i,50,20,20),0.02,0});
+  placeEmoji(row,five);
+  QCOMPARE(copiedText(row),"Hi\n"+face.repeated(5));
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

@@ -27,7 +27,8 @@ qint64 residentBytes(){
  return fields.value(1).toLongLong()*::sysconf(_SC_PAGESIZE);
 }
 void raise(std::atomic<qint64>& value,qint64 seen){qint64 now=value.load();while(seen>now&&!value.compare_exchange_weak(now,seen)){}}
-// Inside a code's corners (in order around it, either way).
+// Inside a code's corners (in order around it, either way); never inside a
+// degenerate code, all of whose corners are on one line.
 bool insideCode(const Quad& q,QPoint p){
  int sign=0;
  for(int i=0;i<4;++i){
@@ -36,7 +37,7 @@ bool insideCode(const Quad& q,QPoint p){
   if(cross==0)continue;
   const int s=cross>0?1:-1;if(sign!=0&&s!=sign)return false;sign=s;
  }
- return true;
+ return sign!=0;
 }
 }
 int workerThreads(int requested){
