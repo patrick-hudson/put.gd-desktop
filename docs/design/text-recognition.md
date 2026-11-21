@@ -200,7 +200,14 @@ or more took 2.75 s on average instead of 5.18 s (four screens), and the 1080p s
 instead of 1.15 s (median of 22). In those runs the text was byte-identical to the gated
 helper's on all 176 captures on aurora-amd and 50 on k72, and the largest peak, a dense
 24-megapixel page with four engines, was 258 MiB. That page also ran normally with
-`RLIMIT_DATA` at 320 MiB. Patrick allowed the larger figure
+`RLIMIT_DATA` at 320 MiB. Through the packaged helper of #1809, which first spends about a second
+of a 4K job on one thread for the emoji scan and page analysis, the gain is smaller. On k72 the
+screens of 4 megapixels or more went from 4.07 to 3.14 s on average. The dense page read 66,138
+characters before the time budget instead of 48,546, and the highest peak was 172 MiB. On
+aurora-amd the AppImage's bundled engine peaks under 90 MiB on the corpus, so the old budget never
+held it back there, and only the dense page got faster: 15.35 s to 12.8 s. The text was
+byte-identical on all 176 captures on both hosts
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/tree/0e6051e3c427dd671ea776b25aae7dde215b1805/records/2026-11-21-issue-1808-ocr-memory-budget)). Patrick allowed the larger figure
 because the helper is short-lived: it holds the memory only while it recognizes and exits after
 the job, never living in the resident, and `RLIMIT_DATA` still bounds a runaway.
 
