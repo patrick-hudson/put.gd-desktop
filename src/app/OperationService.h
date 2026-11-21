@@ -189,6 +189,9 @@ signals:
  // The committed snapshot (publicJson) with each resultReady, and after Retry local save,
  // so a reader never has to look the operation up again after a newer attempt began (#1753).
  void outcome(const QJsonObject& operation);
+ // An explicit copy of a finished operation's result (Copy result, operation.copy): only the copy
+ // changed, so the error log looks only at it. copy carries the copy's own error.
+ void copyFinished(const QJsonObject& operation,const QJsonObject& copy);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.

@@ -36,7 +36,7 @@ protected:
 private:
  void load(std::function<void(Error)> done={});
  void populate();
- void select(const QString& id);
+ void select(const QString& id,bool supersede=true);
  void showDetails(const QJsonObject& entry);
  void runStep(const QString& step,std::function<void(Error,QJsonObject)> done={});
  void openClear(bool resolvedOnly);

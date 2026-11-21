@@ -63,7 +63,8 @@ signals:
  void changed();
 private:
  using Work=std::function<QJsonObject(HistoryStore&,Error&)>;
- void enqueue(Work,JsonReply done={},bool write=false);
+ // False when the job was refused: a read while the journal recovers, a write past the bound.
+ bool enqueue(Work,JsonReply done={},bool write=false);
  void pump();
  void load();
  QJsonObject entryJson(const Entry&,const QString& id,const QDateTime& now,int occurrences,const QString& first) const;
@@ -72,7 +73,7 @@ private:
  struct Job {Work work;JsonReply done;bool write=false;};
  // Writes waiting while the journal recovers or a worker is slow; past this, new writes are dropped and counted.
  static constexpr size_t maximumQueue=1000;
- quint64 dropped_=0;
+ quint64 dropped_=0,loads_=0;
  std::deque<Job> queue_;
  bool running_=false,loaded_=false;
  quint64 revision_=0;

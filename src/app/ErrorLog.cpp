@@ -34,6 +34,14 @@ QString providerName(const QString& provider) {
 ErrorLog::ErrorLog(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
  // Every operation's committed terminal snapshot (also after Retry local save), and Copy text.
  connect(&operations_,&OperationService::outcome,this,&ErrorLog::operationFinished);
+ connect(&operations_,&OperationService::copyFinished,this,[this](const QJsonObject& op,const QJsonObject& copy){
+  const auto id=op["id"].toString(),status=op["copyStatus"].toString();
+  if(status=="copied"){resolve("copy:"+id,"Copied");return;}
+  if(status!="failed"&&status!="partial")return;
+  Entry context;context.action=op["action"].toString();context.operationId=id;context.subject="copy:"+id;
+  const auto own=errorFrom(copy["error"].toObject());
+  record("copy",meaningful(copy["error"].toObject())?own:Error{"copy_failed",status=="partial"?QStringLiteral("Only some of the links were copied to the clipboard."):QStringLiteral("The link couldn't be copied to the clipboard."),{{"copyStatus",status}}},context);
+ });
  connect(&operations_,&OperationService::textFinished,this,[this](const QString& id,const QJsonObject& record,const QString&){
   if(record["state"]!="failed")return;
   Entry context;context.action=Settings::textActionName();context.operationId=id;context.subject="text:"+id;
@@ -99,8 +107,9 @@ QJsonObject ErrorLog::entryJson(const Entry& e,const QString& id,const QDateTime
  auto provider=e.provider;
  if(provider.isEmpty()&&!e.profileId.isEmpty())provider=operations_.settingsSnapshot().profiles.value(e.profileId)["provider"].toString();
  QJsonObject entry{{"id",id},{"time",iso(now)},{"firstTime",first},{"occurrences",occurrences},{"kind",kinds().contains(e.kind)?e.kind:QStringLiteral("other")},
-  {"code",e.code.left(128)},{"title",oneLine(message)},{"message",message},{"details",details},{"subject",e.subject},{"resolved",false},{"nextSteps",QJsonArray::fromStringList(e.steps)}};
- const auto put=[&entry](const char* key,const QString& value){if(!value.isEmpty())entry[QLatin1String(key)]=value.left(512);};
+  {"code",logging::redact(e.code).left(128)},{"title",oneLine(message)},{"message",message},{"details",details},{"subject",logging::redact(e.subject).left(512)},{"resolved",false},{"nextSteps",QJsonArray::fromStringList(e.steps)}};
+ // Every stored string goes through the log's redaction, IDs included: a caller's ID is never trusted.
+ const auto put=[&entry](const char* key,const QString& value){if(!value.isEmpty())entry[QLatin1String(key)]=logging::redact(value).left(512);};
  put("action",e.action);put("operationId",e.operationId);put("itemId",e.itemId);put("historyId",e.historyId);put("deletionId",e.deletionId);put("sharingId",e.sharingId);
  put("setupId",e.setupId);put("profileId",e.profileId);put("provider",provider);put("itemName",logging::redact(e.itemName));
  put("destination",logging::redact(e.destination.isEmpty()&&!e.profileId.isEmpty()?destinationLabel(e.profileId,provider):e.destination));
@@ -110,25 +119,25 @@ QString ErrorLog::record(Entry e) {
  const auto now=QDateTime::currentDateTimeUtc();
  const auto key=e.kind+'|'+(e.subject.isEmpty()?e.message:e.subject)+'|'+e.code;
  QString id,first=iso(now);int occurrences=1;
- auto recent=recent_.find(key);
- if(recent!=recent_.end()&&recent->last.secsTo(now)<coalesceSeconds){id=recent->id;first=recent->first;occurrences=++recent->occurrences;recent->last=now;}
- else {
-  id=QUuid::createUuid().toString(QUuid::WithoutBraces);
-  if(recent_.size()>=256)recent_.clear();
-  recent_.insert(key,{id,first,now,1});
- }
- if(queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});return {};}
+ const auto recent=recent_.constFind(key);
+ const bool repeat=recent!=recent_.constEnd()&&recent->last.secsTo(now)<coalesceSeconds;
+ if(repeat){id=recent->id;first=recent->first;occurrences=recent->occurrences+1;}
+ else id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  auto entry=entryJson(e,id,now,occurrences,first);
- // Bounded: past this many open subjects the set is read again from the table, which keeps at most
- // `keep` rows; until then every success asks the table.
- if(open_.size()>=4*keep){open_.clear();loaded_=false;load();}
- if(!e.subject.isEmpty())open_.insert(e.subject);
- logging::info(logHistory(),"Error log entry",{{"errorId",id},{"kind",entry["kind"]},{"code",entry["code"]},{"occurrences",occurrences},{"operationId",e.operationId},{"itemId",e.historyId}});
  const auto notBefore=iso(now.addDays(-keepDays));const auto profiles=operations_.settingsSnapshot().profiles;
- enqueue([entry,notBefore,profiles](HistoryStore& store,Error& error) mutable {
+ const bool accepted=enqueue([entry,notBefore,profiles](HistoryStore& store,Error& error) mutable {
   completeEntry(entry,store.errorItem(entry.value("historyId").toString(),entry.value("operationId").toString()),profiles);
   QJsonObject saved;error=store.saveError(entry,keep,notBefore,&saved);return saved;
  },[id](Error error,QJsonObject){if(error)logging::warning(logHistory(),"Error log entry not saved",{{"errorId",id},{"code",error.code}});},true);
+ // Only an accepted write gets an ID, counts as a repeat and opens its subject.
+ if(!accepted)return {};
+ if(recent_.size()>=256&&!repeat)recent_.clear();
+ recent_.insert(key,{id,first,now,occurrences});
+ if(!e.subject.isEmpty())open_.insert(e.subject);
+ logging::info(logHistory(),"Error log entry",{{"errorId",id},{"kind",entry.value("kind")},{"code",entry.value("code")},{"occurrences",occurrences},{"operationId",e.operationId},{"itemId",e.historyId}});
+ // Bounded: past this many open subjects the set is read again from the table, which keeps at most
+ // `keep` rows; until then every success asks the table.
+ if(open_.size()>=4*keep){open_.clear();loaded_=false;load();}
  return id;
 }
 QString ErrorLog::record(const QString& kind,const Error& error,Entry context) {
@@ -231,19 +240,22 @@ void ErrorLog::clear(const QStringList& ids,bool resolvedOnly,JsonReply reply) {
 }
 QJsonObject ErrorLog::summary() const {return {{"revision",QString::number(revision_)},{"total",double(total_)},{"unresolved",double(unresolved_)}};}
 void ErrorLog::load() {
- enqueue([](HistoryStore& store,Error& error){return store.errorSummary(&error);},[this](Error error,QJsonObject summary){
+ // Only the newest reload marks the set loaded; an older one still queued only adds its subjects.
+ const auto generation=++loads_;
+ enqueue([](HistoryStore& store,Error& error){return store.errorSummary(&error);},[this,generation](Error error,QJsonObject summary){
   if(error)return;
   // Merged, never replaced: a subject recorded while this read ran stays open. A stale subject
   // only costs one resolve job that finds nothing.
   for(const auto& subject:summary["subjects"].toArray())open_.insert(subject.toString());
-  loaded_=true;
+  if(generation==loads_)loaded_=true;
  });
 }
-void ErrorLog::enqueue(Work work,JsonReply done,bool write) {
+bool ErrorLog::enqueue(Work work,JsonReply done,bool write) {
  // Reads answer at once while the journal recovers; writes wait, up to a bound (#1753).
- if(!write&&!operations_.ready()){if(done)done(operations_.notReadyError(),{});return;}
- if(write&&queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});if(done)done({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return;}
+ if(!write&&!operations_.ready()){if(done)done(operations_.notReadyError(),{});return false;}
+ if(write&&queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});if(done)done({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return false;}
  queue_.push_back({std::move(work),std::move(done),write});pump();
+ return true;
 }
 // Quit: the writes still waiting are saved here, on this thread, after the workers stopped.
 void ErrorLog::flush() {

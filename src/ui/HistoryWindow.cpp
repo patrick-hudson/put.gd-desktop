@@ -1914,6 +1914,7 @@ void HistoryWindow::pollDeletion(){
    // A deletion that had already ended when History opened says nothing: the item's own
    // row and inspector show its state, and the error log keeps what went wrong.
    if(std::exchange(g->deletionAnnounce_,false)){
+    Ui::feedback(g->status_,{});  // "Remote deletion accepted…" is answered by the outcome
     if(!problems.isEmpty())g->showError(problems.join("\n"),target);
     else if(removed==1)Ui::feedback(g->status_,"Deleted "+removedName+" from "+removedWhere+".");
     else if(removed>1)Ui::feedback(g->status_,QStringLiteral("Deleted %1 files from their destinations.").arg(removed));
@@ -2032,6 +2033,7 @@ void HistoryWindow::notify(const Error& error,const QString& success){
 void HistoryWindow::showError(const QString& text,const QJsonObject& target){
  // A hidden History shows nothing later for it: the error log keeps what failed meanwhile (#1753).
  if(text.isEmpty()||!isVisible())return;
+ ++noticeSerial_;
  errorNoticeTarget_=target;errorNotice_->setTone(Ui::Banner::Tone::Error);errorNotice_->setText(text);errorNotice_->setAction(target.isEmpty()?QString{}:QStringLiteral("Open error log"));
  // The footer line keeps item and progress notes only; an error never stays there.
  if(status_->property("feedbackTone").toString()=="error")Ui::feedback(status_,{});
@@ -2046,11 +2048,11 @@ void HistoryWindow::dismissNotice(){errorNoticeTimer_->stop();errorNotice_->hide
 // A failure this window found itself: kept in the error log like any other, and linked once recorded.
 void HistoryWindow::localError(const QString& kind,const QString& code,const QString& text,const QString& historyId,const QString& operationId){
  QJsonObject target{{"kind",kind}};if(!historyId.isEmpty())target["historyId"]=historyId;if(!operationId.isEmpty())target["operationId"]=operationId;
- showError(text,target);
+ showError(text,target);const auto serial=noticeSerial_;
  QJsonObject params{{"kind",kind},{"code",code.isEmpty()?QStringLiteral("history_failed"):code.left(128)},{"message",text.left(4096)}};
  if(!historyId.isEmpty())params["historyId"]=historyId;if(!operationId.isEmpty())params["operationId"]=operationId;
- session_.request("errors.record",params,this,[g=QPointer<HistoryWindow>(this),text](Error e,QJsonObject result){
-  if(!g||e||g->errorNotice_->isHidden()||g->errorNotice_->textLabel()->text()!=text)return;
+ session_.request("errors.record",params,this,[g=QPointer<HistoryWindow>(this),serial](Error e,QJsonObject result){
+  if(!g||e||g->errorNotice_->isHidden()||g->noticeSerial_!=serial)return;
   g->errorNoticeTarget_["id"]=result["id"];
  });
 }

@@ -196,13 +196,14 @@ void ErrorLogPage::populate() {
  pageText_->setText(total_==0?QString{}:QStringLiteral("%1–%2 of %3 · %4 open").arg(offset_+1).arg(offset_+entries_.size()).arg(total_).arg(session_.errorLog()["unresolved"].toInt()));
  newer_->setEnabled(offset_>0);older_->setEnabled(offset_+pageSize<total_);newer_->setVisible(total_>pageSize);older_->setVisible(total_>pageSize);
  clear_->setEnabled(total_>0||session_.errorLog()["total"].toInt()>0);
- if(!keep.isEmpty())select(keep);
+ if(!keep.isEmpty())select(keep,false);
  else if(entries_.isEmpty()){selected_={};details_->hide();}
 }
-void ErrorLogPage::select(const QString& id) {
+void ErrorLogPage::select(const QString& id,bool supersede) {
  for(int row=0;row<table_->topLevelItemCount();++row)if(table_->topLevelItem(row)->data(0,IdRole).toString()==id){const QSignalBlocker block(table_);table_->setCurrentItem(table_->topLevelItem(row));table_->scrollToItem(table_->topLevelItem(row));break;}
- // Each selection, by click, link or agent, supersedes the replies of the ones before it.
- const auto ticket=++selection_;
+ // Each selection, by click, link or agent, supersedes the replies of the ones before it; the
+ // page reselecting its row after a reload does not.
+ const auto ticket=supersede?++selection_:selection_;
  for(const auto& value:entries_)if(value.toObject()["id"]==id){wanted_.clear();showDetails(value.toObject());return;}
  // Not on this page (an older entry, or one a filter hides): read it on its own.
  session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket](Error e,QJsonObject entry){
@@ -359,6 +360,7 @@ void ErrorLogPage::command(const QJsonObject& params,std::function<void(Error,QJ
  // A step answers once it has started; its outcome shows in feedback (inspect), as on screen.
  if(action=="step"){
   const auto step=params["step"].toString();
+  if(stepRunning_){reply({"error_step_running","A step for this entry is still running; inspect until it ends.",{}},state());return;}
   if(selected_.isEmpty()||!selected_["nextSteps"].toArray().contains(QJsonValue(step))){reply({"error_action_unavailable","The selected entry doesn't offer that step.",{}},state());return;}
   runStep(step);reply({},state());return;
  }

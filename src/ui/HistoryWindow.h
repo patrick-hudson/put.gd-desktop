@@ -68,7 +68,7 @@ private:
  Ui::Banner* errorNotice_=nullptr;QTimer* errorNoticeTimer_=nullptr;QJsonObject errorNoticeTarget_;
  QPushButton *deletionUnlock_=nullptr,*deletionDestination_=nullptr;
  // A deletion or link change seen running in this window: its outcome is announced once.
- bool deletionAnnounce_=false,sharingAnnounce_=false,deletionProgressShown_=false;
+ bool deletionAnnounce_=false,sharingAnnounce_=false,deletionProgressShown_=false;quint64 noticeSerial_=0;
  void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
  bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();void dismissSavedCopy();
  QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;
