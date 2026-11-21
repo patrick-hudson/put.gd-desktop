@@ -31,11 +31,14 @@ extern "C" const char* __asan_default_options(){return "detect_leaks=0";}
 namespace {
 using namespace putgd;
 using namespace putgd::ocr;
-// The memory budget (decision 3): peak RSS under 128 MiB with the shipped
-// English data, growing by other languages' data, 192 MiB at most.
+// The memory budget (decision 3): peak RSS under 320 MiB with the shipped
+// English data, growing by other languages' data, 384 MiB at most. It gates
+// the extra engines: 128 MiB left a 4K screen on one engine (#1808); four
+// engines on a dense 24 MP page peak at 258 MiB. The helper exits after the
+// job, so the memory is held only while recognition runs.
 // RLIMIT_DATA is about one and a half times the budget.
 constexpr qint64 mib=1024*1024;
-constexpr qint64 baseBudget=128*mib,largestBudget=192*mib;
+constexpr qint64 baseBudget=320*mib,largestBudget=384*mib;
 // RLIMIT_CPU: just above the parent's 20 s deadline for each recognition thread,
 // since CPU time adds up across threads.
 constexpr int cpuSecondsPerThread=21;
