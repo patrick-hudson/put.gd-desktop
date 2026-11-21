@@ -368,6 +368,9 @@ so Test connection fails there; use the `backblaze-b2` provider instead. See
 `backblaze-b2` profiles (#282) hold exactly `apiUrl`, `bucket`, `objectPrefix`,
 `linkMode` (`public` or `authorized`), `linkValidityDays` (1–7), `publicUrlBase`
 (null or HTTPS, public links only), `connectTimeoutMs` and `requestTimeoutMs`.
+`requestTimeoutMs` bounds every B2 request except a file upload or large-file part,
+which has no whole-request limit: the worker's stall limit (no data for
+max(`connectTimeoutMs`, 30 s)) ends it instead (#1782).
 Credentials are a keychain or session reference to the application key ID and key.
 See [Backblaze B2](../user/b2.md).
 
