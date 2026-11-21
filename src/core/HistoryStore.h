@@ -54,6 +54,7 @@ public:
  Error forget(const QStringList& ids,const QSet<QString>& running,int* removed=nullptr,QStringList* removedIds=nullptr);
  // Why forget() would keep this record now: "sharing" (a link change pending or unknown), "deletion"
  // (a deletion running or one that may have reached the server), or empty when it would remove it.
+ // A finished deletion that ended unsupported_safe_removal or version_retained lets the record go (#1763).
  QString forgetBlocker(const QString& historyId,const QSet<QString>& running) const;
  // requireRecords: a new deletion, recorded only while each of its records is still in History (#1759).
  Error saveDeletion(const QJsonObject&,bool requireRecords=false);
