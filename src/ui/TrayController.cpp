@@ -215,7 +215,8 @@ TrayController::Activity TrayController::stageOf(const QJsonObject& operation) {
  // A recording shows its own badge until Upload hands it over.
  if(operation["action"]=="record"&&!recordingHandedOver(operation))return Activity::Idle;
  const auto state=operation["state"].toString();
- if(state=="accepted"||state=="acquiring")return Activity::Capturing;
+ // Once the source has handed over its picture, the import or encoding is processing.
+ if(state=="accepted"||(state=="acquiring"&&operation["phase"]!="preparing"))return Activity::Capturing;
  // Only a running operation uploads: a stored one may still be "preparing" its artifact.
  if(state!="running")return Activity::Processing;
  if(operation["destination"].toObject()["providerId"].toString().isEmpty())return Activity::Processing;
@@ -575,10 +576,11 @@ void TrayController::refreshActivity() {
  calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;Activity working=Activity::Idle;bool uploadingNow=false,fresh=false;
+ QSet<QString> activeIds;Activity working=Activity::Idle;bool transferring=false,confirmed=false,fresh=false;
  for(const auto& value:observations) {
   const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
-  auto stage=stageOf(op);uploadingNow|=stage==Activity::Uploading;
+  auto stage=stageOf(op);
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];transferring|=status=="uploading";confirmed|=status=="uploaded";}
   // A recording handed over to Upload is new work; one handed back to review (its
   // export failed) shows its badge again instead of the stage it had reached.
   if(const auto known=opStages_.constFind(id);known==opStages_.cend())fresh=true;
@@ -596,10 +598,19 @@ void TrayController::refreshActivity() {
    if(--guard->pendingFinishes_==0)guard->finishingTimer_.stop();
    // Only the last work to finish shows Complete: an earlier one must not flash it after a later cancel.
    bool busy=guard->startPending_>0;for(const auto stage:std::as_const(guard->opStages_))busy|=workingStage(stage);
-   if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy) {
+   // A completed operation with an item or local-copy error is a failure (resultReady latches it), never Complete.
+   bool problem=meaningfulError(operation["error"].toObject());
+   for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();problem|=meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());}
+   if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy&&!problem) {
     bool uploaded=false,saved=false;
     for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();uploaded|=item["uploadStatus"]=="uploaded";saved|=item["local"].toObject()["status"]=="saved";}
-    if(uploaded||saved){guard->completeShown_=true;guard->completeUploaded_=uploaded;}
+    if(uploaded||saved){
+     // Observations are batched, so a quick operation can end before its processing or upload
+     // was seen; its outcome proves which stages ran, and the icon walks them before Complete.
+     const auto ran=uploaded?Activity::Uploading:Activity::Processing;
+     if(workingStage(guard->shown_)&&int(ran)>int(guard->reached_))guard->reached_=ran;
+     guard->completeShown_=true;guard->completeUploaded_=uploaded;
+    }
    }
    guard->refreshActivity();
   });
@@ -625,9 +636,10 @@ void TrayController::refreshActivity() {
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
  auto text=activityStatus(shown,attentionLabel_,activity,completeUploaded_);
  const auto color=activityColor(shown,Theme::trayTints(panel_.light()));
- // Uploading fills with the real progress. Shown after its bytes finished (its dwell, or
- // the walk to Complete) it is full when the upload completed and keeps its level otherwise.
- const int percent=shown==Activity::Failed?-2:shown!=Activity::Uploading?-1:uploadingNow?qMax(minimumUploadFill,uploadPercent(observations)):completeShown_?100:qMax(minimumUploadFill,iconPercent_);
+ // Uploading fills with the real progress while bytes move. Once they are confirmed (a share
+ // link being made, or the walk to Complete) it is full; in a gap between transfers it keeps its level.
+ const int percent=shown==Activity::Failed?-2:shown!=Activity::Uploading?-1:transferring?qMax(minimumUploadFill,uploadPercent(observations)):
+                   confirmed||completeShown_?100:qMax(minimumUploadFill,iconPercent_);
  const bool done=shown==Activity::Complete;
  const auto glyph=calendar_.glyph();const bool seasonal=glyph!=IconArt::TrayGlyph::Mark;
  // Only an idle tray makes the greeting its title. Preparation, recording,

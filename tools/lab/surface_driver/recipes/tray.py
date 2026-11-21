@@ -916,9 +916,14 @@ def saved_locally(ctx):
 def local_failure_attention(ctx):
     fixture = ctx.fixture('tray-attention')
     original = fixture.operation_id
+    # The failure badge leaves the icon after eight seconds; the menu row stays until opened.
+    if ctx.call('ui.snapshot')['diagnostics'].get('trayIcon', {}).get('activity') == 'failed':
+        _frame(ctx, 'failure-badge')
+    else:
+        ctx.note('failure badge had already timed out before the first frame')
     _menu(ctx)
     _node(ctx, 'Local save needs attention', 'menu item')
-    _frame(ctx, 'latched-attention')
+    _frame(ctx, 'attention-row')
     fixture.retry()
     retried = _settled(ctx, fixture.state)
     ctx.expect(retried['id'] == original and all(i['local']['status'] == 'saved' for i in retried['items']), 'retry retains operation and saves each item')
