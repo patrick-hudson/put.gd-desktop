@@ -79,6 +79,10 @@ public:
     void zoomIn(std::optional<qint64> anchorUs = std::nullopt);
     void zoomOut(std::optional<qint64> anchorUs = std::nullopt);
     void zoomFit();
+    // Above Fit, scrolls the least amount that shows `span` (centred when it is
+    // wider than the view or wholly off screen); nothing at Fit. Undo and redo
+    // call it for the item they brought back.
+    void reveal(recording::Span span);
     // Snapping (A7) and skimming (B4): on by default; the window's N / S keys
     // and the transport's skim toggle call the setters. Each emits its
     // *Changed signal only on a change. Skimming off: hover shows only the

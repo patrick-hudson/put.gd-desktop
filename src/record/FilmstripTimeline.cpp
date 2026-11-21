@@ -711,6 +711,16 @@ void FilmstripTimeline::zoomOut(std::optional<qint64> anchorUs) {
     for (int i = int(levels.size()) - 1; i >= 0; --i) if (levels[i] < zoom_) { setZoom(levels[i], anchorUs); return; }
 }
 void FilmstripTimeline::zoomFit() { setZoom(1); }
+void FilmstripTimeline::reveal(recording::Span span) {
+    if (zoom_ <= 1) return;
+    const auto view = visibleSpan();
+    const qint64 len = visibleLength();
+    const qint64 a = std::clamp<qint64>(std::min(span.start, span.end), 0, duration_), b = std::clamp<qint64>(std::max(span.start, span.end), 0, duration_);
+    if (a >= view.start && b <= view.end) return;
+    if (b - a > len || b < view.start || a > view.end) setScroll((a + b) / 2 - len / 2);  // setScroll emits visibleSpanChanged on a change
+    else if (a < view.start) setScroll(a);
+    else setScroll(b - len);
+}
 QList<qint64> FilmstripTimeline::tileTimes() const {
     const int count = std::clamp((stripWidth() * kTilesAtFit + kDefaultStrip - 1) / kDefaultStrip, 1, kMaxTiles);
     const auto span = visibleSpan();
