@@ -1623,8 +1623,10 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  menu.addSeparator();
  if(remaining("Save diagnostics for this upload")&&(!overflow||!inspector||saveDiagnostics_->isHidden())&&diagnosticsAvailable(i.row()))menu.addAction("Save diagnostics for this upload",this,[this,row]{saveDiagnostics(row["operationId"].toString());});
  menu.addAction("Copy details",this,[this,row]{QJsonObject detail=row;if(currentDetail_.value("operationId")==row["operationId"])detail["selectedFile"]=currentDetail_;QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(detail).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Operation and receipt details copied.");});
- QStringList deletable;for(const auto& v:files)if(HistoryModel::remoteDeletable(v.toObject()))deletable.append(v.toObject()["id"].toString());
- if(remaining("Delete from destination…")&&!deletable.isEmpty()){menu.addSeparator();menu.addAction("Delete from destination…",this,[this,deletable,count=int(files.size())]{prepareDelete(deletable,count-int(deletable.size()));});}
+ QStringList deletable;bool removedOnly=true;for(const auto& v:files)if(HistoryModel::remoteDeletable(v.toObject())){deletable.append(v.toObject()["id"].toString());removedOnly=removedOnly&&v.toObject()["destinationRemoved"].toBool();}
+ // #1759: named as the details pane names it when every file's destination was removed.
+ const QString removeLabel=removedOnly?QStringLiteral("Remove from History only…"):QStringLiteral("Delete from destination…");
+ if(remaining(removeLabel)&&!deletable.isEmpty()){menu.addSeparator();menu.addAction(removeLabel,this,[this,deletable,count=int(files.size())]{prepareDelete(deletable,count-int(deletable.size()));});}
  menu.exec(point);
 }
 void HistoryWindow::updateSummary(){
