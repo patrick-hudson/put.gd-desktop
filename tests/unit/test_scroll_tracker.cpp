@@ -1709,6 +1709,38 @@ void testPlayingVideo() {
            wrong == 0 && skippedAfterStart <= 6 && bad == 0 && tot.bottom == doc.img.h,
            fmt("%d frames, %d placed, %d skipped (%d after play), %d lost, %d wrong%s, %lld px differ (row %d)", tot.frames, tot.placed,
                tot.skipped, skippedAfterStart, lost, wrong, firstWrong.c_str(), bad, firstBad));
+
+    // 2b. Return to an already-verified section over a paused 60% video, then
+    // pause while playback starts: `proofAt_` must refresh on already-verified
+    // cells so the at-rest observer stays Following instead of going Lost.
+    {
+      SceneSpec ss60 = ss;
+      ss60.changingX = 32;
+      ss60.changingY = 600;
+      ss60.changingW = 416;
+      ss60.changingH = 240;  // 60% of 400-px viewport
+      const Scene scene60(doc.img, ss60);
+      MemoryCanvas c60(W);
+      ScrollTracker tr60(c60);
+      int wrong60 = 0, lost60 = 0, still60 = 0;
+      for (int p = 0; p <= 1000; p += 40) {
+        const TrackResult t = tr60.addFrame(scene60.frame(p, 0).view());
+        if (t.status == TrackStatus::Placed && t.position != p) ++wrong60;
+      }
+      for (int p = 960; p >= 520; p -= 40) {
+        const TrackResult t = tr60.addFrame(scene60.frame(p, 0).view());
+        if (t.status == TrackStatus::Placed && t.position != p) ++wrong60;
+      }
+      // Pause at pos=520 while the 60% video starts playing on every frame.
+      for (int k = 1; k <= 12; ++k) {
+        const TrackResult t = tr60.addFrame(scene60.frame(520, k).view());
+        lost60 += t.state == TrackState::Lost;
+        still60 += t.status == TrackStatus::NoMovement;
+      }
+      report("revisit verified page, pause and start 60% video: stays Following",
+             wrong60 == 0 && lost60 == 0 && still60 >= 10,
+             fmt("%d/12 still, %d lost, %d wrong", still60, lost60, wrong60));
+    }
   }
 
   {
@@ -2016,6 +2048,31 @@ void testPlayingVideo() {
       report("top-edge video scrolled down 96 px and back in 12-px steps: one frame",
              r.wrong == 0 && bad == 0 && videoExact,
              counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+    }
+    // 5h. Boundary scan must never jump over a zero-hit clean row (#1537 S4 R5):
+    // video starts at y = 16 (p0 = 16), clean rows y = 11..15 have zero change
+    // hits, and a transient frame-0 red overlay at y = 8..10 records hits on
+    // rows 8..10 at pos = 8; at pos = 16 the boundary scan must stop at row 15
+    // rather than jumping across zero-hit rows 11..15 to copy the overlay.
+    {
+      SceneSpec ssGap = ss;
+      ssGap.changingY = 16;
+      ssGap.changingH = 200;
+      const Scene sceneGap(doc.img, ssGap);
+      std::vector<int> pos{0};
+      for (int p = 8; p <= 96; p += 8) pos.push_back(p);
+      for (int p = 88; p >= 0; p -= 8) pos.push_back(p);
+      const Played r = play(sceneGap, pos, {}, [](size_t i, Image& f) {
+        if (i == 0)
+          for (int y = 8; y < 11; ++y)
+            for (int x = 32; x < 448; ++x) f.at(x, y) = 0xE02020;
+        return false;
+      });
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, int(r.totals.bottom), W), {{24, 16, 456, 224}}, 0, &firstBad);
+      report("boundary scan stops at zero-hit clean row above video",
+             r.wrong == 0 && r.totals.placed >= 20 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
     }
   }
 

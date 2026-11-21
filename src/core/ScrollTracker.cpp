@@ -1974,20 +1974,26 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
           }
           return verCells * 4 >= (bandColHi - bandColLo) || plainConfirmed * 2 >= (bandColHi - bandColLo);
         };
-        const auto rowHasDynHit = [&](long long p) {
+        const auto rowDynHits = [&](long long p) {
           const uint8_t* dh = store_->dynHitsRow(p);
           int hitBands = 0;
           for (int k = minK; k <= maxK; ++k) hitBands += dh[k] > 0;
-          return hitBands * 2 >= (maxK - minK + 1);
+          return hitBands;
         };
         if (chosenCopy == &topCopy_ && p0 <= pos + 8 && w0 > topCopy_.pos) {
           const long long limit = std::max({topCopy_.pos, allowLo_, p0 - 64});
-          for (long long p = w0 - 1; p >= limit && !rowIsStatic(p); --p)
-            if (rowHasDynHit(p)) extW0 = p;
+          for (long long p = w0 - 1; p >= limit && !rowIsStatic(p); --p) {
+            const int hits = rowDynHits(p);
+            if (hits == 0) break;
+            if (hits * 2 >= (maxK - minK + 1)) extW0 = p;
+          }
         } else if (chosenCopy == &bottomCopy_ && p1 >= pos + H - 8 && w1 < bottomCopy_.pos + H) {
           const long long limit = std::min({bottomCopy_.pos + H, allowHi_, p1 + 64});
-          for (long long p = w1; p < limit && !rowIsStatic(p); ++p)
-            if (rowHasDynHit(p)) extW1 = p + 1;
+          for (long long p = w1; p < limit && !rowIsStatic(p); ++p) {
+            const int hits = rowDynHits(p);
+            if (hits == 0) break;
+            if (hits * 2 >= (maxK - minK + 1)) extW1 = p + 1;
+          }
         }
       }
       const long long srcPos = chosenCopy ? chosenCopy->pos : pos;
@@ -3529,7 +3535,12 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
         // pushing the header down) or as a column that lets go. Also leave
         // dynamic page bands (#1537) to snapshotDynamic so video frames are
         // never mixed cell by cell.
-        uint64_t need = ~(store_->ver[at + size_t(w)] | vc[w] | vr[w] | blk[w] | blkRef[w] | lone[size_t(brow) * words + size_t(w)] |
+        // Record motion proof even on already-verified cells so revisiting a
+        // previously captured section and then pausing over a newly playing
+        // video refreshes `proofAt_` to `frameSerial_`, while never rewriting
+        // cells already verified (#1537).
+        const uint64_t alreadyVer = store_->ver[at + size_t(w)];
+        uint64_t need = ~(vc[w] | vr[w] | blk[w] | blkRef[w] | lone[size_t(brow) * words + size_t(w)] |
                           (rowHasDyn ? dynWords[size_t(w)] : 0ull)) &
                         full[size_t(w)];
         uint64_t take = 0, moved = 0;
@@ -3539,14 +3550,14 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
           const int c = w * 64 + bit;
           if (absDiff(a[c], b[c]) > tol) continue;
           if (absDiff(a[c], there[c]) > tol) {
-            take |= 1ull << bit;
+            if (!((alreadyVer >> bit) & 1ull)) take |= 1ull << bit;
             moved |= 1ull << bit;
           } else if ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= tol / 8) {
             // Repeating at the step's distance repeats exactly (a table's
             // equal rows): what stays put a shade off the page there (a
             // toolbar's edge, a banner that has just stopped) is not it.
             moved |= 1ull << bit;
-            if (!youngMask) take |= 1ull << bit;
+            if (!youngMask && !((alreadyVer >> bit) & 1ull)) take |= 1ull << bit;
           }
         }
         mask[size_t(w)] = take;
