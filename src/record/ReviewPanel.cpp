@@ -148,6 +148,9 @@ public:
         verb_->setFocusPolicy(Qt::TabFocus);
         verb_->setFixedSize(verbSide(), verbSide());
         connect(verb_, &QToolButton::clicked, this, &EditRow::verbClicked);
+        hoverDelay_.setSingleShot(true);
+        hoverDelay_.setInterval(150);
+        connect(&hoverDelay_, &QTimer::timeout, this, [this] { hoverHeld_ = hovered_; refreshVerb(); });
         connect(qApp, &QApplication::focusChanged, this, [this] { refreshVerb(); });
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { update(); });
         refreshVerb();
@@ -178,8 +181,10 @@ signals:
     void removeKey();
 protected:
     void resizeEvent(QResizeEvent*) override { placeVerb(); }
-    void enterEvent(QEnterEvent*) override { hovered_ = true; refreshVerb(); update(); }
-    void leaveEvent(QEvent*) override { hovered_ = false; refreshVerb(); update(); }
+    // The action icon shows on a hovered row only after 150 ms (R20), so a
+    // pointer crossing the list never flickers Remove icons.
+    void enterEvent(QEnterEvent*) override { hovered_ = true; hoverDelay_.start(); update(); }
+    void leaveEvent(QEvent*) override { hovered_ = false; hoverHeld_ = false; hoverDelay_.stop(); refreshVerb(); update(); }
     void mouseReleaseEvent(QMouseEvent* event) override {
         if (event->button() == Qt::LeftButton && rect().contains(event->position().toPoint())) emit activated();
         else QWidget::mouseReleaseEvent(event);
@@ -188,9 +193,8 @@ protected:
         switch (event->key()) {
         case Qt::Key_Return: case Qt::Key_Enter:
             if (event->isAutoRepeat()) break;  // a held Enter acts once (W7)
-            // A selected cut's row: Enter is its Restore (E3).
-            if (selected_ && kind_ == "cut") emit verbClicked();
-            else emit activated();
+            // Enter only selects; Restore is its own button (R19).
+            emit activated();
             break;
         case Qt::Key_Space: emit activated(); break;
         case Qt::Key_Down: case Qt::Key_Up: {
@@ -203,7 +207,13 @@ protected:
         default: QWidget::keyPressEvent(event);
         }
     }
-    void focusInEvent(QFocusEvent* event) override { QWidget::focusInEvent(event); update(); }
+    void focusInEvent(QFocusEvent* event) override {
+        QWidget::focusInEvent(event);
+        // A focused row is scrolled into the list's view.
+        for (auto* up = parentWidget(); up; up = up->parentWidget())
+            if (auto* scroll = qobject_cast<QScrollArea*>(up)) { scroll->ensureWidgetVisible(this, 0, 0); break; }
+        update();
+    }
     void focusOutEvent(QFocusEvent* event) override { QWidget::focusOutEvent(event); update(); }
     void paintEvent(QPaintEvent*) override {
         const auto& c = Theme::current();
@@ -223,7 +233,7 @@ protected:
             p.setBrush(Qt::NoBrush);
             p.drawRoundedRect(body.adjusted(1, 1, -1, -1), 7, 7);
         }
-        const int pad = Ui::space(Space::s), gap = Ui::space(Space::m);
+        const int pad = Ui::space(Space::s);
         const int chip = std::max(Ui::scaled(26), QFontMetrics(Ui::font()).height() + 4);
         const QRectF chipRect(pad + 2, (height() - chip) / 2.0, chip, chip);
         p.setPen(Qt::NoPen);
@@ -259,7 +269,7 @@ private:
     void placeVerb() { verb_->move(width() - Ui::space(Space::xs) - verbSide(), (height() - verbSide()) / 2); }
     void refreshVerb() {
         const auto* focus = QApplication::focusWidget();
-        const bool show = verbOffered_ || hovered_ || focus == this || focus == verb_;
+        const bool show = verbOffered_ || hoverHeld_ || focus == this || focus == verb_;
         if (show == verb_->isVisibleTo(this)) return;
         verb_->setVisible(show);
         if (show) placeVerb();
@@ -267,7 +277,8 @@ private:
     }
     QString kind_, name_, span_, shortSpan_;
     QIcon glyph_;
-    bool selected_, verbOffered_, hovered_ = false, compact_ = false;
+    bool selected_, verbOffered_, hovered_ = false, hoverHeld_ = false, compact_ = false;
+    QTimer hoverDelay_;
     QToolButton* verb_ = nullptr;
 };
 }  // namespace
@@ -328,6 +339,7 @@ bool ReviewPanel::eventFilter(QObject* watched, QEvent* event) {
         if (event->type() == QEvent::ShortcutOverride) { event->accept(); return false; }
         if (enter) { QMetaObject::invokeMethod(this, [this] { flushStrength(); }, Qt::QueuedConnection); handBack(); return false; }
         if (strengthPending_) {
+            emit coverStrengthPreview(strengthPending_->first, -1);
             strengthPending_.reset();
             strengthTimer_.stop();
             if (const auto* mask = selectedCover()) { const QSignalBlocker block(spin); spin->setValue(std::clamp(mask->strength, 2, 64)); }
@@ -345,7 +357,7 @@ QString ReviewPanel::topStructure(const State& s) const {
     const auto cut = std::find_if(s.edit.cuts.cbegin(), s.edit.cuts.cend(), [&](const RecordingCut& c) { return s.selectedKind == "cut" && c.id == s.selectedId; });
     if (cover != s.edit.masks.cend()) parts << QStringLiteral("cover") << cover->id << names_->name(*cover) << cover->kind << QString::number(!s.coverFirstKept && !s.coverLastKept);
     else if (cut != s.edit.cuts.cend()) parts << QStringLiteral("cut") << cut->id << QString::number(cut->start) << QString::number(cut->end);
-    else if (s.timeSelection && !s.timeSelection->empty()) parts << QStringLiteral("selection") << QString::number(s.timeSelection->start) << QString::number(s.timeSelection->end) << QString::number(s.placing);
+    else if (s.timeSelection && !s.timeSelection->empty()) parts << QStringLiteral("selection") << QString::number(s.timeSelection->start) << QString::number(s.timeSelection->end) << s.placingKind;
     else parts << QStringLiteral("rest") << s.selectedKind;
     const auto& e = s.edit;
     parts << QString::number(e.trimStart > 0 || (e.trimEnd && *e.trimEnd < s.durationUs) || !e.cuts.isEmpty() || !e.masks.isEmpty());
@@ -399,8 +411,8 @@ void ReviewPanel::updateRows() {
         for (const auto& c : e.cuts) if (kind == QStringLiteral("cut") && id == c.id) row->setSpan(spanText(c.start, c.end), shortSpanText(c.start, c.end));
         for (const auto& m : e.masks) if (kind == QStringLiteral("cover") && id == m.id) row->setSpan(spanText(m.start, m.end), shortSpanText(m.start, m.end));
         const bool selected = state_.selectedKind == kind && (kind == "trim" || state_.selectedId == id);
-        // The part above offers Restore for a selected cut.
-        row->setSelected(selected, selected && kind != "cut");
+        // The selected row shows its action (R20).
+        row->setSelected(selected, selected);
     }
     updateSpanForm();
 }
@@ -626,9 +638,9 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         auto* cut = makeButton(top_, QStringLiteral("Cut"), QStringLiteral("cut"), nullptr, QStringLiteral("Cut"), QStringLiteral("reviewPanelCut"));
         auto* redact = makeButton(top_, QStringLiteral("Redact"), QStringLiteral("redact"), nullptr, QStringLiteral("Redact"), QStringLiteral("reviewPanelRedact"));
         auto* blur = makeButton(top_, QStringLiteral("Blur"), QStringLiteral("blur"), nullptr, QStringLiteral("Blur"), QStringLiteral("reviewPanelBlur"));
-        cut->setToolTip(state_.placing ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Cut the selected time out of the clip (C)"));
+        cut->setToolTip(!state_.placingKind.isEmpty() ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Cut the selected time out of the clip (C)"));
         // While a cover is being placed, Cut waits (W21).
-        cut->setEnabled(!state_.placing);
+        cut->setEnabled(state_.placingKind.isEmpty());
         redact->setToolTip(QStringLiteral("Cover part of the picture for this time, removing the pixels (X)"));
         blur->setToolTip(QStringLiteral("Blur part of the picture for this time (B). Blur may be reversible."));
         for (auto* b : {cut, redact, blur}) { b->setIconSize(QSize(Ui::scaled(16), Ui::scaled(16))); b->setProperty("uiTight", true); }
@@ -651,6 +663,11 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
             v->addLayout(grid);
         }
         connect(cut, &QPushButton::clicked, this, &ReviewPanel::cutRequested);
+        // They show which cover is being placed, and a second click stops placing it (R28).
+        redact->setCheckable(true);
+        blur->setCheckable(true);
+        redact->setChecked(state_.placingKind == "solid");
+        blur->setChecked(state_.placingKind == "blur");
         connect(redact, &QPushButton::clicked, this, [this] { emit coverRequested(QStringLiteral("solid")); });
         connect(blur, &QPushButton::clicked, this, [this] { emit coverRequested(QStringLiteral("blur")); });
         defaultControl_ = cut;
@@ -730,6 +747,7 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
             if (building_) return;
             strengthPending_ = std::pair<QString, int>(id, value);
             strengthTimer_.start();
+            emit coverStrengthPreview(id, value);
         });
     }
 }
@@ -828,8 +846,8 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
         const bool cut = item.kind == "cut";
         const QString verb = item.kind == "trim" ? QStringLiteral("Reset") : cut ? QStringLiteral("Restore") : QStringLiteral("Remove");
         const QString verbGlyph = item.kind == "trim" ? QStringLiteral("trim-reset") : cut ? QStringLiteral("undo") : QStringLiteral("remove");
-        // The part above already offers Restore for a selected cut.
-        const bool offered = selected && !cut;
+        // The selected row shows its action (R20).
+        const bool offered = selected;
         auto* row = new EditRow(item.kind, item.id, item.name, spanText(item.start, item.end), item.glyph, selected, verb, verbGlyph, offered, rows);
         const QString kind = item.kind, id = item.id;
         // A second activation right after a change is the same click again (W7).
@@ -854,7 +872,18 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
         });
         column->addWidget(row);
     }
-    v->addWidget(rows);
+    // R23: the list scrolls in its own area, about 4½ rows tall, so the
+    // details below it always stay in view.
+    auto* scroll = new QScrollArea(list_);
+    scroll->setObjectName("reviewPanelRows");
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFocusPolicy(Qt::NoFocus);
+    Ui::transparentView(scroll);
+    scroll->setWidget(rows);
+    scroll->setFixedHeight(int(std::ceil(std::min<qreal>(items.size(), 4.5) * EditRow::rowHeight())));
+    v->addWidget(scroll);
 }
 
 QJsonObject ReviewPanel::inspect() const {

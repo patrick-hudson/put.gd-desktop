@@ -65,6 +65,7 @@ public:
     void setSkim(const QImage&, qint64 timeUs);
     void clearSkim();
     bool skimming() const { return !skim_.isNull(); }
+    qint64 skimTime() const { return skimUs_; }
     // A failed refresh: a frame still shown is dimmed and marked as an earlier
     // one; the window shows the message with Retry preview. Empty clears it.
     void setPreviewError(const QString& message);
@@ -111,6 +112,8 @@ public:
     // committed edit is shown (or the gesture changed nothing).
     void setUncovered(const QString& id, const QImage& image, qint64 timeUs);
     void endLive();
+    // R29: the selected blur's strength while the panel coalesces it, shown at once.
+    void previewStrength(const QString& id, int strength);
     QString liveId() const { return liveId_; }
     // Esc, a right press, Ctrl+Z or a lost window: the gesture in progress
     // goes back to its start (W5, W20). False with none.
@@ -187,6 +190,7 @@ private:
     QImage uncovered_, composite_;
     qint64 uncoveredUs_ = -1;
     std::tuple<qint64, QRect, QString, int> compositeKey_;
+    std::optional<int> liveStrength_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;
@@ -328,6 +332,8 @@ private:
     void showNote(const QString& text, int ms);
     void refreshNote();
     void noteUndo();
+    bool blurApplies() const;
+    recording::Span placementSpan(const QString& kind, bool& whole) const;
     void stepEditPoint(int direction);
     void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
@@ -419,6 +425,7 @@ private:
     // The exact skim frame asked for: its time and the edit revision it was asked at.
     std::optional<std::pair<qint64, quint64>> skimAsked_;
     void askSkimFrame(qint64 at);
+    qint64 skimReach() const;
     // The last exact skim frames (B2): one answers any time from its request to
     // its frame's own time when no cover starts or ends in between.
     struct SkimFrame { qint64 requested, frameUs; quint64 revision; int edge; QImage image; };
@@ -442,6 +449,7 @@ private:
     quint64 edgeDragSeq_ = 0, edgeHoldProposal_ = 0;  // proposals before the drag; the one its release made
     QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
     QString transientNote_;
+    int noteMs_ = 1500;
     bool loadingFrame_ = false;
     bool heldPlaying_ = false;  // T15: playing when the timeline held playback for a press
     quint64 undoProposal_ = 0;

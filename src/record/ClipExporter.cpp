@@ -1310,6 +1310,16 @@ Error FrameSequence::open(const QString& path, qint64 startUs) {
     d_->startTarget = d_->origin + av_rescale_q(startUs, microseconds, d_->timeBase);
     return {};
 }
+Error FrameSequence::seek(const QString& path, qint64 startUs) {
+    if (!d_->input.format) return open(path, startUs);
+    av_frame_unref(d_->frame.get());
+    av_packet_unref(d_->packet.get());
+    d_->input.seekTo(startUs, path, false);
+    if (!d_->input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+    d_->startTarget = d_->origin + av_rescale_q(startUs, microseconds, d_->timeBase);
+    d_->ended = d_->flushed = false;
+    return {};
+}
 bool FrameSequence::next(const RecordingEdit& edit, int maxEdge, const QSize& canvas, QImage& out, qint64& frameUs, Error* error, const std::function<bool(qint64)>& wanted) {
     auto& d = *d_;
     auto report = [&](const Error& e) { if (error) *error = e; d.ended = true; return false; };

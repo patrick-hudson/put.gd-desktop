@@ -64,6 +64,8 @@ public:
     FrameSequence();
     ~FrameSequence();
     Error open(const QString& input, qint64 startUs);
+    // The next kept span: the same input and decoder, sought to startUs (opened if not yet).
+    Error seek(const QString& input, qint64 startUs);
     // false at the end of the clip, or on a decode error reported through error.
     // Frames `wanted` declines are decoded (the stream must stay in order) but
     // not converted, masked or scaled, so a late player catches up cheaply.

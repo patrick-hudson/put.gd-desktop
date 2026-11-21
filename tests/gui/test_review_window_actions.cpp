@@ -470,8 +470,8 @@ private slots:
         QCOMPARE(proposals.size(), count + 2);
         QCOMPARE(proposals.last().at(1).toJsonArray(), typed);
     }
-    // U13, E3: Enter by focus and state: placing, it places the centred cover; a
-    // selected cut is restored only by its Restore button or its row; a focused
+    // U13, E3, R19: Enter by focus and state: placing, it places the centred cover; a
+    // selected cut is restored only by its Restore button (a row only selects); a focused
     // time field keeps it; it uploads only when Upload has focus.
     void enterFollowsFocusAndState() {
         ReviewWindow window(options(), config());
@@ -502,9 +502,9 @@ private slots:
         auto* cutRow = window.findChild<ReviewPanel*>()->rowFor("cut", "c1");
         QVERIFY(cutRow);
         cutRow->setFocus();
+        // R19: Enter on a row only selects it.
         QTest::keyClick(cutRow, Qt::Key_Return);
-        QCOMPARE(proposals.size(), 3);
-        QCOMPARE(proposed(proposals)["op"].toString(), QString("removeCut"));
+        QCOMPARE(proposals.size(), 2);
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
         QVERIFY(field);
@@ -1018,18 +1018,23 @@ private slots:
     // and keeps it selected; a placing drag under 6 px or beside the picture
     // creates nothing; at 100 % a click beside the cover deselects it.
     void viewerGesturesHaveADeadZoneAndCancel() {
-        ReviewWindow window(options(), config());
+        // A real clip: placing waits for the decoded frame it is drawn on (R18).
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 1, 1280, 720));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 1000000;
+        ReviewWindow window(o, config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         RecordingEdit edit;
         edit.revision = 2;
-        edit.masks = {mask("m1", "solid", 0, duration)};
+        edit.masks = {mask("m1", "solid", 0, 1000000)};
         window.setEdit(edit);
         auto* view = window.findChild<FrameView*>("frame");
-        QImage frame(1280, 720, QImage::Format_RGB32);
-        frame.fill(Qt::gray);
-        view->setFrame(frame, 0);
+        PUTGD_TRY_VERIFY(!window.inspect()["preview"].toObject()["shownUs"].isNull());
         const auto box = [&] {
             const QRect r = view->imageRect();
             const double k = r.width() / 1280.0;
@@ -1067,12 +1072,22 @@ private slots:
         QCOMPARE(proposals.size(), 1);
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         QCOMPARE(window.inspect()["masks"].toArray().first().toObject()["id"].toString(), QString("m1"));
+        // R27: an answer that leaves the dragged cover as it was doesn't undo the drag.
+        QTest::mousePress(view, Qt::LeftButton, {}, body);
+        move(body + QPoint(40, 0));
+        auto later = edit;
+        later.revision = 3;
+        window.setEdit(later);
+        QTest::mouseRelease(view, Qt::LeftButton, {}, body + QPoint(40, 0));
+        QCOMPARE(proposals.size(), 2);
+        QVERIFY(proposed(proposals)["mask"].toObject()["rect"].toArray()[0].toInt() > 100);
+        window.setEdit(later, answer(2));
         // W20: Ctrl+Z mid-move cancels only the move.
         QTest::mousePress(view, Qt::LeftButton, {}, body);
         move(body + QPoint(30, 30));
         for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated();
         QTest::mouseRelease(view, Qt::LeftButton, {}, body + QPoint(30, 30));
-        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposals.size(), 2);
         // W22: a placing drag from more than 8 px beside the picture does nothing.
         window.drive({{"action", "armRedact"}});
         const QPoint inside = view->imageRect().center();
@@ -1080,14 +1095,20 @@ private slots:
         QVERIFY(view->rect().contains(beside));
         drag(view, beside, inside + QPoint(100, 60));
         QVERIFY(!window.inspect()["armed"].isNull());
-        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposals.size(), 2);
         // W6: a click places a box about 20 % × 8 % of the frame centred on it.
         drag(view, inside, inside + QPoint(2, 1));
-        QCOMPARE(proposals.size(), 2);
+        QCOMPARE(proposals.size(), 3);
         const auto placed = proposed(proposals)["mask"].toObject()["rect"].toArray();
         QCOMPARE(placed[2].toInt(), 256);
         QCOMPARE(placed[3].toInt(), 57);
         QVERIFY2(std::abs(placed[0].toInt() + 128 - 640) <= 4 && std::abs(placed[1].toInt() + 28 - 360) <= 4, qPrintable(QJsonDocument(placed).toJson()));
+        // R17: a long thin drag (over a line of text) makes that thin box.
+        window.drive({{"action", "armRedact"}});
+        drag(view, inside, inside + QPoint(100, 3));
+        QCOMPARE(proposals.size(), 4);
+        const auto thin = proposed(proposals)["mask"].toObject()["rect"].toArray();
+        QVERIFY2(thin[2].toInt() > 100 && thin[3].toInt() >= 2 && thin[3].toInt() < 10, qPrintable(QJsonDocument(thin).toJson()));
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
@@ -1097,6 +1118,26 @@ private slots:
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         drag(view, away, away + QPoint(1, 0));
         QVERIFY(window.inspect()["selectedMaskId"].isNull());
+    }
+    // R28: a placement follows the time selection: a new selection moves it,
+    // and with the selection cleared it covers the whole recording.
+    void placementFollowsTheSelection() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.drive({{"action", "selectRange"}, {"start", 2000000}, {"end", 4000000}});
+        auto placement = window.drive({{"action", "armRedact"}}).state["placement"].toObject();
+        QCOMPARE(placement["start"].toDouble(), 2000000.0);
+        emit timeline(window)->timeSelected(6000000, 7000000);
+        placement = window.inspect()["placement"].toObject();
+        QCOMPARE(placement["start"].toDouble(), 6000000.0);
+        QCOMPARE(placement["end"].toDouble(), 7000000.0);
+        QVERIFY(placement["banner"].toString().contains("0:06.0"));
+        emit timeline(window)->selectionCleared();
+        QVERIFY(window.inspect()["placement"].toObject()["whole"].toBool());
     }
     // E1, E4, E5: the window's keys work from the timeline's or the viewer's
     // focus; a text field keeps its own.

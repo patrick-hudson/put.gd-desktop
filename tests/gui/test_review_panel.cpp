@@ -108,8 +108,8 @@ private slots:
         QCOMPARE(info["mode"].toString(), QString("cut"));
         QVERIFY(names(info).contains("Restore") && names(info).contains("Play across"));
         QCOMPARE(panel.defaultControl(), button(panel, "Restore"));
-        // The selected cut keeps its span: Restore is above, so its row has no verb button.
-        QVERIFY(!names(info).contains("Restore cut"));
+        // R20: the selected row shows its action, the cut's Restore too.
+        QVERIFY(names(info).contains("Restore cut"));
         QCOMPARE(info["rows"].toArray().size(), 4);
         // Source order: trim, redaction, cut, blur.
         QStringList order;

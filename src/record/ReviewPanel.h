@@ -52,7 +52,7 @@ public:
         // time), computed by the window; absent: "Excluded from output".
         std::optional<qint64> coverFirstKept, coverLastKept;
         qint64 playheadUs = 0;
-        bool placing = false;  // a cover is being placed: Cut waits (W21)
+        QString placingKind;  // "solid" | "blur" while a cover is being placed: Cut waits (W21)
     };
     explicit ReviewPanel(std::shared_ptr<MaskNames> names, QWidget* parent = nullptr);
     void setState(const State&);
@@ -85,6 +85,8 @@ signals:
     void coverEdgeEdited(const QString& id, bool start, qint64 sourceUs);
     void coverKindChanged(const QString& id, const QString& kind);
     void coverStrengthChanged(const QString& id, int strength);
+    // The strength being stepped, at once, for the picture (R29); -1: put back.
+    void coverStrengthPreview(const QString& id, int strength);
     // A row in Edits was activated (click / Enter): select it.
     void editActivated(const QString& kind, const QString& id);
     // A row's verb: Reset (trim), Restore (cut), Remove (cover).
