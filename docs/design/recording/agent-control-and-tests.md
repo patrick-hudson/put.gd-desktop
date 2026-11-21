@@ -252,10 +252,15 @@ lifecycle walk-throughs, A/V sync tones) is left to desktop acceptance.
   (`zoomLadder`, `trackpadZoomSettlesAndPanKeepsItsStart`), skim intent and its
   settling (`skimNeedsIntentThenMovesRestsAndLeaves`, `crossingOrSkimmingOffNeverSkims`,
   `skimIntentAndSeeks`, `noSkimAfterAClickUntilThePointerMoves`), hover reporting
-  (`hoverReportsTheItemUnderThePointer`) and that selecting a shown cover keeps the lanes
-  (`selectingAShownCoverKeepsTheLanes`).
-- `gui_review_panel` shows the controls of every selection state, and that its buttons and
-  fields emit their edits.
+  (`hoverReportsTheItemUnderThePointer`), that selecting a shown cover keeps the lanes
+  (`selectingAShownCoverKeepsTheLanes`), the skim's drift and presses
+  (`skimDriftAndPresses`, `skimEntryEndsAndCoverEdges`), a scrub's narrow snap and the cap
+  following the pointer (`scrubSnapsNarrowlyAndTheCapFollowsThePointer`) and the ends of a
+  recording and a cut press (`endsSeeksAndCutPressRestore`).
+- `gui_review_panel` shows the controls of every selection state, that its buttons and
+  fields emit their edits, that Remove by pointer returns focus to the timeline and by key
+  moves on (`removeByPointerReturnsFocusAndByKeyMovesOn`), and that the folded overlay's
+  list keeps its fit after an edit (`overlayListKeepsItsFitAfterAnEdit`).
 - `gui_review_window_*` (`tests/gui/test_review_window_actions.cpp`) covers the window's
   wiring: a cut lands the playhead before the seam, a cover spans the selection on whole
   frames, undo follows the resident's history and the length limit counts kept time; and
@@ -267,9 +272,13 @@ lifecycle walk-throughs, A/V sync tones) is left to desktop acceptance.
   (`viewerGesturesHaveADeadZoneAndCancel`), a moved cover stays covered until its frame
   arrives (`aMovedCoverStaysCoveredUntilItsFrameArrives`), edge frames are held until the
   answer (`edgeFramesHoldUntilTheAnswer`), the skim settles on the clip's last frame
-  (`skimAtTheLastFrameSettles`), a placement follows the selection
-  (`placementFollowsTheSelection`) and panel fields hand the keys back
-  (`panelFieldsHandTheKeysBack`).
+  (`skimAtTheLastFrameSettles`, `skimPictureEndsCleanly`), a placement follows the
+  selection (`placementFollowsTheSelection`), panel fields hand the keys back
+  (`panelFieldsHandTheKeysBack`), typed times commit before an upload
+  (`typedTimesAreCommittedBeforeUpload`) and a cut's times can be typed
+  (`cutTimesAreTyped`), the transport shows the recording time and a steady speed button
+  (`transportShowsRecordingTime`, `theSpeedButtonKeepsItsWidth`) and the arrows come back at
+  100 % (`arrowsComeBackAtActualSize`).
 - `tests/integration/test_mcp.py` checks the MCP helper strictly: every
   `drive_recording_review` action and field maps to its session field, including `on`,
   `at`, `retimeCover`, `markSelection`, `editPoint` and any `timelineZoom` level, and bad
