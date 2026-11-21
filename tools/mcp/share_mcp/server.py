@@ -1207,7 +1207,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['id'] = id
         return await adapter.call('ui.fileDialog', params)
 
-    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    # Destructive: with a forget confirmation open, removeFromHistoryOnly removes History records (#1759).
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None, page: int | None = None,
                             key: str | None = None, value: str | None = None, category: str | None = None,
                             view: str | None = None) -> Json:

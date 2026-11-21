@@ -3691,7 +3691,8 @@ void SettingsWindow::refreshUploadedCount(){
  if(!destinationList_)return;const auto profiles=candidate()["profiles"].toArray();const int index=destinationList_->currentRow();if(index<0||index>=profiles.size())return;
  const auto id=profiles[index].toObject()["id"].toString();
  // Each destination keeps its own latest request, so a reply isn't dropped for another's.
- const auto ticket=++countSerial_;countRequests_[id]=ticket;
+ // Until it answers, the confirmation uses its unknown-count wording, not an older count.
+ const auto ticket=++countSerial_;countRequests_[id]=ticket;uploadedCounts_.remove(id);
  settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id,ticket](Error e,QJsonObject counts){if(g&&!e&&ticket==g->countRequests_.value(id))g->uploadedCounts_[id]=counts["total"].toInt();});
 }
 }
