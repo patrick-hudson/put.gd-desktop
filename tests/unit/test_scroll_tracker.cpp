@@ -1766,6 +1766,43 @@ void testPlayingVideo() {
       report("revisit verified page, pause and start 64% video: stays Following",
              wrong60 == 0 && lost60 == 0 && still60 >= 10,
              fmt("%d/12 still, %d lost, %d wrong", still60, lost60, wrong60));
+
+      // 2c. Same revisit with a 57-px final step and video at viewport [64, 352):
+      // both `brow` and `bref` must refresh `proofAt_` on already-verified cells.
+      MemoryCanvas c57(W);
+      ScrollTracker tr57(c57);
+      int wrong57 = 0, lost57 = 0, still57 = 0;
+      for (int p = 0; p <= 1040; p += 24) {
+        const TrackResult t = tr57.addFrame(scene60.frame(p, 0).view());
+        if (t.status == TrackStatus::Placed && t.position != p) ++wrong57;
+      }
+      for (int p = 1016; p >= 463; p -= 24) {
+        const TrackResult t = tr57.addFrame(scene60.frame(p, 0).view());
+        if (t.status == TrackStatus::Placed && t.position != p) ++wrong57;
+      }
+      {
+        const TrackResult t = tr57.addFrame(scene60.frame(463, 0).view());
+        if (t.status == TrackStatus::Placed && t.position != 463) ++wrong57;
+      }
+      {
+        const TrackResult t = tr57.addFrame(scene60.frame(520, 0).view());  // 57-px final step
+        if (t.status == TrackStatus::Placed && t.position != 520) ++wrong57;
+      }
+      for (int k = 1; k <= 12; ++k) {
+        Image f = scene60.frame(520, 0);
+        Rng vrng(7100 + size_t(k) * 9973);
+        const uint32_t bg = (uint32_t(vrng.range(20, 90)) << 16) | (uint32_t(vrng.range(20, 90)) << 8) | uint32_t(vrng.range(30, 110));
+        const uint32_t fg = (uint32_t(vrng.range(180, 250)) << 16) | (uint32_t(vrng.range(180, 250)) << 8) | uint32_t(vrng.range(160, 240));
+        for (int y = 64; y < 352; ++y)
+          for (int x = 32; x < 448; ++x) f.at(x, y) = bg;
+        for (int y = 70; y + 8 < 348; y += 14) drawTextLine(f, y, 40, 440, vrng, fg);
+        const TrackResult t = tr57.addFrame(f.view());
+        lost57 += t.state == TrackState::Lost;
+        still57 += t.status == TrackStatus::NoMovement;
+      }
+      report("revisit verified page (57-px step) and start 72% video: stays Following",
+             wrong57 == 0 && lost57 == 0 && still57 >= 10,
+             fmt("%d/12 still, %d lost, %d wrong", still57, lost57, wrong57));
     }
   }
 
@@ -2344,9 +2381,10 @@ void testPlayingVideo() {
            r.wrong == 0 && bad == 0 && r.totals.bottom == doc.img.h,
            counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
 
-    // 9b. Lazy-loaded image fading in over 4 scroll frames and then settling:
-    // once settled across consecutive placed frames, the final crisp artwork
-    // replaces the mid-fade snapshot cleanly (#1537).
+    // 9b. Lazy-loaded image fading in over scroll frames with a short mid-fade
+    // plateau (4 frames held at 224/256 opacity) before finishing at 256/256:
+    // restarting settling when the region changes again replaces the plateau
+    // snapshot with the final crisp artwork (#1537).
     Image settledDoc = doc.img;
     const int lx0 = 80, lx1 = 400, ly0 = 520, ly1 = 680;
     Rng artRng(173);
@@ -2368,8 +2406,8 @@ void testPlayingVideo() {
       int alpha = 256;  // 100% settled
       if (p + V < ly1) {
         alpha = 0;  // blank placeholder before fully in view
-      } else if (fullSeen < 4) {
-        static constexpr int kFade[4] = {48, 112, 176, 224};
+      } else if (fullSeen < 7) {
+        static constexpr int kFade[7] = {48, 112, 176, 224, 224, 224, 224};
         alpha = kFade[fullSeen++];
       }
       if (alpha < 256) {

@@ -1968,9 +1968,10 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const
       bool settledNow = false;
       // If a transient change (e.g. a lazy-loaded image fading in or a hover
       // popup dismissing) stops changing across 2 consecutive placed frames at
-      // full coverage, replace the mid-transition snapshot once with the final
-      // settled frame (#1537).
-      if (!replace && prevSnap && !prevSnap->settled && d != 0 && frameCovered == prevBest && frameCovered > 0) {
+      // full coverage, replace the mid-transition snapshot once with the
+      // settled frame; if the region changes again after a plateau, allow a
+      // later stable frame to replace it too (#1537).
+      if (!replace && prevSnap && d != 0 && frameCovered == prevBest && frameCovered > 0) {
         const int bTol = bandTol_;
         int agreed = 0, total = 0;
         for (long long p = c0; p < c1; ++p) {
@@ -1985,17 +1986,20 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos, const
           }
         }
         if (total >= 8 && agreed * 100 >= total * 95) {
-          prevSnap->settledCount = uint8_t(std::min(255, int(prevSnap->settledCount) + 1));
-          if (prevSnap->settledCount >= 2) {
-            chosenCopy = nullptr;
-            w0 = c0;
-            w1 = c1;
-            unblockedCells = frameCovered;
-            replace = true;
-            settledNow = true;
+          if (!prevSnap->settled) {
+            prevSnap->settledCount = uint8_t(std::min(255, int(prevSnap->settledCount) + 1));
+            if (prevSnap->settledCount >= 2) {
+              chosenCopy = nullptr;
+              w0 = c0;
+              w1 = c1;
+              unblockedCells = frameCovered;
+              replace = true;
+              settledNow = true;
+            }
           }
         } else {
           prevSnap->settledCount = 0;
+          prevSnap->settled = false;
         }
       }
       // When replacing from a retained copy (`topCopy_` / `bottomCopy_`), also
@@ -3673,10 +3677,12 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
             if (!youngMask) take |= 1ull << bit;
           }
         }
-        // Refresh `proofAt_` at most once per block on already-verified cells
-        // so revisiting a captured section and pausing over a newly playing
-        // video stays Following without scanning every verified row (#1537).
-        uint64_t bp = blockProved[size_t(brow) * words + size_t(w)] | moved;
+        // Refresh `proofAt_` on already-verified cells whenever either `brow`
+        // or `bref` still lacks motion proof in this frame so revisiting a
+        // captured section and pausing over a newly playing video stays
+        // Following without scanning every verified row (#1537).
+        uint64_t bp =
+            (blockProved[size_t(brow) * words + size_t(w)] & blockProved[size_t(bref) * words + size_t(w)]) | moved;
         uint64_t verNeed = alreadyVer & ~bp & ~blockedMask & full[size_t(w)];
         while (verNeed) {
           const int bit = std::countr_zero(verNeed);
