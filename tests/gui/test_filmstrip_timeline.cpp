@@ -996,6 +996,21 @@ private slots:
         wheel(QPoint(-3, 0), {}, Qt::ScrollUpdate);
         QVERIFY(std::abs(t->visibleSpan().start - (start + pixels(t.get(), 6))) <= 2);
     }
+    // F3: a scrub snaps within 3 px only, with no hold; F4: a cap drag is absolute.
+    void scrubSnapsNarrowlyAndTheCapFollowsThePointer() {
+        auto t = make();
+        QSignalSpy seek(t.get(), &FilmstripTimeline::seekRequested);
+        const int ruler = t->rulerRect().center().y(), cut = t->xFor(13000000);
+        const QPoint from(t->xFor(11000000), ruler);
+        drag(t.get(), from, QPoint(cut - 2, ruler));
+        QCOMPARE(seek.last()[0].toLongLong(), 13000000);
+        drag(t.get(), from, QPoint(cut - 5, ruler));
+        QVERIFY(seek.last()[0].toLongLong() < 13000000);
+        t->setPlayhead(5000000);
+        const int cap = t->xFor(5000000);
+        drag(t.get(), QPoint(cap + 8, ruler), QPoint(cap + 60, ruler));
+        QVERIFY(std::abs(seek.last()[0].toLongLong() - t->timeAt(cap + 60)) <= 1000000 / fps);
+    }
     // A3, A14: dragging from the ruler scrubs and keeps the selection.
     void rulerDragScrubs() {
         auto t = make();
