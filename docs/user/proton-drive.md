@@ -176,8 +176,9 @@ and Proton rotates the refresh token when it is used. If two helpers refreshed
 the same session, the one holding the stale token would be refused and the
 official account code would sign the account out and remove it from the
 keychain. Live, three parallel helpers finished three uploads 1.7–2.7 times
-faster than one at a time, so concurrent Proton uploads remain a tracked design
-item (#176) that needs refresh coordinated across helpers first. Helper requests use bounded stdin/stdout;
+faster than one at a time. Concurrent Proton uploads are not planned: #176 was
+closed as not planned on 2026-10-30. They would first need token refresh
+coordinated across helpers. Helper requests use bounded stdin/stdout;
 passwords and sessions never use argv.
 
 An upload's name check, transfer and link share one helper process, which the
