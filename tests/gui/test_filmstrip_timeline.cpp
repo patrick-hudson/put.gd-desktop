@@ -476,7 +476,7 @@ private slots:
         QCOMPARE(finished.size(), 1);
         QTest::mouseRelease(t.get(), Qt::LeftButton, {}, QPoint(end + 50, y));
         QCOMPARE(adjusted.size(), 0);
-        QCOMPARE(t->inspect()["selectedEdit"].toObject()["id"].toString(), QString("c1"));  // the selection stays
+        QCOMPARE(t->inspect()["selectedEdit"].toObject()["id"].toString(), QString());  // the selection from before the press (P7)
         // A right press during a cover slide.
         const auto bar = t->coverBarRect("m2");
         QTest::mousePress(t.get(), Qt::LeftButton, {}, bar.center());
@@ -726,8 +726,34 @@ private slots:
         moved.clear();
         QTest::mouseMove(t.get(), at + QPoint(1, 0));
         PUTGD_COMPARE_STEADY(moved.size(), 0, 120);
+        // After a click, only 12 px of travel brings it back, never a dwell (P4).
         QTest::mouseMove(t.get(), at + QPoint(3, 0));
-        QVERIFY(putgd::test::waitForSignal(moved));
+        PUTGD_COMPARE_STEADY(moved.size(), 0, 250);
+        QTest::mouseMove(t.get(), at + QPoint(16, 0));
+        QCOMPARE(moved.size(), 1);
+    }
+    // P2: sideways travel with some drift keeps skimming; mostly vertical motion
+    // of 8 px ends it. P3: a press that seeks ends it silently; one that does not, as leaving.
+    void skimDriftAndPresses() {
+        auto t = make();
+        QSignalSpy moved(t.get(), &FilmstripTimeline::skimMoved), left(t.get(), &FilmstripTimeline::skimLeft);
+        const QPoint at(t->xFor(5000000), t->stripRect().center().y() - 20);
+        QTest::mouseMove(t.get(), at);
+        QTest::mouseMove(t.get(), at + QPoint(14, 0));
+        QCOMPARE(moved.size(), 1);
+        for (int i = 1; i <= 4; ++i) QTest::mouseMove(t.get(), at + QPoint(14 + 10 * i, 3 * i));
+        QCOMPARE(left.size(), 0);
+        QTest::mouseMove(t.get(), at + QPoint(54, 17));
+        QTest::mouseMove(t.get(), at + QPoint(54, 22));
+        QCOMPARE(left.size(), 1);
+        // Back to skimming, then a strip press: the window's seek keeps the skimmed picture.
+        QTest::mouseMove(t.get(), at + QPoint(70, 22));
+        QTest::mouseMove(t.get(), at + QPoint(86, 22));
+        QVERIFY(!t->inspect()["skim"].isNull());
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, at + QPoint(86, 22));
+        QCOMPARE(left.size(), 1);
+        QVERIFY(t->inspect()["skim"].isNull());
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, at + QPoint(86, 22));
     }
     // T4: a released edge stays where it was dropped until the edit answers;
     // a refusal (the same revision again) or 1 s without an answer eases it back.
@@ -834,12 +860,51 @@ private slots:
         reset(t.get());
         t->setZoom(1);
         const int start = t->xFor(13000000);
-        QTest::mouseMove(t.get(), QPoint(start, y));
-        QTest::mouseMove(t.get(), QPoint(start + 10, y));
-        drag(t.get(), QPoint(start + 10, y), QPoint(start + 60, y));
+        QTest::mouseMove(t.get(), QPoint(start + 6, y));  // on the edge
+        QTest::mouseMove(t.get(), QPoint(start + 12, y));  // the body, when the press arrives
+        drag(t.get(), QPoint(start + 12, y), QPoint(start + 66, y));
         QCOMPARE(selected.size(), 0);
         QCOMPARE(adjusted.size(), 1);
         QVERIFY(std::abs(adjusted[0][1].toLongLong() - (13000000 + pixels(t.get(), 60))) <= 1000000 / fps);
+        // P1: a recovered grip with no travel after the real press never edits.
+        reset(t.get());
+        t->setZoom(3, qint64(29000000));
+        QTest::mouseMove(t.get(), QPoint(edge + 1, y));
+        QTest::mouseMove(t.get(), QPoint(edge - 5, y));
+        QTest::mouseMove(t.get(), QPoint(edge - 10, y));
+        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(edge - 10, y));
+        QCOMPARE(proposed.size(), 1);
+    }
+    // P5: zoomed in, an end reaches the clip's end even when the duration is not
+    // frame-aligned. P6: a click on a bracket's kept side seeks; on its body it
+    // does nothing. P7: Esc on a cut press gives back the earlier selection.
+    void endsSeeksAndCutPressRestore() {
+        auto t = make();
+        t->setDuration(32010000, fps);
+        t->setZoom(4, qint64(32010000));
+        QSignalSpy proposed(t.get(), &FilmstripTimeline::trimProposed);
+        const int y = t->stripRect().center().y();
+        const QPoint end = t->trimHandleRect(false).center();
+        drag(t.get(), end, QPoint(t->width() + 40, y));
+        QCOMPARE(proposed.size(), 1);
+        QCOMPARE(proposed[0][1].toLongLong(), 32010000);
+        reset(t.get());
+        t->setDuration(duration, fps);
+        t->zoomFit();
+        QSignalSpy seek(t.get(), &FilmstripTimeline::seekRequested);
+        const int trim = t->xFor(2600000);
+        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(trim + 5, y));
+        QCOMPARE(seek.size(), 1);
+        QTest::mouseClick(t.get(), Qt::LeftButton, {}, QPoint(trim - 6, y));
+        QCOMPARE(seek.size(), 1);
+        t->setSelectedEdit("cover", "m1");
+        const QPoint body(t->xFor(16000000), y);
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, body);
+        QCOMPARE(t->inspect()["selectedEdit"].toObject()["kind"].toString(), QString("cut"));
+        move(t.get(), body + QPoint(10, 0));
+        QTest::keyClick(t.get(), Qt::Key_Escape);
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, body + QPoint(10, 0));
+        QCOMPARE(t->inspect()["selectedEdit"].toObject()["id"].toString(), QString("m1"));
     }
     // Q9: the hovered cut or cover is reported for the Edits list.
     void hoverReportsTheItemUnderThePointer() {

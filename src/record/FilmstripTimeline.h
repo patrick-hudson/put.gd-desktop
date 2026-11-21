@@ -68,7 +68,7 @@ public:
     // about 8 px per frame for the current duration, fps and width; 1 is Fit.
     // setZoom snaps to the nearest level. Zooming keeps `anchorUs` under the
     // same x (Ctrl+wheel and pinch pass the pointer's time; without one, the
-    // view's centre stays put). Above Fit the strip scrolls horizontally
+    // playhead when it is on screen, else the view's centre). Above Fit the strip scrolls horizontally
     // (wheel / Shift+wheel / trackpad), follows the playhead while playing
     // (a manual scroll suspends that until the playhead is back in view or
     // playback restarts), and an overview track under the lanes shows and
@@ -174,11 +174,14 @@ signals:
     void editEdgeDragged(const QString& kind, const QString& id, bool start, qint64 sourceUs);
     // Any edge, slide or selection drag was released or cancelled, changed or not.
     void edgeDragFinished();
-    // Paused hover over the ruler or strip, after hover intent (80 ms over it
-    // with mostly horizontal motion). skimMoved with the time under the
-    // pointer; skimRested 40 ms after it rests (the window asks FrameSkimmer
-    // for the exact frame); skimLeft when the pointer leaves (the window
-    // restores the playhead frame).
+    // Paused hover over the ruler or strip, after hover intent: 12 px of
+    // horizontal travel at three times any vertical, or 150 ms dwelling off
+    // the grips (after a press or release in the timeline, only the travel).
+    // skimMoved with the time under the pointer; skimRested at most every
+    // 50 ms while moving and again when it rests (the window asks
+    // FrameSkimmer for the exact frame); skimLeft when the pointer leaves or
+    // a press that does not seek ends it (the window restores the playhead
+    // frame). A press that seeks ends it silently.
     void skimMoved(qint64 sourceUs);
     void skimRested(qint64 sourceUs);
     void skimLeft();
@@ -244,7 +247,7 @@ private:
     void revealPlayhead();
     void layoutCovers();
     void selectLocally(const QString& kind, const QString& id);
-    void clearSkim();
+    void clearSkim(bool silent = false);
     void clearSelections();
     void restartSkimTimer();
     QRect laneRect(int lane) const;
@@ -288,7 +291,10 @@ private:
     bool inSkimArea_ = false, skimIntent_ = false;
     QTimer dwellTimer_;                     // 150 ms without moving is intent
     QPointF intentAnchor_, dwellAt_;        // where intent is measured from; where the dwell started
-    double engagedY_ = 0;                   // the y at which skimming engaged (8 px vertical departure ends it)
+    double engagedY_ = 0;                   // the skim's vertical reference (follows sideways travel; P2)
+    bool travelOnly_ = false;               // P4: after a press or release, intent by travel only, never dwell
+    QElapsedTimer motionClock_;
+    QList<std::pair<qint64, QPointF>> recentMotion_;  // P2: the last moves (time, delta)
     std::optional<QPointF> lastMove_, skimBlockedAt_, recentDelta_;
     QTimer restThrottle_;                   // skimRested at most every 50 ms while moving
     QElapsedTimer restedClock_;
@@ -307,6 +313,7 @@ private:
     QString hoverItemKind_, hoverItemId_;   // Q9: the hovered cut or cover last reported
     std::optional<QPointF> gripAt_;         // Q10t: where the pointer last was on a grip
     QElapsedTimer gripLeft_;                // and since when it is off it
+    QPointF armFrom_;                       // P1: the dead zone counts from the real press
     QString dragId_;
     qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
     qint64 originStart_ = 0, originEnd_ = 0, prePlayhead_ = 0, originScroll_ = 0;
