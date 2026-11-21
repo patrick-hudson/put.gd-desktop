@@ -199,6 +199,15 @@ private slots:
   error={};const auto result=installUpdate(build(),options(),{},error);
   QVERIFY2(!error,qPrintable(error.message));QVERIFY(!QFileInfo::exists(earlier));QCOMPARE(read(image()),next_);QCOMPARE(result["installed"].toBool(),true);
  }
+ // One left in another folder (the image moved) doesn't block this image's update.
+ void anEarlierStagingFolderElsewhereDoesNotBlock(){
+  ReleaseServer server;publish(server,next_);
+  const auto elsewhere=dir.filePath("Old/.putgd-update-XyZ789");
+  QVERIFY(QDir().mkpath(elsewhere+"/not-ours"));
+  QVERIFY(appimage::writeState(state,QJsonObject{{"staging",elsewhere}}));
+  Error error;const auto result=installUpdate(build(),options(),{},error);
+  QVERIFY2(!error,qPrintable(error.message));QCOMPARE(read(image()),next_);QVERIFY(QFileInfo::exists(elsewhere));
+ }
  void aMirrorWithoutTheImageFallsBackToTheRelease(){
   for(const QString mirror:{"missing","short","wrong"}){
    init();
