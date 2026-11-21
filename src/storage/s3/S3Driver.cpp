@@ -1328,7 +1328,10 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         return;
     }
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes, {}, {});
+    // Whether an attempt that may have published was sent: one whose whole body went to the
+    // transport and whose reply never proved a result.
     bool uncertain = false;
+    Error last;
     for (int attempt = 0; attempt < attempts; ++attempt) {
         if (stopped(request.cancellation)) {
             reply({uncertain ? "unknown" : "failed", {}, cancelled()});
@@ -1352,7 +1355,15 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         put.SetBody(stream);
         qint64 transferred = 0;
+        // Set once the transport has read the last byte of the file in this attempt, and
+        // kept through a redirect's rewind. Until then S3 holds less than the length the
+        // request names, which it never stores.
+        bool wholeBodyRead = request.artifact.bytes == 0;
         report("uploading", transferred);
+        // A request that sends a file runs while its bytes move (#1758), so Cancel cuts it
+        // instead of waiting for the transfer, as it cuts a part (#203).
+        if (request.cancellation)
+            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) { return !stopped(request.cancellation); });
         // A new signed SDK request or our bounded outer retry sends the body
         // afresh. Keep each attempt's total equal to the retained artifact.
         put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
@@ -1368,6 +1379,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             const auto position = stream->rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
             if (position < 0 || position > request.artifact.bytes) return;
             transferred = qint64(position);
+            if (transferred == request.artifact.bytes) wholeBodyRead = true;
             report("uploading", transferred);
         });
         QElapsedTimer requestTimer;
@@ -1390,7 +1402,12 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;
         }
-        uncertain = uncertain || unclear;
+        last = error;
+        // An attempt that ended before the transport read the whole file can't have stored
+        // it, so with no earlier uncertain attempt there is nothing to check (#1758). A cut
+        // on Cancel ends at the top of the loop.
+        if (unclear && !wholeBodyRead && !uncertain) continue;
+        uncertain = uncertain || (unclear && wholeBodyRead);
         auto found = inspect(*client, expected, true);
         if (found.status == "own") {
             reply({"uploaded", found.receipt, {}});
@@ -1408,9 +1425,17 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             reply({uncertain ? "unknown" : "collision", {}, error});
             return;
         }
-        uncertain = true;
     }
-    reply({"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}});
+    // Every attempt ended without a reply. Say why, with the last attempt's diagnostics.
+    if (!uncertain) {
+        // None got the whole file to S3, which keeps no partial object.
+        if (last.code == "s3_transport_unknown") last.code = "s3_upload_interrupted";
+        last.message += " S3 never received the whole file, so nothing was published.";
+        reply({"failed", {}, last});
+        return;
+    }
+    reply({"unknown", {}, {"publication_unknown", "S3 didn't confirm the upload, and an attempt that sent the whole file may still be stored. "
+                           "Nothing was at the saved key when put.gd checked; Retry checks it again before sending. Last attempt: " + last.message, last.details}});
 }
 void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint save, std::function<void(DeleteResult)> reply) {
     QJsonObject progress = request.progress;

@@ -84,6 +84,8 @@ Aws::Utils::Logging::LogLevel sdkLevel(SdkRuntime::LogLevel level) {
 thread_local bool destructiveRequest = false;
 // SdkRuntime::SingleSendScope: requests from this thread go out once, on a new connection.
 thread_local bool singleSendRequests = false;
+// The request on this thread sends a body: a file or a part (#1758).
+thread_local bool bodyRequest = false;
 // The request on this thread whose continue handler can cut it (#203).
 thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
 // The SDK asks a request's continue handler only while body bytes move, so a part
@@ -96,6 +98,11 @@ int continueProgress(void* data, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
     } catch (...) {
         return 0;
     }
+}
+// A Content-Length header naming at least one byte.
+bool sendsBytes(const Aws::String& length) {
+    return !length.empty() && length.find_first_not_of("0123456789") == Aws::String::npos &&
+           length.find_first_not_of('0') != Aws::String::npos;
 }
 // libcurl can transparently replay an empty-body DELETE when a reused connection
 // loses its response. That bypasses the SDK retry strategy and is unsafe for S3
@@ -122,16 +129,20 @@ public:
         Aws::Utils::RateLimits::RateLimiterInterface* write = nullptr) const override {
         struct RequestScope {
             bool previous = destructiveRequest;
+            bool previousBody = bodyRequest;
             const Aws::Http::HttpRequest* previousContinuable = continuableRequest;
-            RequestScope(bool destructive, const Aws::Http::HttpRequest* continuable) {
+            RequestScope(bool destructive, bool body, const Aws::Http::HttpRequest* continuable) {
                 destructiveRequest = destructive;
+                bodyRequest = body;
                 continuableRequest = continuable;
             }
             ~RequestScope() {
                 destructiveRequest = previous;
+                bodyRequest = previousBody;
                 continuableRequest = previousContinuable;
             }
         } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE || singleSendRequests,
+                request->GetContentBody() && request->HasContentLength() && sendsBytes(request->GetContentLength()),
                 request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
@@ -149,7 +160,13 @@ protected:
             curl_easy_setopt(handle, CURLOPT_FORBID_REUSE, 1L);
         }
         if (singleSendRequests) curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 0L);
-        // The handle is reset when it returns to the pool, so this stays per request.
+        // The request timeout caps a whole exchange, so a file that takes longer to send
+        // than it could never upload, and each attempt started again from its first byte
+        // (#1758). A request that sends a body runs while the transfer keeps moving: the
+        // low-speed limit, at least 1 byte/s for the low-speed window, ends one whose body
+        // or reply stalls. The handle is reset when it returns to the pool, so this and the
+        // options below stay per request.
+        if (bodyRequest) curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 0L);
         if (continuableRequest) {
             curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
             curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, continueProgress);

@@ -104,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/__reset':
                 state['normalisePath'] = False
                 blobs.clear()
-                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versioningReported': None, 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versioningReported': None, 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}, 'putPace': None})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -131,8 +131,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self): self.handle_wire()
     def do_PUT(self): self.handle_wire()
     def do_DELETE(self): self.handle_wire()
+    def paced_read(self, length, pace):
+        # 'putPace': read a PUT body at 'bytesPerSecond', or stop reading it after 'stallAfter'
+        # bytes for 'stallSeconds' and then drop the connection without a reply.
+        data = bytearray()
+        while len(data) < length:
+            if 'stallAfter' in pace and len(data) >= pace['stallAfter']:
+                time.sleep(pace.get('stallSeconds', 3))
+                self.close_connection = True
+                return None
+            chunk = self.rfile.read(min(65536, length - len(data)))
+            if not chunk: return None
+            data += chunk
+            if pace.get('bytesPerSecond'): time.sleep(len(chunk) / pace['bytesPerSecond'])
+        return bytes(data)
     def handle_wire(self, body=None):
-        if body is None: body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        if body is None:
+            length = int(self.headers.get('Content-Length', 0))
+            with lock: pace = state.get('putPace') if self.command == 'PUT' else None
+            body = self.paced_read(length, pace) if pace else self.rfile.read(length)
+            if body is None: return
         if self.path == '/__state':
             with lock: self.respond(200, json.dumps(state).encode())
             return
