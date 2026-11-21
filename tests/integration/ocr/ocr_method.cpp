@@ -57,6 +57,7 @@ int main(int argc,char** argv){
   else if(a=="--symbols")symbols=true;
   else if(a=="--var"){const auto kv=next();const int eq=kv.indexOf('=');options.engine.research.emplace_back(kv.left(eq).toStdString(),kv.mid(eq+1).toStdString());}
   else if(a=="--target-rows")putgd::ocr::researchTargetLineRows=next().toInt();
+  else if(a=="--max-threads")putgd::ocr::maximumWorkerThreads=next().toInt();
   else if(a=="--line-tasks")putgd::ocr::researchLineTasks=1;
   else if(a=="--min-scale")putgd::ocr::researchMinimumScale=next().toDouble();
   else images.append(a);

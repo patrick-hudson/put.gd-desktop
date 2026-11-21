@@ -9,7 +9,7 @@
 // One recognition job, from the grey input to the result JSON (#1428 decisions 3 and 4).
 namespace putgd::ocr {
 // Recognition runs on at most this many threads, each with its own engine.
-inline constexpr int maximumWorkerThreads=4;
+inline int maximumWorkerThreads=4;  // research #1805: overridable by bench_ocr_method
 // The threads a job uses: requested, or one per core, at most maximumWorkerThreads.
 int workerThreads(int requested=0);
 
