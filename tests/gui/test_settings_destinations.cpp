@@ -1203,6 +1203,46 @@ private slots:
   PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("does not store"));
   QCOMPARE(saved()["settings"].toObject()["arguments"].toArray()[1].toObject(),QJsonObject({{"name","token"},{"secret",true}}));
  }
+ // #1787: every ⓘ in Settings opens its explanation directly under its own field and a second
+ // click hides it, including the boxed rows of Advanced connection settings.
+ void helpOpensUnderItsOwnField(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.resize(1100,800);window.show();
+  QStringList checked,misplaced;
+  auto check=[&](QScrollArea* scroll){
+   for(auto* help:scroll->widget()->findChildren<QToolButton*>()){
+    const auto controlName=help->property("settingHelpFor").toString();if(controlName.isEmpty()||!help->isVisible())continue;
+    QWidget* control=nullptr;for(auto* candidate:scroll->widget()->findChildren<QWidget*>(controlName))if(candidate->isVisible()){control=candidate;break;}
+    if(!control)continue;
+    scroll->ensureWidgetVisible(control,0,200);help->setChecked(true);putgd::test::settle(30);
+    auto* note=help->property("inlineHelp").value<QLabel*>();
+    const auto top=[&](QWidget* w){return w->mapTo(scroll->widget(),QPoint(0,0)).y();};
+    // Directly under the field: below it, before the next row's control, and in the field's column.
+    QString problem;
+    if(!note||!note->isVisible())problem="not shown";
+    else{
+     const int below=top(note)-(top(control)+control->height());
+     const int left=note->mapTo(scroll->widget(),QPoint(0,0)).x(),controlLeft=control->mapTo(scroll->widget(),QPoint(0,0)).x();
+     if(below<-1||below>Ui::scaled(40))problem=QString("%1 px below the field").arg(below);
+     else if(left+note->width()<controlLeft||left>controlLeft+control->width())problem="outside the field's column";
+    }
+    if(!problem.isEmpty()){QStringList chain;for(auto* w=note?note->parentWidget():nullptr;w&&w!=scroll->widget();w=w->parentWidget())chain<<(w->objectName().isEmpty()?QString(w->metaObject()->className()):w->objectName());misplaced<<controlName+": "+problem+" ["+chain.join(" < ")+"]";}
+    help->setChecked(false);putgd::test::settle(10);if(note&&note->isVisible())misplaced<<controlName+": still shown after a second click";
+    checked<<controlName;
+   }
+  };
+  window.navigate("destinations");
+  auto* advanced=window.findChild<QToolButton*>("advancedSettings");QVERIFY(advanced);advanced->setChecked(true);putgd::test::settle(30);
+  auto* destinations=qobject_cast<QScrollArea*>(window.findChild<QWidget*>("s3StorageClass")->parentWidget());
+  for(auto* w=window.findChild<QWidget*>("s3StorageClass");w&&!destinations;w=w->parentWidget())destinations=qobject_cast<QScrollArea*>(w);
+  QVERIFY(destinations);check(destinations);
+  QVERIFY2(window.findChild<QToolButton*>("s3StorageClassHelp"),"Storage class has an ⓘ");
+  window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");QVERIFY(tabs);
+  for(int i=0;i<tabs->count();++i)if(auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(i))){tabs->setCurrentIndex(i);putgd::test::settle(30);check(scroll);}
+  for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
+  QVERIFY2(checked.size()>=20,qPrintable("only checked "+checked.join(", ")));
+  QVERIFY2(misplaced.isEmpty(),qPrintable(misplaced.join("\n")));
+ }
 };
 QTEST_MAIN(SettingsGui)
 #include "test_settings_destinations.moc"
