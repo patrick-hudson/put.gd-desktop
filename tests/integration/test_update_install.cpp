@@ -118,13 +118,14 @@ private slots:
   qputenv("PATH",tools.toUtf8());
  }
  void cleanup(){qputenv("PATH",path_);for(const char* name:{"PUTGD_UPDATE_FEED_URL","PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);}
- void withoutZsyncToolDownloadsTheReleaseAndKeepsABackup(){
+ void withoutZsyncToolDownloadsFromTheMirrorAndKeepsABackup(){
   ReleaseServer server;publish(server,next_);
   QList<QJsonObject> progress;Error error;
   const auto result=installUpdate(build(),options(),[&](const QJsonObject& line){progress.append(line);},error);
   QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
-  QCOMPARE(result["installed"].toBool(),true);QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("release"));
+  QCOMPARE(result["installed"].toBool(),true);QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("mirror"));
   QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("not_installed"));
+  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
   QCOMPARE(read(image()),next_);QCOMPARE(QFileInfo(image()).permissions()&QFile::ExeGroup,QFile::ExeGroup);
   QCOMPARE(read(result["backup"].toString()),old_);
   QCOMPARE(leftovers(),QStringList{".putgd-update-backup-0.1.1-nightly.800.AppImage"});
@@ -135,6 +136,21 @@ private slots:
   QCOMPARE(phases,(QStringList{"checking","verifying","download","verifying","installing","done"}));
   // A second install waits for the restart.
   error={};installUpdate(build(),options(),{},error);QCOMPARE(error.code,QString("update_restart_required"));
+ }
+ // #1765: a mirror without the image, with a short one or with wrong bytes falls back to GitHub.
+ void aMirrorWithoutTheImageFallsBackToTheRelease(){
+  for(const QString mirror:{"missing","short","wrong"}){
+   init();
+   ReleaseServer server;publish(server,next_);const auto mirrored="/mirror/"+tag.toUtf8()+"/"+name.toUtf8();
+   if(mirror=="missing")server.files.remove(mirrored);
+   else if(mirror=="short")server.files[mirrored]=next_.left(next_.size()/2);
+   else {auto wrong=next_;wrong[wrong.size()-1]=char(wrong.at(wrong.size()-1)^1);server.files[mirrored]=wrong;}
+   Error error;const auto result=installUpdate(build(),options(),{},error);
+   QVERIFY2(!error,qPrintable(mirror+": "+error.message+" "+QJsonDocument(error.details).toJson()));
+   QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("release"));
+   QCOMPARE(result["downloads"].toArray().first().toObject()["sha256"].toString(),mirror=="wrong"?QString("mismatch"):QString());
+   QVERIFY(server.requested("GET "+mirrored));QCOMPARE(read(image()),next_);
+  }
  }
  void zsyncRunsTheHostToolWithItsCaBundleOnThePinnedRelease(){
   ReleaseServer server;publish(server,next_);fakeTool(next_,0);
@@ -148,7 +164,7 @@ private slots:
   QVERIFY(arguments.value(2).startsWith(QFileInfo(image()).canonicalPath()+"/.putgd-update-"));QVERIFY(arguments.value(2).endsWith("/seed.AppImage"));
   QCOMPARE(read(dir.filePath("tool.ca")),QByteArray("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"));
   // No image download: the tool did it.
-  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QVERIFY(server.requested("HEAD /mirror/"));
+  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QVERIFY(!server.requested("GET /mirror/"+tag.toUtf8()+"/"+name.toUtf8()+" "));QVERIFY(server.requested("HEAD /mirror/"));
   QCOMPARE(leftovers().size(),1);
  }
  void aFailedZsyncFallsBackToTheDownload(){

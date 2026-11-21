@@ -228,7 +228,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
   QFile::remove(candidatePath);
   const auto part=QDir(staging.path()).filePath("download.part");
   QJsonArray attempts;QString lastFailure;
-  for(const auto& source:{QString("release"),QString("mirror")}) {
+  // The mirror (CloudFront, no redirect) first; GitHub when it lacks the image or fails (#1765).
+  for(const auto& source:{QString("mirror"),QString("release")}) {
    Error urlError;const auto url=source=="release"?update::releaseFileUrl(tag,name,urlError):update::mirrorFileUrl(tag,name,urlError);
    if(urlError)continue;
    QFile file(part);
@@ -239,8 +240,9 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    file.close();
    attempts.append(QJsonObject{{"source",source},{"transfer",transferDetails(url,transfer)}});
    if(!transfer.ok||transfer.bytes!=size){lastFailure=transfer.tooLarge?"larger than the release says":transfer.network.isEmpty()?QString("HTTP %1").arg(transfer.status):transfer.network;continue;}
-   // A complete file with the wrong bytes is not retried from elsewhere.
+   // A mirror copy with the wrong bytes falls back to GitHub; wrong bytes from GitHub stop the install.
    if(QString::fromLatin1(hash.result().toHex())!=expected){
+    if(source=="mirror"){auto attempt=attempts.last().toObject();attempt["sha256"]="mismatch";attempts.replace(attempts.size()-1,attempt);lastFailure="the pkg.put.gd copy doesn't match SHA256SUMS";continue;}
     clearStaging();
     error={"update_verification_failed","The download doesn't match the release's SHA256SUMS; nothing was changed",{{"check","sha256"},{"expected",expected},{"actual",QString::fromLatin1(hash.result().toHex())},{"source",source}}};return {};
    }

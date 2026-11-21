@@ -14,7 +14,7 @@ namespace putgd {
 // zsync path: appimageupdatetool (or zsync2) on the host, run with the host's
 // environment and CA bundle on a hard link of the image in a private staging
 // folder, pinned to the release's mirrored .zsync. Fallback: the whole image
-// from the GitHub release (then the mirror) through put.gd's own TLS. Either
+// from the mirror (then the GitHub release) through put.gd's own TLS. Either
 // way the file must match the release's SHA256SUMS line before it is renamed
 // onto the image's path; the old image is kept as a hidden backup. That
 // SHA256SUMS must carry the release signer's minisign signature
