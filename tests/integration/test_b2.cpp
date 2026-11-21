@@ -428,6 +428,17 @@ private slots:
         QVERIFY2(large.status == "uploaded", qPrintable(large.status + " " + large.error.code + " " + large.error.message));
         QCOMPARE(f.events("upload_part").size(), 2);
     }
+    // A 2xx upload reply cut before it named the file: B2 stored it, so the upload finds it
+    // instead of reporting a definite failure that Retry would turn into a second copy.
+    void uploadReplyWithoutFileIdFindsTheStoredFile() {
+        B2Fixture f;
+        f.reset();
+        f.rules(QJsonArray{QJsonObject{{"call", "upload_file"}, {"noFileId", true}}});
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(f.events("upload_file").size(), 1);
+        QCOMPARE(uploaded.receipt.objectReference["fileId"].toString(), f.versions()[0].toObject()["fileId"].toString());
+    }
     void changedVersionIsNotDeleted() {
         B2Fixture f;
         f.reset();

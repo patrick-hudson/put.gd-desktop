@@ -66,7 +66,10 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
         "The B2 helper stopped responding; reconcile its saved identity before retrying",
         "The B2 helper ended without a confirmed result; reconcile before retrying",
         {"upload", "remove", "testDestination"}, method != "checkName" && method != "stat", true};
-    const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
+    // File data has no request timeout (#1782), only the worker's stall limit: never cut a worker
+    // while one of its requests may still be inside that limit.
+    const auto perRequest = qMax(destination.settings["requestTimeoutMs"].toInt(600000), qMax(destination.settings["connectTimeoutMs"].toInt(10000), 30000));
+    const auto final = worker::exchange(workerPath(), method, std::move(params), perRequest,
                                         policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);
     if (error) return {};
     if (!final["ok"].toBool()) {

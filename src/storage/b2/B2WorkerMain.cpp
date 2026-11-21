@@ -116,8 +116,7 @@ public:
         // timeout ends one that stalls, and Cancel cuts it. Every other request keeps the deadline.
         const bool fileData = device != nullptr;
         const int deadline = settings_["requestTimeoutMs"].toInt(600000);
-        const int stall = qMax(settings_["connectTimeoutMs"].toInt(10000), 30000);
-        request.setTransferTimeout(stall);
+        request.setTransferTimeout(qMax(settings_["connectTimeoutMs"].toInt(10000), 30000));
         QNetworkReply* reply = nullptr;
         std::unique_ptr<OneShot> owned;
         if (verb == "GET") reply = nam_.get(request);
@@ -150,11 +149,11 @@ public:
         out.json = QJsonDocument::fromJson(out.body).object();
         if (out.status == 0) {
             out.transport = true;
-            // Only the transfer timeout cancels a reply this loop did not abort.
-            const bool stalled = !out.aborted && (reply->error() == QNetworkReply::OperationCanceledError || reply->error() == QNetworkReply::TimeoutError);
+            // Qt 6.4 reports the transfer timeout as OperationCanceledError, later Qt as TimeoutError.
+            const bool timedOut = !out.aborted && (reply->error() == QNetworkReply::OperationCanceledError || reply->error() == QNetworkReply::TimeoutError);
             out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline")
-                       : stalled ? QString("no data moved for %1 s").arg(stall / 1000)
-                                 : QString("network error %1").arg(int(reply->error()));
+                       : timedOut ? QString("the transfer timed out")
+                                  : QString("network error %1").arg(int(reply->error()));
         }
         reply->deleteLater();
         return out;
@@ -482,6 +481,15 @@ private:
             // ID) may have stored a file nothing names (#1690).
             if (r.ok() && synthetic_) {
                 error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
+                uncertain = true;
+                return {};
+            }
+            // A success whose reply was cut before it named the file: B2 stored it, so find it.
+            if (r.ok()) {
+                Error lookup;
+                const auto found = published(name, publication, lookup);
+                if (found && found->contains("fileId")) return (*found)["fileId"].toString();
+                error = found ? Error{"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}} : lookup;
                 uncertain = true;
                 return {};
             }
