@@ -40,12 +40,34 @@ bool insideCode(const Quad& q,QPoint p){
  return sign!=0;
 }
 }
-int workerThreads(int requested){
+int availableCores(){
  // The CPUs this process may run on (affinity, a container's cpuset), not the
  // machine's: glibc's hardware_concurrency counts every online CPU.
  cpu_set_t set;CPU_ZERO(&set);
- const int cores=::sched_getaffinity(0,sizeof set,&set)==0?std::max(1,CPU_COUNT(&set)):int(std::max(1u,std::thread::hardware_concurrency()));
- return std::clamp(requested>0?requested:cores,1,maximumWorkerThreads);
+ int cores=::sched_getaffinity(0,sizeof set,&set)==0?std::max(1,CPU_COUNT(&set)):int(std::max(1u,std::thread::hardware_concurrency()));
+ // A CPU quota (cgroup v2 cpu.max, "quota period" or "max period") on this
+ // process's cgroup or any parent: the tightest one, rounded up to whole CPUs.
+ QFile self(QStringLiteral("/proc/self/cgroup"));
+ if(!self.open(QIODevice::ReadOnly))return cores;
+ QString path;
+ for(const auto& line:self.readAll().split('\n'))if(line.startsWith("0::")){path=QString::fromUtf8(line.mid(3)).trimmed();break;}
+ if(!path.startsWith(QLatin1Char('/'))||path.contains(QLatin1String("..")))return cores;
+ for(;;){
+  QFile max(QStringLiteral("/sys/fs/cgroup")+(path==QLatin1String("/")?QString():path)+QStringLiteral("/cpu.max"));
+  if(max.open(QIODevice::ReadOnly)){
+   const auto fields=max.readAll().simplified().split(' ');
+   bool quotaOk=false,periodOk=false;
+   const qint64 quota=fields.value(0).toLongLong(&quotaOk),period=fields.value(1).toLongLong(&periodOk);
+   if(quotaOk&&periodOk&&quota>0&&period>0)cores=std::min<qint64>(cores,std::max<qint64>(1,(quota+period-1)/period));
+  }
+  if(path==QLatin1String("/"))break;
+  const auto slash=path.lastIndexOf(QLatin1Char('/'));
+  path=slash<=0?QStringLiteral("/"):path.left(slash);
+ }
+ return cores;
+}
+int workerThreads(int requested){
+ return std::clamp(requested>0?requested:availableCores(),1,maximumWorkerThreads);
 }
 JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  JobResult result;QElapsedTimer total;total.start();const auto start=std::chrono::steady_clock::now();
