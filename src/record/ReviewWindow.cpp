@@ -1715,10 +1715,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     });
     // Upload hands the clip to the resident: the review closes at once and the
     // export and upload continue in the background, reported like any upload.
-    connect(upload_, &QPushButton::clicked, this, &ReviewWindow::upload);
+    // Save and Upload count refusals from the press on them, which committed a typed time (W5).
+    connect(upload_, &QPushButton::clicked, this, [this] { upload(takePressRefusals(upload_)); });
     chooser_ = new FileDialog(this);
     // The refusals counted from the press on Save, when a typed time was committed (W5).
-    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(std::exchange(savePressRefusals_, std::nullopt)); });
+    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(takePressRefusals(save_)); });
     connect(cancel_, &QPushButton::clicked, this, &ReviewWindow::askDiscard);
 
     // Keys with modifiers; the plain keys arrive in keyPressEvent so a focused
@@ -2443,7 +2444,17 @@ void ReviewWindow::setLimits(qint64 animationMaxUs, int animationMaxEdge) {
 // the user or an agent), or the output (format, codec, sound, size) changes;
 // and by a refusal or 2 s without an answer. The resident refuses an upload at
 // any other revision or output.
-void ReviewWindow::upload() {
+// The refusal count when `button` was pressed, for the click its mouse
+// release makes; none for any other click (a key, an agent), which counts
+// from invocation.
+std::optional<quint64> ReviewWindow::takePressRefusals(const QWidget* button) {
+    if (releasing_ != button || !pressRefusals_ || pressRefusals_->first != button) return std::nullopt;
+    return std::exchange(pressRefusals_, std::nullopt)->second;
+}
+void ReviewWindow::upload(std::optional<quint64> refusalsAtPress) {
+    // The upload holds the changes made before Upload, or nothing goes out:
+    // refusals count from the press on Upload, or from now (W5).
+    const quint64 mark = refusalsAtPress.value_or(refusals_);
     // A time or strength still being typed is committed first (P9).
     panel_->commitFields();
     // Mid-gesture or placing there is a change not yet made: nothing to upload.
@@ -2456,6 +2467,11 @@ void ReviewWindow::upload() {
     stopPlayback();
     view_->commitNudge();
     panel_->flushStrength();
+    if (refusals_ != mark) {
+        uploadNotice_ = {QStringLiteral("Nothing was uploaded: a change wasn't applied. Check the edits, then upload again."), QStringLiteral("warning"), {}};
+        refreshAll();
+        return;
+    }
     uploadNotice_ = {};
     uploadAwaits_ = proposalSeq_;
     uploadWaiting_ = true;
@@ -3700,15 +3716,38 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
     QWidget::hideEvent(e);
 }
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
+    // W5: a press on Save or Upload commits a typed time (P9, below); its
+    // answer can come back before the release clicks the button, so that click
+    // counts refusals from the press. A double-click's second press is part
+    // of the same activation and keeps the first press's count (U1).
+    // Only the left button counts: a right or middle press or release while
+    // it is held neither sets, clears nor delivers the count (U4).
+    const auto leftButton = [event] { return static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton; };
+    if ((event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) && leftButton()) {
+        auto* target = qobject_cast<QWidget*>(watched);
+        if (target && target->window() == this) {
+            if (target != save_ && target != upload_) pressRefusals_.reset(), lastPressRefusals_.reset();
+            else if (event->type() == QEvent::MouseButtonDblClick && lastPressRefusals_ && lastPressRefusals_->first == target) pressRefusals_ = lastPressRefusals_;
+            else pressRefusals_ = lastPressRefusals_ = std::pair<const QWidget*, quint64>(target, refusals_);
+        }
+    }
+    // The count belongs only to the click its release makes: the release is
+    // delivered to the button here, so a click runs inside this call and reads
+    // it, and it is gone when the call returns, click or not (U2, U3). A key
+    // never sees it.
+    if (event->type() == QEvent::MouseButtonRelease && (watched == save_ || watched == upload_) && !releasing_ && leftButton()) {
+        releasing_ = static_cast<QWidget*>(watched);
+        const bool handled = static_cast<QObject*>(releasing_)->event(event);  // the button handles its release now
+        releasing_ = nullptr;
+        pressRefusals_.reset();
+        return handled;
+    }
     // P9: a press anywhere in the window outside the panel field being typed
     // in commits that field and hands the keys to the timeline before the
     // pressed control acts (Tab-only controls don't take focus by click).
     if (event->type() == QEvent::MouseButtonPress) {
         auto* target = qobject_cast<QWidget*>(watched);
         auto* focus = focusWidget();
-        // W5: a press on Save commits a typed time below; its answer can come
-        // back before the release clicks Save, so Save counts refusals from here.
-        if (target && target->window() == this) savePressRefusals_ = target == save_ ? std::optional<quint64>(refusals_) : std::nullopt;
         if (target && target->window() == this && focus && textField(focus) && panel_->isAncestorOf(focus) && target != focus && !focus->isAncestorOf(target) && !(focus->parentWidget() && focus->parentWidget()->isAncestorOf(target) && qobject_cast<QAbstractSpinBox*>(focus))) {
             panel_->commitFields();
             timeline_->setFocus(Qt::MouseFocusReason);

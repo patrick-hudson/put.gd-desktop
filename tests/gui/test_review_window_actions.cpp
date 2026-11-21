@@ -17,6 +17,31 @@ void ctrlEnter(ReviewWindow& window) {
         if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Return)) { emit shortcut->activated(); return; }
     QFAIL("no Ctrl+Enter shortcut");
 }
+// A double-click's second press (Qt sends it as MouseButtonDblClick) and its
+// release, after an ordinary click on the same button, with no event-loop
+// turn in between (U1).
+// A left release delivered at once (no event-loop turn), inside the button or at `at`.
+void releaseNow(QWidget* button, std::optional<QPoint> at = std::nullopt) {
+    const QPointF p = at ? QPointF(*at) : button->rect().center();
+    QMouseEvent release(QEvent::MouseButtonRelease, p, button->mapToGlobal(p), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &release);
+}
+// A right press and release on the button while the left button is held (U4).
+void rightClickWhileHeld(QWidget* button) {
+    const QPointF at = button->rect().center();
+    QMouseEvent press(QEvent::MouseButtonPress, at, button->mapToGlobal(at), Qt::RightButton, Qt::LeftButton | Qt::RightButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &press);
+    QMouseEvent release(QEvent::MouseButtonRelease, at, button->mapToGlobal(at), Qt::RightButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &release);
+}
+void doubleClickTail(QWidget* button) {
+    const QPointF at = button->rect().center();
+    QMouseEvent second(QEvent::MouseButtonDblClick, at, button->mapToGlobal(at), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &second);
+    // Whatever the first release queued runs before the second release.
+    QCoreApplication::processEvents();
+    releaseNow(button);
+}
 QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
     QJsonObject a{{"proposal", double(proposal)}};
     if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "At most 64 masks are supported"}, {"revision", 2}};
@@ -1593,10 +1618,81 @@ private slots:
         QTest::mousePress(save, Qt::LeftButton);
         QCOMPARE(proposals.size(), before + 1);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "recording_cut_empty"));
-        QTest::mouseRelease(save, Qt::LeftButton);
+        rightClickWhileHeld(save);  // U4
+        releaseNow(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
         QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
+        // U1: a double-click's second press and release open nothing either.
+        doubleClickTail(save);
+        QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
         QCOMPARE(saves.size(), 1);
+    }
+    // W5 for Upload (docs review of #1791): a press on Upload commits a typed
+    // cover Until; the resident refuses it before the release clicks Upload.
+    // Nothing is uploaded (never the earlier edit with pixels left uncovered)
+    // and the status says so.
+    void uploadCountsARefusalBeforeItsClick() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelUntilTime");
+        QVERIFY(field);
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "0:09.0");
+        auto* upload = window.findChild<QPushButton*>("upload");
+        QTest::mousePress(upload, Qt::LeftButton);
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), 9000000.0);
+        window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
+        rightClickWhileHeld(upload);  // U4
+        releaseNow(upload);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
+        QVERIFY2(window.inspect()["status"].toString().contains("Nothing was uploaded"), qPrintable(window.inspect()["status"].toString()));
+        QVERIFY(window.isVisible());
+        // U1: the click was the first of a double-click; its second press
+        // (a MouseButtonDblClick) and release still upload nothing.
+        doubleClickTail(upload);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.isVisible());
+    }
+    // U2: a press on Upload whose release lands outside it clicks nothing; the
+    // refusal it saw is gone, so Enter on the focused Upload later uploads.
+    void anUploadPressReleasedOutsideLeavesNoRefusal() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelUntilTime");
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "0:09.0");
+        auto* upload = window.findChild<QPushButton*>("upload");
+        QTest::mousePress(upload, Qt::LeftButton);
+        QCOMPARE(proposals.size(), 1);
+        window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
+        // No event-loop turn between the outside release and the Enter (U2).
+        releaseNow(upload, QPoint(-40, -40));
+        QCOMPARE(uploads.size(), 0);
+        upload->setFocus(Qt::TabFocusReason);
+        QTest::keyClick(upload, Qt::Key_Return);  // Enter on a focused Upload
+        QCOMPARE(uploads.size(), 1);
+        QCOMPARE(uploads[0][0].toULongLong(), 2ull);
     }
     // P18: with trims or cuts the transport shows the recording time too.
     void transportShowsRecordingTime() {
