@@ -366,9 +366,10 @@ These are hard dependencies of every package, because one complete package is th
   component, and a line in `THIRD_PARTY_NOTICES.md`. The RPM carries it in its `%license` metadata.
 - The emoji templates ([#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748)) are
   built into `putgd-ocr`, so they need no package either. `src/ocr/emoji/templates.bin` is made by
-  `tools/text/emoji_templates.py` from Noto Color Emoji 2.051 (OFL-1.1) and Twemoji Mozilla 0.7.0
-  (CC-BY-4.0); `src/ocr/emoji/SOURCE.md` records the inputs and their SHA-256. Every package installs
-  both licences and that record in `share/doc/putgd/emoji`, the runtime notices and
+  `tools/text/emoji_templates.py` from Noto Color Emoji 2.051, 2.047 and 2.057 (OFL-1.1) and
+  Twemoji Mozilla 0.7.0 (CC-BY-4.0), for the sequences of Unicode's `emoji-test.txt` 16.0 (Unicode-3.0);
+  `src/ocr/emoji/SOURCE.md` records the inputs and their SHA-256. Every package installs the three
+  licences and that record in `share/doc/putgd/emoji`, the runtime notices and
   `THIRD_PARTY_NOTICES.md` name them, and the AppImage's notices list them as parts of put.gd. The RPM
   carries them in its `%license` metadata.
 
