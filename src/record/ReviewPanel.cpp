@@ -600,6 +600,8 @@ void ReviewPanel::rebuild(bool rebuildTop, bool rebuildList) {
     for (auto* w : {list_, rule_, top_}) if (w) root_->addWidget(w);
     root_->addStretch(1);
     if (isVisible()) for (auto* w : {list_, rule_, top_}) if (w) w->show();
+    // Only now does the panel hold everything the list shares its room with.
+    fitRows();
     building_ = false;
     updateRows();
 
@@ -1008,7 +1010,7 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
     rowsNatural_ = int(std::ceil(std::min<qreal>(items.size(), 4.5) * EditRow::rowHeight()));
     scroll->setFixedHeight(rowsNatural_);
     v->addWidget(scroll);
-    fitRows();
+    // rebuild() fits the rows once the list and details are back in the panel.
 }
 // The Edits list's area: about 4½ rows, fewer (down to 1½) when the panel's
 // room (the folded overlay) would otherwise push the details out of view.
@@ -1021,11 +1023,14 @@ void ReviewPanel::fitRows() {
     if (!rowsArea_) return;
     int target = rowsNatural_;
     if (availableHeight_ > 0) {
-        if (auto* l = layout()) l->activate();
-        const int others = std::max(0, sizeHint().height() - rowsArea_->height());
+        // Everything else from hinted heights, the list's area by its fixed
+        // height: its current height may still be the old one (r5-neon H5).
+        if (auto* l = layout()) l->invalidate();
+        const int whole = hasHeightForWidth() && width() > 0 ? heightForWidth(width()) : sizeHint().height();
+        const int others = std::max(0, whole - rowsArea_->minimumHeight());
         target = std::clamp(availableHeight_ - others, std::min(rowsNatural_, int(1.5 * EditRow::rowHeight())), rowsNatural_);
     }
-    if (rowsArea_->height() != target) rowsArea_->setFixedHeight(target);
+    if (rowsArea_->minimumHeight() != target || rowsArea_->maximumHeight() != target) rowsArea_->setFixedHeight(target);
 }
 
 QJsonObject ReviewPanel::inspect() const {

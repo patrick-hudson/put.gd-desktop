@@ -431,7 +431,10 @@ bool FrameView::event(QEvent* e) {
         const auto* key = static_cast<QKeyEvent*>(e);
         const bool arrow = key->key() == Qt::Key_Left || key->key() == Qt::Key_Right || key->key() == Qt::Key_Up || key->key() == Qt::Key_Down;
         if (arrow && arrowsClaimed_ && !(key->modifiers() & Qt::AltModifier) && (!selected_.isEmpty() || actual_)) e->accept();
-        if (key->key() == Qt::Key_Escape && (drag_ != Drag::None || nudging_ || (arrowsClaimed_ && !selected_.isEmpty()))) e->accept();
+        if (key->key() == Qt::Key_Escape && (drag_ != Drag::None || nudging_ || (arrowsClaimed_ && armed_.isEmpty()))) e->accept();
+        // While placing, Esc is the window's (it stops placing) and still
+        // gives the arrows back.
+        else if (key->key() == Qt::Key_Escape && arrowsClaimed_) claimArrows(false);
     }
     // A lost window (W5): a gesture in progress goes back to where it started.
     if (e->type() == QEvent::WindowDeactivate && drag_ != Drag::None) cancelGesture();
@@ -720,7 +723,8 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
     // arrows back to the frames (W8); then it deselects.
     if (e->key() == Qt::Key_Escape && nudging_) { cancelNudge(); return; }
     auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == selected_; });
-    if (e->key() == Qt::Key_Escape && arrowsClaimed_ && mask != masks_.end() && armed_.isEmpty()) { claimArrows(false); emit arrowsReleased(); return; }
+    // Esc always gives held arrows back, cover selected or not (no arrow trap at 100 %).
+    if (e->key() == Qt::Key_Escape && arrowsClaimed_ && armed_.isEmpty()) { claimArrows(false); emit arrowsReleased(); return; }
     if (e->key() == Qt::Key_Escape && mask != masks_.end() && armed_.isEmpty()) { selected_.clear(); announce(); emit maskSelected({}); update(); return; }
     QPoint step;
     switch (e->key()) {
@@ -836,6 +840,8 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
     }
     // At 100 % a drag pans; a click there deselects (D8).
     if (actual_) { drag_ = Drag::Pan; anchor_ = p; setCursor(Qt::ClosedHandCursor); return; }
+    // A click on empty picture gives the arrows back to the frames.
+    claimArrows(false);
     if (!selected_.isEmpty()) {
         selected_.clear();
         announce();
@@ -894,6 +900,8 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
     if (drag_ == Drag::Pan) {
         drag_ = Drag::None;
         unsetCursor();
+        // A click (no pan) deselects and gives the arrows back to the frames.
+        if (!moved) claimArrows(false);
         if (!moved && !selected_.isEmpty()) { selected_.clear(); announce(); emit maskSelected({}); update(); }
         updateHover(p);
         return;
