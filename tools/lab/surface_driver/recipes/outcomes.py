@@ -1127,7 +1127,10 @@ def _tray_menu_by_pixels(ctx):
         except BaseException:
             # Also after a press: a click the host ignored leaves the menu open, holding the grab
             # the row's later cells need. Never on success, where the press opened the selector.
-            tray._dismiss_drawn_menu(ctx, opened, pressed=pressed)
+            try:
+                tray._dismiss_drawn_menu(ctx, opened, pressed='Capture region' if pressed else None)
+            except Exception as error:  # The cell's own result stands; the cleanup's failure is a note.
+                ctx.note('tray menu dismissal failed: ' + type(error).__name__ + ': ' + str(error))
             raise
 
 

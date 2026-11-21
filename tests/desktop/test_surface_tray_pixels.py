@@ -214,6 +214,19 @@ class TheOpenMenu(unittest.TestCase):
         self.assertEqual(lines[2]['rect'], [5, 90, 6, 6])  # A line of marks only keeps their box.
         self.assertEqual(tp.align(['Capture region'], lines)[0]['rect'], [48, 33, 102, 14])
 
+    def test_after_a_press_only_the_clicked_rows_hover_may_differ(self):
+        # The menu is closed after a click put.gd did not record only while it is still the menu
+        # the cell read: the pressed row's hover is allowed, any other change is another popup.
+        from tools.lab.surface_driver.recipes.tray import _same_but_row
+        menu = Image.new('RGB', (400, 300), (30, 30, 30))
+        box, row = (100, 50, 300, 250), [120, 80, 80, 14]
+        hovered = menu.copy()
+        ImageDraw.Draw(hovered).rectangle((101, 75, 299, 99), fill=(60, 60, 90))
+        self.assertTrue(_same_but_row(menu, hovered, box, row))
+        other = hovered.copy()
+        ImageDraw.Draw(other).rectangle((150, 150, 200, 200), fill=(200, 0, 0))
+        self.assertFalse(_same_but_row(menu, other, box, row))
+
 
 if __name__ == '__main__':
     unittest.main()
