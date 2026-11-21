@@ -610,8 +610,10 @@ Each resident runs with private `XDG_CONFIG_HOME`,
   - **zsync:** put.gd's own client, with no `appimageupdatetool` installed. The mirror's `.zsync` is
     used, `install.result.zsync.used` is true and `downloadedBytes` is a small part of the image.
   - **The fallback, forced once per desktop:** `PUTGD_UPDATE_MIRROR_URL` at a loopback stand-in that
-    answers Range requests with the whole file, so the verified full download is taken and
-    `zsync.fallbackReason` is `range_refused`.
+    serves N+1's authentic `SHA256SUMS.minisig`, the matching `.zsync` and the full AppImage, and
+    answers the image's Range GET with HTTP 200 and the whole file. The verified full download is
+    then taken and `zsync.fallbackReason` is `range_refused`. Without the real signature and
+    `.zsync` the install stops earlier or falls back for another reason.
   - The new image is on the same path, with its mode kept. **Restart put.gd** runs N+1, and the hidden
     backup is gone after that first start.
   - **One runtime, one mount after restart (#1165):** record the old runtime PID, its

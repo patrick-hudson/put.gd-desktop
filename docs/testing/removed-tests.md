@@ -124,7 +124,7 @@ removed the test; see [capture monitor, delay and repeat](../design/capture-dela
 
 | Pull request | What went | What no longer gets caught |
 | --- | --- | --- |
-| [#1774](https://github.com/patrick-hudson/put.gd-desktop/pull/1774) | The fake-`appimageupdatetool` tests in `update_appimage_install_child` (`zsyncRunsTheHostToolWithItsCaBundleOnThePinnedRelease`, `aFailedZsyncFallsBackToTheDownload`, `zsyncOutputThatIsNotTheReleaseFallsBack`, `withoutTheMirrorTheToolIsNotRun`) and `findsTheHostsZsyncToolAndPinsTheRelease` and `cleansTheToolsOutput` in `update_appimage_install_files` | Nothing: put.gd no longer runs an external zsync tool. Its own zsync client is covered by `zsyncReusesTheRunningImageAndFetchesOnlyTheRest` and `aZsyncThatCantFinishFallsBackToTheDownload`. |
+| [#1774](https://github.com/patrick-hudson/put.gd-desktop/pull/1774) | The fake-`appimageupdatetool` tests in `update_appimage_install_child` (`zsyncRunsTheHostToolWithItsCaBundleOnThePinnedRelease`, `aFailedZsyncFallsBackToTheDownload`, `zsyncOutputThatIsNotTheReleaseFallsBack`, `withoutTheMirrorTheToolIsNotRun`) and `findsTheHostsZsyncToolAndPinsTheRelease` and `cleansTheToolsOutput` in `update_appimage_install_files` | Nothing: put.gd no longer runs an external zsync tool. Its own zsync client is covered by `zsyncReusesTheRunningImageAndFetchesOnlyTheRest` and `aZsyncThatCantFinishFallsBackToTheDownload`. The latter also covers what `zsyncOutputThatIsNotTheReleaseFallsBack` caught: a zsync result that matches its `.zsync`'s SHA-1 but not the signed SHA-256 falls back with `verification_failed:sha256`. `withoutZsyncToolDownloadsFromTheMirrorAndKeepsABackup` became `aDownloadInstallsFromTheMirrorAndKeepsABackup`, which forces `method: download`. |
 
 ## Also changed in CI
 
