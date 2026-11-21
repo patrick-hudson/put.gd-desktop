@@ -76,8 +76,9 @@ private:
 // active at that time applied, long edge scaled to at most maxEdge. A later
 // time in the same GOP is decoded forward from the last frame without a seek,
 // and a time the last frame already answers (a new edit at the same playhead)
-// is rendered again without decoding. Measured on m74 (seek and decode):
-// 217 ms median, 328 ms p95 at 4K.
+// is rendered again without decoding. A frame is scaled straight to the
+// preview size and its covers painted at that size. Measured on m74 (seek and
+// decode, before direct scaling): 217 ms median, 328 ms p95 at 4K.
 class FrameSkimmer final : public QObject {
     Q_OBJECT
 public:
@@ -91,8 +92,11 @@ public:
     bool failedToOpen() const;
 signals:
     // requestedUs is the request's time; frameUs the decoded frame's own time;
-    // revision the request's edit revision.
-    void frameReady(qint64 requestedUs, qint64 frameUs, const QImage& frame, quint64 revision);
+    // revision the request's edit revision. exact: the frame shown for that
+    // time; false for the frame decoded so far when a newer request came in
+    // (a fast scrub sees real frames on the way; only an exact one stands for
+    // the request's time).
+    void frameReady(qint64 requestedUs, qint64 frameUs, const QImage& frame, quint64 revision, bool exact);
     // A request was not answered: the clip could not be opened or read, or no
     // frame decoded at that time. message says which (previewFrame's wording).
     void frameFailed(qint64 requestedUs, const QString& message);

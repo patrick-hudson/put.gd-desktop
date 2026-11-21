@@ -203,7 +203,7 @@ private slots:
         panel.findChild<QSpinBox*>("reviewPanelStrength")->setValue(39);
         panel.findChild<QSpinBox*>("reviewPanelStrength")->setValue(40);
         QCOMPARE(strength.size(), 0);
-        QTRY_COMPARE(strength.size(), 1);
+        PUTGD_TRY_COMPARE(strength.size(), 1);
         QCOMPARE(strength[0][1].toInt(), 40);
         button(panel, "Remove Blur 2")->click();
         QCOMPARE(remove.size(), 1);

@@ -124,9 +124,11 @@ struct Source {
     }
     // From the pending keyframe forward to the first frame at or after target
     // (the last frame when the clip ends first), as previewFrame decodes it.
-    // abort() is polled once per packet.
-    template <typename Abort>
-    bool decodeTo(qint64 target, AVFrame* out, qint64& framePts, const Abort& abort) {
+    // abort() is polled once per packet. When yield() says a newer request is
+    // waiting, it stops at the latest frame decoded so far (partial).
+    template <typename Abort, typename Yield>
+    bool decodeTo(qint64 target, AVFrame* out, qint64& framePts, const Abort& abort, const Yield& yield, bool& partial) {
+        partial = false;
         FramePtr frame(av_frame_alloc());
         bool have = false, done = false;
         while (!done) {
@@ -157,6 +159,7 @@ struct Source {
                 framePts = pts;
                 have = true;
                 if (pts >= target) { done = true; break; }
+                if (yield()) { partial = true; done = true; break; }
             }
         }
         return have;
@@ -372,6 +375,7 @@ struct FrameSkimmer::Private final : QThread {
     QMutex mutex;
     QWaitCondition wake;
     std::atomic_bool quit{false};
+    std::atomic_bool newer{false};      // a request is waiting behind the one in flight
     std::atomic<quint64> cancelled{0};  // advances on cancel(): answers older than it are dropped
     // Guarded by mutex.
     bool openRequested = false, opened = false, havePending = false, openFailed = false;
@@ -396,6 +400,7 @@ struct FrameSkimmer::Private final : QThread {
         FramePtr kept(av_frame_alloc());
         bool haveKept = false, decoderFollowsKept = false;
         qint64 keptRequest = 0, keptPts = 0;
+        SwsContext* scaler = nullptr;
         while (true) {
             qint64 time = 0;
             RecordingEdit edit;
@@ -411,6 +416,7 @@ struct FrameSkimmer::Private final : QThread {
                 if (openRequested) { openRequested = false; clipPath = clip; open = true; }
                 else {
                     havePending = false;
+                    newer = false;
                     time = pendingTime;
                     edit = pendingEdit;
                     edge = pendingEdge;
@@ -435,7 +441,9 @@ struct FrameSkimmer::Private final : QThread {
                 continue;
             }
             const auto abort = [&] { return quit.load() || cancelled.load() != generation; };
+            const auto yield = [&] { return newer.load(); };
             const qint64 target = source.streamTime(std::max<qint64>(0, time));
+            bool partial = false;
             if (!(haveKept && keptRequest <= target && target <= keptPts)) {
                 const auto key = decoderFollowsKept && haveKept && target > keptPts ? source.indexedKeyframe(target) : std::nullopt;
                 const bool forward = key && *key <= keptPts && !source.drained;
@@ -445,7 +453,7 @@ struct FrameSkimmer::Private final : QThread {
                     if (!abort()) fail(time, generation, QStringLiteral("Reading the working clip failed"));
                     continue;
                 }
-                const bool decoded = source.decodeTo(target, frame.get(), pts, abort);
+                const bool decoded = source.decodeTo(target, frame.get(), pts, abort, yield, partial);
                 if (abort()) { decoderFollowsKept = false; continue; }
                 if (!decoded) {
                     haveKept = decoderFollowsKept = false;
@@ -455,23 +463,47 @@ struct FrameSkimmer::Private final : QThread {
                 av_frame_unref(kept.get());
                 av_frame_move_ref(kept.get(), frame.get());
                 haveKept = true;
-                keptRequest = target;
+                // A partial frame answers only its own time.
+                keptRequest = partial ? pts : target;
                 keptPts = pts;
                 decoderFollowsKept = !source.drained;
             }
             const qint64 frameUs = source.clipTime(keptPts);
             QImage image;
-            if (auto e = renderPreviewFrame(kept.get(), edit, frameUs, canvasSize, edge, image, time)) {
-                if (!abort()) fail(time, generation, e.message);
+            if (!renderScaled(scaler, kept.get(), edit, frameUs, time, canvasSize, edge, image)) {
+                if (!abort()) fail(time, generation, QStringLiteral("Cannot convert the frame"));
                 continue;
             }
             if (abort()) continue;
             // A cancel that lands after the post still drops the answer: checked again on delivery.
             const quint64 revision = edit.revision;
-            QMetaObject::invokeMethod(owner, [o = owner, d = this, generation, time, frameUs, image, revision] {
-                if (d->cancelled.load() == generation) emit o->frameReady(time, frameUs, image, revision);
+            const bool exact = !partial;
+            QMetaObject::invokeMethod(owner, [o = owner, d = this, generation, time, frameUs, image, revision, exact] {
+                if (d->cancelled.load() == generation) emit o->frameReady(time, frameUs, image, revision, exact);
             }, Qt::QueuedConnection);
         }
+        if (scaler) sws_freeContext(scaler);
+    }
+    // The frame scaled straight to the preview size (long edge at most maxEdge,
+    // as fitPreview sizes it) with the covers active at its time, or at the
+    // time it is shown for, painted at that size: a 4K frame is never
+    // converted at full size for a 1280 px viewer.
+    static bool renderScaled(SwsContext*& scaler, const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, qint64 requestedUs, const QSize& canvas, int maxEdge, QImage& out) {
+        const QSize full(frame->width, frame->height);
+        const QSize size = recording::outputSize(full, maxEdge);
+        if (size.isEmpty()) return false;
+        scaler = sws_getCachedContext(scaler, frame->width, frame->height, AVPixelFormat(frame->format), size.width(), size.height(), AV_PIX_FMT_BGRA, size == full ? SWS_POINT : SWS_AREA, nullptr, nullptr, nullptr);
+        if (!scaler) return false;
+        QImage image(size, QImage::Format_RGB32);
+        uint8_t* planes[4] = {image.bits(), nullptr, nullptr, nullptr};
+        const int strides[4] = {int(image.bytesPerLine()), 0, 0, 0};
+        sws_scale(scaler, frame->data, frame->linesize, 0, frame->height, planes, strides);
+        for (const auto& mask : edit.masks) {
+            const auto active = [&](qint64 t) { return mask.start <= t && t < mask.end; };
+            if (active(frameUs) || active(requestedUs)) paintCoverPreview(image, mask, canvas.isEmpty() ? full : canvas);
+        }
+        out = image;
+        return true;
     }
 };
 
@@ -501,11 +533,13 @@ void FrameSkimmer::request(qint64 timeUs, const RecordingEdit& edit, int maxEdge
     d_->pendingEdit = edit;
     d_->pendingEdge = std::max(1, maxEdge);
     d_->havePending = true;
+    d_->newer = true;
     d_->wake.wakeAll();
 }
 void FrameSkimmer::cancel() {
     QMutexLocker lock(&d_->mutex);
     d_->havePending = false;
+    d_->newer = false;
     d_->cancelled.fetch_add(1);
 }
 bool FrameSkimmer::failedToOpen() const {

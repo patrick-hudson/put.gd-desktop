@@ -900,7 +900,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     bannerArea_ = bannerArea;
     bannerArea->setObjectName("viewerBanners");
     auto* banners = new QVBoxLayout(bannerArea);
-    banners->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::m), 0);
+    banners->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), 0);
     banners->setSpacing(reviewSpace(Ui::Space::xs));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     notice_ = new QLabel(this);
@@ -936,7 +936,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     bannerArea->hide();
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s) + placeBanner_->sizeHint().height() + reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s));
+    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs) + placeBanner_->sizeHint().height() + reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s));
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     column->addWidget(view_, 1);
@@ -1131,7 +1131,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     tileTimer_.setInterval(0);
     connect(&tileTimer_, &QTimer::timeout, this, &ReviewWindow::requestTiles);
     connect(timeline_, &FilmstripTimeline::visibleSpanChanged, &tileTimer_, qOverload<>(&QTimer::start));
-    connect(skimmer_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision) {
+    connect(skimmer_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision, bool exact) {
+        // The skim and the live cover wait for the exact frame (B2).
+        if (!exact) return;
         // The frame without a cover being moved goes only under that cover's live effect.
         if (revision == uncoveredRevision) {
             if (uncoveredAsked_ && uncoveredAsked_->second == requested) view_->setUncovered(uncoveredAsked_->first, frame, requested);
@@ -1147,9 +1149,12 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         view_->setSkim(hit->image, *skimUs_);
         timeline_->setSkimExact(true);
     });
-    connect(frames_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision) {
+    connect(frames_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision, bool exact) {
         // Playback draws its own frames; an answer for an older edit is followed by a newer one.
         if (playing_ || revision != edit_.revision) return;
+        // A frame on the way to a newer request (a fast scrub): shown at its own
+        // time, never taken as the frame for the playhead.
+        if (!exact) { if (!view_->dragging()) view_->setFrame(frame, frameUs); return; }
         view_->setFrame(frame, requested);
         shownRevision_ = revision;
         if (requested == playhead_) { shownFor_ = playhead_; shownActual_ = frameUs; }
@@ -1249,7 +1254,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         const quint64 before = proposalSeq_;
         updateCover(id, [&](QJsonObject& mask) { mask["rect"] = QJsonArray{r.x(), r.y(), r.width(), r.height()}; });
         // The live cover holds until the frame for this edit is shown.
-        if (proposalSeq_ != before && view_->liveId() == id) liveProposal_ = proposalSeq_;
+        if (proposalSeq_ != before && view_->liveId() == id) { liveProposal_ = proposalSeq_; liveWaitRevision_.reset(); }
         else view_->endLive();
     });
     // A cover shown at this frame started to move: the frame without it, from
@@ -1796,7 +1801,8 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     // for this revision is shown; refused, the frame on screen is current.
     if (liveProposal_ && answered >= liveProposal_) {
         liveProposal_ = 0;
-        if (!refused.isEmpty() || !changed) view_->endLive();
+        const bool gesture = view_->dragging() || view_->nudging();
+        if (!refused.isEmpty() || !changed) { if (!gesture) view_->endLive(); }
         else liveWaitRevision_ = edit_.revision;
     }
     // C4: a trim that leaves the playhead outside the kept footage brings it to
@@ -2356,11 +2362,6 @@ QJsonObject ReviewWindow::inspect() const {
     QJsonValue placement(QJsonValue::Null);
     if (placing_) placement = QJsonObject{{"kind", placing_->kind}, {"start", double(placing_->span.start)}, {"end", double(placing_->span.end)}, {"whole", placing_->whole}, {"banner", placeBanner_->text()}};
     auto timeline = timeline_->inspect();
-    timeline["skimming"] = timeline_->skimming();
-    timeline["snapping"] = timeline_->snapping();
-    QJsonArray levels;
-    for (const int level : timeline_->zoomLevels()) levels.append(level);
-    timeline["zoomLevels"] = levels;
     timeline["rect"] = rect(timeline_->geometry());
     timeline["strip"] = rect(timeline_->stripRect().translated(timelineAt));
     timeline["ruler"] = rect(timeline_->rulerRect().translated(timelineAt));
@@ -2742,6 +2743,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         const auto time = whole("time");
         if (!time || *time < 0 || *time >= options_.durationUs) return invalid("skim takes a recording time in microseconds");
         if (playing_) return state("The timeline skims only while paused");
+        if (!timeline_->skimming()) return state("Skimming is off (S); turn it on with setSkimming first");
         timeline_->skimAt(*time);
         return done();
     }
@@ -2831,6 +2833,8 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     view_->clearSkim();
     view_->endLive();
     liveWaitRevision_.reset();
+    // Playback draws over the asked frame: the next seek asks again, even for the same time.
+    frameAsked_.reset();
     playing_ = true;
     view_->setPlaying(true);
     timeline_->setPlaying(true);

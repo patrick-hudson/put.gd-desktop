@@ -255,9 +255,16 @@ private slots:
         window.findChild<QAbstractButton*>("reviewPanelShowsFromPlayhead")->click();
         QCOMPARE(spy.last().at(1).toJsonArray(), driven);
         // Timeline zoom and viewer zoom.
-        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", 4}}).state["timeline"].toObject()["zoom"].toInt(), 4);
+        // The ladder follows the recording (12 s at 30 fps here); any level of it, nothing else.
+        const auto levels = window.inspect()["timeline"].toObject()["zoomLevels"].toArray();
+        QVERIFY(levels.size() >= 2);
+        const int top = levels.last().toInt();
+        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", top}}).state["timeline"].toObject()["zoom"].toInt(), top);
+        QCOMPARE(window.drive({{"action", "zoomOut"}}).state["timeline"].toObject()["zoom"].toInt(), levels[levels.size() - 2].toInt());
         QCOMPARE(window.drive({{"action", "timelineFit"}}).state["timeline"].toObject()["zoom"].toInt(), 1);
-        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", 3}}).code, QString("invalid_request"));
+        QCOMPARE(window.drive({{"action", "zoomIn"}}).state["timeline"].toObject()["zoom"].toInt(), levels[1].toInt());
+        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", top + 1}}).code, QString("invalid_request"));
+        window.drive({{"action", "timelineFit"}});
         auto* view = window.findChild<FrameView*>("frame");
         QImage frame(1280, 720, QImage::Format_RGB32);
         frame.fill(Qt::gray);
@@ -277,6 +284,10 @@ private slots:
         QVERIFY(!state["timeline"].toObject()["skim"].toObject()["exact"].toBool());
         QVERIFY(window.drive({{"action", "skimEnd"}}).state["timeline"].toObject()["skim"].isNull());
         QCOMPARE(window.drive({{"action", "skim"}, {"time", duration}}).code, QString("invalid_request"));
+        // Skimming off (S): hover never changes the viewer, and skim says why it does nothing.
+        QVERIFY(!window.drive({{"action", "setSkimming"}, {"on", false}}).state["timeline"].toObject()["skimming"].toBool());
+        QCOMPARE(window.drive({{"action", "skim"}, {"time", 3000000}}).code, QString("recording_state"));
+        QVERIFY(window.drive({{"action", "setSkimming"}, {"on", true}}).state["timeline"].toObject()["skimming"].toBool());
     }
     // #1613: the Edits panel is beside the viewer at 1440×900 and folds below ~1180×720;
     // `panel` is the Edits toggle and is refused while nothing is folded.
@@ -1021,7 +1032,8 @@ private slots:
         drag(view, body, body + QPoint(2, 2));
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         QCOMPARE(proposals.size(), 0);
-        const QPoint topLeft = box().topLeft().toPoint();
+        // Just outside the corner: there the handle wins at any box size.
+        const QPoint topLeft = box().topLeft().toPoint() - QPoint(3, 3);
         drag(view, topLeft, topLeft + QPoint(20, 10));
         QCOMPARE(proposals.size(), 1);
         const auto resized = proposed(proposals)["mask"].toObject()["rect"].toArray();
@@ -1034,7 +1046,7 @@ private slots:
         move(body + QPoint(30, 30));
         QTest::keyClick(view, Qt::Key_Escape);
         QTest::mouseRelease(view, Qt::LeftButton, {}, body + QPoint(30, 30));
-        const QPoint bottomRight = box().bottomRight().toPoint();
+        const QPoint bottomRight = box().bottomRight().toPoint() + QPoint(3, 3);
         QTest::mousePress(view, Qt::LeftButton, {}, bottomRight);
         move(bottomRight + QPoint(25, 25));
         QTest::mousePress(view, Qt::RightButton, {}, bottomRight + QPoint(25, 25));
@@ -1056,8 +1068,8 @@ private slots:
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
-        const QPoint away = view->imageRect().topLeft() + QPoint(1100, 600);
-        QVERIFY(view->rect().contains(away));
+        const QPoint away(view->width() - 60, view->height() - 40);
+        QVERIFY(view->imageRect().contains(away) && !box().contains(away));
         drag(view, away, away + QPoint(-40, -30));
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
         drag(view, away, away + QPoint(1, 0));
@@ -1187,7 +1199,7 @@ private slots:
         const QRect r = view->imageRect();
         const double k = r.width() / 320.0;
         const QPoint centre(r.x() + int(60 * k), r.y() + int(40 * k));
-        const auto live = [&] { return window.inspect()["viewer"].toObject()["live"]; };
+        const auto live = [&]() -> QJsonValue { return window.inspect()["viewer"].toObject()["live"]; };
         QTest::mousePress(view, Qt::LeftButton, {}, centre);
         QVERIFY(live().isNull());
         QMouseEvent move(QEvent::MouseMove, QPointF(centre + QPoint(60, 30)), view->mapToGlobal(QPointF(centre + QPoint(60, 30))), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
