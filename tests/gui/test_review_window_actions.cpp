@@ -1349,6 +1349,9 @@ private slots:
         QTest::mouseClick(strip, Qt::LeftButton, {}, middle);
         PUTGD_TRY_VERIFY(playing());
         QVERIFY(std::abs(window.inspect()["playheadUs"].toDouble() - double(strip->timeAt(middle.x()))) < 400000);
+        // R18t: the strip click kept the (new, so selected) cover selected.
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m1"));
+        window.drive({{"action", "clearSelection"}});
         auto* view = window.findChild<FrameView*>("frame");
         QTest::mouseClick(view, Qt::LeftButton, {}, view->imageRect().center());
         QVERIFY(!playing());

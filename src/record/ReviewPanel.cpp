@@ -882,8 +882,28 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
     scroll->setFocusPolicy(Qt::NoFocus);
     Ui::transparentView(scroll);
     scroll->setWidget(rows);
-    scroll->setFixedHeight(int(std::ceil(std::min<qreal>(items.size(), 4.5) * EditRow::rowHeight())));
+    rowsArea_ = scroll;
+    rowsNatural_ = int(std::ceil(std::min<qreal>(items.size(), 4.5) * EditRow::rowHeight()));
+    scroll->setFixedHeight(rowsNatural_);
     v->addWidget(scroll);
+    fitRows();
+}
+// The Edits list's area: about 4½ rows, fewer (down to 1½) when the panel's
+// room (the folded overlay) would otherwise push the details out of view.
+void ReviewPanel::setAvailableHeight(int height) {
+    if (availableHeight_ == height) return;
+    availableHeight_ = height;
+    fitRows();
+}
+void ReviewPanel::fitRows() {
+    if (!rowsArea_) return;
+    int target = rowsNatural_;
+    if (availableHeight_ > 0) {
+        if (auto* l = layout()) l->activate();
+        const int others = std::max(0, sizeHint().height() - rowsArea_->height());
+        target = std::clamp(availableHeight_ - others, std::min(rowsNatural_, int(1.5 * EditRow::rowHeight())), rowsNatural_);
+    }
+    if (rowsArea_->height() != target) rowsArea_->setFixedHeight(target);
 }
 
 QJsonObject ReviewPanel::inspect() const {
@@ -1002,18 +1022,22 @@ void EditsOverlay::place() {
     const int x = std::clamp(below.x() - overlayWidth, margin, std::max(margin, window_->width() - overlayWidth - margin));
     const int y = below.y() + Ui::space(Space::m);
     const int inner = overlayWidth - 2;
-    const int natural = panel_->layout() && panel_->layout()->hasHeightForWidth() ? panel_->layout()->heightForWidth(inner) : 0;
-    const int wanted = std::max({natural, panel_->sizeHint().height(), panel_->minimumSizeHint().height()}) + 2;
     // It ends 8 px above its floor (the transport) and scrolls inside (W11).
     int bottom = window_->height() - margin;
     if (floor_) bottom = std::min(bottom, floor_->mapTo(window_, QPoint()).y() - Ui::space(Space::s));
     const int available = std::max(Ui::scaled(120), bottom - y);
+    // The Edits list gives up rows first so the details stay in view (R23).
+    panel_->setAvailableHeight(available - 2);
+    if (auto* layout = panel_->layout()) layout->activate();
+    const int natural = panel_->layout() && panel_->layout()->hasHeightForWidth() ? panel_->layout()->heightForWidth(inner) : 0;
+    const int wanted = std::max({natural, panel_->sizeHint().height(), panel_->minimumSizeHint().height()}) + 2;
     setGeometry(x, y, overlayWidth, std::min(wanted, available));
 }
 
 void EditsOverlay::giveBack() {
     auto* panel = panel_.data();
     if (!panel) return;
+    panel->setAvailableHeight(0);  // beside the viewer the list has its 4½ rows again
     scroll_->takeWidget();
     panel->setProperty("folded", false);
     panel->setMinimumWidth(minimumWidth_);

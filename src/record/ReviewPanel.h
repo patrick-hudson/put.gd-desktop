@@ -73,6 +73,8 @@ public:
     QWidget* rowFor(const QString& kind, const QString& id) const;
     // Proposes a strength still coalescing (a selection change, or the window before an upload).
     void flushStrength();
+    // The height the panel may take (the folded overlay's room); 0: no limit.
+    void setAvailableHeight(int height);
     QSize sizeHint() const override;
 signals:
     void cutRequested();                 // a time selection's Cut
@@ -105,6 +107,7 @@ private:
     void updateInPlace();
     void updateRows();
     void updateSpanForm();
+    void fitRows();
     void rebuild(bool rebuildTop = true, bool rebuildList = true);
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
@@ -124,6 +127,8 @@ private:
     std::optional<QString> focusAfter_;  // the row to focus after a Restore or Remove ("" : the timeline)
     QElapsedTimer activated_;
     QString activatedKey_;
+    QPointer<QWidget> rowsArea_;
+    int rowsNatural_ = 0, availableHeight_ = 0;
     QTimer strengthTimer_;
     std::optional<std::pair<QString, int>> strengthPending_;
 };

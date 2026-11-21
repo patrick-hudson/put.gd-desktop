@@ -1298,6 +1298,15 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         if (resume) startPlayback(playhead_, true);
     });
     connect(timeline_, &FilmstripTimeline::selectionCleared, this, [this] { if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); });
+    // R18t: a plain click on the filmstrip clears a time selection only; a
+    // selected cut or cover stays selected (Set to playhead, Shift+I / O).
+    connect(timeline_, &FilmstripTimeline::timeSelectionCleared, this, [this] {
+        if (!timeSelection_) return;
+        timeSelection_.reset();
+        timeline_->setTimeSelection(std::nullopt);
+        if (placing_) placing_->span = placementSpan(placing_->kind, placing_->whole);
+        refreshAll();
+    });
     connect(timeline_, &FilmstripTimeline::timeSelected, this, &ReviewWindow::selectTime);
     connect(timeline_, &FilmstripTimeline::cutSelected, this, [this](const QString& id) { selectCut(id, false); });
     // A cover bar click seeks only when the playhead is outside the cover (A5).
