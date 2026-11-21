@@ -377,7 +377,7 @@ private slots:
         QCOMPARE(adjust[0][2].toLongLong(), 19500000LL);
         panel->setState(s);  // nothing changed yet: the typed time stays
         QCOMPARE(field->text(), QString("13.52"));
-        panel->revertFields();
+        panel->refreshCutFields();
         QCOMPARE(field->text(), QString("0:13.0"));
     }
 

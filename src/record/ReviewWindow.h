@@ -14,6 +14,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <limits>
 #include <tuple>
 
 class QAction;
@@ -476,6 +477,11 @@ private:
     // The live cover (D4): the frame without it asked for, the proposal its
     // drag made, and the revision whose frame ends the live state.
     std::optional<std::pair<QString, qint64>> uncoveredAsked_;
+    // Request tags (W3, W4): each live-base request and each cover edge
+    // preview gets its own; answers under any other tag are dropped.
+    quint64 requestTags_ = 0, uncoveredTag_ = 0, edgeTag_ = 0;
+    quint64 nextRequestTag() { return std::numeric_limits<quint64>::max() - ++requestTags_; }
+    quint64 cutFieldProposal_ = 0;  // the proposal a typed cut time made (W8)
     quint64 liveProposal_ = 0;
     std::optional<quint64> liveWaitRevision_;
     // C4: a trim proposal and whether it moved the start; its answer may bring the playhead in.

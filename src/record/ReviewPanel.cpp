@@ -465,9 +465,9 @@ void ReviewPanel::updateInPlace() {
     }
     updateRows();
 }
-// A refused change (W8): a cut's Starts / Ends show its times again, unless
-// something new is being typed there.
-void ReviewPanel::revertFields() {
+// A typed cut time answered (W8): a cut's Starts / Ends show its times, unless
+// something newer is being typed there.
+void ReviewPanel::refreshCutFields() {
     if (const auto* cut = selectedCut(); cut && top_) {
         for (const bool start : {true, false}) {
             auto* field = top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelCutStartsTime") : QStringLiteral("reviewPanelCutEndsTime"));

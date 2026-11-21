@@ -64,7 +64,10 @@ bool sessionSkimming = true, sessionSnapping = true;
 constexpr int skimCacheFrames = 30;
 constexpr qint64 skimCacheBytes = 64ll * 1024 * 1024;
 // The live cover's request for the frame without it: never a revision the skim accepts.
-constexpr quint64 uncoveredRevision = std::numeric_limits<quint64>::max();
+// Revisions above this are request tags, never an edit's: a live cover's base
+// frame and a cover edge's preview are asked for under a tag of their own, so
+// only the answer to the newest such request is taken (W3, W4).
+constexpr quint64 tagFloor = std::numeric_limits<quint64>::max() - (quint64(1) << 40);
 bool textField(const QWidget* w) { return qobject_cast<const QLineEdit*>(w) || qobject_cast<const QAbstractSpinBox*>(w); }
 int reviewSpace(Ui::Space value) { return static_cast<int>(value); }
 // Text controls keep at least 3 px above and below their full text line at every scale.
@@ -856,6 +859,8 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
     }
 }
 void FrameView::leaveEvent(QEvent* e) {
+    // Leaving the viewer from a grip leaves the grip: the late-press clock starts (R1).
+    if (gripAt_ && !gripLeft_.isValid()) gripLeft_.start();
     if (!hovered_.isEmpty()) { hovered_.clear(); emit hoveredCoverChanged({}); }
     hoveredHandle_ = -1;
     if (drag_ == Drag::None) unsetCursor();
@@ -1338,7 +1343,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Thumbnails, skim frames and playhead frames: one worker each, never waited on.
     filmstrip_ = new Filmstrip(this);
     skimmer_ = new FrameSkimmer(this);
+    skimmer_->setObjectName("skimFrames");
     frames_ = new FrameSkimmer(this);
+    frames_->setObjectName("playheadFrames");
     if (!options_.workingClip.isEmpty()) {
         filmstrip_->open(options_.workingClip, options_.durationUs, options_.canvas);
         skimmer_->open(options_.workingClip, options_.canvas);
@@ -1353,9 +1360,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(timeline_, &FilmstripTimeline::visibleSpanChanged, &tileTimer_, qOverload<>(&QTimer::start));
     connect(skimmer_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision, bool exact) {
         // The frame without a cover being moved goes only under that cover's live effect.
-        if (revision == uncoveredRevision) {
-            if (!exact) return;
-            if (uncoveredAsked_ && uncoveredAsked_->second == requested) view_->setUncovered(uncoveredAsked_->first, frame, requested);
+        if (revision > tagFloor) {
+            // Only the newest base request's answer; an older one (another
+            // cover changed meanwhile) is dropped and the newer still awaited.
+            if (!exact || revision != uncoveredTag_ || !uncoveredAsked_ || uncoveredAsked_->second != requested) return;
+            view_->setUncovered(uncoveredAsked_->first, frame, requested);
             uncoveredAsked_.reset();
             return;
         }
@@ -1389,7 +1398,13 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         if (!skimAsked_ || skimAsked_->first != *skimUs_) askSkimFrame(*skimUs_);
     });
     connect(skimmer_, &FrameSkimmer::frameFailed, this, [this] { skimAsked_.reset(); });
-    connect(frames_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision, bool exact) {
+    connect(frames_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 tagged, bool exact) {
+        quint64 revision = tagged;
+        // A cover edge's preview answers under its tag, only while that preview lasts (W4).
+        if (revision > tagFloor) {
+            if (!edgePreview_ || revision != edgeTag_) return;
+            revision = edit_.revision;
+        }
         // Playback draws its own frames; an answer for an older edit is followed by a newer one.
         if (playing_ || revision != edit_.revision) return;
         // A frame on the way to a newer request (a fast scrub): shown at its own
@@ -1550,7 +1565,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(panel_, &ReviewPanel::coverRequested, this, [this](const QString& kind) { if (placing_ && placing_->kind == kind) cancelPlacement(); else arm(kind); });
     connect(panel_, &ReviewPanel::restoreCut, this, &ReviewWindow::restoreCut);
     // F6: a cut's typed times go through the same adjust as dragging its edges.
-    connect(panel_, &ReviewPanel::cutAdjustRequested, this, [this](const QString& id, qint64 start, qint64 end) { stopPlayback(); adjustCut(id, start, end); });
+    connect(panel_, &ReviewPanel::cutAdjustRequested, this, [this](const QString& id, qint64 start, qint64 end) {
+        stopPlayback();
+        adjustCut(id, start, end);
+        cutFieldProposal_ = proposalSeq_;  // its answer refreshes the field (W8)
+    });
     connect(panel_, &ReviewPanel::cutEdgeToPlayhead, this, [this](const QString& id, bool start) {
         if (const auto why = cutEdgeToPlayhead(id, start); !why.isEmpty()) refuseChange(why);
     });
@@ -2150,7 +2169,8 @@ void ReviewWindow::takeSkimForKey() {
 }
 void ReviewWindow::askUncovered(const QString& id, qint64 at) {
     auto without = edit_;
-    without.revision = uncoveredRevision;
+    uncoveredTag_ = nextRequestTag();
+    without.revision = uncoveredTag_;
     without.masks.erase(std::remove_if(without.masks.begin(), without.masks.end(), [&](const RecordingMask& m) { return m.id == id; }), without.masks.end());
     uncoveredAsked_ = std::pair<QString, qint64>(id, at);
     skimmer_->request(at, without, viewEdge());
@@ -2342,11 +2362,16 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
         ++refusals_;
         cancelUpload(QStringLiteral("a change wasn't applied"));
         cancelSaveCopy(QStringLiteral("a change wasn't applied"));
-        panel_->revertFields();
     }
     trySaveCopy();
     if (tryUpload()) return;
     refreshAll();
+    // A typed cut time answered, accepted or refused: its field shows the
+    // cut's times now, even when they didn't change (W8).
+    if (cutFieldProposal_ && answered >= cutFieldProposal_) {
+        cutFieldProposal_ = 0;
+        panel_->refreshCutFields();
+    }
     requestFrame();
 }
 bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
@@ -2980,6 +3005,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (chooser_->isOpen()) return {"recording_state", "The Save copy dialog is open; close it first (closeFileDialog)", {}};
     if (action == "saveCopyDialog") {
         if (placing_) return {"recording_state", "Place or cancel the cover first", {}};
+        if (!saveWaitingPath_.isEmpty()) return {"recording_state", "A chosen copy is waiting for your last change to be saved", {}};
         chooseCopy();
         return done();
     }
@@ -3365,8 +3391,14 @@ void ReviewWindow::askFrame() {
     // same time (100 %, a cover edge's proposed span) drops the one on its way (W4).
     if (frameAsked_ && frameAsked_->at == ask.at && frameAsked_->revision == ask.revision) frames_->cancel();
     frameAsked_ = ask;
-    // A cover edge being dragged is previewed with its proposed span (W4).
-    frames_->request(at, edgeEdit_ && edgePreview_ ? *edgeEdit_ : edit_, ask.edge);
+    // A cover edge being dragged is previewed with its proposed span (W4),
+    // under the preview's tag: once it ends, its answers are dropped.
+    if (edgeEdit_ && edgePreview_) {
+        if (!edgeTag_) edgeTag_ = nextRequestTag();
+        auto proposed = *edgeEdit_;
+        proposed.revision = edgeTag_;
+        frames_->request(at, proposed, ask.edge);
+    } else frames_->request(at, edit_, ask.edge);
 }
 void ReviewWindow::beginEdgePreview() {
     // F1: an edge drag shows its edge frame for the whole drag: any skim goes now.
@@ -3387,6 +3419,7 @@ void ReviewWindow::endEdgePreview() {
     if (!edgePreview_) return;
     edgePreview_.reset();
     edgeEdit_.reset();
+    edgeTag_ = 0;  // an answer still on its way for the preview is dropped (W4)
     frameAsked_.reset();  // the edge frame may share the playhead's time but not its edit
     requestFrame();
 }

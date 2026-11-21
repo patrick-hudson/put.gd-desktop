@@ -4,6 +4,8 @@
 #include "record/ReviewPanel.h"
 #include "ui/Ui.h"
 #include "ui/FileDialog.h"
+#include "record/Filmstrip.h"
+#include <limits>
 #include <atomic>
 #include <QThread>
 #include <QToolTip>
@@ -1355,6 +1357,129 @@ private slots:
         QVERIFY(!strip->dragging());
         QVERIFY(window.drive({{"action", "zoomIn"}}).code.isEmpty());
     }
+    // Sol r2 W3: the live cover's base is asked for again when another cover
+    // changes; an answer to the first request arriving late is dropped and the
+    // newer one still awaited (request tags count down from the top).
+    void theLiveBaseTakesOnlyTheNewestAnswer() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 0, duration), mask("m2", "blur", 0, duration)};
+        edit.masks[1].rect = QRect(800, 400, 200, 120);
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* view = window.findChild<FrameView*>("frame");
+        QImage frame(1280, 720, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        view->setFrame(frame, 0);
+        QCoreApplication::processEvents();
+        const QRect r = view->imageRect();
+        const double k = r.width() / 1280.0;
+        const QPoint centre(r.x() + int(260 * k), r.y() + int(140 * k));
+        const auto pending = [&] { return window.inspect()["viewer"].toObject()["live"].toObject()["pending"].toBool(); };
+        QTest::mousePress(view, Qt::LeftButton, {}, centre);
+        QMouseEvent move(QEvent::MouseMove, QPointF(centre + QPoint(40, 20)), view->mapToGlobal(QPointF(centre + QPoint(40, 20))), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(view, &move);
+        QVERIFY(pending());
+        auto other = edit;
+        other.revision = 3;
+        other.masks[1].rect.translate(20, 0);
+        window.setEdit(other);
+        auto* skim = window.findChild<FrameSkimmer*>("skimFrames");
+        constexpr quint64 top = std::numeric_limits<quint64>::max();
+        emit skim->frameReady(0, 0, frame, top - 1, true);  // the first request's answer, late
+        QVERIFY(pending());
+        emit skim->frameReady(0, 0, frame, top - 2, true);
+        QVERIFY(!pending());
+        QTest::mouseRelease(view, Qt::LeftButton, {}, centre + QPoint(40, 20));
+    }
+    // Sol r2 W4: a cover edge preview's answer is shown while it lasts; once
+    // the preview ends, one still on its way is dropped.
+    void anEndedEdgePreviewDropsItsAnswers() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 1000000, 3000000)};
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        auto* frames = window.findChild<FrameSkimmer*>("playheadFrames");
+        const auto preview = [&] { return window.inspect()["preview"].toObject(); };
+        QImage frame(1280, 720, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        constexpr quint64 tag = std::numeric_limits<quint64>::max() - 1;
+        emit strip->editEdgeDragged("cover", "m1", true, 2000000);
+        const auto edge = qint64(preview()["edgePreviewUs"].toDouble());
+        emit frames->frameReady(edge, edge, frame, tag, true);
+        QCOMPARE(preview()["frameTimeUs"].toDouble(), double(edge));
+        emit strip->edgeDragFinished();
+        PUTGD_TRY_VERIFY(preview()["edgePreviewUs"].isNull());
+        emit frames->frameReady(edge + 500000, edge + 500000, frame, tag, true);
+        QCOMPARE(preview()["frameTimeUs"].toDouble(), double(edge));
+    }
+    // Sol r2 W8: a typed cut time the resident snaps back to the edge it had
+    // is accepted with no change; the field shows the cut's time again.
+    void anAcceptedTypedCutTimeShowsTheCut() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        window.setEdit(edit);
+        window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelCutStartsTime");
+        QVERIFY(field);
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "3.01");
+        QTest::keyClick(field, Qt::Key_Return);
+        QCOMPARE(proposals.size(), 1);
+        auto same = edit;
+        same.revision = 3;
+        window.setEdit(same, answer(proposals.last().at(2).toULongLong()));
+        QCOMPARE(field->text(), QString("0:03.0"));
+    }
+    // Sol r2 R1: leaving the viewer straight from a grip starts the late-press
+    // clock, so a press on re-entry long after is not taken as late.
+    void leavingFromAGripStartsTheLatePressClock() {
+        auto o = options();
+        o.canvas = QSize(784, 434);
+        ReviewWindow window(o, config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        auto m = mask("m1", "solid", 0, duration);
+        m.rect = QRect(119, 101, 172, 134);
+        edit.masks = {m};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* view = window.findChild<FrameView*>("frame");
+        QImage frame(784, 434, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        view->setFrame(frame, 0);
+        QCoreApplication::processEvents();
+        const QRect r = view->imageRect();
+        const double k = r.width() / 784.0;
+        const QPoint east(int(r.x() + (119 + 172) * k), int(r.y() + (101 + 67) * k));
+        QMouseEvent hover(QEvent::MouseMove, QPointF(east), view->mapToGlobal(QPointF(east)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(view, &hover);
+        QEvent leave(QEvent::Leave);
+        QApplication::sendEvent(view, &leave);
+        putgd::test::settle(120);
+        // Back in, 7 px out on empty picture, long after leaving: no grip.
+        QMouseEvent back(QEvent::MouseMove, QPointF(east + QPoint(7, 0)), view->mapToGlobal(QPointF(east + QPoint(7, 0))), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(view, &back);
+        drag(view, east + QPoint(7, 0), east + QPoint(37, 0));
+        QVERIFY(proposals.isEmpty());
+    }
     // A7: placeMask takes exactly one of rect and at, both in whole canvas pixels.
     void placeMaskTakesOneShapeInWholePixels() {
         ReviewWindow window(options(), config());
@@ -1408,6 +1533,8 @@ private slots:
             QCOMPARE(saves.size(), 0);  // waits for the typed change's answer
             const auto seq = proposals.last().at(2).toULongLong();
             if (refused) {
+                // Sol r2 R2: while the chosen copy waits, Save a copy can't open again.
+                QCOMPARE(window.drive({{"action", "saveCopyDialog"}}).code, QString("recording_state"));
                 window.setEdit(edit, answer(seq, "invalid_request"));
                 QCOMPARE(saves.size(), 0);
                 QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
