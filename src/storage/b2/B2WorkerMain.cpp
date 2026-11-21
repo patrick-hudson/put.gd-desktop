@@ -476,7 +476,7 @@ private:
             const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
             client_.sentBytes = {};
             const auto stored = r.json["fileId"].toString();
-            if (r.ok() && (synthetic_ ? !stored.isEmpty() : r.json["fileId"].isString())) return stored;
+            if (r.ok() && !stored.isEmpty()) return stored;
             // Test upload and link: a success without a usable file ID (a cut-off reply, or an empty
             // ID) may have stored a file nothing names (#1690).
             if (r.ok() && synthetic_) {
@@ -488,7 +488,7 @@ private:
             if (r.ok()) {
                 Error lookup;
                 const auto found = published(name, publication, lookup);
-                if (found && found->contains("fileId")) return (*found)["fileId"].toString();
+                if (const auto id = found ? (*found)["fileId"].toString() : QString(); !id.isEmpty()) return id;
                 error = found ? Error{"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}} : lookup;
                 uncertain = true;
                 return {};
