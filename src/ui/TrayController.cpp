@@ -592,7 +592,7 @@ void TrayController::refreshActivity() {
   opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
   // Full only when no file of the uploading operations still waits, transfers or checks a
   // name (a skipped or failed file is settled): one finished file while another waits keeps below full.
-  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject()["uploadStatus"];transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending"||status=="stored";uploadedItems+=status=="uploaded";}
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject().value("uploadStatus").toString();transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending"||status=="stored";uploadedItems+=status=="uploaded";}
  }
  if(startPending_>0&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
  // New work replaces a failure or a completion still on the icon.
