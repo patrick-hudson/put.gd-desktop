@@ -577,6 +577,8 @@ bool OperationService::needsSensitiveCheck(const Job& job) const {
  const auto route=routeOf(op);
  if(route.destination!="upload"||route.profileId.isEmpty()||op.destination.profileId.isEmpty())return false;
  if(job.payload.kind=="image")return !job.payload.image.isNull();
+ // A scrolling capture arrives as its encoded PNG.
+ if(job.payload.kind=="png")return !job.payload.bytes.isEmpty();
  // Which files are images is read on the check's worker.
  return job.payload.kind=="files"&&!job.payload.files.isEmpty();
 }
@@ -623,7 +625,7 @@ void OperationService::runCheck(Job job) {
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
  logging::info(logOperation(),"Sensitive text check started",{{"operationId",id},{"action",op.action},{"mode",prompt?"prompt":"report"}});
- auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();
+ auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();checkJobs_.insert(id,shared);
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withCheck(std::move(check));};
@@ -632,6 +634,7 @@ void OperationService::runCheck(Job job) {
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{}}).run(copy,destination,outputBytes,session);
    return QJsonObject{};
   }
+  if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{}}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
   QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
   if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
   // The editor edits one image: Redact and upload is offered only for a selection of one.
@@ -660,8 +663,9 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   // Redact and upload: an edit now, outside the one-at-a-time check slot.
   op.advance(OperationState::Editing);op.phase="editing";
   logging::info(logOperation(),"Sensitive text check opened the editor",{{"operationId",id}});
-  const auto path=databasePath();const auto saved=op;
-  background([path,saved](Error& e){HistoryStore store(path);e=store.saveOperation(saved);return QJsonObject{};},[](Error,QJsonObject){});
+  // Only the edited PNG can upload now: let the original go. The worker is inside the editor
+  // and reads the payload no more. The journal keeps its acquiring row, which recovery ends.
+  if(const auto job=checkJobs_.value(id);job&&job->payload.kind!="files"){job->payload.image=QImage();job->payload.bytes.clear();}
   observe(op.publicJson());emit changed(id);emit observationsChanged();
   if(checkingId_==id){checkingId_.clear();pumpChecks();}
  }
@@ -669,7 +673,7 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
 void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shared,std::shared_ptr<EditorResult> outcome,qint64 elapsedMs) {
  auto job=std::move(*shared);
  if(checkOperations_.contains(id))job.op=checkOperations_.take(id);
- checkSessions_.remove(id);
+ checkSessions_.remove(id);checkJobs_.remove(id);
  if(stopping_)return;
  if(outcome->recentColors)rememberEditorColors(*outcome->recentColors);
  auto& op=job.op;
@@ -695,6 +699,11 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  }
  if(outcome->error){
   // The helper could not check (it is missing, failed or gave no answer in time): nothing is uploaded.
+  // With Keep a local copy on, the capture is still kept, as Cancel keeps it.
+  if(op.settings.archive.keepUploads&&op.state()!=OperationState::Editing&&(!job.payload.image.isNull()||!job.payload.bytes.isEmpty()||!job.payload.files.isEmpty())){
+   logging::warning(logOperation(),"Sensitive text check failed; saving the capture locally only",{{"operationId",id},{"error",logging::errorFields(outcome->error)}});
+   job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;
+  }
   job.payload={};
   op.error={"sensitive_check_failed",QStringLiteral("put.gd couldn't check this capture for sensitive text, so it wasn't uploaded: %1").arg(outcome->error.message),{{"cause",outcome->error.code}}};
   op.advance(OperationState::Failed);finish(op);next();return;

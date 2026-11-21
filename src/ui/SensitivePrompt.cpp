@@ -44,6 +44,7 @@ QString sensitiveReasonText(const QString& reason){
  if(reason=="too_large")return QStringLiteral("The image is over 24 megapixels, too large to read.");
  if(reason=="patterns_skipped")return QStringLiteral("A pattern in your redaction list didn't finish in time.");
  if(reason=="name_unchecked")return QStringLiteral("Your account name could not be looked up in time.");
+ if(reason=="matching_unfinished")return QStringLiteral("Matching didn't finish in time.");
  if(reason=="unavailable")return QStringLiteral("Text recognition is not available.");
  return QStringLiteral("Text recognition failed.");
 }
@@ -65,9 +66,9 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  if(any)body=QStringLiteral("%1 shows %2.").arg(subject,describeSensitive(model_.findings.found));
  if(!complete)body=(body.isEmpty()?QString():body+" ")+sensitiveReasonText(model_.findings.reason);
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
- auto* text=Ui::label(body.trimmed(),"body",this);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
+ auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
  // A file-manager selection is answered as a whole: the editor edits one image.
- if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+QStringLiteral(" · Upload anyway sends every file, Cancel sends none"),"meta",this);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
+ if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+QStringLiteral(" · Upload anyway sends every file, Cancel sends none"),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
  if(!model_.preview.isNull()){
   // The capture as Redact and upload would start, scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);
@@ -75,7 +76,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
  auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
- if(!model_.destination.isEmpty()){auto* where=Ui::label(model_.destination,"meta",this);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
+ if(!model_.destination.isEmpty()){auto* where=Ui::label(model_.destination,"meta",this);where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  auto* buttons=new QHBoxLayout;buttons->setSpacing(space(Space::s));
  cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
  upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(QStringLiteral("Upload the capture as it is"));
@@ -84,7 +85,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
   redact_=new QPushButton(Ui::icon("redact"),QStringLiteral("Redact and upload"),this);redact_->setObjectName("sensitiveRedact");
   redact_->setToolTip(QStringLiteral("Open the editor with the suggested redactions placed; Upload there sends it"));Ui::role(redact_,"primary");redact_->setDefault(true);buttons->addWidget(redact_);
   connect(redact_,&QPushButton::clicked,this,[this]{choose("redact");});
- }else upload_->setDefault(true);
+ }
  box->addLayout(buttons);
  connect(upload_,&QPushButton::clicked,this,[this]{choose("upload");});
  connect(cancel_,&QPushButton::clicked,this,[this]{choose("cancel");});
@@ -110,7 +111,8 @@ void SensitivePrompt::showEvent(QShowEvent* event){
  QWidget::showEvent(event);
  // Centred on the screen with the pointer where the desktop lets a window choose (X11); Wayland places it itself.
  if(auto* screen=QGuiApplication::screenAt(QCursor::pos())){const auto area=screen->availableGeometry();move(area.center()-QPoint(width()/2,height()/2));}
- if(auto* button=redact_?redact_:upload_)button->setFocus(Qt::ActiveWindowFocusReason);
+ // Without Redact, nothing is chosen for the user: focus starts on Cancel.
+ (redact_?redact_:cancel_)->setFocus(Qt::ActiveWindowFocusReason);
 }
 QJsonObject SensitivePrompt::state() const {
  QJsonArray choices{"upload","cancel"};if(model_.redactAllowed)choices.prepend("redact");
@@ -122,5 +124,13 @@ bool SensitivePrompt::choose(const QString& choice){
  emit chosen(choice);return true;
 }
 void SensitivePrompt::closeEvent(QCloseEvent* event){if(!decided_)choose("cancel");event->accept();}
-void SensitivePrompt::keyPressEvent(QKeyEvent* event){if(event->key()==Qt::Key_Escape){choose("cancel");return;}QWidget::keyPressEvent(event);}
+void SensitivePrompt::keyPressEvent(QKeyEvent* event){
+ if(event->key()==Qt::Key_Escape){choose("cancel");return;}
+ // Not a dialog, so Return is ours: the focused choice, else the default one.
+ if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){
+  auto* button=qobject_cast<QPushButton*>(focusWidget());if(!button)button=redact_?redact_:upload_;
+  if(button&&button->isEnabled())button->click();return;
+ }
+ QWidget::keyPressEvent(event);
+}
 }

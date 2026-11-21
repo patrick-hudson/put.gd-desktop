@@ -1263,7 +1263,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     if(found.nameUnchecked)lines<<QStringLiteral("My username and name was not checked: the account lookup did not answer in time.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
     g->documentEdited();
-    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;
+    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;if(found.unfinished)result["unfinished"]=true;
     if(done)done({},result);
    };
    (*apply)();

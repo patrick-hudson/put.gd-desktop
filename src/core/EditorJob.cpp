@@ -115,6 +115,10 @@ EditorResult EditorJob::run(QImage& image,const QString& destination,qint64 outp
  },destination,outputBytes,session);
 }
 
+EditorResult EditorJob::runEncoded(const QByteArray& png,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
+ return supervise([&png](QFile& input){return !png.isEmpty()&&input.write(png)==png.size();},destination,outputBytes,session);
+}
+
 EditorResult EditorJob::runFile(const QString& path,qint64 maximumInputBytes,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
  // The resident copies the user's PNG/JPEG bytes verbatim and never decodes them;
  // the helper applies pixel admission before allocating and decodes once.
@@ -220,7 +224,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   // #1804: what the check found, kinds and counts only; then the prompt or an agent's decision.
   if(type=="checked"&&checking&&ready&&!prompting&&!editing&&!checkpoint&&payload.size()==(payload.contains("reason")?6:5)){
    const auto found=payload["found"].toObject();
-   if(!payload["found"].isObject()||!payload["complete"].isBool()||payload["complete"].toBool()==payload.contains("reason")||(payload.contains("reason")&&!QStringList{"recognition_failed","truncated","too_large","patterns_skipped","name_unchecked","unavailable"}.contains(payload["reason"].toString()))){protocolFailed=true;return;}
+   if(!payload["found"].isObject()||!payload["complete"].isBool()||payload["complete"].toBool()==payload.contains("reason")||(payload.contains("reason")&&!QStringList{"recognition_failed","truncated","too_large","patterns_skipped","name_unchecked","unavailable","matching_unfinished"}.contains(payload["reason"].toString()))){protocolFailed=true;return;}
    for(auto it=found.begin();it!=found.end();++it)if(!check_->categories.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt()){protocolFailed=true;return;}
    prompting=true;result.findings={{"found",found},{"complete",payload["complete"]}};if(payload.contains("reason"))result.findings["reason"]=payload["reason"];
    session->setPhase("prompt");phaseClock.restart();

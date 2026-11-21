@@ -47,6 +47,7 @@ struct Result {
  QList<Match> matches;
  QList<int> skippedPatterns; // indexes into Sources::patterns that did not finish (time, limits, not compiling)
  bool nameUnchecked=false; // `name` was chosen but the account lookup did not answer in time
+ bool unfinished=false; // the run was cut at its deadline: categories may not all have been matched
 };
 // Decision 6, round 3 of #1631: user patterns. A pattern runs exactly as typed
 // with ordinary PCRE2 search (QRegularExpression, Unicode properties, case as

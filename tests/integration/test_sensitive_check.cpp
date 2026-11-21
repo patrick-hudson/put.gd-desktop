@@ -95,7 +95,12 @@ private slots:
   const auto id=f.start({{"sensitiveText","prompt"}});
   QVERIFY(f.reaches(id,"sensitive_text_found"));
   QCOMPARE(f.inspect(id)["sensitive"].toObject()["found"].toObject()["key"].toInt(),1);
-  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"cancel",r);}).error);
+  // A second decision right behind the first is refused, and the first one stands.
+  Call first,second;
+  f.operations->decideSensitive(id,"cancel",[&](Error e,QJsonObject r){first={e,r,true};});
+  f.operations->decideSensitive(id,"upload",[&](Error e,QJsonObject r){second={e,r,true};});
+  PUTGD_TRY_VERIFY(first.done&&second.done);
+  QVERIFY2(!first.error,qPrintable(first.error.code));QVERIFY(bool(second.error));
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString(keep?"completed":"cancelled"),20000);
   QCOMPARE(f.provider->uploads.load(),0);
   if(keep){const auto items=f.inspect(id)["items"].toArray();QCOMPARE(items.size(),1);QCOMPARE(items.first().toObject()["uploadStatus"].toString(),QString("local_only"));}

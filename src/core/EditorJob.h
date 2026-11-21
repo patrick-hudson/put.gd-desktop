@@ -100,6 +100,8 @@ public:
  // Writes `image` to private staging, then releases it before the helper
  // starts. Returns only bytes that pass identity and sanitized-PNG checks.
  EditorResult run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
+ // Stages encoded PNG bytes (a scrolling capture, #1804) without decoding them here.
+ EditorResult runEncoded(const QByteArray& png,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  // Stages a PNG/JPEG file's bytes without decoding them in this process.
  EditorResult runFile(const QString& path,qint64 maximumInputBytes,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  // Removes abandoned staging left by an earlier resident. Call before editing.

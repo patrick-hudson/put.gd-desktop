@@ -52,7 +52,7 @@ public:
  // helper so Edit image matches the other windows (#198's rule for putgd-record).
  void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");if(editor_)editor_->setAppearance(editorAppearance_);}
  ScrollCaptureService& scroll() {return *scroll_;}
- void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare")emit explicitRequest();scroll_->command(command,params,std::move(reply));}
+ void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare"){emit explicitRequest();scrollSensitiveMode_=QStringLiteral("report");}scroll_->command(command,params,std::move(reply));}
  void setScrollBackend(std::unique_ptr<ScrollBackend> backend) {scroll_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}
  // Text recognition (#1428): what the Copy text action, text.recognize and
@@ -260,6 +260,7 @@ private:
  QQueue<Job> checkQueue_;QString checkingId_;
  QHash<QString,std::shared_ptr<EditorSession>> checkSessions_;
  QHash<QString,Operation> checkOperations_;
+ QHash<QString,std::shared_ptr<Job>> checkJobs_;
  QHash<QString,QString> sensitiveModes_;
  QString scrollSensitiveMode_=QStringLiteral("report");
  void observe(const QJsonObject&);

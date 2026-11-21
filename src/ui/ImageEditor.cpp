@@ -199,13 +199,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   if(deciding){
-   // #1804: the capture waits for Redact and upload, Upload anyway or Cancel.
-   if(name=="inspect"){
-    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
-    auto state=findings.json();state["phase"]=terminal?"closing":"sensitive_text_found";state["prompt"]=prompt?QJsonValue(prompt->state()):QJsonValue(QJsonValue::Null);
-    QJsonArray choices{"upload","cancel"};if(checkRedact&&window)choices.prepend("redact");state["choices"]=choices;state["destination"]=destination;if(!checkFile.isEmpty())state["file"]=checkFile;
-    return state;
-   }
+   // #1804: the capture waits for Redact and upload, Upload anyway or Cancel; the resident sends only decide.
    if(name=="decide"){
     const auto choice=params["choice"].toString();
     if(params.size()!=1||!QStringList{"redact","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact, upload or cancel");
@@ -221,8 +215,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     whenActivated(prompt.get(),1500,[done](bool active){done(active?QJsonObject{{"raised",true}}:QJsonObject{{"raised",false},{"reason","activation_refused"}},{},{});});
     return {};
    }
-   if(name!="preview"||!window)return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
+   return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
   }
+  // A decision already taken: a late one is answered, never fatal (#1804).
+  if(!window)return denied("editor_finalizing","The capture was already decided");
   const bool open=!terminal&&!finalizing;
   if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(window->copying()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","The image is still being copied");
@@ -441,8 +437,11 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // #1804: an image too large to read can't be checked, and that is said, never passed over.
    if(pixels>maxPixels&&checkMode){deadline.stop();findings.complete=false;findings.reason="too_large";checkRedact=false;checked();return;}
    if(pixels>maxPixels){refuse("input_excessive");return;}
-   reader.setAllocationLimit(int(std::min<qint64>(pixels*4/(1024*1024)+2,INT_MAX)));
-   const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
+   // A check also opens 16-bit PNG files from a file manager: 8 bytes a pixel, inside the same pixel admission.
+   reader.setAllocationLimit(int(std::min<qint64>(pixels*(checkMode?8:4)/(1024*1024)+2,INT_MAX)));
+   const auto image=reader.read();
+   if(image.isNull()&&checkMode){deadline.stop();findings.complete=false;findings.reason="recognition_failed";checkRedact=false;checked();return;}
+   if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
    window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
@@ -459,14 +458,18 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(checkMode){
     // Recognition and Quick redact on the hidden editor, with the editor's own helper, deadline and limits.
     checking=true;
-    window->quickRedact(checkCategories,[&](Error error,QJsonObject result){
+    // Adding the marks starts a new recognition revision, which clears the result: read whether it was cut first.
+    auto truncated=std::make_shared<bool>(false);
+    window->text().whenRecognized([&,truncated](Error error){if(!error)*truncated=window->text().truncated();});
+    window->quickRedact(checkCategories,[&,truncated](Error error,QJsonObject result){
      checking=false;if(terminal)return;
      findings={};
      const auto counts=result["counts"].toObject();
      for(const auto& category:checkCategories)findings.found.append({category,counts[category].toInt()});
      static const QStringList unavailable{"text_helper_missing","engine_unavailable","helper_sandbox_unavailable","language_unavailable"};
      if(error){findings.complete=false;findings.reason=unavailable.contains(error.code)?QStringLiteral("unavailable"):QStringLiteral("recognition_failed");}
-     else if(window->text().truncated()){findings.complete=false;findings.reason="truncated";}
+     else if(*truncated){findings.complete=false;findings.reason="truncated";}
+     else if(result["unfinished"].toBool()){findings.complete=false;findings.reason="matching_unfinished";}
      else if(!result["skippedPatterns"].toArray().isEmpty()){findings.complete=false;findings.reason="patterns_skipped";}
      else if(result["nameUnchecked"].toBool()){findings.complete=false;findings.reason="name_unchecked";}
      // Nothing found, all of it read: the upload goes ahead as if there were no check.
@@ -479,7 +482,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(control.send("editing",envelope(nonce)).isEmpty())fail();
    return;
   }
-  if(type=="command"&&active&&(window||deciding)){
+  if(type=="command"&&active){
    const auto requestId=object["requestId"].toString();
    if(object.size()!=6||requestId.isEmpty()||requestId.size()>64||!object["command"].isString()||!object["params"].isObject()){fail();return;}
    const auto done=[&,requestId](QJsonObject result,QString code,QString message){
