@@ -2,6 +2,7 @@
 #include "core/KeptSpans.h"
 #include "core/RecordingModel.h"
 #include "MaskNames.h"
+#include <QElapsedTimer>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -200,6 +201,9 @@ private:
     std::tuple<qint64, QRect, QString, int> compositeKey_;
     std::optional<int> liveStrength_;
     QString linkedHover_;
+    struct HoverSample { qint64 t; QPointF p; int handle; QString id; };
+    QList<HoverSample> hoverTrail_;
+    QElapsedTimer trailClock_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
     QTimer nudge_;

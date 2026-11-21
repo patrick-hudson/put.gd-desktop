@@ -1154,16 +1154,22 @@ private slots:
         QTest::addColumn<QString>("kind");
         QTest::addColumn<int>("handle");
         QTest::addColumn<QPoint>("offset");
-        QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0);
-        QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0);
-        QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2);
-        QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2);
-        QTest::newRow("blur east 2 px outside") << "blur" << 3 << QPoint(2, 0);
+        QTest::addColumn<QPoint>("late");
+        QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0) << QPoint();
+        // The live run's presses arrived 5–11 px along the drag (emulated middle button).
+        QTest::newRow("blur west, press 9 px late") << "blur" << 7 << QPoint(0, 0) << QPoint(8, 5);
+        QTest::newRow("solid east 2 px outside, press 9 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(8, 5);
+        QTest::newRow("solid south 2 px below, press 9 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(8, 5);
+        QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0) << QPoint();
+        QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2) << QPoint();
+        QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2) << QPoint();
+        QTest::newRow("blur east 2 px outside") << "blur" << 3 << QPoint(2, 0) << QPoint();
     }
     void handlesAnswerOnEverySide() {
         QFETCH(QString, kind);
         QFETCH(int, handle);
         QFETCH(QPoint, offset);
+        QFETCH(QPoint, late);
         auto o = options();
         o.canvas = QSize(784, 434);
         o.availableSize = QSize(1920, 1040);
@@ -1197,7 +1203,7 @@ private slots:
         QApplication::sendEvent(view, &hover);
         const auto shape = view->cursor().shape();
         QVERIFY2(shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor || shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor, qPrintable(QString::number(int(shape))));
-        drag(view, at, at + QPoint(30, 21));
+        drag(view, at + late, at + QPoint(30, 21));
         QCOMPARE(proposals.size(), 1);
         const auto rect = proposed(proposals)["mask"].toObject()["rect"].toArray();
         // A resize: the size changed (a move keeps it).

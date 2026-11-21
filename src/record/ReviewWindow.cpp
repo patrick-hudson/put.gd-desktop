@@ -31,6 +31,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLineF>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -507,6 +508,12 @@ FrameView::Target FrameView::targetAt(const QPointF& p) const {
 }
 void FrameView::updateHover(const QPointF& p) {
     const auto target = armed_.isEmpty() && drag_ == Drag::None && !playing_ ? targetAt(p) : Target{};
+    // Where the pointer has just been, for a press that arrives late (Q23, Q24).
+    if (drag_ == Drag::None) {
+        if (!trailClock_.isValid()) trailClock_.start();
+        hoverTrail_.append({trailClock_.elapsed(), p, target.kind == Target::Kind::Handle ? target.handle : -1, target.id});
+        while (hoverTrail_.size() > 16) hoverTrail_.removeFirst();
+    }
     // The outline follows a cover shown at this frame; the selected one is outlined anyway.
     QString hovered;
     for (auto it = masks_.crbegin(); it != masks_.crend(); ++it) if ((it->start <= timeUs_ && timeUs_ < it->end) && toView(it->rect).contains(p)) { hovered = it->id; break; }
@@ -752,7 +759,22 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
         if (placeWaiting_ || !imageRect().adjusted(-8, -8, 8, 8).contains(p.toPoint())) return;
         drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return;
     }
-    const auto target = targetAt(p);
+    auto target = targetAt(p);
+    QPointF from = p;
+    // A press that lands off a grip takes the grip the pointer left within the
+    // last 80 ms and 12 px, counted from there: a press that arrives late (a
+    // pointer already moving, emulated middle buttons) still grabs what was
+    // under the cursor (Q23, Q24).
+    if (target.kind != Target::Kind::Handle && trailClock_.isValid()) {
+        const qint64 now = trailClock_.elapsed();
+        for (auto it = hoverTrail_.crbegin(); it != hoverTrail_.crend(); ++it) {
+            if (now - it->t > 80) break;
+            if (it->handle < 0 || it->id != selected_ || QLineF(it->p, p).length() > 12) continue;
+            target = {Target::Kind::Handle, it->id, it->handle};
+            from = it->p;
+            break;
+        }
+    }
     if (target.kind != Target::Kind::None) {
         const auto it = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == target.id; });
         if (it == masks_.cend()) return;
@@ -762,7 +784,7 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
         handle_ = target.handle;
         pressedSelected_ = selected_ == target.id;
         drag_ = target.kind == Target::Kind::Handle ? Drag::Resize : Drag::Move;
-        anchor_ = p;
+        anchor_ = from;
         setCursor(drag_ == Drag::Resize ? resizeCursor(handle_) : Qt::SizeAllCursor);
         // A click on a cover gives the viewer the arrows (W8).
         claimArrows(true);
