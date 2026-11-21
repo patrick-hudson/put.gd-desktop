@@ -206,8 +206,10 @@ void ErrorLogPage::select(const QString& id,bool supersede) {
  const auto ticket=supersede?++selection_:selection_;
  for(const auto& value:entries_)if(value.toObject()["id"]==id){wanted_.clear();showDetails(value.toObject());return;}
  // Not on this page (an older entry, or one a filter hides): read it on its own.
- session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket](Error e,QJsonObject entry){
-  if(!g||g->selection_!=ticket)return;g->wanted_.clear();
+ session_.request("errors.inspect",{{"id",id}},this,[g=QPointer<ErrorLogPage>(this),ticket,supersede](Error e,QJsonObject entry){
+  // A reload's own reselection never displaces a link that is still on its way.
+  if(!g||g->selection_!=ticket||(!supersede&&!g->wanted_.isEmpty()))return;
+  if(supersede)g->wanted_.clear();
   if(e){g->selected_={};g->details_->hide();return;}
   g->showDetails(entry);
  });

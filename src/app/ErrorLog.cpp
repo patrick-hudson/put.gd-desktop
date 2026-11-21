@@ -68,6 +68,7 @@ bool ErrorLog::userFacing(const Error& error) {
  if(code.isEmpty()||protocol.contains(code)||code.endsWith("_busy")||code.startsWith("ui_")||code=="cancelled"||code=="copy_suppressed")return false;
  return true;
 }
+QString ErrorLog::subjectKey(const QString& subject) {return logging::redact(subject).left(512);}
 QString ErrorLog::destinationLabel(const QString& profileId,const QString& provider) const {
  if(!profileId.isEmpty()){const auto profile=operations_.settingsSnapshot().profiles.value(profileId);if(!profile["label"].toString().isEmpty())return profile["label"].toString();}
  return providerName(provider);
@@ -77,8 +78,8 @@ namespace {
 // destination its receipt names. Then the destination's name now, and next steps.
 void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QString,QJsonObject>& profiles) {
  if(entry.value("itemName").toString().isEmpty()&&!item["name"].toString().isEmpty())entry["itemName"]=logging::redact(item["name"].toString()).left(512);
- if(entry.value("profileId").toString().isEmpty()&&!item["profileId"].toString().isEmpty())entry["profileId"]=item["profileId"];
- if(entry.value("provider").toString().isEmpty()&&!item["providerId"].toString().isEmpty())entry["provider"]=item["providerId"];
+ if(entry.value("profileId").toString().isEmpty()&&!item["profileId"].toString().isEmpty())entry["profileId"]=logging::redact(item["profileId"].toString()).left(512);
+ if(entry.value("provider").toString().isEmpty()&&!item["providerId"].toString().isEmpty())entry["provider"]=logging::redact(item["providerId"].toString()).left(512);
  const auto profileId=entry.value("profileId").toString(),provider=entry.value("provider").toString();
  if(entry.value("destination").toString().isEmpty()&&(!profileId.isEmpty()||!provider.isEmpty())){
   const auto label=profiles.value(profileId)["label"].toString();
@@ -107,7 +108,7 @@ QJsonObject ErrorLog::entryJson(const Entry& e,const QString& id,const QDateTime
  auto provider=e.provider;
  if(provider.isEmpty()&&!e.profileId.isEmpty())provider=operations_.settingsSnapshot().profiles.value(e.profileId)["provider"].toString();
  QJsonObject entry{{"id",id},{"time",iso(now)},{"firstTime",first},{"occurrences",occurrences},{"kind",kinds().contains(e.kind)?e.kind:QStringLiteral("other")},
-  {"code",logging::redact(e.code).left(128)},{"title",oneLine(message)},{"message",message},{"details",details},{"subject",logging::redact(e.subject).left(512)},{"resolved",false},{"nextSteps",QJsonArray::fromStringList(e.steps)}};
+  {"code",logging::redact(e.code).left(128)},{"title",oneLine(message)},{"message",message},{"details",details},{"subject",e.subject},{"resolved",false},{"nextSteps",QJsonArray::fromStringList(e.steps)}};
  // Every stored string goes through the log's redaction, IDs included: a caller's ID is never trusted.
  const auto put=[&entry](const char* key,const QString& value){if(!value.isEmpty())entry[QLatin1String(key)]=logging::redact(value).left(512);};
  put("action",e.action);put("operationId",e.operationId);put("itemId",e.itemId);put("historyId",e.historyId);put("deletionId",e.deletionId);put("sharingId",e.sharingId);
@@ -117,6 +118,7 @@ QJsonObject ErrorLog::entryJson(const Entry& e,const QString& id,const QDateTime
 }
 QString ErrorLog::record(Entry e) {
  const auto now=QDateTime::currentDateTimeUtc();
+ e.subject=subjectKey(e.subject);
  const auto key=e.kind+'|'+(e.subject.isEmpty()?e.message:e.subject)+'|'+e.code;
  QString id,first=iso(now);int occurrences=1;
  const auto recent=recent_.constFind(key);
@@ -147,7 +149,9 @@ QString ErrorLog::record(const QString& kind,const Error& error,Entry context) {
  context.details=details;
  return record(std::move(context));
 }
-void ErrorLog::resolve(const QString& subject,const QString& resolution) {
+void ErrorLog::resolve(const QString& raw,const QString& resolution) {
+ // The same key the entry was stored under (redacted), so a subject always matches itself.
+ const auto subject=subjectKey(raw);
  if(subject.isEmpty()||(loaded_&&!open_.contains(subject)))return;
  open_.remove(subject);
  for(auto it=recent_.begin();it!=recent_.end();)it=it.key().section('|',1,1)==subject?recent_.erase(it):std::next(it);

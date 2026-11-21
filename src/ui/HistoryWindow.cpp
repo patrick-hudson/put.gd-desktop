@@ -1914,7 +1914,8 @@ void HistoryWindow::pollDeletion(){
    // A deletion that had already ended when History opened says nothing: the item's own
    // row and inspector show its state, and the error log keeps what went wrong.
    if(std::exchange(g->deletionAnnounce_,false)){
-    Ui::feedback(g->status_,{});  // "Remote deletion accepted…" is answered by the outcome
+    // The line that said the deletion was accepted is answered by its outcome; another note stays.
+    if(QStringList{"Remote deletion accepted","Deletion action accepted","Deletion retry requested"}.contains(g->status_->text().section(';',0,0).section('.',0,0)))Ui::feedback(g->status_,{});
     if(!problems.isEmpty())g->showError(problems.join("\n"),target);
     else if(removed==1)Ui::feedback(g->status_,"Deleted "+removedName+" from "+removedWhere+".");
     else if(removed>1)Ui::feedback(g->status_,QStringLiteral("Deleted %1 files from their destinations.").arg(removed));
@@ -2041,6 +2042,7 @@ void HistoryWindow::showError(const QString& text,const QJsonObject& target){
 }
 void HistoryWindow::notice(const QString& text){
  if(text.isEmpty()||!isVisible())return;
+ ++noticeSerial_;
  errorNoticeTarget_={};errorNotice_->setTone(Ui::Banner::Tone::Warning);errorNotice_->setText(text);errorNotice_->setAction({});
  errorNotice_->show();errorNoticeTimer_->start();updateFooterLayout();
 }

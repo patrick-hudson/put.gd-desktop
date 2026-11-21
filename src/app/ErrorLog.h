@@ -69,6 +69,9 @@ private:
  void load();
  QJsonObject entryJson(const Entry&,const QString& id,const QDateTime& now,int occurrences,const QString& first) const;
  QString destinationLabel(const QString& profileId,const QString& provider) const;
+ // A subject as stored and matched: redacted like every stored string.
+ static QString subjectKey(const QString& subject);
+
  OperationService& operations_;
  struct Job {Work work;JsonReply done;bool write=false;};
  // Writes waiting while the journal recovers or a worker is slow; past this, new writes are dropped and counted.

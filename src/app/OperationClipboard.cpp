@@ -87,6 +87,9 @@ bool OperationService::detachCompletedUploadCopies(const QString& id,JsonReply& 
  // The upload has finished; only its automatic list is waiting. A deliberate
  // Activity copy takes ownership of the final copy status and any retry reply.
  state->recorded=true;pendingReply=std::move(state->reply);
+ // Its finished result was waiting for the list copy; it is reported now, before the
+ // explicit copy reports only its copy (#1753).
+ emit outcome(state->operation.publicJson());
  state->group->members.remove(state->operation.invocation);
  uploadCopies_.remove(id);releaseActive(id);return true;
 }
