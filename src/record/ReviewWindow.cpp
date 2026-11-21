@@ -89,19 +89,6 @@ void dualOutline(QPainter& painter, const QRectF& r, const QColor& colour, qreal
     painter.setPen(QPen(colour, width, style));
     painter.drawRect(r);
 }
-// The card over the frame when a preview could not be decoded.
-class ErrorCard final : public QWidget {
-public:
-    using QWidget::QWidget;
-protected:
-    void paintEvent(QPaintEvent*) override {
-        QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Theme::mediaScrim());
-        painter.drawRoundedRect(QRectF(rect()), 8, 8);
-    }
-};
 // The destination with its sharing mode ("Project archive · Shared link"); a
 // long name elides before the mode. The popup keeps the full details.
 class DestinationMenu final : public QToolButton {
@@ -158,13 +145,15 @@ private:
 };
 }
 
-// #1613: a banner along the viewer's top edge: the cover placement ("Draw the
-// redaction · 0:08.2 – 0:12.6" with Cancel and its Esc key) or the blur
-// warning (warningSurface / warning). It takes space from the well, never
-// covers the picture.
+// #1613: a message in the tool row's middle, never over or beside the
+// picture (D9): the cover placement ("Draw the redaction · 0:08.2 – 0:12.6"
+// with Cancel and its Esc key), the blur warning (warningSurface / warning) or
+// a frame that couldn't be decoded (dangerSurface / danger, with Retry
+// preview). The text elides when narrow; below its full width the key hint
+// goes first (the compact form).
 class ViewerBanner final : public QWidget {
 public:
-    enum class Tone { Info, Warning };
+    enum class Tone { Info, Warning, Error };
     ViewerBanner(Tone tone, QWidget* parent) : QWidget(parent), tone_(tone) {
         setFont(Ui::font(Ui::Type::caption));
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -176,6 +165,8 @@ public:
         text_ = text;
         setAccessibleName(text);
         setToolTip(text);
+        updateGeometry();
+        place();
         update();
     }
     QString text() const { return text_; }
@@ -190,7 +181,7 @@ public:
         place();
         return action_;
     }
-    QSize sizeHint() const override { return {400, std::max(Ui::scaled(32), fontMetrics().height() + 14)}; }
+    QSize sizeHint() const override { return {fullWidth(), std::max(Ui::scaled(32), fontMetrics().height() + 14)}; }
     QSize minimumSizeHint() const override { return {120, sizeHint().height()}; }
 protected:
     void resizeEvent(QResizeEvent*) override { place(); }
@@ -199,17 +190,17 @@ protected:
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(tone_ == Tone::Warning ? c.warningSurface : c.surface);
+        painter.setBrush(tone_ == Tone::Warning ? c.warningSurface : tone_ == Tone::Error ? c.dangerSurface : c.surface);
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Ui::Metric::radius, Ui::Metric::radius);
         const int side = Ui::scaled(16), pad = reviewSpace(Ui::Space::m);
-        const QColor ink = tone_ == Tone::Warning ? c.warning : c.text;
+        const QColor ink = tone_ == Tone::Warning ? c.warning : tone_ == Tone::Error ? c.danger : c.text;
         const QRect glyph(pad, (height() - side) / 2, side, side);
-        if (tone_ == Tone::Warning) Ui::icon("alert", c.warning).paint(&painter, glyph);
+        if (tone_ != Tone::Info) Ui::icon("alert", ink).paint(&painter, glyph);
         else if (!glyph_.isEmpty()) Ui::icon(glyph_).paint(&painter, glyph);
         int right = width() - pad;
         if (action_) {
             right = action_->geometry().left() - reviewSpace(Ui::Space::s);
-            if (!key_.isEmpty()) {
+            if (showKey()) {
                 const auto keyFont = Ui::monoFont(Ui::Type::caption);
                 const int keyWidth = QFontMetrics(keyFont).horizontalAdvance(key_) + 10;
                 const QRectF cap(width() - pad - keyWidth, (height() - QFontMetrics(keyFont).height() - 4) / 2.0, keyWidth, QFontMetrics(keyFont).height() + 4);
@@ -225,10 +216,21 @@ protected:
         Ui::paintText(painter, QRectF(left, 0, std::max(0, right - left), height()), text_, ink, textFont);
     }
 private:
+    int keySpace() const { return key_.isEmpty() ? 0 : QFontMetrics(Ui::monoFont(Ui::Type::caption)).horizontalAdvance(key_) + 10 + reviewSpace(Ui::Space::s); }
+    // Glyph, the whole text, the action and its key.
+    int fullWidth() const {
+        const int pad = reviewSpace(Ui::Space::m);
+        QFont textFont = font();
+        textFont.setWeight(tone_ == Tone::Warning ? QFont::Medium : QFont::Normal);
+        int w = pad + Ui::scaled(16) + reviewSpace(Ui::Space::s) + QFontMetrics(textFont).horizontalAdvance(text_) + pad;
+        if (action_) w += reviewSpace(Ui::Space::s) + action_->sizeHint().width() + keySpace();
+        return w;
+    }
+    bool showKey() const { return !key_.isEmpty() && width() >= fullWidth(); }
     void place() {
         if (!action_) return;
         const int pad = reviewSpace(Ui::Space::m);
-        const int keyWidth = key_.isEmpty() ? 0 : QFontMetrics(Ui::monoFont(Ui::Type::caption)).horizontalAdvance(key_) + 10 + reviewSpace(Ui::Space::s);
+        const int keyWidth = showKey() ? keySpace() : 0;
         const int h = std::min(height() - 4, textControlHeight(action_));
         const int w = action_->sizeHint().width();
         action_->setGeometry(width() - pad - keyWidth - w, (height() - h) / 2, w, h);
@@ -249,25 +251,6 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     nudge_.setSingleShot(true);
     nudge_.setInterval(350);
     connect(&nudge_, &QTimer::timeout, this, &FrameView::commitNudge);
-    errorCard_ = new ErrorCard(this);
-    errorCard_->setObjectName("previewError");
-    auto* row = new QHBoxLayout(errorCard_);
-    row->setContentsMargins(reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s));
-    row->setSpacing(reviewSpace(Ui::Space::m));
-    errorText_ = new QLabel(errorCard_);
-    errorText_->setObjectName("previewErrorText");
-    errorText_->setWordWrap(true);
-    errorText_->setTextFormat(Qt::PlainText);
-    QPalette onMedia = errorText_->palette();
-    onMedia.setColor(QPalette::WindowText, Theme::onMedia());
-    errorText_->setPalette(onMedia);
-    retry_ = new QPushButton(QStringLiteral("Retry preview"), errorCard_);
-    retry_->setObjectName("retryPreview");
-    retry_->setToolTip(QStringLiteral("Decode the frame at the playhead again"));
-    row->addWidget(errorText_, 1);
-    row->addWidget(retry_, 0, Qt::AlignVCenter);
-    connect(retry_, &QPushButton::clicked, this, &FrameView::retryRequested);
-    errorCard_->hide();
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
 }
 void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); announce(); update(); }
@@ -282,36 +265,19 @@ void FrameView::disarm() {
     update();
 }
 void FrameView::setPreviewError(const QString& message) {
+    if (error_ == message) return;
     error_ = message;
     announce();
-    if (message.isEmpty()) { errorCard_->hide(); update(); return; }
-    // A frame still on screen is an earlier one: say which, as well as dimming it.
-    const QString text = frame_.isNull() ? message : message + QStringLiteral("\nShowing an earlier frame (%1).").arg(durationText(timeUs_));
-    errorText_->setText(text);
-    errorText_->setAccessibleName(text);
-    errorCard_->show();
-    placeErrorCard();
     update();
+    // The window shows it in the tool row with Retry preview (D9).
+    emit previewErrorChanged();
 }
-void FrameView::placeErrorCard() {
-    if (errorCard_->isHidden()) return;
-    const QRect where = (frame_.isNull() ? area() : imageRect()).intersected(area()).adjusted(8, 8, -8, -8);
-    if (where.isEmpty()) return;
-    auto* row = static_cast<QBoxLayout*>(errorCard_->layout());
-    const auto margins = row->contentsMargins();
-    const int width = std::min(where.width(), Ui::scaled(640));
-    const int inner = std::max(1, width - margins.left() - margins.right());
-    const int buttonWidth = retry_->sizeHint().width();
-    const int textWidth = inner - buttonWidth - row->spacing();
-    const bool stacked = textWidth < errorText_->fontMetrics().horizontalAdvance(QStringLiteral("Showing an earlier frame"));
-    row->setDirection(stacked ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
-    row->setAlignment(retry_, stacked ? Qt::AlignLeft : Qt::AlignVCenter);
-    const int labelHeight = errorText_->heightForWidth(std::max(1, stacked ? inner : textWidth));
-    const int contentHeight = stacked ? labelHeight + row->spacing() + retry_->sizeHint().height() : std::max(labelHeight, retry_->sizeHint().height());
-    const int height = std::min(where.height(), contentHeight + margins.top() + margins.bottom());
-    errorCard_->setGeometry(QRect(QPoint(where.center().x() - width / 2, where.center().y() - height / 2), QSize(width, height)));
+QString FrameView::previewErrorText() const {
+    if (error_.isEmpty()) return {};
+    // A frame still on screen is an earlier one: say which, as well as dimming it.
+    return frame_.isNull() ? error_ : error_ + QStringLiteral(" Showing an earlier frame (%1).").arg(durationText(timeUs_));
 }
-void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); clampPan(); placeErrorCard(); emit zoomChanged(); }
+void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); clampPan(); emit zoomChanged(); }
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
     // A keyboard nudge not yet proposed keeps its place over the last answer.
     QRect pending;
@@ -346,7 +312,6 @@ void FrameView::setRightInset(int px) {
     if (rightInset_ == px) return;
     rightInset_ = px;
     clampPan();
-    placeErrorCard();
     update();
     emit zoomChanged();
 }
@@ -355,7 +320,6 @@ void FrameView::setActualSize(bool actual) {
     actual_ = actual;
     pan_ = {};
     if (drag_ == Drag::Pan) drag_ = Drag::None;
-    placeErrorCard();
     update();
     emit zoomChanged();
 }
@@ -879,7 +843,17 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     separator();
     tools->addWidget(undo_);
     tools->addWidget(redo_);
-    tools->addStretch(1);
+    // The row's free middle holds the placement prompt, the blur warning and a
+    // frame error (D9): showing one never moves the picture. It takes only the
+    // space left over, so it never widens the window.
+    toolMessages_ = new QWidget(toolRow_);
+    toolMessages_->setObjectName("toolMessages");
+    toolMessages_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    auto* messages = new QHBoxLayout(toolMessages_);
+    messages->setContentsMargins(reviewSpace(Ui::Space::m), 0, reviewSpace(Ui::Space::m), 0);
+    messages->setSpacing(reviewSpace(Ui::Space::s));
+    messages->addStretch(1);
+    tools->addWidget(toolMessages_, 1);
     tools->addWidget(pictureZoom_);
     tools->addWidget(editsToggle_);
     frame->addWidget(toolRow_);
@@ -893,9 +867,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     column->setContentsMargins(0, 0, 0, 0);
     column->setSpacing(0);
     body->addLayout(column, 1);
-    // Banners lie along the viewer's top edge in a strip the picture always
-    // leaves free, so showing one never refits the picture (D9); more than one
-    // stacks down over the top of the picture.
+    // The notice and the status lines lie over the viewer's top edge and never
+    // refit the picture (D9); the placement prompt, the blur warning and a
+    // frame error are in the tool row.
     auto* bannerArea = new Ui::Surface("well", {}, this);
     bannerArea_ = bannerArea;
     bannerArea->setObjectName("viewerBanners");
@@ -914,17 +888,25 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     noticeBand->hide();
     noticeBand_ = noticeBand;
     banners->addWidget(noticeBand);
-    placeBanner_ = new ViewerBanner(ViewerBanner::Tone::Info, bannerArea);
+    auto* messageRow = static_cast<QHBoxLayout*>(toolMessages_->layout());
+    placeBanner_ = new ViewerBanner(ViewerBanner::Tone::Info, toolMessages_);
     placeBanner_->setObjectName("placementBanner");
     auto* cancelPlace = placeBanner_->setAction(QStringLiteral("Cancel"), QStringLiteral("Esc"));
     cancelPlace->setObjectName("cancelPlacement");
     cancelPlace->setToolTip(QStringLiteral("Cancel placing the cover (Esc)"));
     connect(cancelPlace, &QPushButton::clicked, this, &ReviewWindow::cancelPlacement);
-    banners->addWidget(placeBanner_);
-    blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, bannerArea);
+    messageRow->insertWidget(messageRow->count() - 1, placeBanner_);
+    blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, toolMessages_);
     blurBanner_->setObjectName("blurWarning");
     blurBanner_->setText(QStringLiteral("Blur may be reversible. Use Redact for private information."));
-    banners->addWidget(blurBanner_);
+    messageRow->insertWidget(messageRow->count() - 1, blurBanner_);
+    frameError_ = new ViewerBanner(ViewerBanner::Tone::Error, toolMessages_);
+    frameError_->setObjectName("previewError");
+    auto* retryPreview = frameError_->setAction(QStringLiteral("Retry preview"), {});
+    retryPreview->setObjectName("retryPreview");
+    retryPreview->setToolTip(QStringLiteral("Decode the frame at the playhead again"));
+    connect(retryPreview, &QPushButton::clicked, this, [this] { drive({{"action", "retryPreview"}}); });
+    messageRow->insertWidget(messageRow->count() - 1, frameError_);
     // Errors, results and format advice with their actions; shown only when there are any.
     statusRow_ = new QWidget(bannerArea);
     statusRow_->setObjectName("statusRow");
@@ -936,7 +918,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     bannerArea->hide();
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs) + placeBanner_->sizeHint().height() + reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s));
+    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs));
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     column->addWidget(view_, 1);
@@ -1248,7 +1230,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(editsToggle_, &QToolButton::clicked, this, [this] { setPanelOpen(!overlay_->isOpen()); });
 
     // Viewer.
-    connect(view_, &FrameView::retryRequested, this, [this] { drive({{"action", "retryPreview"}}); });
+    connect(view_, &FrameView::previewErrorChanged, this, [this] {
+        const auto text = view_->previewErrorText();
+        frameError_->setText(text);
+        frameError_->setVisible(!text.isEmpty());
+    });
     connect(view_, &FrameView::maskCreated, this, [this](const QString& kind, const QRect& r) { placeCover(kind, r); });
     connect(view_, &FrameView::maskMoved, this, [this](const QString& id, const QRect& r) {
         const quint64 before = proposalSeq_;
@@ -2077,7 +2063,7 @@ void ReviewWindow::refreshBanners() {
     placeBanner_->setVisible(placing_.has_value());
     const auto* mask = selectedMask();
     blurBanner_->setVisible((placing_ && placing_->kind == "blur") || (!placing_ && mask && mask->kind == "blur"));
-    const bool any = !placeBanner_->isHidden() || !blurBanner_->isHidden() || !noticeBand_->isHidden() || !statusRow_->isHidden();
+    const bool any = !noticeBand_->isHidden() || !statusRow_->isHidden();
     if (bannerArea_->isHidden() == any) bannerArea_->setVisible(any);
     placeBanners();
 }

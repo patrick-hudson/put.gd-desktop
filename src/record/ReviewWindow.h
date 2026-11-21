@@ -47,8 +47,8 @@ class ViewerBanner;
 // While a cover moves, its effect follows the box (the "live" cover): the
 // window supplies the frame without that cover, and until it arrives the
 // shown frame keeps the old place covered under a pending outline.
-// Nothing is written over the picture: guidance lives in the window's
-// banners along its top edge.
+// Nothing is written over the picture: guidance lives in the window's tool
+// row (placement, blur warning, a frame error with Retry preview).
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
@@ -60,10 +60,12 @@ public:
     void setSkim(const QImage&, qint64 timeUs);
     void clearSkim();
     bool skimming() const { return !skim_.isNull(); }
-    // A failed refresh: the message over the frame with Retry preview, and a
-    // frame still shown dimmed and marked as an earlier one. Empty clears it.
+    // A failed refresh: a frame still shown is dimmed and marked as an earlier
+    // one; the window shows the message with Retry preview. Empty clears it.
     void setPreviewError(const QString& message);
     QString previewError() const { return error_; }
+    // The error with which frame is still shown, as the window's message says it.
+    QString previewErrorText() const;
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
@@ -116,7 +118,7 @@ signals:
     void maskSelected(const QString& id);
     // A cover shown at timeUs started to move: the window asks for the frame without it.
     void liveEditStarted(const QString& id, qint64 timeUs);
-    void retryRequested();
+    void previewErrorChanged();
     void zoomChanged();
 protected:
     bool event(QEvent*) override;
@@ -136,7 +138,6 @@ private:
     QSize source() const;
     QRect area() const;
     void clampPan();
-    void placeErrorCard();
     void announce();
     struct Target { enum class Kind { None, Handle, Body } kind = Kind::None; QString id; int handle = -1; };
     Target targetAt(const QPointF&) const;
@@ -168,15 +169,14 @@ private:
     QTimer nudge_;
     QRect nudgeFrom_;
     bool nudging_ = false;
-    QWidget* errorCard_ = nullptr;
-    QLabel* errorText_ = nullptr;
-    QPushButton* retry_ = nullptr;
 };
 
 // #1613: the private review (design: put.gd-evidence record
 // 2026-11-17-recording-review-redesign, design.md). Title; tool row (Select V,
-// Cut C, Redact X, Blur B, Undo, Redo, Fit · n%, and the Edits toggle when the
-// panel folds); the viewer with its banners along the top; the transport; the
+// Cut C, Redact X, Blur B, Undo, Redo, then the placement prompt, blur warning
+// or frame error in its free middle, Fit · n%, and the Edits toggle when the
+// panel folds); the viewer, with the notice and status lines over its top
+// edge (they never refit the picture); the transport; the
 // filmstrip timeline; the footer (format, Discard…, Save a copy…, destination,
 // Upload). The right panel (ReviewPanel) runs from the tool row to the footer
 // and folds into the Edits overlay below ~1180×720.
@@ -431,7 +431,8 @@ private:
     QTimer tileTimer_;
     QLabel *notice_ = nullptr, *time_ = nullptr, *clipTime_ = nullptr, *silent_ = nullptr;
     QWidget* noticeBand_ = nullptr;
-    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr;
+    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr, *frameError_ = nullptr;
+    QWidget* toolMessages_ = nullptr;
     QList<StatusEntry> shownStatus_;
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
