@@ -598,6 +598,7 @@ private:
             std::array<bool, maximumPartLanes> busy{};
             std::array<std::atomic<qint64>, maximumPartLanes> sending{};
             std::atomic<qint64> done{0};
+            std::mutex progressMutex;  // the credit of a sent part and the progress snapshot
             std::vector<QString> sha1s;
             Error error;
             std::atomic_bool ended{false};
@@ -617,7 +618,17 @@ private:
                 if (lanes.ended.load()) return false;
                 if (uploadUrl.isEmpty()) {
                     const auto u = client_.call("b2_get_upload_part_url", {{"fileId", fileId}}, true);
-                    if (u.aborted && !cancelled.load() && lanes.ended.load()) return false;
+                    // A cut reply is never a URL, even when its 200 status arrived first.
+                    if (u.aborted) {
+                        if (cancelled.load()) failed = stoppedError();
+                        else if (!lanes.ended.load()) {
+                            auto cut = u;
+                            cut.transport = true;
+                            if (cut.detail.isEmpty()) cut.detail = "deadline";
+                            failed = Client::failure(cut, "part_url");
+                        }
+                        return false;
+                    }
                     if (!u.ok()) { failed = Client::failure(u, "part_url"); return false; }
                     uploadUrl = u.json["uploadUrl"].toString();
                     uploadToken = u.json["authorizationToken"].toString();
@@ -630,9 +641,12 @@ private:
                 const auto r = client_.send("POST", QUrl(uploadUrl), {{"Authorization", uploadToken.toUtf8()}, {"X-Bz-Part-Number", QByteArray::number(n)},
                                                                       {"Content-Length", QByteArray::number(length)}, {"X-Bz-Content-Sha1", sha1.toUtf8()}}, {}, &body,
                                             [&](qint64 bytes) { lanes.sending[size_t(lane)] = bytes; });
-                // Credit the part before clearing what it was sending, so progress never dips.
-                if (r.ok()) lanes.done += length;
-                lanes.sending[size_t(lane)] = 0;
+                {
+                    // Credit and clear together, as the progress snapshot sees them: no dip, no double count.
+                    std::lock_guard counted(lanes.progressMutex);
+                    if (r.ok()) lanes.done += length;
+                    lanes.sending[size_t(lane)] = 0;
+                }
                 if (r.ok()) return true;
                 if (r.aborted) { if (cancelled.load()) failed = stoppedError(); return false; }
                 last = Client::failure(r, "upload_part");
@@ -673,8 +687,12 @@ private:
         };
         std::array<std::unique_ptr<QThread>, maximumPartLanes> threads;
         const auto report = [&] {
-            qint64 sent = lanes.done.load();
-            for (const auto& bytes : lanes.sending) sent += bytes.load();
+            qint64 sent = 0;
+            {
+                std::lock_guard counted(lanes.progressMutex);
+                sent = lanes.done.load();
+                for (const auto& bytes : lanes.sending) sent += bytes.load();
+            }
             progress("uploading", qMin(sent, artifact.bytes), artifact.bytes);
         };
         {
