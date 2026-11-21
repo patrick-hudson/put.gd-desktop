@@ -617,18 +617,23 @@ private:
                 if (lanes.ended.load()) return false;
                 if (uploadUrl.isEmpty()) {
                     const auto u = client_.call("b2_get_upload_part_url", {{"fileId", fileId}}, true);
-                    if (u.aborted && !cancelled.load()) return false;
+                    if (u.aborted && !cancelled.load() && lanes.ended.load()) return false;
                     if (!u.ok()) { failed = Client::failure(u, "part_url"); return false; }
                     uploadUrl = u.json["uploadUrl"].toString();
                     uploadToken = u.json["authorizationToken"].toString();
+                    // Cancel or another lane's error may have come while the URL was fetched.
+                    if (cancelled.load()) { failed = stoppedError(); return false; }
+                    if (lanes.ended.load()) return false;
                 }
                 OneShot body(artifact.path, offset, length);
                 if (!body.open(QIODevice::ReadOnly)) { failed = {"artifact_invalid", "Retained artifact is unavailable", {}}; return false; }
                 const auto r = client_.send("POST", QUrl(uploadUrl), {{"Authorization", uploadToken.toUtf8()}, {"X-Bz-Part-Number", QByteArray::number(n)},
                                                                       {"Content-Length", QByteArray::number(length)}, {"X-Bz-Content-Sha1", sha1.toUtf8()}}, {}, &body,
                                             [&](qint64 bytes) { lanes.sending[size_t(lane)] = bytes; });
+                // Credit the part before clearing what it was sending, so progress never dips.
+                if (r.ok()) lanes.done += length;
                 lanes.sending[size_t(lane)] = 0;
-                if (r.ok()) { lanes.done += length; return true; }
+                if (r.ok()) return true;
                 if (r.aborted) { if (cancelled.load()) failed = stoppedError(); return false; }
                 last = Client::failure(r, "upload_part");
                 last.details["partNumber"] = int(n);
@@ -647,7 +652,9 @@ private:
             laneStop = &lanes.ended;
             QString uploadUrl, uploadToken;
             std::unique_lock lock(lanes.mutex);
-            while (!lanes.error && !lanes.ended.load() && !cancelled.load() && lanes.next <= count && lane < lanes.width) {
+            // The loan is read as each part is claimed: a slot taken back starts no new part.
+            const auto width = [&] { return qMin<qint64>(qMin(lanes.width, 1 + qBound(0, stdio.lanes.load(), maximumPartLanes - 1)), count); };
+            while (!lanes.error && !lanes.ended.load() && !cancelled.load() && lanes.next <= count && lane < width()) {
                 const qint64 n = lanes.next++;
                 lock.unlock();
                 Error failed;
@@ -683,6 +690,16 @@ private:
                     threads[size_t(lane)].reset(QThread::create(runLane, lane));
                     lanes.busy[size_t(lane)] = true;
                     threads[size_t(lane)]->start();
+                    // The lane waits for this lock, so it cannot have finished yet: not running means
+                    // the system refused the thread. Other lanes carry on; without lane 0 the upload ends.
+                    if (!threads[size_t(lane)]->isRunning()) {
+                        lanes.busy[size_t(lane)] = false;
+                        threads[size_t(lane)].reset();
+                        if (lane == 0 && !lanes.error) {
+                            lanes.error = {"b2_protocol", "The large-file upload could not start sending parts", {}};
+                            lanes.ended = true;
+                        }
+                    }
                 }
                 if (std::none_of(lanes.busy.begin(), lanes.busy.end(), [](bool busy) { return busy; })) break;
                 lanes.changed.wait_for(lock, std::chrono::milliseconds(100));
