@@ -1598,6 +1598,37 @@ private slots:
         QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
         QCOMPARE(saves.size(), 1);
     }
+    // W5 for Upload (docs review of #1791): a press on Upload commits a typed
+    // cover Until; the resident refuses it before the release clicks Upload.
+    // Nothing is uploaded (never the earlier edit with pixels left uncovered)
+    // and the status says so.
+    void uploadCountsARefusalBeforeItsClick() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelUntilTime");
+        QVERIFY(field);
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "0:09.0");
+        auto* upload = window.findChild<QPushButton*>("upload");
+        QTest::mousePress(upload, Qt::LeftButton);
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), 9000000.0);
+        window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
+        QTest::mouseRelease(upload, Qt::LeftButton);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
+        QVERIFY2(window.inspect()["status"].toString().contains("Nothing was uploaded"), qPrintable(window.inspect()["status"].toString()));
+        QVERIFY(window.isVisible());
+    }
     // P18: with trims or cuts the transport shows the recording time too.
     void transportShowsRecordingTime() {
         ReviewWindow window(options(), config());

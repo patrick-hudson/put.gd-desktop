@@ -333,7 +333,7 @@ private:
     // Upload, Ctrl+Enter and Enter: never during a pointer drag or while placing;
     // with proposals unanswered, only once the resident accepted the last of
     // them (a refusal or 2 s without an answer cancels it, with a status line).
-    void upload();
+    void upload(std::optional<quint64> refusalsAtPress = std::nullopt);
     bool tryUpload();  // sends once nothing is unanswered; true when it did
     // The one way a waiting upload stops, with its own status line (why: what happened).
     void cancelUpload(const QString& why = {});
@@ -453,7 +453,9 @@ private:
     QString saveWaitingPath_;  // a chosen copy waiting for earlier changes to be answered
     quint64 saveAwaits_ = 0;
     quint64 refusals_ = 0, saveRefusalMark_ = 0;  // changes not applied, counted
-    std::optional<quint64> savePressRefusals_;  // refusals_ at a press on Save (W5)
+    // refusals_ at a press on Save or Upload, and which (W5).
+    std::optional<std::pair<const QWidget*, quint64>> pressRefusals_;
+    std::optional<quint64> takePressRefusals(const QWidget* button);
     QTimer saveWait_;
     quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
     qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
