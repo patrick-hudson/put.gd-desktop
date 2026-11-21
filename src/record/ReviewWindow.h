@@ -443,7 +443,7 @@ private:
     QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
     QString transientNote_;
     bool loadingFrame_ = false;
-    bool resumeAfterClick_ = false, timelineGestureChanged_ = false;  // T15
+    bool heldPlaying_ = false;  // T15: playing when the timeline held playback for a press
     quint64 undoProposal_ = 0;
     bool undoWasUndo_ = true;
     RecordingEdit undoBefore_;

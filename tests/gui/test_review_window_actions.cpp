@@ -1137,7 +1137,8 @@ private slots:
         QVERIFY(timelineState()["zoom"].toInt() > 2);
         QTest::keyClick(strip, Qt::Key_Z, Qt::ShiftModifier);
         QCOMPARE(timelineState()["zoom"].toInt(), 1);
-        // [ and ] from the viewer.
+        // [ and ] from the viewer (with no cover selected; with one, T13 sets its in / out).
+        window.drive({{"action", "clearSelection"}});
         auto* view = window.findChild<FrameView*>("frame");
         view->setFocus();
         window.drive({{"action", "seek"}, {"time", 1000000}});

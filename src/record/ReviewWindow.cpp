@@ -1022,9 +1022,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     play_->setObjectName("play");
     // Play and its speeds are two buttons side by side, so each answers over
     // all of its visible half (W13: a split button gave its centre to the menu).
-    playSpeed_ = tool({}, nullptr, "Playback speed", "Playback speed: 0.5× to 4× (L plays faster)", transport_);
+    playSpeed_ = tool({}, "chevron-down", "Playback speed", "Playback speed: 0.5× to 4× (L plays faster)", transport_);
     playSpeed_->setObjectName("playSpeed");
-    playSpeed_->setPopupMode(QToolButton::InstantPopup);
+    playSpeed_->setIconSize(QSize(Ui::scaled(12), Ui::scaled(12)));
     playSpeed_->setFixedWidth(std::max(Ui::scaled(20), Ui::Metric::splitZone + 6));
     speedMenu_ = new QMenu(playSpeed_);
     speedMenu_->setObjectName("speedMenu");
@@ -1036,7 +1036,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         action->setChecked(factor == 1.0);
         speeds_->addAction(action);
     }
-    playSpeed_->setMenu(speedMenu_);
+    // Opened by its own click, so the style draws no second arrow beside the glyph.
+    connect(playSpeed_, &QToolButton::clicked, this, [this] { speedMenu_->popup(playSpeed_->mapToGlobal(QPoint(0, playSpeed_->height()))); });
     previousFrame_ = tool({}, "frame-back", "Previous frame", "Previous frame (,)", transport_);
     previousFrame_->setObjectName("previousFrame");
     nextFrame_ = tool({}, "frame-forward", "Next frame", "Next frame (.)", transport_);
@@ -1337,16 +1338,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(skimToggle_, &QToolButton::toggled, this, [this](bool on) { timeline_->setSkimming(on); });
     snapToggle_->setChecked(timeline_->snapping());
     connect(snapToggle_, &QToolButton::toggled, this, [this](bool on) { timeline_->setSnapping(on); });
-    // T15 from the window: a press on the timeline while playing pauses for the
-    // press; a click (nothing selected, dragged or scrubbed) plays on from where
-    // it landed; anything else stays paused.
-    connect(timeline_, &FilmstripTimeline::scrubStarted, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::timeSelected, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::trimEdgeDragged, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::editEdgeDragged, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::cutSelected, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::coverSelected, this, [this] { timelineGestureChanged_ = true; });
-    connect(timeline_, &FilmstripTimeline::moreCoversRequested, this, [this] { timelineGestureChanged_ = true; });
+    // T15: a press on the strip while playing pauses for the press; a click
+    // plays on from where it landed, a drag stays paused.
+    connect(timeline_, &FilmstripTimeline::playbackHeld, this, [this] { heldPlaying_ = heldPlaying_ || playing_; stopPlayback(); });
+    connect(timeline_, &FilmstripTimeline::playbackReleased, this, [this](bool resume) {
+        const bool wasPlaying = heldPlaying_;
+        heldPlaying_ = false;
+        if (resume && wasPlaying && !playing_) startPlayback(playhead_, true);
+    });
 
     // Panel.
     connect(panel_, &ReviewPanel::cutRequested, this, &ReviewWindow::cutSelection);
@@ -2599,7 +2598,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     // dialog open, an export running) is a change not applied: like a refused
     // gesture it cancels a waiting Upload (#1635 W2). The error code is kept.
     static const QSet<QString> edits{"setIn", "setOut", "resetTrim", "addMask", "placeMask", "useSolidCover", "trimToLimit", "setMaskIn", "setMaskOut",
-        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim", "retimeCover"};
+        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim", "retimeCover", "markSelection"};
     if (!result.code.isEmpty() && edits.contains(params["action"].toString())) refuseChange(result.message);
     if (result.code.isEmpty() && proposalSeq_ != before) {
         QJsonArray made;
@@ -2891,6 +2890,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "markSelection") {
         if (params["edge"] != "start" && params["edge"] != "end") return invalid("markSelection takes edge start|end");
         if (placing_) return state("Place or cancel the cover first");
+        if (selectedMask()) { stopPlayback(); return done(setMaskAt(params["edge"] == "start")); }
         timeline_->markSelectionEdge(params["edge"] == "start");
         return done();
     }
@@ -3204,17 +3204,6 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
     if (watched == view_ && (event->type() == QEvent::Resize || event->type() == QEvent::Move)) placeBanners();
     if (watched == bannerArea_ && event->type() == QEvent::LayoutRequest) QMetaObject::invokeMethod(this, &ReviewWindow::placeBanners, Qt::QueuedConnection);
-    // T15 (window side): a press on the timeline while playing pauses before
-    // the timeline sees it; a click plays on from where it landed (C3).
-    if (watched == timeline_ && event->type() == QEvent::MouseButtonPress && static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton) {
-        timelineGestureChanged_ = false;
-        resumeAfterClick_ = playing_;
-        if (playing_) stopPlayback();
-    }
-    if (watched == timeline_ && event->type() == QEvent::MouseButtonRelease && static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton && resumeAfterClick_) {
-        resumeAfterClick_ = false;
-        QMetaObject::invokeMethod(this, [this] { if (!timelineGestureChanged_ && !playing_) startPlayback(playhead_, true); }, Qt::QueuedConnection);
-    }
     // Delete and Backspace cut or remove only from the viewer and the timeline
     // (the Edits list handles its own rows; a field keeps its own keys).
     if (event->type() == QEvent::KeyPress && (watched == view_ || watched == timeline_)) {
@@ -3262,7 +3251,12 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
         break;
     // [ and ] mark the time selection at the playhead from any focus but a text field (E4).
     case Qt::Key_BracketLeft: case Qt::Key_BracketRight:
-        if (plain && !typing && !placing_) { timeline_->markSelectionEdge(e->key() == Qt::Key_BracketLeft); return; }
+        if (plain && !typing && !placing_) {
+            // With a cover selected they set its start / end at the playhead, as Shift+I / Shift+O (T13).
+            if (selectedMask()) { stopPlayback(); setMaskAt(e->key() == Qt::Key_BracketLeft); return; }
+            timeline_->markSelectionEdge(e->key() == Qt::Key_BracketLeft);
+            return;
+        }
         break;
     case Qt::Key_I: case Qt::Key_O:
         if (plain) { stopPlayback(); setTrimAt(e->key() == Qt::Key_I); return; }
