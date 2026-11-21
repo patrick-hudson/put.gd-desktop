@@ -400,7 +400,9 @@ secret-store IO. Credentials are a keychain or session reference to the named va
 See [Custom uploader](../user/custom-uploader.md#settings).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
-Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the
+Curl-request timeout (`httpRequestTimeoutMs`) for a request without a body; a request
+that sends one (PutObject, a part) has no whole-request limit and ends only on the
+low-speed limit (#1758). `lowSpeedBytesPerSecond` maps to the
 SDK low-speed limit, and `lowSpeedTimeSeconds` maps to its low-speed duration
 (`requestTimeoutMs` in SDK terminology). These settings are positive integral values
 up to 2147483647. The adapter bounds concurrent SDK resources and caches clients by
