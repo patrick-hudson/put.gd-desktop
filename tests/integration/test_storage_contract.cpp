@@ -75,6 +75,28 @@ private slots:
   QVERIFY(!store.saveDeletion({{"id","earlier"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",id},{"status","unsupported_safe_removal"},{"progress",QJsonObject{{"schemaVersion",1},{"phase","recorded-intent"}}}}}}}));
   QString code;history.prepareDelete({id},[&](Error e,QJsonObject){code=e.code;});PUTGD_TRY_COMPARE(code,QString("delete_target_changed"));
  }
+ // #1772: a deletion that saved progress through a destination since removed, retried through one added
+ // back for the same place, is checked there read-only: the file still there keeps it protected, and once
+ // the file is gone it ends and the entry is released. Nothing destructive is sent either time.
+ void readdedDestinationSettlesACheckpointedDeletion() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("s3",provider);SettingsService settings(d.filePath("config.json"));
+  const QJsonObject place{{"endpoint","https://s3.example.invalid"},{"bucket","shots"}},credentials{{"mode","session"},{"reference",QJsonValue::Null}};
+  auto doc=configuration(d.path());doc["profiles"]=QJsonArray{QJsonObject{{"id","test"},{"label","Added back"},{"provider","s3"},{"settings",place},{"credentials",credentials}}};QVERIFY(settings.save(doc,{}));
+  Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());
+  StorageReceipt receipt;receipt.destination={"s3","removed",{},place,credentials};receipt.objectReference={{"format",1},{"fileId","recorded-object"}};receipt.publicationId="recorded-publication";receipt.concurrencyToken="recorded-token";
+  HistoryStore store(ops.databasePath());Operation op;op.id="readded-operation";op.created="2026-11-21T00:00:00.000Z";op.settings=settings.snapshot();
+  OperationItem uploaded;uploaded.artifact.id="readded-item";uploaded.artifact.name="readded.txt";uploaded.uploadStatus="uploaded";uploaded.receipt=receipt;op.items={uploaded};QVERIFY(!store.saveOperation(op));
+  {QMutexLocker lock(&provider->mutex);provider->objects["recorded-object"]=receipt;}
+  QVERIFY(!store.saveDeletion({{"id","interrupted"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId","readded-item"},{"status","unknown"},{"receipt",receipt.toJson()},{"progress",QJsonObject{{"schemaVersion",1},{"phase","recorded-intent"},{"target",receipt.toJson()}}},{"error",QJsonObject{{"code","delete_unknown"}}}}}}}));
+  const auto item=[&]{return store.deletion("interrupted")["items"].toArray()[0].toObject();};
+  int finished=0;connect(&history,&HistoryService::deletionFinished,this,[&]{++finished;});
+  const auto retry=[&]{bool accepted=false;history.retryDelete("interrupted",[&](Error e,QJsonObject r){accepted=!e&&r["retryAccepted"].toBool();});PUTGD_TRY_VERIFY(accepted);};
+  retry();PUTGD_TRY_COMPARE(finished,1);QCOMPARE(item()["error"].toObject()["code"].toString(),QString("destination_readded"));
+  QCOMPARE(item()["status"].toString(),QString("unknown"));QCOMPARE(store.forgetBlocker("readded-item",{}),QString("deletion"));
+  {QMutexLocker lock(&provider->mutex);provider->objects.remove("recorded-object");}
+  retry();PUTGD_TRY_COMPARE(finished,2);QCOMPARE(item()["status"].toString(),QString("already_missing"));
+  QCOMPARE(store.forgetBlocker("readded-item",{}),QString());QCOMPARE(provider->deletes.load(),0);
+ }
  void failedCheckpointDoesNotReplaceAcknowledgedProgress() {
   QTemporaryDir directory;
   ProviderRegistry registry;
