@@ -22,6 +22,10 @@ public:
  using Reply=std::function<void(Error,QJsonObject)>;
  // Replies run on the editor worker thread; callers marshal them.
  void request(const QString& command,const QJsonObject& params,Reply);
+ // #1804: a decision for the prompt now shown. `prompt` above 0 must be that prompt's number
+ // (prompts are counted per session, one per checked file); checked under the same lock that queues it.
+ void decide(const QString& choice,int prompt,Reply);
+ void notePrompt(){std::lock_guard lock(mutex_);++prompts_;phase_="prompt";}
  void setAppearance(const QString&);
  QString takeAppearance();
  void cancel() {cancelled_.store(true);}
@@ -52,7 +56,7 @@ public:
  void setPhaseHandler(PhaseHandler);
  PhaseHandler phaseHandler() const;
 private:
- PhaseHandler phaseHandler_;
+ PhaseHandler phaseHandler_;int prompts_=0;
  mutable std::mutex mutex_;
  QList<Pending> queue_;
  CopyHandler copyHandler_;std::optional<Error> copyResult_;

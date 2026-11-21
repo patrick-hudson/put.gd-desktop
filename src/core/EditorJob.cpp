@@ -42,6 +42,13 @@ void EditorSession::request(const QString& command,const QJsonObject& params,Rep
  else if(phase()=="starting")reply({"editor_starting","The editor window is still opening",{}},{});
  else reply({"editor_finalizing","The edit was already submitted or discarded",{}},{});
 }
+void EditorSession::decide(const QString& choice,int prompt,Reply reply){
+ {
+  std::lock_guard lock(mutex_);
+  if(phase_=="prompt"&&(prompt<1||prompt==prompts_)&&queue_.size()<EditorJob::maximumQueuedCommands){queue_.append({QStringLiteral("decide"),{{"choice",choice}},std::move(reply)});return;}
+ }
+ reply({"sensitive_decision_unavailable","This operation is not waiting for that sensitive text decision",{}},{});
+}
 void EditorSession::setAppearance(const QString& scheme){std::lock_guard lock(mutex_);pendingAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
 QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std::exchange(pendingAppearance_,{});}
 QString EditorSession::phase() const {std::lock_guard lock(mutex_);return phase_;}
@@ -227,7 +234,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(!payload["found"].isObject()||!payload["complete"].isBool()||payload["complete"].toBool()==payload.contains("reason")||(payload.contains("reason")&&!QStringList{"recognition_failed","truncated","too_large","patterns_skipped","name_unchecked","unavailable","matching_unfinished","language_missing"}.contains(payload["reason"].toString()))){protocolFailed=true;return;}
    for(auto it=found.begin();it!=found.end();++it)if(!check_->categories.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt()){protocolFailed=true;return;}
    prompting=true;result.findings={{"found",found},{"complete",payload["complete"]}};if(payload.contains("reason"))result.findings["reason"]=payload["reason"];
-   session->setPhase("prompt");phaseClock.restart();
+   session->notePrompt();phaseClock.restart();
    if(const auto handler=session->phaseHandler())handler("prompt",result.findings);
    return;
   }
@@ -286,6 +293,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
     if(payload["width"].toDouble()!=width||payload["height"].toDouble()!=height||width<1||height<1||width>INT_MAX||height>INT_MAX||width>admissionPixels/height){protocolFailed=true;return;}
    }
    checkpoint=true;reply=payload;result.recentColors=colors;session->setPhase("closed");phaseClock.restart();
+   // #1804: a decision, from the panel or an agent, ends the prompt: the operation is checking again until it moves on.
+   if(checking&&prompting)if(const auto handler=session->phaseHandler())handler("checking",result.findings);
    if(control.send("checkpointAccepted",envelope(nonce)).isEmpty())protocolFailed=true;
    return;
   }

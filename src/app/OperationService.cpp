@@ -669,6 +669,11 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   observe(op.publicJson());emit changed(id);emit observationsChanged();
   return;
  }
+ if(phase=="checking"){
+  // A decision was taken: until the next prompt of a file selection, if any, nothing waits on one.
+  if(op.phase=="sensitive_text_found"){op.phase="checking";observe(op.publicJson());emit changed(id);emit observationsChanged();}
+  return;
+ }
  if(phase=="editing"){
   // Redact and upload: an edit now, outside the one-at-a-time check slot.
   op.advance(OperationState::Editing);op.phase="editing";
@@ -727,18 +732,15 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
 }
 void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {
  if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}
- // A decision that names an earlier prompt of a file selection never answers a later one.
- if(prompt>0&&checkOperations_.contains(id)&&checkOperations_[id].sensitive["prompt"].toInt()!=prompt){reply({"sensitive_decision_unavailable","That prompt was already answered",{{"operationId",id}}},{});return;}
  const auto session=checkSessions_.value(id);
  const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
  if(queued||(session&&session->phase()=="checking")||(session&&session->phase()=="starting")){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
  if(!session||session->phase()!="prompt"){reply({"sensitive_decision_unavailable","This operation is not waiting for a sensitive text decision",{{"operationId",id}}},{});return;}
  QPointer<OperationService> owner(this);
- session->request("decide",{{"choice",choice}},[owner,id,reply](Error error,QJsonObject result){
+ // The session checks the prompt number under the lock that queues the decision, so it can't reach the next file's prompt.
+ session->decide(choice,prompt,[owner,id,reply](Error error,QJsonObject result){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,reply,error,result]() mutable {
    if(!owner||owner->stopping_)return;
-   // Until the next prompt, if any, the operation is checking again: nothing waits on a decision.
-   if(!error&&owner->checkOperations_.contains(id)&&owner->checkOperations_[id].phase=="sensitive_text_found"){auto& op=owner->checkOperations_[id];op.phase="checking";owner->observe(op.publicJson());emit owner->changed(id);emit owner->observationsChanged();}
    if(!error)result["operationId"]=id;
    reply(error,result);
   },Qt::QueuedConnection);
