@@ -218,7 +218,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 5. A local-only file batch whose new private archive root is intentionally a
    regular file. Its real save must fail and latch the tray: "Needs attention",
    the error glyph and badge, and "Local save needs attention — open the tray
-   menu to review". The latch must hold for 3 seconds untouched. The runner
+   menu to review". The badge must hold for 3 seconds untouched (it leaves the
+   icon after 8; the menu row stays until opened). The runner
    then opens it from the desktop's own tray menu (see
    [opening a latched failure](#opening-a-latched-failure)) and requires the
    exact original idle icon afterwards. Replacing that owned blocker with a
@@ -240,9 +241,12 @@ the rejected SNI text is redacted from failure evidence.
 
 Icon colours are checked against the tint set for the panel the resident sees
 (#229). put.gd tints its tray icon for the panel, not the app theme
-(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, upload `#91bca2`,
-encoding `#e8b66d` and error `#e59b93`; light panels get `#383834`, `#386a4b`,
-`#8f5b20` and `#a44139`. At setup the runner reads the panel
+(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, capture `#e8b66d`,
+process `#8db4e8`, upload `#62d69b` and error `#e59b93`; light panels get
+`#383834`, `#8f5b20`, `#2f5e9e`, `#1f7a4a` and `#a44139`. Each tooltip title
+must carry its stage's tint: Capturing the capture tint, Processing the process
+tint, Uploading the upload fill over the process tint, Upload complete or Saved
+the upload tint alone. At setup the runner reads the panel
 tone the way `PanelTone` does, in the resident's own environment: the KDE
 configuration cascade (`plasmarc`, `kdeglobals`, the Plasma style's `colors`),
 Cinnamon's `org.cinnamon.theme`, or GNOME's dark top bar. It then waits until
