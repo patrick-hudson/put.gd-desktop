@@ -477,19 +477,10 @@ private:
             client_.sentBytes = {};
             const auto stored = r.json["fileId"].toString();
             if (r.ok() && !stored.isEmpty()) return stored;
-            // Test upload and link: a success without a usable file ID (a cut-off reply, or an empty
-            // ID) may have stored a file nothing names (#1690).
-            if (r.ok() && synthetic_) {
-                error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
-                uncertain = true;
-                return {};
-            }
-            // A success whose reply was cut before it named the file: B2 stored it, so find it.
+            // A success without a usable file ID (a cut-off reply, or an empty ID) stored a file this
+            // reply doesn't name: unknown, never failed, so Retry reconciles before it sends (#1690, #1782).
             if (r.ok()) {
-                Error lookup;
-                const auto found = published(name, publication, lookup);
-                if (const auto id = found ? (*found)["fileId"].toString() : QString(); !id.isEmpty()) return id;
-                error = found ? Error{"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}} : lookup;
+                error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
                 uncertain = true;
                 return {};
             }
