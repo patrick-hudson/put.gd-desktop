@@ -29,10 +29,11 @@ namespace putgd::record {
 //  - a cover: its name · the privacy sentence (Blur: the warning sentence) ·
 //    Shows from → / Until → with m:ss.s fields and Set to playhead · Redact |
 //    Blur (Blur adds its strength).
-// Below, once anything is edited: Edits, every trim, cut and cover in source
-// order (icon, name, span, and a 28 px trailing icon button for the row's verb,
-// shown on hover, focus or selection, in space the row always keeps; the part
-// above offers Restore for a selected cut, so its row shows it only on hover).
+// Above it, once anything is edited: Edits, every trim, cut and cover in
+// source order, in its own scroll area of about 4½ rows (icon, name, span, and
+// a 28 px trailing icon button for the row's verb, in space the row always
+// keeps, shown on the selected or focused row and after 150 ms of hover); the
+// details of what is selected sit below the list.
 // Controls update in place while what they are made of stays the same; the
 // blur strength stepper coalesces its steps for 350 ms into one edit.
 //
@@ -75,6 +76,7 @@ public:
     void flushStrength();
     // Ctrl+Z during the strength's coalescing takes back only that step (Q18).
     bool cancelPendingStrength();
+    void commitFields();
     // Q20: the row of a cut or cover selected elsewhere scrolls into view.
     void revealRow(const QString& kind, const QString& id);
     // Q22: the item hovered elsewhere looks hovered in its row (kind "" for none).
@@ -159,6 +161,7 @@ public:
     bool isOpen() const;
 signals:
     void closed();  // after the panel was given back
+    void dismissedByPointer();  // closed by a press outside (the keys go back to the timeline)
 protected:
     void keyPressEvent(QKeyEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;

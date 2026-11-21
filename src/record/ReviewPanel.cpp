@@ -121,10 +121,10 @@ private:
     QString text_;
 };
 
-// One entry of Edits: icon, name and span, and a 24 px trailing icon button
+// One entry of Edits: icon, name and span, and a 28 px trailing icon button
 // for its verb (Reset, Restore, Remove) in space the row always keeps, shown
-// on hover, focus or selection; the span never gives way to it (F1). Enter or
-// a click selects the row (Enter on a selected cut's row restores it); Up /
+// on the selected or focused row and after 150 ms of hover; the span never
+// gives way to it (F1). Enter or a click only selects the row (R19); Up /
 // Down move between rows; Delete cuts a time selection, else removes a cover
 // (never restores a cut).
 class EditRow final : public QWidget {
@@ -326,6 +326,21 @@ void ReviewPanel::revealRow(const QString& kind, const QString& id) {
 void ReviewPanel::setLinkedHover(const QString& kind, const QString& id) {
     const QString key = kind.isEmpty() ? QString() : kind + QLatin1Char('/') + id;
     for (auto* row : findChildren<EditRow*>()) row->setLinked(!key.isEmpty() && row->property("rowKey").toString() == key);
+}
+// P9: a Shows from / Until time typed but not yet committed, or a strength
+// typed into its box, is committed now (before Upload, Save, Play, a press).
+void ReviewPanel::commitFields() {
+    if (const auto* mask = selectedCover(); mask && top_) {
+        const QString id = mask->id;
+        for (const bool start : {true, false}) {
+            auto* field = top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelShowsFromTime") : QStringLiteral("reviewPanelUntilTime"));
+            if (!field || field->text().trimmed() == field->property("shown").toString()) continue;
+            if (const auto parsed = parseClock(field->text())) commitEdge(field, id, start, *parsed);
+            else field->setText(field->property("shown").toString());
+        }
+        if (auto* spin = top_->findChild<QSpinBox*>(QStringLiteral("reviewPanelStrength"))) spin->interpretText();
+    }
+    flushStrength();
 }
 bool ReviewPanel::cancelPendingStrength() {
     if (!strengthPending_) return false;
@@ -1119,6 +1134,7 @@ bool EditsOverlay::eventFilter(QObject* watched, QEvent* event) {
         if (window_ && target->window() == window_->window()) {
             const bool consume = consumeArea_ && (target == consumeArea_ || consumeArea_->isAncestorOf(target));
             dismiss();
+            emit dismissedByPointer();
             return consume;
         }
         break;

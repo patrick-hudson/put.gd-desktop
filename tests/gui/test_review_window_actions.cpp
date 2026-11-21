@@ -485,7 +485,8 @@ private slots:
         window.setEdit(edit);
         window.drive({{"action", "armBlur"}});
         QTest::keyClick(&window, Qt::Key_Return);
-        QCOMPARE(proposals.size(), 1);
+        // P12: Enter waits (at most 1 s) for the placement frame; this clip never decodes.
+        PUTGD_TRY_COMPARE(proposals.size(), 1);
         QCOMPARE(proposed(proposals)["op"].toString(), QString("addMask"));
         QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), (QJsonArray{320, 180, 640, 360}));
         window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
@@ -1109,12 +1110,11 @@ private slots:
         QCOMPARE(proposals.size(), 4);
         const auto thin = proposed(proposals)["mask"].toObject()["rect"].toArray();
         QVERIFY2(thin[2].toInt() > 100 && thin[3].toInt() >= 2 && thin[3].toInt() < 10, qPrintable(QJsonDocument(thin).toJson()));
-        // Q14: a drawn area under 6 px both ways makes nothing and stays armed.
+        // P12: under 8 × 8 view px (press to release) is a click: the default box at the press.
         window.drive({{"action", "armRedact"}});
-        drag(view, inside, inside + QPoint(4, 4));
-        QCOMPARE(proposals.size(), 4);
-        QVERIFY(!window.inspect()["armed"].isNull());
-        window.drive({{"action", "cancelPlacement"}});
+        drag(view, inside, inside + QPoint(7, 7));
+        QCOMPARE(proposals.size(), 5);
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray()[2].toInt(), 256);
         // At 100 %: a click beside the cover deselects it; a drag there pans and keeps it.
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
@@ -1157,9 +1157,9 @@ private slots:
         QTest::addColumn<QPoint>("late");
         QTest::newRow("blur west centre") << "blur" << 7 << QPoint(0, 0) << QPoint();
         // The live run's presses arrived 5–11 px along the drag (emulated middle button).
-        QTest::newRow("blur west, press 9 px late") << "blur" << 7 << QPoint(0, 0) << QPoint(8, 5);
-        QTest::newRow("solid east 2 px outside, press 9 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(8, 5);
-        QTest::newRow("solid south 2 px below, press 9 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(8, 5);
+        QTest::newRow("blur west, press 7 px late") << "blur" << 7 << QPoint(0, 0) << QPoint(6, 4);
+        QTest::newRow("solid east 2 px outside, press 7 px late") << "solid" << 3 << QPoint(2, 0) << QPoint(6, 4);
+        QTest::newRow("solid south 2 px below, press 7 px late") << "solid" << 5 << QPoint(0, 2) << QPoint(6, 4);
         QTest::newRow("solid east 2 px outside") << "solid" << 3 << QPoint(2, 0) << QPoint();
         QTest::newRow("solid south-east 2 px below") << "solid" << 4 << QPoint(0, 2) << QPoint();
         QTest::newRow("solid south 2 px below") << "solid" << 5 << QPoint(0, 2) << QPoint();
@@ -1203,14 +1203,69 @@ private slots:
         QApplication::sendEvent(view, &hover);
         const auto shape = view->cursor().shape();
         QVERIFY2(shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor || shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor, qPrintable(QString::number(int(shape))));
+        // A late press that doesn't move afterwards never edits (P1 rule).
+        if (!late.isNull()) {
+            QTest::mousePress(view, Qt::LeftButton, {}, at + late);
+            QTest::mouseRelease(view, Qt::LeftButton, {}, at + late);
+            QCOMPARE(proposals.size(), 0);
+            QApplication::sendEvent(view, &hover);
+        }
         drag(view, at + late, at + QPoint(30, 21));
         QCOMPARE(proposals.size(), 1);
         const auto rect = proposed(proposals)["mask"].toObject()["rect"].toArray();
         // A resize: the size changed (a move keeps it).
         QVERIFY2(rect[2].toInt() != m.rect.width() || rect[3].toInt() != m.rect.height(), qPrintable(QJsonDocument(rect).toJson()));
     }
-    // R28: a placement follows the time selection: a new selection moves it,
-    // and with the selection cleared it covers the whole recording.
+    // P9 (real bug): a Shows from time typed but not committed is committed
+    // before Upload acts; the upload waits for that edit and sends its answer.
+    void typedTimesAreCommittedBeforeUpload() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 6000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
+        QVERIFY(field);
+        field->setFocus();
+        field->selectAll();
+        QTest::keyClicks(field, "0:05.0");
+        QCOMPARE(proposals.size(), 0);
+        QTest::mouseClick(window.findChild<QPushButton*>("upload"), Qt::LeftButton);
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposed(proposals)["mask"].toObject()["start"].toDouble(), 5000000.0);
+        QCOMPARE(uploads.size(), 0);  // waits for the edit's answer
+        auto typed = edit;
+        typed.revision = 3;
+        typed.masks[0].start = 5000000;
+        window.setEdit(typed, answer(1));
+        QCOMPARE(uploads.size(), 1);
+        QCOMPARE(uploads[0][0].toULongLong(), 3ull);
+    }
+    // P18: with trims or cuts the transport shows the recording time too.
+    void transportShowsRecordingTime() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        auto* caption = window.findChild<QLabel*>("clipTimeCaption");
+        QCOMPARE(caption->text(), QString("clip time"));
+        edit.revision = 3;
+        edit.cuts = {RecordingCut{"c1", 3000000, 4000000}};
+        window.setEdit(edit);
+        window.drive({{"action", "seek"}, {"time", 5000000}});
+        QCOMPARE(caption->text(), QString("clip · rec 0:05.0"));
+        window.drive({{"action", "seek"}, {"time", 3500000}});
+        QCOMPARE(caption->text(), QString("rec 0:03.5 · excluded"));
+    }
+    // R28, P13: a placement follows a new time selection; a click that clears
+    // the selection leaves its time as it was.
     void placementFollowsTheSelection() {
         ReviewWindow window(options(), config());
         window.show();
@@ -1226,8 +1281,11 @@ private slots:
         QCOMPARE(placement["start"].toDouble(), 6000000.0);
         QCOMPARE(placement["end"].toDouble(), 7000000.0);
         QVERIFY(placement["banner"].toString().contains("0:06.0"));
+        // P13: a click that clears the selection doesn't change what the placement covers.
+        emit timeline(window)->timeSelectionCleared();
         emit timeline(window)->selectionCleared();
-        QVERIFY(window.inspect()["placement"].toObject()["whole"].toBool());
+        QCOMPARE(window.inspect()["placement"].toObject()["start"].toDouble(), 6000000.0);
+        QVERIFY(!window.inspect()["placement"].toObject()["whole"].toBool());
     }
     // E1, E4, E5: the window's keys work from the timeline's or the viewer's
     // focus; a text field keeps its own.

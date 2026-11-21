@@ -43,7 +43,8 @@ class ViewerBanner;
 // canvas pixels, with the pointer or, with focus, the keyboard: arrows move
 // the selected cover, Shift+arrows resize it (1 px steps, 10 px with Ctrl).
 // The selected cover's corners (16 × 16 px targets) and a band along each side
-// (6 px outside, 4 px inside) resize it from the opposite side, flipping past
+// (6 px outside; inside, 6 px on a box at least 40 px that way, else 4) resize
+// it from the opposite side, flipping past
 // it; its body moves it. A press on an unselected cover selects it (a move
 // then needs 8 px); moves and resizes of the selected one start 4 px from the
 // press and apply the release point; Esc, a right press, Ctrl+Z or a lost
@@ -143,8 +144,6 @@ signals:
     void liveEditStarted(const QString& id, qint64 timeUs);
     // A click on the picture while playing (W3).
     void pauseRequested();
-    // A drawn area under 6 px both ways was let go: nothing placed (Q14).
-    void placementTooSmall();
     // The cover under the pointer on the picture ("" when none) (Q22).
     void hoveredCoverChanged(const QString& id);
     void arrowsClaimedChanged(bool claimed);
@@ -189,7 +188,7 @@ private:
     int rightInset_ = 0;
     QPointF pan_;  // at 100 %: the source point at the area's centre, minus the source centre
     enum class Drag { None, Create, Move, Resize, Pan } drag_ = Drag::None;
-    QPointF anchor_, current_, panFrom_;
+    QPointF anchor_, current_, panFrom_, pressAt_;
     QRect original_;
     QString dragId_;
     int handle_ = -1, hoveredHandle_ = -1;
@@ -349,6 +348,8 @@ private:
     recording::Span placementSpan(const QString& kind, bool& whole) const;
     void stepEditPoint(int direction);
     bool adoptSkim();
+    qint64 shownFrameStart();
+    void placePendingEnter();
     void revealHiddenCovers();
     DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
@@ -447,7 +448,7 @@ private:
     const SkimFrame* cachedSkim(qint64 at) const;
     void cacheSkim(SkimFrame frame);
     // The playhead frame asked for last (its time, revision and size).
-    struct FrameAsk { qint64 at; quint64 revision; int edge; };
+    struct FrameAsk { qint64 at; quint64 revision; int edge; QString variant; };
     std::optional<FrameAsk> frameAsked_;
     quint64 shownRevision_ = 0;
     // The live cover (D4): the frame without it asked for, the proposal its
@@ -463,7 +464,9 @@ private:
     quint64 edgeDragSeq_ = 0, edgeHoldProposal_ = 0;  // proposals before the drag; the one its release made
     QTimer edgeHoldTimer_, placeWaitTimer_, noteTimer_;
     QString transientNote_, placeHint_;
-    QTimer placeHintTimer_;
+    QTimer placeHintTimer_, enterPlaceTimer_;
+    bool enterPlacePending_ = false;
+    QElapsedTimer skimMovedClock_;  // P11
     std::optional<std::pair<QString, QString>> revealRow_;  // Q20
     int noteMs_ = 1500;
     bool loadingFrame_ = false;
