@@ -228,7 +228,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
   QFile::remove(candidatePath);
   const auto part=QDir(staging.path()).filePath("download.part");
   QJsonArray attempts;QString lastFailure;
-  for(const auto& source:{QString("release"),QString("mirror")}) {
+  // The mirror (CloudFront, no redirect) first; GitHub when it lacks the image or fails (#1765).
+  for(const auto& source:{QString("mirror"),QString("release")}) {
    Error urlError;const auto url=source=="release"?update::releaseFileUrl(tag,name,urlError):update::mirrorFileUrl(tag,name,urlError);
    if(urlError)continue;
    QFile file(part);

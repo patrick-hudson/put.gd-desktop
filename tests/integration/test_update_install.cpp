@@ -118,13 +118,14 @@ private slots:
   qputenv("PATH",tools.toUtf8());
  }
  void cleanup(){qputenv("PATH",path_);for(const char* name:{"PUTGD_UPDATE_FEED_URL","PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);}
- void withoutZsyncToolDownloadsTheReleaseAndKeepsABackup(){
+ void withoutZsyncToolDownloadsFromTheMirrorAndKeepsABackup(){
   ReleaseServer server;publish(server,next_);
   QList<QJsonObject> progress;Error error;
   const auto result=installUpdate(build(),options(),[&](const QJsonObject& line){progress.append(line);},error);
   QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
-  QCOMPARE(result["installed"].toBool(),true);QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("release"));
+  QCOMPARE(result["installed"].toBool(),true);QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("mirror"));
   QCOMPARE(result["zsync"].toObject()["fallbackReason"].toString(),QString("not_installed"));
+  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
   QCOMPARE(read(image()),next_);QCOMPARE(QFileInfo(image()).permissions()&QFile::ExeGroup,QFile::ExeGroup);
   QCOMPARE(read(result["backup"].toString()),old_);
   QCOMPARE(leftovers(),QStringList{".putgd-update-backup-0.1.1-nightly.800.AppImage"});
@@ -135,6 +136,18 @@ private slots:
   QCOMPARE(phases,(QStringList{"checking","verifying","download","verifying","installing","done"}));
   // A second install waits for the restart.
   error={};installUpdate(build(),options(),{},error);QCOMPARE(error.code,QString("update_restart_required"));
+ }
+ // #1765: a mirror without the image, or with a short one, falls back to GitHub.
+ void aMirrorWithoutTheImageFallsBackToTheRelease(){
+  for(const bool shortFile:{false,true}){
+   init();
+   ReleaseServer server;publish(server,next_);const auto mirrored="/mirror/"+tag.toUtf8()+"/"+name.toUtf8();
+   if(shortFile)server.files[mirrored]=next_.left(next_.size()/2);else server.files.remove(mirrored);
+   Error error;const auto result=installUpdate(build(),options(),{},error);
+   QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
+   QCOMPARE(result["method"].toString(),QString("download"));QCOMPARE(result["source"].toString(),QString("release"));
+   QVERIFY(server.requested("GET "+mirrored));QCOMPARE(read(image()),next_);
+  }
  }
  void zsyncRunsTheHostToolWithItsCaBundleOnThePinnedRelease(){
   ReleaseServer server;publish(server,next_);fakeTool(next_,0);
