@@ -4374,7 +4374,15 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     const Signature* other = usePrev ? prevSig() : &ref;
     const long long otherPos = usePrev ? prevPos_ : lastPos_;
     const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-    if (!otherViewMoved && observeOnce(cur, *other, upos, otherPos, &cands, unexplainedPick, true)) {
+    // Not once the page is lost (here and in the two retries for a refused
+    // place below): the page may be anywhere by then, and the candidate is a
+    // guess that agrees only as look-alikes do (a pull request's tables of
+    // near-equal rows). Its marks repainted verified text with what a later
+    // frame showed over those rows: GitHub's sticky header over a commit
+    // hash, once the page was found again (#1795). A playing video is met
+    // while following, as the retry at rest below has it.
+    if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+        observeOnce(cur, *other, upos, otherPos, &cands, unexplainedPick, true)) {
       computeExcluded(cur, ref, lastPos_);
       cands = searchPair(cur, ref, expected);
       pick = decide(cands, expected, uncertainty, hinted, &byExp, &why);
@@ -4516,7 +4524,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       const Signature* other = usePrev ? prevSig() : &ref;
       const long long otherPos = usePrev ? prevPos_ : lastPos_;
       const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-      if (!otherViewMoved && observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
+      if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+          observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
         bandTally(cur, ref, d, tb);
@@ -4640,7 +4649,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
       bool retried = false;
       const long long fpos = lastPos_ + found[size_t(fp)].d;
-      if (prevHasPos_ && prevSig() && !prevViewMoved_ &&
+      if (prevHasPos_ && prevSig() && !prevViewMoved_ && skipRun_ < opts_.lostAfterSkips &&
           observeOnce(cur, *prevSig(), fpos, prevPos_, &found, fp, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
