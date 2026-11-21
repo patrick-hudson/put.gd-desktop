@@ -487,9 +487,13 @@ private:
             // A lost or failed reply may still have stored the file: look for it first.
             if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429) {
                 Error lookup;
+                // Cancel cut this attempt, but the lookup that settles it still runs, as abortLarge's
+                // cancel does (#1782): without it a cancelled upload would always stay unknown.
+                const bool wasCancelled = cancelled.exchange(false);
                 const auto found = published(name, publication, lookup);
+                if (wasCancelled) cancelled = true;
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
-                if (!found) { error = lookup; uncertain = true; return {}; }
+                if (!found) { error = wasCancelled ? stoppedError() : lookup; uncertain = true; return {}; }
                 // A synthetic upload cancelled once sent may still have been stored (#1690).
                 if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");

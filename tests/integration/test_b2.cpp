@@ -428,6 +428,22 @@ private slots:
         QVERIFY2(large.status == "uploaded", qPrintable(large.status + " " + large.error.code + " " + large.error.message));
         QCOMPARE(f.events("upload_part").size(), 2);
     }
+    // #1782. Cancel cuts a slow upload in flight, and the check that follows still runs, so an
+    // upload B2 never stored ends failed instead of unknown.
+    void cancelledSlowUploadIsFailedWhenNothingWasStored() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 512 * 1024}});
+        auto request = f.request("cancel.bin", synthetic(4 * mib));
+        // The check after the cut takes longer than the worker's cancel poll, as it does live.
+        f.rules(QJsonArray{QJsonObject{{"call", "b2_list_file_versions"}, {"after", 1}, {"delay", 0.5}}});
+        request.progress = [cancel = request.cancellation](const UploadProgress& p) {
+            if (p.bytesTransferred.value_or(0) >= mib) cancel->store(true);
+        };
+        const auto uploaded = f.upload(request);
+        QVERIFY2(uploaded.status == "failed", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(uploaded.error.code, QString("cancelled"));
+        QVERIFY(f.versions().isEmpty());
+    }
     // A 2xx upload reply cut before it named the file: B2 stored it, so the upload is unknown,
     // never a definite failure that Retry would turn into a second copy.
     void uploadReplyWithoutFileIdIsUnknown() {
