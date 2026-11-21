@@ -597,6 +597,125 @@ deletes the packages beyond the newest 10 and any older than 30 days, matching o
 its own `putgd-diagnostics-*.zip` names. A package saved anywhere else is never
 deleted, and other files in the folder are left alone.
 
+## Error log
+
+Every error put.gd reports is also kept in an error log (#1753), so it can be looked
+at later instead of only while a notice is on screen. **Settings → Error log** shows
+it, and `errors.list` reads it ([cli.md](../automation/cli.md#error-log)).
+
+### What it records
+
+An entry is added for:
+
+- an operation that ends failed, partial or interrupted: one entry for each file whose
+  upload failed or whose outcome is unknown, one for a local copy that failed, and one
+  for the operation itself when no file says more (a capture, recording, Copy text or
+  diagnostics upload that failed before it had files); a link the upload couldn't copy;
+- a deletion item that ends failed, unknown, changed, with a version left behind or
+  not safely removable, and a share link change that fails;
+- a Test connection, credential read or store, or Proton account step that fails;
+- a refused session call that stands for a person's action: copying a link or image,
+  a QR code or Copy text, sharing, unlocking credentials, preparing, confirming,
+  retrying or cancelling a deletion, Retry, Retry local save, cancelling an upload,
+  Upload with put.gd, recording commands, a diagnostics package, saving settings,
+  clearing History or temporary files, and `action.invoke`. Malformed requests, busy
+  or not-yet-ready answers and closed windows are left out. The reply's
+  `details.errorLogId` names the entry;
+- the failure notifications nothing above covers: a refused capture or upload action,
+  a scrolling capture's warning, a recording stopped by its size budget, uploads a
+  cleanup had to leave, History results that couldn't be saved, a diagnostics package
+  that couldn't be saved or shown, a file manager menu problem and desktop setup
+  notices;
+- failures put.gd's own window finds without the resident (Save as, a browser or folder
+  that won't open), through `errors.record`, which `putgd-cli` refuses.
+
+Each entry has `id`, `time` (its latest occurrence), `firstTime`, `occurrences`,
+`kind` (`upload`, `capture`, `recording`, `local_save`, `copy`, `deletion`,
+`share_link`, `destination_test`, `destination_setup`, `credentials`,
+`settings_save`, `text_recognition`, `diagnostics`, `history`, `desktop_setup` or
+`other`), `action` (the operation's action or the step), `code`, `title` (the
+message's first sentence), `message`, `details` (what put.gd already recorded: HTTP
+status, S3 request IDs, stage, deletion or link status and so on), the IDs it is about
+(`operationId`, `historyId` and `itemId`, `deletionId`, `sharingId`, `setupId`,
+`profileId`), `itemName` and `destination` (looked up in the history database and
+settings when it is recorded, not from what a window shows), `provider`,
+`nextSteps`, and `resolved`. A list adds the item's current name, `previewPath` and
+`itemPresent`.
+
+The same problem again within 10 minutes (same kind, subject and code) updates its
+entry and counts it in `occurrences` instead of adding a row.
+
+### Resolved entries
+
+An entry is about a subject, and the next success for that subject marks every open
+entry about it resolved, with `resolvedAt` and `resolution`. The entry stays in the log.
+
+| Subject | Resolved by |
+| --- | --- |
+| A file's upload | the file uploaded (a Retry that worked) |
+| A file's local copy | the copy saved |
+| A file's deletion | the file removed or already gone |
+| A file's link change | the link shared, made private or revoked |
+| An operation | the operation completed |
+| A Test connection or credential read | the next one that passed |
+| A refused session call | the same call, for the same item or destination, answered without an error |
+| Settings saves | the next save that worked |
+
+### Storage, limits and privacy
+
+The log is the `error_log` table in `history.sqlite`, beside the journal whose items,
+operations and deletions its entries name. It shares that file's owner-only folder and
+permissions, moves with the data folder, and looks up an entry's file name from the
+same transaction-safe store. The table is added without raising the history schema
+version, so an older put.gd still opens the journal and ignores it. **Clear history
+records** leaves it alone. One resident queue writes it, so an entry and the success
+that resolves it keep their order.
+
+The newest 500 entries recorded in the last 90 days are kept; each write removes the
+rest. **Clear…** in Settings and `errors.clear` remove all entries, the given ones or
+only resolved ones. A message is redacted, and its details are redacted field by field,
+as log records are (see [Redaction](#redaction)), before anything is stored; details
+over 16 KiB are replaced by `{"truncated": true}`. A diagnostics package never
+includes `history.sqlite`, so it carries no error log; its log records already hold
+the same errors.
+
+### Settings → Error log
+
+The page lists entries newest first, 50 at a time: when, the kind of action, the
+item's name and thumbnail when it has one, the destination, the one-line message (with
+how many times it happened) and **Open** or **Resolved**. Filter by kind of action,
+search messages, names, destinations and codes, or show open problems only. The rail
+shows how many problems are open.
+
+Selecting a row shows the whole message, when it happened, the item and destination,
+the error code, the recorded details (HTTP status, S3 request IDs, stage …), the
+operation, item, deletion, link change or setup IDs, and its next steps as buttons:
+
+| Button | Does |
+| --- | --- |
+| Unlock saved credentials | `history.unlockCredentials` for the item's original destination (the keyring may prompt), or `setup.unlockCredentials` for the destination |
+| Open destination settings | opens Destinations on that destination |
+| Retry deletion, Retry upload, Retry local copy, Copy again, Test connection again | `delete.retry`, `operation.retry`, `operation.retryLocalSave`, `operation.copy` or `setup.testDestination` |
+| Show in History | opens History with the item selected |
+| Save diagnostics for this operation | a local package for that operation |
+
+A resolved entry keeps Show in History and Save diagnostics, not the steps that would
+fix it. **Technical details** shows the entry as recorded, with **Copy details**.
+
+### History
+
+History shows an error for 12 seconds in a notice at the bottom (hovering keeps it),
+with **Open error log**, which opens Settings → Error log on that entry, and ×. Notes
+about the selected item (a superseded link, a resend warning) and progress stay on the
+status line. A deletion or link change shows its outcome once, when it ends while
+History is open; reopening History never brings an old error back, and the deletion
+says which file it was and where: "Couldn't delete “Screenshot 18:25:53.png” from
+Work S3 · put-gd-shots: Credentials for this file's destination aren't loaded. …".
+Failed rows, their inspector and the Failed uploads category are unchanged. When a
+deletion stopped because its destination's saved credentials aren't loaded, the
+inspector offers **Unlock saved credentials** beside Retry deletion (or **Open
+destination settings** when they were for one session only).
+
 ## Settings and notifications
 
 **Settings → Advanced → Diagnostics** (#122; on General until #238, now directly above Config file) shows:
