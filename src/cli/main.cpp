@@ -30,6 +30,8 @@ int main(int argc,char** argv) {
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
  if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials through Settings.");
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials through Settings.");
+ // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
+ if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");
  if(parser.isSet("params-stdin")&&args.size()==2)return error("invalid_request","Do not combine --params-stdin with positional parameters");
  QByteArray bytes=args.size()==2?args[1].toUtf8():QByteArray("{}");
  if(parser.isSet("params-stdin")){bytes.clear();char chunk[8192];while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){bytes.append(chunk,qsizetype(count));if(bytes.size()>1024*1024)break;}if(std::ferror(stdin))return error("invalid_request","Cannot read JSON parameters from standard input");}

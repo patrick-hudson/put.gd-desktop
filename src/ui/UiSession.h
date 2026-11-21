@@ -25,6 +25,8 @@ public:
  // Each destination's last check, as the resident keeps it (#1692): passed, failed or
  // untested against the saved settings, with the connection fingerprint it was for.
  QJsonObject destinationStatus()const{return destinationStatus_;}
+ // The error log's {revision, total, unresolved} (#1753).
+ QJsonObject errorLog()const{return errorLog_;}
  SessionClient::RequestId request(const QString&,const QJsonObject&,QObject*,SessionClient::Reply);
  void saveAsync(const QJsonObject&,const QString&,std::function<void(Result)>);
  void reloadAsync(std::function<void(Result)>);
@@ -44,11 +46,12 @@ signals:
  void credentialsChanged();
  // A destination's last check changed in the resident: a Test, an upload or new credentials.
  void destinationStatusChanged();
+ void errorLogChanged();
 private:
  void applySettings(const QJsonObject&);
  ShortcutRecordingHandler shortcutRecording_;
  SessionClient& client_;
- QJsonObject document_,metadata_,diagnostics_,build_,destinationStatus_;
+ QJsonObject document_,metadata_,diagnostics_,build_,destinationStatus_,errorLog_;
  QString epoch_;
  Error journalError_;
  QThreadPool previews_;

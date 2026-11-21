@@ -289,6 +289,9 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QAction::trigger);
  connect(history_,&HistoryWindow::localCopySettingsRequested,this,&MainWindow::showLocalCopySettings);
+ // History's Open error log, and its Open destination settings for a file's destination (#1753).
+ connect(history_,&HistoryWindow::errorLogRequested,this,&MainWindow::showErrorLog);
+ connect(history_,&HistoryWindow::destinationSettingsRequested,this,&MainWindow::showDestination);
  explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");Ui::role(explanation_,"meta");statusRow->addWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
@@ -323,6 +326,8 @@ SettingsWindow* MainWindow::settings(){
  connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);
  connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
  connect(settings_,&SettingsWindow::destinationsRequested,this,[this]{navigate("destinations");});
+ connect(settings_,&SettingsWindow::destinationSettingsRequested,this,&MainWindow::showDestination);
+ connect(settings_,&SettingsWindow::historyItemRequested,this,[this](const QString& historyId){navigate("history");history_->showItem(historyId);});
  emit settingsCreated(settings_);
  updateSaveStatus();return settings_;
 }
@@ -431,6 +436,9 @@ void MainWindow::showActionFailure(const QString& action,const Error& error){
  auto* notice=findChild<QWidget*>("actionRecoveryNotification");if(!notice){notice=new Ui::Surface("bg",Qt::BottomEdge,centralWidget());notice->setObjectName("actionRecoveryNotification");auto* row=new QHBoxLayout(notice);row->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,{},notice);banner->setObjectName("actionRecoveryBanner");row->addWidget(banner);auto* text=banner->textLabel();text->setObjectName("actionRecoveryError");banner->setAction(QStringLiteral(" "));auto* retry=banner->actionButton();retry->setObjectName("actionRecoveryLink");connect(retry,&QPushButton::clicked,this,[this,retry]{const auto action=retry->property("action").toString(),page=retry->property("page").toString();if(page=="capture")showCaptureSettings({action});else if(page=="local")showLocalCopySettings();else {const Error error{retry->property("code").toString(),retry->property("message").toString(),{}};showActionFailure(action,error);}});banner->setDismissible(true,"Dismiss action error");auto* dismiss=banner->dismissButton();dismiss->setObjectName("dismissActionRecovery");connect(dismiss,&QToolButton::clicked,this,[this,notice]{notice->hide();updateAvailability();});auto* box=static_cast<QVBoxLayout*>(centralWidget()->layout());box->insertWidget(box->indexOf(pages_),notice);connect(tabs_,&QTabBar::currentChanged,this,[this,notice]{notice->hide();updateAvailability();});}
  auto* banner=notice->findChild<Ui::Banner*>("actionRecoveryBanner");banner->setText(error.message);auto* retry=notice->findChild<QPushButton*>("actionRecoveryLink");banner->setAction(output?"Change output":local?"Keep local copies":"Review destination");retry->setProperty("action",action);retry->setProperty("code",error.code);retry->setProperty("message",error.message);retry->setProperty("page",output?"capture":local?"local":"destinations");notice->setProperty("outputRecovery",output);notice->show();updateAvailability();
 }
+void MainWindow::showErrorLog(const QJsonObject& target){settings();navigate("settings");settings_->showErrorLog(target);}
+// Destinations, with this destination selected; the page as it is when it no longer exists.
+void MainWindow::showDestination(const QString& profileId){settings();navigate("destinations");settings_->selectDestination(profileId);}
 void MainWindow::showCaptureSettings(const QStringList& actions){navigate("settings");settings_->showCaptureSettings(actions);}
 void MainWindow::showLocalCopySettings(){navigate("settings");settings_->showLocalCopySettings();}
 MainWindow::~MainWindow(){

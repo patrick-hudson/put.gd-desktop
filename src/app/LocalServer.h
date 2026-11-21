@@ -1,5 +1,6 @@
 #pragma once
 #include "HistoryService.h"
+#include "ErrorLog.h"
 #include "LocalIpc.h"
 #include "DiagnosticsBundle.h"
 #include "SetupService.h"
@@ -21,6 +22,9 @@ public:
  // resident reads itself, so the file's credentials never cross the socket.
  void setUploaderImport(std::function<void(const QJsonObject&,JsonReply)> handler) {uploaderImport_=std::move(handler);}
  void setDiagnosticsBundles(DiagnosticsBundles* bundles) {bundles_=bundles;}
+ // The error log (#1753): errors.* methods, and every user-facing error a session
+ // method answers is recorded there, its entry's ID in details.errorLogId.
+ void setErrorLog(ErrorLog* log) {errorLog_=log;}
  void setUpdateService(UpdateService* updates) {updates_=updates;}
  void setUiDiagnostics(std::function<QJsonObject()> callback) {uiDiagnostics_=std::move(callback);}
  void setUiQuit(std::function<void()> callback) {uiQuit_=std::move(callback);}
@@ -41,6 +45,10 @@ public:
  void setLinkOpener(std::function<void(const QUrl&,std::function<void(const QJsonObject&)>)> open) {openLink_=std::move(open);}
 private:
  void accept();
+ // Records a session method's user-facing error in the error log, or resolves the
+ // entry an earlier failure of the same call left open.
+ void noteOutcome(const QString& method,const QJsonObject& params,Error& error);
+ void actOnError(const QJsonObject& entry,const QString& action,JsonReply);
  std::function<void(const QString&,std::function<void(Error)>)> uiActivation_;
  std::function<void(const QString&,const QJsonObject&,JsonReply)> uiCommand_;
  std::function<void(const QJsonObject&,JsonReply)> uploaderImport_;
@@ -53,6 +61,7 @@ private:
  QPointer<DestinationStatus> destinationStatus_;
  QPointer<DiagnosticsBundles> bundles_;
  QPointer<UpdateService> updates_;
+ QPointer<ErrorLog> errorLog_;
  const QString residentEpoch_;
  SettingsService& settings_;
  OperationService& operations_;

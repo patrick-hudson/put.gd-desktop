@@ -1,4 +1,5 @@
 #include "app/LogService.h"
+#include "app/ErrorLog.h"
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "storage/s3/SdkRuntime.h"
@@ -338,6 +339,7 @@ private slots:
   PUTGD_TRY_VERIFY(!settings.snapshot().debugLogging);
   PUTGD_TRY_VERIFY(!QFile::exists(dir.filePath("debug-logging.json")));
  }
+ // Also the error log entry it leaves (#1753): its details, next steps and no secret on disk.
  void failedUploadIsLoggedWithoutPrivateContent() {
   QTemporaryDir dir;logging::open(dir.filePath("logs"));
   ProviderRegistry registry;registry.add("opaque",std::make_shared<DeniedProvider>());
@@ -345,6 +347,7 @@ private slots:
   QVERIFY(settings.save(test::configuration(dir.path()),{}));
   test::Source source;source.payload.kind="text";source.payload.bytes="synthetic-private-clipboard text that must stay out of every log";
   OperationService operations(dir.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  ErrorLog errors(operations);
   QString id;bool accepted=false;
   operations.invoke("clipboard",[&](Error error,QJsonObject result){QVERIFY(!error);id=result["operationId"].toString();accepted=true;});
   PUTGD_TRY_VERIFY(accepted);
@@ -359,6 +362,29 @@ private slots:
   QCOMPARE(details["httpStatus"].toInt(),403);QCOMPARE(details["requestId"].toString(),QString("SYNTHREQ0123ABCD"));QCOMPARE(details["extendedRequestId"].toString(),QString("synthetic+Extended/Id2="));
   const auto final=find("Operation finished");QVERIFY(!final.isEmpty());QVERIFY(final["fields"].toObject().contains("durationMs"));
   QVERIFY(final["fields"].toObject()["byteCount"].toInteger()>0);
+  // #1753: the same failure is in the error log, with what put.gd recorded and what to do next.
+  // One list request at a time: the log answers in order, behind its own writes.
+  QJsonObject page;bool listing=false;
+  const auto poll=[&]{if(!listing){listing=true;errors.list({},[&](Error e,QJsonObject r){listing=false;if(!e)page=r;});}return page;};
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(!poll()["entries"].toArray().isEmpty(),10000);
+  const auto entry=page["entries"].toArray().first().toObject();
+  QCOMPARE(entry["kind"].toString(),QString("upload"));QCOMPARE(entry["code"].toString(),QString("s3_permission_denied"));QCOMPARE(entry["operationId"].toString(),id);
+  QCOMPARE(entry["details"].toObject()["requestId"].toString(),QString("SYNTHREQ0123ABCD"));QVERIFY(!entry["resolved"].toBool());
+  for(const auto* step:{"retry","show_in_history","save_diagnostics"})QVERIFY2(entry["nextSteps"].toArray().contains(QJsonValue(QString(step))),step);
+  // A key the destination refused is not fixed by unlocking it (#1759): no Unlock step.
+  QVERIFY(!entry["nextSteps"].toArray().contains(QJsonValue("unlock_credentials")));
+  // An entry is redacted like a log record before it is stored: no secret reaches the journal.
+  ErrorLog::Entry leaky;leaky.subject="synthetic";leaky.details={{"secretKey","synthetic-private-secret"},{"url","https://s3.example/b/o?X-Amz-Signature=synthetic-private-signature"}};
+  errors.record("upload",{"synthetic_failure","Authorization: Bearer synthetic-private-token rejected",leaky.details},leaky);
+  const auto codes=[&]{QStringList list;for(const auto& v:page["entries"].toArray())list<<v.toObject()["kind"].toString()+":"+v.toObject()["code"].toString();return list;};
+  page={};PUTGD_TRY_VERIFY_WITH_TIMEOUT((poll(),codes().contains("upload:synthetic_failure")),10000);
+  verifyNoCanary(QJsonDocument(page).toJson());
+  // A refused call's entry never offers Retry: repeating a refused share-only retry as operation.retry would upload.
+  ErrorLog::Entry refused;refused.subject="operation.retry:"+id;refused.operationId=id;refused.details={{"method","operation.retry"}};
+  errors.record("upload",{"retry_would_upload","Upload the remaining files first",{}},refused);
+  page={};PUTGD_TRY_VERIFY_WITH_TIMEOUT((poll(),codes().contains("upload:retry_would_upload")),10000);
+  for(const auto& value:page["entries"].toArray())if(value.toObject()["code"]=="retry_would_upload")QVERIFY(!value.toObject()["nextSteps"].toArray().contains(QJsonValue("retry")));for(const auto& value:page["entries"].toArray())if(value.toObject()["code"]=="synthetic_failure")QVERIFY(value.toObject()["message"].toString().startsWith("Authorization"));
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveError({{"id","bound-1"},{"time","2026-01-01T00:00:00.000Z"},{"kind","other"}},1,{}));QCOMPARE(store.errorSummary()["total"].toInt(),1);}
   // Diagnostics report the log without reading it.
   const auto diagnostics=operations.diagnostics();
   QVERIFY(diagnostics["logging"].toObject()["available"].toBool());QVERIFY(!diagnostics["loggingDegraded"].toBool());QVERIFY(diagnostics.contains("uncleanExit"));
