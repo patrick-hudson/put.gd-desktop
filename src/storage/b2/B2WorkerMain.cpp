@@ -58,6 +58,8 @@ public:
     bool atEnd() const override { return read_ >= length_ && QIODevice::bytesAvailable() == 0; }
     bool reset() override { return false; }
     qint64 size() const override { return length_; }
+    // Bytes the transport has read so far; never fewer than it sent.
+    qint64 consumed() const { return consumed_.load(); }
 protected:
     qint64 readData(char* data, qint64 maximum) override {
         const auto want = qMin(maximum, length_ - read_);
@@ -65,7 +67,7 @@ protected:
         qint64 n = 0;
         if (fromFile_) n = file_.read(data, want);
         else { std::memcpy(data, bytes_.constData() + read_, size_t(want)); n = want; }
-        if (n > 0) read_ += n;
+        if (n > 0) { read_ += n; consumed_ = read_; }
         return n;
     }
     qint64 writeData(const char*, qint64) override { return -1; }
@@ -73,6 +75,7 @@ private:
     QByteArray bytes_;
     QFile file_;
     qint64 offset_ = 0, length_ = 0, read_ = 0;
+    std::atomic<qint64> consumed_{0};
     bool fromFile_ = false;
 };
 
@@ -110,6 +113,11 @@ public:
     Response send(const QByteArray& verb, const QUrl& url, const QList<QPair<QByteArray, QByteArray>>& headers, const QByteArray& body = {}, QIODevice* device = nullptr) {
         QNetworkRequest request(url);
         for (const auto& [name, value] : headers) request.setRawHeader(name, value);
+        // A request that sends file data (a file or a part) has no whole-request deadline
+        // (#1782): on a slow link its bytes can need longer than any fixed limit, and every
+        // attempt starts again from the first byte. It runs while data moves; the transfer
+        // timeout ends one that stalls, and Cancel cuts it. Every other request keeps the deadline.
+        const bool fileData = device != nullptr;
         const int deadline = settings_["requestTimeoutMs"].toInt(600000);
         request.setTransferTimeout(qMax(settings_["connectTimeoutMs"].toInt(10000), 30000));
         QNetworkReply* reply = nullptr;
@@ -134,7 +142,7 @@ public:
         QElapsedTimer clock;
         clock.start();
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
-            if (cancelled.load() || clock.elapsed() > deadline) { out.aborted = true; reply->abort(); }
+            if (cancelled.load() || (!fileData && clock.elapsed() > deadline)) { out.aborted = true; reply->abort(); }
         });
         poll.start();
         if (!reply->isFinished()) loop.exec();
@@ -144,7 +152,11 @@ public:
         out.json = QJsonDocument::fromJson(out.body).object();
         if (out.status == 0) {
             out.transport = true;
-            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline") : QString("network error %1").arg(int(reply->error()));
+            // Qt 6.4 reports the transfer timeout as OperationCanceledError, later Qt as TimeoutError.
+            const bool timedOut = !out.aborted && (reply->error() == QNetworkReply::OperationCanceledError || reply->error() == QNetworkReply::TimeoutError);
+            out.detail = out.aborted ? (cancelled.load() ? "cancelled" : "deadline")
+                       : timedOut ? QString("the transfer timed out")
+                                  : QString("network error %1").arg(int(reply->error()));
         }
         reply->deleteLater();
         return out;
@@ -467,20 +479,36 @@ private:
             const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
             client_.sentBytes = {};
             const auto stored = r.json["fileId"].toString();
-            if (r.ok() && (synthetic_ ? !stored.isEmpty() : r.json["fileId"].isString())) return stored;
-            // Test upload and link: a success without a usable file ID (a cut-off reply, or an empty
-            // ID) may have stored a file nothing names (#1690).
-            if (r.ok() && synthetic_) {
+            if (r.ok() && !stored.isEmpty()) return stored;
+            // A success without a usable file ID (a cut-off reply, or an empty ID) stored a file this
+            // reply doesn't name: unknown, never failed, so Retry reconciles before it sends (#1690, #1782).
+            if (r.ok()) {
                 error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
                 uncertain = true;
                 return {};
             }
             // A lost or failed reply may still have stored the file: look for it first.
             if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429) {
+                // An attempt cut before the transport read the whole file can't have stored it: B2
+                // keeps nothing shorter than the length and SHA-1 it was sent (#1782). Cancel then
+                // ends the upload as failed, and a stall sends it again, with nothing to look up.
+                if (!synthetic_ && body.consumed() < artifact.bytes) {
+                    if (r.aborted && cancelled.load()) { error = {"cancelled", "Cancelled before Backblaze B2 received the whole file; nothing was uploaded", {}}; return {}; }
+                    error = Client::failure(r, "upload_file");
+                    continue;
+                }
                 Error lookup;
                 const auto found = published(name, publication, lookup);
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
                 if (!found) { error = lookup; uncertain = true; return {}; }
+                // The whole file went out and no reply settled it: B2 may still commit it after this
+                // lookup, so the upload stays unknown instead of failing or sending a second copy;
+                // Retry checks again first (#1782). B2's own error replies keep their resend.
+                if (r.transport && !synthetic_) {
+                    error = r.aborted && cancelled.load() ? stoppedError() : Client::failure(r, "upload_file");
+                    uncertain = true;
+                    return {};
+                }
                 // A synthetic upload cancelled once sent may still have been stored (#1690).
                 if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline Backblaze B2 native-API (b2api v3) oracle for #282. Synthetic keys only; loopback only.
 
-Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions}, /__rules {rules}, GET /__state.
+Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace}, /__rules {rules}, GET /__state.
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "noFileId": true (act, then answer 2xx without a fileId), "competitor": true (another upload of the same name lands first),
 "partNumber": n, "after": n (let n matching requests through first), "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
@@ -103,7 +103,20 @@ class Handler(BaseHTTPRequestHandler):
             lock.acquire()
 
     def body(self):
-        return self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        length = int(self.headers.get('Content-Length', 0))
+        # 'uploadPace' (reset option): read file and part bodies at that many bytes per second.
+        with lock:
+            pace = state.get('uploadPace') if self.path.startswith('/upload') else None
+        if not pace:
+            return self.rfile.read(length)
+        data = bytearray()
+        while len(data) < length:
+            chunk = self.rfile.read(min(65536, length - len(data)))
+            if not chunk:
+                break
+            data += chunk
+            time.sleep(len(chunk) / pace)
+        return bytes(data)
 
     def record(self, call, extra=None):
         event = {'call': call, 'path': self.path.split('?')[0], 'headers': {k.lower(): v for k, v in self.headers.items() if k.lower() != 'authorization'},
@@ -163,7 +176,7 @@ class Handler(BaseHTTPRequestHandler):
                 state.clear()
                 state.update(fresh())
                 options = json.loads(data or b'{}')
-                for k in ('capabilities', 'restricted', 'buckets'):
+                for k in ('capabilities', 'restricted', 'buckets', 'uploadPace'):
                     if k in options:
                         state[k] = options[k]
                 for v in options.get('versions', []):

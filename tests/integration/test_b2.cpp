@@ -414,6 +414,58 @@ private slots:
         QCOMPARE(HistoryStore(operations.databasePath()).deletion(deletion)["items"].toArray()[0].toObject()["status"].toString(), QString("pending"));
         QVERIFY(f.events("b2_delete_file_version").isEmpty());
     }
+    // #1782. A file or part whose bytes take longer than the request timeout still uploads, in
+    // one request each: the timeout bounds only requests that carry no file data. On the fast
+    // links developers and CI use the cut never shows; on a slow uplink an upload never finished.
+    void uploadOutlastsTheRequestTimeoutWhileItsBytesMove() {
+        B2Fixture f;
+        f.reset({{"uploadPace", 2 * mib}});
+        f.destination.settings["requestTimeoutMs"] = 1000;
+        const auto small = f.upload(f.request("slow-small.bin", synthetic(4 * mib)));
+        QVERIFY2(small.status == "uploaded", qPrintable(small.status + " " + small.error.code + " " + small.error.message));
+        QCOMPARE(f.events("upload_file").size(), 1);
+        const auto large = f.upload(f.request("slow-large.bin", synthetic(7 * mib, 1782)));
+        QVERIFY2(large.status == "uploaded", qPrintable(large.status + " " + large.error.code + " " + large.error.message));
+        QCOMPARE(f.events("upload_part").size(), 2);
+    }
+    // #1782. Cancel cuts a slow upload in flight before the transport has read the whole file.
+    // B2 can't have stored it, so the upload ends failed, not unknown, with nothing to look up.
+    void cancelledSlowUploadIsFailedWhenNothingWasStored() {
+        B2Fixture f({64 * mib, 16 * mib});
+        f.reset({{"uploadPace", 512 * 1024}});
+        auto request = f.request("cancel.bin", synthetic(24 * mib));
+        request.progress = [cancel = request.cancellation](const UploadProgress& p) {
+            if (p.bytesTransferred.value_or(0) >= mib) cancel->store(true);
+        };
+        const auto listings = f.events("b2_list_file_versions").size();
+        const auto uploaded = f.upload(request);
+        QVERIFY2(uploaded.status == "failed", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(uploaded.error.code, QString("cancelled"));
+        // Only the check before the upload lists the name.
+        QCOMPARE(f.events("b2_list_file_versions").size(), listings + 1);
+        QVERIFY(f.versions().isEmpty());
+    }
+    // #1782. A reply lost after the whole file went out leaves the upload unknown when the lookup
+    // finds nothing: B2 may still commit it, so put.gd neither fails it nor sends a second copy.
+    void lostReplyAfterTheWholeFileIsUnknownAndNotResent() {
+        B2Fixture f;
+        f.reset();
+        f.rules(QJsonArray{QJsonObject{{"call", "upload_file"}, {"drop", true}}});
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "unknown", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(f.events("upload_file").size(), 1);
+    }
+    // A 2xx upload reply cut before it named the file: B2 stored it, so the upload is unknown,
+    // never a definite failure that Retry would turn into a second copy.
+    void uploadReplyWithoutFileIdIsUnknown() {
+        B2Fixture f;
+        f.reset();
+        f.rules(QJsonArray{QJsonObject{{"call", "upload_file"}, {"noFileId", true}}});
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "unknown", qPrintable(uploaded.status + " " + uploaded.error.code));
+        QCOMPARE(uploaded.error.code, QString("b2_upload_unconfirmed"));
+        QCOMPARE(f.events("upload_file").size(), 1);
+    }
     void changedVersionIsNotDeleted() {
         B2Fixture f;
         f.reset();
