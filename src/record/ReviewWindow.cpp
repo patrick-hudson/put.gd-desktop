@@ -3720,7 +3720,10 @@ bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
     // answer can come back before the release clicks the button, so that click
     // counts refusals from the press. A double-click's second press is part
     // of the same activation and keeps the first press's count (U1).
-    if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) {
+    // Only the left button counts: a right or middle press or release while
+    // it is held neither sets, clears nor delivers the count (U4).
+    const auto leftButton = [event] { return static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton; };
+    if ((event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) && leftButton()) {
         auto* target = qobject_cast<QWidget*>(watched);
         if (target && target->window() == this) {
             if (target != save_ && target != upload_) pressRefusals_.reset(), lastPressRefusals_.reset();
@@ -3732,7 +3735,7 @@ bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
     // delivered to the button here, so a click runs inside this call and reads
     // it, and it is gone when the call returns, click or not (U2, U3). A key
     // never sees it.
-    if (event->type() == QEvent::MouseButtonRelease && (watched == save_ || watched == upload_) && !releasing_) {
+    if (event->type() == QEvent::MouseButtonRelease && (watched == save_ || watched == upload_) && !releasing_ && leftButton()) {
         releasing_ = static_cast<QWidget*>(watched);
         const bool handled = static_cast<QObject*>(releasing_)->event(event);  // the button handles its release now
         releasing_ = nullptr;

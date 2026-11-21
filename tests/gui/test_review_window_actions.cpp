@@ -26,6 +26,14 @@ void releaseNow(QWidget* button, std::optional<QPoint> at = std::nullopt) {
     QMouseEvent release(QEvent::MouseButtonRelease, p, button->mapToGlobal(p), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
     QApplication::sendEvent(button, &release);
 }
+// A right press and release on the button while the left button is held (U4).
+void rightClickWhileHeld(QWidget* button) {
+    const QPointF at = button->rect().center();
+    QMouseEvent press(QEvent::MouseButtonPress, at, button->mapToGlobal(at), Qt::RightButton, Qt::LeftButton | Qt::RightButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &press);
+    QMouseEvent release(QEvent::MouseButtonRelease, at, button->mapToGlobal(at), Qt::RightButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &release);
+}
 void doubleClickTail(QWidget* button) {
     const QPointF at = button->rect().center();
     QMouseEvent second(QEvent::MouseButtonDblClick, at, button->mapToGlobal(at), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
@@ -1610,6 +1618,7 @@ private slots:
         QTest::mousePress(save, Qt::LeftButton);
         QCOMPARE(proposals.size(), before + 1);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "recording_cut_empty"));
+        rightClickWhileHeld(save);  // U4
         releaseNow(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
         QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
@@ -1643,6 +1652,7 @@ private slots:
         QCOMPARE(proposals.size(), 1);
         QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), 9000000.0);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
+        rightClickWhileHeld(upload);  // U4
         releaseNow(upload);
         QCOMPARE(uploads.size(), 0);
         QVERIFY(!window.inspect()["uploadWaiting"].toBool());
