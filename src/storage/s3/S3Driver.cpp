@@ -158,6 +158,9 @@ QString requestGuidance(const QString& name, int status, S3Stage stage, int curl
     if (status == 403) return deniedGuidance(stage);
     if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
     if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
+    // A request that sends a file has no request timeout (#1758): it ends on a stall.
+    if (curlCode == 28 && (stage == S3Stage::UploadPut || stage == S3Stage::UploadPart))
+        return "The upload stalled or couldn't connect in time. Check the network and endpoint, or lower Minimum transfer speed, lengthen Low-speed window or raise Connect timeout in Advanced connection settings.";
     if (curlCode == 28 || name == "RequestTimeout") return "The S3 request timed out. Check the network and endpoint, or increase the connection/request deadlines in Advanced connection settings.";
     if (curlCode == 35 || curlCode == 60) return "The secure connection to S3 failed. Check the endpoint, system clock and trusted certificates, including any proxy certificate.";
     if (name == "SlowDown" || status == 429) return "S3 is limiting requests. Wait before retrying and reduce concurrent uploads if this continues.";
@@ -1328,7 +1331,10 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         return;
     }
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes, {}, {});
+    // Whether an attempt that may have published was sent: one whose whole body went to the
+    // transport and whose reply never proved a result.
     bool uncertain = false;
+    Error last;
     for (int attempt = 0; attempt < attempts; ++attempt) {
         if (stopped(request.cancellation)) {
             reply({uncertain ? "unknown" : "failed", {}, cancelled()});
@@ -1352,7 +1358,22 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         put.SetBody(stream);
         qint64 transferred = 0;
+        // Set once the transport has read the last byte of the file in this attempt, and
+        // kept through a redirect's rewind. Until then S3 holds less than the length the
+        // request names, which it never stores.
+        bool wholeBodyRead = request.artifact.bytes == 0;
         report("uploading", transferred);
+        // A request that sends a file runs while its bytes move (#1758), so Cancel cuts it
+        // instead of waiting for the transfer, as it cuts a part (#203).
+        // Whether Cancel cut this attempt: the SDK also asks after curl returns, so a cut can
+        // follow a reply's status. A Cancel that only comes later leaves the reply standing.
+        bool cut = false;
+        if (request.cancellation)
+            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) {
+                if (!stopped(request.cancellation)) return true;
+                cut = true;
+                return false;
+            });
         // A new signed SDK request or our bounded outer retry sends the body
         // afresh. Keep each attempt's total equal to the retained artifact.
         put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
@@ -1368,6 +1389,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             const auto position = stream->rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
             if (position < 0 || position > request.artifact.bytes) return;
             transferred = qint64(position);
+            if (transferred == request.artifact.bytes) wholeBodyRead = true;
             report("uploading", transferred);
         });
         QElapsedTimer requestTimer;
@@ -1384,13 +1406,19 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         const auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
-        // A 408 doesn't prove the service refused the synthetic file (#1690).
-        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408);
+        // A 408 doesn't prove the service refused the synthetic file (#1690). A request cut on
+        // Cancel proves nothing either, even with the status of a reply that arrived first.
+        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408) || cut;
         if (!unclear && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;
         }
-        uncertain = uncertain || unclear;
+        last = error;
+        // An attempt that ended before the transport read the whole file can't have stored
+        // it, so with no earlier uncertain attempt there is nothing to check (#1758). A cut
+        // on Cancel ends at the top of the loop.
+        if (unclear && !wholeBodyRead && !uncertain) continue;
+        uncertain = uncertain || (unclear && wholeBodyRead);
         auto found = inspect(*client, expected, true);
         if (found.status == "own") {
             reply({"uploaded", found.receipt, {}});
@@ -1408,9 +1436,17 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             reply({uncertain ? "unknown" : "collision", {}, error});
             return;
         }
-        uncertain = true;
     }
-    reply({"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}});
+    // Every attempt ended without a reply. Say why, with the last attempt's diagnostics.
+    if (!uncertain) {
+        // None got the whole file to S3, which keeps no partial object.
+        if (last.code == "s3_transport_unknown") last.code = "s3_upload_interrupted";
+        last.message += " S3 never received the whole file, so nothing was published.";
+        reply({"failed", {}, last});
+        return;
+    }
+    reply({"unknown", {}, {"publication_unknown", "S3 didn't confirm the upload, and an attempt that sent the whole file may still be stored. "
+                           "Nothing was at the saved key when put.gd checked; Retry checks it again before sending. Last attempt: " + last.message, last.details}});
 }
 void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint save, std::function<void(DeleteResult)> reply) {
     QJsonObject progress = request.progress;

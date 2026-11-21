@@ -222,7 +222,10 @@ private:
   const qint64 checkpoints=method=="testDestination"?12:method=="remove"?8:method=="upload"&&parts?4:0;
   const qint64 cancellationGrace=limits_.cancellationGraceMs>0?limits_.cancellationGraceMs:qBound<qint64>(30000LL,perCall+5000,120000LL);
   QElapsedTimer cancelDeadline;
-  const qint64 totalBudget=calls*perCall+hashBudget+checkpoints*300000+60000;
+  // A request that sends file bytes isn't bound by the request timeout, only by the
+  // low-speed limit (#1758): allow up to three sends of every byte at that minimum rate.
+  const qint64 transferBudget=bytes>0?3*((bytes*1000+timeout("lowSpeedBytesPerSecond")-1)/timeout("lowSpeedBytesPerSecond")):0;
+  const qint64 totalBudget=calls*perCall+transferBudget+hashBudget+checkpoints*300000+60000;
   QElapsedTimer workDeadline;workDeadline.start();activity_.start();
   // A multipart upload learns how many idle upload slots it may borrow (#174).
   QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;
