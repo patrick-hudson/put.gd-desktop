@@ -661,7 +661,9 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
  if(!checkOperations_.contains(id))return;
  auto& op=checkOperations_[id];
  if(phase=="prompt"){
-  op.phase="sensitive_text_found";op.sensitive=findings;
+  // Each prompt of a file selection is numbered, so a decision can name the one it answers.
+  const int prompt=op.sensitive["prompt"].toInt()+1;
+  op.phase="sensitive_text_found";op.sensitive=findings;op.sensitive["prompt"]=prompt;
   auto fields=sensitiveLog(findings);fields["operationId"]=id;
   logging::info(logOperation(),"Sensitive text check needs a decision",fields);
   observe(op.publicJson());emit changed(id);emit observationsChanged();
@@ -723,8 +725,10 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
 }
-void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply) {
+void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {
  if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}
+ // A decision that names an earlier prompt of a file selection never answers a later one.
+ if(prompt>0&&checkOperations_.contains(id)&&checkOperations_[id].sensitive["prompt"].toInt()!=prompt){reply({"sensitive_decision_unavailable","That prompt was already answered",{{"operationId",id}}},{});return;}
  const auto session=checkSessions_.value(id);
  const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
  if(queued||(session&&session->phase()=="checking")||(session&&session->phase()=="starting")){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
@@ -733,6 +737,8 @@ void OperationService::decideSensitive(const QString& id,const QString& choice,J
  session->request("decide",{{"choice",choice}},[owner,id,reply](Error error,QJsonObject result){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,reply,error,result]() mutable {
    if(!owner||owner->stopping_)return;
+   // Until the next prompt, if any, the operation is checking again: nothing waits on a decision.
+   if(!error&&owner->checkOperations_.contains(id)&&owner->checkOperations_[id].phase=="sensitive_text_found"){auto& op=owner->checkOperations_[id];op.phase="checking";owner->observe(op.publicJson());emit owner->changed(id);emit owner->observationsChanged();}
    if(!error)result["operationId"]=id;
    reply(error,result);
   },Qt::QueuedConnection);
@@ -1144,7 +1150,7 @@ Operation OperationService::run(Job job) {
   // reservation is atomic: a new action's import never waits behind a large copy.
   std::unique_lock acquisitionGuard(acquisitionMutex_,std::defer_lock);if(op.settings.limits.pendingArtifactBytes<ResourceLimits::unlimitedBytes)acquisitionGuard.lock();
   // #1804: a file that changed after its sensitive text check is not uploaded unchecked.
-  for(auto it=job.checkedFiles.cbegin();it!=job.checkedFiles.cend();++it)if(fileIdentity(it.key())!=it.value()){
+  for(auto it=job.checkedFiles.cbegin();it!=job.checkedFiles.cend();++it)if(!job.localOnly&&fileIdentity(it.key())!=it.value()){
    job.payload={};job.payloadLease.reset();op.error={"sensitive_check_failed",QFileInfo(it.key()).fileName()+": the file changed after put.gd checked it for sensitive text, so nothing was uploaded. Upload it again to check it again.",{{"cause","file_changed"}}};
    op.advance(OperationState::Failed);save();return op;
   }

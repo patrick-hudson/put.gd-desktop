@@ -302,8 +302,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  // #1804: Redact and upload, Upload anyway or Cancel for a capture waiting in sensitive_text_found.
  if(method=="operation.decide") {
-  if(!fields(p,{"id","choice"})||!string(p,"id")||!string(p,"choice",16)){reply(invalid(),{});return;}
-  operations_.decideSensitive(p["id"].toString(),p["choice"].toString(),reply);return;
+  if(!fields(p,{"id","choice"},{"prompt"})||!string(p,"id")||!string(p,"choice",16)||(p.contains("prompt")&&(!p["prompt"].isDouble()||p["prompt"].toDouble()!=p["prompt"].toInt()||p["prompt"].toInt()<1))){reply(invalid(),{});return;}
+  operations_.decideSensitive(p["id"].toString(),p["choice"].toString(),reply,p["prompt"].toInt());return;
  }
  if(method=="operation.cancel"&&p.contains("itemId")) {if(!fields(p,{"id","itemId"})||!string(p,"id")||!string(p,"itemId")) {reply(invalid(),{});return;}operations_.cancel(p["id"].toString(),reply,p["itemId"].toString());return;}
  if(method.startsWith("operation.")) {

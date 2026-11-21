@@ -40,7 +40,8 @@ public:
  // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
  // #1804: settles an operation waiting in sensitive_text_found: redact, upload or cancel.
- void decideSensitive(const QString& id,const QString& choice,JsonReply);
+ // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
+ void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
