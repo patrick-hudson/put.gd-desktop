@@ -168,12 +168,19 @@ void HistoryService::qr(const QString& id,const QString& mode,const QString& pat
  });
 }
 namespace {
-// How a destination_readded refusal ends (#1763): a deletion that ended unsupported_safe_removal or
-// version_retained can be removed from History only after a warning; any other may still be reaching the file.
-QString readdedTail(const QString& status,bool sentence=true) {
+// A destination_readded refusal (#1760) after the read-only check through the destination added back
+// (#1772): `found` is what that check answered, own or unknown, or empty when it couldn't be asked. A
+// deletion that ended unsupported_safe_removal or version_retained can also be removed from History only
+// after a warning (#1763); any other may still be reaching the file.
+QString readdedMessage(const QString& status,const QString& found,bool credentials,const Error& checkError) {
  const bool wayOut=status=="unsupported_safe_removal"||status=="version_retained";
- const QString check=sentence?QStringLiteral("Check the file at the destination"):QStringLiteral("check the file at the destination");
- return wayOut?check+QStringLiteral(", or remove it from History only."):check+QStringLiteral("; Remove from History only is not offered while it may be there.");
+ const QString why=credentials?QStringLiteral("This deletion started with other credentials for the destination added back, so put.gd won't finish it with its current ones. "):QStringLiteral("This deletion started before its destination was removed, so put.gd won't finish it through the destination added back. ");
+ const QString restore=credentials?QStringLiteral(" Restore those credentials in Destinations to finish it."):QString();
+ const QString forget=wayOut?QStringLiteral(" You can also remove it from History only."):QString();
+ if(found=="own")return why+QStringLiteral("The recorded file is still there; Advanced file details show its exact name and version. Delete that file at the destination yourself, then choose Retry deletion: put.gd checks again and ends this deletion once it is gone.")+restore+forget;
+ if(found=="unknown"){auto reason=checkError.message.trimmed();while(reason.endsWith('.'))reason.chop(1);
+  return why+QStringLiteral("put.gd couldn't check whether the file is still there")+(reason.isEmpty()?QString():QStringLiteral(" (")+reason+QStringLiteral(")"))+QStringLiteral(". Choose Retry deletion to check again.")+restore+forget;}
+ return why+QStringLiteral("Check the file at the destination")+(wayOut?QStringLiteral(", or remove it from History only."):QStringLiteral("; Remove from History only is not offered while it may be there."))+restore;
 }
 Error destinationRemovedError(const QString& historyId) {
  return {"destination_removed","This file's destination was removed from Settings, so put.gd can't delete it there. The file stays where it was uploaded; add a destination for the same place to delete it, or remove it from History only.",{{"historyId",historyId}}};
@@ -345,12 +352,32 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     }
     if(serving.isEmpty())serving=Settings::profileForDestination(receipt.destination.toJson(),profiles);
     if(serving.isEmpty()){e=destinationRemovedError(item["historyId"].toString());outcome=status=="pending"?QStringLiteral("failed"):status;}
-    // A worker's checkpoint is bound to the destination it went through: another destination added
-    // back can't finish that attempt, so it is said and left as it was. Retry through the same one goes on.
-    else if(serving["id"].toString()!=bound&&checkpointed){e={"destination_readded",QStringLiteral("This deletion started before its destination was removed and can't be finished through the destination added back. ")+readdedTail(status),{{"historyId",item["historyId"]}}};outcome=status;}
-    // A worker's checkpoint also records the credentials it used, and drivers treat a different target as a
-    // changed object: credentials changed on the destination added back leave the attempt as it was.
-    else if(checkpointed&&serving["id"].toString()!=receipt.destination.profileId&&progress["target"].toObject()["destination"].toObject()["credentials"].toObject()!=serving["credentials"].toObject()){e={"destination_readded",QStringLiteral("This deletion started with other credentials for the destination added back and can't be finished with its current ones. Restore those credentials in Destinations, or ")+readdedTail(status,false),{{"historyId",item["historyId"]}}};outcome=status;}
+    // A worker's checkpoint is bound to the destination it went through, and records the credentials it used
+    // (drivers treat a different target as a changed object): another destination added back, or other
+    // credentials on it, can't finish that attempt. Retry through the same one goes on.
+    else if(checkpointed&&(serving["id"].toString()!=bound||(serving["id"].toString()!=receipt.destination.profileId&&progress["target"].toObject()["destination"].toObject()["credentials"].toObject()!=serving["credentials"].toObject()))){
+     // The recorded object is checked read-only through the destination serving it now (#1772): gone, the
+     // deletion ends; there or not known, it is left as it was with its checkpoint. Only a destination that
+     // points at the recorded place is asked, so its credentials never go to another address (a profile can
+     // serve by its ID after being edited). A version can stay behind a missing current object, so neither
+     // an outcome that says so nor a checkpoint naming a delete marker (S3's markerVersionId, which a Quit
+     // can leave on an unknown item) is asked.
+     const bool credentials=serving["id"].toString()==bound;
+     auto place=receipt.destination.toJson();place["profileId"]=QString();
+     StatResult found{"",{},{}};
+     if(!Settings::profileForDestination(place,QJsonArray{serving}).isEmpty()&&status!="hidden_version_retained"&&status!="version_retained"&&!progress.contains("markerVersionId")){
+      auto check=receipt;check.destination.profileId=serving["id"].toString();check.destination.credentialReference=serving["credentials"].toObject();
+      found=awaitProvider<StatResult>([&](auto cb){provider->statForRemoval(check,quitting,cb);});
+      if(found.status=="unknown"&&quitting->load())return doc;
+     }
+     if(found.status=="missing")outcome="already_missing";
+     else if(found.status=="foreign"){outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
+     else {
+      const auto answer=found.status.isEmpty()?QString():found.status=="own"?QStringLiteral("own"):QStringLiteral("unknown");
+      QJsonObject details{{"historyId",item["historyId"]}};if(!answer.isEmpty())details["found"]=answer;if(found.error)details["checkError"]=found.error.toJson();
+      e={"destination_readded",readdedMessage(status,answer,credentials,found.error),details};outcome=status;
+     }
+    }
     else {
     // A destination added back for the same place under another ID deletes with its own credentials;
     // the journal keeps the recorded receipt and names the destination used (deletingProfileId).

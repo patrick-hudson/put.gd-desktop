@@ -29,15 +29,24 @@ class SettingsContract final : public QObject {
 private slots:
  // #1759: deletion goes through the destination this picks; a wrong match deletes from the wrong place.
  void receiptsFindTheirCurrentDestination(){
-  const QJsonObject s3{{"providerId","s3"},{"profileId","old"},{"settings",QJsonObject{{"endpoint","https://S3.example.com/"},{"bucket","shots"}}}};
+  const QJsonObject s3{{"providerId","s3"},{"profileId","old"},{"settings",QJsonObject{{"endpoint","https://S3.example.com/"},{"addressing","path"},{"bucket","shots"}}}};
   const QJsonObject same{{"id","old"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://elsewhere.example.com"},{"bucket","other"}}}};
-  const QJsonObject readded{{"id","new"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots"}}}};
-  const QJsonObject otherBucket{{"id","b"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"bucket","shots2"}}}};
+  const QJsonObject readded{{"id","new"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","path"},{"bucket","shots"}}}};
+  const QJsonObject otherBucket{{"id","b"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","path"},{"bucket","shots2"}}}};
   const QJsonObject otherService{{"id","r"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"bucket","shots"}}}};
   QCOMPARE(putgd::Settings::profileForDestination(s3,{same,readded})["id"].toString(),QString("old"));
   QCOMPARE(putgd::Settings::profileForDestination(s3,{otherBucket,readded})["id"].toString(),QString("new"));
   QVERIFY(putgd::Settings::profileForDestination(s3,{otherBucket,otherService}).isEmpty());
   QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
+  // #1778: addressing picks the host S3 requests go to, and an IPv6 literal keeps its brackets.
+  QVERIFY(putgd::Settings::profileForDestination(s3,{QJsonObject{{"id","v"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","virtual"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject r2{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(r2,{QJsonObject{{"id","a"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","auto"},{"bucket","shots"}}}}})["id"].toString(),QString("a"));
+  const QJsonObject aws{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(aws,{QJsonObject{{"id","c"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","auto"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject ipv6{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1]:443"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","u"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1:443]"},{"bucket","shots"}}}}}).isEmpty());
+  QCOMPARE(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","t"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:DB8::1]:443/"},{"bucket","shots"}}}}})["id"].toString(),QString("t"));
   // A path compares exactly (a key must never go to another tenant's path); a custom uploader never moves.
   const QJsonObject b2{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://API.example.com/Tenant-A"},{"bucket","shots"}}}};
   QVERIFY(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","x"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant-a"},{"bucket","shots"}}}}}).isEmpty());
