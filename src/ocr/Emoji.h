@@ -60,7 +60,7 @@ private:
 struct EmojiOptions {
  // A glyph is named when the best template's distance (mean absolute colour
  // difference over the glyph, 0 to 1) is at most this.
- double distance=0.08;
+ double distance=0.09;
  // ...and at most this share of the template's contrast with the background
  // (its mean colour distance from the background over its opaque pixels): a
  // dark template on a dark background, or a pale one on white, stands out too

@@ -300,19 +300,31 @@ public:
  }
  // Every template's coarse pixels laid on one background, as RGB bytes padded
  // with zeros to whole 16-byte blocks, so the first pass only subtracts bytes.
- // Kept for the last two backgrounds met (a page has one or two), about 2 MiB each.
+ // Kept for the last two backgrounds met (a page has one or two), about 2.5 MiB each.
  int laidBytes()const{return (t_.coarseSide()*t_.coarseSide()*3+15)/16*16;}
- const Buffer<uint8_t>& laidOn(const Colour& bg)const{
-  const int key=(int(bg.r)>>2)<<12|(int(bg.g)>>2)<<6|(int(bg.b)>>2);
-  for(auto& laid:laid_)if(laid.key==key)return laid.rgb;
+ // With each template's colour share as it shows on that background: among
+ // its pixels that differ from the background, the share that are colour. A
+ // white field on a white page shows nothing, so England's flag is its red
+ // cross there, as the glyph is.
+ struct Laid { int key=-1;Buffer<uint8_t> rgb;Buffer<float> share; };
+ // Backgrounds closer than this share one laying.
+ static int laidKey(const Colour& bg){return (int(bg.r)>>2)<<12|(int(bg.g)>>2)<<6|(int(bg.b)>>2);}
+ const Laid& laidOn(const Colour& bg)const{
+  const int key=laidKey(bg);
+  for(auto& laid:laid_)if(laid.key==key)return laid;
   auto& laid=laid_[nextLaid_];nextLaid_=(nextLaid_+1)%int(laid_.size());laid.key=key;
-  const int n=t_.coarseSide()*t_.coarseSide(),stride=laidBytes();laid.rgb.assign(size_t(t_.count())*stride,0);
+  const int n=t_.coarseSide()*t_.coarseSide(),stride=laidBytes();
+  laid.rgb.assign(size_t(t_.count())*stride,0);laid.share.assign(size_t(t_.count()),0.f);
   const auto under=undersOf(bg);
   for(int t=0;t<t_.count();++t){
-   const uint8_t* p=t_.coarse(t);uint8_t* o=laid.rgb.data()+size_t(t)*stride;
-   for(int i=0;i<n;++i){const int a=p[4*i+3];for(int c=0;c<3;++c)o[3*i+c]=uint8_t(std::min(255,p[4*i+c]+under[c][a]));}
+   const uint8_t* p=t_.coarse(t);uint8_t* o=laid.rgb.data()+size_t(t)*stride;int inked=0,coloured=0;
+   for(int i=0;i<n;++i){
+    const int a=p[4*i+3];for(int c=0;c<3;++c)o[3*i+c]=uint8_t(std::min(255,p[4*i+c]+under[c][a]));
+    if(ink(o+3*i,bg)){++inked;coloured+=colour(o+3*i);}
+   }
+   laid.share[size_t(t)]=inked>0?float(coloured)/float(inked):float(t_.colour(t));
   }
-  return laid.rgb;
+  return laid;
  }
  // (255 - a) * bg / 255 for each alpha a: what a template pixel lets through.
  static std::array<std::array<int,256>,3> undersOf(const Colour& bg){
@@ -339,8 +351,8 @@ public:
   const int stride=laidBytes(),coarseKeep=std::max(1,o_.coarseShortlist);auto small=target(t_.coarseSide());small.resize(size_t(stride),0);const auto& laid=laidOn(bg);
   Kept coarse;
   for(int t=0;t<t_.count();++t){
-   if(std::abs(t_.colour(t)-share)>o_.colourShare)continue;
-   const int sum=differences(laid.data()+size_t(t)*stride,small.data(),stride);
+   if(std::abs(laid.share[size_t(t)]-share)>o_.colourShare)continue;
+   const int sum=differences(laid.rgb.data()+size_t(t)*stride,small.data(),stride);
    if(int(coarse.size())<coarseKeep||sum<coarse.top().first)take(coarse,sum,t,coarseKeep);
   }
   // Full size, for those.
@@ -367,14 +379,24 @@ public:
   // Each template's pixels as floats once per glyph.
   auto& master=masters_[t];
   if(master.empty()){master.resize(size_t(s)*s*4);const uint8_t* p=t_.pixels(t);for(int i=0;i<s*s*4;++i)master[i]=p[i];}
-  const auto drawn=resample(master.data(),s,s,4,w,h);
+  // A glyph larger than the template is compared at the template's own
+  // resolution, both drawn down to it: a template drawn up is blurred, and a
+  // sharp 30-pixel emoji would not fit it.
+  const double scale=std::max(w,h)>s?double(s)/std::max(w,h):1.0;
+  const int dw=std::max(4,int(std::lround(w*scale))),dh=std::max(4,int(std::lround(h*scale)));
+  const auto drawn=resample(master.data(),s,s,4,dw,dh);
+  // The glyph drawn down, once for every template and variant tried in this box.
+  if(scale<1&&!(seenBox_==b&&seenBg_.r==bg.r&&seenBg_.g==bg.g&&seenBg_.b==bg.b)){
+   const auto c=crop(image_,b,bg);seen_=resample(c.data(),w,h,3,dw,dh);seenBox_=b;seenBg_=bg;
+  }
+  const auto& seen=seen_;
   double sum=0,weights=0;const double bgc[3]={bg.r,bg.g,bg.b};
-  for(int y=0,i=0;y<h;++y)for(int x=0;x<w;++x,++i){
-   const int ix=b.x0+x,iy=b.y0+y;const bool inside=ix>=0&&iy>=0&&ix<image_.width&&iy<image_.height;
-   const uint8_t* q=inside?image_.row(iy)+3*ix:nullptr;
+  for(int y=0,i=0;y<dh;++y)for(int x=0;x<dw;++x,++i){
+   const int ix=b.x0+x,iy=b.y0+y;const bool inside=scale<1||(ix>=0&&iy>=0&&ix<image_.width&&iy<image_.height);
+   const uint8_t* q=scale<1||!inside?nullptr:image_.row(iy)+3*ix;
    const double a=drawn[4*i+3]/255.0;double diff=0;bool inked=false;
    for(int ch=0;ch<3;++ch){
-    const double have=inside?q[ch]:bgc[ch];
+    const double have=scale<1?double(seen[3*size_t(i)+ch]):inside?q[ch]:bgc[ch];
     diff+=std::abs(drawn[4*i+ch]+(1-a)*bgc[ch]-have);
     inked|=std::abs(have-bgc[ch])>0.1*255;
    }
@@ -437,7 +459,9 @@ private:
  const EmojiTemplates& t_;
  const EmojiOptions& o_;
  mutable std::map<int,std::vector<float>> masters_;
- struct Laid { int key=-1;Buffer<uint8_t> rgb; };
+ mutable Box seenBox_;
+ mutable Colour seenBg_;
+ mutable Buffer<float> seen_;
  mutable std::array<Laid,2> laid_;
  mutable int nextLaid_=0;
 public:
@@ -513,6 +537,9 @@ EmojiScan findEmoji(const ColourView& image,const EmojiTemplates& templates,cons
   if(int(candidates.size())>=options.maximumCandidates){scan.cut=true;break;}
   candidates.push_back({box,bg});
  }
+ // Glyphs on one background are matched together, so the templates are laid
+ // on each background once however a page mixes them.
+ std::stable_sort(candidates.begin(),candidates.end(),[](const Candidate& a,const Candidate& b){return Matcher::laidKey(a.bg)<Matcher::laidKey(b.bg);});
  Matcher matcher(image,templates,options);
  struct Found { Box box;double distance;int index; };
  Buffer<Found> found;
@@ -542,7 +569,7 @@ EmojiScan findEmoji(const ColourView& image,const EmojiTemplates& templates,cons
   letGo(candidate.box,candidate.box.side());
  }
  // One glyph reached from two seeds: the closer fit stays.
- std::sort(found.begin(),found.end(),[](const Found& a,const Found& b){return a.distance<b.distance;});
+ std::sort(found.begin(),found.end(),[](const Found& a,const Found& b){return std::tie(a.distance,a.box.y0,a.box.x0)<std::tie(b.distance,b.box.y0,b.box.x0);});
  Buffer<Found> kept;
  for(const auto& f:found){
   bool overlaps=false;
