@@ -329,6 +329,8 @@ void ErrorLogPage::showEntry(const QJsonObject& target) {
  ++selection_;
  if(!id.isEmpty()){wanted_=id;load();return;}
  if(historyId.isEmpty()&&operationId.isEmpty()){wanted_.clear();selected_={};load([this](Error e){if(!e&&!entries_.isEmpty())select(entries_.first().toObject()["id"].toString());});return;}
+ // An agent's selection still pending is superseded too: a reload meanwhile keeps the current row.
+ wanted_.clear();
  QJsonObject params{{"limit",1}};if(!historyId.isEmpty())params["historyId"]=historyId;if(!operationId.isEmpty())params["operationId"]=operationId;if(!kind.isEmpty())params["kind"]=kind;
  const auto ticket=++selection_;
  session_.request("errors.list",params,this,[g=QPointer<ErrorLogPage>(this),ticket](Error e,QJsonObject page){
