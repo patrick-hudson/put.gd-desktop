@@ -38,6 +38,12 @@ private slots:
   QCOMPARE(putgd::Settings::profileForDestination(s3,{otherBucket,readded})["id"].toString(),QString("new"));
   QVERIFY(putgd::Settings::profileForDestination(s3,{otherBucket,otherService}).isEmpty());
   QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
+  // A path compares exactly (a key must never go to another tenant's path); a custom uploader never moves.
+  const QJsonObject b2{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://API.example.com/Tenant-A"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","x"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant-a"},{"bucket","shots"}}}}}).isEmpty());
+  QCOMPARE(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","y"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/Tenant-A/"},{"bucket","shots"}}}}})["id"].toString(),QString("y"));
+  const QJsonObject http{{"providerId","custom-http"},{"profileId","gone"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(http,{QJsonObject{{"id","z"},{"provider","custom-http"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}}}).isEmpty());
  }
     void startupUnlockAndRecentColorPreferencesAreOptionalAndBounded() {
         auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};

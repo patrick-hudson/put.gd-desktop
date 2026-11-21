@@ -192,11 +192,10 @@ struct Settings {
     // every profile exactly once; nothing else in the document changes.
     static Error reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered);
     // The current destination that serves an upload's recorded destination (#1759): the same
-    // destination while it exists with the same service, else one of the same service that points
-    // at the same place (S3: endpoint and bucket; Cloudflare R2: account, jurisdiction and bucket;
-    // Backblaze B2: API address and bucket; Proton Drive: account and folder; a custom uploader:
-    // its request address). Empty when the destination was removed from Settings. `destination`
-    // is a receipt's Destination::toJson.
+    // destination while it exists with the same service, else, for S3, Cloudflare R2 and Backblaze
+    // B2 only, one of the same service that points at the same place (S3: endpoint and bucket; R2:
+    // account, jurisdiction and bucket; B2: API address and bucket). Empty when the destination was
+    // removed from Settings. `destination` is a receipt's Destination::toJson.
     static QJsonObject profileForDestination(const QJsonObject& destination, const QJsonArray& profiles);
 };
 }

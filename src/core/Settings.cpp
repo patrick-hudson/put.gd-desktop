@@ -4,6 +4,7 @@
 #include "TextJobProtocol.h"
 #include "UploadNaming.h"
 #include <QDir>
+#include <QUrl>
 #include <algorithm>
 #include <QJsonArray>
 #include <QKeySequence>
@@ -582,12 +583,21 @@ Settings Settings::fromValidated(const QJsonObject& original) {
 QJsonObject Settings::profileForDestination(const QJsonObject& destination, const QJsonArray& profiles) {
     const auto provider = destination["providerId"].toString(), id = destination["profileId"].toString();
     const auto recorded = destination["settings"].toObject();
+    // Only services whose deletion addresses the object by bucket and key with the destination's
+    // own credentials: a custom uploader's deletion URL or a Proton share is tied to an account
+    // put.gd can't check, so those never move to another destination.
     static const QHash<QString, QStringList> place{{"s3", {"endpoint", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
-                                                    {"backblaze-b2", {"apiUrl", "bucket"}}, {"proton-drive", {"accountRootUid", "folderUid"}},
-                                                    {"custom-http", {"requestUrl"}}};
+                                                    {"backblaze-b2", {"apiUrl", "bucket"}}};
     const auto value = [](const QJsonObject& settings, const QString& key) {
         auto text = settings[key].toString().trimmed();
-        if (key == "endpoint" || key == "apiUrl" || key == "requestUrl") { while (text.endsWith('/')) text.chop(1); text = text.toLower(); }
+        if (key == "endpoint" || key == "apiUrl") {
+            // Scheme and host compare without case; port and path exactly as the provider uses them.
+            QUrl url(text);
+            if (!url.isValid() || url.host().isEmpty()) return text;
+            auto path = url.path();
+            while (path.endsWith('/')) path.chop(1);
+            return url.scheme().toLower() + "://" + url.host().toLower() + (url.port() < 0 ? QString() : ":" + QString::number(url.port())) + path;
+        }
         return text;
     };
     for (const auto& entry : profiles) if (entry.toObject()["id"].toString() == id && entry.toObject()["provider"].toString() == provider) return entry.toObject();

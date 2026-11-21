@@ -1306,10 +1306,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(const auto& key:QStringList{"publicUrlBase","bucket","objectPrefix","endpoint"})connect(s3_[key],&QLineEdit::textChanged,this,[this]{if(!loading_&&updateProviderVisibility_)updateProviderVisibility_();});connect(r2AccountId_,&QLineEdit::textChanged,this,[this]{if(!loading_&&updateProviderVisibility_)updateProviderVisibility_();});
  connect(advanced,&QToolButton::toggled,this,[this]{updateProviderVisibility_();emit viewStateChanged();});connect(customEndpoint,&QCheckBox::toggled,this,[this]{updateProviderVisibility_();});
  connect(providerType_,&QComboBox::currentIndexChanged,this,&SettingsWindow::switchProvider);
- connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);
-  // How many History items went to the destination shown, for Remove destination's confirmation (#1759).
-  const auto profiles=candidate()["profiles"].toArray();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();
-  settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id](Error e,QJsonObject counts){if(g&&!e)g->uploadedCounts_[id]=counts["total"].toInt();});});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
+ connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);refreshUploadedCount();});
+ // Kept current while Destinations shows: a new upload or a History change counts at once.
+ connect(&settings_,&UiSession::statusChanged,this,[this]{if(destinationPage_&&destinationPage_->isVisible())refreshUploadedCount();});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
  connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination","This connection has not passed a test with its current settings. Use \""+profileLabel_->text()+"\" as the capture default? Per-action exceptions will stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
  connect(remove,&QPushButton::clicked,this,[this]{flushTyping();
  // #1759: the confirmation says how many History items went to it (counted when it was selected); their files stay there.
@@ -3401,7 +3400,7 @@ bool SettingsWindow::applyProtonAccountResult(const QString& id,const QJsonObjec
   }}
  refreshDestinationList();return true;
 }
-void SettingsWindow::activateDestinations(bool forceRefresh){
+void SettingsWindow::activateDestinations(bool forceRefresh){refreshUploadedCount();
  if(loading_||selectedDestinationChanged()||saving_||conflict_||initialProfile_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(providerType_->currentData()!="proton-drive"||protonAccountUid_.isEmpty())return;
  if(!settings_.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive"))return;
@@ -3686,5 +3685,11 @@ void SettingsWindow::reloadFromFile(){
 void SettingsWindow::fitRails(){
  const int width=Ui::railWidth();
  if(settingsRail_)settingsRail_->setFixedWidth(width);if(destinationRail_){int widest=0;const QFontMetrics name(Ui::labelFont(true)),state(Ui::font(Ui::Type::metadata));for(int row=0;row<destinationList_->count();++row){const auto lines=destinationList_->item(row)->text().split('\n');widest=qMax(widest,qMax(name.horizontalAdvance(lines.value(0)),state.horizontalAdvance(lines.value(1))));}const int natural=widest+2*space(Space::l)+28+Ui::scaled(Ui::Metric::icon)+10;destinationRail_->setFixedWidth(qBound(width,natural,width+2*space(Space::xl)));}
+}
+// How many History items went to the destination shown, for Remove destination's confirmation (#1759).
+void SettingsWindow::refreshUploadedCount(){
+ if(!destinationList_)return;const auto profiles=candidate()["profiles"].toArray();const int index=destinationList_->currentRow();if(index<0||index>=profiles.size())return;
+ const auto id=profiles[index].toObject()["id"].toString();
+ settings_.request("history.counts",{{"profileId",id},{"uploadStatus","uploaded"}},this,[g=QPointer<SettingsWindow>(this),id](Error e,QJsonObject counts){if(g&&!e)g->uploadedCounts_[id]=counts["total"].toInt();});
 }
 }

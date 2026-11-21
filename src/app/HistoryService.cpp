@@ -14,6 +14,9 @@
 #include <QUuid>
 namespace putgd {
 HistoryService::HistoryService(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
+ // Workers read the destinations through currentProfiles(); the accepted settings change here (#1759).
+ const auto keepProfiles=[this]{std::lock_guard lock(profilesMutex_);profiles_=operations_.settingsSnapshot().document["profiles"].toArray();};
+ keepProfiles();connect(&operations_,&OperationService::settingsAccepted,this,keepProfiles);
  connect(&operations_,&OperationService::sharingStopped,this,&HistoryService::recordStoppedSharing);
  notification_.setSingleShot(true);notification_.setInterval(25);connect(&notification_,&QTimer::timeout,this,&HistoryService::changed);
  retention_.setInterval(60*60*1000);connect(&retention_,&QTimer::timeout,this,&HistoryService::expireConfigured);connect(&operations_,&OperationService::initialized,this,&HistoryService::expireConfigured);retention_.start();if(operations_.ready())expireConfigured();
@@ -37,8 +40,15 @@ void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply(oper
 // Remove from History only (#1759): the local records go; the files stay where they were uploaded.
 void HistoryService::forget(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
- const auto path=operations_.databasePath();
- operations_.background([path,ids](Error& e){HistoryStore store(path);int removed=0;e=store.forget(ids,&removed);return QJsonObject{{"removed",removed}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});
+ const auto path=operations_.databasePath();const auto running=QSet<QString>(active_.keyBegin(),active_.keyEnd());
+ operations_.background([path,ids,running](Error& e){HistoryStore store(path);
+  // A deletion that ended (failed, unknown or pending) before any request checkpoint sent nothing
+  // that deletes: it no longer holds the record, so files #1759 stranded can go. A running one,
+  // or one whose checkpoint may have reached the server, keeps it.
+  for(const auto& id:ids){Error ignored;const auto data=store.detail(id,&ignored);const auto deletion=data["deleteOperationId"].toString();if(ignored||deletion.isEmpty()||running.contains(deletion))continue;
+   const auto doc=store.deletion(deletion,&ignored);if(ignored||doc["state"]=="running"||doc["state"]=="accepted")continue;
+   for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]==id&&QStringList{"failed","unknown","pending"}.contains(item["status"].toString())&&!item["progress"].toObject().contains("phase"))store.releaseDeletionTarget(deletion,id);}}
+  int removed=0;e=store.forget(ids,&removed);return QJsonObject{{"removed",removed}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});
 }
 void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.copyHistoryImage(id,std::move(reply));}
 QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
@@ -171,33 +181,35 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   if(seen.contains(id)) {e={"invalid_selection","Duplicate history ID",{}};return {};}seen.insert(id);
   auto data=store.detail(id,&e);if(e)return {};
   if(data["uploadStatus"]!="uploaded") {e={"delete_target_invalid","Only confirmed uploaded entries can be deleted",{{"historyId",id}}};return {};}
-  const auto remote=data["remoteStatus"].toString();if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
   auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());if(auto error=receipt.validate()) {e=error;return {};}
-  auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
-  // #1759: the destination it went to may be gone from Settings, or added back under another
-  // ID for the same place, whose credentials then do the deleting.
+  const auto remote=data["remoteStatus"].toString();
+  // #1759: a removed destination is said before anything else, even after an earlier attempt
+  // that failed or ended unknown; this preview offers Remove from History only, never a deletion.
   const auto current=Settings::profileForDestination(receipt.destination.toJson(),profiles);
-  if(current.isEmpty()){targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
+  if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
+  if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
+  auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
+  // A destination added back for the same place under another ID deletes it with its own
+  // credentials when the deletion runs (runDelete); the receipt stays as recorded.
   QJsonObject target{{"historyId",id}};
-  if(current["id"].toString()!=receipt.destination.profileId){target["recordedProfileId"]=receipt.destination.profileId;receipt.destination.profileId=current["id"].toString();receipt.destination.credentialReference=current["credentials"].toObject();}
+  if(current["id"].toString()!=receipt.destination.profileId)target["currentProfileId"]=current["id"];
   auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This provider can't safely delete this recorded object"):caps.removeUnavailable,{{"historyId",id}}};return {};}
   target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;targets.append(target);
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
  return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
 }
-void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();operations_.background([this,ids,profiles](Error& e) {return prepare(ids,profiles,e);},reply);}
+void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.background([this,ids](Error& e) {return prepare(ids,currentProfiles(),e);},reply);}
 namespace {Error quittingError() {return {"cancelled","put.gd is quitting; delete or retry after it starts again",{}};}}
 void HistoryService::stopDeletions() {quitting_->store(true);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {
  if(quitting_->load()) {reply(quittingError(),{});return;}
- const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();
- operations_.background([this,ids,acknowledgement,profiles](Error& e) {auto preview=prepare(ids,profiles,e);if(e)return QJsonObject{};
+ operations_.background([this,ids,acknowledgement](Error& e) {auto preview=prepare(ids,currentProfiles(),e);if(e)return QJsonObject{};
   // Nothing is deleted while any target's destination is gone (#1759): the preview offered Remove from History only.
   for(const auto& target:preview["targets"].toArray())if(target.toObject()["destinationRemoved"].toBool()){e=destinationRemovedError(target.toObject()["historyId"].toString());return QJsonObject{};}if(acknowledgement.isEmpty()||preview["acknowledgement"]!=acknowledgement) {e={"delete_confirmation_changed","Acknowledge the current exact target set and effect",{}};return QJsonObject{};}
   QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};items.append(item);}
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},{"state","accepted"},{"acknowledgement",acknowledgement},{"items",items},{"cancelled",false}};
-  HistoryStore store(operations_.databasePath());e=store.saveDeletion(doc);return doc;
+  HistoryStore store(operations_.databasePath());e=store.saveDeletion(doc,true);return doc;
  },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}notifyChanged();
   // Accepted but not started: the next start recovers it as interrupted.
   if(quitting_->load()) {reply(quittingError(),{});return;}
@@ -233,7 +245,7 @@ void HistoryService::changeSharing(const QString& historyId,const QString& actio
   // A create without options keeps the ones the upload asked for, such as a diagnostics link's expiry (#1496).
   const auto chosen=action=="create"&&options.isEmpty()&&item["shareIntent"]=="create"?item["shareIntentOptions"].toObject():options;
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"historyId",historyId},{"action",action},{"options",chosen},{"state","accepted"},{"status","pending"},{"receipt",receipt.toJson()},{"progress",QJsonObject{}}};
-  e=store.saveSharing(doc);return doc;
+  e=store.saveSharing(doc,true);return doc;
  },[this,reply,stopped](Error e,QJsonObject doc){
   if(e){reply(e,{});return;}for(auto it=stopped.begin();it!=stopped.end();++it)stoppedSharing_.remove(it.key());const auto id=doc["id"].toString();auto cancelled=std::make_shared<std::atomic_bool>(false);active_.insert(id,cancelled);notifyChanged();
   reply({},{{"shareOperationId",id},{"sharing",doc}});runSharing(doc,cancelled);
@@ -267,14 +279,13 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
  });
 }
 void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool> cancelled) {
- const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();
  // Provider checkpoints can run on a different worker. Queue a coalesced
  // metadata invalidation only after the durable transaction commits.
  const auto committed=[owner=QPointer<HistoryService>(this)] {
   if(owner)QMetaObject::invokeMethod(owner,[owner]{if(owner)owner->notifyChanged();},Qt::QueuedConnection);
  };
  const auto quitting=quitting_;
- operations_.background([this,doc,cancelled,committed,quitting,profiles](Error& error) mutable {
+ operations_.background([this,doc,cancelled,committed,quitting](Error& error) mutable {
   const auto path=operations_.databasePath();HistoryStore store(path);doc["state"]="running";if((error=store.saveDeletion(doc)))return doc;committed();
   auto items=doc["items"].toArray();
   for(int index=0;index<items.size();++index) {
@@ -282,17 +293,23 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    if(cancelled->load()) {doc["cancelled"]=true;break;}
    // Quit: the rest is left as journaled; the next start recovers it as interrupted.
    if(quitting->load())return doc;
-   const auto receipt=StorageReceipt::fromJson(item["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
+   auto receipt=StorageReceipt::fromJson(item["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
    Error e;QString outcome;QJsonObject progress=item["progress"].toObject();
+   // #1759: the destination serving this receipt now, read for each item, since Settings can change mid-batch.
+   const auto current=Settings::profileForDestination(receipt.destination.toJson(),currentProfiles());
    if(!provider) {e={"provider_unavailable","Restore access to the recorded destination",{}};outcome="failed";}
-   // Removed from Settings since it was prepared (#1759): said plainly, not as credentials not loaded.
-   else if(Settings::profileForDestination(receipt.destination.toJson(),profiles).isEmpty()) {e=destinationRemovedError(item["historyId"].toString());outcome="failed";}
+   // Removed from Settings (#1759): said plainly, not as credentials not loaded. An earlier outcome that still
+   // needs reconciling (unknown, a version left) and its checkpoint are kept; only a pending item becomes failed.
+   else if(current.isEmpty()) {e=destinationRemovedError(item["historyId"].toString());outcome=status=="pending"?QStringLiteral("failed"):status;}
    else if(!provider->receiptCapabilities(receipt).safeRemoval()) {e={"unsupported_capability","This provider can't safely delete this recorded target",{}};outcome="failed";}
    else {
     // Another job on the same object (a link refresh, a sharing change) may hold it on
     // a stalled request: Quit stops this wait and leaves the item as it was.
     auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock,std::defer_lock);
     while(!guard.try_lock_for(std::chrono::milliseconds(100)))if(quitting->load())return doc;
+    // A destination added back for the same place under another ID deletes with its own credentials;
+    // the journal keeps the recorded receipt, and every check below compares against this one.
+    if(current["id"].toString()!=receipt.destination.profileId){receipt.destination.profileId=current["id"].toString();receipt.destination.credentialReference=current["credentials"].toObject();}
     const bool driverReconciles=provider->reconcilesDeleteProgress() && progress.contains("phase");
     // A reference the upload returned addresses exactly that upload: there is nothing to stat (#1361).
     const bool byReference=provider->receiptCapabilities(receipt).referenceDelete;

@@ -45,9 +45,12 @@ public:
  Error clear(); // preserves any identities retained by in-progress deletion
  // Removes these records from History the way clear() removes all of them (#1759).
  Error forget(const QStringList& ids,int* removed=nullptr);
- Error saveDeletion(const QJsonObject&);
+ // A settled deletion that sent nothing no longer holds this record (Remove from History only, #1759).
+ Error releaseDeletionTarget(const QString& deletionId,const QString& historyId);
+ // requireRecords: a new deletion, recorded only while each of its records is still in History (#1759).
+ Error saveDeletion(const QJsonObject&,bool requireRecords=false);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
- Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
+ Error saveSharing(const QJsonObject&,bool requireRecord=false); // journal and effective receipt in one transaction
  QJsonObject sharing(const QString&,Error* = nullptr) const;
  // Record a successful explicit link copy without rewriting item/deletion ledgers
  // or claiming that a copied subset recovered an entire batch.

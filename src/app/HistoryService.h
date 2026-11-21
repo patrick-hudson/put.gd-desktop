@@ -62,5 +62,8 @@ private:
  std::shared_ptr<std::atomic_bool> quitting_=std::make_shared<std::atomic_bool>(false);
  // Stopped jobs whose last state could not be committed. Never replay a mutation.
  QHash<QString,QJsonObject> stoppedSharing_;
+ // The accepted destinations, for workers (#1759): copied here when Settings change.
+ mutable std::mutex profilesMutex_;QJsonArray profiles_;
+ QJsonArray currentProfiles() const {std::lock_guard lock(profilesMutex_);return profiles_;}
 };
 }

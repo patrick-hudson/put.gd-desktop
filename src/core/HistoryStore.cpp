@@ -394,10 +394,18 @@ Error HistoryStore::forget(const QStringList& ids,int* removed) {
 }
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"delete_not_found","Deletion not found",{}};return {};}return decode(q.value(0));}
-Error HistoryStore::saveDeletion(const QJsonObject& doc) {
+Error HistoryStore::releaseDeletionTarget(const QString& deletionId,const QString& historyId) {
+ if(error_)return error_;
+ QSqlQuery q(db_);q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletionId);q.addBindValue(historyId);
+ return q.exec()?Error{}:sqlError();
+}
+Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
  if(error_) return error_;
  if(!db_.transaction()) return sqlError();
- QSqlQuery q(db_);q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(doc["id"].toString());q.addBindValue(encode(doc));bool ok=q.exec();
+ QSqlQuery q(db_);
+ // A new deletion records its intent only while every record is still in History, in the same
+ // transaction, so Remove from History only can't race it (#1759).
+ if(requireRecords)for(const auto& v:doc["items"].toArray()){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(v.toObject()["historyId"].toString());if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{{"historyId",v.toObject()["historyId"]}}};}}q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(doc["id"].toString());q.addBindValue(encode(doc));bool ok=q.exec();
  for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool active=status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained";
   q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(doc["id"].toString());q.addBindValue(item["historyId"].toString());q.addBindValue(active?1:0);ok=q.exec();
   if(ok) {q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(item["historyId"].toString());ok=q.exec();if(ok&&q.next()){auto data=decode(q.value(0));data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=doc["id"];data["deleteProgress"]=item["progress"];ok=persistRemote(db_,item["historyId"].toString(),data);}}
@@ -411,13 +419,16 @@ QJsonObject HistoryStore::sharing(const QString& id,Error* error) const {
  if(!q.next()){if(error)*error={"share_not_found","Sharing operation not found",{}};return {};}
  return decode(q.value(0));
 }
-Error HistoryStore::saveSharing(const QJsonObject& doc) {
+Error HistoryStore::saveSharing(const QJsonObject& doc,bool requireRecord) {
  if(error_)return error_;
  const auto id=doc["id"].toString(),historyId=doc["historyId"].toString();
  const auto receipt=StorageReceipt::fromJson(doc["receipt"].toObject());
  if(id.isEmpty()||historyId.isEmpty()||receipt.validate())return {"share_journal_invalid","Incomplete sharing intent",{}};
  if(!db_.transaction())return sqlError();
- QSqlQuery q(db_);q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
+ QSqlQuery q(db_);
+ // As for a deletion: a new link change only for a record still in History (#1759).
+ if(requireRecord){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(historyId);if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{}};}}
+ q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
  if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","Uploaded item ledger not found",{}};}
  auto remote=decode(q.value(0));
  // Remember a create until it is confirmed shared or explicitly abandoned.
