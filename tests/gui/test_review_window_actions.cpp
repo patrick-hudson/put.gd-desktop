@@ -18,12 +18,21 @@ void ctrlEnter(ReviewWindow& window) {
     QFAIL("no Ctrl+Enter shortcut");
 }
 // A double-click's second press (Qt sends it as MouseButtonDblClick) and its
-// release, after an ordinary click on the same button.
+// release, after an ordinary click on the same button, with no event-loop
+// turn in between (U1).
+// A left release delivered at once (no event-loop turn), inside the button or at `at`.
+void releaseNow(QWidget* button, std::optional<QPoint> at = std::nullopt) {
+    const QPointF p = at ? QPointF(*at) : button->rect().center();
+    QMouseEvent release(QEvent::MouseButtonRelease, p, button->mapToGlobal(p), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &release);
+}
 void doubleClickTail(QWidget* button) {
     const QPointF at = button->rect().center();
     QMouseEvent second(QEvent::MouseButtonDblClick, at, button->mapToGlobal(at), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
     QApplication::sendEvent(button, &second);
-    QTest::mouseRelease(button, Qt::LeftButton);
+    // Whatever the first release queued runs before the second release.
+    QCoreApplication::processEvents();
+    releaseNow(button);
 }
 QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
     QJsonObject a{{"proposal", double(proposal)}};
@@ -1601,7 +1610,7 @@ private slots:
         QTest::mousePress(save, Qt::LeftButton);
         QCOMPARE(proposals.size(), before + 1);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "recording_cut_empty"));
-        QTest::mouseRelease(save, Qt::LeftButton);
+        releaseNow(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
         QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
         // U1: a double-click's second press and release open nothing either.
@@ -1634,7 +1643,7 @@ private slots:
         QCOMPARE(proposals.size(), 1);
         QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), 9000000.0);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
-        QTest::mouseRelease(upload, Qt::LeftButton);
+        releaseNow(upload);
         QCOMPARE(uploads.size(), 0);
         QVERIFY(!window.inspect()["uploadWaiting"].toBool());
         QVERIFY2(window.inspect()["status"].toString().contains("Nothing was uploaded"), qPrintable(window.inspect()["status"].toString()));
@@ -1667,8 +1676,8 @@ private slots:
         QTest::mousePress(upload, Qt::LeftButton);
         QCOMPARE(proposals.size(), 1);
         window.setEdit(edit, answer(proposals.last().at(2).toULongLong(), "invalid_request"));
-        QTest::mouseRelease(upload, Qt::LeftButton, {}, QPoint(-40, -40));
-        QCoreApplication::processEvents();
+        // No event-loop turn between the outside release and the Enter (U2).
+        releaseNow(upload, QPoint(-40, -40));
         QCOMPARE(uploads.size(), 0);
         upload->setFocus(Qt::TabFocusReason);
         QTest::keyClick(upload, Qt::Key_Return);  // Enter on a focused Upload
