@@ -42,9 +42,10 @@ What it does not do:
    one that every action gets, so it does not say that the capture copies text. The capture delay, the "Also delay captures started by a
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
-3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first and fills their areas
-   with the background, names the emoji it finds in the colour (see [emoji](#emoji)), then
-   recognizes the text and puts each emoji in place of what it read there.
+3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first, names the emoji it finds
+   in the colour plane, leaving out any inside a decoded code (see [emoji](#emoji)), then
+   recognizes the text in grey copies with the codes' areas filled with the background, and puts
+   each emoji in place of what it read there.
 4. **Copy.** One plain-text clipboard write, then one desktop notification:
 
    | Found | Clipboard | Notification |
@@ -112,7 +113,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 
 | Step | Rule |
 | --- | --- |
-| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane once, row by row, and lets each run of rows go as it passes them, so the colour plane never sits whole in its resident set |
+| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each glyph it matches, and lets those go too, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
 | Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
@@ -178,10 +179,10 @@ banded, parallel recognition, and all of them fail.
 
 | Bound | Value |
 | --- | --- |
-| Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey that is at most 24 MiB, shared through the memfd. For a PNG the resident also applies the configured image limits |
+| Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey and 8-bit RGB that is a memfd of at most 96,000,032 bytes: the 32-byte header, 24,000,000 bytes of grey and 72,000,000 of colour. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
-| Emoji | At most 512 colour glyphs are looked at, the largest first, and the scan stops 3 seconds after the job starts, checked while it reads rows, groups and matches. What it found stays |
+| Emoji | At most 512 candidate glyphs are matched, and the scan reads at most 1,048,576 runs of colour pixels over all its passes. It stops once 3 seconds have passed since the job started (reading codes counts), checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 128 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
 
@@ -332,14 +333,16 @@ glued to the word beside it, or nothing: "🎉" became `&`, "I ❤️" became `I
 became `6S` ([#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748)). The
 helper finds emoji in the colour plane and names them itself, from templates built into it.
 
-- **The templates.** Every fully-qualified emoji of Unicode Emoji 16.0 as Noto Color Emoji
-  2.051 draws it (3,781) and as Twemoji Mozilla 0.7.0 draws it (3,417). Noto Color Emoji is the
+- **The templates.** The fully-qualified emoji of Unicode Emoji 16.0 that a font draws as one
+  glyph: all 3,781 as Noto Color Emoji 2.051 draws them, and 3,417 as Twemoji Mozilla 0.7.0
+  does. Noto Color Emoji is the
   emoji font of every supported distribution, so it is what GTK, Qt, Chromium, terminals and the
   distributions' Firefox packages draw. Mozilla's own Firefox builds draw emoji with Twemoji
   Mozilla, the same file in Firefox ESR 153 and Firefox 158 and 159, and Discord shows Twemoji
   pictures. Noto redraws some emoji in each release, so the emoji that Noto 2.047 (Ubuntu 24.04,
   Linux Mint 22) and 2.057 (Fedora 44 and 45, Aurora) draw differently from 2.051 are templates
-  too (445 and 291; 2.057 drew a new 🚀). Qt draws a COLRv1 font such as 2.057 itself and leaves
+  too (445 and 291; 2.057 drew a new 🚀). Each later set keeps only drawings that differ by more
+  than 0.03 from every template kept before it. Qt draws a COLRv1 font such as 2.057 itself and leaves
   out some of its shading (flags and 🍳 come out flat), so the 261 emoji Qt 6.11 draws
   differently are templates as well: a Plasma desktop on Fedora or Aurora shows those. Each
   template is the glyph's ink box stretched to 20 by 20 and to 10 by 10 pixels, premultiplied
@@ -365,9 +368,10 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   gradient) and is skipped. A core larger than 160 pixels is a coloured region, not a glyph:
   when three quarters of it is one colour (a chat bubble, a coloured panel), it is read again
   with colour meaning colour that is not the region's own, so the emoji in a blue or green
-  bubble are found. The box then grows to the ink touching it, by at most 30 percent of
-  its side, so the parts with no colour (outlines, white eyes) join it. A glyph's larger side is
-  10 to 160 pixels.
+  bubble are found. The box then grows to the ink touching it, on each edge by at most 30
+  percent of the core's larger side (whole pixels) plus 2, so the parts with no colour
+  (outlines, white eyes) join it. The grown box's larger side must be 10 to 160 pixels and its
+  shorter side at least 4.
 - **Naming it.** Templates whose share of colour pixels is within 0.35 of the glyph's are
   compared with the glyph stretched to 10 by 10, each laid on the glyph's background, by summed
   byte differences. A template's share is counted as it shows on that background, among the
@@ -388,8 +392,8 @@ helper finds emoji in the colour plane and names them itself, from templates bui
 - **When it is named.** The best template's difference must be at most 0.09, and at most a
   quarter of that template's contrast with the background, its mean colour distance from the
   background over its opaque pixels. A dark template on a dark page, or a pale one on white,
-  stands out too little to tell from a faint coloured letter: on the corpus every glyph that was
-  named but was no emoji was such a fit, a new moon or a dark-skinned face matched to a dim
+  stands out too little to tell from a faint coloured letter: without this rule, on the corpus,
+  every glyph that was named but was no emoji was such a fit, a new moon or a dark-skinned face matched to a dim
   coloured letter of code. A glyph whose closest template is more than 0.18 away even
   stretched is not drawn at its own size, which spares most coloured letters the costly step.
 - **Where it goes.** After recognition, the characters the glyph covers (at least 40 percent of
@@ -399,10 +403,12 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   the paragraph that way), or of a line of its own after the last line above it. With a gap of
   under a quarter of its height to a neighbour it joins that neighbour with no space
   ("Hello👋"): a glued emoji's gap was a median 0.15 of its height, and one after a space 0.25 or
-  more for 247 of 248. A join counts only while that neighbour is copied too. Lines are chosen
-  by their boxes as recognition gave them, so an emoji placed on a line does not draw the next
-  emoji into it from the line below or the next column; a line of emoji alone reaches as far as
-  its emoji, so a row of them stays one line. A colour glyph inside a decoded code (a logo in a
+  more for 247 of 248. A join counts only while that neighbour is copied too. A line qualifies
+  when its height and the glyph's overlap by 40 percent of the shorter of the two. Its height is
+  always the one recognition gave it, so an emoji placed on a line does not stretch it towards
+  the line below. Across, a line of text is first measured by its recognized box, and a line of
+  emoji alone by its emoji, so a row of them stays one line; only when no line qualifies that
+  way is a line of text measured with its emoji too. A colour glyph inside a decoded code (a logo in a
   QR code) is not named: the code is copied as its own line. An
   emoji is always copied, whatever the copy filter would make of its pixels. Agents get it as a
   word with its glyph's box, the editor shows and selects it as a word, and Quick redact sees
@@ -413,16 +419,16 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   read are given back before recognition reaches its peak, and its large working buffers come
   straight from the kernel, so a freed one does not raise glibc's mmap threshold for
   Tesseract's buffers after it.
-- **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them, ☁️
-  and ☕ as Twemoji does) has no colour core, so it is not found and Tesseract's reading of it
+- **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them)
+  has no colour core, so it is not found and Tesseract's reading of it
   stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
   another design (Slack, Signal and Telegram Desktop draw Apple-like ones) are named only where
   their pictures happen to look like Noto's or Twemoji's. Skin tones next to each other and the
   man, woman and person forms of one emoji differ by a few pixels at text size and are
-  sometimes swapped. A flag under about 20 pixels wide (a text editor's default size) is too
-  small to name: its fine lines blur, and Qt drawing a COLRv1 font (Aurora's KWrite) aliases
-  them. Noto's ☕, a white cup, on a white page at 150% zoom fits within 0.09 but stands out too
-  little for the contrast rule. Both are left as Tesseract read them.
+  sometimes swapped. Small flags can be missed: 🇬🇧 at the tested editors' default size was
+  missed on all five lab desktops. Noto's ☕, a white cup, on a white page at 150% zoom fits
+  within 0.09 but stands out too little for the contrast rule. Both are left as Tesseract read
+  them.
 - **Desktop acceptance** (round 2, the five lab desktops, real region selector and clipboard):
   185 of 195 expected emoji came through in Firefox at 100% and 150% and in each desktop's
   editor, none named wrong. The ten missed were 🇬🇧 at the editors' default size and ☕ at 150%
@@ -1246,7 +1252,9 @@ desktop), every one of the 24 item pages covered 17 of 17, the hashes page 30 of
 ### Emoji quality and cost
 
 Measured for [#1748](https://github.com/patrick-hudson/put.gd-desktop/issues/1748) through the
-whole pipeline (release build, Tesseract 5.5.0, d69) at the merged head. "Common" is a fixed
+whole pipeline (release build, Tesseract 5.5.0, d69) on PR #1751's build at `648946bf3`. The
+commits after it change only where emoji go in edge cases; at `a1f63c3fc` the named emoji are
+the same on these sets. "Common" is a fixed
 list of 200 emoji people use most; the rest were drawn at random from all 3,781.
 
 | Set | Emoji | Common named right | Common wrong | Others right | Named where there was none |
@@ -1282,8 +1290,8 @@ and 54 and 56 wrong, and the third 1,268 right.
   emoji 48.4 against 48.2, a Firefox page 78.5 against 78.4, coloured code 102.3 against 102.2,
   the dense terminal 123.0 against 122.7, a GNOME 4K screen 93.3 against 92.0, a 4K page of about
   600 emoji 91.5 against 89.1, 24 megapixels of colour noise 111.8 against 124.0, and a dense
-  24-megapixel page of text 134.9 against 134.3 (127.5 to 134.9 run to run). The emoji pass adds
-  at most 2.5 MiB; Tesseract's peak is still the job's. The time it adds is 34 ms on a
+  24-megapixel page of text 134.9 against 134.3 (127.5 to 134.9 run to run). The largest increase
+  among these medians is 2.4 MiB. The time added is 34 ms on a
   paragraph, 0.3 seconds on coloured code, 0.5 seconds on the dense terminal, 0.6 seconds on a
   4K screen and 1.4 seconds on the 4K emoji page. The dense 24-megapixel page is above the 128
   MiB budget on the nightly head too.
@@ -1321,8 +1329,8 @@ and 54 and 56 wrong, and the third 1,268 right.
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
-- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them, ☁️ and ☕ as Twemoji does) are
-  not found, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
+- Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found, nor are small
+  flags at a text editor's default size or Noto's ☕ on white at 150% zoom, plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
   draws in its own design are named only where they look like Noto's or Twemoji's. Neighbouring
   skin tones, and the man, woman and person forms of one emoji, are sometimes swapped at text
   size. See [emoji](#emoji).
