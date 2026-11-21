@@ -158,6 +158,9 @@ QString requestGuidance(const QString& name, int status, S3Stage stage, int curl
     if (status == 403) return deniedGuidance(stage);
     if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
     if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
+    // A request that sends a file has no request timeout (#1758): it ends on a stall.
+    if (curlCode == 28 && (stage == S3Stage::UploadPut || stage == S3Stage::UploadPart))
+        return "The upload stalled or couldn't connect in time. Check the network and endpoint, or lower Minimum transfer speed, lengthen Low-speed window or raise Connect timeout in Advanced connection settings.";
     if (curlCode == 28 || name == "RequestTimeout") return "The S3 request timed out. Check the network and endpoint, or increase the connection/request deadlines in Advanced connection settings.";
     if (curlCode == 35 || curlCode == 60) return "The secure connection to S3 failed. Check the endpoint, system clock and trusted certificates, including any proxy certificate.";
     if (name == "SlowDown" || status == 429) return "S3 is limiting requests. Wait before retrying and reduce concurrent uploads if this continues.";
@@ -1396,8 +1399,10 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         const auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
-        // A 408 doesn't prove the service refused the synthetic file (#1690).
-        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408);
+        // A 408 doesn't prove the service refused the synthetic file (#1690). A request cut on
+        // Cancel proves nothing either, even with the status of a reply that arrived first.
+        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408) ||
+                             stopped(request.cancellation);
         if (!unclear && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;

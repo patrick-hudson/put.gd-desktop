@@ -139,31 +139,20 @@ private slots:
         QCOMPARE(f.events("PUT")[0].toObject()["bodySha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));
     }
     // #1758: an attempt cut before S3 had the whole file can't have stored it, so three of them
-    // end failed with nothing to reconcile. Once a whole file went out without a reply, the
-    // upload is never reported failed: S3 may have stored it.
-    void stalledUploadFailsOnlyWhenNoAttemptSentTheWholeFile_data() {
-        QTest::addColumn<QJsonObject>("reset");QTest::addColumn<bool>("failed");
-        QTest::newRow("stalled-mid-file")<<QJsonObject{{"putPace",QJsonObject{{"stallAfter",65536},{"stallSeconds",3}}}}<<true;
-        QTest::newRow("reply-lost")<<QJsonObject{{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"delay",2.5},{"remaining",3}}}}}<<false;
-    }
-    void stalledUploadFailsOnlyWhenNoAttemptSentTheWholeFile() {
-        QFETCH(QJsonObject,reset);QFETCH(bool,failed);
+    // end failed with nothing to reconcile. (Attempts that sent the whole file stay unknown:
+    // boundedTransientAttemptsKeepWireIdentity.)
+    void stalledUploadFailsWhenNoAttemptSentTheWholeFile() {
         S3Fixture f;
-        f.reset(reset);
+        f.reset({{"putPace",QJsonObject{{"stallAfter",65536},{"stallSeconds",3}}}});
         // Larger than the socket buffers between the client and the server, so a stalled
         // server leaves most of the file unread by the transport.
         const auto request=f.request("stalled.bin",QByteArray(16*1024*1024,'t'));
         f.control("/__clear_events",{},true);
         const auto result=f.upload(request);
-        if(failed){
-            QCOMPARE(result.status,QString("failed"));
-            QCOMPARE(result.error.code,QString("s3_upload_interrupted"));
-            QVERIFY(f.events("HEAD").isEmpty());
-            for(const auto& versions:f.state()["objects"].toObject())QVERIFY(versions.toArray().isEmpty());
-        }else{
-            QVERIFY2(result.status=="uploaded"||result.status=="unknown",qPrintable(result.status));
-            if(result.status=="unknown")QCOMPARE(result.error.code,QString("publication_unknown"));
-        }
+        QCOMPARE(result.status,QString("failed"));
+        QCOMPARE(result.error.code,QString("s3_upload_interrupted"));
+        QVERIFY(f.events("HEAD").isEmpty());
+        for(const auto& versions:f.state()["objects"].toObject())QVERIFY(versions.toArray().isEmpty());
     }
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;
@@ -268,6 +257,10 @@ private slots:
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"status", 500}, {"code", "InternalError"}, {"remaining", 3}}}}});
         const auto result = f.upload(request);
         QCOMPARE(result.status, QString("unknown"));
+        // #1758: each attempt sent the whole file, so S3 may hold it; the error says why.
+        QCOMPARE(result.error.code, QString("publication_unknown"));
+        QVERIFY(result.error.message.contains("Last attempt:"));
+        QCOMPARE(result.error.details["httpStatus"].toInt(), 500);
         const auto events = f.events("PUT");
         QCOMPARE(events.size(), 3);
         for (const auto& value : events) {

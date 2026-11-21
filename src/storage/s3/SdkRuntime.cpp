@@ -84,7 +84,7 @@ Aws::Utils::Logging::LogLevel sdkLevel(SdkRuntime::LogLevel level) {
 thread_local bool destructiveRequest = false;
 // SdkRuntime::SingleSendScope: requests from this thread go out once, on a new connection.
 thread_local bool singleSendRequests = false;
-// The request on this thread sends a body: a file or a part (#1758).
+// The request on this thread sends a file or a part: a PUT with a body (#1758).
 thread_local bool bodyRequest = false;
 // The request on this thread whose continue handler can cut it (#203).
 thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
@@ -142,7 +142,8 @@ public:
                 continuableRequest = previousContinuable;
             }
         } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE || singleSendRequests,
-                request->GetContentBody() && request->HasContentLength() && sendsBytes(request->GetContentLength()),
+                request->GetMethod() == Aws::Http::HttpMethod::HTTP_PUT && request->GetContentBody() &&
+                    request->HasContentLength() && sendsBytes(request->GetContentLength()),
                 request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
@@ -162,7 +163,7 @@ protected:
         if (singleSendRequests) curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 0L);
         // The request timeout caps a whole exchange, so a file that takes longer to send
         // than it could never upload, and each attempt started again from its first byte
-        // (#1758). A request that sends a body runs while the transfer keeps moving: the
+        // (#1758). A PUT that sends a body runs while the transfer keeps moving: the
         // low-speed limit, at least 1 byte/s for the low-speed window, ends one whose body
         // or reply stalls. The handle is reset when it returns to the pool, so this and the
         // options below stay per request.
