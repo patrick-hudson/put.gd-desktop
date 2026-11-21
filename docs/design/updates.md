@@ -133,14 +133,27 @@ installs on its own: not on the daily check, not from a notification.
    `SHA256SUMS.minisig`, from `pkg.put.gd`. The signature must be by the channel's release key
    (built into put.gd from `packaging/linux/repo/keys/`) and name that release. An unsigned,
    foreign-signed or changed `SHA256SUMS` stops the install.
-2. **zsync first:** with `appimageupdatetool` (or `zsync2`) on your `PATH`, put.gd runs it, which
-   downloads only the parts that changed. It runs with your system's own environment and
-   `SSL_CERT_FILE` set to your system's CA bundle (so it also works on Fedora,
-   [#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)), on a link to the running
-   image inside a hidden folder `.putgd-update-XXXXXX` beside it, against the release's `.zsync`
-   on `pkg.put.gd`.
-3. **Otherwise the whole file:** without such a tool, or when it fails, stalls or produces
-   something else, put.gd downloads the whole AppImage from `pkg.put.gd` with its own TLS. It
+2. **zsync first:** put.gd downloads only the parts that changed, with its own zsync client
+   and its own TLS ([#1766](https://github.com/patrick-hudson/put.gd-desktop/issues/1766)). It
+   reads the release's `.zsync` from `pkg.put.gd` and uses it only when its SHA-256 matches its
+   line in the signed `SHA256SUMS`. Then it reads the running AppImage and copies the blocks of
+   the new version it can match there, at any offset, into a new file in a hidden folder
+   `.putgd-update-XXXXXX` beside it. With the `.zsync` files put.gd publishes, a match has to
+   start with two blocks in a row, as in zsync, so some unchanged blocks between changes may
+   still be downloaded. The blocks it couldn't reuse come from the
+   image on `pkg.put.gd` with HTTP Range requests (up to 32 runs each, four at a time). Each
+   fetched block must match its checksum in the `.zsync`, and the whole file the `.zsync`'s
+   SHA-1. The zsync update has 15 minutes, counted from the start of the install child. put.gd
+   checks that deadline while it reads the `.zsync`, reads the running image, fetches and checks
+   the ranges, and before the SHA-1 check; when a check finds it has passed, `auto` falls back to
+   the whole file. The SHA-1 and the final checks of a finished zsync file can run a little past
+   it. The whole install still has to finish within the one hour put.gd gives it. In the two
+   real updates below it downloaded 12.3 MB and 22.0 MB of a 158 MB image.
+   Settings shows "Finding the parts this version already has", then "Downloading only what
+   changed", with how much was reused once that is more than nothing. No `appimageupdatetool`
+   or `zsync2` is needed, and put.gd no longer runs one if it is installed.
+3. **Otherwise the whole file:** when zsync can't finish, put.gd downloads the whole AppImage
+   from `pkg.put.gd` with its own TLS. It
    tries the GitHub release next when `pkg.put.gd` doesn't have the image, the transfer fails,
    the file is shorter or larger than the update feed says, or its SHA-256 differs from
    `SHA256SUMS`. A file from GitHub whose SHA-256 differs stops the install. Settings names the
@@ -148,7 +161,45 @@ installs on its own: not on the daily check, not from a notification.
    `update.status`'s `install.result` carries `method`, `source` and the download attempts
    (`downloads`), plus `zsync.fallbackReason` when an automatic zsync try fell back. When neither
    source delivers the file (`update_download_failed`), `install.error.details.attempts` lists
-   both attempts.
+   both attempts. `method: zsync` never falls back: the install stops with
+   `update_zsync_failed`, and the reason is at `install.error.details.zsync.fallbackReason`.
+   The reasons, by where zsync stopped:
+   - Reading the `.zsync`: `mirror_invalid` (put.gd couldn't build a valid `pkg.put.gd` address
+     for the `.zsync` or the image),
+     `control_unlisted` (the signed `SHA256SUMS` doesn't list it), `mirror_unavailable`,
+     `control_too_large` (over 8 MiB), `control_sha256_mismatch`, `bad_header`,
+     `unsupported_hash_lengths`, `unsupported_header` (a field put.gd doesn't know and the file
+     doesn't mark safe to ignore, or a recompressed target), `bad_records` and
+     `control_mismatch` (another file name or length than the release's).
+   - Reading the running image or writing the new file: `seed_unreadable` and `write_failed`.
+   - Fetching the ranges: `range_refused` (the server answered with the whole file; put.gd
+     aborts it at once), `range_failed` (a missing or unexpected HTTP status, found at the first
+     body bytes or when the reply ends),
+     `range_invalid` (range headers, multipart framing or byte bounds that don't fit what was
+     asked for), `range_too_large` (more bytes
+     than were asked for, plus room for each part's headers), `range_short`, `range_checksum`
+     (a block that doesn't match the `.zsync`), `range_network` (a network error Qt reports when
+     the reply ends, possibly after part of it was read; the details name only Qt's error code,
+     never the URL)
+     and `stalled` (no bytes for 60 seconds).
+   - `timeout`: the 15 minutes ran out.
+   - Checking the result: `sha1_mismatch`, or `verification_failed:sha256`,
+     `verification_failed:appimage` or `verification_failed:updateInformation` when the new
+     file has the `.zsync`'s SHA-1 but fails one of the checks in step 4.
+
+   The byte counters: a result whose `method` is `zsync` or `download` carries
+   `downloadedBytes` and `reusedBytes`; one whose `method` is `none` (the new version was
+   already in place) carries neither. `result.downloadedBytes` adds up the `.zsync`, the range
+   data counted in `zsync.downloadedBytes` and every whole-file attempt, failed ones included;
+   the feed, the signature, `SHA256SUMS`, multipart framing and range bytes refused before
+   parsing are not counted.
+   `reusedBytes` is what came from the running image, 0 after a whole-file download. `zsync`
+   is `null` when `method: download` was asked for or the new version was already in place. An
+   automatic try that fell back before fetching anything still carries it, with its
+   `fallbackReason`. Otherwise it carries `used`,
+   `reusedBytes`, `downloadedBytes` (the range data put.gd parsed, including data from a reply
+   it later rejected, without the `.zsync`, multipart framing or bytes refused before parsing), `controlBytes` (the `.zsync`), `requests`, `ranges` and `seconds`, plus
+   `fallbackReason` and sometimes `details` when it fell back.
 4. **Checked before anything changes:** the new file must match the release's `SHA256SUMS`
    line, be an AppImage, and carry the same update information (the same channel). A download
    that doesn't match is refused and nothing is changed.
@@ -159,18 +210,29 @@ installs on its own: not on the daily check, not from a notification.
    made ([going back to it](#if-the-new-version-wont-start)). Nothing else in the folder is touched.
 6. **Restart:** **Restart put.gd** (or `update.restart` with `confirm: true`) quits put.gd and
    starts the new version. Settings then says "Up to date" and, in the Install row, "Updated from
-   OLD to NEW with a zsync update (or from a full download) on DATE". Without a restart, the
+   OLD to NEW with a zsync update that downloaded SIZE (or from a full download) on DATE". Without a restart, the
    next start of put.gd, at login for example, runs the new version too.
 
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
 folder isn't writable or has no room for another copy, when the file isn't yours, or when an
-installed update still waits for its restart. While you watch the other channel, the same
+installed update still waits for its restart. It also refuses with `update_install_failed` when
+the staging folder of an earlier, interrupted update beside the AppImage can't be removed, unless
+the new version is already in place (then it succeeds with `method: none`). Either way put.gd
+keeps the folder's record and tries again at the next start and the next install. While you watch the other channel, the same
 button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository.
 
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
 Aurora (Fedora Atomic) through all three paths, with tampered files refused and the resident's idle
 memory unchanged within 0.2 MiB:
 [evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-updater-293/README.md).
+That acceptance used appimageupdatetool for the zsync path. put.gd's own zsync client
+([#1766](https://github.com/patrick-hudson/put.gd-desktop/issues/1766)) was checked on Debian 13
+against real releases on `pkg.put.gd`. From 26.1120.5780 to 26.1120.5875 it reused 92.4% of
+the image and downloaded 12.3 MB (12,901,996 bytes with the `.zsync`), and from 26.1118.5367 it
+reused 86.3% and downloaded 22.0 MB (23,088,748 bytes, also with the `.zsync`). Debian's zsync 0.6.2 reports 92.4% and
+86.2% for the same seeds, so the two are close
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/tree/8295b46fb6249859e6869d9be66127af6d1cce3a/records/2026-11-21-appimage-builtin-zsync-1766)).
+Its desktop acceptance through Settings waits for the first nightly that carries it.
 
 An AppImage integrated by Gear Lever 4.6.2 or AppImageLauncher 3.0.0-beta-3 updates the same way:
 after 26.1022.968 → 26.1022.983 on Linux Mint 22.3, each tool's menu entry and record still start the
@@ -316,10 +378,9 @@ the name.
 
 put.gd's own **Check now** works in the AppImage on Fedora 44 since #329: AppRun points
 the image's TLS clients at Fedora's CA bundle ([details](diagnostics.md)).
-**Download and install** works too: put.gd hands appimageupdatetool that bundle, and the
-`.zsync` names the image on `pkg.put.gd`, which doesn't redirect
-([above](#download-and-install-from-putgd)). The rest of this section is about running
-appimageupdatetool yourself. It looks for the certificate bundle at Ubuntu's path,
+**Download and install** works too: its zsync update and its downloads use put.gd's own TLS
+with that bundle ([above](#download-and-install-from-putgd)). The rest of this section is about
+running appimageupdatetool yourself. It looks for the certificate bundle at Ubuntu's path,
 `/etc/ssl/certs/ca-certificates.crt`, which Fedora doesn't have
 ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297), upstream
 [zsync2#91](https://github.com/AppImageCommunity/zsync2/issues/91)). Without it, it prints
@@ -358,7 +419,7 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
 | `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
-| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
+| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` is `auto` (tries zsync first and downloads the whole file only if zsync fails), or `zsync` or `download` to force one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`starting`, `checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method` (while it runs: the method asked for at `starting`; `null` at `checking` and the first `verifying`; `zsync` during zsync; the source, `mirror` or `release`, during a whole-file download; `zsync` or the source again while the new file is verified; the chosen method at `installing` and `done` (`none` at `done` when the new version was already in place). `result.method` is `zsync`, `download` or `none`), `bytes`, `total`, during zsync `step` (`reading`, then `fetching`) and, only while `fetching`, `reused` (Settings shows it only when it is more than 0), `error`, `result` (with `downloadedBytes`, `reusedBytes`, `zsync` and its `fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
 | `putgd-cli update.restart '{"confirm":true}'` | Once an installed update waits for its restart: starts the AppImage again from the host after this resident exits, and quits it. `update_restart_unavailable` otherwise |
 | `putgd-cli --install-update nightly [--method M] [--state DIR] [--switch [--allow-older]]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE`. Another channel than the build's needs `--switch`, and an older version `--allow-older` |
 | MCP `get_update_status`, `check_for_updates`, `open_software_updates`, `install_update`, `restart_after_update` | `update.status`, `update.check`, `update.openSoftwareUpdates`, `update.install` and `update.restart` |
