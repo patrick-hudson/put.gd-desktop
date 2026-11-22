@@ -65,6 +65,9 @@ The test reports each step and what it proved:
 
 A test that stops at a step names it, and the message says what to change.
 
+In the destination list an SFTP destination shows **Needs a server** until Server is filled in,
+then **Ready to test**, and **Connected** once a test passes, like the other destinations.
+
 ## Host keys
 
 put.gd checks the server's host key against your own `known_hosts` files (as `ssh -G` names
@@ -136,8 +139,9 @@ address may keep serving a deleted file for a while.
 - **Password.** put.gd answers ssh's password prompt once, through a private socket only that
   connection can use; a wrong password is not retried.
 - **Security keys** (FIDO, `-sk` keys) work as they do in a terminal: touch the key when it
-  blinks. put.gd doesn't show ssh's touch notice yet; a failed sign-in that waited for a touch
-  says so in its error details (`touched`).
+  blinks. During **Test**, Settings' status line says "Touch your security key" while ssh waits
+  for the touch. During an upload put.gd shows no such notice; a failed sign-in that waited for
+  a touch says so in its error details (`touched`).
 
 One connection serves a whole upload (its name check, upload and link) and is kept for about a
 minute for the next one, so a burst of captures signs in once.

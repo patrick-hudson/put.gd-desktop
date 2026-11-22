@@ -142,7 +142,8 @@ worker checks the peer's UID, compares the token in constant time and answers `o
 secret, or nothing. A prompt naming a passphrase gets only the key passphrase, a password
 prompt only the password, each at most once per connection; any other prompt (a one-time
 code) gets nothing and makes the failure `ssh_needs_one_time_code`. A touch notice is
-recorded (`touched` in the error details). The socket and its directory are removed once the
+recorded (`touched` in the error details) and sent to the resident as a `notice` event; during
+Test it becomes the setup job's event and Settings shows "Touch your security key". The socket and its directory are removed once the
 connection is up. `putgd-sftp-askpass` is C and links only the C library, because ssh runs it
 under the host's library path even when put.gd runs from its AppImage.
 
