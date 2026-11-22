@@ -979,7 +979,7 @@ and nothing more. Tests and evidence use only test values.
 
 Each checked capture adds the time to stage it, start the helper, recognize it and match it,
 before its upload starts. With today's engine, measured on the five lab desktops on 2026-11-21
-(#1806's final candidates) as the extra time to an uploaded link with the option on: Region times are medians of five warm runs; full
+(#1806's final candidates) as the extra time to an uploaded link with the option on. Region times are medians of five warm runs; full
 screen is one run each.
 
 | Desktop | Region | Extra time | Full screen | Extra time |
