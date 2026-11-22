@@ -124,6 +124,8 @@ private slots:
     <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 5ad015a3"};
    QTest::newRow("a short hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 | 0a9f86d08188"<<QStringList{"card","key"}
     <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 0a9f86d08188"};
+   QTest::newRow("a quoted misread hex run after a card keeps its wrapped tail")<<QString("4111 1111 1111 1111 \u201Ca3bf4f1b2b0b822cd15d6cI5b0f0 | 0a9f86d08188\u201D")<<QStringList{"card","key"}
+    <<QStringList{QString("key: 4111 1111 1111 1111 \u201Ca3bf4f1b2b0b822cd15d6cI5b0f0 0a9f86d08188\u201D")};
    QTest::newRow("card lines read as a key take no number below them")<<"Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 | 20261122"<<QStringList{"card","key"}
     <<QStringList{"key: Card 4539 1488 0343 6467 Card 5425 2334 3010 9903"};
    // ...and an address whose dot recognition lost is still an address.

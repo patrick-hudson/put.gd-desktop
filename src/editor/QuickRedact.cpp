@@ -191,8 +191,12 @@ bool tokenPiece(const QString& word) {
 // Hex, as recognition misreads it: l, i, I, |, ! for 1; O, o, ©, ° for 0; S
 // for 5; t and £ for f; € for e. At least 32 characters, at most one in twelve
 // outside hex once mapped, and both digits and letters.
-bool hexRun(const QString& run) {
+const QHash<QChar,QChar>& hexConfusions() {
  static const QHash<QChar,QChar> confused{{'l','1'},{'i','1'},{'I','1'},{'|','1'},{'!','1'},{'O','0'},{'o','0'},{QChar(0xa9),'0'},{QChar(0xb0),'0'},{'S','5'},{'t','f'},{QChar(0xa3),'f'},{QChar(0x20ac),'e'}};
+ return confused;
+}
+bool hexRun(const QString& run) {
+ const auto& confused=hexConfusions();
  if(run.size()<32)return false;
  int other=0,digits=0,letters=0;
  for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;}
@@ -434,8 +438,10 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       qsizetype after=-1;for(qsizetype i=0;i<run.size();++i)if(cards.contains(run.at(i)))after=i;
       QString rest;for(qsizetype i=after+1;i<run.size();++i)rest+=plain.at(run.at(i));
       ownLine=!hexRun(rest)&&!base64Run(rest);
-      static const QRegularExpression hexFragment(QStringLiteral("^[\"'`]?[0-9A-Fa-f]+$"));
-      hexAfter=hexFragment.match(rest).hasMatch();
+      // Hex as recognition misreads it, after any opening quote.
+      static const QString quotes=QStringLiteral("\"'`\u201C\u2018\u00AB");
+      qsizetype from=0;while(from<rest.size()&&quotes.contains(rest.at(from)))++from;
+      hexAfter=from<rest.size()&&std::all_of(rest.cbegin()+from,rest.cend(),[](QChar c){c=hexConfusions().value(c,c);return c.isDigit()||(c>='a'&&c<='f')||(c>='A'&&c<='F');});
      }
     }
     const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
