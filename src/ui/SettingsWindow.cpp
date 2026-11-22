@@ -3584,7 +3584,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  ++setupAccepting_;updateSetupButton();emit viewStateChanged();
  const bool sftpClear=kind=="storeCredentials"&&std::exchange(sftpClearPending_,false);
  // #1892: what an SFTP address check was asked about, so a late answer for another key is dropped.
- const auto sftpInspect=kind=="inspectAccount"?sftpInspectKey():QString();
+ const auto sftpInspect=kind=="inspectAccount"&&providerType_->currentData()==SftpPanel::provider()?sftpInspectKey():QString();
  settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
   if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
@@ -3836,7 +3836,7 @@ void SettingsWindow::pollSetup(){
    // #1892: an answer for an address or key the form no longer holds is dropped and asked again.
    // It is also dropped when another destination is shown now, which is checked afresh (that
    // check waited for this one); its error never reaches the other destination's status.
-   if(data["kind"]=="inspectAccount"&&!job["sftpInspect"].toString().isEmpty()&&(!sftpShown||sftpInspectKey()!=job["sftpInspect"].toString())){sftpInspected_.clear();QTimer::singleShot(0,this,[this]{inspectSftp();});emit viewStateChanged();return;}
+   if(job["kind"]=="inspectAccount"&&!job["sftpInspect"].toString().isEmpty()&&(job["profileId"]!=profileId_->text()||providerType_->currentData()!=SftpPanel::provider()||sftpInspectKey()!=job["sftpInspect"].toString())){sftpInspected_.clear();QTimer::singleShot(0,this,[this]{inspectSftp();});emit viewStateChanged();return;}
    if(e&&sftpShown&&data["kind"]=="inspectAccount"){if(e.details.value("field").toString()=="keyFile"){sftpPanel_->setResolved({});sftpPanel_->setKeyProblem(e.message);}else sftpPanel_->setResolved(e.message,true);emit viewStateChanged();return;}
    if(e&&sftpShown&&data["kind"]=="testDestination"&&currentTest){sftpPanel_->showTestError(e.code,e.message,e.details);
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
