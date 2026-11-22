@@ -29,6 +29,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not put the script's folder on the path
+import desktop_lock  # noqa: E402
 import run_scope  # noqa: E402
 
 
@@ -96,6 +97,7 @@ def main():
     parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
     parser.add_argument('extra', nargs=argparse.REMAINDER)
     options = parser.parse_args()
+    desktop_lock.refuse_while_quiet('rr_loop')
     if not run_scope.available():
         raise SystemExit('rr_loop needs a systemd user manager (systemd-run --user --scope): each recorded run lives in a scope that cleanup stops')
     # Ctrl+C or SIGTERM stops the recording this script started (rr runs in a session of its own and would not see the signal).

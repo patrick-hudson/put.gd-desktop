@@ -7,7 +7,8 @@ on Sundays at 03:00 local time. One run:
 
 1. Guards. The week is skipped, with the reason logged, when the builder's
    desktop lock (tools/lab/desktop_lock.py, ~/putgd-lab/locks) is held for
-   quiet, A/V or performance work, or when another weekly run holds
+   quiet, A/V or performance work, while another session holds its quiet
+   lease (--resource quiet), or when another weekly run holds
    ~/.local/state/putgd-stress/weekly.lock. A running `ctest` or
    stress_suite.py process (any owner, matched by its exact process name or
    script, never killed) or a load above the CPU count makes it wait up to
@@ -145,6 +146,26 @@ def check_desktop_lock(tree, lock_dir, host, log):
     if reason:
         raise Skip(reason)
     log(f'{description} (read with {path})')
+    check_quiet_lease(tree, lock_dir, log)
+
+
+def check_quiet_lease(tree, lock_dir, log):
+    """Skip the week while another session holds the builder's quiet lease (desktop_lock.py --resource quiet)."""
+    here = Path(__file__).resolve().parent
+    for candidate in (tree / 'tools/lab/desktop_lock.py', here / 'desktop_lock.py', here.parent / 'lab/desktop_lock.py'):
+        if candidate.is_file():
+            module, path = load_module('desktop_lock_quiet', [candidate])
+            if hasattr(module, 'quiet_holder'):
+                break
+    else:  # only copies from before the quiet lease (#1827): any lease file counts as held
+        if (lock_dir / 'quiet.lock').exists():
+            raise Skip(f'{lock_dir / "quiet.lock"} exists and no desktop_lock.py here can read it')
+        log('quiet lease: free (no lease file)')
+        return
+    reason = module.quiet_holder(lock_dir, session='')
+    if reason:
+        raise Skip(reason)
+    log(f'quiet lease: no other session holds it (read with {path})')
 
 
 def process_args(pid):
