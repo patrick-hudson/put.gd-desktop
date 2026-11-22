@@ -866,7 +866,8 @@ other tool active it does not. The user's side is in the
     pixels of every row the mark covers. A column is blank within 8% of the text's contrast
     from the background, the median colour of the line spacing outside the mark. The
     neighbour's box edge counts only where ink starts right after a blank column within a
-    pixel of it; otherwise the mark goes past what lies at that edge and the ink after it to
+    pixel of it, and that blank is at least as wide as the next one after the ink (a word
+    space is wider than a gap between glyphs); otherwise the mark goes past what lies at that edge and the ink after it to
     the next blank run, so a misplaced box can cost the neighbour a glyph but never shows a
     matched one. With no blank run in reach, spacing that isn't clean, or any transparency,
     the whole padding stays: a covered neighbour is better than a matched glyph showing. A
