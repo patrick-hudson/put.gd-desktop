@@ -692,7 +692,9 @@ bool secretValue(QString value,bool numeric=false) {
  // A URL with no password in it (redis://localhost:6379/0) is an address, not a secret; one with a
  // password is matched as a URL.
  // A URL with a key in its userinfo (a Sentry DSN, https://<key>@host/1) is a secret (acceptance on #1903).
- static const QRegularExpression address(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,24}://(?![^\\s/?#@]*@)"));
+ // ...but not a username alone (postgresql://reporting@localhost): the userinfo must look like a key, 12
+ // characters or more with a digit.
+ static const QRegularExpression address(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,24}://(?!(?=[^\\s/?#@:]*\\d)[^\\s/?#@:]{12,}@)"));
  if(address.match(value).hasMatch())return false;
  static const QSet<QString> words{"true","false","null","none","nil","yes","no","on","off","required","optional","undefined","empty","redacted","hidden","secret","password","token","string","example","changeme"};
  if(words.contains(value.toLower()))return false;
@@ -743,18 +745,27 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?zapier[.,]?com/hooks/catch/[A-Za-z0-9]{3,}/[A-Za-z0-9]{3,}")),
   QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}(?:key|token)=[A-Za-z0-9_-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}sig=[A-Za-z0-9_%-]{8,}")),
-  // A Sentry DSN: its key is the URL's userinfo (https://<key>@o1.ingest.sentry.io/<project>).
-  QRegularExpression(QStringLiteral("(?i)https?:/{1,2}[0-9a-f]{12,}(?::[0-9a-f]+)?@[A-Za-z0-9.-]{0,100}sentry[.,]io/[0-9]+")),
+  // A Sentry DSN: its key is the URL's userinfo (https://<key>@o1.ingest.sentry.io/<project>). Kept at
+  // this place in the list: sentry below names it.
+  QRegularExpression(QStringLiteral("(?i)https?:/{1,2}[0-9a-f]{12,}(?::[0-9a-f]+)?@(?:[A-Za-z0-9.-]{0,100}[.])?sentry[.,]io/[0-9]+")),
   // A Telegram bot token: the bot's id, a colon and 35 characters (core.telegram.org/bots/api).
   QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{6,12}:[A-Za-z0-9_-]{30,}")),
  };
+ // The Sentry DSN pattern: its scheme starts a word as a password URL's does, its key is judged on its
+ // own (not on any query after it), and one match a segment is enough (Sol on #1903).
+ const QRegularExpression* sentry=nullptr;for(const auto& pattern:urls)if(pattern.pattern().contains(QLatin1String("sentry")))sentry=&pattern;
  for(const auto& pattern:urls){
   for(auto it=pattern.globalMatch(segment.text);it.hasNext();){
    const auto m=it.next();
    // A URL's scheme starts a piece or follows a separator ("DATABASE_URL=postgres://…"), never inside a word.
    static const QString separators=QStringLiteral("=:\"'`(<[“‘");
    const int at=int(m.capturedStart());
-   if(&pattern==&urls.first()&&!pieceStart(segment,at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
+   if((&pattern==&urls.first()||&pattern==sentry)&&!pieceStart(segment,at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
+   if(&pattern==sentry){
+    const auto text=m.captured();const auto key=text.mid(text.indexOf(QLatin1String("//"))+2);
+    if(masked(key.left(key.indexOf('@'))))continue;
+    out.append(from(pieceAt(segment,m.capturedStart()),pieces-1));break;
+   }
    // A URL's password as read, from the user's colon to the @ (or the end, the @ lost): a
    // placeholder or a reference is no secret; digits alone are a password like any other. Digits
    // after the colon that end a recognized word are a port, the @ never lost (Sol on #1903).
