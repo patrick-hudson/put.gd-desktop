@@ -2,7 +2,8 @@
 
 Real servers to test the SFTP destination (#1871) and the Nextcloud and WebDAV destination
 (#1872) against, each in rootless Podman containers on one builder. The recipe is
-`tools/lab/storage_servers/`.
+[`tools/lab/storage_servers/`](../../tools/lab/storage_servers/): [`servers.py`](../../tools/lab/storage_servers/servers.py)
+runs the servers and [`check.py`](../../tools/lab/storage_servers/check.py) verifies them.
 
 | Server | Version | Port | What it is |
 | --- | --- | --- | --- |
@@ -20,7 +21,11 @@ image is built on the builder from a pinned Alpine base, so its OpenSSH is which
 
 ## Start, check, stop
 
-Run on the builder that hosts the servers, from a checkout or a copy of the folder:
+Run on the builder that hosts the servers, from a checkout or from a copy of the recipe folder
+(`scp -r tools/lab/storage_servers builder:` and run `python3 servers.py ...` inside it). It needs
+Python 3, rootless Podman, the OpenSSH client tools (`ssh`, `sftp`, `ssh-keygen`, `ssh-agent`,
+`ssh-add`), OpenSSL and curl on the builder, and access to Docker Hub, the Microsoft container
+registry, the Alpine package mirror and PyPI (the browser container installs Playwright).
 
 ```sh
 python3 tools/lab/storage_servers/servers.py up --bind 192.168.68.71
@@ -38,7 +43,14 @@ python3 tools/lab/storage_servers/servers.py down
   `up` exits non-zero unless every listener answered.
 - `up` creates two pods, `putgd-st-sftp` and `putgd-st-web`, waits until each service answers,
   finishes Nextcloud's first-run install and settings, makes the user `putgd`, exports the CA
-  and writes `known_hosts` and the env file. A second `up` changes nothing that exists.
+  and writes `known_hosts` and the env file. A second `up` keeps every key, password, volume,
+  `known_hosts` and Nextcloud quota or sharing override, and recreates only a container whose bind
+  mounts no longer match. It does reapply Nextcloud's system settings (trusted domains and proxies,
+  `overwriteprotocol`, no brute-force protection, the array cache), reset the `putgd` user's
+  password to the saved value, and rewrite the env file.
+- To move the servers to another `--bind`: `down`, then `up --bind NEW`, then `known-hosts --bind NEW`
+  (`up` keeps an existing `known_hosts`), and refresh every copy on desktops: `known_hosts`, the env
+  file and, if the CA was reissued, the CA file.
 - State is in `~/putgd-lab/storage-servers` (mode 0700). `client/` holds what a test reads:
   the key pairs, the passphrase, every password and `known_hosts`, all mode 0600.
   `server/` is what the two SSH containers mount (host keys, `authorized_keys`, `sshd_config`);
@@ -48,14 +60,15 @@ python3 tools/lab/storage_servers/servers.py down
 - Secrets are in files, never on a command line. `status` prints which exist, masked.
 - `env` writes `storage-servers.env` (mode 0600): addresses, ports, user names and the paths
   of the key, passphrase, password and CA files. It holds no secret value, so a test sources it
-  and reads each file inside the process that uses it.
+  and reads each file inside the process that uses it. The paths are the builder's: on a desktop,
+  use local copies of those files (including `known_hosts`) and point the variables at them.
 
 ## What each subcommand changes
 
 | Command | Effect |
 | --- | --- |
 | `rotate-hostkey` | New ed25519 and RSA host keys for both SSH servers, which restart. `client/known_hosts` keeps the old key on purpose, so the next connection sees "host key changed". `known-hosts --bind ADDRESS` pins the new one |
-| `ca --bind ADDRESS` | Writes the trusted Caddy's root certificate to `ca/putgd-lab-root.crt` and prints its SHA-256 fingerprint |
+| `ca --bind ADDRESS` | Writes the trusted Caddy's root certificate to `ca/putgd-lab-root.crt`, prints its SHA-256 fingerprint and rewrites `storage-servers.env`; pass the address the running pods are bound to |
 | `quota 5MB` / `quota none` | The Nextcloud quota of user `putgd` (also `500KB`, `2GB`) |
 | `sharing on` / `sharing off` | Nextcloud's `shareapi_enabled`; off answers the share API with 404 "Share API is disabled" |
 | `share-password on` / `off` | Nextcloud's `shareapi_enforce_links_password`; on refuses a public link without a password (403) |
@@ -66,12 +79,17 @@ python3 tools/lab/storage_servers/servers.py down
 prints one line per check, never a secret. It exits 0 when all pass; its screenshots go to
 `~/putgd-lab/storage-servers/checks/`.
 
-It is safe to run beside other tests of the servers, with two things to know. Every file it makes
-has a name unique to the run and only those are removed. It does not rotate the host keys unless
-given `--rotate-hostkey`. The Nextcloud quota, sharing and share-password checks change those
-settings for a few seconds and put back the values it read first; `--no-settings` skips them and
-leaves the settings alone. Poll tokens, share links and browser jobs travel in 0600 files, never
-on a command line.
+Run one verifier at a time per builder. Every file it makes has a name unique to the run, and only
+those are removed. It does not rotate the host keys unless given `--rotate-hostkey`; with that flag,
+reserve both SSH listeners for the run and tell clients to refresh any copied pin afterwards. The
+default settings checks change the Nextcloud quota, sharing and share-password for a few seconds
+and put back the values read first, so they need the Nextcloud instance to yourself.
+`--no-settings` skips them and leaves the settings alone, but it still uploads files and creates a
+passwordless public share link, so it needs sharing on, no enforced link password and quota space.
+Poll tokens, share links and browser jobs travel in 0600 files, never on a command line.
+
+The negative TLS checks expect the lab CA to be absent from the builder's default trust store (curl
+without `--cacert` must fail), so do not install it on the builder that runs `check`.
 
 - SFTP: sign in with the plain key, with the passphrase key through an `ssh-agent`, and with the
   password; each user refuses the other's method; `/ro` write is `Permission denied`; `/full`
@@ -84,8 +102,10 @@ on a command line.
   v2 (`POST /index.php/login/v2`, sign in and grant in headless Chromium, poll) ends with an app
   password; a WebDAV PUT with it, `If-None-Match: *` 412, a public share link that loads in curl
   and Chromium, `share-password`, `sharing` and `quota` taking effect at once.
-- Public files: `/sftp/<file>` and `/webdav/<file>` over HTTPS and HTTP load in curl and in
-  headless Chromium; a missing or deleted file is 404.
+- Public files: curl fetches `/sftp/<file>` over HTTPS (verified with the lab CA) and HTTP, and
+  `/webdav/<file>` the same, and gets 404 for a missing and for a deleted file. Headless Chromium
+  loads `/sftp/<file>` over HTTPS and `/webdav/<file>` over HTTPS and HTTP; it ignores certificate
+  errors, so certificate verification is curl's alone. The SFTP location over plain HTTP is covered by curl only.
 
 Use the files from a test like this:
 
