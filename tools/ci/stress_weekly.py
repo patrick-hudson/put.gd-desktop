@@ -461,6 +461,7 @@ def weekly_run(args, log):
         wait_until_idle(log, args.wait_minutes, False)
         status['commit'] = update_tree(args.tree, args.ref, args.sdk_from, log)
         ensure_disk(args.tree, args.state_dir, log, False)
+        check_quiet_lease(args.tree, args.lock_dir, log)  # a lease taken while it waited for an idle host
         clock = time.monotonic()
         if run(['cmake', '--preset', 'dev', '-DPUTGD_TEST_TIMEOUT_SCALE=3'], log, out / 'build.log', cwd=args.tree) or \
                 run(['nice', '-n', '10', 'cmake', '--build', '--preset', 'dev', '-j', str(args.jobs)], log,
@@ -475,6 +476,7 @@ def weekly_run(args, log):
         log(f'built in {status["buildSeconds"]} s; build/dev is {gib(build_size)}')
         check_desktop_lock(args.tree, args.lock_dir, args.host, log)  # a quiet slot may have started meanwhile
         wait_until_idle(log, args.wait_minutes, False)
+        check_quiet_lease(args.tree, args.lock_dir, log)
         clock = time.monotonic()
         status['stressExit'] = run(suite_command(args, args.tree, out, out.name), log, cwd=args.tree)
         status['stressSeconds'] = round(time.monotonic() - clock)

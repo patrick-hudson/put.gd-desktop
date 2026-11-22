@@ -332,8 +332,7 @@ def main():
     parser.add_argument('--exclude', help='X,Y,W,H: put.gd\'s own bar, drawn into every frame with a pattern that '
                         'changes from frame to frame and excluded (tracker only)')
     args = parser.parse_args()
-    if not args.reuse:
-        desktop_lock.refuse_while_quiet('scroll_tracker_score replay')
+    desktop_lock.refuse_while_quiet('scroll_tracker_score')  # --reuse still replays what is missing
     rows = []
     pages = []
     for browser in args.browsers.split(','):
