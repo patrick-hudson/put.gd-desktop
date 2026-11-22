@@ -918,12 +918,12 @@ couldn't finish. Don't extend it into a general "are you sure?".
 | What is checked | Only uploads: an action whose output is a destination. Region, window, monitor, desktop, Repeat last region and scrolling captures; the clipboard action with an image, or with copied files; and the file manager's **Upload with put.gd**. Among files, those whose signature is PNG or JPEG are checked, one after another, including files expanded from a folder when folders upload file by file. The contents of a folder uploaded as a .zip are not checked |
 | Not checked | Capture region & edit (the user reviews that image before Upload), recordings, files that are not PNG or JPEG, a folder's .zip, clipboard text, diagnostics packages, captures going only to the local archive, and retries. A retry, including one after a failed upload, sends the stored artifact without checking it again. A new capture or file selection is checked |
 | Where it runs | In the editor helper, `putgd-ui --edit-image`, in check mode. The resident stages the image as it does for Edit & upload, and keeps its own copy for the upload. The helper runs the editor's recognition (`putgd-ocr`) and Quick redact, including the account name lookup and the pattern child, on a document it does not show. No editor or matching code is in the resident. Recognition, its deadline, its limits and its confinement are exactly the editor's |
-| One at a time | Checks run one after another. A capture that needs a check, taken while a prompt is open, waits in the `checking` phase. Captures that need no check go on as usual |
+| One at a time | Checks run one after another. A capture that needs a check, taken while a prompt is open, waits in the `checking` phase. So does every file-manager or clipboard file selection, because which of its files are PNG or JPEG is read only when its turn comes; a selection with none then goes on unchecked. Other captures go on as usual |
 | Nothing found | The helper ends at once, and the capture goes to the upload queue unchanged: same format, name, copy and history |
 | Found | The operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {card: 1, key: 1}, complete: true, prompt: 1}`, kinds and counts only. A person sees the panel. An agent decides with `operation.decide` |
 | Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found |
-| No decision possible | If the check ends without asking, nothing is uploaded. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, the capture is saved locally, as Cancel saves it, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text.". Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. After Redact and upload, the editor's own failures apply instead |
-| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the copy. If any differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
+| No decision possible | A check that fails before it can find anything or ask uploads nothing. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, put.gd then tries to save the capture locally, as Cancel does, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text."; if that save fails too (a full disk), the operation fails. Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. If the helper fails after **Redact and upload** opened the editor, the operation also fails with `sensitive_check_failed`, `details.cause` holding the editor's error, and there is no local-copy fallback |
+| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. If any differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
 
 ### The prompt
 
@@ -956,7 +956,8 @@ Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offere
 - For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png", counted among
   the PNG and JPEG files of the selection) and offers only **Upload anyway** and **Cancel**. Upload
   anyway keeps that file and goes on checking the rest, which can ask again. Cancel uploads none of the
-  files. A selection of one image offers all three.
+  files. A selection of one decodable image within 24 megapixels offers all three; one that is too
+  large or couldn't be read offers only Upload anyway and Cancel.
 
 ### Agents
 
@@ -968,7 +969,10 @@ prompt?}`, where `choice` is `redact`, `upload` or `cancel` (MCP `decide_upload`
 settles a panel that a person is looking at.
 
 - **Waiting.** Each prompt waits up to 5 minutes in report mode, then is taken as Cancel. With **Keep a
-  local copy** on that ends `completed` with `local_only` items, otherwise `cancelled`.
+  local copy** on, put.gd saves the capture locally: the operation ends `completed` with `local_only`
+  items, or `failed` if that save fails. Otherwise it ends `cancelled`. `cancel` from `operation.decide`
+  does the same. `operation.cancel` on a waiting capture is different: it cancels the operation and
+  saves nothing.
 - **The reply.** `operation.decide` acknowledges the choice (`{decided: choice}`); poll
   `operation.inspect` for what follows. After `upload` or `cancel` the phase leaves
   `sensitive_text_found`, to `checking` while more files are checked (its `sensitive` can still show
@@ -993,8 +997,11 @@ pattern child, which gets the text over a private pipe when there are patterns. 
 or upload the text as text. The image itself is what uploads or is saved locally, depending on the
 choice. The resident gets findings only: kinds with counts, whether the check finished and why not, and
 the prompt number. It logs the check's start, outcome, findings and duration. The journal,
-observations, `operation.inspect` and diagnostics carry the same findings and nothing more. The panel
-shows kinds and counts. The notification on a desktop with no tray says only that a capture is waiting.
+observations, `operation.inspect`, `operation.decide` and diagnostics carry the same findings and
+nothing more, up to the decision. The panel shows kinds and counts. After **Redact and upload** the
+check's document becomes an ordinary editor, which keeps the recognition result the check made, as it
+would after Quick redact: `editor.inspect` can return those words to the same-user caller that asks,
+without another recognition run. Words under a Redact mark are left out. The notification on a desktop with no tray says only that a capture is waiting.
 Tests and evidence use only test values.
 
 ### Cost
