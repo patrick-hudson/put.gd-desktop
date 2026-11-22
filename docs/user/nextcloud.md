@@ -48,7 +48,8 @@ Servers without browser sign-in (Nextcloud's Login Flow v2), such as ownCloud 10
 password made by hand. In Nextcloud, **Personal settings → Security → Devices & sessions →
 Create new app password**. In put.gd, press **Use an app password instead** and enter the
 **Login name** and **App password** under Credentials, then **Save to keychain** or **Use for
-this session**. put.gd then asks the server whose account it is and shows **Signed in as**.
+this session**. put.gd then asks the server whose account it is and shows **Signed in as**; until
+it has, the app password is used for nothing else. **Test upload and link** asks first too.
 
 ### Links
 
@@ -68,7 +69,7 @@ If the upload works but the link can't be made (the server was unreachable, or i
 link password, for example), the file stays in Nextcloud and History offers **Finish share
 link**, which makes the link without uploading again. A failed link never deletes the file.
 
-put.gd's link is labelled `put.gd` and a short code in Nextcloud's sharing panel. put.gd only ever
+put.gd's link is labelled `put.gd` and the upload's ID in Nextcloud's sharing panel. put.gd only ever
 uses, finishes or revokes its own link: a link you made by hand for the same file is left alone.
 
 ### Large files

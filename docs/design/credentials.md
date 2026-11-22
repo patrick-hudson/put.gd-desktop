@@ -41,14 +41,21 @@ it can be revoked. Removing a Nextcloud destination in Settings waits for that s
 when the server didn't confirm the revocation, then removes it. Sign-in and sign-out run one at a
 time per destination. A sign-in that finishes after it was cancelled, after the destination was
 removed or changed its server, or whose account lookup or keychain save fails, revokes the new
-app password instead of keeping it. Signing in again revokes the earlier app password only once
-the new one is saved. The worker keeps no cookies, so every request authenticates with the app
+app password instead of keeping it, in a helper of its own, and says when the server didn't
+confirm it. Signing in again reads the earlier app password from the keychain first and revokes
+it only once the new one is saved; when it can't be read or the revocation isn't confirmed, the
+result says so and where to remove it. The worker keeps no cookies, so every request authenticates with the app
 password alone.
 
 The key pair is bound to where it was given: beside it, in the entry's session-token field, put.gd
 keeps non-secret JSON naming the origin (scheme, host and port) and, for Nextcloud, the account
 ID. `setup.connectAccount` writes it; `setup.storeCredentials` writes the origin for these
-providers, and the first `setup.inspectAccount` adds the account ID. Before any request that
+providers, and the first `setup.inspectAccount` adds the account ID, for the credential it
+inspected only: one changed meanwhile is left unbound. A Nextcloud app password stored by hand
+does nothing but that inspection (and sign-out) until it is bound; Test runs the inspection
+first. Storing credentials, signing in, signing out and the inspection run one at a time per
+destination. Binding is by origin, as browsers scope Basic authentication: another folder on the
+same server keeps the same credentials. Before any request that
 carries the credentials (upload, Test, History stat, delete and links, sign-out) the provider
 checks the binding against the destination and answers `credential_setup_required` ("Sign in
 again") without sending anything when it differs. An app password made by hand is entered in
