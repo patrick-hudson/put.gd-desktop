@@ -4,6 +4,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <future>
 #include <thread>
@@ -11,8 +12,11 @@ namespace putgd {
 namespace {
 // A worker that answered within this long still has its minute left; its own idle exit is 60 s.
 constexpr qint64 reuseWithinMs = 50000;
-// The worker reports at least every 250 ms while a file moves and has a 120 s SFTP deadline.
-constexpr qint64 silenceLimitMs = 200000;
+// The worker reports at least every 250 ms while a file moves. Its quiet stretches are bounded by
+// its own SFTP deadlines: an OPEN reply (20 s), then a CLOSE and a REMOVE (120 s each) to clean up.
+constexpr qint64 silenceLimitMs = 300000;
+// How long a cancelled request may take to finish its cleanup before the helper is stopped.
+constexpr qint64 cancelGraceMs = 300000;
 Error parseError(const QJsonObject& value) { return {value["code"].toString("sftp_failed"), value["message"].toString("The SFTP request failed"), value["details"].toObject()}; }
 // Errors the worker reports before anything could have changed on the server.
 bool definite(const QString& code) {
@@ -27,9 +31,11 @@ bool signsIn(const QString& method) {
 }
 // What a recorded upload needs for the identity check before a deletion (#1871).
 bool recordable(const QJsonObject& object) {
-    for (const auto* key : {"path", "host", "user", "hostKeyFingerprint", "sha256"}) if (object[key].toString().isEmpty()) return false;
+    // The worker's own rule: the recorded known_hosts lines are the identity; a display fingerprint
+    // may be empty (a server known only through a certificate authority).
+    for (const auto* key : {"path", "host", "user", "sha256"}) if (object[key].toString().isEmpty()) return false;
     for (const auto* key : {"port", "size", "mtime", "uid"}) if (!object[key].isDouble()) return false;
-    return true;
+    return !object["knownHosts"].toArray().isEmpty();
 }
 }
 struct SftpProvider::Session {
@@ -245,7 +251,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
             cancelSent = true;
             cancelClock.start();
         }
-        if ((cancelSent && cancelClock.elapsed() > 30000) || silence.elapsed() > silenceLimitMs) {
+        if ((cancelSent && cancelClock.elapsed() > cancelGraceMs) || silence.elapsed() > silenceLimitMs) {
             session->process.kill();
             error = {"sftp_transport_unknown", "The SFTP helper stopped responding; check the server before retrying", {{"reason", cancelSent ? "cancelled" : "deadline"}}};
             if (uncertain) *uncertain = mutation;

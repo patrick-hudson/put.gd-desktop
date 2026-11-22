@@ -104,7 +104,7 @@ private slots:
     void askpassAnswersOnlyExactLocalPrompts() {
         using sftp::PromptKind;
         const QStringList hosts{"files.example.com"}, keys{"/home/alice/.ssh/id_ed25519"};
-        const auto kind = [&](const QString& askpass, const QString& prompt) { return sftp::matchPrompt(askpass, prompt, "alice", hosts, keys).kind; };
+        const auto kind = [&](const QString& askpass, const QByteArray& prompt) { return sftp::matchPrompt(askpass, prompt, "alice", hosts, keys).kind; };
         QCOMPARE(kind({}, "alice@files.example.com's password: "), PromptKind::Password);
         QCOMPARE(kind({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': "), PromptKind::Passphrase);
         QCOMPARE(sftp::matchPrompt({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': ", "alice", hosts, keys).keyFile, keys.first());
@@ -113,6 +113,12 @@ private slots:
                                   "Enter passphrase for key '/home/alice/.ssh/other': ", "Verification code: ", "Enter passphrase: "})
             QCOMPARE(kind({}, other), PromptKind::Other);
         QCOMPARE(kind("confirm", "alice@files.example.com's password: "), PromptKind::Other);
+        // ssh prints a key path cut to 100 bytes; two keys sharing those bytes can't be told apart.
+        const QString longKey = "/home/alice/" + QString(100, 'k') + "/id_ed25519", otherLong = "/home/alice/" + QString(100, 'k') + "/id_rsa";
+        const auto cut = "Enter passphrase for key '" + longKey.toUtf8().left(100) + "': ";
+        QCOMPARE(sftp::matchPrompt({}, cut, "alice", hosts, {longKey}).kind, PromptKind::Passphrase);
+        QCOMPARE(sftp::matchPrompt({}, cut, "alice", hosts, {longKey, otherLong}).kind, PromptKind::Ambiguous);
+        QCOMPARE(sftp::matchPrompt({}, "Enter passphrase for key '" + longKey.toUtf8() + "': ", "alice", hosts, {longKey}).kind, PromptKind::Other);
         QCOMPARE(kind("none", "Confirm user presence for key ED25519-SK SHA256:x"), PromptKind::Touch);
         QCOMPARE(sftp::hostToken("files.example.com", 2222, {}), QString("[files.example.com]:2222"));
         QCOMPARE(sftp::hostToken("files.example.com", 22, "shots"), QString("shots"));

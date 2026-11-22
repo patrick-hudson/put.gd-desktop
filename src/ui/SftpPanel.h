@@ -64,7 +64,7 @@ private:
     QLineEdit *server_ = nullptr, *user_ = nullptr, *folder_ = nullptr, *link_ = nullptr, *password_ = nullptr, *passphrase_ = nullptr;
     QPushButton *clearPassword_ = nullptr, *clearPassphrase_ = nullptr;
     // The Folder on server a test found missing: Create folder makes only that one.
-    QString offeredFolderSetting_;
+    QString offeredFolderSetting_, offeredServerSetting_;
     // A problem the panel found itself (a password left out of a paste), kept past refreshProblems.
     QString pinnedField_, pinnedProblem_;
     QLabel* resolved_ = nullptr;

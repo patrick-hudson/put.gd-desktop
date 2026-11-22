@@ -63,9 +63,11 @@ bool fingerprintValid(const QString& fingerprint);
 // the destination's ssh settings name. Anything else, a jump host's prompt or a server's
 // keyboard-interactive text, gets no answer. `askpassKind` is SSH_ASKPASS_PROMPT ("none" for a
 // notice such as a security key touch, "confirm", or empty).
-enum class PromptKind { Password, Passphrase, Touch, Notice, Other };
+// The key path is cut to 100 bytes, as OpenSSH's "%.100s" cuts it; when two configured key files
+// share those 100 bytes the prompt can't name one, and the match is Ambiguous: nothing is answered.
+enum class PromptKind { Password, Passphrase, Touch, Notice, Ambiguous, Other };
 struct PromptMatch { PromptKind kind = PromptKind::Other; QString keyFile; };
-PromptMatch matchPrompt(const QString& askpassKind, const QString& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles);
+PromptMatch matchPrompt(const QString& askpassKind, const QByteArray& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles);
 // The known_hosts name ssh looks a host up by: the HostKeyAlias, the host, or [host]:port.
 QString hostToken(const QString& host, int port, const QString& alias);
 // One literal host: no pattern, list, negation, hashed name or marker.

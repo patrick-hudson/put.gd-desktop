@@ -41,7 +41,6 @@ void SftpPanel::build(const RowBuilder& row) {
         const bool pasted = text.size() - typedServer_.size() > 1;
         const auto previous = typedServer_;
         typedServer_ = text;
-        hideCreateFolder();  // another server is another folder
         if (pasted && applyAddress(text, &previous)) return;
         if (pinnedField_ == QLatin1String("server")) { pinnedField_.clear(); pinnedProblem_.clear(); }
         refreshProblems();
@@ -52,7 +51,11 @@ void SftpPanel::build(const RowBuilder& row) {
     folder_ = line("sftpFolder", "~/shots or /srv/www/shots");
     Ui::setMono(folder_);
     row(server, "Folder on server", folder_, "Where uploads go. A path that doesn't start with / starts in the login folder.");
-    connect(folder_, &QLineEdit::textEdited, this, [this] { hideCreateFolder(); refreshProblems(); });
+    connect(folder_, &QLineEdit::textEdited, this, [this] { refreshProblems(); });
+    // Any change to Folder or Server, typed, pasted or set by an agent, is another folder than the
+    // one a test found missing.
+    connect(folder_, &QLineEdit::textChanged, this, [this](const QString& text) { if (text != offeredFolderSetting_) hideCreateFolder(); });
+    connect(server_, &QLineEdit::textChanged, this, [this](const QString& text) { if (text != offeredServerSetting_) hideCreateFolder(); });
     resolved_ = new QLabel(this);
     resolved_->setObjectName("sftpResolved");
     resolved_->setAccessibleName("Resolved connection");
@@ -163,6 +166,8 @@ bool SftpPanel::applyAddress(const QString& text, const QString* previous) {
         if (parsed->hasUser) user_->setText(parsed->user);
         if (parsed->hasFolder) folder_->setText(parsed->folder);
     }
+    // The fields changed under the blocker above: the same rule as any other change.
+    if (folder_->text() != offeredFolderSetting_ || server_->text() != offeredServerSetting_) hideCreateFolder();
     typedServer_ = server_->text();
     if (hadPassword) { pinnedField_ = QStringLiteral("server"); pinnedProblem_ = passwordProblem; }
     refreshProblems();
@@ -284,6 +289,7 @@ void SftpPanel::showTestError(const QString& code, const QString& message, const
     } else if (code == QLatin1String("sftp_folder_missing")) {
         offeredFolder_ = details["path"].toString();
         offeredFolderSetting_ = folder_->text();
+        offeredServerSetting_ = server_->text();
         createFolder_->setText(message);
         createFolder_->show();
     }

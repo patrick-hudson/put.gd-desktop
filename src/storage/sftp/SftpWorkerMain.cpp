@@ -138,6 +138,7 @@ struct Connection {
     std::unique_ptr<QTemporaryDir> pinFolder;  // the recorded lines a pinned connection checks
     Resolved resolved;
     QString home;
+    bool homeValid = false;  // the login folder's path came back as UTF-8
     QStringList knownLines;
     Error knownError;
     bool alive() { return ssh && client && !client->broken() && ssh->running(); }
@@ -311,7 +312,8 @@ private:
         QByteArray home;
         Client::Status status;
         if (auto e = connection_.client->realpath(".", home, status)) { error = e; connection_.close(); return false; }
-        connection_.home = status.code == wire::Ok && utf8RoundTrip(home) ? textOf(home) : QString();
+        connection_.homeValid = status.code == wire::Ok && utf8RoundTrip(home);
+        connection_.home = connection_.homeValid ? textOf(home) : QString();
         return true;
     }
     void forgetSecrets() {
@@ -458,15 +460,16 @@ private:
     }
     // Removes a file this request created and could not finish. True only when the server
     // confirmed it is gone.
-    bool discard(const QByteArray& handle, const QString& path) {
-        if (!connection_.client || connection_.client->broken()) return false;
+    enum class Gone { Removed, Already, Unconfirmed };
+    Gone discard(const QByteArray& handle, const QString& path) {
+        if (!connection_.client || connection_.client->broken()) return Gone::Unconfirmed;
         const std::atomic_bool never{false};
         client().setCancellation(&never);
         struct Restore { Client& c; ~Restore() { c.setCancellation(&io.cancelled); } } restore{client()};
         Client::Status status;
-        if (!handle.isEmpty() && client().close(handle, status)) return false;
-        if (client().remove(bytesOf(path), status)) return false;
-        return status.code == wire::Ok || status.code == wire::NoSuchFile;
+        if (!handle.isEmpty() && client().close(handle, status)) return Gone::Unconfirmed;
+        if (client().remove(bytesOf(path), status)) return Gone::Unconfirmed;
+        return status.code == wire::Ok ? Gone::Removed : status.code == wire::NoSuchFile ? Gone::Already : Gone::Unconfirmed;
     }
     QJsonObject upload(Error& error, bool& uncertain) {
         uncertain = false;
@@ -491,8 +494,8 @@ private:
         {
             // The final name, created only if nothing has it: never a temporary name renamed over it,
             // which several servers would let replace another file. Once OPEN is sent its reply is
-            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, inside
-            // the 30 the resident gives a cancelled request before it stops the helper.
+            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds. The
+            // resident gives a cancelled request time for that and the CLOSE and REMOVE after it.
             if (io.cancelled) { error = {"cancelled", "Cancelled before anything was sent", {}}; return {}; }
             const std::atomic_bool never{false};
             client().setCancellation(&never);
@@ -511,12 +514,15 @@ private:
         // From here on the file exists and is ours: any failure removes it, and the message says
         // it was removed only when the server confirmed that.
         const auto abandon = [&](Error e) {
-            const bool removed = discard(handle, path);
+            const auto gone = discard(handle, path);
+            const bool removed = gone != Gone::Unconfirmed;
             handle.clear();
             uncertain = !removed && e.code != QLatin1String("artifact_changed");
             if (removed) {
-                if (e.code == QLatin1String("cancelled")) e.message = QStringLiteral("Cancelled; the partial file was removed from the server");
-                else if (e.code == QLatin1String("artifact_changed")) e.message = QStringLiteral("The file changed while it was uploading; the partial file was removed from the server");
+                // The server's own words: removed now, or already gone when REMOVE came.
+                const auto what = gone == Gone::Removed ? QStringLiteral("the partial file was removed from the server") : QStringLiteral("the partial file was already gone from the server");
+                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled; " + what;
+                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while it was uploading; " + what;
             } else {
                 e.details["path"] = path;
                 if (e.code == QLatin1String("cancelled")) e.message = "Cancelled; put.gd couldn't confirm the partial file " + path + " was removed. Check it on the server.";
@@ -708,6 +714,11 @@ private:
     }
     QJsonObject createFolder(Error& error) {
         if (!connect(error, false)) return {};
+        // A folder named relative to the login folder needs that folder's path: no "." stands in.
+        if (!remoteFolder(settings_["folder"].toString()).startsWith('/') && !connection_.homeValid) {
+            error = {"sftp_path_unsupported", "The server names your login folder with bytes that aren't UTF-8, or not at all, so put.gd can't tell where to create the folder. Give Folder on server as a full path.", {}};
+            return {};
+        }
         const auto folder = namedFolder();
         // Only the folder a test found missing: the path it reported must be the one made now.
         if (request_["path"].toString() != folder) {
@@ -780,6 +791,8 @@ private:
             return out;
         }
         step("folder", "passed", folder + " is a folder");
+        // As an upload: without the known_hosts entry that verified this server, nothing is created.
+        if (connection_.knownError) { error = connection_.knownError; step("upload", "failed", error.message); return out; }
         // A synthetic file under a name nothing else uses, recorded before it is sent (#1690).
         QByteArray bytes = "put.gd SFTP destination test " + QUuid::createUuid().toByteArray(QUuid::WithoutBraces) + "\n";
         for (int i = 0; i < 32; ++i) bytes += QByteArray::number(QRandomGenerator::global()->generate64(), 36) + "\n";
@@ -804,9 +817,9 @@ private:
         QCryptographicHash hash(QCryptographicHash::Sha256);
         const auto fail = [&](Error e) {
             error = e;
-            const bool removed = discard(handle, path);
-            out["cleanupStatus"] = removed ? "removed" : "unconfirmed";
-            if (!removed) { out["cleanupPath"] = path; error.details["path"] = path; }
+            const auto gone = discard(handle, path);
+            out["cleanupStatus"] = gone == Gone::Removed ? "removed" : gone == Gone::Already ? "missing" : "unconfirmed";
+            if (gone == Gone::Unconfirmed) { out["cleanupPath"] = path; error.details["path"] = path; }
             step("upload", "failed", e.message);
             return out;
         };
@@ -877,7 +890,10 @@ private:
         else out["cleanupStatus"] = status.code == wire::Ok ? "removed" : status.code == wire::NoSuchFile ? "missing" : "unconfirmed";
         const bool cleaned = out["cleanupStatus"] == "removed" || out["cleanupStatus"] == "missing";
         if (!cleaned) out["cleanupPath"] = path;
-        step("cleanup", cleaned ? "passed" : "failed", cleaned ? QStringLiteral("Deleted the test file") : "Couldn't confirm the test file " + path + " was deleted; check it on the server");
+        step("cleanup", cleaned ? "passed" : "failed",
+             out["cleanupStatus"] == "removed" ? QStringLiteral("Deleted the test file")
+             : out["cleanupStatus"] == "missing" ? QStringLiteral("The test file was already gone when put.gd went to delete it")
+                                                 : "Couldn't confirm the test file " + path + " was deleted; check it on the server");
         if (!error && !cleaned) error = {"destination_test_incomplete", "The test file " + path + " may still be on the server; delete it there", {{"path", path}}};
         if (!error && linkError) error = linkError;
         // The summary speaks for a test that passed every step only.

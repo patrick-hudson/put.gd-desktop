@@ -180,6 +180,11 @@ KnownLookup lookupHost(const QStringList& files, const QString& token, const QPr
             found.error = {"ssh_known_hosts_unreadable", "put.gd can't read the known_hosts file " + file + ".", {}};
             return found;
         }
+        // Only a readable regular file can say "no entry"; anything else decides nothing.
+        if (!S_ISREG(info.st_mode) || ::access(QFile::encodeName(file).constData(), R_OK) != 0) {
+            found.error = {"ssh_known_hosts_unreadable", "put.gd can't read the known_hosts file " + file + ": it isn't a readable file.", {}};
+            return found;
+        }
         QProcess lookup;
         lookup.setProcessEnvironment(env);
         lookup.setStandardInputFile(QProcess::nullDevice());
@@ -401,7 +406,7 @@ void Askpass::serve() {
                 // Only ssh's own askpass child may be answered: a jump host's ssh or a ProxyCommand
                 // child under it is another process with another parent.
                 const bool fromTarget = sshPid_.load() > 0 && parentOf(peer.pid) == sshPid_.load();
-                auto match = matchPrompt(QString::fromUtf8(lines[1]), QString::fromUtf8(lines[2]), user_, hosts_, identityFiles_);
+                auto match = matchPrompt(QString::fromUtf8(lines[1]), lines[2], user_, hosts_, identityFiles_);
                 if (!fromTarget && (match.kind == PromptKind::Password || match.kind == PromptKind::Passphrase)) match = {};
                 QString what = QStringLiteral("other"), *secret = nullptr;
                 std::atomic_bool* used = nullptr;
@@ -415,6 +420,7 @@ void Askpass::serve() {
                 }
                 case PromptKind::Touch: what = QStringLiteral("touch"); break;
                 case PromptKind::Notice: what = QStringLiteral("notice"); break;
+                case PromptKind::Ambiguous: what = QStringLiteral("ambiguous"); break;
                 case PromptKind::Other: break;
                 }
                 {
@@ -444,7 +450,10 @@ QStringList connectionArguments(const QJsonObject& settings, const QString& know
     auto args = baseOptions() + QStringList{"-o", "StrictHostKeyChecking=yes", "-o", "NumberOfPasswordPrompts=1", "-o", "BatchMode=no",
                                             "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "-o", "ConnectTimeout=20",
                                             "-o", "UserKnownHostsFile=" + knownHostsOption};
-    if (pinnedOnly) args << "-o" << "GlobalKnownHostsFile=/dev/null";
+    // Checked against a receipt's recorded lines: nothing else may vouch for the server, neither the
+    // global known_hosts nor a KnownHostsCommand from the user's ssh settings. (Certificate
+    // authorities come only from known_hosts files, so the recorded lines are all of them.)
+    if (pinnedOnly) args << "-o" << "GlobalKnownHostsFile=/dev/null" << "-o" << "KnownHostsCommand=none";
     return args + QStringList{"-s"} + destinationArguments(settings) + QStringList{"sftp"};
 }
 Error classify(const QByteArray& raw, const FailureContext& c) {
@@ -486,6 +495,11 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                 {}};
     if (text.contains(QLatin1String("Permission denied")) || text.contains(QLatin1String("Too many authentication failures"))) {
         const auto user = c.resolved.user;
+        if (c.asked.contains(QLatin1String("ambiguous")))
+            return {"ssh_auth_failed",
+                    "ssh asked for a key's passphrase, but two of your key files share the first 100 characters of their path, which is all ssh shows, so put.gd "
+                    "didn't answer. Give one key a shorter path, or add it to your SSH agent.",
+                    {}};
         if (c.asked.contains(QLatin1String("passphrase")) && !c.passphrase)
             return {"ssh_auth_failed", "Your key " + QFileInfo(c.passphraseKey).fileName() + " needs its passphrase: enter it in Key passphrase, or add the key to your SSH agent.", {}};
         if (c.asked.contains(QLatin1String("password")) && !c.password)

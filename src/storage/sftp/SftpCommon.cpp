@@ -254,20 +254,24 @@ QString fingerprintOfLine(const QString& line) {
     auto digest = QCryptographicHash::hash(blob, QCryptographicHash::Sha256).toBase64(QByteArray::OmitTrailingEquals);
     return keyType(fields[1]) + " SHA256:" + QString::fromLatin1(digest);
 }
-PromptMatch matchPrompt(const QString& askpassKind, const QString& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles) {
+PromptMatch matchPrompt(const QString& askpassKind, const QByteArray& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles) {
     if (askpassKind == QLatin1String("none")) {
-        const auto lower = prompt.toLower();
+        const auto lower = QString::fromUtf8(prompt).toLower();
         return {lower.contains(QLatin1String("touch")) || lower.contains(QLatin1String("presence")) ? PromptKind::Touch : PromptKind::Notice, {}};
     }
     if (!askpassKind.isEmpty()) return {};  // "confirm" and anything newer: no answer
     // Whole strings only, the trailing ": " included: no trimming, truncation or prefixes.
-    // sshconnect2.c: "Enter passphrase for key '%s': " with the tilde-expanded path.
+    // sshconnect2.c: "Enter passphrase for key '%.100s': " with the tilde-expanded path, cut to
+    // 100 bytes. Compared as bytes, as ssh prints them.
+    QStringList matched;
     for (const auto& file : identityFiles)
-        if (!file.isEmpty() && prompt == "Enter passphrase for key '" + file + "': ") return {PromptKind::Passphrase, file};
+        if (!file.isEmpty() && prompt == "Enter passphrase for key '" + file.toUtf8().left(100) + "': ") matched.append(file);
+    if (matched.size() == 1) return {PromptKind::Passphrase, matched.first()};
+    if (matched.size() > 1) return {PromptKind::Ambiguous, {}};
     // "%s@%s's password: "
     if (!user.isEmpty())
         for (const auto& host : hosts)
-            if (!host.isEmpty() && prompt == user + "@" + host + "'s password: ") return {PromptKind::Password, {}};
+            if (!host.isEmpty() && prompt == (user + "@" + host + "'s password: ").toUtf8()) return {PromptKind::Password, {}};
     return {};
 }
 QString hostToken(const QString& host, int port, const QString& alias) {
