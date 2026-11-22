@@ -405,8 +405,9 @@ comes back as it was before the press.
   nearest level 150 ms after the gesture ends. **`=`** (or `+`) and **`-`**, plain or with Ctrl,
   zoom one level and **Shift+Z** fits; with no pointer to anchor to (keys, the menu,
   `zoomIn`, `zoomOut`, `timelineZoom`) the anchor is the playhead when it is on screen,
-  else the middle of the view, so key and menu zoom never lose an on-screen playhead. Pointer
-  zoom keeps the time under the pointer in place instead, and can move the playhead out of view.
+  else the middle of the view, so from a settled view key and menu zoom never lose an on-screen
+  playhead. Pointer zoom instead holds the time under the pointer in place where the recording's
+  ends allow, and can move the playhead out of view.
 - A zoom step eases over 120 ms with the anchor holding its place on screen; tiles are
   requested when it settles, not per animation frame. A press or a scroll ends the
   animation at once.
