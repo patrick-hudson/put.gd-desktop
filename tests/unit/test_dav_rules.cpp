@@ -56,6 +56,7 @@ private slots:
         QCOMPARE(dav::redactShareTokens(QStringLiteral("link https://cloud.example.com/s/AbC123xyz/download ok")), QStringLiteral("link https://cloud.example.com/s/…/download ok"));
         // Any length and any characters: the whole segment is the secret.
         QCOMPARE(dav::redactShareTokens(QStringLiteral("https://h/s/a-b_c.d%2F?x")), QStringLiteral("https://h/s/…?x"));
+        QCOMPARE(dav::redactShareTokens(QStringLiteral("https://h/s/s/Tok")), QStringLiteral("https://h/s/…/…"));
         QCOMPARE(dav::redactShareTokensIn(QJsonValue(QJsonObject{{"link", "https://h/s/Tok"}})).toObject()["link"].toString(), QStringLiteral("https://h/s/…"));
     }
     void routeSuffixesOnly() {
@@ -77,6 +78,7 @@ private slots:
     void onlyOneStrongETagIsAValidator() {
         QVERIFY(dav::strongETag("\"6-660d9a1fc2dfd\""));
         QVERIFY(dav::strongETag("\"\""));
+        QVERIFY(!dav::strongETag("\"abc\"\n"));
         for (const auto* tag : {"W/\"6-660d\"", "*", "\"a\", \"b\"", "abc", "\"a", "\"a\"b\"", ""}) QVERIFY2(!dav::strongETag(QString::fromLatin1(tag)), tag);
     }
 };

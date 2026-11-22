@@ -268,10 +268,15 @@ void HistoryService::changeSharing(const QString& historyId,const QString& actio
   // A new link needs a file still stored as uploaded; revoke and inspect also reach older states (#1496).
   if(item["uploadStatus"]!="uploaded"||QStringList{"pending","deleting","unknown","removed","already_missing","changed"}.contains(item["remoteStatus"].toString())||(action=="create"&&!OperationItem::shareableRemote(item["remoteStatus"].toString()))){e={"share_unavailable","This item has no available confirmed upload",{}};return QJsonObject{};}
   if(item["shareStatus"]=="pending"||(action!="inspect"&&item["shareStatus"]=="unknown")){e={"share_result_unknown","Wait for or inspect the previous sharing result before another mutation",{}};return QJsonObject{};}
-  receipt=StorageReceipt::fromJson(item["receipt"].toObject());if(action=="revoke")receipt.directUrl.clear();
+  receipt=StorageReceipt::fromJson(item["receipt"].toObject());
+  // What identifies the link already made goes with the request (#1872): the share ID its step
+  // recorded and, for a revoke, the recorded link, which the receipt itself doesn't keep while
+  // the outcome is pending.
+  QJsonObject recorded;if(const auto previous=item["shareProgress"].toObject()["shareId"];previous.isString())recorded["shareId"]=previous;
+  if(action=="revoke"){if(!receipt.directUrl.isEmpty())recorded["recordedLink"]=receipt.directUrl;receipt.directUrl.clear();}
   // A create without options keeps the ones the upload asked for, such as a diagnostics link's expiry (#1496).
   const auto chosen=action=="create"&&options.isEmpty()&&item["shareIntent"]=="create"?item["shareIntentOptions"].toObject():options;
-  QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"historyId",historyId},{"action",action},{"options",chosen},{"state","accepted"},{"status","pending"},{"receipt",receipt.toJson()},{"progress",QJsonObject{}}};
+  QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"historyId",historyId},{"action",action},{"options",chosen},{"state","accepted"},{"status","pending"},{"receipt",receipt.toJson()},{"progress",recorded}};
   e=store.saveSharing(doc,true);return doc;
  },[this,reply,stopped](Error e,QJsonObject doc){
   if(e){reply(e,{});return;}for(auto it=stopped.begin();it!=stopped.end();++it)stoppedSharing_.remove(it.key());const auto id=doc["id"].toString();auto cancelled=std::make_shared<std::atomic_bool>(false);active_.insert(id,cancelled);notifyChanged();

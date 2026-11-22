@@ -117,7 +117,8 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
     if (kind == "connectAccount") {
         if (data["setupId"] == davSignInSetup_ || job["setupId"] == davSignInSetup_) davSignInSetup_.clear();
         if (shown) dav_->setSignIn(DavDestinationPanel::SignIn::Idle);
-        if (error.code == "nextcloud_signin_cancelled") { setupFeedback("Sign-in cancelled."); return true; }
+        // Cancelled: its message also says when the app password just given couldn't be revoked.
+        if (error.code == "nextcloud_signin_cancelled") { setupFeedback(error.details.value("grantRevoked").toBool(true) ? QStringLiteral("Sign-in cancelled.") : error.message); return true; }
         // Signed in, but the server enforces link passwords: the account is shown, and the error said.
         if (error.code == "nextcloud_share_password_required" && error.details.value("credentialSaved").toBool()) {
             applyAccount(error.details.value("accountName").toString(error.details.value("userId").toString()));

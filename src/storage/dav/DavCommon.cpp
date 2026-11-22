@@ -141,9 +141,10 @@ QString shareToken(const QString& link) {
 }
 QString redactShareTokens(const QString& text) {
     // The whole segment after /s/, whatever its length or characters: it is the link's secret.
-    static const QRegularExpression token("/s/[^\\s/?#\"'<>]+");
+    // A lookbehind, so overlapping segments ("/s/s/TOKEN") are each replaced in one pass.
+    static const QRegularExpression token("(?<=/s/)(?!…)[^\\s/?#\"'<>]+");
     auto out = text;
-    return out.replace(token, QStringLiteral("/s/…"));
+    return out.replace(token, QStringLiteral("…"));
 }
 QJsonValue redactShareTokensIn(const QJsonValue& value) {
     // Only the fields that hold a share link: a DAV target or an object's identity stays as it is.
@@ -198,7 +199,8 @@ bool loginPageAllowed(const QUrl& given, const QString& server, bool allowInsecu
     return path.startsWith(base.path()) && !path.contains("/../") && !path.endsWith("/..");
 }
 bool strongETag(const QString& etag) {
-    static const QRegularExpression strong(QStringLiteral("^\"[\\x{21}\\x{23}-\\x{7e}\\x{80}-\\x{ff}]*\"$"));
+    // \z, not $: $ also matches before a final newline.
+    static const QRegularExpression strong(QStringLiteral("^\"[\\x{21}\\x{23}-\\x{7e}\\x{80}-\\x{ff}]*\"\\z"));
     return strong.match(etag).hasMatch();
 }
 QString originOnly(const QString& address) {

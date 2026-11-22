@@ -1546,7 +1546,9 @@ Operation OperationService::run(Job job) {
    const auto shareId=uuid();
    // A diagnostics package's share link expires (#123).
    const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
-   QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
+   // The share ID an earlier step recorded goes with the request (#1872), so a retry finds that share.
+   QJsonObject recorded;if(const auto previous=current["shareProgress"].toObject()["shareId"];previous.isString())recorded["shareId"]=previous;
+   QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",recorded},{"options",options}};
    if(auto e=refused(store.saveSharing(doc))){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
    const auto path=root_+"/history.sqlite";
    auto checkpoint=[path,&doc,refused](const QJsonObject& progress,std::function<void(Error)> ack){

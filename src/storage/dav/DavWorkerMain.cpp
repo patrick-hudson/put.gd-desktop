@@ -719,8 +719,11 @@ private:
                 reader.readNext();
                 if (reader.isStartElement() && reader.name() == QLatin1String("status")) {
                     any = true;
-                    const auto status = reader.readElementText();
-                    if (!status.contains(" 2") && !status.contains(" 404")) return false;
+                    // The status line's code: "HTTP/1.1 423 Locked" → 423.
+                    static const QRegularExpression line(QStringLiteral("^\\s*HTTP/\\d(?:\\.\\d)?\\s+(\\d{3})\\b"));
+                    const auto match = line.match(reader.readElementText());
+                    const int code = match.hasMatch() ? match.captured(1).toInt() : 0;
+                    if (!((code >= 200 && code < 300) || code == 404)) return false;
                 }
             }
             return any && !reader.hasError();
@@ -935,19 +938,27 @@ private:
     // link's token, else by its label, which must match exactly one share. Empty when there is
     // none; nullopt (with `error`) when it can't be told: two labelled shares are never guessed.
     std::optional<QJsonObject> ownShare(const QString& path, const StorageReceipt& receipt, Error& error) {
-        const auto recordedId = request_["progress"].toObject()["shareId"].toString();
+        const auto progress = request_["progress"].toObject();
+        const auto recordedId = progress["shareId"].toString();
         if (!recordedId.isEmpty()) {
             const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares/" + QString::fromLatin1(QUrl::toPercentEncoding(recordedId)));
             if (r.status == 404) return QJsonObject{};
             if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
+            // Exactly one share, with exactly that ID; anything else can't be told apart.
             const auto data = r.data();
-            const auto share = data.isArray() ? data.toArray().first().toObject() : data.toObject();
-            return share["share_type"].toInt(-1) == 3 ? share : QJsonObject{};
+            const auto list = data.isArray() ? data.toArray() : QJsonArray{data};
+            if (list.size() != 1 || list.first().toObject()["id"].toVariant().toString() != recordedId || list.first().toObject()["share_type"].toInt(-1) != 3) {
+                error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share didn't name exactly that share.", {{"requestStage", "share_inspect"}}};
+                return std::nullopt;
+            }
+            return list.first().toObject();
         }
         const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares?path=" + QString::fromLatin1(QUrl::toPercentEncoding(path)) + "&reshares=false");
         if (r.status == 404) return QJsonObject{};
         if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
-        const auto token = shareToken(receipt.directUrl);
+        // The recorded link: the receipt's, or the one History passed with a revoke.
+        auto token = shareToken(receipt.directUrl);
+        if (token.isEmpty()) token = shareToken(progress["recordedLink"].toString());
         QList<QJsonObject> found;
         for (const auto& value : r.data().toArray()) {
             const auto share = value.toObject();
@@ -1095,7 +1106,11 @@ private:
             // Only "not yet" (404) waits; a TLS or connection failure ends sign-in with its own error.
             if (poll.status != 404) { error = failure(poll, endpoint, "sign_in_poll"); return {}; }
             // The pause between polls ends at the deadline at the latest.
-            for (int wait = 0; wait < 40 && !cancelled.load() && clock.elapsed() < timeout; ++wait) QThread::msleep(50);
+            for (int wait = 0; wait < 40 && !cancelled.load(); ++wait) {
+                const auto left = timeout - clock.elapsed();
+                if (left <= 0) break;
+                QThread::msleep(qMin<qint64>(50, left));
+            }
         }
         const QUrl returned(granted["server"].toString());
         const auto loginName = granted["loginName"].toString();
@@ -1156,7 +1171,8 @@ private:
                 warn("nextcloud_share_expiry_enforced", QString("This server makes every public link expire after %1 days; put.gd's links follow that.").arg(days));
             bool created = false;
             // The folder Test may create is journaled before it is.
-            if ((error = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_folder_intent"}, {"folder", settings()["folder"]}}))) return out;
+            if ((error = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_folder_intent"}, {"folder", settings()["folder"]},
+                                     {"target", canonicalUrl(folder())}, {"userId", userId_}}))) return out;
             if ((error = ensureFolder(&created))) return out;
             out["folderCreated"] = created;
         } else {

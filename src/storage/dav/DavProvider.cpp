@@ -193,12 +193,23 @@ void DavProvider::share(const ShareRequest& request, DurableCheckpoint checkpoin
     options["action"] = request.action;
     Error e;
     bool uncertain = false;
+    // The last journal the step saved is its progress: the share ID it recorded stays on record
+    // whatever the outcome, so a later inspection or revoke finds that share.
+    auto last = std::make_shared<QJsonObject>(request.progress);
+    const DurableCheckpoint kept = [checkpoint, last](const QJsonObject& journal, std::function<void(Error)> ack) {
+        checkpoint(journal, [last, journal, ack](Error e) { if (!e) *last = journal; ack(e); });
+    };
     const auto r = call("share", request.receipt.destination, {{"receipt", request.receipt.toJson()}, {"options", options}, {"progress", request.progress}}, e, &uncertain,
-                        request.cancellation, {}, checkpoint);
+                        request.cancellation, {}, kept);
     auto receipt = r.contains("receipt") ? StorageReceipt::fromJson(r["receipt"].toObject()) : request.receipt;
     const auto status = r["status"].toString(e ? (uncertain ? "unknown" : "failed") : "unknown");
     if (status != "shared") receipt.directUrl.clear();
-    ShareResult result{status, receipt, r["progress"].toObject(), e};
+    auto progress = r["progress"].toObject();
+    if (progress.isEmpty()) progress = *last;
+    // A recorded share ID outlives the journal of a step that didn't record one itself.
+    if (!progress.contains("shareId") && request.progress.contains("shareId")) progress["shareId"] = request.progress["shareId"];
+    progress.remove("recordedLink");
+    ShareResult result{status, receipt, progress, e};
     const auto expires = QDateTime::fromString(r.value("expiresAt").toString(), Qt::ISODateWithMs);
     if (status == "shared" && expires.isValid()) result.expiresAt = expires.toUTC().toString(Qt::ISODateWithMs);
     reply(result);
@@ -299,9 +310,9 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
                 });
             });
         };
-        if (!store->cached(destination.profileId, destination.credentialReference) && destination.credentialReference["mode"] == "keychain" &&
-            !destination.settings["accountName"].toString().isEmpty()) {
-            store->unlock(destination.profileId, destination.credentialReference, [start, unlockFailed](Error e) { *unlockFailed = bool(e); start(); });
+        if (!store->cached(destination.profileId, destination.credentialReference) && destination.credentialReference["mode"] == "keychain") {
+            // An entry that isn't there is no earlier grant; one that can't be read is said.
+            store->unlock(destination.profileId, destination.credentialReference, [start, unlockFailed](Error e) { *unlockFailed = e && !e.details.value("missing").toBool(); start(); });
             return;
         }
         start();

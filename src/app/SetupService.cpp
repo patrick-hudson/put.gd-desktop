@@ -25,9 +25,10 @@ bool validInput(const QString& kind,const QJsonObject& input) {
   if(!input[key].isString()||input[key].toString().isEmpty()||input[key].toString().size()>4096)return false;
  return !input.contains("sessionToken")||(input["sessionToken"].isString()&&input["sessionToken"].toString().size()<=16384);
 }
-// Signing in, signing out, storing credentials and the account inspection that binds them change
-// the same credential: one at a time per destination (#1872).
-QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+(QStringList{"connectAccount","signOut","storeCredentials","inspectAccount"}.contains(kind)?QStringLiteral("account"):kind);}
+// Signing in, signing out, storing credentials, the account inspection that binds them and a Test
+// (which binds a hand-stored Nextcloud app password first) use the same credential: one at a time
+// per destination (#1872).
+QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+(QStringList{"connectAccount","signOut","storeCredentials","inspectAccount","testDestination"}.contains(kind)?QStringLiteral("account"):kind);}
 }
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
 // (#282), Cloudflare R2 (#1678), Nextcloud and WebDAV (#1872), and a provider with named values

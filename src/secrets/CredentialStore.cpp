@@ -8,8 +8,10 @@ Error storeError(QKeychain::Job* job) {
     if (!job->error()) return {};
     // Backend error strings can contain service details; expose stable categories only.
     const auto denied = job->error() == QKeychain::AccessDenied || job->error() == QKeychain::AccessDeniedByUser;
+    // An entry that isn't there says so in its details, for a caller that only reads one if it exists.
     return {denied ? "credential_access_denied" : "credential_store_unavailable",
-            "Unlock the OS secret store explicitly or select session credentials", {}};
+            "Unlock the OS secret store explicitly or select session credentials",
+            job->error() == QKeychain::EntryNotFound ? QJsonObject{{"missing", true}} : QJsonObject{}};
 }
 Error validCredentials(const Credentials& value) {
     if (!value.values.isEmpty()) {
