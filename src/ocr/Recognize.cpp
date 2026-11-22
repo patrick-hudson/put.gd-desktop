@@ -96,12 +96,17 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  QList<Quad> areas;for(const auto& code:std::as_const(result.recognition.codes))areas.append(code.quad);
  result.timings.codesMs=stage.elapsed();
  // Emoji (#1748): Tesseract has no emoji, so it reads one as stray symbols or
- // glued letters. Colour glyphs are named from the templates now, before any
- // engine starts, so the pages read here are given back before recognition
- // reaches its peak; what was found replaces Tesseract's reading at the end.
- EmojiScan emoji;
- if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
-  stage.restart();
+ // glued letters. Colour glyphs are named from the templates on their own
+ // thread, alongside the analysis, the engines' start and recognition (#1815:
+ // on its own it held a 4K screen's job on one core for about half a second);
+ // what was found replaces Tesseract's reading at the end. The scan touches
+ // only the colour plane, the templates, the code areas and its own result
+ // here, and every way out of this function joins it first.
+ EmojiScan emoji;qint64 emojiMs=0;
+ // Read by the workers, which may outlive this function: on the heap.
+ const auto scanning=std::make_shared<std::atomic<bool>>(false);
+ const auto scanEmoji=[&]{
+  QElapsedTimer clock;clock.start();
   emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
   options.emojiTemplates->release();
   // A colour glyph inside a code (a logo in a QR code) is part of the code,
@@ -110,8 +115,15 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    for(const auto& q:std::as_const(areas))if(insideCode(q,hit.rect.center()))return true;
    return false;
   });
-  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
-  result.timings.emojiMs=stage.elapsed();
+  emojiMs=clock.elapsed();
+  scanning->store(false);
+ };
+ std::thread emojiThread;
+ struct Joiner { std::thread& t; ~Joiner(){if(t.joinable())t.join();} } joiner{emojiThread};
+ if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
+  scanning->store(true);
+  // A thread the system refuses: the scan runs here, as before.
+  try{emojiThread=std::thread(scanEmoji);}catch(const std::system_error&){scanEmoji();}
  }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
@@ -175,6 +187,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   // Extra engines starting now, and started so far: a task's growth is not
   // measured across an engine's start, whose memory it would count.
   std::atomic<int> starting{0},started{0};
+  // The emoji scan is running: its memory is not a task's growth either.
+  std::shared_ptr<const std::atomic<bool>> emojiScanning;
   std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
   std::vector<qint64> taskPixels;   // scaled pixels of each task
   std::atomic<bool> stop{false};
@@ -183,7 +197,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   int left()const{return budgetMs>0?int(std::chrono::duration_cast<std::chrono::milliseconds>(end-std::chrono::steady_clock::now()).count()):0;}
   bool roomFor(qint64 bytes)const{return gateBudget<=0||residentBytes()+bytes<=gateBudget;}
  };
- auto* shared=new Shared(options.directories);
+ auto* shared=new Shared(options.directories);shared->emojiScanning=scanning;
  shared->budgetMs=options.budgetMs;shared->end=start+std::chrono::milliseconds(options.budgetMs);
  const qint64 beforeEngine=residentBytes();
  result.error=shared->first.start(options.languages,options.strictLanguages,options.engine,result.failedLanguage);
@@ -281,7 +295,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
    largestRead=std::max(largestRead,shared->taskPixels[size_t(task)]);
    struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
-   const bool quiet=shared->starting.load()==0;const int startsBefore=shared->started.load();const qint64 before=residentBytes();
+   const bool quiet=shared->starting.load()==0&&!shared->emojiScanning->load();const int startsBefore=shared->started.load();const qint64 before=residentBytes();
    // The time budget: never start a task that cannot finish, and give every
    // pass a deadline, so a pass that overruns returns its partial result.
    if(shared->budgetMs>0){const int remaining=shared->left();if(remaining<=0||(shared->slowest.load()>0&&remaining<shared->slowest.load())){shared->stop=true;return;}}
@@ -302,7 +316,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    // (With seven engines starting beside a 4K screen's second task, it
    // showed 79 MiB, and every extra worker then found no room for twice that.)
    const qint64 after=residentBytes();
-   if(quiet&&shared->starting.load()==0&&shared->started.load()==startsBefore)raise(shared->taskGrowth,after-before);
+   if(quiet&&shared->starting.load()==0&&!shared->emojiScanning->load()&&shared->started.load()==startsBefore)raise(shared->taskGrowth,after-before);
    {std::lock_guard<std::mutex> guard(shared->lock);if(shared->closed)return;shared->outcomes[task]=std::move(outcome);}
    if(afterFirstTask)afterFirstTask();
   }
@@ -417,7 +431,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
- // Emoji, found before recognition, take the place of what Tesseract made of them.
+ if(emojiThread.joinable())emojiThread.join();
+ result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
+ result.timings.emojiMs=emojiMs;
+ // Emoji take the place of what Tesseract made of them.
  placeEmoji(result.recognition,emoji.hits);
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
