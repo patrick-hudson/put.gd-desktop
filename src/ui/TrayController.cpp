@@ -239,9 +239,11 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
- // #1804: without a tray to click, one notification leads back to a prompt another window may cover.
+ // #1804, #1829: one notification leads back to a prompt another window may cover.
  connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){
-  if(available())return;
+  // On every desktop, tray or not: a tray host may open the menu on a click instead of activating put.gd
+  // (Ubuntu's AppIndicator, #1829). Once per prompt a person is shown; never for an agent's check.
+  if(!operations_.settingsSnapshot().notifications)return;
   const auto message=QStringLiteral("A capture is waiting for your decision");
   logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
 #ifdef Q_OS_LINUX

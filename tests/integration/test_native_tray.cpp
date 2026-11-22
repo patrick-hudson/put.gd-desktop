@@ -718,6 +718,17 @@ private slots:
   emit notifications.NotificationClosed(3,2);emit notifications.ActionInvoked(3,"default");putgd::test::settle(50);PUTGD_TRY_COMPARE(opened(),links.mid(0,2));
   PUTGD_TRY_VERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
+ // #1829: a waiting sensitive text prompt is announced once with Show even where a tray is present,
+ // since a tray host may open its menu on a click instead of activating put.gd (Ubuntu's AppIndicator).
+ void waitingSensitivePromptIsAnnouncedWithShowEvenWithATray() {
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());
+  emit operations.sensitivePromptShown("synthetic-operation");
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);
+  QCOMPARE(notifications.values[0]["body"].toString(),QString("A capture is waiting for your decision"));
+  QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"show-sensitive","Show"}));
+ }
  void failedUploadOffersDiagnosticsAndShowInFolder() {
   // #122: the failure toast saves a package for that operation; the saved toast shows it in the file manager.
   QTemporaryDir directory;QVERIFY(directory.isValid());const auto output=directory.filePath("opened-folders");
