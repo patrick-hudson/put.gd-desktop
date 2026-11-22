@@ -119,6 +119,11 @@ private slots:
   QCOMPARE(found.size(),qsizetype(1));QVERIFY(found.first().top<=260-40&&found.first().bottom>=272-40);
   // Never into another panel: one beside it on the same plain background.
   QCOMPARE(plainAround(view,trimmed,{QRect(500,40,100,360)},44).right(),499);
+  // A dense faint line, two thirds ink across the window, still lets it grow past (Sol on #1920).
+  {auto dense=grey;
+   for(int y=300;y<312;++y)for(int x=60;x<760;++x)if(x%3!=0)dense[y*width+x]=char(70);
+   const GreyView denseView{reinterpret_cast<const uint8_t*>(dense.constData()),width,height,width};
+   QCOMPARE(plainAround(denseView,trimmed,{},44),QRect(QPoint(60,40),QPoint(759,399)));}
  }
  // #1911: only an uncertain word shaped like a key or token is read again;
  // its line's rows, joined with a neighbour's, and the least confident first

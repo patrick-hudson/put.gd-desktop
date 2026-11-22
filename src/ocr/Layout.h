@@ -96,9 +96,10 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
 // `limit` of them, top to bottom.
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
 // #1912: a trimmed panel grown through its window's plain background: each
-// side moves out while the next row or column, across the area so far, has a
-// median within `tolerance` of `background` and meets none of `others` (the
-// other panels). A faint line has no grey step of 32 levels, so trimming
+// side moves out while at least a quarter of the next row or column, across
+// the area so far, is within `tolerance` of `background` (a line of text
+// leaves that much paper; a desktop or frame of another shade leaves none),
+// and it meets none of `others` (the other panels and the areas already grown). A faint line has no grey step of 32 levels, so trimming
 // leaves it out; the growth takes it back in, and stops at a window's edge,
 // where a desktop or frame of another shade would be counted as ink.
 QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance=6);

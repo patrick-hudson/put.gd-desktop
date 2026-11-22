@@ -391,9 +391,13 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const auto& p=panelList.first();
    faintRegions.append({p.rect,p.view,p.codes,p.profile,p.plan.scale,p.invert});
   }else{
+   // Grown one after another, each clear of the others and of the areas
+   // already grown, so no faint line is read twice (Sol on #1920).
+   QList<QRect> grown;
    for(const auto& p:std::as_const(panelList)){
-    QList<QRect> others;for(const auto& o:std::as_const(panelList))if(&o!=&p)others.append(o.rect);
+    QList<QRect> others=grown;for(const auto& o:std::as_const(panelList))if(&o!=&p)others.append(o.rect);
     const QRect rect=plainAround(image,p.rect,others,p.profile.background);
+    grown.append(rect);
     FaintRegion r;r.rect=rect;r.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
     for(const auto& q:std::as_const(areas)){
      Quad moved;bool inside=false;

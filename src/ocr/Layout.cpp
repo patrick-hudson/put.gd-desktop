@@ -506,14 +506,12 @@ QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& ot
  const QRect bounds(0,0,image.width,image.height);
  QRect r=from.intersected(bounds);
  if(r.isEmpty())return r;
- std::array<int,256> histogram{};
  const auto plain=[&](int x0,int y0,int x1,int y1){  // inclusive span
   const QRect line(QPoint(x0,y0),QPoint(x1,y1));
   if(std::any_of(others.cbegin(),others.cend(),[&](const QRect& o){return o.intersects(line);}))return false;
-  histogram.fill(0);int n=0;
-  for(int y=y0;y<=y1;++y){const auto* row=image.row(y);for(int x=x0;x<=x1;++x){++histogram[row[x]];++n;}}
-  int seen=0,median=0;for(;median<255;++median){seen+=histogram[size_t(median)];if(2*seen>=n)break;}
-  return std::abs(median-background)<=tolerance;
+  qint64 n=0,paper=0;
+  for(int y=y0;y<=y1;++y){const auto* row=image.row(y);for(int x=x0;x<=x1;++x){++n;paper+=std::abs(int(row[x])-background)<=tolerance;}}
+  return 4*paper>=n;
  };
  for(bool grew=true;grew;){
   grew=false;
