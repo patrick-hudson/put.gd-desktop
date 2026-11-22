@@ -500,12 +500,15 @@ private:
         return discardFresh(path, *opened, bound);
     }
     Gone discardFresh(const QString& path, const wire::Attributes& opened, qint64 bound) {
+        // The new connection is pinned to this attempt's server: only the known_hosts lines it was
+        // verified by, and the same host, port and user (connectAs, as History's checks are).
+        const auto attempt = connection_.server();
         connection_.kill();
         const std::atomic_bool never{false};
         cancel_ = &never;
         struct Restore { Worker& w; ~Restore() { w.cancel_ = &io.cancelled; if (w.connection_.client) w.connection_.client->setCancellation(&io.cancelled); } } restore{*this};
         Error error;
-        if (!connect(error, false)) return Gone::Unconfirmed;
+        if (!connectAs(attempt, error)) return Gone::Unconfirmed;
         wire::Attributes there;
         Client::Status status;
         if (client().lstat(bytesOf(path), there, status)) return Gone::Unconfirmed;
@@ -599,7 +602,8 @@ private:
         // Every byte is on the server: a cancel from here on is too late, and the upload finishes.
         const std::atomic_bool finishing{false};
         client().setCancellation(&finishing);
-        struct Restore { Client& c; ~Restore() { c.setCancellation(&io.cancelled); } } restore{client()};
+        // Restored through the client there is at the end: a cleanup over a new connection replaces it.
+        struct Restore { Connection& c; ~Restore() { if (c.client) c.client->setCancellation(&io.cancelled); } } restore{connection_};
         if (client().has("fsync@openssh.com", "1")) {
             if (auto e = client().fsync(handle, status)) { error = e; error.details["path"] = path; uncertain = true; return {}; }
             if (status.code != wire::Ok) return abandon(refusal(status, path, QStringLiteral("save")));

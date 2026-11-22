@@ -67,6 +67,14 @@ private slots:
         QCOMPARE(window.inspect()["sharing"].toString(), QString("Upload only"));
         ReviewWindow shared(options(), config());
         QCOMPARE(shared.inspect()["sharing"].toString(), QString("Shared link"));
+        // A local recording is no link at all.
+        auto local = options();
+        local.destination = "local";
+        local.sharingMode = "local";
+        local.links = false;
+        local.uploadSummary = "Save to the local archive";
+        ReviewWindow saved(local, config());
+        QCOMPARE(saved.inspect()["sharing"].toString(), QString("Local only"));
     }
     void discardAsksBeforeTheRecordingGoes() {
         ReviewWindow window(options(), config());

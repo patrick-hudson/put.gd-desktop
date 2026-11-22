@@ -78,7 +78,9 @@ int transportHeight(const QWidget* w) { return std::max(42, textControlHeight(w)
 int footerHeight(const QWidget* w) { return std::max(56, textControlHeight(w) + 24); }
 int destinationMenuPadding() { return 6 + Ui::scaled(8) + 2; }
 // A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
-QString sharingName(const QString& mode, bool links) { return mode == "private" ? QStringLiteral("Private upload") : links ? QStringLiteral("Shared link") : QStringLiteral("Upload only"); }
+QString sharingName(const QString& mode, bool links) {
+    return mode == "private" ? QStringLiteral("Private upload") : mode == "local" ? QStringLiteral("Local only") : links ? QStringLiteral("Shared link") : QStringLiteral("Upload only");
+}
 QString formatShort(const QString& format) {
     return format == "webm" ? QStringLiteral("WebM") : format == "webp" ? QStringLiteral("WebP") : format.toUpper();
 }

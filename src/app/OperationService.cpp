@@ -1,6 +1,7 @@
 #include "OperationService.h"
 #include "StorageLocations.h"
 #include "DestinationTestJournal.h"
+#include "core/CommandText.h"
 #include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
@@ -77,13 +78,13 @@ ActionSettings routeOf(const Operation& op) {
 }
 QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& providers) {
  const auto route=routeOf(op);
- if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
+ if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"links",false},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  auto mode=route.publicationMode;
  if(mode=="default")if(auto provider=providers.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
  const auto label=profile["label"].toString(op.destination.profileId);
  // A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
- const auto provider=providers.find(op.destination.providerId);const bool links=!provider||provider->capabilities(op.destination).urls||provider->capabilities(op.destination).sharing;
+ const bool links=commandtext::givesLinks(profile);
  const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):links?QStringLiteral("Upload to %1 · Shared link").arg(label):QStringLiteral("Upload to %1").arg(label);
  return {{"destination",label},{"sharingMode",mode},{"summary",summary},{"links",links}};
 }

@@ -17,6 +17,8 @@ constexpr qint64 silenceLimitMs = 200000;
 // How long a cancelled request may take to finish before the helper is stopped: the worker's
 // 20 s OPEN wait, 3 s on its own connection and a cleanup over a new one fit inside it (#1888).
 constexpr qint64 cancelGraceMs = 45000;
+// Quit waits at most this long, whatever a cancel already under way still has left.
+constexpr qint64 quitGraceMs = 30000;
 Error parseError(const QJsonObject& value) { return {value["code"].toString("sftp_failed"), value["message"].toString("The SFTP request failed"), value["details"].toObject()}; }
 // Only these methods sign in, so only they get the password and passphrase.
 bool signsIn(const QString& method) {
@@ -225,8 +227,10 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     QByteArray pending;
     QJsonObject final;
     bool got = false, cancelSent = false, broken = false;
-    QElapsedTimer silence, cancelClock;
+    QElapsedTimer silence, cancelClock, quitClock;
     silence.start();
+    QString journaled;  // the path the worker's last checkpoint named: an unknown outcome reports it
+    const auto withPath = [&journaled](Error e) { if (!journaled.isEmpty()) e.details["path"] = journaled; return e; };
     while (!got) {
         // The provider is going away: the helper is stopped at once, not asked.
         if (stopping_.load() && method == QLatin1String("connect")) {
@@ -234,9 +238,10 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
             error = {"operation_cancelled", "The application is stopping", {}};
             return {};
         }
-        if (kill && kill->load()) {
+        if (stopping_.load() && !quitClock.isValid()) quitClock.start();
+        if ((kill && kill->load()) || (quitClock.isValid() && quitClock.elapsed() > quitGraceMs)) {
             session->process.kill();
-            error = {"sftp_transport_unknown", "put.gd quit while the SFTP helper was working; check the server before retrying", {{"reason", "quit"}}};
+            error = withPath({"sftp_transport_unknown", "put.gd quit while the SFTP helper was working; check the server before retrying", {{"reason", "quit"}}});
             if (uncertain) *uncertain = mutation;
             return {};
         }
@@ -247,7 +252,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
         }
         if ((cancelSent && cancelClock.elapsed() > cancelGraceMs) || silence.elapsed() > silenceLimitMs) {
             session->process.kill();
-            error = {"sftp_transport_unknown", "The SFTP helper stopped responding; check the server before retrying", {{"reason", cancelSent ? "cancelled" : "deadline"}}};
+            error = withPath({"sftp_transport_unknown", "The SFTP helper stopped responding; check the server before retrying", {{"reason", cancelSent ? "cancelled" : "deadline"}}});
             if (uncertain) *uncertain = mutation;
             return {};
         }
@@ -274,6 +279,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
                 continue;
             }
             if (value["event"] == "checkpoint") {
+                if (const auto at = value["journal"].toObject()["path"].toString(); !at.isEmpty()) journaled = at;
                 Error saved;
                 if (checkpoint) {
                     auto promise = std::make_shared<std::promise<Error>>();
@@ -293,7 +299,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
         if (broken) break;
     }
     if (!got) {
-        error = {"sftp_transport_unknown", "The SFTP helper ended without a confirmed result; check the server before retrying", {}};
+        error = withPath({"sftp_transport_unknown", "The SFTP helper ended without a confirmed result; check the server before retrying", {}});
         if (uncertain) *uncertain = mutation;
         return {};
     }
