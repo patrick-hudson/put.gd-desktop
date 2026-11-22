@@ -5,6 +5,7 @@
 #include "app/SetupService.h"
 #include "fixtures/U2Fixtures.h"
 #include "storage/sftp/SftpCommon.h"
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest>
 #include "fixtures/Waits.h"
@@ -122,6 +123,48 @@ private slots:
         // Both secrets typed: nothing to keep, so it stores.
         store(rig, {{sftp::passwordKey(), "synthetic-new-password"}, {sftp::passphraseKey(), "synthetic-new-passphrase"}}, job);
         QCOMPARE(job["state"].toString(), QString("completed"));
+    }
+    // A status file from before #1890 has no saved-entry list: its keychain entries count as
+    // saved, so a locked one that reads as "not found" is refused, and its records are kept.
+    void aPrePatchStatusFileCountsEntriesAsSaved() {
+        Rig rig;
+        {
+            QFile file(rig.dir.filePath("destination-status.json"));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            const QJsonObject record{{"state", "passed"}, {"source", "test"}, {"fingerprint", QString(64, 'a')}, {"credentialRevision", 3}};
+            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"destinations", QJsonObject{{"test", record}}}, {"credentialRevisions", QJsonObject{{"test", 3}}}})
+                           .toJson(QJsonDocument::Compact));
+        }
+        rig.status.load();
+        QVERIFY(rig.status.keychainSaved("putgd/sftp/test"));
+        rig.keychain.unlockError = notFound;
+        QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("failed"));
+        QCOMPARE(job["error"].toObject()["code"].toString(), QString("credential_incomplete"));
+        QCOMPARE(rig.keychain.saves, 0);
+        QFile file(rig.dir.filePath("destination-status.json"));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const auto saved = QJsonDocument::fromJson(file.readAll()).object();
+        QCOMPARE(saved["keychainEntries"].toArray(), QJsonArray{"putgd/sftp/test"});
+        QVERIFY(saved["destinations"].toObject().contains("test"));
+    }
+    // Keychain, then session, then keychain again keeps the entry marked as saved.
+    void aModeRoundTripKeepsTheMark() {
+        Rig rig;
+        rig.keychain.unlockError = notFound;
+        QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-first-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+        rig.use({sftpProfile("test", {}, "session")});
+        rig.status.prune();
+        rig.use({sftpProfile("test", "putgd/sftp/test")});
+        rig.status.prune();
+        QVERIFY(rig.status.keychainSaved("putgd/sftp/test"));
+        rig.keychain.forget("test", rig.keychain_reference());
+        store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("failed"));
+        QCOMPARE(rig.keychain.saves, 1);
     }
     // Only a successful keychain save counts: a session store, or a failed first store, doesn't.
     void sessionStoresAndFailedStoresDontCount() {

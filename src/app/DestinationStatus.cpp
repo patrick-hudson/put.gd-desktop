@@ -30,10 +30,17 @@ DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObj
 void DestinationStatus::load() {
  records_.clear();credentialRevisions_.clear();keychainEntries_.clear();
  QFile file(path_);
- if(!file.exists())return;
- if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});return;}
+ // A file from before #1890 has no record of saved keychain entries: every keychain entry a
+ // destination names then counts as saved, so a store of one secret never overwrites one.
+ // An unreadable file is left as it is: the entries count as saved for this run only.
+ const auto upgrade=[this](bool persist){
+  for(const auto& profile:settings_.snapshot().profiles)if(const auto credentials=profile["credentials"].toObject();credentials["mode"]=="keychain"&&!credentials["reference"].toString().isEmpty())keychainEntries_.insert(credentials["reference"].toString());
+  if(persist)save();
+ };
+ if(!file.exists()){upgrade(true);return;}
+ if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});upgrade(false);return;}
  QJsonParseError parse;const auto document=QJsonDocument::fromJson(file.readAll(),&parse);
- if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});return;}
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});upgrade(false);return;}
  const auto root=document.object();
  const auto revisions=root["credentialRevisions"].toObject();
  for(auto it=revisions.begin();it!=revisions.end();++it)if(quint64 revision=0;revisionValue(it.value(),&revision))credentialRevisions_.insert(it.key(),revision);
@@ -43,6 +50,8 @@ void DestinationStatus::load() {
   const auto value=it.value().toObject();quint64 revision=0;if(!validRecord(value,&revision))continue;
   records_.insert(it.key(),{value["state"].toString(),value["source"].toString(),value["errorCode"].toString(),value["fingerprint"].toString(),revision});
  }
+ // After the records are read, so the upgrade's save keeps them.
+ if(!root.contains("keychainEntries"))upgrade(true);
 }
 void DestinationStatus::follow(OperationService& operations) {
  connect(&settings_,&SettingsService::accepted,this,[this]{prune();});
@@ -61,8 +70,9 @@ void DestinationStatus::save() {
   destinations.insert(it.key(),record);
  }
  for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
- QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions}};
- if(!keychainEntries_.isEmpty()){auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();root["keychainEntries"]=QJsonArray::fromStringList(entries);}
+ // Always written, even empty: a file without it is one from before #1890.
+ auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();
+ QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)}};
  const auto bytes=QJsonDocument(root).toJson(QJsonDocument::Compact);
  QDir().mkpath(QFileInfo(path_).absolutePath());
  QSaveFile file(path_);file.setDirectWriteFallback(false);
@@ -129,7 +139,13 @@ void DestinationStatus::prune() {
  bool removed=false;
  for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
  for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
- QSet<QString> named;for(const auto& profile:profiles)if(const auto credentials=profile["credentials"].toObject();credentials["mode"]=="keychain")named.insert(credentials["reference"].toString());
+ // An entry stays marked while a destination names it or owns it as putgd/sftp/<id>, in any
+ // credentials mode, so keychain → session → keychain keeps it.
+ QSet<QString> named;
+ for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
+  if(const auto reference=(*it)["credentials"].toObject().value("reference");reference.isString())named.insert(reference.toString());
+  if((*it)["provider"]=="sftp")named.insert("putgd/sftp/"+it.key());
+ }
  for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!named.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;
  if(removed){save();emit changed();}
 }
