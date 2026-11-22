@@ -4,6 +4,7 @@
 #include "editor/QuickRedact.h"
 #include "fixtures/Waits.h"
 #include <QElapsedTimer>
+#include <QPainter>
 #include <QtTest>
 #include <tuple>
 using namespace putgd::editor;
@@ -506,18 +507,33 @@ private slots:
   QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},clear),99+15);
  }
  // #1846: one match whose words sit in two columns of a row (two windows side by side, as k72's
- // capture showed) gets a mark per column, so the space and the label between them stay readable;
- // words a word space apart keep one mark.
+ // capture showed) gets a mark per column, so no mark spans the space between them; words a word
+ // space apart keep one mark.
  void marksSplitAtColumns() {
   const QList<RecognizedWord> row{{"4111",QRect(0,0,32,20),90,0},{"1111",QRect(40,0,32,20),90,0},{"1111",QRect(80,0,32,20),90,0},{"1111",QRect(120,0,32,20),90,0},
    {"MC",QRect(700,0,16,20),90,0},{"5555",QRect(724,0,32,20),90,0},{"5555",QRect(764,0,32,20),90,0},{"5555",QRect(804,0,32,20),90,0},{"4444",QRect(844,0,32,20),90,0}};
   const auto boxes=quickRedact::markBoxes(row,{"key",{0,1,2,3,5,6,7,8}},QRect(0,0,1000,100));
   QCOMPARE(boxes.size(),2);
   QCOMPARE(boxes.at(0).words,QRect(0,0,152,20));QCOMPARE(boxes.at(1).words,QRect(724,0,152,20));
-  for(const auto& box:boxes)QVERIFY(!box.mark.intersects(QRect(200,0,500,20))||box.mark.right()<700);
-  QVERIFY(!boxes.at(1).mark.intersects(QRect(700,0,16,20)));
+  // Neither mark spans the gap between the columns; a mark's inner margin may reach a word beside it.
+  for(const auto& box:boxes)QVERIFY(!box.mark.intersects(QRect(200,0,480,20)));
   const auto together=quickRedact::markBoxes(row,{"key",{0,1,2,3}},QRect(0,0,1000,100));
   QCOMPARE(together.size(),1);
+ }
+ // Sol on #1846: a side split off from its row keeps the whole margin, since a box can stop short
+ // of its last glyph (ink at x 103-105 past a box ending at 99, a neighbour box from 103 whose ink
+ // starts at 109), and every run keeps the padded height of the whole visual row.
+ void splitMarksKeepTheirMargins() {
+  QImage image(1000,100,QImage::Format_RGB32);image.fill(Qt::white);
+  {QPainter p(&image);p.fillRect(QRect(0,22,100,16),Qt::black);p.fillRect(QRect(103,22,3,16),Qt::black);p.fillRect(QRect(109,22,12,16),Qt::black);p.fillRect(QRect(600,22,60,16),Qt::black);}
+  const QList<RecognizedWord> row{{"4111",QRect(0,20,100,20),90,0},{"MC",QRect(103,20,18,20),90,0},{"5555",QRect(600,20,60,20),90,0}};
+  const auto boxes=quickRedact::markBoxes(row,{"key",{0,2}},QRect(0,0,1000,100),image);
+  QCOMPARE(boxes.size(),2);
+  QVERIFY(boxes.at(0).mark.right()>=105);
+  const QList<RecognizedWord> stepped{{"4111",QRect(0,20,40,20),90,0},{"5555",QRect(600,30,40,20),90,0}};
+  const auto tall=quickRedact::markBoxes(stepped,{"key",{0,1}},QRect(0,0,1000,100));
+  QCOMPARE(tall.size(),2);
+  for(const auto& box:tall){QVERIFY(box.mark.top()<=13);QVERIFY(box.mark.bottom()>=57);}
  }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
