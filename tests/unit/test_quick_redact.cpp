@@ -36,6 +36,31 @@ Q_DECLARE_METATYPE(putgd::editor::quickRedact::Sources)
 class QuickRedactTest final:public QObject {
  Q_OBJECT
 private slots:
+ // #1911: the second read of an uncertain token's line is matched apart from
+ // the first. Side by side on one row the two readings would be one line:
+ // SHORT_SHA=... read twice became a key. A token only the second read got
+ // right is still found, and its marks are sized against its own read's words.
+ void secondReadIsMatchedApart() {
+  const auto twice=[](const QString& a,const QString& b,bool mark){
+   QList<RecognizedWord> out{{a,QRect(0,0,int(a.size())*8,20),40,0}};
+   out.append({b,QRect(1,1,int(b.size())*8,20),70,0,mark});
+   return out;
+  };
+  const QString sha=QStringLiteral("SHORT_SHA=")+QStringLiteral("2f6424a");
+  QCOMPARE(found(twice(sha,sha,false),all),QStringList{"key: "+sha+" "+sha});
+  QCOMPARE(found(twice(sha,sha,true),all),QStringList{});
+  const QString token=QStringLiteral("gh")+QStringLiteral("p_")+QStringLiteral("a1B2c3D4e5").repeated(3)+QStringLiteral("F6g7H8");
+  const QString misread=QStringLiteral("gnp_")+QStringLiteral("a1B2c3D4e5").repeated(2);
+  QCOMPARE(found(twice(misread,misread,true),all),QStringList{});
+  const auto both=twice(misread,token,true);
+  const auto matches=quickRedact::find(both,all);
+  QCOMPARE(matches.size(),qsizetype(1));QCOMPARE(matches.first().words,QList<int>{1});
+  QCOMPARE(matches.first().category,QStringLiteral("key"));
+  // The first read's overlapping word is no neighbour of the second read's match.
+  QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
+  const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);
+  QCOMPARE(boxes.size(),qsizetype(1));QVERIFY(boxes.first().mark.contains(both.at(1).rect));
+ }
  void categoriesMatchTheirShapes_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<QStringList>("expected");
   QTest::newRow("two phones on one line")<<"2125550100 4155550100"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: 4155550100"};

@@ -26,7 +26,8 @@
    "properties": {
     "text": {"type": "string", "minLength": 1},
     "rect": {"$ref": "#/$defs/rect"},
-    "confidence": {"type": "integer", "minimum": 0, "maximum": 100}
+    "confidence": {"type": "integer", "minimum": 0, "maximum": 100},
+    "second": {"const": true, "description": "A candidate from the second read of an uncertain token's line (#1911); Quick redact matches it apart from the first read. Absent otherwise."}
    },
    "description": "One recognized word. At most 256 bytes of UTF-8."
   },

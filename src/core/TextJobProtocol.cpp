@@ -39,7 +39,11 @@ QString cutUtf8(const QString& text,qint64 bytes,bool& cut){
  if(low>0&&text.at(low-1).isHighSurrogate())--low;
  return text.left(low);
 }
-QJsonObject wordJson(const TextWord& word){return {{"text",word.text},{"rect",QJsonArray{word.rect.x(),word.rect.y(),word.rect.width(),word.rect.height()}},{"confidence",word.confidence}};}
+QJsonObject wordJson(const TextWord& word){
+ QJsonObject out{{"text",word.text},{"rect",QJsonArray{word.rect.x(),word.rect.y(),word.rect.width(),word.rect.height()}},{"confidence",word.confidence}};
+ if(word.second)out["second"]=true;
+ return out;
+}
 QJsonObject codeJson(const TextCode& code){
  QJsonArray quad;for(const auto& point:code.quad)quad.append(QJsonArray{point.x(),point.y()});
  QJsonObject object{{"format",code.format},{"kind",code.binary?"binary":"text"},{"length",double(code.length)},{"quad",quad}};
@@ -61,10 +65,11 @@ bool decodeWords(const QJsonValue& value,bool wanted,const InputHeader& input,QL
  if(!value.isArray()||value.toArray().size()>maximumWords||(!wanted&&!value.toArray().isEmpty()))return false;
  for(const auto& entry:value.toArray()){
   const auto object=entry.toObject();const auto rect=object["rect"].toArray();qint64 x=0,y=0,w=0,h=0,confidence=0;
-  if(!entry.isObject()||!keys(object,{"text","rect","confidence"})||!object["text"].isString()||object["text"].toString().isEmpty()||object["text"].toString().toUtf8().size()>maximumWordBytes
+  const bool second=object.contains("second");
+  if(!entry.isObject()||!keys(object,second?QStringList{"text","rect","confidence","second"}:QStringList{"text","rect","confidence"})||(second&&object["second"]!=QJsonValue(true))||!object["text"].isString()||object["text"].toString().isEmpty()||object["text"].toString().toUtf8().size()>maximumWordBytes
      ||rect.size()!=4||!integer(rect[0],0,input.width-1,x)||!integer(rect[1],0,input.height-1,y)||!integer(rect[2],1,input.width-x,w)||!integer(rect[3],1,input.height-y,h)||!integer(object["confidence"],0,100,confidence))return false;
   const auto text=sanitizeText(object["text"].toString()).remove('\n');
-  if(!text.isEmpty())out.append({text,QRect(int(x),int(y),int(w),int(h)),int(confidence)});
+  if(!text.isEmpty())out.append({text,QRect(int(x),int(y),int(w),int(h)),int(confidence),second});
  }
  return true;
 }

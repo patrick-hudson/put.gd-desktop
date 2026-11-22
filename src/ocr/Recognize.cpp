@@ -547,8 +547,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    if(!seen)result.recognition.words.append(std::move(word));
   }
  }
- // The tokens' second read joins last, every word of it, each band its own
- // lines after everything else, so Quick redact matches it apart from the first.
+ // The tokens' second read joins last, every word of it, marked second: Quick
+ // redact matches those words apart from the first read's, since the two
+ // readings of one line side by side would be read as one.
  for(const auto& tk:std::as_const(tokens)){
   const auto& p=panelList[tk.panel];
   Recognition part;mergeBand(part,tk.text,tk.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
@@ -556,7 +557,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
   for(auto word:std::as_const(part.words)){
-   word.rect.translate(p.rect.topLeft());word.line+=lineBase;word.kept=false;
+   word.rect.translate(p.rect.topLeft());word.line+=lineBase;word.kept=false;word.second=true;
    for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
    result.recognition.words.append(std::move(word));
   }
@@ -568,7 +569,7 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
  out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiWaitMs;
- const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence))};};
+ const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence)),w.second};};
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));
   if(options.candidates)out.candidates.append(word(w));

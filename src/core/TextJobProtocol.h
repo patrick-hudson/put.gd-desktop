@@ -20,6 +20,9 @@ struct TextWord {
  QString text;
  QRect rect; // source pixels
  int confidence=0; // 0 to 100
+ // #1911: from the second read of an uncertain token's line, a candidate only.
+ // Quick redact matches these words apart from the first read's.
+ bool second=false;
 };
 struct TextCode {
  QString format; // one of textjob::codeFormats()
