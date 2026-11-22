@@ -114,8 +114,8 @@ passphrase keeps a stored password. A value holds no
 line break, since ssh reads its askpass answer up to one, and is at most 4096 characters.
 `setup.credentialHint` lists in `storedValues` only the values that aren't empty. The values
 reach `putgd-sftp-worker` only with requests that sign in (Settings' address check learns only
-whether a password is set), and from there only the single-use askpass socket of one
-connection, which answers ssh's own exact password and passphrase prompts
+whether a password is set), and from there only a private single-use askpass socket for each connection that signs in,
+which answers ssh's own exact password and passphrase prompts
 ([storage providers](storage-providers.md#sftp)): never ssh's command line or environment. The
 worker wipes both once sign-in ends, except that an upload keeps them until the request ends,
 since cleaning up a cancelled upload may need a new connection. A keychain-mode SFTP destination whose entry isn't loaded still connects,

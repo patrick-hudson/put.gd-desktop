@@ -29,9 +29,9 @@ itself and its helpers, so their Qt warnings reach that pipe instead of the jour
 and its outcome is recorded with the upload or deletion that started it. The custom
 uploader worker (`putgd-http-worker`, #1361), the Nextcloud and WebDAV worker
 (`putgd-webdav-worker`, #1872) and the SFTP worker (`putgd-sftp-worker`, #1871) follow the same
-rule: no log files. The SFTP worker's only files are put.gd's own `known_hosts` (written on
-**Trust key**) and private temporary known_hosts and askpass files that it removes; its
-stderr goes to `/dev/null`. An SFTP destination's server, user and folder are redacted in a package, its profile shows
+rule: no log files. The SFTP worker's files are put.gd's own `known_hosts` and its `known_hosts.lock`, written on
+**Trust key** and kept, and private temporary known_hosts files and an askpass socket directory,
+which it removes; its stderr goes to `/dev/null`. An SFTP destination's server, user and folder are redacted in a package, its profile shows
 only whether each is set, and no SFTP error message carries ssh's own output or the server's
 status text in the first place.
 
@@ -315,7 +315,8 @@ audit rejects a crash-handled program that doesn't export it.
   `crash`), outside the 64 KiB per-generation output bound, before `Helper crashed`.
   The storage workers (`putgd-b2-worker`, `putgd-http-worker`, `putgd-webdav-worker`,
   `putgd-sftp-worker`) are the exception: their stderr isn't kept, so a worker's crash record
-  is lost and only the failed upload or deletion it was running is recorded.
+  is lost. The action it was running (an upload, deletion, destination test or setup job) still
+  ends with an error, or with an unknown outcome when the worker stopped before answering.
 
 The `crash` object has `recordVersion` (1), `process`, `pid`, `thread`, `version`,
 `signal`, `signalName`, `code`, `faultAddress`, `pc`, `time`, `frames`
