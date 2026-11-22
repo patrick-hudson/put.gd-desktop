@@ -11,6 +11,7 @@
 #include <cmath>
 #include <iterator>
 #include <numeric>
+#include <optional>
 
 namespace putgd::editor::quickRedact {
 namespace {
@@ -800,33 +801,125 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  return matches;
 }
 }
+namespace {
+// How far a cover may reach from the matched box's `edge` towards the nearest
+// unmatched word's box edge `neighbour` (direction `dir`, -1 left or +1 right),
+// or nullopt to keep the whole margin. Recognized boxes can each be off by
+// about a glyph (#1838: at 13 px a box ended 4 px short of its digit and the
+// next word's box began 6 px before its "i"), so with the image the cover
+// runs to the far side of the space between the words, the widest blank
+// column run near them, leaving one blank column before the neighbour. With
+// no blank run to go by, nothing is clipped: a covered neighbour is better
+// than a matched glyph showing. Without the image, the neighbour's box is the
+// limit.
+std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other,int dir,double glyph){
+ const int edge=dir>0?box.right():box.left(),neighbour=dir>0?other.left():other.right();
+ const int gap=qMax(1,box.height()/10);
+ if(image.isNull())return dir>0?qMax(edge,neighbour-1-gap):qMin(edge,neighbour+1+gap);
+ const int slack=int(std::ceil(glyph));
+ // Only the rows both words share are searched: a descender of one word can
+ // reach under the space (the "j" of "at jane").
+ const int top=qMax(box.top(),other.top()),bottom=qMin(box.bottom(),other.bottom());
+ // From the matched box's own edge column, which a box can overshoot onto the space.
+ const QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),top<=bottom?top:box.top()),QPoint(qMax(edge,neighbour+dir*slack),top<=bottom?bottom:box.bottom())).intersected(image.rect());
+ if(window.isEmpty())return std::nullopt;
+ // The paper is the median colour of the line spacing above and below the
+ // words (the whole band where the image ends there): exact colours will not
+ // do, since on a noisy background the solid ink can be the commonest.
+ const int pad=qMax(1,(box.height()+3)/4);
+ const QRect around=window.adjusted(0,-pad,0,pad).intersected(image.rect());
+ const auto band=image.copy(around).convertToFormat(QImage::Format_RGB32);
+ const int first=window.top()-around.top(),last=window.bottom()-around.top();
+ QList<int> channels[3];
+ for(const bool spacing:{true,false}){
+  for(int y=0;y<band.height();++y){
+   if(spacing&&y>=first&&y<=last)continue;
+   const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
+   for(int x=0;x<band.width();++x){channels[0].append(qRed(line[x]));channels[1].append(qGreen(line[x]));channels[2].append(qBlue(line[x]));}
+  }
+  if(!channels[0].isEmpty())break;
+ }
+ int paper[3];
+ for(int k=0;k<3;++k){auto& c=channels[k];std::nth_element(c.begin(),c.begin()+c.size()/2,c.end());paper[k]=c.at(c.size()/2);}
+ const auto distance=[&](QRgb c){return qMax(std::abs(qRed(c)-paper[0]),qMax(std::abs(qGreen(c)-paper[1]),std::abs(qBlue(c)-paper[2])));};
+ // A column is blank when, beside the words, no pixel is further from the
+ // paper than a faint anti-aliased edge: 8% of the ink's contrast, within 4 to 24.
+ int contrast=0;
+ for(int y=first;y<=last;++y){const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));for(int x=0;x<band.width();++x)contrast=qMax(contrast,distance(line[x]));}
+ const int faint=std::clamp(contrast*8/100,4,24);
+ QList<bool> blank(band.width(),true);
+ for(int y=first;y<=last;++y){
+  const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
+  for(int x=0;x<band.width();++x)if(blank[x]&&distance(line[x])>faint)blank[x]=false;
+ }
+ // The space is the widest run; between equals, the one nearer the neighbour.
+ int best=-1,bestStart=0;
+ for(int x=0;x<band.width();){
+  if(!blank[x]){++x;continue;}
+  int y=x;while(y<band.width()&&blank[y])++y;
+  const int width=y-x;
+  // Runs are scanned left to right, so a later equal one is nearer on the right.
+  if(width>best||(width==best&&dir>0)){best=width;bestStart=x;}
+  x=y;
+ }
+ if(best<1)return std::nullopt;
+ // The run's column next to the neighbour stays uncovered.
+ const int far=dir>0?window.left()+bestStart+best-1:window.left()+bestStart;
+ return dir>0?qMax(edge,far-1):qMin(edge,far+1);
+}
+}
 // One box per visual row of the match, as find groups rows (centres within
 // half the median word height), never by the recognizer's line id: a match
 // that spans two rows makes two marks, so nothing between them is covered.
-QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
+QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds,const QImage& image) {
  QList<int> words;for(const int index:match.words)if(index>=0&&index<candidates.size())words.append(index);
  std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
  QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
- struct Row {QRect box;int characters=0;double centre=0;int count=0;};
+ struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;};
  QList<Row> rows;
  for(const int w:words){
   const auto& word=candidates.at(w);const double y=word.rect.center().y();
   if(rows.isEmpty()||std::abs(y-rows.last().centre)>tolerance)rows.append(Row{});
-  auto& row=rows.last();row.box=row.box.united(word.rect);row.characters+=int(word.text.size());++row.count;row.centre+=(y-row.centre)/row.count;
+  auto& row=rows.last();row.box=row.box.united(word.rect);++row.count;row.centre+=(y-row.centre)/row.count;
+  if(row.first<0||word.rect.left()<candidates.at(row.first).rect.left())row.first=w;
+  if(row.last<0||word.rect.right()>candidates.at(row.last).rect.right())row.last=w;
  }
+ // A word's glyph width from its own box: the row's span would count the
+ // gaps between words as characters (#1838).
+ const auto glyph=[&](int w){
+  const auto& word=candidates.at(w);
+  const auto characters=std::count_if(word.text.cbegin(),word.text.cend(),[](QChar c){return !c.isLowSurrogate()&&!c.isSpace();});
+  return double(word.rect.width())/double(qMax<qsizetype>(1,characters));
+ };
  QList<MarkBox> out;
- // A quarter of the line height above and below; beside it, at least one and
- // a half characters, since a recognized box can stop a whole glyph short of
- // the first or last character (measured: 7 px at 13 px type).
+ // A quarter of the line height above and below; beside it, one and a half
+ // of the edge word's glyphs, since a recognized box can stop a whole glyph
+ // short of the first or last character (measured: 7 px at 13 px type). On a
+ // side with another word on the row that is not part of the match, the
+ // margin ends where reach() says, so that word stays readable; it never cuts
+ // into the matched words' own box.
  for(const auto& row:std::as_const(rows)){
-  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);const int side=qMax(pad,box.width()*3/qMax(2,2*row.characters));
-  const auto mark=box.adjusted(-side,-pad,side,pad).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
+  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);
+  const double before=glyph(row.first),after=glyph(row.last);
+  int left=box.left()-qMax(pad,int(std::ceil(before*1.5)));
+  int right=box.right()+qMax(pad,int(std::ceil(after*1.5)));
+  std::optional<QRect> leftNeighbour,rightNeighbour;
+  for(qsizetype i=0;i<candidates.size();++i){
+   if(match.words.contains(int(i)))continue;
+   const auto& other=candidates.at(i).rect;
+   if(other.isEmpty()||std::abs(other.center().y()-row.centre)>tolerance)continue;
+   if(other.right()<box.left()){if(!leftNeighbour||other.right()>leftNeighbour->right())leftNeighbour=other;}
+   else if(other.left()>box.right()){if(!rightNeighbour||other.left()<rightNeighbour->left())rightNeighbour=other;}
+  }
+  if(leftNeighbour)if(const auto limit=reach(image,box,*leftNeighbour,-1,before))left=qMax(left,*limit);
+  if(rightNeighbour)if(const auto limit=reach(image,box,*rightNeighbour,1,after))right=qMin(right,*limit);
+  const auto mark=QRect(QPoint(left,box.top()-pad),QPoint(right,box.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
  }
  return out;
 }
-QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
- QList<QRect> out;for(const auto& box:markBoxes(candidates,match,bounds))out.append(box.mark);
+QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds,const QImage& image) {
+ QList<QRect> out;for(const auto& box:markBoxes(candidates,match,bounds,image))out.append(box.mark);
  return out;
 }
 }
