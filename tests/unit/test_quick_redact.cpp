@@ -44,6 +44,8 @@ private slots:
   QTest::newRow("email after prose line")<<"Please email | john@example.com"<<QStringList{"email"}<<QStringList{"email: john@example.com"};
   QTest::newRow("email hard wrapped at terminal column")<<"ABCDEFGHIJKLMNO | PQRSTUVWXYZABCD | Contact john.sm | ith@example.com"<<QStringList{"email"}<<QStringList{"email: john.sm ith@example.com"};
   QTest::newRow("email")<<"Write to jane.doe+invoices@example.co.uk today"<<all<<QStringList{"email: jane.doe+invoices@example.co.uk"};
+  // #1840: a word ended by a dot with a word space after it is not part of the address.
+  QTest::newRow("a sentence before an address stays out")<<"Contact us. bob@example.com today"<<QStringList{"email"}<<QStringList{"email: bob@example.com"};
   QTest::newRow("email wrapped across lines")<<"Contact jane.doe@ | example.com for access"<<all<<QStringList{"email: jane.doe@ example.com"};
   QTest::newRow("international phone across words")<<"Call +44 20 7946 0958 now"<<all<<QStringList{"phone: +44 20 7946 0958"};
   QTest::newRow("national phone with parentheses")<<"Office (555) 123-4567 ext"<<all<<QStringList{"phone: (555) 123-4567"};
@@ -539,6 +541,46 @@ private slots:
   const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)","x"}},0);
   QCOMPARE(found(candidates,result),QStringList{"list: Hammond"});
   QCOMPARE(result.skippedPatterns,(QList<int>{0,1}));
+ }
+ // #1840, as putgd-ocr read "Please write to jane.doe@example.com before
+ // Friday" and "Contact us. bob@example.com today" in Red Hat Display at 10 px:
+ // the address split after its dot, or with the dot lost, into two words whose
+ // boxes overlap. The match takes both words and the cover reaches over the
+ // whole address's ink (x 72 to 176); "us.", a word space before its address,
+ // stays out.
+ void emailSplitInItsLocalPartIsCoveredWhole_data() {
+  QTest::addColumn<QString>("first");QTest::addColumn<QRect>("box");
+  QTest::newRow("split at the dot")<<"jane."<<QRect(73,50,22,14);
+  QTest::newRow("dot lost")<<"jane"<<QRect(73,50,20,14);
+ }
+ void emailSplitInItsLocalPartIsCoveredWhole() {
+  QFETCH(QString,first);QFETCH(QRect,box);
+  const QList<RecognizedWord> page{{"Please",QRect(6,52,29,9),90,0},{"write",QRect(37,53,22,8),90,0},{"to",QRect(61,50,9,14),90,0},{first,box,90,0},
+   {"doe@example.com",QRect(91,52,86,10),90,0},{"before",QRect(179,52,30,9),90,0},{"Friday",QRect(211,52,27,10),90,0},
+   {"Contact",QRect(6,96,36,9),90,1},{"us.",QRect(44,98,12,7),90,1},{"bob@example.com",QRect(58,96,85,10),90,1}};
+  QCOMPARE(found(page,QStringList{"email"}),(QStringList{"email: "+first+" doe@example.com","email: bob@example.com"}));
+  const auto matches=quickRedact::find(page,{"email"});
+  QRect covered;for(const auto& mark:quickRedact::marks(page,matches.first(),QRect(0,0,260,140)))covered=covered.united(mark);
+  QVERIFY(covered.left()<=72&&covered.right()>=176);
+  // Split twice, each pair of boxes overlapping by a pixel; "Mail" only touches.
+  const QList<RecognizedWord> twice{{"Mail",QRect(0,0,40,20),90,0},{"jane.",QRect(40,0,40,20),90,0},{"q.",QRect(79,0,16,20),90,0},{"doe@example.com",QRect(94,0,120,20),90,0}};
+  QCOMPARE(found(twice,QStringList{"email"}),QStringList{"email: jane. q. doe@example.com"});
+  // Sol on #1840: split after a plus; a fragment the address can't start with stays out.
+  const QList<RecognizedWord> plus{{"jane+",QRect(0,0,40,20),90,0},{"tag@example.com",QRect(39,0,120,20),90,0}};
+  QCOMPARE(found(plus,QStringList{"email"}),QStringList{"email: jane+ tag@example.com"});
+  // Sol on #1840: an address ending a sentence before a split one keeps them apart.
+  const QList<RecognizedWord> after{{"alice@example.net.",QRect(0,0,140,20),90,0},{"jane+",QRect(148,0,40,20),90,0},{"tag@example.com",QRect(187,0,120,20),90,0}};
+  QCOMPARE(found(after,QStringList{"email"}),(QStringList{"email: alice@example.net.","email: jane+ tag@example.com"}));
+  // ...while a dot recognition lost after a domain is still restored before one.
+  const QList<RecognizedWord> lost{{"alice@example",QRect(0,0,104,20),90,0},{"com",QRect(112,0,24,20),90,0},{"bob@example.org",QRect(135,0,120,20),90,0}};
+  QCOMPARE(found(lost,QStringList{"email"}),(QStringList{"email: alice@example com","email: bob@example.org"}));
+  const QList<RecognizedWord> handle{{"@support.",QRect(0,0,72,20),90,0},{"jane+",QRect(80,0,40,20),90,0},{"tag@example.com",QRect(119,0,120,20),90,0}};
+  QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: @support. jane+ tag@example.com"});
+  const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
+  QCOMPARE(found(dash,QStringList{"email"}),QStringList{"email: bob@example.com"});
+  // A word another kind matches stays with that kind: the card keeps its last group.
+  const QList<RecognizedWord> card{{"4111",QRect(0,0,32,20),90,0},{"1111",QRect(40,0,32,20),90,0},{"1111",QRect(80,0,32,20),90,0},{"1111",QRect(120,0,32,20),90,0},{"doe@example.com",QRect(150,0,120,20),90,0}};
+  QCOMPARE(found(card,QStringList{"email","card"}),(QStringList{"card: 4111 1111 1111 1111","email: doe@example.com"}));
  }
  // The five kinds are unchanged with the new sources beside them.
  void builtInKindsIgnoreTheSources() {
