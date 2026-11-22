@@ -420,20 +420,22 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // another token of its own: a token ending its line took the two card lines
     // below it as one key. A hex or base64 run that holds a card itself is card
     // lines read as a key (#1846): it takes only more lines of card digits,
-    // which hold the misread cards (Luhn fails) it covers, or a tail of hex
-    // digits. A hex or base64 run after the card on its line is a token of its
+    // which hold the misread cards (Luhn fails) it covers, or the tail of a
+    // hex fragment after the card. A hex or base64 run after the card on its line is a token of its
     // own, followed as any is.
     // #1859: and only a line that a wrap would leave: right below, within about
     // a line's pitch (word boxes are shorter than the pitch), starting no
     // further right than the line above (an editor's wrap indent is up to four
     // characters).
-    bool ownLine=false;
+    bool ownLine=false,hexAfter=false;
     if(last.length==0){
      const auto run=segment.words.mid(last.from,last.to-last.from+1);QSet<int> cards;
      if(otherMatch(run,plain,candidates,&cards)&&!cards.isEmpty()){
       qsizetype after=-1;for(qsizetype i=0;i<run.size();++i)if(cards.contains(run.at(i)))after=i;
       QString rest;for(qsizetype i=after+1;i<run.size();++i)rest+=plain.at(run.at(i));
       ownLine=!hexRun(rest)&&!base64Run(rest);
+      static const QRegularExpression hexFragment(QStringLiteral("^[\"'`]?[0-9A-Fa-f]+$"));
+      hexAfter=hexFragment.match(rest).hasMatch();
      }
     }
     const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
@@ -470,7 +472,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       // More card digits, or the hex run's own wrapped tail ("5ad015a3"), never words such as "SIGNING_HEX =".
       static const QRegularExpression hexTail(QStringLiteral("^[0-9A-Fa-f]+[\"'`)\\]};,\u201D\u2019]*$"));
       int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
-      if(count<13&&!(digit&&hexTail.match(tail).hasMatch()))break;
+      if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
      }
      else if(otherMatch(next.first().words,plain,candidates))break;
      {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
