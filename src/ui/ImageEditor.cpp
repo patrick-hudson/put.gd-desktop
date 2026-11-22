@@ -18,6 +18,7 @@
 #include <QImageWriter>
 #include <QLocale>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
@@ -212,7 +213,11 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(name=="raisePrompt"&&prompt){
     const auto token=params["activationToken"].toString();
     if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
-    prompt->show();putgd::activateWindow(prompt.get(),token);return {{"requested",true}};
+    // Without a token (Budgie's tray sends none), a Wayland desktop may refuse to raise a covered window;
+    // mapping it again shows it raised and focused, as a new window, on labwc (found in #1806 acceptance).
+    if(token.isEmpty()&&QGuiApplication::platformName().startsWith(QLatin1String("wayland"))){prompt->hide();prompt->show();}
+    else prompt->show();
+    putgd::activateWindow(prompt.get(),token);return {{"requested",true}};
    }
    return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
   }
