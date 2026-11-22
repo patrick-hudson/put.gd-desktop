@@ -13,6 +13,7 @@
 #include <QtTest>
 #include <atomic>
 #include <cstdio>
+#include <memory>
 #include <optional>
 using namespace putgd;
 using namespace putgd::editor;
@@ -209,7 +210,12 @@ private slots:
  // waits for that same lookup rather than starting another.
  void aSlowAccountLookupNeverHoldsTheRest() {
   Restore restore;std::atomic_int calls{0};
-  ui::setQuickRedactAccountLookup([&calls](const std::function<bool()>&){++calls;QThread::msleep(2500);return ui::Account{QStringLiteral("someone"),{}};});
+  // #1662: the lookup stalls until the test lets it go, not for a fixed time a
+  // loaded runner could outlast across both runs. Shared, since the lookup
+  // thread is detached and may outlive this test if an assertion fails.
+  auto release=std::make_shared<std::atomic_bool>(false);
+  struct Release {std::shared_ptr<std::atomic_bool> flag;~Release(){flag->store(true);}} releaseAtEnd{release};
+  ui::setQuickRedactAccountLookup([&calls,release](const std::function<bool()>&){++calls;while(!release->load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
   const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
   quickRedact::Sources sources;sources.terms={"Hammond"};sources.patterns={R"(JIRA-\d)"};
   for(int run=0;run<2;++run){
@@ -221,7 +227,9 @@ private slots:
    QCOMPARE(found(candidates,*result),(QStringList{"email: jane@example.com","list: Hammond","list: JIRA-9"}));
   }
   QCOMPARE(calls.load(),1);
+  QVERIFY(ui::quickRedactAccountLookupRunning());
   // The stalled lookup ends on its own; the next run asks again.
+  release->store(true);
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!ui::quickRedactAccountLookupRunning(),5000);
  }
  // M2, U6: a worker waiting on a stalled lookup stops at once when the editor
@@ -261,8 +269,10 @@ private slots:
   qInfo("%s: ended %lld ms after quitting",qPrintable(mode),ended);
   QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);
   QVERIFY2(ended<ui::quickRedactExitWaitMs+test::scaled(500),qPrintable(QString::number(ended)));
+  // #1662: no lower bound for the stuck case. The clock starts when this
+  // process notices "quit", which a loaded runner delays by a poll or more, so
+  // a floor fails on a correct child; the bound that matters is the upper one.
   if(mode=="cooperative"){QVERIFY2(out.contains("cancel seen\n"),out.constData());QVERIFY2(ended<test::scaled(300),qPrintable(QString::number(ended)));}
-  else QVERIFY2(ended>=ui::quickRedactExitWaitMs-100,qPrintable(QString::number(ended)));
  }
 };
 int main(int argc,char** argv) {
