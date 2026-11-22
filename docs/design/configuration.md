@@ -438,7 +438,8 @@ for the server). The resident writes it itself when a trust succeeds, conditiona
 configuration revision the trust began with; Settings clears it when `server` changes. `keyFile`
 is absent or null (no chosen key) or the absolute path of a private key file, without control
 characters, `%` or `${` (ssh would expand those), at most 4096 bytes. Settings writes it only
-while SSH key holds a path, so a destination without one is saved as before #1892; a key file
+while SSH key holds a path, so a destination without one is saved as before #1892 (an explicit
+null already saved is kept as null); a key file
 ssh can't use yet still saves, with its problem shown beside the field. The check fingerprint below covers every field,
 so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
 has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings fills an empty Reference field with

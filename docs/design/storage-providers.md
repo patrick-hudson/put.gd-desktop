@@ -192,12 +192,15 @@ overrides undone (`host::environment()`), and these options:
 
 `BatchMode` stays off because it disables askpass. Keyboard-interactive is off so a server's
 own prompts never reach askpass. A check of a recorded upload adds
-`GlobalKnownHostsFile=/dev/null` (see Receipts). The `-i` pair is there only when the destination names a key file (#1892): ssh then offers that
-key and the `IdentityFile` keys, and no other agent key. Before ssh starts, the worker checks the
-file as ssh would (`sftp::keyFileProblem`: missing, not readable, a public or PuTTY key, or a key
-of the user's that group or others can read, which ssh refuses) and fails with an `ssh_key_*`
-code and `details.field` `keyFile`; Test reports that as a failed sign-in step without
-connecting; `setup.inspectAccount` answers the same error before it runs `ssh -G`. These
+`GlobalKnownHostsFile=/dev/null` (see Receipts). The `-i` pair is there only when the destination names a key file (#1892): ssh then uses only
+the identities the settings name (this key, `IdentityFile` keys and configured certificates),
+in ssh's own order, and no other agent key. Before a new connection starts ssh, and in
+`setup.inspectAccount` before it runs `ssh -G`, the worker checks the file
+(`sftp::keyFileProblem`: missing, not a readable regular file, a public or PuTTY key, or a key
+owned by the user with any group or other permission bit, which ssh's `sshkey_perm_ok` refuses)
+and fails with an `ssh_key_*` code and `details.field` `keyFile`; Test reports that as a failed
+sign-in step without connecting. Trust runs only the host-key probe, which offers no key, so it
+doesn't check the file. These
 messages name the key file, never its folder. `ssh -G` with the same destination and `-i` arguments gives the resolved host, port,
 user, `HostKeyAlias`, the key files that exist (tilde-expanded), `IdentityAgent`, whether a
 ProxyJump or ProxyCommand is set (never its value), and the user's `UserKnownHostsFile` and
