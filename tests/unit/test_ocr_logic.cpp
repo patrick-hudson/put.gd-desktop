@@ -110,7 +110,7 @@ private slots:
   QVERIFY(uncertainToken(QStringLiteral("\"sk-ant-api03-x9Y8z7\","),69));
   QVERIFY(!uncertainToken(QStringLiteral("ghp_a1B2c3D4e5F6g7"),70));       // confident
   QVERIFY(!uncertainToken(QStringLiteral("internationalization"),20));    // no digit
-  QVERIFY(!uncertainToken(QStringLiteral("2026-11-22T19"),20));           // no letter
+  QVERIFY(!uncertainToken(QStringLiteral("2026-11-22.193401"),20));       // no letter
   QVERIFY(!uncertainToken(QStringLiteral("\"a1b2c3d4e5f\""),20));        // 11 once trimmed
   const auto bands=tokenLines({{QRect(10,100,200,12),50},{QRect(300,104,100,12),20},{QRect(10,10,200,12),60}},200);
   QCOMPARE(bands.size(),qsizetype(2));
