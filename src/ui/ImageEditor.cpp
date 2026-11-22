@@ -100,6 +100,10 @@ bool recentColorList(const QJsonValue& value,QStringList& colors){
  return true;
 }
 }
+namespace {
+// #1820: the kinds covered automatically, each with its count; kinds with none are left out.
+QJsonObject coveredJson(const QList<QPair<QString,int>>& covered){QJsonObject out;for(const auto& [category,count]:covered)if(count>0)out[category]=count;return out;}
+}
 int runImageEditor(QApplication& app,QIODevice& pipes){
 #ifndef Q_OS_UNIX
  Q_UNUSED(app);Q_UNUSED(pipes);return 2;
@@ -109,7 +113,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  Error submissionError;QString nonce,destination;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
- bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories;QString checkFile;
+ bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
+ // #1820: what the check covered on its own (redact kinds), counted by kind; the warn kinds are in findings.
+ QList<QPair<QString,int>> covered;
  SensitiveFindings findings;std::unique_ptr<SensitivePrompt> prompt;
  // An agent's decision waits this long; then the capture is treated as Cancel.
  QTimer decisionDeadline;decisionDeadline.setSingleShot(true);decisionDeadline.setInterval(5*60*1000);
@@ -197,7 +203,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto stale=[&](const QJsonObject& params)->bool{const auto value=params["result"];return !value.isDouble()||value.toDouble()!=double(window->text().identity())||window->text().identity()==0;};
  const auto replyText=[](std::function<void(QJsonObject,QString,QString)> done){return [done](Error error,QJsonObject result){if(error)done({},error.code,error.message);else done(result,{},{});};};
  // Agent commands arrive from the resident's editor.* session methods.
- std::function<bool(const QString&)> decide;
+ std::function<bool(const QString&)> decide;std::function<void()> handOffCovered;
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   if(deciding){
@@ -344,13 +350,33 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");
  };
+ // #1820: the capture with only the automatic covers, handed off for upload like an edit, without a window.
+ handOffCovered=[&]{
+  if(terminal||finalizing||!document)return;
+  QStringList warn;for(const auto& category:std::as_const(checkCategories))if(!checkCover.contains(category))warn<<category;
+  document->removeSuggested(warn);
+  finalizing=true;
+  if(control.send("finalizing",envelope(nonce)).isEmpty()){fail();return;}
+  QTimer::singleShot(0,&app,[&]{
+   if(terminal)return;
+   int width=0,height=0;QByteArray png;
+   {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
+   if(png.isEmpty()){refuse("edit_export_failed");return;}
+   if(png.size()>outputBytes){refuse("input_excessive");return;}
+   const auto digest=files.write(png);const auto bytes=png.size();png.clear();png.squeeze();
+   if(digest.isEmpty()){refuse("image_job_io");return;}
+   auto result=envelope(nonce);result["ok"]=true;result["bytes"]=QString::number(bytes);result["sha256"]=digest;result["width"]=width;result["height"]=height;result["covered"]=coveredJson(covered);
+   finish(result);
+  });
+ };
  // #1804: what the check found reaches the resident as kinds and counts only; then the prompt, or an agent's decision.
  std::function<void()> checked=[&]{
   deciding=true;auto frame=envelope(nonce);const auto json=findings.json();frame["found"]=json["found"];frame["complete"]=findings.complete;
   if(!findings.complete)frame["reason"]=findings.reason;
+  if(const auto counts=coveredJson(covered);!counts.isEmpty())frame["covered"]=counts;
   if(control.send("checked",frame).isEmpty()){fail();return;}
   if(!checkPrompt){decisionDeadline.start();return;}
-  SensitivePrompt::Model model;model.findings=findings;model.redactAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
+  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
   // The capture as Redact and upload would open it: every suggestion painted black.
   if(document)model.preview=document->render();
   prompt=std::make_unique<SensitivePrompt>(std::move(model));
@@ -362,6 +388,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(choice=="redact"&&!(checkRedact&&window))return false;
   deciding=false;decisionDeadline.stop();
   if(prompt){prompt->choose(choice);prompt->hide();}
+  // #1820: Upload anyway keeps what was covered automatically: the capture goes with those covers, the warn suggestions taken off.
+  if(choice=="upload"&&!coveredJson(covered).isEmpty()&&document){handOffCovered();return true;}
   if(choice=="upload"){refuse("check_upload");return true;}
   if(choice=="cancel"){refuse("check_cancel");return true;}
   // Redact and upload: the same document, its suggestions already placed, in the ordinary editor.
@@ -396,9 +424,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // #1804: check mode, its categories, whether a person is asked and whether Redact and upload is offered.
    if(object.contains("check")){
     const auto check=object["check"].toObject();checkCategories.clear();
-    if(!object["check"].isObject()||check.size()!=(check.contains("file")?4:3)||!check["prompt"].isBool()||!check["redact"].isBool()||!check["categories"].isArray()||(check.contains("file")&&(!check["file"].isString()||check["file"].toString().size()>300))){fail();return;}
+    if(!object["check"].isObject()||check.size()!=3+(check.contains("file")?1:0)+(check.contains("cover")?1:0)||!check["prompt"].isBool()||!check["redact"].isBool()||!check["categories"].isArray()||(check.contains("file")&&(!check["file"].isString()||check["file"].toString().size()>300))){fail();return;}
     for(const auto& category:check["categories"].toArray()){if(!category.isString()||!editor::quickRedact::categories().contains(category.toString())||checkCategories.contains(category.toString())){fail();return;}checkCategories.append(category.toString());}
     if(checkCategories.isEmpty()){fail();return;}
+    // #1820: the kinds covered without asking, each one of the categories.
+    checkCover.clear();
+    if(check.contains("cover")){
+     if(!check["cover"].isArray()||check["cover"].toArray().isEmpty()){fail();return;}
+     for(const auto& category:check["cover"].toArray()){if(!category.isString()||!checkCategories.contains(category.toString())||checkCover.contains(category.toString())){fail();return;}checkCover.append(category.toString());}
+    }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
    if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
@@ -470,11 +504,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     // Adding the marks starts a new recognition revision, which clears the result: read whether it was cut first.
     auto truncated=std::make_shared<bool>(false);auto languageMissing=std::make_shared<bool>(false);
     window->text().whenRecognized([&,truncated,languageMissing](Error error){if(!error){*truncated=window->text().truncated();*languageMissing=!window->text().languagesSkipped().isEmpty();}});
+    // #1820: the kinds covered automatically are matched first, so another kind never takes their words.
     window->quickRedact(checkCategories,[&,truncated,languageMissing](Error error,QJsonObject result){
      checking=false;if(terminal)return;
-     findings={};
+     findings={};covered.clear();
      const auto counts=result["counts"].toObject();
-     for(const auto& category:checkCategories)findings.found.append({category,counts[category].toInt()});
+     // #1820: a redact kind's matches are covered already; only the warn kinds are left to decide.
+     for(const auto& category:checkCategories)(checkCover.contains(category)?covered:findings.found).append({category,counts[category].toInt()});
      static const QStringList unavailable{"text_helper_missing","engine_unavailable","helper_sandbox_unavailable","language_unavailable"};
      if(error){findings.complete=false;findings.reason=unavailable.contains(error.code)?QStringLiteral("unavailable"):QStringLiteral("recognition_failed");}
      else if(*truncated){findings.complete=false;findings.reason="truncated";}
@@ -483,9 +519,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      else if(!result["skippedPatterns"].toArray().isEmpty()){findings.complete=false;findings.reason="patterns_skipped";}
      else if(result["nameUnchecked"].toBool()){findings.complete=false;findings.reason="name_unchecked";}
      // Nothing found, all of it read: the upload goes ahead as if there were no check.
-     if(findings.complete&&!findings.any()){refuse("check_clean");return;}
+     if(findings.complete&&!findings.any()){
+      // Covered automatically with nothing left to ask about: the covered capture uploads, no prompt (#1820).
+      if(!coveredJson(covered).isEmpty()){handOffCovered();return;}
+      refuse("check_clean");return;
+     }
      checked();
-    });
+    },{},{},checkCover);
     return;
    }
    window->show();window->raise();window->activateWindow();

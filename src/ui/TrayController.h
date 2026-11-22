@@ -152,6 +152,9 @@ private:
  struct HeldNotice { QString code, title, message; bool warning = false; QUrl link; QString diagnosticsOperation, revealPath, diagnosticsLabel; };
  QList<HeldNotice> heldNotices_;
  QList<QStringList> heldFileManagerNotices_;
+ QStringList heldSensitivePrompts_; // #1829: prompts announced while a scrolling capture holds notices
+ void announceSensitivePrompt(const QString& id);
+ QHash<QString,int> announcedSensitive_; // the last prompt number announced for each capture
  bool holdNotices_ = false;
  // `gone`: see NativeTray::closeNotifications.
  int closeOwnNotifications(std::function<void()> gone={});

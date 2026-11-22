@@ -206,6 +206,7 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   when it is the only one where auto-scroll's hint says the page is.
 - A place found again needs `recoverCells` (0.95) agreement from its layer's cells and `recoverKeepShare` (0.80) agreement over its candidate tile area, with `keepShare` as a floor. Another place fitting within `recoverTie` (0.05) makes it ambiguous.
 - After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The tracker stays lost and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
+- With no hint, no skipped frames in a row and a placed move before it, a pair match that turns back against that move by more than half the frame's height loses to another accepted match that goes on the way the page went. The other match must reach `recoverCells`, score no more than `recoverTie` below the turn back, move at least as many tiles, and share at least half the moving columns of whichever match has fewer. A turn back that passes the whole-overlap check (`wholeAgrees`) stays where it is. For example, a person flicking back hard after a pause is placed where the page went. On GitHub's pull request page with frames dropped, the turn back was a look-alike one table away, and taking it left every later frame a table short ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - Frames narrower or lower than 16 px (two cells, two block rows) are refused.
 
 ## Drivers
@@ -508,6 +509,27 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   written. Cells held back there keep their piece of the line (the scroll
   bar's column), and so does a pinned part drawn from the first screen (Firefox's link
   bubble at the bottom).
+- **Frames that come far apart over a page that repeats** (a stream that stalls to about 4-8 frames a second on a
+  pull request's tables) can land a table period short, or more, after the tracker loses the page. It happens in two
+  ways ([#1823](https://github.com/patrick-hudson/put.gd-desktop/issues/1823)):
+  - After a lost stretch, the tracker matches two frames at a look-alike place while the page has already scrolled
+    past the end of the captured image, where the image holds no rival place.
+  - After ambiguous skips, a distant frame is judged "no movement" and keeps the pending hints. The still frame after
+    it becomes the reference at the wrong place.
+
+  In a capture you scroll yourself, including after auto-scroll has handed control back, the look-alike place or that
+  still frame counts as finding the page again. So the capture carries the "lost the page … found it again. Rows may
+  be missing there: check the image" notice, appended to any warning already there. A recovery while auto-scroll is
+  still driving is not counted. One guard that rejected the first look-alike only led to the next one.
+  Requiring a second agreeing frame before a place found again is taken is the design change for it
+  ([#1847](https://github.com/patrick-hudson/put.gd-desktop/issues/1847)). A look-alike ahead in the same direction
+  after a jump of more than a screen did not show on recorded frames and stays a limit
+  ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
+- **A header with a 1-pixel border** whose block rows are joined only by that border down the frame's edges can let
+  header pixels into the captured page. The two cell columns nearest each side of the frame no longer join a held-back
+  bar up or down, because the window's scroll bar there once stretched GitHub's header 280 rows down the page and those
+  rows were painted flat ([#1837](https://github.com/patrick-hudson/put.gd-desktop/issues/1837)). In 8 of 4,000
+  randomized scenes this left 300-486 pixels different from the expected image, roughly one row's worth.
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).

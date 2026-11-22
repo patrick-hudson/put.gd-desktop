@@ -5,6 +5,7 @@ Physical builders, disposable VMs, goldens and cloud workers.
 ## Guarantees
 
 - The five physical desktops serve one session at a time; take the desktop lock before any GUI work. Heavy work stays off the workstation.
+- A timing run takes the builder's quiet lease when it starts and releases it when it ends; nobody books a builder by clock window. The guarded lab helpers (listed in remote-builders.md) refuse to start while another session holds it; any other heavy command is prefixed with `desktop_lock.py guard`.
 - Linux golden disks are immutable: never boot or modify them directly, and never move, overwrite or delete a disk referenced by overlays. Never delete any copy without Patrick's approval and two other copies verified against the same SHA-256.
 - Linux tests use fresh disks under `work/lab-runs/` through `tools/lab/lab.py`, which never shares the host clipboard and binds VNC and SSH forwarding to 127.0.0.1.
 - Do not disable or redirect guest display output during graphical tests. Capture visual results for every graphical acceptance run, including failures.

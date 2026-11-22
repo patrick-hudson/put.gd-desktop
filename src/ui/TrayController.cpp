@@ -1,4 +1,5 @@
 #include "TrayController.h"
+#include "core/SensitiveText.h"
 #include <QScopeGuard>
 #include <QJsonDocument>
 #include "app/FileManagerIntegration.h"
@@ -239,18 +240,8 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
- // #1804: without a tray to click, one notification leads back to a prompt another window may cover.
- connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){
-  if(available())return;
-  const auto message=QStringLiteral("A capture is waiting for your decision");
-  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
-#ifdef Q_OS_LINUX
-  const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
-  if(native_){native_->notify("put.gd",message,false,{},actions);return;}
-  // The Qt balloon has no buttons of its own: no action there.
-  if(tray_)showTrayMessage("put.gd",message,false,{});
-#endif
- });
+ // #1804, #1829: one notification leads back to a prompt another window may cover.
+ connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){announceSensitivePrompt(id);});
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
   logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
   if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
@@ -280,6 +271,8 @@ TrayController::TrayController(OperationService& operations,
   for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
 #endif
   for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
+  // A prompt announced during the capture, if it still waits (#1829).
+  for(const auto& id:std::exchange(heldSensitivePrompts_,{}))if(operations_.sensitivePromptWaiting(id))announceSensitivePrompt(id);
   for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
  },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
@@ -470,9 +463,14 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // the link still is.
  const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from History.":"Link not copied: the clipboard changed during the upload. Copy it from History."):QString{};
+ // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
+ const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("The original before covering couldn't be saved locally."):QString();
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
   if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
+  // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
+  if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
+  if(!originalNote.isEmpty())parts.append(originalNote);
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');
@@ -514,6 +512,7 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  else if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".")+(link.isEmpty()?QString{}:" "+link);
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
+ if(!originalNote.isEmpty())text+=" "+originalNote;
  if(!copied.isEmpty())text+=" "+copied;
  if(hasLink)text+=" Click to open in browser.";
  return text;
@@ -924,6 +923,13 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
+  // A waiting sensitive text prompt (#1829): a click on the balloon brings it forward.
+  if(actions.first().key=="show-sensitive"){
+   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[this,tray,id=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))operations_.raiseSensitivePrompt(id,{});},Qt::SingleShotConnection);
+   tray->showMessage(title,message+" Click here to show it.",icon,balloonMs);
+   QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
+   return;
+  }
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
   // Qt reports a click on the tray icon as a click on the balloon too; that one only dismisses it.
   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[tray,name=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))restartFileManager(name);},Qt::SingleShotConnection);
@@ -1032,6 +1038,27 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
 #ifdef Q_OS_LINUX
  // One button per file manager; each key is unique, its value names the file manager.
  QList<NotificationAction> actions;for(const auto& name:restartable)actions.append({"restart-file-manager-"+name,"Restart "+fileManagerName(name),name});
+ if(native_){native_->notify("put.gd",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("put.gd",message,false,actions);
+#else
+ if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
+#endif
+}
+// #1804, #1829: one notice per prompt a person is shown, on every desktop: a tray host may open the menu on
+// a click instead of activating put.gd (Ubuntu's AppIndicator). Show raises the prompt another window covers.
+void TrayController::announceSensitivePrompt(const QString& id) {
+ if(!operations_.settingsSnapshot().notifications)return;
+ // Once per prompt: a file selection's later prompt is new, a repeat of one already announced is not.
+ const int prompt=operations_.sensitivePromptNumber(id);
+ // Already answered (0), or already announced: nothing to say. -1 is no check session (a test's signal).
+ if(prompt==0||(prompt>0&&announcedSensitive_.value(id)>=prompt))return;
+ // Never into a scrolling capture's frames: it goes out after the capture, if the prompt still waits.
+ if(holdNotices_){if(!heldSensitivePrompts_.contains(id)&&heldSensitivePrompts_.size()<32)heldSensitivePrompts_.append(id);return;}
+ if(prompt>0){announcedSensitive_.insert(id,prompt);while(announcedSensitive_.size()>64)announcedSensitive_.erase(announcedSensitive_.begin());}
+ const auto message=QStringLiteral("A capture is waiting for your decision");
+ logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
+#ifdef Q_OS_LINUX
+ const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
  if(native_){native_->notify("put.gd",message,false,{},actions);return;}
  if(tray_)showTrayMessage("put.gd",message,false,actions);
 #else

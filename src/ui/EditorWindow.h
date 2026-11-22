@@ -185,7 +185,8 @@ public:
  // its job). edit_stale when a Redact mark or the crop changes first. `done`
  // gets {created: [shape ids], counts: {category: matches}}.
  // #1618: `terms` and `patterns` (an agent's redactText) join the saved ones for this run only.
- void quickRedact(const QStringList& categories,TextDone done={},QStringList terms={},QStringList patterns={});
+ // `first` (#1820): categories matched before the others, so their words go to them even where another kind matches too.
+ void quickRedact(const QStringList& categories,TextDone done={},QStringList terms={},QStringList patterns={},QStringList first={});
  // Checks one redactText command: categories (1 to 7 of quickRedact::categories()),
  // and optional terms and patterns (#1618) that follow the Settings rules and need
  // the list category. On failure `code` is edit_command_invalid and `message` names the

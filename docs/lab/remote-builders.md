@@ -43,6 +43,37 @@ These host-desktop checks do not require a VM or `/dev/kvm`. Select direct host
 testing when its actual desktop/version matches the claim being tested; use a
 VM for other required guest profiles. Preserve the release matrix's exact versions.
 
+### GNOME rows run with a tray host
+
+Ubuntu enables its AppIndicator extension by default, and a Fedora user who wants put.gd's
+tray turns it on ([GNOME](../desktops/gnome.md)). So GNOME acceptance on f44 runs with a
+tray host by default. f44 has Fedora's `gnome-shell-extension-appindicator` installed, and
+`appindicatorsupport@rgcjonas.gmail.com` is in the desktop user's
+`org.gnome.shell enabled-extensions`, next to `putgd@put.gd`. A fresh login therefore loads
+it. Check it with `gnome-extensions info appindicatorsupport@rgcjonas.gmail.com`
+(`Enabled: Yes`, `State: ACTIVE`).
+
+You don't have to remember to check. `desktop_lock.py acquire f44` runs the same check
+the nightly's Fedora GNOME guest runs: the extension must be enabled and active, and an
+`org.kde.StatusNotifierWatcher` on the desktop session bus must have a registered host.
+If either is missing, the lock is refused with one line that says what's wrong and how to
+fix it. Usually the fix is `gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com`
+in the desktop session. If the extension stays `INACTIVE`, the repair touches the desktop,
+so take the lock first with `--no-tray-host "repairing the tray host"`. Under that lock,
+unlock the screen if it is locked (a locked screen also makes the extension `INACTIVE`),
+check again, and only if it is still `INACTIVE`, re-login with
+`sudo -n systemctl restart gdm`.
+
+**Testing the no-tray path on purpose.** A case that covers GNOME without a tray, such
+as quitting from the main window's menu or the prompt fallback when no tray can show it,
+takes the lock with `--no-tray-host "<reason>"`. The lock then skips the tray check and
+adds the reason to its purpose, so `status` shows why the check was skipped. Disable the
+extension for the test with `gnome-extensions disable appindicatorsupport@rgcjonas.gmail.com`.
+Before you release, turn it back on with
+`gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com` and confirm
+`IsStatusNotifierHostRegistered` is true again, so the next session gets a tray. A row
+that ran without a tray says so in its record.
+
 ## Pinned SSH access
 
 Connect from the main workstation on the LAN. All five hosts accept
@@ -122,7 +153,10 @@ Use the installed wrapper on Aurora:
 ~/.local/bin/putgd-build-env ctest --preset dev
 ```
 
-With no arguments, `putgd-build-env` opens a shell in that container. The wrapper
+With no arguments, `putgd-build-env` opens a shell in that container. Before a
+`cmake` or `ctest` command it runs `desktop_lock.py guard` from
+`~/.local/libexec/putgd-builder/` and refuses while another session holds the
+host's [quiet lease](#quiet-leases-for-timing-runs). The wrapper
 selects `/var/home/patrick/work/put.gd`, the canonical path to the prepared
 checkout, clears the live graphical session variables for CTest and checks the
 test socket paths under a new short private `TMPDIR`. For an isolated checkout,
@@ -502,10 +536,13 @@ waiting for the lock, over a probe process left behind by a finished test.
 - **SSH builds, tests and VMs on the builders are shared.** Run builds with
   `nice -n 10` and a bounded `-j`. Check `uptime` before you start another heavy
   job on a host whose load is already above its core count; k72 and m74 have four cores.
-- **Recording, capture-latency and memory slots need a quiet host.** While someone
-  holds a desktop for that work, don't start new heavy SSH jobs on that host
-  (builds and full ctest). Jobs already running may finish. The
-  slot holder records the host load next to its results.
+- **Timing runs hold the host's quiet lease.** Recording, capture-latency,
+  memory and other timing runs take `desktop_lock.py acquire HOST --resource
+  quiet` when they are ready to start, and release it the moment the timing
+  ends. While another session holds it, don't start new heavy SSH jobs on that
+  host (builds, full ctest, replays, benchmarks). The guarded lab helpers refuse
+  to; for anything else, use `desktop_lock.py guard`. Jobs already running may finish. See [Quiet leases for timing
+  runs](#quiet-leases-for-timing-runs).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
   plasma, xorg, mesa, GPU drivers, pipewire or xdg-desktop-portal*. Read every
@@ -692,7 +729,7 @@ pinned SSH options above (`ssh ... python3 -`), using the `known_hosts` pins in
 
 ```sh
 python3 tools/lab/desktop_lock.py status [HOST ...] [--check]
-python3 tools/lab/desktop_lock.py acquire f44 --owner NAME --session ID --purpose TEXT --minutes 30
+python3 tools/lab/desktop_lock.py acquire f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--no-tray-host REASON]
 python3 tools/lab/desktop_lock.py heartbeat f44 --session ID [--blocked REASON]
 python3 tools/lab/desktop_lock.py extend f44 --session ID --minutes 30
 python3 tools/lab/desktop_lock.py release f44 --session ID [--verified-clean] [--not-mine ID ...]
@@ -714,9 +751,64 @@ python3 tools/lab/desktop_lock.py break f44 --session ID --reason TEXT
 - If the desktop is locked, don't poll the holder and don't wait idle. Tell your
   coordinator, do other work and try again later. Between session families, the
   lock goes to whoever takes it first.
+- On a GNOME host (f44), `acquire` also checks the tray host and refuses without it
+  ([GNOME rows run with a tray host](#gnome-rows-run-with-a-tray-host)).
 - `acquire` lists what's already on the host, such as an earlier holder's
   processes. Those aren't yours: leave them and tell your coordinator. `status`
   shows who released or broke the lock last.
+
+### Quiet leases for timing runs
+
+The `desktop` lock means "I'm driving this desktop session". The quiet lease
+(`--resource quiet`, `~/putgd-lab/locks/quiet.lock`) means "don't load this
+host's CPU". They are independent: a timing run on a desktop holds both, a desktop
+acceptance run usually holds only `desktop`, and a headless benchmark over SSH
+holds only `quiet`.
+
+There are no clock windows and no private marker files. On 2026-11-22 a booked
+"aurora is quiet 02:30-02:50Z" window failed both ways: a build that didn't know
+about it started inside it and spoiled a timing pair, and a run whose packages were
+ready at 01:53Z slept on an idle host until its window opened. A lease is held only
+while the work runs:
+
+```sh
+python3 tools/lab/desktop_lock.py acquire aurora-amd --resource quiet --owner NAME --session ID --purpose TEXT --minutes 30
+python3 tools/lab/desktop_lock.py heartbeat aurora-amd --resource quiet --session ID
+python3 tools/lab/desktop_lock.py release aurora-amd --resource quiet --session ID
+python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
+```
+
+- Take the lease when the timing work is ready to start, never ahead of it, and
+  release it the moment the timing ends. Heartbeat, extend, status and break work
+  as for the desktop lock. Release needs no `--verified-clean`: there is nothing
+  on screen to check.
+- Acquire records the host's load averages and CPU count in the lease. When the
+  1-minute load is above the CPU count it says so: find the heavy work before you
+  time anything, and keep the recorded load with your results.
+- When another session holds the lease, do other work and retry later. Don't
+  wait idle for it. The tool's refusal says so too.
+- These entry points check the lease themselves and exit without starting while
+  another session holds it: `rr_loop.py`, `race_loop.py`,
+  `scroll_tracker_score.py`, `fluidity_run.py` and `record_run.py` (through
+  `desktop_lock.refuse_while_quiet()`), and Aurora's `putgd-build-env` before
+  `cmake` and `ctest`. A held, blocked or stale lease stops them, and so does an
+  unreadable lease written in the last 15 minutes. A free or expired lease
+  doesn't.
+- The [weekly stress lane](#weekly-stress-lane-on-k72) skips the week while
+  anyone else holds the lease. It checks with its desktop-lock guard (at the
+  start and again after the build), right before CMake configure, between
+  configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+- Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
+  `cmake` run directly, and any other heavy command. For those, put
+  `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
+  another session holds the lease. Run on a builder without `HOST`, it reads that
+  builder's own lock directory.
+- Your own lease doesn't stop your own run in the guarded helpers: set
+  `PUTGD_LAB_SESSION` to the lease's session (or pass `guard --session ID`).
+- An expired lease no longer stops heavy work, but its file stays until someone
+  removes it, so no other timing run can acquire the lease. Clear it as in
+  [Stale locks](#stale-locks), with `--resource quiet`: message the holder, then
+  `break HOST --resource quiet --session ID --reason TEXT`.
 
 ### Release only after a full cleanup check
 
@@ -811,7 +903,8 @@ coordinator:
   --check` and hands the desktop to the next session in the queue.
 
 `tests/desktop/test_desktop_lock.py` covers expiry, heartbeat staleness, atomic
-acquire, the release check and break rules; it runs in CI's `lab` contracts.
+acquire, the release check and break rules, the quiet lease and one guarded
+helper; it runs in CI's `lab` contracts.
 
 ### A nightly guest kept for live cleanup
 
@@ -1086,8 +1179,9 @@ lab desktop needs the same treatment.
   it. From 03:00 on Sundays it takes about 20 minutes after an incremental
   build, and more after a fresh clone (the first full build took 10 minutes).
   Don't start another full suite on k72 then.
-- To keep the run away from a quiet, A/V or performance slot, hold the k72
-  desktop lock with a purpose that says so. The run then skips that week.
+- To keep the run away from a timing run, hold the k72 quiet lease
+  (`--resource quiet`) while it runs. A desktop lock whose purpose says quiet,
+  A/V or performance work also makes it skip that week.
 - `stress_weekly.py --dry-run` runs the checks and prints the plan without
   fetching, building or writing anything.
 - To stop a run, use `systemctl --user stop putgd-stress-weekly.service`. It

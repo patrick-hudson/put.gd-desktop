@@ -42,10 +42,10 @@ What it does not do:
    one that every action gets, so it does not say that the capture copies text. The capture delay, the "Also delay captures started by a
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
-3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first, names the emoji it finds
-   in the colour plane, leaving out any inside a decoded code (see [emoji](#emoji)), then
-   recognizes the text in grey copies with the codes' areas filled with the background, and puts
-   each emoji in place of what it read there.
+3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first. Then, at the same time, it
+   names the emoji it finds in the colour plane, leaving out any inside a decoded code (see
+   [emoji](#emoji)), and recognizes the text in grey copies with the codes' areas filled with the
+   background. Last, it puts each emoji in place of what it read there.
 4. **Copy.** One plain-text clipboard write, then one desktop notification:
 
    | Found | Clipboard | Notification |
@@ -184,7 +184,7 @@ banded, parallel recognition, and all of them fail.
 | Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey and 8-bit RGB that is a memfd of at most 96,000,032 bytes: the 32-byte header, 24,000,000 bytes of grey and 72,000,000 of colour. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
-| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
+| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition. That clock starts before the codes are read, and the scan itself starts after them. The limit is checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
@@ -471,11 +471,28 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   word with its glyph's box, the editor shows and selects it as a word, and Quick redact sees
   it. The editor's Copy selection joins words with spaces, so a glued emoji gets one there;
   Copy all text keeps the join.
-- **When it runs.** After the codes and before any engine starts. The colour rows the scan
-  has passed, the rows read again around each glyph once it is done, and the template pages it
-  read are given back before recognition reaches its peak, and its large working buffers come
-  straight from the kernel, so a freed one does not raise glibc's mmap threshold for
-  Tesseract's buffers after it.
+- **When it runs.** On its own thread, from just after the codes are read, alongside page
+  analysis, the engines' start and recognition (#1815). The job joins it before the emoji are
+  placed.
+  - Before #1815 it ran first, on one core. Overlapping it made the 176-capture corpus 11% faster
+    and 4 MP+ screens 15% faster on aurora-amd (6 cores), and the corpus 8% faster on k72 (4
+    cores). The text was identical on all 176 captures and on the 26 #1748 emoji crops. The
+    record is [put.gd-evidence `records/2026-11-22-issue-1815-emoji-scan-overlap`](https://github.com/patrick-hudson/put.gd-evidence/tree/1d1dc859d798c1a16789475e4fc1f7cec9a4e659/records/2026-11-22-issue-1815-emoji-scan-overlap).
+  - The colour rows the scan has passed, and the rows read again around each glyph once it is
+    done, are given back as it goes. The template pages it read are given back when the scan
+    ends. Its large working buffers come
+    straight from the kernel, so a freed one does not raise glibc's mmap threshold for
+    Tesseract's buffers.
+  - No growth sample is taken from a task that overlaps the scan, so the scan's pages never count
+    as a task's growth. The gate still checks the helper's whole resident set, scan included,
+    before it starts extra engines and before an extra worker takes a task that needs more
+    memory. The first engine and its worker are never gated.
+  - If the system refuses the thread, the scan runs first, inline, as before.
+  - The scan's 3-second limit is unchanged and still counts from the start of recognition. The
+    scan now shares the CPU with the engines, so on a very busy screen it may get through less
+    of the page before that limit. A cut scan keeps what it found and never cuts the text.
+  - `recognizeMs` is code reading plus text recognition, plus the time the job waited for the
+    scan at the join (or the whole scan, when it ran inline).
 - **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them)
   has no colour core, so it is not found and Tesseract's reading of it
   stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
@@ -951,10 +968,13 @@ desktop title bar or frame, and it moves by dragging its body, through the deskt
 ordinary window: it opens raised and focused, and another window can cover it. On Wayland a window
 can't ask to stay on top, and put.gd keeps it an ordinary window everywhere rather than an overlay that
 can't be moved. While a capture waits, the tray and History say "Waiting for your decision", and a click
-on the tray icon brings the panel back instead of opening History. The tray menu's **Open put.gd**
-still opens History. On a desktop with no tray, put.gd also sends one notification, "A capture is
-waiting for your decision". It has **Show**, which brings the panel back, where the desktop's
-notifications support buttons. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
+on the tray icon brings the panel back instead of opening History, where the tray host sends put.gd the
+click. Ubuntu's AppIndicator tray opens put.gd's menu on a click instead. The tray menu's **Open
+put.gd** still opens History. On every desktop put.gd also sends one notification for each prompt a
+person is shown, "A capture is waiting for your decision", while notifications are on ([#1829](https://github.com/patrick-hudson/put.gd-desktop/issues/1829)).
+It has **Show**, which brings the panel back, where the desktop's notifications support buttons. Where Qt
+shows a tray balloon instead (no notification server, on the Qt tray), clicking it does the same. During a scrolling capture the
+notification waits until the capture ends, and goes out then only if the prompt still waits. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
 float it. Where the desktop lets a window choose (X11), it opens centred on the screen with the pointer.
 Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offered.
 
@@ -1021,7 +1041,7 @@ the decision; `operation.decide` answers only `decided` and `operationId`. The p
 check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
 found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
 those words to the same-user caller that asks, without another recognition run. Placing any suggested
-mark starts a new recognition revision, which clears the result. The notification on a desktop with no tray says only that a capture is waiting.
+mark starts a new recognition revision, which clears the result. The notification says only that a capture is waiting.
 Tests and evidence use only test values.
 
 ### Cost

@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 #include "core/HistoryStore.h"
 #include "core/SourceAdapter.h"
 #include "core/EditorJob.h"
@@ -45,6 +46,12 @@ public:
  // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
  bool raiseSensitivePrompt(const QString& activationToken={});
  bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
+ // Whether this capture's prompt is open for a person, waiting for a decision (#1829).
+ bool sensitivePromptWaiting(const QString& id) const;
+ // The number of the prompt a person is shown now for this capture (a file selection can ask once per
+ // file), 0 when its prompt was answered, -1 when no check runs for it: read from the helper's session,
+ // phase and number together.
+ int sensitivePromptNumber(const QString& id) const;
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
@@ -257,7 +264,19 @@ private:
  // localOnly (#1804): a capture whose sensitive text check was cancelled keeps only its local copy.
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;
   // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
-  QHash<QString,QString> checkedFiles={};};
+  QHash<QString,QString> checkedFiles={};
+  // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
+  // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
+  // originalFiles: a covered selected file's item index, its path and its identity when checked.
+  // originalPath: a covered capture's original, written as a private PNG at once so no raster waits in memory;
+  // empty when none was kept, "-" when writing it failed.
+  QString originalPath={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
+  QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};};
+ // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
+ void keepOriginals(Job&,Operation&);
+ // #1820: operations with a check that couldn't finish: their notification never says what was covered.
+ QSet<QString> unfinishedChecks_;
+ static void discardCovered(const QHash<QString,QString>& replaced);
  // #1804: an upload whose capture is checked for sensitive text first, one check at a time.
  void admitUpload(Job);
  bool needsSensitiveCheck(const Job&) const;
