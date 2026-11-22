@@ -39,7 +39,7 @@ private slots:
  void categoriesMatchTheirShapes_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<QStringList>("expected");
   QTest::newRow("two phones on one line")<<"2125550100 4155550100"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: 4155550100"};
-  const auto prefix=QString("gh")+"p_"+QString(36,'A'),tail=QString(10,'B');
+  const auto prefix=QString("gh")+"p_"+"aB3dE5fG7hJ9kL1mN3pQ"+"5rS7tU9vW1xY3zA5",tail=QString("q7Xb9Lr2Vt");
   QTest::newRow("wrapped token with valid prefix")<<prefix+" | "+tail<<all<<QStringList{"key: "+prefix+" "+tail};
   QTest::newRow("email after unrelated numeric line")<<"ALPHA BRAVO CHARLIE | SYNTHETIC TEXT 1428 | hello@example.test"<<QStringList{"email"}<<QStringList{"email: hello@example.test"};
   QTest::newRow("email after prose line")<<"Please email | john@example.com"<<QStringList{"email"}<<QStringList{"email: john@example.com"};
@@ -270,6 +270,73 @@ private slots:
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
+  // #1894: developer secrets with no prefix of their own, and more providers' prefixes. Every value is
+  // made up and put together from parts.
+  {const auto pg=QString("postgres://app_user:")+"o6!y*G3Sgq"+"jRr8#AzU@10.32.190.22:5432/prod";
+   QTest::newRow("a connection string with a password")<<"url "+pg<<all<<QStringList{"key: "+pg};
+   QTest::newRow("a connection string split by recognition")<<"postgres://app_user :06! y*G3Sgq"+QString("jRr8#AzU@10.32.190.22:5432/prod")<<all<<QStringList{"key: postgres://app_user :06! y*G3Sgq"+QString("jRr8#AzU@10.32.190.22:5432/prod")};
+   const auto mongo=QString("mongodb+srv: //admin: bgE40V20UD6 LDHj 2c Luster®.z6ohj .mongodb.net/?retrywrites=true");
+   QTest::newRow("a connection string whose @ was lost")<<mongo<<all<<QStringList{"key: "+mongo};
+   const auto redis=QString("redis://:Kx82mPq0")+"LzR7@cache.internal:6379/0";
+   QTest::newRow("a connection string with a password and no user")<<redis<<all<<QStringList{"key: "+redis};
+   QTest::newRow("a URL after a variable's name")<<"DATABASE_URL="+pg<<all<<QStringList{"key: DATABASE_URL="+pg};}
+  QTest::newRow("URLs with a port and no password stay visible")<<"http://localhost:3000/api ssh://git@github.com:22/x postgres://localhost/db https://example.com:8443"<<QStringList{"key"}<<QStringList{};
+  QTest::newRow("a connection string with a reference stays visible")<<"postgres://app:${DB_PASSWORD}@db/prod"<<all<<QStringList{};
+  QTest::newRow("a secret-named value in a word")<<"DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<all<<QStringList{"key: DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
+  QTest::newRow("a secret-named value after its name")<<"password: "+QString("Hn4!vQ8z")+"R2#wLp"<<all<<QStringList{"key: "+QString("Hn4!vQ8z")+"R2#wLp"};
+  QTest::newRow("a quoted value in JSON")<<"\"client_secret\": \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","<<all<<QStringList{"key: \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","};
+  QTest::newRow("a name and value around a lone equals sign")<<"API_KEY = "+QString("q9Lm2Vx7")+"Tz4Rb8Nc"<<all<<QStringList{"key: "+QString("q9Lm2Vx7")+"Tz4Rb8Nc"};
+  QTest::newRow("basic credentials after Authorization")<<"Authorization: Basic "+QString("dXNlcjpw")+"YXNz"<<all<<QStringList{"key: "+QString("dXNlcjpw")+"YXNz"};
+  {const auto hf=QString("h")+"f_"+"g5EeE5B7YX3uvHNiAwxFEk"+"oni8gX0280Yi";
+   const auto line=QString("{\"ts\":\"2026-03-03T14:31:31.651Z\",\"level\":\"info\",\"HUB_TOKEN\":\"")+"q9Lm2Vx7Tz"+"4Rb8Nc1Kp6\"}";
+   QTest::newRow("a secret-named value inside a JSON log line")<<line<<all<<QStringList{"key: "+line};
+   QTest::newRow("a Hugging Face token with digits")<<"token "+hf<<all<<QStringList{"key: "+hf};
+   QTest::newRow("a CSV row of name and value")<<"SESSION_SECRET,"+QString("q9Lm2Vx7Tz")+"4Rb8Nc1Kp6,diego"<<all<<QStringList{"key: SESSION_SECRET,"+QString("q9Lm2Vx7Tz")+"4Rb8Nc1Kp6,diego"};
+   QTest::newRow("a Laravel app key")<<"APP_KEY=base64:"+QString("eIwf0hlV/SnhB94o69WQ")+"EVPBCenpTKzLUJHUNmtrnxA="<<all<<QStringList{"key: APP_KEY=base64:"+QString("eIwf0hlV/SnhB94o69WQ")+"EVPBCenpTKzLUJHUNmtrnxA="};
+   QTest::newRow("a public value under a token's name stays visible")<<"NEXT_PUBLIC_MAPBOX_TOKEN="+QString("pk")+".eyJ1IjoiLuHcBDPMWxGwuC521h"<<QStringList{"key"}<<QStringList{};}
+  QTest::newRow("a sentence after a secret's name stays visible")<<"Password: must be at least 8 characters"<<all<<QStringList{};
+  QTest::newRow("settings about a secret stay visible")<<"LOG_LEVEL=debug PORT=8080 TOKEN_TTL=3600 PASSWORD_MIN_LENGTH=12 AUTH_ENABLED=true PWD=/home/lab"<<all<<QStringList{};
+  QTest::newRow("a secret's reference or placeholder stays visible")<<"DB_PASSWORD=${DB_PASSWORD} | API_KEY=<your-key> | SECRET_KEY=changeme | token: "+QString(12,'*')<<all<<QStringList{};
+  QTest::newRow("references, placeholders and addresses under a secret's name stay visible")<<"password = process.env.STRIPE_SECRET_KEY | config.token = 'os.environ[\"API_KEY\"]' | token = \"YOUR_TOKEN_HERE\" | export OPENAI_API_KEY=your-api-key-here | \"password\": \"op://Prod/Stripe/credential\" | export token=redis://localhost:6379/0 | token='gh"+QString("p_t37p9f'")<<all<<QStringList{};
+  {const auto publishable=QString("pk")+"_live_"+"51VEWWvHWLlOupEdQRNvTZ07KS22Md1OXbXWv5bVFQII5SBGHsW3TbeJfMB5bHr2b";
+   const auto ssh=QString("ssh-ed25519 ")+"AAAAC3NzaC1lZDI1NTE5AAAA"+"IMFh+rSm1njPFDmeeN0SmccpgHSVGnjCMHgYrnNgpDrh mei@laptop";
+   const auto cert=QString("-----BEGIN CERTIFICATE----- | ")+"MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ | -----END CERTIFICATE-----";
+   QTest::newRow("a publishable key stays visible")<<"STRIPE_PUBLISHABLE_KEY="+publishable<<QStringList{"key"}<<QStringList{};
+   QTest::newRow("an SSH public key stays visible")<<ssh<<QStringList{"key"}<<QStringList{};
+   QTest::newRow("a certificate stays visible")<<cert<<QStringList{"key"}<<QStringList{};
+   QTest::newRow("a data URI stays visible")<<"logo data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAADhewiA+uumqndKMBzpqOlp0iuvjFtxLSzdO3JL"<<QStringList{"key"}<<QStringList{};}
+  QTest::newRow("ordinary config stays visible")<<"host: localhost port: 5432 user: app_user"<<all<<QStringList{};
+  {const auto slack=QString("https://hooks.slack.com/services/")+"TZSAMVP0C/BG3X3JY75/"+"B5bIUbqVUVxFD1Os2MNmZXOA";
+   const auto misread=QString("https://hooks.slLack.com/services/")+"TZSAMVPOC/BG3X3JY75/"+"B5bIUDQVUVXFD10s2MNMZXOA";
+   const auto discord=QString("https://discord.com/api/webhooks/")+"1187362049118123456/"+"Zq8Lm2Vx7Tz4Rb8Nc1Kp6Wd3Hs5Jg0Fy";
+   QTest::newRow("a Slack webhook")<<"hook "+slack<<all<<QStringList{"key: "+slack};
+   QTest::newRow("a Slack webhook as recognition misreads it")<<misread<<all<<QStringList{"key: "+misread};
+   QTest::newRow("a Discord webhook")<<"# Discord: "+discord<<all<<QStringList{"key: "+discord};
+   QTest::newRow("a Slack page that is no webhook stays visible")<<"https://api.slack.com/apps https://hooks.slack.com/"<<all<<QStringList{};}
+  {const auto openai=QString("sk-")+"proj-"+"Vq7Zr2Lp9XkT4mWbT3Bl"+"bkFJn8Yc5Rd1Hs6Qe3Ug";
+   const auto anthropic=QString("sk-")+"ant-api03-"+"cw6rFL9ges3oH4nsYPqw"+"uf75KZuFk6ZvBsNH-ggw";
+   const auto google=QString("AI")+"za"+"2XIThrWWmz_SKMCC_ZsP"+"r3kk-HGDl9_ykQY";
+   const auto npm=QString("np")+"m_"+"GbdijE3mhEah5i8WSEqty"+"Q7boviOYApBTro7";
+   const auto hf=QString("h")+"f_"+"FBWMJXMsTboQsSZOBrA"+"xzNjqLmWpKrTs";
+   const auto sendgrid=QString("S")+"G."+"vtP4VGTvg-q_NZDzD8ANfn."+"CJiRpIZuptzIZxIryKyh9ZOkDtq57uMVk4Jp8d3HZGn";
+   const auto ocean=QString("do")+"p_v1_"+"d88268ac6371c4bc2e05f571e4c11a98"+"c13bea97aee322da81676ac7047c5f0d";
+   const auto shopify=QString("sh")+"pat_"+"e33b58c5264392f6"+"d0492555b8ad9c1e";
+   const auto twilio=QString("S")+"K"+"b692cc1a230bd2f8"+"57b7d5b2d55685a1";
+   const auto mailgun=QString("ke")+"y-"+"7896b99d719f5a08"+"c8b0d388fced1bb0";
+   QTest::newRow("an OpenAI key")<<"OPENAI_API_KEY="+openai<<all<<QStringList{"key: OPENAI_API_KEY="+openai};
+   QTest::newRow("an Anthropic key")<<"key "+anthropic<<all<<QStringList{"key: "+anthropic};
+   QTest::newRow("a Google API key")<<"key "+google<<all<<QStringList{"key: "+google};
+   QTest::newRow("an npm token")<<"token "+npm<<all<<QStringList{"key: "+npm};
+   QTest::newRow("a Hugging Face token")<<"token "+hf<<all<<QStringList{"key: "+hf};
+   QTest::newRow("a SendGrid key split after SG.")<<"SENDGRID_KEY=S"+QString("G. ")+sendgrid.mid(3)<<all<<QStringList{"key: SENDGRID_KEY=S"+QString("G. ")+sendgrid.mid(3)};
+   QTest::newRow("a DigitalOcean token after its name")<<"DO_TOKEN="+ocean<<all<<QStringList{"key: DO_TOKEN="+ocean};
+   QTest::newRow("a Shopify token")<<"token "+shopify<<all<<QStringList{"key: "+shopify};
+   QTest::newRow("a Twilio key")<<"sid "+twilio<<all<<QStringList{"key: "+twilio};
+   QTest::newRow("a Mailgun key")<<"mail "+mailgun<<all<<QStringList{"key: "+mailgun};
+   QTest::newRow("words that start like a prefix stay visible")<<"TASK SKU-1234 key-value hfold npmrc AIzone SG.config"<<all<<QStringList{};}
+  {const auto begin=QString("-----BEGIN RSA ")+"PRIV"+"ATE KEY-----",end=QString("-----END RSA ")+"PRIV"+"ATE KEY-----";
+   const auto damaged=QString("MITEOWIBAAKCAQEAHr€Lx")+"O6iBCd5V$NA LeO1 Lp§Mw";
+   QTest::newRow("a PEM block takes a damaged first body line")<<begin+" | "+damaged+" | q7XbSLr2Vt4kKps8NmiZc6wd3Hs5JgoFy | "+end<<all<<QStringList{"key: "+begin+" "+damaged+" q7XbSLr2Vt4kKps8NmiZc6wd3Hs5JgoFy "+end};}
   QTest::newRow("hex run with no word about it")<<"value "+hexRun<<all<<QStringList{"key: value "+hexRun};
   // #1895: Patrick's decoy page. A hex run beside a hash word is a digest; a secret word beside it wins.
   {const auto sha1=QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab",sha256=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
@@ -312,7 +379,7 @@ private slots:
    QTest::newRow("a placeholder Stripe key stays visible")<<"Placeholder key "+stripeMask<<all<<QStringList{};
    QTest::newRow("a placeholder AWS key stays visible")<<"Placeholder AWS "+awsMask<<all<<QStringList{};
    QTest::newRow("asterisks and zeros are placeholders too")<<"token "+QString(32,'*')+" id "+QString(32,'0')<<all<<QStringList{};
-   QTest::newRow("a partly masked key stays covered")<<"key "+partly<<all<<QStringList{"key: "+partly};}
+   QTest::newRow("a masked key stays visible")<<"key "+partly<<all<<QStringList{};}
   QTest::newRow("base64 run")<<"value "+base64Run<<all<<QStringList{"key: value "+base64Run};
   QTest::newRow("a long path is not a run")<<"cd /usr/share/tesseract-ocr/5/tessdata/configs"<<all<<QStringList{};
   QTest::newRow("only the categories asked for")<<"mail a@example.com or call +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
