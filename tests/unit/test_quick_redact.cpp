@@ -373,6 +373,27 @@ private slots:
   QTest::newRow("a Sentry-like host or path that is no DSN stays visible")<<"https://8f2c41d07b9e4a63@notsentry.io/552 https://example.test/docs/https://8f2c41d07b9e4a63@o1.ingest.sentry.io/1"<<QStringList{"key"}<<QStringList{};
   {const auto dsn=QString("https://8f2c41d0")+"7b9e4a63@o41872.ingest.sentry.io/552";
    QTest::newRow("a Sentry DSN in a CSV row read as one word")<<"production,"+dsn<<QStringList{"key"}<<QStringList{"key: production,"+dsn};}
+  // #1913, #1914, #1915: follow-ups to #1894.
+  QTest::newRow("a bracketed IPv6 address with a port and prefix")<<"listen [2001:db8::84]:443/64 now"<<QStringList{"ip"}<<QStringList{"ip: [2001:db8::84]:443/64"};
+  QTest::newRow("a bracketed IPv6 address with a port")<<"peer [2001:db8::c4]:443"<<QStringList{"ip"}<<QStringList{"ip: [2001:db8::c4]:443"};
+  QTest::newRow("an IPv6 address with 0 read as @")<<"route fe8@::5921:35ff:fe2a:ffb5/64"<<QStringList{"ip"}<<QStringList{"ip: fe8@::5921:35ff:fe2a:ffb5/64"};
+  QTest::newRow("an IPv6 address with 1 read as i")<<"link fe80::4fic:afff:fe60:3513"<<QStringList{"ip"}<<QStringList{"ip: fe80::4fic:afff:fe60:3513"};
+  QTest::newRow("an IPv4 CIDR with 0 read as @")<<"net 198.51.10@.223/24"<<QStringList{"ip"}<<QStringList{"ip: 198.51.10@.223/24"};
+  QTest::newRow("a bracketed IPv6 address with O read for 0 and a five-digit port")<<"peer [2001:db8::ABOD]:54321"<<QStringList{"ip"}<<QStringList{"ip: [2001:db8::ABOD]:54321"};
+  {const auto spaced=QString("{\"password\":\"N4!&v")+" red fox\"}";
+   QTest::newRow("a quoted JSON password of three words")<<spaced<<QStringList{"key"}<<QStringList{"key: "+spaced};}
+  {const auto entry=QString("[{\"password\":\"N4!&v")+" red fox\"},";
+   QTest::newRow("a quoted JSON password ending an array entry")<<entry<<QStringList{"key"}<<QStringList{"key: "+entry};}
+  QTest::newRow("a detached value before closing brackets")<<"\"password\": \"RedF"+QString("ox42\" }]")<<QStringList{"key"}<<QStringList{"key: \"RedF"+QString("ox42\"")};
+  QTest::newRow("an IPv6 address after a user name")<<"ssh alice@2001:db8::1"<<QStringList{"ip"}<<QStringList{"ip: alice@2001:db8::1"};
+  QTest::newRow("an IPv4 CIDR with a group read as @ or i")<<"nets 192.168.@.10/24 192.168.i.10/24"<<QStringList{"ip"}<<QStringList{"ip: 192.168.@.10/24","ip: 192.168.i.10/24"};
+  {const auto spaced=QString("{\"password\":\"N4!&v")+" blue-lake\"}";
+   QTest::newRow("a quoted JSON password with a space in it")<<spaced<<QStringList{"key"}<<QStringList{"key: "+spaced};}
+  QTest::newRow("an address is still an address")<<"mail ops@10.0.0.2 now"<<QStringList{"ip","email"}<<QStringList{"ip: ops@10.0.0.2"};
+  {const auto first=QString("{\"url\":\"https://db.example.test/x?password=")+"Hn4vQ8zR2wLp\"}";
+   QTest::newRow("a password as the first query parameter in JSON")<<first<<QStringList{"key"}<<QStringList{"key: "+first};
+   const auto split=QString("{\"password\":\"v!&R8z")+"2wLp";
+   QTest::newRow("a quoted password whose closing quote is split off")<<split+" \"}"<<QStringList{"key"}<<QStringList{"key: "+split};}
   QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
   for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})
@@ -474,6 +495,8 @@ private slots:
   // A key split after its own prefix by the same gap stays one token.
   {const auto split=words(QString("id AK")+"IA IOSFODNN7"+"EXAMPLE");auto moved=split;moved.last().rect.translate(32,0);
    QCOMPARE(found(moved,QStringList{"key"}),QStringList{QString("key: AK")+"IA IOSFODNN7"+"EXAMPLE"});}
+  {const auto split=words(QString("ID:AK")+"IA IOSFODNN7"+"EXAMPLE");auto moved=split;moved.last().rect.translate(32,0);
+   QCOMPARE(found(moved,QStringList{"key"}),QStringList{QString("key: ID:AK")+"IA IOSFODNN7"+"EXAMPLE"});}
   page.last().rect.translate(118,0);
   QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+aws});
  }
@@ -494,6 +517,12 @@ private slots:
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL=\"\""),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D // note"),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D"});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DEBUG_MODE = 0"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
+  // #1914: an inline comment after padding read as its own word, and an empty detached assignment.
+  QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 = # development"),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 ="});
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL = # dev"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
+  QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm //Q1WEr3Ty8Ui5==\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm //Q1WEr3Ty8Ui5==\""});
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL ="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
+  QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V= # dev"),QStringList{"key"}),QStringList{"key: KEY="+secret+" shaB7m2QaK8V="});
   QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 ="),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 ="});
   QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V="),QStringList{"key"}),QStringList{"key: KEY="+secret+" shaB7m2QaK8V="});
   QCOMPARE(found(words("KEY=\""+secret+" | shaB7m2QaK8V\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" shaB7m2QaK8V\""});
