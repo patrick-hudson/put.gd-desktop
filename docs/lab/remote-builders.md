@@ -795,9 +795,9 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   unreadable lease written in the last 15 minutes. A free or expired lease
   doesn't.
 - The [weekly stress lane](#weekly-stress-lane-on-k72) skips the week while
-  anyone else holds the lease. It checks with its desktop-lock guard, right
-  before CMake configure, between configure and the build, and right before the
-  stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+  anyone else holds the lease. It checks with its desktop-lock guard (at the
+  start and again after the build), right before CMake configure, between
+  configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
   `cmake` run directly, and any other heavy command. For those, put
   `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
