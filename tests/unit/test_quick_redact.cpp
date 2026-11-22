@@ -119,6 +119,9 @@ private slots:
    QString payload;for(int i=0;i<12;++i)payload+=QString("e")+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ";
    const QString big=jwt.left(37)+payload+"."+jwt.mid(88);
    QTest::newRow("a long JWT wrapped over four lines")<<"id_token: "+big.left(200)+" | "+big.mid(200,205)+" | "+big.mid(405,205)+" | "+big.mid(610)<<QStringList{"key"}<<QStringList{"key: "+big.left(200)+" "+big.mid(200,205)+" "+big.mid(405,205)+" "+big.mid(610)};
+   // ...a hex run after a card on its line keeps its wrapped tail...
+   QTest::newRow("a hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 | 5ad015a3"<<QStringList{"card","key"}
+    <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 5ad015a3"};
    // ...and an address whose dot recognition lost is still an address.
    QTest::newRow("a token ending its line takes no address that lost its dot")<<"Bearer "+token+" | ops@EXAMPLE COM"<<all<<QStringList{"key: "+token,"email: ops@EXAMPLE COM"};}
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
@@ -243,7 +246,7 @@ private slots:
   // Sol on #1863: word boxes are shorter than the line pitch (rows 50 px apart, boxes 20 px high)...
   QCOMPARE(found(page(0,20),QStringList{"key"}),QStringList{"key: "+token+" 1xY3zA5bC7"});
   // ...and a wide gap between words above is no character width.
-  auto spread=page(0,0);for(int i=0;i<2;++i)spread[i].rect.translate(-400,0);spread.last().rect.translate(60,0);
+  auto spread=page(0,0);spread[2].rect.translate(400,0);spread.last().rect.translate(60,0);
   QCOMPARE(found(spread,QStringList{"key"}),QStringList{"key: "+token});
  }
  void namesAndListsMatchTheirSpellings_data() {

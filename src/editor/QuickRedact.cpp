@@ -356,7 +356,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  if(bestFirst<0)return;
  segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast,-1,0});segmentMatches(segment,bestLast+1,last,found);
 }
-bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates);
+bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards=nullptr);
 QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList<QString>& plain) {
  QMap<int,QList<int>> lines;for(int i=0;i<candidates.size();++i)lines[candidates.at(i).line].append(i);
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
@@ -420,12 +420,21 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // another token of its own: a token ending its line took the two card lines
     // below it as one key. A hex or base64 run that holds a card itself is card
     // lines read as a key (#1846): it takes only more lines of card digits,
-    // which hold the misread cards (Luhn fails) it covers.
+    // which hold the misread cards (Luhn fails) it covers. A hex or base64 run
+    // after the card on its line is a token of its own, followed as any is.
     // #1859: and only a line that a wrap would leave: right below, within about
     // a line's pitch (word boxes are shorter than the pitch), starting no
     // further right than the line above (an editor's wrap indent is up to four
     // characters).
-    const bool ownLine=last.length==0&&otherMatch(segment.words.mid(last.from,last.to-last.from+1),plain,candidates);
+    bool ownLine=false;
+    if(last.length==0){
+     const auto run=segment.words.mid(last.from,last.to-last.from+1);QSet<int> cards;
+     if(otherMatch(run,plain,candidates,&cards)&&!cards.isEmpty()){
+      qsizetype after=-1;for(qsizetype i=0;i<run.size();++i)if(cards.contains(run.at(i)))after=i;
+      QString rest;for(qsizetype i=after+1;i<run.size();++i)rest+=plain.at(run.at(i));
+      ownLine=!hexRun(rest)&&!base64Run(rest);
+     }
+    }
     const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
     int used=last.length>0?int(segment.text.size())-last.prefix:0;
     QString ending=segment.text;
@@ -504,16 +513,22 @@ const QList<Rule>& rules() {
 }
 // #1856: words that hold a card number or an address of their own, read as the
 // card and email rules read them (an address's lost dot restored, #1840).
-bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
+bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards) {
  QList<QString> asRead,numbers;QList<RecognizedWord> boxes;
  for(const int w:words){asRead.append(plain.at(w));numbers.append(digitView(plain.at(w)));boxes.append(candidates.at(w));}
  const auto email=emailView(asRead,boxes);
- for(const auto& rule:rules()){
-  if(rule.category!="card"&&rule.category!="email")continue;
-  const auto text=join(rule.view==1?numbers:email,boxes,false,rule.category,{}).text;
-  for(auto it=rule.pattern.globalMatch(text);it.hasNext();){const auto m=it.next();if(!rule.valid||rule.valid(m.captured()))return true;}
+ bool found=false;
+ // Cards first, so every card's words are collected before an address answers.
+ for(const auto* kind:{"card","email"})for(const auto& rule:rules()){
+  if(rule.category!=QLatin1String(kind))continue;
+  const auto joined=join(rule.view==1?numbers:email,boxes,false,rule.category,{});
+  for(auto it=rule.pattern.globalMatch(joined.text);it.hasNext();){
+   const auto m=it.next();if(rule.valid&&!rule.valid(m.captured()))continue;
+   found=true;if(!cards||rule.category!="card")return true;
+   for(const int i:owners(joined,m.capturedStart(),m.capturedLength()))cards->insert(words.at(i));
+  }
  }
- return false;
+ return found;
 }
 }
 QStringList categories() {return {"email","phone","ip","card","key","name","list"};}
