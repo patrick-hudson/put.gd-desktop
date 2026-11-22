@@ -379,6 +379,10 @@ private slots:
   QTest::newRow("an IPv6 address with 0 read as @")<<"route fe8@::5921:35ff:fe2a:ffb5/64"<<QStringList{"ip"}<<QStringList{"ip: fe8@::5921:35ff:fe2a:ffb5/64"};
   QTest::newRow("an IPv6 address with 1 read as i")<<"link fe80::4fic:afff:fe60:3513"<<QStringList{"ip"}<<QStringList{"ip: fe80::4fic:afff:fe60:3513"};
   QTest::newRow("an IPv4 CIDR with 0 read as @")<<"net 198.51.10@.223/24"<<QStringList{"ip"}<<QStringList{"ip: 198.51.10@.223/24"};
+  QTest::newRow("an IPv6 address after a user name")<<"ssh alice@2001:db8::1"<<QStringList{"ip"}<<QStringList{"ip: alice@2001:db8::1"};
+  QTest::newRow("an IPv4 CIDR with a group read as @ or i")<<"nets 192.168.@.10/24 192.168.i.10/24"<<QStringList{"ip"}<<QStringList{"ip: 192.168.@.10/24","ip: 192.168.i.10/24"};
+  {const auto spaced=QString("{\"password\":\"N4!&v")+" blue-lake\"}";
+   QTest::newRow("a quoted JSON password with a space in it")<<spaced<<QStringList{"key"}<<QStringList{"key: "+spaced};}
   QTest::newRow("an address is still an address")<<"mail ops@10.0.0.2 now"<<QStringList{"ip","email"}<<QStringList{"ip: ops@10.0.0.2"};
   {const auto first=QString("{\"url\":\"https://db.example.test/x?password=")+"Hn4vQ8zR2wLp\"}";
    QTest::newRow("a password as the first query parameter in JSON")<<first<<QStringList{"key"}<<QStringList{"key: "+first};
@@ -508,9 +512,10 @@ private slots:
   QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D // note"),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D"});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DEBUG_MODE = 0"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   // #1914: an inline comment after padding read as its own word, and an empty detached assignment.
-  QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 = # dev"),QStringList{"key"}).first(),"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 = # dev");
+  QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 = # development"),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 ="});
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL = # dev"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL ="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
-  QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V= # dev"),QStringList{"key"}).first(),"key: KEY="+secret+" shaB7m2QaK8V= # dev");
+  QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V= # dev"),QStringList{"key"}),QStringList{"key: KEY="+secret+" shaB7m2QaK8V="});
   QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 ="),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 ="});
   QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V="),QStringList{"key"}),QStringList{"key: KEY="+secret+" shaB7m2QaK8V="});
   QCOMPARE(found(words("KEY=\""+secret+" | shaB7m2QaK8V\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" shaB7m2QaK8V\""});

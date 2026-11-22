@@ -30,7 +30,7 @@ bool hasDigit(const QString& text) {return std::any_of(text.cbegin(),text.cend()
 // read as 0, 1, 1, 5 and 8 in a word that has a digit and no other letter, and
 // @ as 0 between two digits or a digit and a dot (198.51.10@.223, #1913).
 QString digitView(const QString& original) {
- static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'S','5'},{'B','8'}};
+ static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'i','1'},{'S','5'},{'B','8'}};
  if(!hasDigit(original))return original;
  // #1820: between two digits, recognition reads a printed hyphen as a hyphen-like dash or a minus sign
  // (4111–1111–1111–1111). An em dash, or a dash beside anything else, stays as read.
@@ -38,7 +38,7 @@ QString digitView(const QString& original) {
  for(qsizetype i=1;i+1<word.size();++i){const auto c=word.at(i).unicode();if((c==0x2010||c==0x2011||c==0x2012||c==0x2013||c==0x2212)&&word.at(i-1).isDigit()&&word.at(i+1).isDigit())word[i]=QChar('-');}
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c))return word;
  QString out=word;for(auto& c:out)c=confused.value(c,c);
- for(qsizetype i=1;i+1<out.size();++i)if(out.at(i)=='@'&&out.at(i-1).isDigit()&&(out.at(i+1).isDigit()||out.at(i+1)=='.'))out[i]='0';
+ for(qsizetype i=1;i+1<out.size();++i)if(out.at(i)=='@'&&(out.at(i-1).isDigit()||out.at(i-1)=='.')&&(out.at(i+1).isDigit()||out.at(i+1)=='.'))out[i]='0';
  return out;
 }
 // Inside an IPv6 address the alphabet is hex: O, l, I, i and S read as 0, 1, 1, 1 and 5, and @ as 0
@@ -48,6 +48,11 @@ QString hexView(const QString& word) {
  if(!word.contains(':'))return word;
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c)&&!QStringLiteral("abcdefABCDEF").contains(c))return word;
  QString out=word;for(auto& c:out)c=confused.value(c,c);
+ // ...and only where every group stays a group of four or fewer: "alice@2001:db8::1" is a name, then
+ // an address (Sol on #1916).
+ {static const QRegularExpression groups(QStringLiteral("[^:\\[\\]/]{5,}"));
+  const auto head=out.left(out.indexOf('/')<0?out.size():out.indexOf('/'));
+  if(groups.match(head).hasMatch())return word;}
  // A colon of "::" is read as a dash or a dot beside the other one; a stray
  // one beside a whole "::" is dropped rather than making ":::".
  for(qsizetype i=0;i<out.size();++i)if((out[i]=='-'||out[i]=='.')&&((i>0&&out[i-1]==':')||(i+1<out.size()&&out[i+1]==':'))){
@@ -825,7 +830,14 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
    // After a comma (a CSV row) the value needs a digit and a letter, so "Password,please" stays visible.
    const auto value=pattern==&bare?m.captured(3):!m.captured(3).isEmpty()?m.captured(3):!m.captured(4).isEmpty()?m.captured(4):m.captured(5);
    if(m.captured(2)==QLatin1String(",")&&!(hasDigit(value)&&std::any_of(value.cbegin(),value.cend(),[](QChar c){return c.isLetter();})))continue;
-   if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)))){int last=p;while(last+1<pieces&&glued(last+1))++last;out.append(from(p,last));covered=true;}
+   if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)))){
+    int last=p;while(last+1<pieces&&glued(last+1))++last;
+    // A quoted value whose closing quote is in a later word ("N4!&v" "blue-lake\"}") runs to it (Sol on #1916).
+    const QChar quote=m.capturedLength(3)>0?QChar('"'):QChar('\'');
+    if(pattern==&inner&&(m.capturedLength(3)>0||m.capturedLength(4)>0)&&m.capturedEnd()==text.size()&&!m.captured().endsWith(quote)){
+     for(int q=last+1;q<pieces&&q<=last+6;++q)if(segment.text.mid(segment.starts.at(q),pieceEnd(q)-segment.starts.at(q)).contains(quote)){last=q;break;}
+    }
+    out.append(from(p,last));covered=true;}
   }
  }
  // Assignments, from a piece's start (after a line number recognition joined to it).
@@ -875,6 +887,15 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   if(it==facts.end()){
    LineFacts f;f.segments=segments(lines[key],plain,candidates);
    const auto& line=lines[key];
+   // A wrapped remainder ends where an inline comment starts ("…Ui5" "=" "#" "development"): the
+   // comment's words neither join the cover nor decide whether the line is a remainder (Sol on #1916).
+   if(!f.segments.isEmpty()){
+    auto& first=f.segments.first();
+    for(int i=1;i<first.words.size();++i){
+     const auto& t=plain.at(first.words.at(i));
+     if(t.startsWith('#')||t.startsWith(QLatin1String("//"))){first.text.truncate(first.starts.at(i));first.words.resize(i);first.starts.resize(i);first.heads.clear();first.headsFound=false;first.counts={};break;}
+    }
+   }
    if(!f.segments.isEmpty()){
     const auto& tail=f.segments.first().text;for(const auto c:tail){f.digit=f.digit||c.isDigit();f.upper=f.upper||c.isUpper();}
     static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));
@@ -900,7 +921,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    const bool operatorWord=lead+1<line.size()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
    const bool commentAfter=lead+2<line.size()&&(plain.at(line.at(lead+2)).startsWith('#')||plain.at(line.at(lead+2)).startsWith(QLatin1String("//")));
    static const QRegularExpression snake(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)$"));
-   const bool separated=operatorWord&&name.match(firstWord).hasMatch()&&(lead+2<line.size()?!commentAfter:snake.match(firstWord).hasMatch());
+   const bool separated=operatorWord&&name.match(firstWord).hasMatch()&&(lead+2<line.size()&&!commentAfter?true:snake.match(firstWord).hasMatch());
    f.statement=assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch()||separated||digestLine(line,plain);
    it=facts.insert(key,std::move(f));
   }
