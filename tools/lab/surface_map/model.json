@@ -574,7 +574,9 @@
   {"id": "sensitive.redact", "surface": "sensitive-prompt", "kind": "button", "label": "Redact and upload", "control": "sensitiveRedact", "keys": ["Return"], "method": "operation.decide", "to": "editor", "source": "src/ui/SensitivePrompt.cpp"},
   {"id": "sensitive.upload", "surface": "sensitive-prompt", "kind": "button", "label": "Upload anyway", "control": "sensitiveUpload", "method": "operation.decide", "source": "src/ui/SensitivePrompt.cpp"},
   {"id": "sensitive.cancel", "surface": "sensitive-prompt", "kind": "button", "label": "Cancel", "control": "sensitiveCancel", "keys": ["Escape"], "method": "operation.decide", "source": "src/ui/SensitivePrompt.cpp"},
-  {"id": "capture.sensitive-check", "surface": "settings-capture", "kind": "field", "label": "Check captures for sensitive text before uploading, and the kinds it looks for", "control": "sensitiveTextCheck", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
+  {"id": "capture.sensitive-check", "surface": "settings-capture", "kind": "field", "label": "Check captures for sensitive text before uploading", "control": "sensitiveTextCheck", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
+  {"id": "capture.sensitive-kinds", "surface": "settings-capture", "kind": "field", "label": "Each kind: Off, Warn or Redact automatically (#1820)", "control": "sensitiveTextKind_card", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
+  {"id": "capture.sensitive-apply-all", "surface": "settings-capture", "kind": "button", "label": "Apply to all kinds: Off, Warn or Redact automatically", "control": "sensitiveTextApplyAll", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "region.to-local", "surface": "region", "kind": "edge", "label": "Release → local save only", "source": "src/app/OperationService.cpp"},
 
   {"id": "recsel.drag", "surface": "recsel", "kind": "gesture", "label": "Drag chooses the recording area; release under 4 px cancels", "method": "recording.select", "source": "src/record/Overlays.cpp"},

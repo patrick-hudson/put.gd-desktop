@@ -100,6 +100,8 @@ public:
  // Every suggested mark that is still there, as one undo step, without
  // remembering any as dismissed. Marks drawn by hand stay. Returns how many.
  int removeSuggested();
+ // Only those suggested by these categories (#1820: the warn kinds before a covered upload).
+ int removeSuggested(const QStringList& categories);
  // True when the user removed a mark of this category suggested for about this
  // words box (Shape::suggestedAt):
  // a later run reads the page with the other marks blacked out, so its boxes move

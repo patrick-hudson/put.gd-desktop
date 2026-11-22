@@ -5,6 +5,7 @@
 #include <QPair>
 #include <QString>
 #include <QWidget>
+#include "core/SensitiveText.h"
 
 class QLabel;class QPushButton;
 
@@ -22,8 +23,6 @@ struct SensitiveFindings {
  QJsonObject json() const;
  bool any() const {for(const auto& entry:found)if(entry.second>0)return true;return false;}
 };
-// "a card number and 2 keys or tokens"
-QString describeSensitive(const QList<QPair<QString,int>>& found);
 // "The text was cut at its time limit", for reason codes
 QString sensitiveReasonText(const QString& reason);
 class SensitivePrompt final:public QWidget {
@@ -31,6 +30,8 @@ class SensitivePrompt final:public QWidget {
 public:
  struct Model {
   SensitiveFindings findings;
+  // #1820: what was covered automatically before this prompt (redact kinds), by kind and count.
+  QList<QPair<QString,int>> covered;
   QImage preview; // the capture with the suggested redactions, or null
   bool redactAllowed=true;
   QString destination; // "Upload to S3 · Shared link"

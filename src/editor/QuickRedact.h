@@ -1,5 +1,6 @@
 #pragma once
 #include "TextLayer.h"
+#include <QImage>
 #include <QList>
 #include <QRect>
 #include <QStringList>
@@ -93,14 +94,19 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& categorie
 // `matcher`, when set, runs the patterns.
 Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel=nullptr,const PatternMatcher& matcher={});
 // The Redact marks for a match: its word boxes, one box per visual row, padded by a
-// quarter of the line height above and below and by one and a half characters
-// either side, clamped to `bounds` (the image).
-QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds);
+// quarter of the line height above and below and by one and a half of the edge
+// word's characters either side, clamped to `bounds` (the image). Towards another
+// recognized word on the row the side margin ends at the far side of the blank
+// space between them in `image` (the recognized picture), so that word stays
+// readable; with no such space, or where `image` is transparent, it is kept whole,
+// and without `image` it stops short of that word's box. It never cuts into the
+// match's own boxes.
+QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds,const QImage& image={});
 // The same marks, each with the recognized words' own box it was padded from
 // (what a deleted suggestion is remembered by). One per visual row of the
 // match, in reading order.
 struct MarkBox {QRect mark;QRect words;};
-QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds);
+QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds,const QImage& image={});
 // Luhn's check over the digits of `number`.
 bool luhn(const QString& digits);
 }

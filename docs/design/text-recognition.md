@@ -679,14 +679,17 @@ other tool active it does not. The user's side is in the
     such as "Please email", is not taken in.
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
-    token alphabet joined without spaces (one misread character allowed in eight). A segment is
-    marked when it holds a known prefix at the start of a word (tolerant of the usual confusions and
-    of a lost or doubled separator), a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    token alphabet joined without spaces (one misread character allowed in eight; quotes around a
+    word don't count when they enclose 8 characters or more with a digit or a capital, #1820). A segment is
+    marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
+    `@`, a quote (straight or curly), a guillemet, `(`, `[` or a backtick inside one when its body
+    has both a digit and a capital (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`; an ordinary
+    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
     digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
-    colon or comma in 80 characters. A prefix never fires inside a word ("ghosts", "they"). A token
+    colon or comma in 80 characters. A prefix never fires inside a word otherwise ("ghosts", "they"). A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
     three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
     Prose never repeats so few letters for so long, and a masked secret shown as a run of `x` has the same
@@ -695,7 +698,17 @@ other tool active it does not. The user's side is in the
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
-    phone number only with a leading `+`, so the tail of a UUID is not taken for one.
+    phone number only with a leading `+`, so the tail of a UUID is not taken for one. A number
+    grouped as a card is printed (4-4-4-4 with an optional fifth group of one to three digits, or
+    4-6-5, with one separator and a first digit from 1 to 9) is never a phone number, so a card
+    number that fails the Luhn check is not suggested as one. A phone candidate of more than 15
+    digits is retried as shorter numbers, except a card-grouped one whose words are evenly spaced;
+    the retry tries the widest gap between its words first (two phone numbers in table columns)
+    and can fall back to another word boundary (#1820). A card number doesn't start right after a
+    digit and a dot (`198.51.100.7 5555-…` reads the card from `5555`), but may after a label such
+    as `No.`. A card candidate that fails the Luhn check is skipped whole, so a valid card that
+    starts inside its span can be missed. Between two digits a hyphen-like dash or a minus sign
+    reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
     `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs,
@@ -880,7 +893,12 @@ other tool active it does not. The user's side is in the
     covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), the words after a prefixed token up to its usual length,
-    or the rest of a PEM BEGIN or END line.
+    or the rest of a PEM BEGIN or END line. A token that runs to the end of its line goes on
+    over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
+    A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
+    counts only as a single recognized word with a digit, no run of four lowercase letters, and
+    a closing quote, bracket or separator at its end, so `08edc"` is taken and a bare `08edc` or
+    a letters-only tail is not (#1820, #1850).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
@@ -942,8 +960,10 @@ other tool active it does not. The user's side is in the
 [#1804](https://github.com/patrick-hudson/put.gd-desktop/issues/1804) adds **Check captures for
 sensitive text before uploading** to Settings → Capture → Text recognition, with the kinds it looks
 for. It is off by default. With it on, put.gd recognizes the text of an image that is about to upload.
-It asks when that text includes one of the chosen kinds, or when the check couldn't finish. An image
-with nothing found uploads as it does with the option off, with the check's time added.
+Kinds set to `redact` are covered automatically. It asks when `warn` matches are left, or when the
+check couldn't finish. An image with nothing found uploads as it does with the option off, with the
+check's time added. Automatic covering acts only on what recognition detected, and recognition can
+miss text.
 
 The feature adds no confirmation step before an ordinary upload. An explicit upload is consent. The
 panel is a targeted warning that the user turns on, and it opens only for a finding or a check that
@@ -951,16 +971,21 @@ couldn't finish. Don't extend it into a general "are you sure?".
 
 | Part | Rule |
 | --- | --- |
-| Setting | `preferences.sensitiveTextCheck` `{enabled, categories}`, see [configuration](configuration.md). The categories are Quick redact's: `card`, `key`, `list`, `email`, `phone`, `ip`, `name`. The default is `card`, `key` and `list`. Email addresses, phone numbers, IP addresses and the user's own name appear on most ordinary chat and terminal screenshots, so they are offered but off by default. `list` matches nothing until the user saves words or patterns. Settings won't turn the option on while text recognition is unavailable, and won't clear the last chosen kind |
+| Setting | `preferences.sensitiveTextCheck` `{enabled, kinds}`, see [configuration](configuration.md). The kinds are Quick redact's categories: `card`, `key`, `list`, `email`, `phone`, `ip`, `name`. Each is `off`, `warn` or `redact` ([#1820](https://github.com/patrick-hudson/put.gd-desktop/issues/1820)). The default is `card`, `key` and `list` on `warn`. #1804's `categories` list still reads, each listed kind as `warn`. Settings' **Apply to all kinds** is a shortcut that sets all seven; "redact everything" is every kind on `redact`, not a separate mode. Email addresses, phone numbers, IP addresses and the user's own name appear on most ordinary chat and terminal screenshots, so they are offered but off by default. `list` matches nothing until the user saves words or patterns. Settings won't turn the option on while text recognition is unavailable |
 | What is checked | Only uploads: an action whose output is a destination. Region, window, monitor, desktop, Repeat last region and scrolling captures; the clipboard action with an image, or with copied files; and the file manager's **Upload with put.gd**. Among files, those whose signature is PNG or JPEG are checked, one after another, including files expanded from a folder when folders upload file by file. The contents of a folder uploaded as a .zip are not checked |
 | Not checked | Capture region & edit (the user reviews that image before Upload), recordings, files that are not PNG or JPEG, a folder's .zip, clipboard text, diagnostics packages, captures going only to the local archive, and retries. A retry, including one after a failed upload, sends the stored artifact without checking it again. A new capture or file selection is checked |
 | Where it runs | In the editor helper, `putgd-ui --edit-image`, in check mode. The resident stages the image as it does for Edit & upload, and keeps its own copy for the upload. The helper runs the editor's recognition (`putgd-ocr`) and Quick redact, including the account name lookup and the pattern child, on a document it does not show. No editor or matching code is in the resident. Recognition, its deadline, its limits and its confinement are exactly the editor's |
 | One at a time | Checks run one after another. A capture that needs a check, taken while a prompt is open, waits in the `checking` phase. So does every file-manager or clipboard file selection, because which of its files are PNG or JPEG is read only when its turn comes; a selection with none then goes on unchecked. Other captures go on as usual |
 | Nothing found | The helper ends at once, and the capture goes to the upload queue unchanged: same format, name, copy and history |
-| Found | The operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {card: 1, key: 1}, complete: true, prompt: 1}`, kinds and counts only. A person sees the panel. An agent decides with `operation.decide` |
-| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found |
+| Overlaps | `redact` kinds are matched first, together, then each `warn` kind alone, on the same recognized words, so no `warn` kind's match hides another's. A word both find is covered. A `warn` match whose words the covers took entirely asks nothing; one they took only part of still asks. With no `redact` kind, matching is #1804's single pass |
+| Only `redact` kinds found | The helper's Quick redact marks for those kinds are the covers. It exports the document as a sanitized PNG and hands it off as an edit's PNG, with a `covered` count per kind and no prompt. The operation uploads that PNG, and `sensitive` holds `{found: {}, covered: {card: 1}, complete: true}`. The notification adds "Covered 1 card number." |
+| Found | `warn` kinds found: the operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {key: 1}, covered: {card: 1}, complete: true, prompt: 1}`, kinds and counts only. `found` lists the `warn` kinds left to decide; `covered` the `redact` kinds already covered. A person sees the panel. An agent decides with `operation.decide` |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found. This holds with every kind on `redact`: what was found is covered first and the panel opens, focused on **Redact and upload** when the image can be edited and on **Cancel** otherwise; in report mode an unanswered decision times out to Cancel. **Upload anyway** then keeps the covers |
 | No decision possible | A check that fails before it can find anything or ask uploads nothing. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, put.gd then tries to save the capture locally, as Cancel does, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text."; if that save fails too (a full disk), the operation fails. Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. If the helper fails after **Redact and upload** opened the editor, the operation also fails with `sensitive_check_failed`, `details.cause` holding the editor's error, and there is no local-copy fallback |
-| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. If any differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
+| Covered export fails | When the helper can't export or stage the covered PNG (an encoding failure, an image over the output limit, a failed disk write), including after **Upload anyway**, the original is never sent in its place: the operation ends as under "No decision possible", saved locally as the original with **Keep a local copy** on, otherwise failed with `sensitive_check_failed` |
+| Local copy | Only an automatically covered upload, with no prompt or after **Upload anyway**, keeps two copies. With **Keep a local copy** on, its History item and archive copy are the covered PNG. The original is saved to the archive too, beside it, with `-original` added to its name, and `sensitive.original` holds `{status, paths}`. It goes straight to the archive, outside the artifact store and its Waiting uploads budget, and is never uploaded. For a file-manager selection, the original is the user's file, copied only while its device, inode, size and modification time still match the check; a changed file isn't copied. A change in the moment between that comparison and the copy is not caught, and affects only the local copy. A failed save of the original is logged, `status` is `failed`, the notification adds "The original before covering couldn't be saved locally.", and the upload goes on |
+| File selections | Each file is checked and covered on its own. A covered file uploads as its covered PNG (named after the file, with `.png`), staged privately under the resident's `covered/` directory until its upload has copied it, then removed. A file still on `warn` asks as before |
+| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. A file covered automatically is not compared: its covered PNG, made at check time, is what uploads, and a change to the file only keeps its optional local original from being saved. If any other checked file differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
 
 ### The prompt
 
@@ -983,14 +1008,15 @@ Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offere
 - The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
   names what was found by kind and count: "This capture shows a card number and a key or token. It
   hasn't been uploaded." It never shows the text, except as pixels in the preview.
-- A preview shows the image with every suggested Redact applied, when the helper could decode it.
+- A preview shows the image with every suggested Redact and automatic cover applied, when the helper could decode it.
   Then come "Suggestions only. Recognition can miss text." and the destination.
 - **Redact and upload** (the default button) opens the editor on the same document, with the
   suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
   From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
   nothing. It is offered for one decodable image within the editor's 24 megapixels. It is not offered
   for an image too large to edit, one the helper couldn't decode, or a selection of several files.
-- **Upload anyway** uploads the original.
+- **Upload anyway** uploads the capture without covering the `warn` kinds. When `redact` kinds were covered, it keeps those covers: the helper takes off the `warn` suggestions, exports and hands off the covered PNG. Otherwise it uploads the original.
+- The body adds "put.gd already covered a card number." when `redact` kinds were covered, and the preview shows those covers with the `warn` suggestions.
 - **Cancel**, Escape or closing the panel uploads nothing. With **Keep a local copy** on, the capture is
   saved to the archive and History as a local item. Otherwise nothing is kept.
 - For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png", counted among

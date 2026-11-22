@@ -69,7 +69,8 @@ private:
 
 // recentColors is set whenever the helper reached its checkpoint.
 // `check` (#1804) is how a check ended without an edit: clean, upload, cancel or expired.
-struct EditorResult {QByteArray png;int width=0,height=0;Error error;std::optional<QStringList> recentColors;QString check;QJsonObject findings;};
+// `covered` (#1820): with a png, the counts of each kind the check covered automatically (redact kinds); empty after an edit.
+struct EditorResult {QByteArray png;int width=0,height=0;Error error;std::optional<QStringList> recentColors;QString check;QJsonObject findings;QJsonObject covered;};
 
 // Synchronous supervision of `putgd-ui --edit-image`. Run on a background
 // worker. Startup and finalization have deadlines; editing itself does not.
@@ -96,8 +97,10 @@ public:
  // #1804: check the image for these Quick redact categories before it uploads.
  // `prompt` shows the prompt to a person; without it the check waits for an
  // agent's decide. `redact` offers Redact and upload. `file` names the file
- // of a selection ("File 2 of 3: notes.png").
- struct Check {QStringList categories;bool prompt=true,redact=true;QString file;};
+ // of a selection ("File 2 of 3: notes.png"). `cover` (#1820), a subset of
+ // categories, is covered without asking: with nothing else found the helper
+ // hands off the covered PNG, and Upload anyway keeps those covers.
+ struct Check {QStringList categories;bool prompt=true,redact=true;QString file;QStringList cover={};};
  EditorJob& withCheck(Check check){check_=std::move(check);return *this;}
  // The longest a check may take to say what it found, from the helper's start.
  static constexpr int checkTimeoutMs=40000;

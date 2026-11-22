@@ -64,9 +64,9 @@ QString quickRedactLabel(const QString& category){
 }
 // Each mark with the union of the recognized words' boxes it was padded from (unpadded), one per visual row of the match
 // (quickRedact::markBoxes): a match across two rows is two marks, never one box over the pixels between them.
-QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds){
+QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds,const QImage& image){
  QList<QPair<QRect,QRect>> out;
- for(const auto& box:editor::quickRedact::markBoxes(candidates,match,bounds))out.append({box.mark,box.words});
+ for(const auto& box:editor::quickRedact::markBoxes(candidates,match,bounds,image))out.append({box.mark,box.words});
  return out;
 }
 QFrame* separator(QWidget* parent){auto* line=Ui::rule(parent,Qt::Vertical);line->setFixedHeight(Ui::scaled(22));return line;}
@@ -1203,7 +1203,7 @@ int EditorWindow::removeSuggestions(){
  if(removed){quickRedactResult_->setText(QString("Removed %1 suggested %2").arg(removed).arg(removed==1?"redaction":"redactions"));Ui::role(quickRedactResult_,"body");quickRedactResult_->show();documentEdited();}
  return removed;
 }
-void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns){
+void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns,QStringList first){
  if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
  if(doc_.inGesture()){if(done)done({"editor_busy","A mark is being dragged; try again when the drag ends",{}},{});return;}
  // The list alone, with nothing saved and nothing given: there is nothing to find, so no recognition starts (and none can fail).
@@ -1215,7 +1215,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
  }
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
  const QDeadlineTimer dragWait(quickRedactGestureWaitMs_);
- text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns)](Error error){
+ text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns),first=std::move(first)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
   if(g->busy_){stopWith("Quick redact added nothing: the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
@@ -1227,7 +1227,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   // Matching runs off the UI thread: a pattern can be slow. The document may change meanwhile.
   const auto revision=g->text_->revision();
   const auto candidates=g->text_->candidates();
-  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
+  const std::function<void(editor::quickRedact::Result)> applyFound=[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
    if(!g)return;
    // The marks join the document as one undo step of their own, so they wait for a drag in progress to end.
    // The revision is checked then, not now: a drag can add a Redact mark, and an edit that was undone is still a new revision.
@@ -1249,7 +1249,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
      bool any=false;
      // Each padded mark comes with the recognized words' own box it was built from: that, never the padded mark, is what a
     // deleted suggestion is remembered by (padding makes two neighbouring one-character words look like one suggestion).
-    for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect())){
+    for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect(),g->doc_.base())){
       if(g->doc_.dismissed(words,match.category))continue;
       editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;
      }
@@ -1267,6 +1267,30 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     if(done)done({},result);
    };
    (*apply)();
+  };
+  // #1820: `first` is matched on its own, before the rest, so a word one of its kinds finds is never
+  // claimed by another kind first. Each other kind is then matched on its own too, on the same words, so
+  // no kind drops another's overlapping match. A later match whose words `first` took entirely is covered
+  // already and is not added; one it took only part of stays, overlap and all.
+  QStringList head,rest;for(const auto& category:categories)(first.contains(category)?head:rest).append(category);
+  if(head.isEmpty()||rest.isEmpty()){ui::runQuickRedact(g,candidates,categories,sources,applyFound);return;}
+  ui::runQuickRedact(g,candidates,head,sources,[g=QPointer<EditorWindow>(g),candidates,rest,sources,applyFound](editor::quickRedact::Result before){
+   if(!g)return;
+   QSet<int> taken;for(const auto& match:std::as_const(before.matches))for(const int word:match.words)taken.insert(word);
+   auto merged=std::make_shared<editor::quickRedact::Result>(std::move(before));
+   auto next=std::make_shared<std::function<void(int)>>();
+   *next=[g,candidates,rest,sources,applyFound,taken,merged,weak=std::weak_ptr<std::function<void(int)>>(next)](int index){
+    if(!g)return;
+    if(index>=rest.size()){applyFound(*merged);return;}
+    auto keep=weak.lock();
+    ui::runQuickRedact(g,candidates,{rest[index]},sources,[keep,index,taken,merged](editor::quickRedact::Result after){
+     for(const auto& match:std::as_const(after.matches))if(!std::all_of(match.words.cbegin(),match.words.cend(),[&](int word){return taken.contains(word);}))merged->matches.append(match);
+     for(const int pattern:std::as_const(after.skippedPatterns))if(!merged->skippedPatterns.contains(pattern))merged->skippedPatterns.append(pattern);
+     merged->nameUnchecked=merged->nameUnchecked||after.nameUnchecked;merged->unfinished=merged->unfinished||after.unfinished;
+     if(keep)(*keep)(index+1);
+    });
+   };
+   (*next)(0);
   });
  });
 }

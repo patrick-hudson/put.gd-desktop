@@ -1,3 +1,4 @@
+#include <climits>
 #include "QuickRedact.h"
 #include <QElapsedTimer>
 #include <QChar>
@@ -11,6 +12,7 @@
 #include <cmath>
 #include <iterator>
 #include <numeric>
+#include <optional>
 
 namespace putgd::editor::quickRedact {
 namespace {
@@ -23,9 +25,13 @@ QString normalized(const QString& word) {
 bool hasDigit(const QString& text) {return std::any_of(text.cbegin(),text.cend(),[](QChar c){return c>='0'&&c<='9';});}
 // Inside a number the shape fixes the alphabet to digits: O, l, I, S and B
 // read as 0, 1, 1, 5 and 8 in a word that has a digit and no other letter.
-QString digitView(const QString& word) {
+QString digitView(const QString& original) {
  static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'S','5'},{'B','8'}};
- if(!hasDigit(word))return word;
+ if(!hasDigit(original))return original;
+ // #1820: between two digits, recognition reads a printed hyphen as a hyphen-like dash or a minus sign
+ // (4111–1111–1111–1111). An em dash, or a dash beside anything else, stays as read.
+ QString word=original;
+ for(qsizetype i=1;i+1<word.size();++i){const auto c=word.at(i).unicode();if((c==0x2010||c==0x2011||c==0x2012||c==0x2013||c==0x2212)&&word.at(i-1).isDigit()&&word.at(i+1).isDigit())word[i]=QChar('-');}
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c))return word;
  QString out=word;for(auto& c:out)c=confused.value(c,c);return out;
 }
@@ -143,9 +149,17 @@ bool tokenCharacter(QChar c) {return (c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'
 // and always one.
 bool tokenPiece(const QString& word) {
  if(word.isEmpty())return false;
+ // #1820: quotes around a word are punctuation, not misread characters ("“AKIA…" in an editor's string).
+ static const QString quotes=QStringLiteral("\"'`\u201C\u201D\u2018\u2019\u00AB\u00BB");
+ qsizetype from=0,to=word.size();
+ while(from<to&&quotes.contains(word.at(from)))++from;
+ while(to>from&&quotes.contains(word.at(to-1)))--to;
+ if(from==to)return false;
+ // Only around a token-like inside: 8 characters or more with a digit or a capital ("“note”" stays a word).
+ {bool marked=false;for(qsizetype i=from;i<to;++i)marked=marked||word.at(i).isDigit()||word.at(i).isUpper();if(to-from<8||!marked){from=0;to=word.size();}}
  int noise=0;
- for(const auto c:word)if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}
- return noise<=qMax(1,int(word.size())/8);
+ for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
+ return noise<=qMax(1,int(to-from)/8);
 }
 // Hex, as recognition misreads it: l, i, I, |, ! for 1; O, o, ©, ° for 0; S
 // for 5; t and £ for f; € for e. At least 32 characters, at most one in twelve
@@ -249,7 +263,15 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   QRegularExpressionMatch match;
   for(auto it=prefix.pattern.globalMatch(prefix.dotted?text:bodies);it.hasNext();){
    const auto candidate=it.next();
-   if(!segment.starts.contains(base+int(candidate.capturedStart())))continue;
+   // A prefix starts a piece, or follows a separator inside one (#1820: KEY_ID=AKIA…, "AKIA…", https://ghp_…@host).
+   const int at=base+int(candidate.capturedStart());
+   // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
+   static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
+   const bool afterSeparator=!segment.starts.contains(at);
+   if(afterSeparator&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
+   // Inside a word, a token's body has a digit and a capital, as real keys do; a URL slug
+   // (/glagent-installation-guide, “glagent-installation-guide-v2”) has neither or only a digit.
+   if(afterSeparator){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
@@ -318,16 +340,25 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     QList<int> words=segment.words.mid(a,b-a+1);
     // A token the line wrapped: the next line's first segment, when it starts
     // the line and is token-shaped, belongs to it.
-    if(words.last()==line.last()&&k+1<keys.size()){
-     const auto next=segments(lines[keys.at(k+1)],plain);
-     const auto nextText=lineText(lines[keys.at(k+1)]);
-     if(!next.isEmpty()&&next.first().words.first()==lines[keys.at(k+1)].first()&&!begin.match(nextText).hasMatch()&&!end.match(nextText).hasMatch()){
-      // The remainder of a token, not a line of words: a digit or a capital,
-      // and few letters in lowercase runs of five or more.
-      const auto& tail=next.first().text;bool digit=false,upper=false;for(const auto c:tail){digit=digit||c.isDigit();upper=upper||c.isUpper();}
-      static const QRegularExpression prose(QStringLiteral("[a-z]{5,}"));qsizetype lowercase=0;for(auto it=prose.globalMatch(tail);it.hasNext();)lowercase+=it.next().capturedLength();
-      if(tail.size()>=8&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<qMax(8,int(segment.text.size())))words+=next.first().words;
-     }
+    // #1820: a token soft-wrapped over several lines (a JWT in an editor) takes each following line
+    // while that line is all token and the token runs on; a short remainder ("08edc") counts too.
+    for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
+     const auto& nextLine=lines[keys.at(follow)];
+     const auto next=segments(nextLine,plain);
+     const auto nextText=lineText(nextLine);
+     if(next.isEmpty()||next.first().words.first()!=nextLine.first()||begin.match(nextText).hasMatch()||end.match(nextText).hasMatch())break;
+     // The remainder of a token, not a line of words: a digit or a capital,
+     // and few letters in lowercase runs of five or more.
+     const auto& tail=next.first().text;bool digit=false,upper=false;for(const auto c:tail){digit=digit||c.isDigit();upper=upper||c.isUpper();}
+     static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));qsizetype lowercase=0;for(auto it=prose.globalMatch(tail);it.hasNext();)lowercase+=it.next().capturedLength();
+     // A short remainder is one recognized word on its own, as a wrap leaves it, never words run together ("id42 ok").
+     // ...and it ends the token where a wrap would: a closing quote, bracket or separator ("08edc\"").
+     static const QString terminators=QStringLiteral("\"'`)]};,\u201D\u2019\u00BB");
+     const auto& lastWord=plain.at(next.first().words.last());
+     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
+     if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
+     words+=next.first().words;
+     if(next.first().words.last()!=nextLine.last())break;
     }
     out.append(words);
    }
@@ -336,11 +367,18 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  return out;
 }
 struct Rule {QString category;QRegularExpression pattern;std::function<bool(const QString&)> valid;int view=0;};
+// Grouped as a card is printed (4-4-4-4, with an optional short fifth group, or 4-6-5), with one separator
+// throughout and a first digit that isn't 0 (a card number never starts with 0; 0044 … is a dialling prefix):
+// a card number, valid or not, never a phone number (#1820).
+bool cardShaped(const QString& text){
+ static const QRegularExpression shape(R"(^(?:[1-9]\d{3}([ -])\d{4}\1\d{4}\1\d{4}(?:\1\d{1,3})?|[1-9]\d{3}([ -])\d{6}\2\d{5})$)");
+ return shape.match(text.trimmed()).hasMatch();
+}
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
   {"email",QRegularExpression(R"((?<![\w.%+-])[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,}(?![\w-]))"),{},3},
-  {"card",QRegularExpression(R"((?<![\d-])\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d);},1},
+  {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d);},1},
   {"ip",QRegularExpression(R"((?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
   {"phone",QRegularExpression(R"((?<![\w+.-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d))"),[](const QString& m){
@@ -353,6 +391,7 @@ const QList<Rule>& rules() {
     // More than ten digits unbroken is written only after a "+" (16-446655440000 was a UUID's tail).
     static const QRegularExpression longGroup(R"(\d{11,})");
     if(!m.startsWith('+')&&longGroup.match(m).hasMatch())return false;
+    if(cardShaped(m))return false;
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
@@ -770,8 +809,27 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     auto length=found.capturedLength();
     // A greedy phone span may contain two separate numbers. Retry prefixes at
     // word boundaries, then resume at the accepted prefix's end.
-    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15){
-     for(qsizetype end=found.capturedEnd()-1;end>found.capturedStart();--end){
+    // A card-grouped run whose words are evenly spaced is one printed number, not two to split; a wider
+    // gap between its words is two fields (two phone numbers in a table), split as before (#1820).
+    const auto evenlySpaced=[&]{
+     const auto words=owners(joined,found.capturedStart(),found.capturedLength());
+     int widest=0,narrowest=INT_MAX;
+     for(qsizetype i=1;i<words.size();++i){const auto& a=candidates.at(words.at(i-1)).rect;const auto& b=candidates.at(words.at(i)).rect;if(a.y()!=b.y()&&a.bottom()<b.top())return false;const int gap=qMax(0,b.left()-a.right());widest=qMax(widest,gap);narrowest=qMin(narrowest,gap);}
+     return words.size()<2||widest<=2*qMax(narrowest,2)+2;
+    };
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!(cardShaped(found.captured())&&evenlySpaced())){
+     const auto accept=[&](qsizetype end){
+      const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
+      const auto shorter=rule.pattern.match(prefix);
+      if(shorter.hasMatch()&&shorter.capturedStart()==0&&shorter.capturedLength()==prefix.size()&&rule.valid(prefix)){length=prefix.size();return true;}
+      return false;
+     };
+     // #1820: the widest gap between the span's words first, where two fields (table columns) meet.
+     bool split=false;
+     {const auto words=owners(joined,found.capturedStart(),found.capturedLength());int widest=-1,after=-1;
+      for(qsizetype i=1;i<words.size();++i){const int gap=candidates.at(words.at(i)).rect.left()-candidates.at(words.at(i-1)).rect.right();if(gap>widest){widest=gap;after=words.at(i);}}
+      if(after>=0)for(qsizetype end=found.capturedStart();end<found.capturedEnd();++end)if(joined.owner.at(end)==after){qsizetype space=end-1;while(space>found.capturedStart()&&!joined.text.at(space).isSpace())--space;if(space>found.capturedStart()&&joined.text.at(space).isSpace())split=accept(space);break;}}
+     if(!split)for(qsizetype end=found.capturedEnd()-1;end>found.capturedStart();--end){
       if(!joined.text.at(end).isSpace())continue;
       const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
       const auto shorter=rule.pattern.match(prefix);
@@ -800,33 +858,144 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  return matches;
 }
 }
+namespace {
+// How far a cover may reach from the matched box `box` towards the nearest
+// unmatched word's box `other` (direction `dir`, -1 left or +1 right), or
+// nullopt to keep the whole margin. Recognized boxes can each be off by about
+// a glyph (#1838: at 13 px a box ended 4 px short of its digit and the next
+// word's box began 6 px before its "i"), so with the image the cover runs to
+// the far side of the blank space before the neighbour, checked over every row
+// the mark covers, and leaves that space's last column uncovered.
+// - The neighbour's box edge is trusted only where the picture agrees: within
+//   a pixel of it, ink starts right after a blank column. The space is the
+//   blank run just before that ink.
+// - Otherwise the edge may sit in the space, in a gap inside the match, or on
+//   a matched glyph: the cover goes past the blank or ink there and the ink
+//   after it, to the next blank run. A misplaced box can then cost the
+//   neighbour a glyph, never show a matched one.
+// The paper is the median of the line spacing outside the mark. With no clean
+// spacing, no blank run in reach, or any transparency (what shows there
+// depends on the viewer), nothing is clipped. Without the image, the
+// neighbour's box is the limit.
+std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other,int dir,double glyph,int pad){
+ const int edge=dir>0?box.right():box.left(),neighbour=dir>0?other.left():other.right();
+ if(image.isNull()){const int gap=qMax(1,box.height()/10);return dir>0?qMax(edge,neighbour-1-gap):qMin(edge,neighbour+1+gap);}
+ const int slack=int(std::ceil(glyph));
+ // From the matched box's own edge column, which a box can overshoot onto the space.
+ // Its far end is clipped to the image; the edge itself is inside it.
+ const QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),box.top()-pad),QPoint(qMax(edge,neighbour+dir*slack),box.bottom()+pad)).intersected(image.rect());
+ if(window.isEmpty()||edge<window.left()||edge>window.right())return std::nullopt;
+ const QRect around=window.adjusted(0,-pad,0,pad).intersected(image.rect());
+ const auto band=image.copy(around).convertToFormat(QImage::Format_ARGB32);
+ const int first=window.top()-around.top(),last=window.bottom()-around.top();
+ QList<int> channels[3];
+ for(int y=0;y<band.height();++y){
+  const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
+  for(int x=0;x<band.width();++x){
+   if(qAlpha(line[x])!=255)return std::nullopt;
+   if(y>=first&&y<=last)continue;
+   channels[0].append(qRed(line[x]));channels[1].append(qGreen(line[x]));channels[2].append(qBlue(line[x]));
+  }
+ }
+ if(channels[0].isEmpty())return std::nullopt;
+ int paper[3];
+ for(int k=0;k<3;++k){auto c=channels[k];std::nth_element(c.begin(),c.begin()+c.size()/2,c.end());paper[k]=c.at(c.size()/2);}
+ const auto distance=[&](int r,int g,int b){return qMax(std::abs(r-paper[0]),qMax(std::abs(g-paper[1]),std::abs(b-paper[2])));};
+ // Spacing with much else in it (a neighbouring line's ink, a pattern) is no
+ // measure of the paper.
+ qsizetype stray=0;for(qsizetype i=0;i<channels[0].size();++i)if(distance(channels[0].at(i),channels[1].at(i),channels[2].at(i))>24)++stray;
+ if(stray*4>channels[0].size())return std::nullopt;
+ // A column is blank when no pixel the mark would cover is further from the
+ // paper than a faint anti-aliased edge: 8% of the ink's contrast, within 4 to 24.
+ int contrast=0;
+ for(int y=first;y<=last;++y){const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));for(int x=0;x<band.width();++x)contrast=qMax(contrast,distance(qRed(line[x]),qGreen(line[x]),qBlue(line[x])));}
+ const int faint=std::clamp(contrast*8/100,4,24);
+ // Columns counted from the matched box's edge (0) towards the neighbour.
+ const int count=band.width();
+ QList<bool> blank(count,true);
+ for(int y=first;y<=last;++y){
+  const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
+  for(int i=0;i<count;++i){const QRgb c=line[dir>0?i:count-1-i];if(blank[i]&&distance(qRed(c),qGreen(c),qBlue(c))>faint)blank[i]=false;}
+ }
+ const int at=dir*(neighbour-edge);
+ int end=-1; // the last blank column of the space
+ const auto runBefore=[&](int i){int n=0;while(i-1-n>=0&&blank[i-1-n])++n;return n;};
+ // The box edge agrees with the picture when an ink start (ink right after a
+ // blank column) is within a pixel of it: boxes are often a pixel off. That
+ // ink is the neighbour's only if the blank before it is at least as wide as
+ // the next one after it: a word space is wider than a gap between glyphs, so
+ // a narrower one makes it more likely a last matched glyph.
+ for(int d=0;d<=1&&end<0;++d)for(const int i:{at-d,at+d}){
+  if(end>=0||i<1||i>=count||blank[i]||!blank[i-1])continue;
+  int j=i;while(j<count&&!blank[j])++j;
+  int after=0;while(j+after<count&&blank[j+after])++after;
+  if(runBefore(i)>=after)end=i-1;
+ }
+ if(end<0){
+  // Past whatever lies at the edge and the ink after it, to the next blank run.
+  int i=at;
+  while(i<count&&blank[i])++i;
+  while(i<count&&!blank[i])++i;
+  if(i>=count)return std::nullopt;
+  while(i+1<count&&blank[i+1])++i;
+  end=i;
+ }
+ return edge+dir*qMax(0,end-1);
+}
+}
 // One box per visual row of the match, as find groups rows (centres within
 // half the median word height), never by the recognizer's line id: a match
 // that spans two rows makes two marks, so nothing between them is covered.
-QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
+QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds,const QImage& image) {
  QList<int> words;for(const int index:match.words)if(index>=0&&index<candidates.size())words.append(index);
  std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
  QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
- struct Row {QRect box;int characters=0;double centre=0;int count=0;};
+ struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;};
  QList<Row> rows;
  for(const int w:words){
   const auto& word=candidates.at(w);const double y=word.rect.center().y();
   if(rows.isEmpty()||std::abs(y-rows.last().centre)>tolerance)rows.append(Row{});
-  auto& row=rows.last();row.box=row.box.united(word.rect);row.characters+=int(word.text.size());++row.count;row.centre+=(y-row.centre)/row.count;
+  auto& row=rows.last();row.box=row.box.united(word.rect);++row.count;row.centre+=(y-row.centre)/row.count;
+  if(row.first<0||word.rect.left()<candidates.at(row.first).rect.left())row.first=w;
+  if(row.last<0||word.rect.right()>candidates.at(row.last).rect.right())row.last=w;
  }
+ // A word's glyph width from its own box: the row's span would count the
+ // gaps between words as characters (#1838).
+ const auto glyph=[&](int w){
+  const auto& word=candidates.at(w);
+  const auto characters=std::count_if(word.text.cbegin(),word.text.cend(),[](QChar c){return !c.isLowSurrogate()&&!c.isSpace();});
+  return double(word.rect.width())/double(qMax<qsizetype>(1,characters));
+ };
  QList<MarkBox> out;
- // A quarter of the line height above and below; beside it, at least one and
- // a half characters, since a recognized box can stop a whole glyph short of
- // the first or last character (measured: 7 px at 13 px type).
+ // A quarter of the line height above and below; beside it, one and a half
+ // of the edge word's glyphs, since a recognized box can stop a whole glyph
+ // short of the first or last character (measured: 7 px at 13 px type). On a
+ // side with another word on the row that is not part of the match, the
+ // margin ends where reach() says, so that word stays readable; it never cuts
+ // into the matched words' own box.
  for(const auto& row:std::as_const(rows)){
-  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);const int side=qMax(pad,box.width()*3/qMax(2,2*row.characters));
-  const auto mark=box.adjusted(-side,-pad,side,pad).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
+  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);
+  const double before=glyph(row.first),after=glyph(row.last);
+  int left=box.left()-qMax(pad,int(std::ceil(before*1.5)));
+  int right=box.right()+qMax(pad,int(std::ceil(after*1.5)));
+  std::optional<QRect> leftNeighbour,rightNeighbour;
+  for(qsizetype i=0;i<candidates.size();++i){
+   if(match.words.contains(int(i)))continue;
+   const auto& other=candidates.at(i).rect;
+   if(other.isEmpty()||std::abs(other.center().y()-row.centre)>tolerance)continue;
+   // Only a word the margin, plus a glyph for the boxes' error, could reach.
+   if(other.right()<box.left()&&other.right()>=left-int(std::ceil(before))){if(!leftNeighbour||other.right()>leftNeighbour->right())leftNeighbour=other;}
+   else if(other.left()>box.right()&&other.left()<=right+int(std::ceil(after))){if(!rightNeighbour||other.left()<rightNeighbour->left())rightNeighbour=other;}
+  }
+  if(leftNeighbour)if(const auto limit=reach(image,box,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
+  if(rightNeighbour)if(const auto limit=reach(image,box,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
+  const auto mark=QRect(QPoint(left,box.top()-pad),QPoint(right,box.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
  }
  return out;
 }
-QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
- QList<QRect> out;for(const auto& box:markBoxes(candidates,match,bounds))out.append(box.mark);
+QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds,const QImage& image) {
+ QList<QRect> out;for(const auto& box:markBoxes(candidates,match,bounds,image))out.append(box.mark);
  return out;
 }
 }

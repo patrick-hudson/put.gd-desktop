@@ -57,6 +57,44 @@ private slots:
   QTest::newRow("IPv6 with O confused")<<"Peer fe80::1ff:fe23:4567:89Oa up"<<all<<QStringList{"ip: fe80::1ff:fe23:4567:89Oa"};
   QTest::newRow("code scope and time are not IPv6")<<"std::vector at 12:30:45 a::b"<<all<<QStringList{};
   QTest::newRow("card in groups, Luhn valid")<<"Card 4111 1111 1111 1111 expires"<<all<<QStringList{"card: 4111 1111 1111 1111"};
+  // #1820 acceptance: shapes found on real screens.
+  QTest::newRow("AWS key after an equals sign")<<"export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"<<all<<QStringList{"key: AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"};
+  // The token's whole segment is covered, its identifier-like name too, as for any token (#1618).
+  QTest::newRow("AWS key in quotes")<<"AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""<<all<<QStringList{"key: AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""};
+  {const auto token=QString("gh")+"p_"+QString("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A");
+   QTest::newRow("GitHub token inside a URL")<<"git clone https://"+token+"@github.com/example/acme-build-7.git"<<QStringList{"key"}<<QStringList{"key: https://"+token+"@github.com/example/acme-build-7.git"};}
+  QTest::newRow("dashed cards in a table")<<"Visa 4111-1111-1111-1111 | MC 5555-5555-5555-4444"<<QStringList{"card"}<<QStringList{"card: 4111-1111-1111-1111","card: 5555-5555-5555-4444"};
+  QTest::newRow("card with en dashes and a minus sign")<<QString("Visa 4111\u20131111\u20131111\u20131111 MC 5555\u22125555\u22125555\u22124444")<<QStringList{"card"}<<QStringList{QString("card: 4111\u20131111\u20131111\u20131111"),QString("card: 5555\u22125555\u22125555\u22124444")};
+  QTest::newRow("card inside a CSV row")<<"2,5555-5555-5555-4444,5.00,21/11/2026"<<all<<QStringList{"card: 2,5555-5555-5555-4444,5.00,21/11/2026"};
+  QTest::newRow("email in quotes")<<"OWNER = \"ops-alerts@example.com\""<<all<<QStringList{"email: \"ops-alerts@example.com\""};
+  {// An editor's soft wrap: equal-width lines, the first after "token:".
+   // Built in pieces so no JWT-shaped literal sits in the source (the repository's secret scan).
+   const QString jwt=QString("e")+"yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+"e"+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ."+"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+   const auto a=jwt.left(44),b=jwt.mid(44,44),c=jwt.mid(88);
+   QTest::newRow("JWT wrapped over three lines")<<"token: "+a+" | "+b+" | "+c<<QStringList{"key"}<<QStringList{"key: "+a+" "+b+" "+c};}
+  // Sol on #1826 (S19): a token ending its line takes no ordinary words from the next line.
+  QTest::newRow("a token takes no short next line")<<"SECRET 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | id42 ok | INFO 200"<<QStringList{"key"}<<QStringList{"key: SECRET 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a"};
+  // Sol on #1826: a prefix inside a URL path needs a digit in its body.
+  QTest::newRow("a URL slug is not a token")<<"see https://docs.example.test/glagent-installation-guide"<<QStringList{"key"}<<QStringList{};
+  QTest::newRow("an email after an em dash")<<QString("Write \u2014alice@example.com now")<<all<<QStringList{QString("email: \u2014alice@example.com")};
+  QTest::newRow("two phones joined by an em dash")<<QString("Call 202-555-0143\u2014415-555-0100")<<all<<QStringList{QString("phone: 202-555-0143\u2014415-555-0100")};
+  QTest::newRow("a dialling prefix is not a card")<<"Call 0044 207946 0958 now"<<all<<QStringList{"phone: 0044 207946 0958"};
+  QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
+  // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
+  // m74 xed: a string literal read with a straight and a curly quote before the key.
+  QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
+  // Sol on #1826 (S20-S24).
+  QTest::newRow("card after a No. label")<<"Ref No.4111 1111 1111 1111 ok"<<QStringList{"card"}<<QStringList{"card: No.4111 1111 1111 1111"};
+  QTest::newRow("order IDs are not a card")<<"Order IDs: 120004 120005 120006 120007"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("a quoted note after a key stays a word")<<QString("key AKIAIOSFODNN7EXAMPLE \u201Cnote\u201D")<<QStringList{"key"}<<QStringList{"key: AKIAIOSFODNN7EXAMPLE"};
+  QTest::newRow("a quoted versioned slug is not a token")<<QString("see \u201Cglagent-installation-guide-v2\u201D")<<QStringList{"key"}<<QStringList{};
+  {// Built in pieces: a long hex run beside a short label reads as a secret to the repository's scan.
+   const QString digest=QString("9f86d081884c7d659a2feaa0c55ad015")+"a3bf4f1b2b0b822cd15d6c15b0f00a";
+   QTest::newRow("a short word below a digest stays a word")<<digest+" | "+"I"+"D42"<<QStringList{"key"}<<QStringList{"key: "+digest};}
+  QTest::newRow("card after an IPv4 address")<<"Ada 555.010.0123 198.51.100.7 5555-5555-5555-4444 renewal | Ben 203.0.113.9 3782-822463-10005 VIP"<<QStringList{"card"}<<QStringList{"card: 5555-5555-5555-4444","card: 3782-822463-10005"};
+  QTest::newRow("IPv6 with a prefix length")<<"addr 2001:db8::8a2e:370:7334/64 up"<<all<<QStringList{"ip: 2001:db8::8a2e:370:7334/64"};
+  QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};
+  QTest::newRow("a Luhn-failing Amex is not a phone")<<"Test 3782 822463 10006 rejected"<<all<<QStringList{};
   QTest::newRow("card with dashes and O confused")<<"Paid 5500-0000-0000-0OO4 ok"<<all<<QStringList{"card: 5500-0000-0000-0OO4"};
   QTest::newRow("Luhn invalid is no card")<<"Ref 4111 1111 1111 1112 x"<<QStringList{"card"}<<QStringList{};
   // Token shapes are put together here, so that no literal in the source looks
@@ -121,6 +159,13 @@ private slots:
  }
  // #1618, decision 3: the account's names and the user's own list. Words
  // are literal, never a regex, compared ignoring case and accents.
+ // Sol on #1826 (S17): two 8-digit phone numbers in table columns read as 4-4-4-4; the wide gap between the
+ // columns keeps them two numbers, both found. The same groups evenly spaced are one card-shaped number.
+ void columnsOfPhoneNumbersAreNotOneCard() {
+  const auto row=[](int gap){QList<RecognizedWord> out;int x=0;for(const auto* text:{"7946","0958","7946","0959"}){out.append({QString::fromLatin1(text),QRect(x,0,32,20),90,0});x+=32+(out.size()==2?gap:8);}return out;};
+  QCOMPARE(found(row(120),QStringList{"phone"}),(QStringList{"phone: 7946 0958","phone: 7946 0959"}));
+  QCOMPARE(found(row(8),QStringList{"phone"}),QStringList{});
+ }
  void namesAndListsMatchTheirSpellings_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
   const QStringList name{"name"},list{"list"};
@@ -156,6 +201,7 @@ private slots:
   QTest::newRow("accents in the text")<<"José wrote"<<list<<terms({"Jose"})<<QStringList{"list: José"};
   QTest::newRow("regex characters are literal")<<"x+y? xxy [ACME]* ACME srvdata srv_data srvXdata"<<list<<terms({"x+y?","[ACME]*","srv.data"})
    <<QStringList{"list: x+y?","list: [ACME]*","list: srvdata","list: srv_data"};
+  QTest::newRow("a term and a pattern in a code comment")<<"# settings for the acme-build-7 pipeline (JIRA-2210)"<<list<<[]{auto s=terms({"acme-build-7"});s.patterns={"\\bJIRA-\\d+\\b"};return s;}()<<QStringList{"list: acme-build-7","list: (JIRA-2210)"};
   QTest::newRow("a short term is matched exactly")<<"B0b and Bob"<<list<<terms({"Bob"})<<QStringList{"list: Bob"};
   QTest::newRow("a long term reads rn for m")<<"Harnmond and Hammond"<<list<<terms({"Hammond"})<<QStringList{"list: Harnmond","list: Hammond"};
   QTest::newRow("an empty list")<<"Patrick Hudson and anything"<<list<<quickRedact::Sources{}<<QStringList{};
@@ -331,6 +377,94 @@ private slots:
   const auto row=quickRedact::markBoxes(one,{"list",{0,1}},QRect(0,0,400,200));
   QCOMPARE(row.size(),1);QCOMPARE(row.first().words,QRect(0,0,80,21));
   QCOMPARE(quickRedact::marks(two,{"list",{0,1}},QRect(0,0,400,200)).size(),2);
+ }
+ // #1838: the side margin is one and a half of the edge word's own glyphs, not of
+ // the row's span with its gaps counted as characters, and it stops short of an
+ // unmatched word on the row. The geometry is #1806's capture: before, the cover
+ // reached 10 px into "Card".
+ void marksLeaveNeighboursReadable() {
+  const QList<RecognizedWord> row{{"Card",QRect(24,100,88,30),90,0},{"4111",QRect(140,100,88,30),90,0},{"1111",QRect(250,100,88,30),90,0},
+                                  {"1111",QRect(360,100,88,30),90,0},{"1111",QRect(470,100,88,30),90,0},{"exp",QRect(600,100,66,30),90,0}};
+  const QRect digits(140,100,418,30);
+  const auto boxes=quickRedact::markBoxes(row,{"card",{1,2,3,4}},QRect(0,0,800,300));
+  QCOMPARE(boxes.size(),1);QCOMPARE(boxes.first().words,digits);
+  const auto mark=boxes.first().mark;
+  QVERIFY2(mark.left()>row.at(0).rect.right()+1,qPrintable(QString::number(mark.left())));
+  QVERIFY2(mark.right()<row.at(5).rect.left()-1,qPrintable(QString::number(mark.right())));
+  QVERIFY(mark.contains(digits));
+  // With room, the margin is still a glyph and a half (22 px glyphs) on each side.
+  const QList<RecognizedWord> alone{row.at(1),row.at(2),row.at(3),row.at(4)};
+  const auto free=quickRedact::markBoxes(alone,{"card",{0,1,2,3}},QRect(0,0,800,300)).first().mark;
+  QCOMPARE(free.left(),digits.left()-33);QCOMPARE(free.right(),digits.right()+33);
+  // A neighbour touching the match never shrinks the cover below the matched box,
+  // and a word on another row does not limit it.
+  const QList<RecognizedWord> tight{{"x",QRect(130,100,9,30),90,0},row.at(1),{"y",QRect(229,100,9,30),90,0},{"below",QRect(0,160,800,30),90,1}};
+  const auto close=quickRedact::markBoxes(tight,{"card",{1}},QRect(0,0,800,300)).first().mark;
+  QCOMPARE(close.left(),140);QCOMPARE(close.right(),227);QVERIFY(close.top()<100&&close.bottom()>129);
+ }
+ // #1838, measured on Liberation Sans at 13 px: the last "1111" box ends 4 px
+ // before its ink and the box of "is" begins 6 px before its own, so a cover
+ // that stops at the neighbour's box leaves a sliver of the digit. With the
+ // picture, the cover runs across the space and stops before the "i". The
+ // background is noisy and the glyphs are solid, so the ink is the commonest
+ // exact colour: the paper must still be found.
+ void marksCrossTheSpaceInThePicture() {
+  QImage picture(200,120,QImage::Format_RGB32);
+  quint32 seed=1838;
+  for(int y=0;y<picture.height();++y)for(int x=0;x<picture.width();++x){seed=seed*1664525u+1013904223u;const int d=int((seed>>24)%13)-6;picture.setPixel(x,y,qRgb(236+d,236+d,236+d));}
+  const auto bars=[&](QImage& image,std::initializer_list<QPair<int,int>> columns){for(const auto& [from,to]:columns)for(int x=from;x<=to;++x)for(int y=81;y<=89;++y)image.setPixel(x,y,qRgb(40,40,40));};
+  bars(picture,{{96,98},{103,105},{110,112},{117,120},{126,127},{129,133}});
+  const QList<RecognizedWord> row{{"1111",QRect(94,79,23,17),90,0},{"is",QRect(120,79,12,17),90,0}};
+  const auto mark=quickRedact::markBoxes(row,{"card",{0}},picture.rect(),picture).first().mark;
+  QVERIFY2(mark.right()>=120&&mark.right()<126,qPrintable(QString::number(mark.right())));
+  QVERIFY(mark.left()<=96);
+  // No blank column between the words (a textured background): the whole
+  // margin, a glyph and a half, stays.
+  QImage checks(200,120,QImage::Format_RGB32);
+  for(int y=0;y<checks.height();++y)for(int x=0;x<checks.width();++x)checks.setPixel(x,y,(x+y)%2?qRgb(255,255,255):qRgb(0,0,0));
+  QCOMPARE(quickRedact::markBoxes(row,{"card",{0}},checks.rect(),checks).first().mark.right(),116+9);
+ }
+ // Sol review of #1842: the cover never stops at a gap inside the match, and
+ // a neighbour's box is trusted only where the picture agrees with it.
+ void marksNeverStopInsideTheMatch() {
+  const auto page=[](QImage::Format format,QRgb paper){QImage image(200,60,format);image.fill(paper);return image;};
+  const auto ink=[](QImage& image,int x0,int x1,int y0,int y1){for(int x=x0;x<=x1;++x)for(int y=y0;y<=y1;++y)image.setPixel(x,y,qRgba(0,0,0,255));};
+  const auto right=[](const QList<RecognizedWord>& row,const QImage& image){return quickRedact::markBoxes(row,{"list",{0}},image.rect(),image).first().mark.right();};
+  // "abcd" with its box ending at 99 (10 px glyphs, a 15 px margin); its last
+  // glyph's ink is at 103-105 after a 3 px gap; the neighbour's ink starts at 107.
+  QImage wide=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(wide,62,99,12,27);ink(wide,103,105,12,27);ink(wide,107,120,12,27);
+  // S1: the neighbour's box where its ink starts, then 6 px early, in the gap
+  // inside the match: both times the glyph at 103-105 is covered and 107 is not.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide),105);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(101,10,20,20),90,0}},wide),105);
+  // Round 3: a narrow last glyph (102-103) within a pixel of the neighbour's
+  // box edge (103), after a narrower blank than the space behind it (104-108),
+  // is the match's; the neighbour's ink at 109 stays.
+  QImage narrow=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(narrow,62,99,12,27);ink(narrow,102,103,12,27);ink(narrow,109,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(103,10,20,20),90,0}},narrow),107);
+  // S8: a picture cut off just past the neighbour's first ink still shows the space.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide.copy(0,0,115,60)),105);
+  // S6: a box that agrees with the picture is not crossed for an equally near
+  // gap after the neighbour's first stroke (space 102-103, stroke 104, gap 105).
+  QImage stroke=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(stroke,62,101,12,27);ink(stroke,104,104,12,27);ink(stroke,106,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,20,20),90,0}},stroke),102);
+  // S2: matched ink below the neighbour's rows runs to 106, right up to the
+  // neighbour's box; no blank column is left, so the whole margin stays.
+  QImage low=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(low,62,99,12,17);ink(low,100,106,22,27);ink(low,107,126,10,17);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"up",QRect(107,10,20,8),90,0}},low)>=106);
+  // S5: ink filling most of the mark's rows is not taken for paper.
+  QImage heavy=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(heavy,62,99,10,29);ink(heavy,99,101,5,34);ink(heavy,102,102,8,31);ink(heavy,104,114,8,31);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,11,20),90,0}},heavy)>=102);
+  // S3: opaque ink on a half-transparent white picture: what shows between the
+  // words depends on the viewer, so the whole margin stays.
+  QImage clear=page(QImage::Format_ARGB32,qRgba(255,255,255,128));
+  ink(clear,62,99,12,27);ink(clear,107,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},clear),99+15);
  }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
