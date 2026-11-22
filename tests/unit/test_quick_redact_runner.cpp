@@ -216,7 +216,11 @@ private slots:
   // ended before the next test starts.
   struct Stall {std::atomic_int calls{0};std::atomic_bool release{false};};
   const auto stall=std::make_shared<Stall>();
-  struct Release {std::shared_ptr<Stall> stall;~Release(){stall->release=true;(void)test::waitFor([]{return !ui::quickRedactAccountLookupRunning();});}} releaseAtEnd{stall};
+  struct Release {std::shared_ptr<Stall> stall;~Release(){
+   stall->release=true;
+   if(!ui::stopQuickRedactWorkers(QDeadlineTimer(test::scaled(5000)))||!test::waitFor([]{return !ui::quickRedactAccountLookupRunning();}))
+    QTest::qFail("the stalled lookup or a worker did not end",__FILE__,__LINE__);
+  }} releaseAtEnd{stall};
   ui::setQuickRedactAccountLookup([stall](const std::function<bool()>&){++stall->calls;while(!stall->release.load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
   const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
   quickRedact::Sources sources;sources.terms={"Hammond"};sources.patterns={R"(JIRA-\d)"};
