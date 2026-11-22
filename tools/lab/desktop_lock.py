@@ -160,15 +160,22 @@ def assess(record, now):
             'heartbeatAgeSeconds': int((now - heartbeat).total_seconds())}
 
 
+def package_source(item):
+    return item['key'].split(':')[1]  # package:deb:<version> -> deb
+
+
 def compare(baseline, current, not_mine=()):
-    """Split the host's items into ones present at acquire and ones that appeared since."""
+    """Split the host's items into ones present at acquire and ones that appeared since. A package
+    whose source (deb, rpm) has no package at all any more is listed as removed."""
     known = {item['key'] for item in baseline}
+    sources = {package_source(item) for item in current if item['kind'] == 'package'}
     new = [item for item in current if item['key'] not in known]
     claimed = set(not_mine)
     excused = {item['key'] for item in new if claimed & {item['id'], item['key']}}
     return {'left': [item for item in new if item['key'] not in excused],
             'notMine': [item for item in new if item['key'] in excused],
             'preexisting': [item for item in current if item['key'] in known],
+            'removed': [item for item in baseline if item['kind'] == 'package' and package_source(item) not in sources],
             'unmatchedNotMine': sorted(claimed - {identity for item in new for identity in (item['id'], item['key'])})}
 
 
@@ -242,6 +249,7 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     for pattern in LEFTOVER_PATHS:
         for path in sorted(home.glob(pattern)):
             add('file', str(path), f'file:{path}', '')
+    packages = len(items)
     code, output = run(['rpm', '-q', '--qf', '%{VERSION}-%{RELEASE}', 'putgd'])
     if code == 0:
         add('package', 'putgd', 'package:rpm:' + output.strip(), 'rpm putgd ' + output.strip())
@@ -249,6 +257,9 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     status, _, version = output.partition(' ')
     if code == 0 and status[1:2] not in ('', 'n', 'c'):
         add('package', 'putgd', 'package:deb:' + version.strip(), 'deb putgd ' + version.strip())
+    if len(items) == packages:
+        notes.append('no putgd package installed' + (f' (config files of deb {version.strip()} only)'
+                                                      if code == 0 and status[1:2] == 'c' else ''))
     return items, notes
 
 
@@ -454,7 +465,7 @@ class Desktop:
             self.replace(self.lock, render_lock(record))
         return dict(assess(record, now), lock=record, wasExpired=was_expired)
 
-    def release(self, session, verified_clean=False, not_mine=()):
+    def release(self, session, verified_clean=False, not_mine=(), removed_ok=None):
         items, notes = self.inventory()
         with self.mutex():
             now = self.clock()
@@ -467,6 +478,10 @@ class Desktop:
                 raise LockError(f'Not released: {len(check["left"])} item(s) appeared on {self.host} since you '
                                 'acquired it. Stop or remove yours (exact PIDs only) and check again; name '
                                 "another session's item with --not-mine ID", check=check, notes=notes)
+            if check['removed'] and not removed_ok:
+                raise LockError(f'Not released: {len(check["removed"])} putgd package(s) installed when you acquired '
+                                f'the lock are gone from {self.host}. Reinstall the version listed, or say why it '
+                                'stays removed with --removed-ok REASON', check=check, notes=notes)
             if not verified_clean and self.resource == 'proton':
                 raise LockError('Confirm that no lent copy is outstanding (every carry-back confirmed, every '
                                 'putgd-lab guest entry cleaned up), then rerun with --verified-clean',
@@ -475,8 +490,10 @@ class Desktop:
                 raise LockError('Nothing new is left on the host. Finish the manual steps (workstation '
                                 'forwards, re-login after an extension copy), then rerun with --verified-clean',
                                 check=check, notes=notes)
-            receipt = self.receipt('release', {'lock': record, 'releasedBy': session, 'check': check,
-                                               'notes': notes})
+            body = {'lock': record, 'releasedBy': session, 'check': check, 'notes': notes}
+            if check['removed']:
+                body['removedOk'] = one_line('removed-ok', removed_ok)
+            receipt = self.receipt('release', body)
             if self.resource == 'desktop':
                 self.baseline.unlink(missing_ok=True)
             self.lock.unlink()
@@ -596,7 +613,7 @@ def remote(payload):
             reply = desktop.extend(payload['session'], payload['minutes'])
         elif action == 'release':
             reply = desktop.release(payload['session'], payload.get('verified_clean', False),
-                                    payload.get('not_mine', ()))
+                                    payload.get('not_mine', ()), payload.get('removed_ok'))
         elif action == 'break':
             reply = desktop.break_lock(payload['session'], payload['reason'])
         elif action == 'held':
@@ -712,6 +729,8 @@ def describe(reply):
             lines += describe_items('appeared since the lock was taken', check['left'])
         if check['notMine']:
             lines += describe_items('named --not-mine', check['notMine'])
+        if check.get('removed'):
+            lines += describe_items('removed since the lock was taken', check['removed'])
         if check['preexisting'] and action == 'release' and reply['ok']:
             lines.append(f'  {len(check["preexisting"])} item(s) that were there before the lock stay')
         elif check['preexisting']:
@@ -899,6 +918,8 @@ def main(argv=None, run=subprocess.run, popen=subprocess.Popen):
                          help='you stopped and removed everything you started there')
     release.add_argument('--not-mine', action='append', default=[], metavar='ID',
                          help="another session's item that appeared during your lock (repeat)")
+    release.add_argument('--removed-ok', metavar='REASON',
+                         help='release although a putgd package there at acquire is gone; REASON goes in the receipt')
     breaking.add_argument('--reason', required=True)
     argv = sys.argv[1:] if argv is None else list(argv)
     command = []
