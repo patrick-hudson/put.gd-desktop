@@ -281,9 +281,40 @@ time budget; the words join the candidates after the copied text is made, so Cop
 unchanged, and a word where one was already read is left out. A page with no such rows does no
 extra work.
 
-Limits: ink within about 25 levels of the background is not found as faint ink (a gradient or
-noise looks the same), and on a whole screen of 4 MP or more, read in panels, a faint line outside
-a panel's trimmed area is not read again (#1912).
+On a whole screen of 4 MP or more, read in panels, the faint lines are looked for in every
+window and column before trimming (#1912), so a faint line below a window's last bright line,
+outside its trimmed panel, is still read again. Anything smaller is one panel, the whole image.
+
+Limit: ink within about 25 levels of the background is not found as faint ink (a gradient or
+noise looks the same).
+
+One misread character breaks a key or token for Quick redact. A job that asks for candidates
+also reads a second time the lines holding an **uncertain token** (#1911): a word of at least 12
+characters once quotes and brackets are trimmed, with letters and digits both, that Tesseract
+scored below 70. Each such line is read from a copy that measures every pixel against its local
+background (the median of the 80 px around it) and stretches the strongest ink nearby to black on
+white, which reads dark and light pages, low contrast and coloured backgrounds alike. Lines are
+read least confident first, in bands of at most four word heights, and the second read stops when
+it has taken as long as the first pass (750 ms when the first was quicker) or the job's budget
+ends. Its words join the candidates after the copied text is made, marked `second`; Copy text is
+unchanged, and a page with no uncertain token does no extra work.
+
+How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
+- Recognition misses were not specific to dark themes (27% of secrets on dark themes, 28% on
+  light). No preprocessing beat the first pass when it replaced it: local inversion, the local
+  contrast copy above, colour-channel distance, 2x upscaling and Sauvola thresholds all covered
+  62 to 64% of secrets against 64%, and Sauvola 50%.
+- A second read **added** to the first is what helps: a second, different reading is a second
+  chance at a long random string. Keeping only the more confident reading of a line gained
+  nothing. Rereading only the token's own area, not its line, gave half the gain.
+- With the current matcher, secrets fully covered went from 64.9% to 69.8% and decoys covered
+  from 34.7% to 39.6%; on the x3 PDF, 285 to 293 of 359 items at 96 dpi and 297 to 299 at
+  144 dpi, with decoys unchanged. A filter dropping second-read matches unlike the first read
+  removed secrets and decoys at about the same rate, so there is none: a missed secret is the
+  worse failure.
+- Cost, one job at a time on aurora: none measurable on the 176 ordinary captures (the test held
+  on 9); on corpus images where it ran, 7 ms at p50 and 303 ms at p95; on a 4K dark terminal
+  whose every line held tokens, 2.06 s became 4.06 s, the cap at the first pass's time.
 
 - **Screen or region.** An input of at least 4,000,000 pixels is a screen. A screen is cut into
   panels, and its job has a cap of 16,000,000 scaled pixels. Anything smaller is one panel, the
@@ -396,7 +427,8 @@ Two outputs come from one pass:
   shape, with the confidence floor only for short words.
 - **Candidates.** Every recognized word with its box and confidence, unfiltered. Only the
   editor asks for them, for Quick redact. The resident never holds them. The `words` an agent
-  reads are the filtered words of the copied text, not these.
+  reads are the filtered words of the copied text, not these. A word from the uncertain tokens'
+  second read carries `"second": true`.
 
 ### Emoji
 
@@ -684,6 +716,11 @@ other tool active it does not. The user's side is in the
   addresses, Card numbers, Keys and tokens, My username and name, My redaction list, All of
   these, and Remove suggestions) with "Suggestions only. Recognition can miss text." always
   beside it.
+  - The second read of uncertain tokens is matched apart from the first: Quick redact matches
+    the first read, then a page where the second read's words take the place of the first
+    read's words they overlap, and adds only the matches holding a second-read word. Side by side
+    on one row, the two readings of a line would be read as one; read alone, a PEM public key's
+    line loses its header and was taken for a key. A mark's margins look only at its own read.
   - Matching runs over the unfiltered candidates, on lines as they appear (words grouped by
     height and ordered left to right), after whitespace and Unicode digits are normalized. Emails,
     phone numbers, card numbers and addresses match across adjacent words and wrapped lines. A
