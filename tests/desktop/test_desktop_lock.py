@@ -433,6 +433,42 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
         self.assertEqual(self.desktop.status()['state'], 'free')
 
+    def test_last_event_ignores_other_files_kept_in_history(self):
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        # A retired scratch note sorts after every stamped receipt by name.
+        (self.directory / 'history' / 'plasma1364-scratch-retired.json').write_text('{"note": "retired"}\n')
+        (self.directory / 'history' / '2099-01-01T00-00-00Z-scratch-retired.json').write_text('{"note": "retired"}\n')
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+
+    def test_last_event_takes_the_later_receipt_of_one_second(self):
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        names = sorted(path.name for path in (self.directory / 'history').glob('*.json'))
+        self.assertTrue(any(name.endswith('-release-1.json') for name in names), names)
+        self.assertTrue(self.desktop.status()['last']['receipt'].endswith('-release-1.json'))
+
+    def test_last_event_takes_a_release_after_a_break_of_the_same_second(self):
+        self.acquire('local_desktop')
+        self.clock.advance(minutes=46)
+        self.desktop.break_lock('local_x', 'stopped heartbeating')
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        history = self.directory / 'history'
+        brk = next(history.glob('*-break.json'))
+        rel = next(history.glob('*-release.json'))
+        os.utime(brk, ns=(1, 1))  # the break was written first
+        os.utime(rel, ns=(2, 2))
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+        os.utime(brk, ns=(3, 3))  # and the other way round
+        self.assertEqual(self.desktop.status()['last']['event'], 'break')
+        later = brk.with_name(brk.name.replace('-break.json', '-break-1.json'))
+        brk.rename(later)  # a suffixed break written before an unsuffixed release
+        os.utime(later, ns=(1, 1))
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+
 
 class QuietLease(LockTest):
     def quiet(self):
