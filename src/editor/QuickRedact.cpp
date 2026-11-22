@@ -248,17 +248,19 @@ bool base64Run(const QString& run) {
 // counts only at the start of a recognized word, and when its separator was
 // lost, only where the body begins a word of its own ("ghp" "x8Fq…", not
 // "ghost…"). A JSON web token needs a dot (or a comma read for one).
-struct Prefix {QRegularExpression pattern;int length;bool boundary;bool dotted=false;};
+// exact: the kind has one length (an AWS key ID, a classic GitHub token, a fine-grained one,
+// a Stripe webhook secret); the others vary, and their length is only a bound.
+struct Prefix {QRegularExpression pattern;int length;bool boundary;bool dotted=false;bool exact=false;};
 const QList<Prefix>& prefixes() {
  static const QList<Prefix> list{
-  {QRegularExpression(R"((A[KA4][Il1|]A|AS[Il1|]A|ABIA|ACCA|AGPA|AIDA|AIPA|ANPA|ANVA|APKA|AROA)()([A-Z0-9]{12,}))"),20,false},
-  {QRegularExpression(R"(([gaq]h[pousr])([_,.\-]?)([A-Za-z0-9]{24,}))"),40,true},
-  {QRegularExpression(R"((github[_,.]?pat)([_,.]?)([A-Za-z0-9_]{20,}))"),93,true},
+  {QRegularExpression(R"((A[KA4][Il1|]A|AS[Il1|]A|ABIA|ACCA|AGPA|AIDA|AIPA|ANPA|ANVA|APKA|AROA)()([A-Z0-9]{12,}))"),20,false,false,true},
+  {QRegularExpression(R"(([gaq]h[pousr])([_,.\-]?)([A-Za-z0-9]{24,}))"),40,true,false,true},
+  {QRegularExpression(R"((github[_,.]?pat)([_,.]?)([A-Za-z0-9_]{20,}))"),93,true,false,true},
   {QRegularExpression(R"((gl(?:pat|dt|rt|ptt|ft|cbt|imt|oas|soat|agent))([-_.,]?)([A-Za-z0-9_-]{15,}))"),26,true},
   {QRegularExpression(R"((x[o0O][xX]{1,2}[abposr])([-_.,]?)([A-Za-z0-9-]{10,}))"),56,true},
   {QRegularExpression(R"((xapp)([-_.,]?)(\d[-_.,]?[A-Za-z0-9-]{10,}))"),100,true},
   {QRegularExpression(R"(((?:sk|pk|rk)[_,.]?(?:live|test))([_,.]?)([A-Za-z0-9]{10,}))"),40,true},
-  {QRegularExpression(R"((whsec)([_,.]?)([A-Za-z0-9]{20,}))"),38,true},
+  {QRegularExpression(R"((whsec)([_,.]?)([A-Za-z0-9]{20,}))"),38,true,false,true},
   // A JSON web token's header is base64url of "{"…", so it starts with eyJ.
   {QRegularExpression(R"((ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
  };
@@ -295,8 +297,13 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
  const int base=segment.starts.at(first);
  for(const auto& prefix:prefixes()){
   QRegularExpressionMatch match;
-  for(auto it=prefix.pattern.globalMatch(prefix.dotted?text:bodies);it.hasNext();){
-   const auto candidate=it.next();
+  // Each start is tried in turn: a rejected candidate ("gho" in "ghost…") must not swallow a real
+  // prefix inside its body, so the search resumes one character after it.
+  const auto& subject=prefix.dotted?text:bodies;
+  for(qsizetype next=0;next<subject.size();){
+   const auto candidate=prefix.pattern.match(subject,next);
+   if(!candidate.hasMatch())break;
+   next=candidate.capturedStart()+1;
    // A prefix starts a piece, or follows a separator inside one (#1820: KEY_ID=AKIA…, "AKIA…", https://ghp_…@host).
    const int at=base+int(candidate.capturedStart());
    // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
@@ -312,15 +319,25 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   }
   if(!match.hasMatch())continue;
   const int start=pieceAt(segment,base+match.capturedStart());
-  // The token's pieces: each that starts before the token, counted from its
-  // prefix (which can follow a label in its word, "KEY_ID=AKIA…"), has its
-  // nominal length. The body pattern runs on through words joined after a
-  // complete token ("ghp_…" "was" "leaked"), so its end is not the token's
-  // (#1839); pieces after the core are kept or left out as words at a
-  // segment's end.
-  const int from=base+int(match.capturedStart());
   int end=start;
-  while(end<last&&segment.starts.at(end+1)-from<prefix.length)++end;
+  if(prefix.exact){
+   // A kind of one length ends there (#1839): its pieces are those that start before it has its
+   // length, counted from the prefix (which can follow a label in its word, "KEY_ID=AKIA…"), and
+   // a piece of one or two characters just past it, which a doubled character leaves. The body
+   // pattern runs on through the words joined after a whole token ("ghp_…" "was" "leaked"), so
+   // its end is not the token's; pieces after the core are kept or left out as words at a
+   // segment's end.
+   const int from=base+int(match.capturedStart());
+   const auto size=[&](int piece){return (piece+1<segment.starts.size()?segment.starts.at(piece+1):int(segment.text.size()))-segment.starts.at(piece);};
+   while(end<last){
+    const int offset=segment.starts.at(end+1)-from;
+    if(offset<prefix.length||(offset<prefix.length+2&&size(end+1)<=2))++end;else break;
+   }
+  }else{
+   // Otherwise the pieces up to half again its usual length, and all the body pattern took.
+   while(end<last&&segment.starts.at(end+1)-segment.starts.at(start)<prefix.length*3/2)++end;
+   end=qMax(end,pieceAt(segment,base+match.capturedEnd()-1));
+  }
   segmentMatches(segment,first,start-1,found);found.append({start,end});segmentMatches(segment,end+1,last,found);return;
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the

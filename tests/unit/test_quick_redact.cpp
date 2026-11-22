@@ -158,6 +158,14 @@ private slots:
   const auto githubShort=QString("gh")+"p_aB3dESfG7h9kLImN3pQ5rS7tUSwW"+" 1xY3zA5";
   const auto githubLabel=QString("GITHUB_TOKEN=gh")+"p_aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW";
   QTest::newRow("a token after a label in its word, its tail split off")<<githubLabel+" xyzabcd was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubLabel+" xyzabcd"};
+  // Sol on #1839: a doubled character leaves the token's last letter or two as a piece of its own
+  // just past its length; a JWT has no one length; a rejected "gho" in a URL hides no real prefix.
+  const auto githubDoubled=QString("gh")+"p_aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zAA";
+  QTest::newRow("a doubled character leaves a last letter past the length")<<"Your token "+githubDoubled+" q was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubDoubled+" q"};
+  QTest::newRow("a doubled character leaves two last letters past the length")<<"Your token "+githubDoubled+" qz was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubDoubled+" qz"};
+  QString jwtLong=QString("ey")+"JhbGciOiJIUzI1NiJ9.";for(int i=0;i<18;++i)jwtLong+=QString("ey")+"JzdWIiOiIxMjM0NTY3ODkwIn0";jwtLong+=QString(".c2lnbmF0dXJl")+"MTIzNDU2Nzg5MA";
+  QTest::newRow("a long JWT keeps its last lowercase piece")<<"Bearer "+jwtLong+" abc"<<QStringList{"key"}<<QStringList{"key: "+jwtLong+" abc"};
+  QTest::newRow("a token after a URL path with a gho word")<<"see https://example.test/ghost/settingsconfiguration/"+github<<QStringList{"key"}<<QStringList{"key: https://example.test/ghost/settingsconfiguration/"+github};
   QTest::newRow("a token read short keeps the next word")<<"Your token "+githubShort+" was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubShort+" was"};
   const auto githubSlash=QString("gh")+"p_aB3dESfG7h/9kLImN3pQ5rS7tU9vW1x"+"\u00a53zA5";
   QTest::newRow("words after a token with J read as a slash")<<"Your token "+githubSlash+" was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubSlash};
