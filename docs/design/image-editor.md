@@ -54,6 +54,7 @@ written before this feature inherit the region output route with no hotkey.
 | Highlight | H | Marker paper: the box becomes a band of the marker colour and the text keeps the contrast it had, as dark lettering on the band, on light and dark pages alike; photos get a luminance-keeping wash; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 | Step number | N | Click to drop a numbered disc (40 image pixels across by default, 16–256). Numbers count up from 1; **Next number** sets the next one, and following clicks count on from it. Deleting a step leaves the others as they are; undo, redo and agent edits count on from the highest step left. The disc takes the palette colour with a white label and rim, or a near-black one where white would fall under 3:1 (yellow, orange, green, white). Dragging a corner resizes it and keeps it round; a selected step's field edits its number |
+| Style | S | Puts the image on a backdrop with padding, rounded corners and a shadow when it is exported; the canvas shows the frame. **Style this image**, **Look** and **Padding**. It adds no mark and, on the canvas, picks marks like Select. See [capture style](capture-style.md) |
 | Copy text | G | Reads the text in the image so it can be selected and copied, and lists the QR codes it finds. It is the last tool, after Blur and behind its own separator, and it adds no mark. See [Copy text and Quick redact](#copy-text-and-quick-redact) |
 
 You don't need Select to adjust a mark:
@@ -285,7 +286,10 @@ none of the reader's text, color-space or container data:
    its pixels inside the mark.
 4. Draw arrows, lines, rectangles, ellipses, pen strokes, step numbers,
    highlights and text.
-5. Clear the hidden color of fully transparent pixels; encode PNG.
+5. Clear the hidden color of fully transparent pixels.
+6. With a [capture style](capture-style.md) on, place the result on its styled canvas (backdrop,
+   shadow, rounded corners), clearing hidden colours again; encode PNG. The pixels inside the
+   rounded outline are those of step 5.
 
 Two inputs that differ only inside a mask therefore export byte-identical PNGs,
 with blur overlapping or adjacent to the mask, annotations over it and crop
@@ -441,7 +445,7 @@ Every editor capability is available through session methods, the production
 
 | Session method | MCP tool | Parameters / result |
 | --- | --- | --- |
-| `editor.open` | `open_editor` | optional `source`, `path`; returns `operationId` |
+| `editor.open` | `open_editor` | optional `source`, `path`, and `captureStyle` (MCP `capture_style`) to start a file's edit with the saved capture style on; returns `operationId` |
 | `editor.inspect` | `get_editor` | `id`; size, `crop`, `shapes`, undo/redo, `phase`, destination |
 | `editor.apply` | `edit_image` | `id`, `commands` (1–100); atomic: all or nothing |
 | `editor.preview` | `preview_editor` | `id`, optional `maxEdge` 64–1600; sanitized PNG (base64 / MCP image) |
@@ -456,7 +460,9 @@ Every editor capability is available through session methods, the production
 | `editor.raise` | `raise_editor` | `id`, optional `activationToken`; asks the desktop to bring the window to front and answers what it did: `raised: true` once the window is active, otherwise after 1.5 s `raised: false` with `reason: activation_refused` and a message (#911) |
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
-`crop {rect}`, `resetCrop`, `undo`, `redo`, `redactText {categories}`. Rectangles are `[x, y, width, height]`.
+`crop {rect}`, `resetCrop`, `undo`, `redo`, `redactText {categories}`, and
+`style {enabled?, preset?, backdrop?, padding?, corners?, shadow?}` ([capture style](capture-style.md#agents)).
+`editor.inspect` reports the document's `style` and `exportSize`. Rectangles are `[x, y, width, height]`.
 `redactText` is Quick redact: `categories` is 1 to 7 of `email`, `phone`, `ip`, `card`, `key`, `name`
 and `list`. `name` is the account's username and real name. `list` is the saved list from Settings
 plus the optional `terms` (up to 200 words or phrases of up to 100 code points, each with a letter or
@@ -554,7 +560,8 @@ nothing, and that an interrupted edit recovers without uploading. Highlight
 paint, handles, keyboard editing, undo bounds, the drawing tools and the editor
 window went in the second round of [removed tests](../testing/removed-tests.md#second-round). Synthetic screenshots of the themed window are produced by
 `putgd-ui-catalog` (`20-`–`29-editor-*.png`; the step, pen, ellipse, line,
-pixelate, Copy image and narrow-toolbar states are `30-`–`30k-editor-*.png`).
+pixelate, Copy image and narrow-toolbar states are `30-`–`30k-editor-*.png`; the Style tool's are
+`30q-editor-style` and `30r-editor-style-canvas`).
 `editor_job_integration` and `edit_operations_integration` check Copy image
 against the real helper and resident. Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the

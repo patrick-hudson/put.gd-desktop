@@ -92,11 +92,28 @@ Choose **Capture region & edit** from the action bar or the tray, or assign it a
 - **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
 - **Arrow** (A), **Line** (L), **Rectangle** (R), **Ellipse** (E), **Pen** (P), **Highlight** (H) and **Text** (T) add simple marks; Shift keeps a line at 0°, 45° or 90° and makes squares and circles.
 - **Step number** (N) drops numbered discs: each click places the next number. Change **Next number** to start elsewhere; deleting one leaves the others as they are.
+- **Style** (S) puts the image on a backdrop with padding, rounded corners and a shadow. See [Style your screenshots](#style-your-screenshots).
 - **Copy text** (G), the last tool, reads the text in the image so you can select and copy it. See [Copy text in the editor](#copy-text-in-the-editor).
 - Any drawing tool picks up a mark you can see under the pointer; hold Ctrl to draw over it. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
 - Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
 
 **Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file, and **Copy image** (Ctrl+Shift+C) puts it on the clipboard to paste elsewhere; neither uploads or adds anything to History. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
+
+## Style your screenshots
+
+**Settings → Capture → Capture style** puts screenshots on a backdrop, with padding around them, rounded corners and a soft shadow, so a capture looks finished when you paste the link into a chat or a document. It is off until you turn on **Style screenshots**. Then pick a **Look**:
+
+- **Graphite**, a dark grey gradient, is chosen first.
+- **Amber** is a warm gold gradient.
+- **Paper** is a plain off-white.
+- **Clear** has no backdrop at all: rounded corners and a shadow on a transparent PNG. A shadow on transparency can disappear in dark chat apps.
+- **Custom** lets you choose a colour, a two-colour gradient, a picture of your own or no backdrop.
+
+**Padding** (Small, Medium or Large) grows with the capture, so a small region gets a little space and a full screen more. **Rounded corners** and **Soft shadow** can be turned off. The **Preview** shows the look on a sample window, with the size a 1920 × 1080 capture becomes.
+
+With the option on, region, window, monitor and desktop captures, Repeat last region and scrolling captures are styled before they upload or are saved; the captured pixels themselves are not changed. With **Keep a local copy** on, the capture as it was taken is saved beside the styled one, with `-original` in its name, and **Edit again** in History opens that original. A picture you choose is copied into put.gd's data folder, so moving or deleting your file later changes nothing; if put.gd can't read it, the capture gets Graphite and History says so. A capture too large to style is saved and uploaded as it was, with a note. Recordings, clipboard uploads and files are never styled.
+
+In the editor, the **Style** tool (S) turns the style on or off for the image you are editing and changes its look and padding. A new capture starts with it on while the option is on; a file, the clipboard image and Edit again start with it off. The canvas shows the frame as it will be saved, and Ctrl+Z undoes a style change like any edit.
 
 ## Capture a scrolling region
 
