@@ -24,7 +24,7 @@ private:
  void receive(const QString&,const QString&,const QJsonObject&);
  QJsonObject snapshot()const;
  void finishShortcutRecordingRequests(Error);
- void clearPendingAction(bool restore);void requestAction(const QString&);void requestEdit(const QString& source,const QString& path);void prepareAction();void invokeAction();
+ void clearPendingAction(bool restore);void requestAction(const QString&);void requestEdit(const QString& source,const QString& path,bool captureStyle=false);void prepareAction();void invokeAction();
  void requestQuit();void requestClose(QWidget*);void submitClose();void checkpoint();void notify(const Error&);void allowClose();
  UiSession& session_;UiControl& control_;QJsonObject saved_;
  // The colour scheme in use: the appearance setting, or the desktop's (#60).

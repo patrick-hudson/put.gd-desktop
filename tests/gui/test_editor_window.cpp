@@ -1,5 +1,6 @@
 // The editor window never uploads without an explicit action, and uploads what the user cropped to.
 #include "ui/EditorWindow.h"
+#include "ui/SensitivePrompt.h"
 #include "ui/FileDialog.h"
 #include "ui/Theme.h"
 #include "ui/BlurRadius.h"
@@ -193,6 +194,46 @@ private slots:
   window.viewCommand({{"action","tool"},{"tool","crop"}},code,message);window.viewCommand({{"action","geometry"},{"rect",QJsonArray{20,30,50,40}}},code,message);
   QString reason;const auto png=writeCopy(window,dir.filePath("second.png"),reason);QVERIFY2(!png.isEmpty(),qPrintable(reason));
   QCOMPARE(QImage::fromData(png,"PNG").size(),QSize(50,40));
+ }
+ // #1898: the sensitive text prompt offers Redact and upload (the default, one step), Open in editor, Upload anyway
+ // and Cancel, each choosing its own decision once; a variant drops only what it can't do.
+ void sensitivePromptOffersFourChoices(){
+  SensitivePrompt::Model model;model.findings.found={{"card",1}};model.preview=canvasImage();model.destination="Upload to Project archive · Shared link";
+  {
+   SensitivePrompt prompt(model);prompt.show();QVERIFY(putgd::test::waitForWindowExposed(&prompt));
+   QCOMPARE(prompt.choices(),(QStringList{"redact_upload","edit","upload","cancel"}));
+   const QStringList names{"sensitiveRedact","sensitiveEdit","sensitiveUpload","sensitiveCancel"};
+   for(const auto& name:names){auto* button=prompt.findChild<QPushButton*>(name);QVERIFY2(button&&button->isVisible(),qPrintable(name));
+    // Every label is whole: the fixed panel is at least as wide as each button asks.
+    QVERIFY2(button->width()>=button->sizeHint().width(),qPrintable(name));
+    for(const auto& other:names)if(other!=name)QVERIFY(!button->geometry().intersects(prompt.findChild<QPushButton*>(other)->geometry()));}
+   QCOMPARE(prompt.state()["buttonRows"].toInt(),1);
+   QSignalSpy chosen(&prompt,&SensitivePrompt::chosen);
+   // Return takes the default, Redact and upload; a second choice is refused.
+   prompt.activateWindow();QTest::keyClick(&prompt,Qt::Key_Return);
+   QCOMPARE(chosen.size(),1);QCOMPARE(chosen.first().first().toString(),QString("redact_upload"));QVERIFY(!prompt.choose("upload"));
+  }
+  {
+   SensitivePrompt prompt(model);QSignalSpy chosen(&prompt,&SensitivePrompt::chosen);
+   prompt.findChild<QPushButton*>("sensitiveEdit")->click();QCOMPARE(chosen.first().first().toString(),QString("edit"));
+  }
+  {
+   // A file of a larger selection: no editor, but Redact and upload still covers this file.
+   auto files=model;files.editAllowed=false;files.file="File 2 of 3: receipt.png";SensitivePrompt prompt(files);
+   QCOMPARE(prompt.choices(),(QStringList{"redact_upload","upload","cancel"}));QVERIFY(!prompt.findChild<QPushButton*>("sensitiveEdit"));
+  }
+  {
+   // A long name with no spaces doesn't widen the panel past the screen.
+   auto files=model;files.editAllowed=false;files.file="File 2 of 3: "+QString(240,'x')+".png";files.destination="Upload to "+QString(180,'y');
+   SensitivePrompt prompt(files);prompt.show();QVERIFY(putgd::test::waitForWindowExposed(&prompt));
+   QVERIFY2(prompt.width()<=prompt.screen()->availableGeometry().width(),qPrintable(QString::number(prompt.width())));
+   for(auto* button:prompt.findChildren<QPushButton*>())QVERIFY(button->geometry().right()<prompt.width());
+  }
+  {
+   // A check that couldn't finish and found nothing has nothing to cover in one step.
+   auto partial=model;partial.findings.found={};partial.findings.complete=false;partial.findings.reason="truncated";SensitivePrompt prompt(partial);
+   QCOMPARE(prompt.choices(),(QStringList{"edit","upload","cancel"}));QVERIFY(!prompt.choose("redact_upload"));
+  }
  }
 };
 QTEST_MAIN(EditorWindowTest)

@@ -179,6 +179,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.updates` | Optional, default `{"check": true, "channel": "build"}`, both keys optional. `check`: look for a newer version once a day (one request to app.put.gd with nothing identifying). `channel`: `build` follows this installation's channel (Settings stores it when you pick the build's own), or `stable` or `nightly` to watch that one; an AppImage then offers to switch to it ([updates.md](updates.md#switching-channels)). Stable notifies once per new version, remembered per channel; nightly only shows it in Settings. Development and source builds never check. Checks disabled at build time report `disabled_at_build` ([updates.md](updates.md)) |
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and hotkeys never unlock |
 | `preferences.appearance` | Optional. `theme`: `system` (default, also when absent) follows the desktop's light or dark preference, `dark` or `light`. `accent` (null) and `overrides` (`{"dark": {}, "light": {}}`) are reserved for custom colours (#197) and must keep those values. See [appearance](appearance.md) |
+| `preferences.captureStyle` | Optional, absent by default (off): `{enabled, backdrop, padding, corners, shadow}` ([#1893](https://github.com/patrick-hudson/put.gd-desktop/issues/1893)). `enabled` (required) is a boolean; with it `false` or the key absent no capture is styled and every capture, upload and local copy is unchanged (an edit is styled only when the style is turned on in it, or when a file is opened with `captureStyle: true`; see [capture style](capture-style.md)). `backdrop` is `{kind, color, colorEnd, picture}`: `kind` is `color`, `gradient` (`color` to `colorEnd`, from the canvas's top-left corner to its bottom-right corner), `picture` (needs `picture`, an absolute path of at most 4,096 characters) or `none` (transparent). Colours are `#rrggbb` in either case; the effective style uses lowercase. `padding` is `small`, `medium` (default) or `large`, in proportion to the capture; `corners` and `shadow` are booleans, `true` by default. A missing `backdrop` is Graphite's gradient. With `enabled` true, region, window, monitor, desktop, Repeat last region and scrolling captures are styled before they upload or are saved, and Capture region & edit of a new capture opens with the style on. Settings → Capture → Capture style, `settings.patch` and MCP `patch_configuration` set it. See [capture style](capture-style.md) |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 | `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
 | `preferences.diagnostics.packageFolder` | Optional absolute folder, or `null`: where **Create diagnostics package** and **Save diagnostics for this upload** save packages. Settings writes it when you choose a folder; omitted or `null` means `<archive root>/diagnostics/` ([diagnostics.md](diagnostics.md#diagnostics-package)) |
@@ -417,6 +418,35 @@ secret as a whole with `dataSecret`. `requestUrl` is HTTPS, or HTTP to a literal
 loopback host, or any HTTP with `allowInsecureHttp`. Validation performs no network or
 secret-store IO. Credentials are a keychain or session reference to the named values.
 See [Custom uploader](../user/custom-uploader.md#settings).
+
+`sftp` profiles (#1871) hold `server`, `user`, `folder`, `publicUrlBase` and
+`hostKeyFingerprint`, and optionally `keyFile` (#1892) (schema `$defs/sftpSettings`). `server` is `host`, `host:port`,
+`[v6]:port`, a bare IPv6 literal or a `~/.ssh/config` Host alias: letters, digits, dots,
+hyphens and underscores, not starting with a hyphen or a dot, port 1–65535 (digits after a
+colon are always a port, never a path). It holds no user or path; Settings splits a pasted
+`sftp://user@host:port/path` or `user@host:/path` into the three fields (`sftp://host/` gives
+folder `/`), and leaves a password in the address out at once, so it never reaches the field,
+the draft or an agent's inspection. Settings saves no SFTP field that fails these rules; a
+refusal from the resident lands beside its field. An empty `server` saves (a destination still
+being set up) but is refused for any request. `user` is empty (ssh's own choice) or a user
+name without `:` or `@`. `folder` is any path without control characters, at most 4096 bytes;
+`~` and `~/…` mean the login folder, and `~name` is refused. `publicUrlBase` is null or an
+HTTPS address without user information, query or fragment; Settings leaves a pasted user part
+out. `hostKeyFingerprint` is null or
+`TYPE SHA256:<43 base64 characters>`, the key trusted for this destination in put.gd's own
+`known_hosts` (`<config root>/ssh/known_hosts`, used only when the user's own files have no key
+for the server). The resident writes it itself when a trust succeeds, conditional on the
+configuration revision the trust began with; Settings clears it when `server` changes. `keyFile`
+is absent or null (no chosen key) or the absolute path of a private key file, without control
+characters, `%` or `${` (ssh would expand those), at most 4096 bytes. Settings writes it only
+while SSH key holds a path, so a destination without one is saved as before #1892 (an explicit
+null already saved is kept as null); a key file
+ssh can't use yet still saves, with its problem shown beside the field. The check fingerprint below covers every field,
+so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
+has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings fills an empty Reference field with
+`putgd/<profile id>`, and if Reference is still empty when it is saved in keychain mode, Settings
+uses `putgd/sftp/<profile id>`. A keychain-mode destination without a reference is refused (`config_invalid`). Validation performs no network, process or secret-store IO. See
+[SFTP](../user/sftp.md).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`) for every request except a PUT with a

@@ -1,7 +1,10 @@
 #include "SftpPanel.h"
+#include "FileDialog.h"
 #include "PreferenceRows.h"
 #include "Ui.h"
 #include "storage/sftp/SftpCommon.h"
+#include <QDir>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -18,7 +21,7 @@ const QString storedPlaceholder = QString::fromUtf8("•••••••• st
 QString SftpPanel::provider() { return sftp::providerId; }
 QJsonObject SftpPanel::defaultSettings() { return sftp::defaults(); }
 SftpPanel::SftpPanel(QWidget* parent) : QWidget(parent) { setObjectName("sftpDestinationEditor"); }
-void SftpPanel::build(const RowBuilder& row) {
+void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
     if (built_) return;
     built_ = true;
     auto* page = new QVBoxLayout(this);
@@ -102,8 +105,34 @@ void SftpPanel::build(const RowBuilder& row) {
         refreshProblems();
     });
 
-    auto* signIn = PreferenceRows::card(page, "Sign-in", "Both are optional. Leave them empty to sign in with your SSH agent or key files. The key passphrase only ever answers a key's passphrase prompt, never a password prompt.");
-    signIn->parentWidget()->setObjectName("sftpSignInSection");
+    // Sign-in (#1892): one section with SSH key, Password, Key passphrase and where secrets are
+    // kept, in the card Settings keeps the destination's sign-in in.
+    const auto addSignIn = [&](const QString& label, QWidget* control, const QString& hint) {
+        auto* made = signInRow(nullptr, label, control, hint);
+        signInRows_.append(made);
+        return made;
+    };
+    // SSH key: a private key file ssh gets with -i, for a key that isn't in the agent or ~/.ssh/config.
+    {
+        auto* box = new QWidget(this);
+        box->setObjectName("sftpKeyFileBox");
+        auto* layout = new QHBoxLayout(box);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(space(Space::s));
+        keyFile_ = line("sftpKeyFile", "Optional");
+        keyFile_->setAccessibleName("SSH key");
+        Ui::setMono(keyFile_);
+        layout->addWidget(keyFile_, 1);
+        chooseKey_ = new QPushButton("Choose…", box);
+        chooseKey_->setObjectName("sftpChooseKey");
+        chooseKey_->setAccessibleName("Choose the SSH key file");
+        layout->addWidget(chooseKey_);
+        connect(chooseKey_, &QPushButton::clicked, this, [this] { chooseKey(); });
+        auto* made = addSignIn(QStringLiteral("SSH key"), box, QStringLiteral("A private key file for ssh to use, when it isn't in your agent or ~/.ssh/config."));
+        keyError_ = made->findChild<QLabel*>("sftpKeyFileBoxError");
+        connect(keyFile_, &QLineEdit::textEdited, this, [this] { keyFileProblem_.clear(); showKeyProblem(); });
+        keyChooser_ = new FileDialog(this);
+    }
     // Each secret field with a Clear beside it, shown while that secret is stored.
     const auto secret = [&](const char* name, const QString& label, const QString& key, QPushButton*& clear) {
         auto* box = new QWidget(this);
@@ -113,6 +142,7 @@ void SftpPanel::build(const RowBuilder& row) {
         layout->setSpacing(space(Space::s));
         auto* field = line(name, "Optional");
         field->setEchoMode(QLineEdit::Password);
+        field->setAccessibleName(label);
         layout->addWidget(field, 1);
         clear = new QPushButton("Clear", box);
         clear->setObjectName(QString::fromLatin1(name) + "Clear");
@@ -121,12 +151,56 @@ void SftpPanel::build(const RowBuilder& row) {
         clear->hide();
         layout->addWidget(clear);
         connect(clear, &QPushButton::clicked, this, [this, key] { emit clearRequested(key); });
-        row(signIn, label, box, {});
+        addSignIn(label, box, {});
         return field;
     };
     password_ = secret("sftpPassword", QStringLiteral("Password"), sftp::passwordKey(), clearPassword_);
     passphrase_ = secret("sftpPassphrase", QStringLiteral("Key passphrase"), sftp::passphraseKey(), clearPassphrase_);
+    // The passphrase only ever answers a key's own passphrase prompt, never a password prompt.
+    passphrase_->setToolTip(QStringLiteral("Answers only a key's passphrase prompt, never a password prompt."));
     for (auto* field : {password_, passphrase_}) connect(field, &QLineEdit::textChanged, this, [this] { if (!loading_) emit secretsEdited(); });
+}
+bool SftpPanel::chooseKey() {
+    if (!keyChooser_ || keyChooser_->isOpen()) return false;
+    // Where the key is now, else ~/.ssh, else home.
+    auto folder = keyFile_->text().isEmpty() ? QString() : QFileInfo(keyFile_->text()).absolutePath();
+    if (folder.isEmpty() || !QFileInfo(folder).isDir()) folder = QFileInfo(QDir::home().filePath(".ssh")).isDir() ? QDir::home().filePath(".ssh") : QDir::homePath();
+    return keyChooser_->open({FileDialog::Mode::Open, "Choose the SSH key file", folder, {}, {}}, [this](const FileDialog::Result& result) {
+        if (result.failed()) { keyFileProblem_ = result.error + " SSH key is unchanged."; showKeyProblem(); }
+        if (!result.chosen()) return;
+        keyFile_->setText(result.path);
+        finished(keyFile_);
+    });
+}
+void SftpPanel::takeKeyFile(const QString& raw) {
+    // Exactly as chosen or typed: a file name may end in a space.
+    auto path = raw;
+    if (path == QLatin1String("~") || path.startsWith(QLatin1String("~/"))) path = QDir::homePath() + path.mid(1);
+    // A .pub picked by mistake: the private key next to it, when it is there.
+    QString privateKey;
+    auto problem = path.isEmpty() || !sftp::problem({{"keyFile", path}}, "keyFile").isEmpty() ? Error{} : sftp::keyFileProblem(path, &privateKey);
+    if (!privateKey.isEmpty()) {
+        path = privateKey;
+        problem = sftp::keyFileProblem(path);
+    }
+    if (keyFile_->text() != path) {
+        const QSignalBlocker block(keyFile_);
+        keyFile_->setText(path);
+    }
+    keyFileProblem_ = problem ? problem.message : QString();
+}
+void SftpPanel::setKeyProblem(const QString& message) {
+    keyFileProblem_ = message;
+    showKeyProblem();
+}
+void SftpPanel::showKeyProblem() {
+    if (!keyError_) return;
+    // The path's own rule first, then what is wrong with the file.
+    auto message = sftp::problem(settings(), "keyFile");
+    if (message.isEmpty() && !keyFile_->text().isEmpty()) message = keyFileProblem_;
+    keyError_->setText(message);
+    keyError_->setVisible(!message.isEmpty());
+    keyFile_->setProperty("invalid", !message.isEmpty());
 }
 void SftpPanel::hideCreateFolder() {
     offeredFolder_.clear();
@@ -188,10 +262,12 @@ void SftpPanel::finished(QLineEdit* field) {
         }
     }
     if (field != server_ && field != link_) { pinnedField_.clear(); pinnedProblem_.clear(); }
+    if (field == keyFile_) takeKeyFile(keyFile_->text());
     refreshProblems();
     if (field == password_ || field == passphrase_) return;
     // An invalid field isn't saved: its message stays beside it until it is fixed (as R2's fields).
-    for (const auto& key : {QStringLiteral("server"), QStringLiteral("user"), QStringLiteral("folder"), QStringLiteral("publicUrlBase")})
+    // A key file ssh can't use yet is saved: its message says how to fix the file.
+    for (const auto& key : {QStringLiteral("server"), QStringLiteral("user"), QStringLiteral("folder"), QStringLiteral("publicUrlBase"), QStringLiteral("keyFile")})
         if (!sftp::problem(settings(), key).isEmpty()) return;
     // The missing folder a test found is only offered while Folder on server still names it.
     if (field == folder_ && folder_->text() != offeredFolderSetting_) { offeredFolder_.clear(); createFolder_->hide(); }
@@ -202,7 +278,8 @@ void SftpPanel::finished(QLineEdit* field) {
     } else if (field == user_) clearOffers();
     savedServer_ = server_->text();
     emit edited();
-    if (field == server_ || field == user_) emit addressChanged();
+    // The resolved line names the key ssh signs in with.
+    if (field == server_ || field == user_ || field == keyFile_) emit addressChanged();
 }
 void SftpPanel::setSettings(const QJsonObject& s) {
     if (!built_) return;
@@ -211,8 +288,14 @@ void SftpPanel::setSettings(const QJsonObject& s) {
     user_->setText(s["user"].toString());
     folder_->setText(s["folder"].toString());
     link_->setText(s["publicUrlBase"].toString());
+    keyFile_->setText(sftp::keyFile(s));
+    keyFileNull_ = s.contains("keyFile") && s["keyFile"].isNull();
     hostKeyFingerprint_ = s["hostKeyFingerprint"].toString();
     typedServer_ = savedServer_ = server_->text();
+    // What the saved key file needs fixed, read from the file as the form opens.
+    const auto key = sftp::keyFile(s);
+    const auto problem = key.isEmpty() || !sftp::problem(s, "keyFile").isEmpty() ? Error{} : sftp::keyFileProblem(key);
+    keyFileProblem_ = problem ? problem.message : QString();
     loading_ = false;
     refreshProblems();
 }
@@ -220,9 +303,14 @@ QJsonObject SftpPanel::settings() const {
     if (!built_) return defaultSettings();
     // Whatever is in the fields, a password or a link's user part never leaves this panel.
     const auto link = sftp::withoutUserInfo(link_->text());
-    return {{"server", sftp::withoutPassword(server_->text())}, {"user", user_->text().trimmed()}, {"folder", folder_->text()},
-            {"publicUrlBase", link.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(link)},
-            {"hostKeyFingerprint", hostKeyFingerprint_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(hostKeyFingerprint_)}};
+    QJsonObject s{{"server", sftp::withoutPassword(server_->text())}, {"user", user_->text().trimmed()}, {"folder", folder_->text()},
+                  {"publicUrlBase", link.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(link)},
+                  {"hostKeyFingerprint", hostKeyFingerprint_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(hostKeyFingerprint_)}};
+    // Saved only when one is chosen (#1892), so a destination without one reads as before; a
+    // destination saved with an explicit null keeps it, or it would never read as saved.
+    if (!keyFile_->text().isEmpty()) s["keyFile"] = keyFile_->text();
+    else if (keyFileNull_) s["keyFile"] = QJsonValue(QJsonValue::Null);
+    return s;
 }
 QMap<QString, QString> SftpPanel::typedSecrets() const {
     if (!built_) return {};
@@ -296,6 +384,8 @@ void SftpPanel::showTestError(const QString& code, const QString& message, const
 }
 void SftpPanel::showProblem(const QString& field, const QString& message) {
     if (!built_) return;
+    // SSH key sits in the sign-in section, with a message of its own.
+    if (field == QLatin1String("keyFile")) { setKeyProblem(message); return; }
     const QHash<QString, QWidget*> fields{{"server", server_}, {"user", user_}, {"folder", folder_}, {"publicUrlBase", link_}};
     auto* target = fields.value(field, field.isEmpty() ? nullptr : server_);
     for (auto* control : fields) {
@@ -316,6 +406,7 @@ void SftpPanel::refreshProblems() {
     }
     if (field.isEmpty() && !pinnedProblem_.isEmpty()) { field = pinnedField_; message = pinnedProblem_; }
     showProblem(field.isEmpty() ? QString() : field, message);
+    showKeyProblem();
 }
 QString SftpPanel::testLabel() const {
     return built_ && !link_->text().trimmed().isEmpty() ? QStringLiteral("Test upload and link") : QStringLiteral("Test upload");
@@ -333,6 +424,8 @@ QJsonObject SftpPanel::state() const {
         const auto* label = control ? findChild<QLabel*>(control->objectName() + "Error") : nullptr;
         if (label && label->isVisible() && !label->text().isEmpty()) problems[key] = label->text();
     }
+    if (keyError_ && keyError_->isVisible() && !keyError_->text().isEmpty()) problems["keyFile"] = keyError_->text();
+    if (!s.contains("keyFile")) s["keyFile"] = QJsonValue(QJsonValue::Null);
     s["resolved"] = resolved_->isVisible() ? resolved_->text() : QString();
     s["typedSecrets"] = typed;
     s["storedSecrets"] = storedKnown_ ? QJsonValue(stored) : QJsonValue(QJsonValue::Null);

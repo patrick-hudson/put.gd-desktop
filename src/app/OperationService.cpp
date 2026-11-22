@@ -144,7 +144,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  auto scrollHost=host;
  scrollHost.accept=[this](Operation& op){return acceptScroll(op);};
  scrollHost.admit=[this,admit=host.admit](Operation op,ClipboardPayload payload,std::function<void()> released){
-  if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);startEditing(op,active_.value(op.id),std::move(payload));}
+  if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);if(op.settings.captureStyle.enabled)styledEdits_.insert(op.id);startEditing(op,active_.value(op.id),std::move(payload));}
   // One scrolling capture at a time: the mode is the one its invoke or scroll.prepare set (#1804).
   else {if(!sensitiveModes_.contains(op.id))sensitiveModes_.insert(op.id,scrollSensitiveMode_);admit(op,std::move(payload),std::move(released));}
  };
@@ -204,6 +204,7 @@ void OperationService::recoverJournal() {
   EditorJob::discardStaging(root_+"/editing");
   // #1820: covered copies of a selection's files wait here only until their upload acquires them.
   EditorJob::discardStaging(root_+"/covered");
+  EditorJob::discardStaging(root_+"/styled");
   RecordingService::discardStaging(root_+"/recording");
   // Earlier destination tests' journals lose their signed links before any test is admitted (#1680).
   scrubDestinationTestJournals(root_+"/destination-tests");
@@ -366,6 +367,8 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  // delaySeconds (#1363): region, window, monitor and desktop captures, a repeat
  // and an edit of a screen capture can start after 3, 5 or 10 seconds; 0 is immediate.
  auto stripped=requested;const auto delayValue=stripped.take("delaySeconds");
+ // #1893: captureStyle true opens a file's edit with the capture style on (Edit again of a styled capture's original).
+ const auto styleValue=stripped.take("captureStyle");
  const QJsonObject options=stripped; // const: operator[] must not insert
  const int delay=delayValue.toInt();
  if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop, repeat and edit captures",{}},{});return;}
@@ -375,6 +378,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
  // An edit of the clipboard or a file reads no screen, so it has nothing to delay.
+ if(!styleValue.isUndefined()&&(action!="edit"||source!="file"||!styleValue.isBool())){reply({"invalid_request","captureStyle is true or false, for an edit of a file",{}},{});return;}
  if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is active; stop or cancel it before editing",{{"operationId",recording_->activeId()}}},{});return;}
@@ -386,7 +390,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
@@ -616,7 +620,7 @@ void OperationService::runCheck(Job job) {
  session->setPhaseHandler([owner,id](const QString& phase,const QJsonObject& findings){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,phase,findings]{if(owner&&!owner->stopping_)owner->checkPhase(id,phase,findings);},Qt::QueuedConnection);
  });
- // After Redact and upload the helper is an ordinary editor: the same copy paths as Edit & upload.
+ // After Open in editor the helper is an ordinary editor: the same copy paths as Edit & upload.
  session->setCopyHandler([owner,id](QByteArray png,std::function<void(Error)> done){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,png=std::move(png),done=std::move(done)]() mutable {
    if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the image was copied",{}});return;}
@@ -635,6 +639,7 @@ void OperationService::runCheck(Job job) {
  const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
+ const auto captureStyle=op.settings.captureStyle;const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  const auto coveredRoot=root_+"/covered/"+id;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
@@ -642,27 +647,36 @@ void OperationService::runCheck(Job job) {
  auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();checkJobs_.insert(id,shared);
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withCheck(std::move(check));};
+  // #1893: Open in editor (the sensitive prompt) of a capture opens with its capture style on; a selected file's starts plain.
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
    return QJsonObject{};
   }
   if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{},cover}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
-  QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
+  // Each image with its place in the selection: a file chosen twice is answered, and covered, once per place (#1898).
+  QStringList images;QList<int> places;
+  for(int place=0;place<shared->payload.files.size();++place)if(checkableImage(shared->payload.files[place])){images.append(shared->payload.files[place]);places.append(place);}
   if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
-  // The editor edits one image: Redact and upload is offered only for a selection of one.
+  // The editor edits one image: Open in editor is offered only for a selection of one; Redact and upload for every file.
   const bool single=shared->payload.files.size()==1&&images.size()==1;
   for(qsizetype index=0;index<images.size();++index){
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
    EditorJob::Check check{categories,prompt,single,{},cover};
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
-   shared->checkedFiles.insert(images[index],fileIdentity(images[index]));
+   // A file chosen twice that changed between its checks matches neither: its uncovered place fails as changed (#1898).
+   const auto identity=fileIdentity(images[index]);
+   {const auto known=shared->checkedFiles.constFind(images[index]);
+    shared->checkedFiles.insert(images[index],known!=shared->checkedFiles.cend()&&*known!=identity?QStringLiteral("-"):identity);}
    *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
    // #1820: a file covered automatically uploads as its covered PNG, staged privately in its place; the selection goes on.
    if(!outcome->png.isEmpty()&&!outcome->covered.isEmpty()){
     const auto folder=QStringLiteral("%1/%2").arg(coveredRoot).arg(index);
-    const auto name=QFileInfo(images[index]).completeBaseName().left(200)+QStringLiteral(".png");
+    // Within the 255-byte name limit after ".png" is added, cut at a whole character (#1898).
+    auto base=QFileInfo(images[index]).completeBaseName();
+    while(base.toUtf8().size()>200){base.chop(1);if(!base.isEmpty()&&base.back().isHighSurrogate())base.chop(1);}
+    const auto name=base+QStringLiteral(".png");
     QFile staged(folder+"/"+name);
     if(!QDir().mkpath(folder)||!QFile::setPermissions(coveredRoot,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!staged.open(QIODevice::WriteOnly|QIODevice::NewOnly)||staged.write(outcome->png)!=outcome->png.size()||!staged.flush()){
      staged.close();QFile::remove(staged.fileName());
@@ -670,9 +684,8 @@ void OperationService::runCheck(Job job) {
     }
     staged.close();
     for(auto it=outcome->covered.begin();it!=outcome->covered.end();++it)shared->covered[it.key()]=shared->covered[it.key()].toInt()+it.value().toInt();
-    // The same file selected twice: its first covered copy goes, the second takes its place.
-    if(shared->replacedFiles.contains(images[index]))discardCovered({{images[index],shared->replacedFiles.value(images[index])}});
-    shared->replacedFiles.insert(images[index],staged.fileName());shared->originalIdentities.insert(images[index],shared->checkedFiles.take(images[index]));
+    const auto place=QString::number(places[index]);
+    shared->replacedFiles.insert(place,staged.fileName());shared->originalIdentities.insert(place,identity);
     outcome->png.clear();outcome->covered={};outcome->check="upload";
     continue;
    }
@@ -702,7 +715,7 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   return;
  }
  if(phase=="editing"){
-  // Redact and upload: an edit now, outside the one-at-a-time check slot.
+  // Open in editor: an edit now, outside the one-at-a-time check slot.
   op.advance(OperationState::Editing);op.phase="editing";
   logging::info(logOperation(),"Sensitive text check opened the editor",{{"operationId",id}});
   // Only the edited PNG can upload now: let the original go. The worker is inside the editor
@@ -727,8 +740,8 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  }
  const auto next=[this,id]{if(checkingId_==id)checkingId_.clear();pumpChecks();};
  const bool unfinished=unfinishedChecks_.remove(id);
- // A prompt's covered counts stand only where those covers upload (set again below): never after Redact and
- // upload's edit, a Cancel or a failure.
+ // A prompt's covered counts stand only where those covers upload (set again below): never after Open in
+ // editor's edit, a Cancel or a failure.
  op.sensitive.remove("covered");
  // #1820: what the check covered on its own, summed over a selection; reported only for a check that finished.
  const auto recordCovered=[&op,unfinished](const QJsonObject& covered){
@@ -743,10 +756,14 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  const auto cancelled=job.cancelled->load()||outcome->error.code=="cancelled";
  if(cancelled){dropCovered();job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();return;}
  if(!outcome->png.isEmpty()){
-  // Redact and upload: only the editor's sanitized PNG goes on, as for Edit & upload.
-  // #1820: or the check's own covered PNG, with no prompt or after Upload anyway; the original then stays
-  // in memory until it is saved locally, with Keep a local copy on.
+  // Open in editor: only the editor's sanitized PNG goes on, as for Edit & upload.
+  // #1820: or the check's own covered PNG, with no prompt or after Upload anyway, or (#1898) after Redact and
+  // upload with every suggestion covered; the original then stays in memory until it is saved locally, with
+  // Keep a local copy on.
   ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(outcome->png);finalized.mime="image/png";
+  // #1893: Open in editor's edit drew the style the user chose; the check's own covers get it below.
+  // An editor opened only after Open in editor, which moved the operation to editing.
+  const bool fromEditor=op.state()==OperationState::Editing;
   ClipboardPayload original;
   if(!outcome->covered.isEmpty()){recordCovered(outcome->covered);if(op.settings.archive.keepUploads)original=std::move(job.payload);}
   job.payload={};
@@ -770,9 +787,9 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
     written["original"]=ok?originalPath:QStringLiteral("-");
    }
    return written;
-  },[this,op,flag,finalized=std::move(finalized)](Error e,QJsonObject written) mutable {
+  },[this,op,flag,finalized=std::move(finalized),fromEditor](Error e,QJsonObject written) mutable {
    if(e){if(const auto kept=written["original"].toString();!kept.isEmpty()&&kept!="-")QFile::remove(kept);op.error=e;op.advance(OperationState::Failed);finish(op);return;}
-   Job covered{op,std::move(finalized),true,flag,{}};covered.originalPath=written["original"].toString();
+   Job covered{op,std::move(finalized),true,flag,{}};covered.originalPath=written["original"].toString();covered.fromEditor=fromEditor;
    enqueue(std::move(covered));
   });
   next();return;
@@ -795,8 +812,17 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   // #1820: a selection's covered files upload in their places; the originals are saved locally with Keep a local copy on.
   if(!job.replacedFiles.isEmpty()){
    recordCovered(job.covered);
-   if(op.settings.archive.keepUploads)for(int index=0;index<job.payload.files.size();++index)if(const auto& file=job.payload.files[index];job.replacedFiles.contains(file))job.originalFiles.append({index,file,job.originalIdentities.value(file)});
-   for(auto& file:job.payload.files)file=job.replacedFiles.value(file,file);
+   // Replacements are keyed by place in the selection. A file covered at every place it was chosen uploads only
+   // covered copies, so it is not compared again; one also chosen uncovered still is.
+   QSet<QString> uncovered,coveredPaths;
+   for(int index=0;index<job.payload.files.size();++index){
+    const auto& file=job.payload.files[index];const auto place=QString::number(index);
+    if(!job.replacedFiles.contains(place)){uncovered.insert(file);continue;}
+    coveredPaths.insert(file);
+    if(op.settings.archive.keepUploads)job.originalFiles.append({index,file,job.originalIdentities.value(place)});
+   }
+   for(const auto& file:std::as_const(coveredPaths))if(!uncovered.contains(file))job.checkedFiles.remove(file);
+   for(int index=0;index<job.payload.files.size();++index)job.payload.files[index]=job.replacedFiles.value(QString::number(index),job.payload.files[index]);
   }
   enqueue(std::move(job));next();return;
  }
@@ -804,6 +830,50 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  // Cancel, or an agent's decision that never came: nothing is uploaded; the local copy follows Keep a local copy.
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
+}
+// #1893: region, window, monitor, desktop, Repeat last region (a region capture) and scrolling captures,
+// newly acquired, with Settings → Capture → Capture style on. Never an edit, a file, the clipboard or a retry.
+bool OperationService::needsStyle(const Job& job) {
+ const auto& op=job.op;
+ if(!op.settings.captureStyle.enabled||!job.acquire||job.sharingOnly||job.fromEditor)return false;
+ static const QStringList actions{"region","window","monitor","desktop","scroll"};
+ if(!actions.contains(op.action))return false;
+ return (job.payload.kind=="image"&&!job.payload.image.isNull())||(job.payload.kind=="png"&&!job.payload.bytes.isEmpty());
+}
+void OperationService::styleCapture(Job& job,Operation& op) {
+ // The same PNG the artifact store would encode; the image-job child decodes, styles and encodes it.
+ QByteArray png;
+ if(job.payload.kind=="png")png=job.payload.bytes;
+ else{QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!job.payload.image.save(&buffer,"PNG"))png.clear();}
+ if(png.isEmpty())return; // the store reports the encoding failure as before
+ QElapsedTimer clock;clock.start();
+ Error error;QString note;auto styled=ImageJob().style(png,op.settings.captureStyle,op.settings.limits,error,&note,job.cancelled);
+ if(error){
+  if(error.code=="cancelled")return;
+  // A style problem never fails or blocks a capture: it goes out as captured, with a note.
+  const auto why=error.code=="input_excessive"?QStringLiteral("Capture style wasn't applied: the styled image would be larger than put.gd's image limits."):QStringLiteral("Capture style wasn't applied: put.gd couldn't draw it.");
+  op.note=op.note.isEmpty()?why:op.note+" "+why;
+  logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(error)}});
+  return;
+ }
+ // The capture as it was, for run() to store instead if the store refuses the larger styled PNG.
+ job.unstyled=png;
+ // With Keep a local copy on, the capture as it was is kept beside the styled copy, as for automatic covers.
+ // A covered capture already keeps its original from before covering.
+ if(op.settings.archive.keepUploads&&job.originalPath.isEmpty()){
+  const auto originalPath=root_+"/styled/"+op.id+"-original.png";
+  const auto reserved=ArtifactStore::reserveDisk(root_,png.size());
+  QFile file(originalPath);bool ok=false;
+  if(reserved&&QDir().mkpath(QFileInfo(originalPath).absolutePath())&&QFile::setPermissions(QFileInfo(originalPath).absolutePath(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)&&file.open(QIODevice::WriteOnly|QIODevice::Truncate)&&file.setPermissions(QFile::ReadOwner|QFile::WriteOwner)&&file.write(png)==png.size()&&file.flush())ok=true;
+  file.close();if(!ok)QFile::remove(originalPath);
+  job.originalPath=ok?originalPath:QStringLiteral("-");job.styleOriginal=true;
+ }
+ job.payload={};job.payloadLease.reset();
+ job.payload.kind="png";job.payload.bytes=std::move(styled);job.payload.mime="image/png";
+ // Recorded on the operation only once the styled PNG is stored (run()).
+ job.style={{"applied",true}};
+ if(note=="picture_missing")job.style["pictureMissing"]=true;
+ logging::info(logOperation(),"Capture style applied",{{"operationId",op.id},{"durationMs",double(clock.elapsed())},{"bytes",double(job.payload.bytes.size())}});
 }
 void OperationService::keepOriginals(Job& job,Operation& op) {
  // Straight to the archive, outside the artifact store: never uploaded, never counted as a waiting upload.
@@ -824,7 +894,8 @@ void OperationService::keepOriginals(Job& job,Operation& op) {
   keep(op.items[index].artifact,path,QFileInfo(path).fileName());
  }
  job.originalFiles.clear();
- op.sensitive["original"]=QJsonObject{{"status",failed?"failed":"saved"},{"paths",paths}};
+ const QJsonObject original{{"status",failed?"failed":"saved"},{"paths",paths}};
+ if(job.styleOriginal)op.style["original"]=original;else op.sensitive["original"]=original;
  if(failed)logging::warning(logOperation(),"The original of a covered upload was not saved locally",{{"operationId",op.id},{"saved",paths.size()},{"failed",failed}});
 }
 void OperationService::discardCovered(const QHash<QString,QString>& replaced) {
@@ -848,7 +919,7 @@ bool OperationService::raiseSensitivePrompt(const QString& id,const QString& act
  return true;
 }
 void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {
- if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}
+ if(!QStringList{"redact_upload","edit","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact_upload, edit, upload or cancel",{}},{});return;}
  const auto session=checkSessions_.value(id);
  const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
  if(queued||(session&&session->phase()=="checking")||(session&&session->phase()=="starting")){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
@@ -895,6 +966,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;const auto redactTerms=op.settings.quickRedactTerms,redactPatterns=op.settings.quickRedactPatterns;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
+ const auto style=op.settings.captureStyle;const bool styleStart=styledEdits_.remove(op.id);const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
  auto edited=std::make_shared<EditorResult>();
@@ -928,11 +1000,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1229,7 +1301,7 @@ void OperationService::recordingCommand(const QString& command,const QJsonObject
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
- // #1804: Redact and upload turns a sensitive text check into an editor with the same ID.
+ // #1804: Open in editor turns a sensitive text check into an editor with the same ID.
  const auto session=editor_&&editingId_==id?editor_:checkSessions_.value(id);
  if(!session||(session!=editor_&&session->phase()!="editing")){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
  QPointer<OperationService> owner(this);
@@ -1264,6 +1336,8 @@ Operation OperationService::run(Job job) {
  };
  // #1820: covered copies of selected files are read once, by the acquisition below; then they go, whatever happens.
  const std::shared_ptr<void> coveredCopies(nullptr,[replaced=job.replacedFiles,original=job.originalPath](void*){discardCovered(replaced);if(!original.isEmpty()&&original!="-")QFile::remove(original);});
+ // #1893: the capture before its style, written below; removed once copied, whatever happens.
+ QString styledOriginal;const std::shared_ptr<void> styledCopy(nullptr,[&styledOriginal](void*){if(!styledOriginal.isEmpty()&&styledOriginal!="-")QFile::remove(styledOriginal);});
  if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
  if(job.acquire) {op.phase="preparing";if(!save())return op;
   // An upload route rejects files its destination can never store before copying them.
@@ -1277,7 +1351,34 @@ Operation OperationService::run(Job job) {
    job.payload={};job.payloadLease.reset();op.error={"sensitive_check_failed",QFileInfo(it.key()).fileName()+": the file changed after put.gd checked it for sensitive text, so nothing was uploaded. Upload it again to check it again.",{{"cause","file_changed"}}};
    op.advance(OperationState::Failed);save();return op;
   }
+  // #1893: a still capture goes on its capture style before it is stored. Off, nothing here runs.
+  if(needsStyle(job)){
+   styleCapture(job,op);if(job.styleOriginal)styledOriginal=job.originalPath;
+   // A capture cancelled while it was being styled stores nothing.
+   if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
+  }
   auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+  // #1893: a style problem never fails a capture. When the store refuses the styled PNG for its size or for disk space,
+  // the capture as it was is stored instead, once, and History says why.
+  if(acquired.error&&!job.unstyled.isEmpty()&&QStringList{"input_excessive","destination_object_too_large","disk_space_insufficient"}.contains(acquired.error.code)){
+   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(acquired.error)}});
+   // The unstyled capture is what will be stored: no -original beside it, and its disk space is free for it first.
+   // A covered capture's original from before covering stays.
+   if(job.styleOriginal){if(!job.originalPath.isEmpty()&&job.originalPath!="-")QFile::remove(job.originalPath);job.originalPath.clear();job.styleOriginal=false;}
+   job.style={};
+   ClipboardPayload plain;plain.kind="png";plain.bytes=std::move(job.unstyled);plain.mime="image/png";
+   acquired=artifacts.acquire(op.id,plain,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+   if(!acquired.error){
+    const auto note=QStringLiteral("Capture style wasn't applied: the styled image was too large to store or upload, so the capture was kept as it was.");
+    op.note=op.note.isEmpty()?note:op.note+" "+note;
+   }
+  }
+  job.unstyled.clear();
+  // #1893: the style stands on the operation only now that its PNG is stored.
+  if(!acquired.error&&!job.style.isEmpty()){
+   op.style=job.style;
+   if(job.style["pictureMissing"].toBool()){const auto why=QStringLiteral("The backdrop picture couldn't be read, so put.gd used Graphite.");op.note=op.note.isEmpty()?why:op.note+" "+why;}
+  }
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   // A file-manager upload names the requested file or folder a late failure came from.
   if(acquired.error&&!job.origins.isEmpty()){
@@ -1619,6 +1720,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
  finishing_.insert(op.id);
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
+ styledEdits_.remove(op.id);
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
  op.phase=op.stateName();
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();

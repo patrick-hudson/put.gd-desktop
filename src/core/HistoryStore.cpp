@@ -174,6 +174,8 @@ Error HistoryStore::persistOperation(const Operation& op,const ProviderRegistry*
   auto artifact=data.take("artifact").toObject();artifact.remove("path");
   for(auto it=artifact.begin();it!=artifact.end();++it) data[it.key()]=it.value();
   data["operationId"]=op.id;data["itemId"]=item.artifact.id;data["id"]=item.artifact.id;data["created"]=op.created;data["profileId"]=op.destination.profileId;
+  // #1893: a styled capture names the original kept beside it, which Edit again opens.
+  if(op.style["applied"].toBool()){QJsonObject style{{"applied",true}};const auto kept=op.style["original"].toObject()["paths"].toArray();if(!kept.isEmpty())style["original"]=kept.first();data["style"]=style;}
   q.prepare("INSERT INTO history(id,operation_id,item_id,created,name,mime,category,profile_id,upload_status,local_status,remote_status,data,publication_identity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET upload_status=excluded.upload_status,local_status=excluded.local_status,remote_status=excluded.remote_status,data=excluded.data,publication_identity=excluded.publication_identity");
   for(const auto& value:QVariantList{item.artifact.id,op.id,item.artifact.id,op.created,item.artifact.name,item.artifact.mime,item.artifact.category,op.destination.profileId,item.uploadStatus,item.local.status,remote["remoteStatus"].toString(),encode(data),identity}) q.addBindValue(value.metaType().id()==QMetaType::QString&&value.toString().isNull()?QVariant(QStringLiteral("")):value);
   ok=q.exec();

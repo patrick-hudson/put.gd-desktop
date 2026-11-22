@@ -1,6 +1,7 @@
 #include "core/SanitizedPng.h"
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
+#include "core/CaptureStyleRender.h"
 #include "editor/HighlightFilter.h"
 #include <QBuffer>
 #include <QColorSpace>
@@ -142,6 +143,40 @@ private slots:
   const auto first=edit(a),second=edit(b);
   QCOMPARE(first.render(),second.render());
   const auto png=first.exportPng();QVERIFY(!png.isEmpty());QCOMPARE(png,second.exportPng());QVERIFY(!inspectSanitizedPng(png));
+ }
+ // #1893: with no style the export is what it always was; with one, the capture's pixels are copied exactly
+ // inside the rounded outline, and a transparent backdrop keeps no hidden colour.
+ void captureStyleWrapsTheExportWithoutChangingIt(){
+  const auto base=noise({240,160},21);
+  EditDocument plain(base),styled(base);
+  QCOMPARE(styled.exportPng(),plain.exportPng());
+  auto look=CaptureStyle::preset("graphite");
+  QVERIFY(styled.setCaptureStyle(look));QVERIFY(styled.modified());
+  const auto image=styled.render();const auto geometry=look.geometry(base.size());
+  QCOMPARE(image.size(),geometry.canvas);QCOMPARE(styled.exportSize(),geometry.canvas);
+  for(int y=geometry.radius;y<base.height()-geometry.radius;++y)for(int x=geometry.radius;x<base.width()-geometry.radius;++x)
+   if(image.pixel(x+geometry.padding,y+geometry.padding)!=base.pixel(x,y))QFAIL(qPrintable(QString("pixel %1,%2 changed").arg(x).arg(y)));
+  QVERIFY(!inspectSanitizedPng(styled.exportPng()));
+  // Undo takes the style off again, back to the plain export.
+  QVERIFY(styled.undo());QCOMPARE(styled.exportPng(),plain.exportPng());
+  // The shadow runs along the whole bottom edge, not only under the corners.
+  {EditDocument paper(base);QVERIFY(paper.setCaptureStyle(CaptureStyle::preset("paper")));const auto shown=paper.render();const auto at=CaptureStyle::preset("paper").geometry(base.size());
+   const int below=at.padding+base.height()+int(at.offsetY)+1;
+   QVERIFY2(qGray(shown.pixel(shown.width()/2,below))<qGray(QColor("#efeee9").rgb())-8,"no shadow under the middle of the bottom edge");}
+  // Clear: transparent around the capture, with no colour hidden under alpha 0.
+  EditDocument clear(base);QVERIFY(clear.setCaptureStyle(CaptureStyle::preset("clear")));
+  const auto transparent=clear.render();QVERIFY(transparent.hasAlphaChannel());
+  QCOMPARE(qAlpha(transparent.pixel(0,0)),0);QCOMPARE(transparent.pixel(0,0),QRgb(0));
+  // The agent command: a preset turns it on, a field changes one part, enabled false turns it off; one undo step each.
+  EditDocument agent(base);QJsonArray created;QString code,message;
+  QVERIFY2(Commands::apply(agent,{QJsonObject{{"op","style"},{"preset","amber"}}},created,code,message),qPrintable(message));
+  QCOMPARE(Commands::state(agent)["style"].toObject()["preset"].toString(),QString("amber"));
+  QVERIFY2(Commands::apply(agent,{QJsonObject{{"op","style"},{"padding","large"}}},created,code,message),qPrintable(message));
+  QCOMPARE(agent.captureStyle().padding,QString("large"));QCOMPARE(Commands::state(agent)["style"].toObject()["preset"].toString(),QString("custom"));
+  QVERIFY(!Commands::apply(agent,{QJsonObject{{"op","style"}}},created,code,message));QCOMPARE(code,QString("edit_command_invalid"));
+  QVERIFY(!Commands::apply(agent,{QJsonObject{{"op","style"},{"backdrop",QJsonObject{{"kind","picture"}}}}},created,code,message));
+  QVERIFY(Commands::apply(agent,{QJsonObject{{"op","style"},{"enabled",false}}},created,code,message));
+  QCOMPARE(agent.exportPng(),plain.exportPng());
  }
 };
 QTEST_MAIN(EditorTest)

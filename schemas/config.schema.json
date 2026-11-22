@@ -1259,6 +1259,29 @@
           },
           "description": "Check captures for sensitive text before uploading (#1804, #1820). With enabled true, an image capture going to a destination has its text recognized first, with Quick redact's rules. Each kind in kinds is off (not looked for), warn (put.gd asks before uploading: Redact and upload, Upload anyway, Cancel) or redact (what is found is covered and the capture uploads without asking). Redact covers only text put.gd detected; recognition can miss text. A prompt opens only for warn matches left, or when the check can't finish, whatever the kinds say; Upload anyway keeps the automatic covers. A kind not in kinds follows categories, #1804's older list, where each named kind is warn; without categories, card, key and list are warn and the rest off. Omitted means off. Recognized text is never stored, logged or written to diagnostics."
         },
+        "captureStyle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "backdrop": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "kind": {"enum": ["color", "gradient", "picture", "none"]},
+                "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+                "colorEnd": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+                "picture": {"type": "string", "minLength": 1, "maxLength": 4096}
+              }
+            },
+            "padding": {"enum": ["small", "medium", "large"], "default": "medium"},
+            "corners": {"type": "boolean", "default": true},
+            "shadow": {"type": "boolean", "default": true}
+          },
+          "description": "Capture style (#1893): with enabled true, still captures (region, window, monitor, desktop, Repeat last region and scrolling captures) are placed on a canvas with padding, a backdrop, rounded corners and a soft shadow before they upload or are saved locally. The captured pixels are not changed. backdrop.kind is color (color), gradient (color to colorEnd at 135 degrees), picture (an absolute path to a PNG or JPEG, scaled to cover) or none (transparent). padding is proportional to the capture's shorter edge. Omitted or enabled false means off: every output stays exactly as without this option."
+        },
         "appearance": {
           "type": "object",
           "additionalProperties": false,
@@ -1847,6 +1870,14 @@
           ],
           "pattern": "^[A-Z0-9-]{1,32} SHA256:[A-Za-z0-9+/]{43}$",
           "description": "The host key trusted in put.gd's own known_hosts, as TYPE SHA256:…"
+        },
+        "keyFile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 4096,
+          "description": "Optional (#1892): the private SSH key file passed to ssh with -i and IdentitiesOnly=yes, as an absolute path; absent or null uses the agent and ~/.ssh/config"
         }
       }
     },

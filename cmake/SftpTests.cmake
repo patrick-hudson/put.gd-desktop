@@ -2,7 +2,7 @@
 # parser; and an opt-in run of the production provider and worker against a real OpenSSH
 # server, the storage lab's (tests/integration/test_sftp_live.cpp).
 if(BUILD_TESTING)
-  add_executable(test_sftp_rules tests/unit/test_sftp_rules.cpp)
+  add_executable(test_sftp_rules tests/unit/test_sftp_rules.cpp src/storage/sftp/SftpSsh.cpp)
   target_link_libraries(test_sftp_rules PRIVATE putgd_sftp_rules putgd_sftp_wire putgd_core Qt6::Test)
   add_test(NAME sftp_rules COMMAND test_sftp_rules)
   # #1890: storing one SFTP secret keeps the other when the keychain entry is locked.

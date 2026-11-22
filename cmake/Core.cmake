@@ -16,6 +16,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_text_child STATIC src/ocr/TextJobChild.cpp)
   target_link_libraries(putgd_text_child PUBLIC putgd_text_protocol putgd_ui_control putgd_build_identity)
 endif()
+# Capture style data and geometry (#1893): Qt Core only, shared by the resident
+# (validation) and putgd-ui's editor and image job (drawing, in putgd_editor).
+add_library(putgd_capture_style STATIC src/core/CaptureStyle.cpp)
+set_target_properties(putgd_capture_style PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(putgd_capture_style PUBLIC src)
+target_link_libraries(putgd_capture_style PUBLIC Qt6::Core putgd_build_options)
+# Drawing it: Qt GUI painting and the backdrop picture's decoding, linked only by putgd-ui
+# (the editor, Settings and the image-job child), never by the resident.
+add_library(putgd_capture_style_render STATIC src/core/CaptureStyleRender.cpp)
+target_include_directories(putgd_capture_style_render PUBLIC src)
+target_link_libraries(putgd_capture_style_render PUBLIC putgd_capture_style Qt6::Gui putgd_build_options)
 add_library(putgd_core STATIC src/core/Settings.cpp src/core/SensitiveText.cpp src/core/DestinationCheck.cpp src/core/CommandText.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp
@@ -52,7 +63,7 @@ endif()
 set_source_files_properties(src/core/Distribution.cpp PROPERTIES COMPILE_DEFINITIONS
   "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built};PUTGD_PACKAGE_REPOSITORY=\"${PUTGD_PACKAGE_REPOSITORY_URL}\"")
 target_include_directories(putgd_core PUBLIC src)
-target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log putgd_text_protocol Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
+target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log putgd_text_protocol putgd_capture_style Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
 # The streaming folder zip writer (#1105) deflates through zlib directly.
 find_package(ZLIB REQUIRED)
 target_link_libraries(putgd_core PRIVATE ZLIB::ZLIB)

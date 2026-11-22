@@ -110,6 +110,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
+ // #1893: the look saved in Settings, and whether this document starts with it (a new capture).
+ CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;qint64 styleMaxPixels=0;
  Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
@@ -153,7 +155,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
-   {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
+   // #1893: the exported size, which a capture style makes larger than the crop.
+   {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
    if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
    if(png.size()>outputBytes){
     recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
@@ -203,16 +206,19 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto stale=[&](const QJsonObject& params)->bool{const auto value=params["result"];return !value.isDouble()||value.toDouble()!=double(window->text().identity())||window->text().identity()==0;};
  const auto replyText=[](std::function<void(QJsonObject,QString,QString)> done){return [done](Error error,QJsonObject result){if(error)done({},error.code,error.message);else done(result,{},{});};};
  // Agent commands arrive from the resident's editor.* session methods.
- std::function<bool(const QString&)> decide;std::function<void()> handOffCovered;
+ std::function<bool(const QString&)> decide;std::function<void(bool)> handOffCovered;
+ // #1898: Redact and upload covers what was found: offered whenever the check found something on an image it read.
+ const auto redactOffered=[&]{return findings.any()&&document;};
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   if(deciding){
-   // #1804: the capture waits for Redact and upload, Upload anyway or Cancel; the resident sends only decide.
+   // #1804, #1898: the capture waits for Redact and upload, Open in editor, Upload anyway or Cancel; the resident sends only decide.
    if(name=="decide"){
     const auto choice=params["choice"].toString();
-    if(params.size()!=1||!QStringList{"redact","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact, upload or cancel");
+    if(params.size()!=1||!QStringList{"redact_upload","edit","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact_upload, edit, upload or cancel");
     if(terminal)return denied("editor_finalizing","The capture was already decided");
-    if(choice=="redact"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Redact and upload is not offered for this capture");
+    if(choice=="redact_upload"&&!redactOffered())return denied("sensitive_choice_unavailable","Redact and upload is not offered for this capture: nothing was found to cover");
+    if(choice=="edit"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Open in editor is not offered for this capture");
     if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
     return {{"decided",choice}};
    }
@@ -351,16 +357,20 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   return denied("invalid_request","Unknown editor command");
  };
  // #1820: the capture with only the automatic covers, handed off for upload like an edit, without a window.
- handOffCovered=[&]{
+ // #1898: with `everything` (Redact and upload), every suggestion stays: exactly the covers the prompt's preview
+ // shows, and the counts name the warn kinds found as well as the automatic covers.
+ handOffCovered=[&](bool everything){
   if(terminal||finalizing||!document)return;
-  QStringList warn;for(const auto& category:std::as_const(checkCategories))if(!checkCover.contains(category))warn<<category;
-  document->removeSuggested(warn);
+  if(everything){for(const auto& [category,count]:std::as_const(findings.found))if(count>0)covered.append({category,count});}
+  else{QStringList warn;for(const auto& category:std::as_const(checkCategories))if(!checkCover.contains(category))warn<<category;document->removeSuggested(warn);}
   finalizing=true;
-  if(control.send("finalizing",envelope(nonce)).isEmpty()){fail();return;}
+  auto frame=envelope(nonce);if(everything)frame["redacted"]=true;
+  if(control.send("finalizing",frame).isEmpty()){fail();return;}
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
-   {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
+   // #1893: the exported size, which a capture style makes larger than the crop.
+   {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
    if(png.isEmpty()){refuse("edit_export_failed");return;}
    if(png.size()>outputBytes){refuse("input_excessive");return;}
    const auto digest=files.write(png);const auto bytes=png.size();png.clear();png.squeeze();
@@ -376,8 +386,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(const auto counts=coveredJson(covered);!counts.isEmpty())frame["covered"]=counts;
   if(control.send("checked",frame).isEmpty()){fail();return;}
   if(!checkPrompt){decisionDeadline.start();return;}
-  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
-  // The capture as Redact and upload would open it: every suggestion painted black.
+  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=redactOffered();model.editAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
+  // The capture as Redact and upload sends it and Open in editor opens it: every suggestion painted black.
   if(document)model.preview=document->render();
   prompt=std::make_unique<SensitivePrompt>(std::move(model));
   QObject::connect(prompt.get(),&SensitivePrompt::chosen,&app,[&](const QString& choice){decide(choice);});
@@ -385,14 +395,18 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  };
  decide=[&](const QString& choice)->bool{
   if(!deciding||terminal)return false;
-  if(choice=="redact"&&!(checkRedact&&window))return false;
+  if(choice=="redact_upload"&&!redactOffered())return false;
+  if(choice=="edit"&&!(checkRedact&&window))return false;
   deciding=false;decisionDeadline.stop();
   if(prompt){prompt->choose(choice);prompt->hide();}
+  // #1898: Redact and upload: every suggestion covered, handed off for upload with no editor step.
+  if(choice=="redact_upload"){handOffCovered(true);return true;}
   // #1820: Upload anyway keeps what was covered automatically: the capture goes with those covers, the warn suggestions taken off.
-  if(choice=="upload"&&!coveredJson(covered).isEmpty()&&document){handOffCovered();return true;}
+  if(choice=="upload"&&!coveredJson(covered).isEmpty()&&document){handOffCovered(false);return true;}
   if(choice=="upload"){refuse("check_upload");return true;}
   if(choice=="cancel"){refuse("check_cancel");return true;}
-  // Redact and upload: the same document, its suggestions already placed, in the ordinary editor.
+  // Open in editor: the same document, its suggestions already placed, in the ordinary editor.
+  if(hasStyle&&styleStart){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}
   window->selectTool(editor::Tool::Redact);
   window->show();window->raise();window->activateWindow();
   if(control.send("editing",envelope(nonce)).isEmpty())fail();
@@ -421,6 +435,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      for(const auto& entry:list){if(!entry.isString()||!error(entry.toString()).isEmpty())return false;into.append(entry.toString());}
      return true;};
     if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,Settings::quickRedactPatternError)){fail();return;}}
+   // #1893: {saved, start}: the Settings look, and whether the document starts styled with it.
+   if((hasStyle=object.contains("style"))){
+    const auto style=object["style"].toObject();
+    if(!object["style"].isObject()||style.size()!=3||!style["start"].isBool()||CaptureStyle::validate(style["saved"],"style")||!number(style["maxPixels"],styleMaxPixels)||styleMaxPixels<1){fail();return;}
+    savedStyle=CaptureStyle::fromJson(style["saved"].toObject());styleStart=style["start"].toBool();
+   }
    // #1804: check mode, its categories, whether a person is asked and whether Redact and upload is offered.
    if(object.contains("check")){
     const auto check=object["check"].toObject();checkCategories.clear();
@@ -435,7 +455,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
-   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -488,6 +508,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
    window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
+   // #1893: a new capture starts with the saved look on; a check's hidden document starts plain, so its own
+   // covered export is the capture as it was (the resident styles it), and Redact and upload turns the look on.
+   if(hasStyle){document->setStyleLimit(styleMaxPixels);window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});
@@ -521,7 +544,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      // Nothing found, all of it read: the upload goes ahead as if there were no check.
      if(findings.complete&&!findings.any()){
       // Covered automatically with nothing left to ask about: the covered capture uploads, no prompt (#1820).
-      if(!coveredJson(covered).isEmpty()){handOffCovered();return;}
+      if(!coveredJson(covered).isEmpty()){handOffCovered(false);return;}
       refuse("check_clean");return;
      }
      checked();

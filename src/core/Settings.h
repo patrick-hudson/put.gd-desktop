@@ -1,4 +1,5 @@
 #pragma once
+#include "CaptureStyle.h"
 #include "Error.h"
 #include <QHash>
 #include <QJsonArray>
@@ -135,6 +136,9 @@ struct Settings {
     static QString sensitiveTextKind(const QJsonObject& check, const QString& category);
     static QStringList sensitiveTextCategoryNames(); // email, phone, ip, card, key, name, list
     static QStringList defaultSensitiveTextCategories(); // card, key, list
+    // preferences.captureStyle (#1893): padding, a backdrop, rounded corners and a shadow
+    // around still captures when they are exported. Off (and absent) by default.
+    CaptureStyle captureStyle;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;

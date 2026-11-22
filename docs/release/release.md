@@ -465,6 +465,26 @@ dashboard) and, through a git-refs manager, the digest of `tessdata_fast`'s `mai
 listed Tesseract 5.5.4, Leptonica 1.87.0, ZXing-cpp 3.1.1 and the data digest without warnings, and a
 disposable fixture with a wrong digest produced a digest update proposal.
 
+### SFTP destination dependency (#1871)
+
+The SFTP destination ([design](../design/storage-providers.md#sftp), [user guide](../user/sftp.md))
+runs the user's own OpenSSH client as a program; put.gd links and bundles no SSH library, so the
+SBOM is unchanged. No dependency generator sees a program put.gd starts, so every package names it:
+
+| Package kind | Runtime dependency |
+| --- | --- |
+| DEB | `openssh-client` |
+| RPM | `openssh-clients` |
+| pacman and the AUR recipe | `openssh` |
+| AppImage | none: the host's `ssh` is used, and Settings and uploads say `ssh_not_installed` without it |
+
+Two binaries are installed with every package and in the AppImage: `putgd-sftp-worker` (Qt Core and
+Qt Network, the crash handler, a debug file, and a `--version-json` identity that the install step,
+`check_source_build.py`, `audit_native.py` and `debug_symbols.py` require) and `putgd-sftp-askpass`,
+ssh's askpass program, which links only the C library so that ssh can start it under the host's
+library path from the AppImage. `audit_native.py` requires it at mode 0755 and requires the DEB and
+RPM dependency above (`RUNTIME_PACKAGES` in `tools/releases/native.py`).
+
 ### Codec distribution decision (#419)
 
 Patrick delegated the distribution choice on 2026-10-23. Retain the software

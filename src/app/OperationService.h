@@ -40,7 +40,7 @@ public:
  // prompt to a person; "report" (the default for session requests) pauses the
  // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
- // #1804: settles an operation waiting in sensitive_text_found: redact, upload or cancel.
+ // #1804, #1898: settles an operation waiting in sensitive_text_found: redact_upload, edit, upload or cancel.
  // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
  void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
  // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
@@ -266,12 +266,27 @@ private:
   // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
   QHash<QString,QString> checkedFiles={};
   // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
-  // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
-  // originalFiles: a covered selected file's item index, its path and its identity when checked.
+  // replacedFiles maps a selected file's place in the selection (as a number) to its covered PNG staged under
+  // covered/ (#1898: a file chosen twice may be covered at one place only); covered sums the kinds covered.
+  // originalIdentities: by the same place, the file's identity when checked. originalFiles: a covered selected
+  // file's item index, its path and its identity when checked.
   // originalPath: a covered capture's original, written as a private PNG at once so no raster waits in memory;
   // empty when none was kept, "-" when writing it failed.
   QString originalPath={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
-  QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};};
+  QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};
+  // #1893: the PNG came from an editor (Redact and upload), which drew its own style or none.
+  bool fromEditor=false;
+  // #1893: originalPath holds the capture before its style, not before covering.
+  bool styleOriginal=false;
+  // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
+  QByteArray unstyled={};
+  // #1893: the style applied to the payload ({applied, pictureMissing?}), recorded once it is stored.
+  QJsonObject style={};};
+ // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
+ static bool needsStyle(const Job&);
+ // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
+ QSet<QString> styledEdits_;
+ void styleCapture(Job&,Operation&);
  // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
  void keepOriginals(Job&,Operation&);
  // #1820: operations with a check that couldn't finish: their notification never says what was covered.

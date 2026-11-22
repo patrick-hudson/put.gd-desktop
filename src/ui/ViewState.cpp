@@ -13,7 +13,7 @@ const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","o
 const QStringList& r2Keys() {static const QStringList value{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
 // Nextcloud and WebDAV (#1872): addresses, the folder, the plain HTTP switch and the account's name.
 const QStringList& davKeys() {static const QStringList value{"server","folder","allowInsecureHttp","accountName","address","linkBase"};return value;}
-const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint"};return value;}
+const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint","keyFile"};return value;}
 const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():provider=="nextcloud"||provider=="webdav"?davKeys():provider=="sftp"?sftpKeys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
@@ -44,10 +44,17 @@ bool sensitiveDraft(const QJsonValue& value){
  for(const auto& choice:kinds.toObject())if(!choice.isString()||choice.toString().size()>16)return false;
  return (check["enabled"].isUndefined()||check["enabled"].isBool())&&(check["categories"].isUndefined()||stringArray(check["categories"],7));
 }
+// #1893: capture style; the picture is a path, like the archive folders.
+bool styleDraft(const QJsonValue& value){
+ if(!fields(value,{"enabled","backdrop","padding","corners","shadow"}))return false;
+ const auto style=value.toObject();const auto backdrop=style["backdrop"];
+ if(!backdrop.isUndefined()&&!scalars(backdrop,{"kind","color","colorEnd","picture"}))return false;
+ return scalars(QJsonObject{{"enabled",style["enabled"]},{"padding",style["padding"]},{"corners",style["corners"]},{"shadow",style["shadow"]}},{"enabled","padding","corners","shadow"});
+}
 bool preferencesDraft(const QJsonValue& value){
- auto object=value.toObject();const auto sensitive=object.take("sensitiveTextCheck");const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");const auto languages=object.take("textRecognitionLanguages");const auto terms=object.take("quickRedactTerms");const auto patterns=object.take("quickRedactPatterns");
+ auto object=value.toObject();const auto style=object.take("captureStyle");const auto sensitive=object.take("sensitiveTextCheck");const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");const auto languages=object.take("textRecognitionLanguages");const auto terms=object.take("quickRedactTerms");const auto patterns=object.take("quickRedactPatterns");
  return value.isObject()&&(languages.isUndefined()||stringArray(languages,3))&&(terms.isUndefined()||stringArray(terms,200))&&(patterns.isUndefined()||stringArray(patterns,50))&&scalars(object,{"scrollCaptureMaxHeight","scrollCaptureFromTop","scrollCaptureAutoScroll","notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","captureDelaySeconds","captureDelayShortcuts","recordingFrameRate","recordingMicrophone","recordingMicrophoneDevice","recordingClickHighlights","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
-  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}))&&(sensitive.isUndefined()||sensitiveDraft(sensitive));
+  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}))&&(sensitive.isUndefined()||sensitiveDraft(sensitive))&&(style.isUndefined()||styleDraft(style));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}
@@ -172,7 +179,7 @@ bool settingsState(const QJsonObject& s){
   if(!provisional.toObject().isEmpty()&&(!safeProfile(provisional.toObject()["profile"])||!profileEditor(provisional.toObject()["editor"])))return false;
  }
  if(!s["setupJobs"].isArray())return false;
- for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint","sftpClear"},true))return false;auto job=v.toObject();
+ for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint","sftpClear","sftpInspect"},true))return false;auto job=v.toObject();
   // The connection a Test started with (#1692): a SHA-256 in lowercase hex, never settings.
   if(job.contains("fingerprint")&&!QRegularExpression(QRegularExpression::anchoredPattern("[0-9a-f]{64}")).match(job["fingerprint"].toString()).hasMatch())return false;if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(job["kind"].toString()))return false;}
  return true;

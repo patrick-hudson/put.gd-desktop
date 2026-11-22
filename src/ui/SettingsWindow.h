@@ -214,7 +214,7 @@ private:
  // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
  bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
- SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();
+ SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
  // #1871: a Clear about to start; its setup job record carries the mark from then on.
  bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
@@ -260,6 +260,16 @@ private:
  // #1618: Quick redact's saved words (one per line) and regular expressions (one per line).
  QPlainTextEdit *quickRedactTerms_=nullptr,*quickRedactPatterns_=nullptr;
  // #1804: Check captures for sensitive text before uploading, and the Quick redact categories it looks for.
+ // #1893: Capture style. styleDraft_ is what the controls show; the section's rows edit it.
+ CaptureStyle styleDraft_;QCheckBox *styleEnabled_=nullptr,*styleCorners_=nullptr,*styleShadow_=nullptr;QComboBox *styleLook_=nullptr,*styleBackdrop_=nullptr,*stylePadding_=nullptr;
+ QToolButton *styleColor_=nullptr,*styleColorEnd_=nullptr;QPushButton* stylePicture_=nullptr;QLabel *stylePictureName_=nullptr,*stylePreview_=nullptr,*styleSize_=nullptr;
+ QList<QWidget*> styleRows_,styleCustomRows_;QWidget *styleColorsRow_=nullptr,*stylePictureRow_=nullptr;bool styleCustom_=false;FileDialog* pictureChooser_=nullptr;
+ void syncCaptureStyle();void editCaptureStyle(const std::function<void(CaptureStyle&)>& change);void chooseStylePicture();void pickStyleColor(bool end);
+ void renderStylePreview();
+public:
+ // The preview's synthetic sample at 1200 × 750, and the capture style around it; public for the UI catalog.
+ static QImage captureStyleSample(const CaptureStyle& style);
+private:
  QCheckBox* sensitiveCheck_=nullptr;QHash<QString,QComboBox*> sensitiveKinds_;QToolButton* sensitiveApplyAll_=nullptr;void showSensitiveCheck(); // #1820: Off, Warn or Redact automatically per kind
 public:
  // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.

@@ -134,6 +134,13 @@
     endif()
     add_test(NAME sensitive_check_integration COMMAND test_sensitive_check)
     set_tests_properties(sensitive_check_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 240)
+    # #1893: capture style through the operation service and the real image-job child.
+    add_executable(test_capture_style tests/integration/test_capture_style.cpp)
+    target_include_directories(test_capture_style PRIVATE tests)
+    target_link_libraries(test_capture_style PRIVATE putgd_app Qt6::Test)
+    add_dependencies(test_capture_style putgd-ui)
+    add_test(NAME capture_style_integration COMMAND test_capture_style)
+    set_tests_properties(capture_style_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
     set_tests_properties(editor_job_integration edit_operations_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 180)
   endif()
   add_executable(test_ui_endpoints tests/integration/test_ui_endpoints.cpp)

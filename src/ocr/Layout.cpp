@@ -9,6 +9,9 @@ namespace putgd::ocr {
 namespace {
 // Ink must differ from the background by at least this much.
 constexpr int inkContrast=24;
+// #1894: faint ink differs from the background by at least this much and from
+// the pixel before it on its row by faintStep, so a gradient is no ink.
+constexpr int faintContrast=12,faintStep=8;
 // A text height Tesseract's LSTM reads well: line runs of about this many rows.
 constexpr int targetLineRows=24;
 QRect bounds(const Quad& q){
@@ -80,7 +83,7 @@ int quietestRow(const Profile& profile,int first,int last){
 }
 }
 Profile measure(const GreyView& image,const QList<Quad>& codes){
- Profile profile;profile.rowInk.fill(0,image.height);
+ Profile profile;profile.rowInk.fill(0,image.height);profile.faintInk.fill(0,image.height);
  QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
  // Which pixels of a row lie in a code: the rectangles covering that row,
  // marked once per row, so each pixel costs one lookup however many codes.
@@ -106,11 +109,15 @@ Profile measure(const GreyView& image,const QList<Quad>& codes){
  const bool inkIsLight=profile.dark;
  for(int y=0;y<image.height;++y){
   const auto* row=image.row(y);const auto* inCode=rowMask(y);int ink=0;
+  int faint=0;
   for(int x=0;x<image.width;++x){
    const int p=row[x];
-   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!inCode||!inCode[x]))++ink;
+   if(inCode&&inCode[x])continue;
+   const int away=std::abs(p-profile.background);
+   if(inkIsLight?p>threshold:p<=threshold){if(away>=inkContrast)++ink;}
+   else if(x>0&&away>=faintContrast&&std::abs(p-row[x-1])>=faintStep)++faint;
   }
-  profile.rowInk[y]=ink;
+  profile.rowInk[y]=ink;profile.faintInk[y]=faint;
  }
  QList<int> runs;int run=0;
  for(int y=0;y<=image.height;++y){
@@ -344,6 +351,37 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
  }
  if(out.size()<2)return {whole};
  return out;
+}
+QList<Band> faintLines(const Profile& profile,int width,int height,int limit){
+ QList<Band> out;
+ if(profile.faintInk.size()!=height||profile.rowInk.size()!=height)return out;
+ const int line=profile.lineHeight>0?profile.lineHeight:12;
+ const int least=std::max(3,line/2),most=std::max(least,3*line),enough=std::max(4,width/256);
+ int start=-1;
+ for(int y=0;y<=height&&out.size()<limit;++y){
+  const bool faint=y<height&&profile.faintInk[y]>=enough&&profile.blank(y,width);
+  if(faint){if(start<0)start=y;continue;}
+  if(start>=0){
+   const int run=y-start;
+   // Padded by up to two rows, never into a row with ink at the threshold: a bright neighbour
+   // in the copy would pull Otsu's threshold above the faint line again (Sol on #1904).
+   if(run>=least&&run<=most){
+    int top=start,bottom=y;
+    while(top>0&&start-top<2&&profile.rowInk[top-1]==0)--top;
+    while(bottom<height&&bottom-y<2&&profile.rowInk[bottom]==0)++bottom;
+    out.append({top,bottom,false});
+   }
+   start=-1;
+  }
+ }
+ return out;
+}
+void stretchContrast(GreyImage& band,int background){
+ auto* p=reinterpret_cast<uint8_t*>(band.pixels.data());const qsizetype n=band.pixels.size();
+ int darkest=255;for(qsizetype i=0;i<n;++i)darkest=std::min<int>(darkest,p[i]);
+ const int paper=std::clamp(background,darkest+1,255);
+ if(paper-darkest<4)return;
+ for(qsizetype i=0;i<n;++i)p[i]=uint8_t(p[i]>=paper?255:(p[i]-darkest)*255/(paper-darkest));
 }
 GreyImage bandImage(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes,int background,bool invert){
  GreyImage out;

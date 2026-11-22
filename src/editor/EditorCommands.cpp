@@ -130,6 +130,37 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const EditDocument& doc,bo
  if(shape.kind==Kind::Redact||shape.kind==Kind::Blur)shape.rect=EditDocument::clampRect(shape.rect,image);
  return true;
 }
+// #1893: {op: style, enabled?, preset?, backdrop?, padding?, corners?, shadow?}. A preset sets
+// its whole look (and turns the style on unless enabled says otherwise); the other fields then
+// change single parts. Fields left out keep the document's current style.
+bool styleFrom(const QJsonObject& command,CaptureStyle& style,Failure& failure){
+ auto bad=[&](const QString& message){failure={"edit_command_invalid",message};return false;};
+ if(!only(command,{"op","enabled","preset","backdrop","padding","corners","shadow"})||command.size()<2)return bad("style needs at least one of enabled, preset, backdrop, padding, corners and shadow");
+ if(command.contains("preset")){
+  QStringList ids;for(const auto& preset:CaptureStyle::presets())ids.append(preset.id);
+  if(!ids.contains(command["preset"].toString()))return bad("preset must be "+ids.join(", "));
+  const bool enabled=style.enabled;style=CaptureStyle::preset(command["preset"].toString());
+  if(!command.contains("enabled")&&!enabled)style.enabled=true;
+ }
+ auto merged=style.toJson();
+ for(const auto* field:{"enabled","padding","corners","shadow"})if(command.contains(field))merged[field]=command[field];
+ if(command.contains("backdrop")){
+  // A partial backdrop keeps the colours already chosen.
+  auto backdrop=merged["backdrop"].toObject();const auto given=command["backdrop"].toObject();
+  if(!command["backdrop"].isObject())return bad("backdrop must be an object");
+  for(auto it=given.begin();it!=given.end();++it)backdrop[it.key()]=it.value();
+  if(given.contains("kind")&&given["kind"]!="picture"&&!given.contains("picture"))backdrop.remove("picture");
+  merged["backdrop"]=backdrop;
+ }
+ if(const auto error=CaptureStyle::validate(merged,"style"))return bad(error.message);
+ style=CaptureStyle::fromJson(merged);return true;
+}
+QJsonObject styleJson(const EditDocument& doc){
+ auto result=doc.captureStyle().toJson();result["preset"]=doc.captureStyle().presetId();
+ // A picture that can't be read is drawn as Graphite, as the capture path draws it.
+ if(doc.captureStyle().enabled&&doc.captureStyle().backdrop=="picture"&&doc.stylePicture().isNull())result["pictureMissing"]=true;
+ return result;
+}
 }
 
 QString kindName(Shape::Kind kind){return kinds().key(kind);}
@@ -153,7 +184,8 @@ QJsonObject shapeJson(const Shape& shape){
 QJsonObject state(const EditDocument& doc){
  QJsonArray shapes;for(const auto& shape:doc.shapes())shapes.append(shapeJson(shape));
  return {{"width",doc.size().width()},{"height",doc.size().height()},{"crop",rectJson(doc.crop())},{"shapes",shapes},
-  {"canUndo",doc.canUndo()},{"canRedo",doc.canRedo()},{"historyTruncated",doc.historyTruncated()},{"modified",doc.modified()}};
+  {"canUndo",doc.canUndo()},{"canRedo",doc.canRedo()},{"historyTruncated",doc.historyTruncated()},{"modified",doc.modified()},
+  {"style",styleJson(doc)},{"exportSize",QJsonArray{doc.exportSize().width(),doc.exportSize().height()}}};
 }
 
 bool apply(EditDocument& doc,const QJsonArray& commands,QJsonArray& created,QString& code,QString& message){
@@ -186,7 +218,10 @@ bool apply(EditDocument& doc,const QJsonArray& commands,QJsonArray& created,QStr
   else if(op=="undo"||op=="redo"){
    if(!only(command,{"op"}))return stop("edit_command_invalid",op+" has no fields");
    if(!(op=="undo"?draft.undo():draft.redo()))return stop("edit_history_empty","Nothing to "+op);
-  }else return stop("edit_command_invalid","op must be add, update, remove, crop, resetCrop, undo or redo");
+  }else if(op=="style"){
+   auto style=draft.captureStyle();if(!styleFrom(command,style,failure))return stop(failure.code,failure.message);
+   draft.setCaptureStyle(style);
+  }else return stop("edit_command_invalid","op must be add, update, remove, crop, resetCrop, undo, redo or style");
  }
  doc=std::move(draft);created=ids;return true;
 }

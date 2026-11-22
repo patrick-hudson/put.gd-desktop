@@ -252,7 +252,7 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","capture-style","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
@@ -275,7 +275,7 @@ QImage iconSpecimen(){
 QImage editorIcons(){
  const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
+ const QStringList names{"edit","select","redact","blur","crop","capture-style","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -283,7 +283,7 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","capture-style","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
  show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
@@ -428,7 +428,7 @@ int main(int argc,char** argv){
  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
  // Diagnostics packages save into the catalog's temporary state; the upload
  // destination's check is answered here, so nothing reaches the network.
- DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);ErrorLog errorLog(operations);fixture.server.setErrorLog(&errorLog);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject&,JsonReply reply,auto){if(destination.providerId=="sftp"&&kind=="inspectAccount"){reply({},{{"line","Connects to files.example.com:2222 as alice with key id_ed25519 (agent)"}});return;}loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+ DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);ErrorLog errorLog(operations);fixture.server.setErrorLog(&errorLog);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject&,JsonReply reply,auto){if(destination.providerId=="sftp"&&kind=="inspectAccount"){const auto key=destination.settings.value("keyFile").toString();reply({},{{"line",key.isEmpty()?QString("Connects to files.example.com:2222 as alice with key id_ed25519 (agent)"):"Connects to files.example.com:2222 as alice with key "+QFileInfo(key).fileName()}});return;}loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
  // The compact tier is shared API; show it before individual surfaces adopt it.
  {
   Ui::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl));rows->setSpacing(Ui::space(Ui::Space::l));
@@ -467,6 +467,15 @@ int main(int argc,char** argv){
  };
  if(qEnvironmentVariableIsSet("PUTGD_CATALOG_BAR_ONLY")){
   if(!commandBand({{"82-command-band-large-text",{1440,880}},{"83-command-band-large-text-narrow",{1060,680}}},"command-band-measurements-large-text.json"))return 2;
+  {
+   // #1898: the sensitive text prompt's four choices at enlarged text: one row where the screen has room, else two.
+   QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+   {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);}
+   SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+   SensitivePrompt prompt(std::move(found));prompt.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(prompt);if(!image.save(QDir(output).filePath("70e-sensitive-prompt-large-text.png")))return 2;
+   captures.append(QJsonObject{{"file","70e-sensitive-prompt-large-text.png"},{"width",image.width()},{"height",image.height()}});prompt.hide();
+  }
   QSaveFile file(QDir(output).filePath("large-text-captures.json"));if(!file.open(QIODevice::WriteOnly)||file.write(QJsonDocument(captures).toJson())<=0||!file.commit())return 2;
   return source.reads==0?0:2;
  }
@@ -570,6 +579,15 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1893: Capture style, off by default; turned on (Graphite) and then Custom with a gradient, each a draft Settings can keep.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStyleEnabled"),0,160);if(!save("settings-capture-style-off"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style"))return 2;
+ {auto* look=window.findChild<QComboBox*>("captureStyleLook");emit look->activated(look->findData("custom"));auto* backdrop=window.findChild<QComboBox*>("captureStyleBackdrop");emit backdrop->activated(backdrop->findData("gradient"));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style-custom"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(false);
  // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
  // Turned on, with its draft still a view state Settings can keep (#1804).
  window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
@@ -724,7 +742,17 @@ int main(int argc,char** argv){
   const QString fingerprint="ED25519 SHA256:lKD1cde7y8vs6nPz/4s3tCa5I1qSUf7Et8Vb93KG/90";
   panel->showTestError("ssh_host_unknown_key","The server's host key is "+fingerprint+". Trust it only if it matches the key your server's admin gave you.",{{"fingerprint",fingerprint}});
   if(!save("settings-sftp-trust-key",scrollPose(destinationScroll,window.findChild<QWidget*>("sftpHostKeyBanner"),40)))return 2;
-  panel->clearOffers();provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  panel->clearOffers();
+  // #1892: the one Sign-in section: a key file chosen outside ~/.ssh (synthetic, private), the two
+  // optional secrets and where they are kept, then Test upload.
+  {
+   QDir().mkpath(data.filePath("keys"));QFile key(data.filePath("keys/id_deploy"));
+   if(!key.open(QIODevice::WriteOnly))return 2;key.write(QByteArray("-----BEGIN OPENSSH ")+"PRIVATE "+"KEY-----\n");key.close();key.setPermissions(QFile::ReadOwner|QFile::WriteOwner);
+   auto* keyFile=window.findChild<QLineEdit*>("sftpKeyFile");if(!keyFile)return 2;keyFile->setText(key.fileName());emit keyFile->editingFinished();
+   if(!waitUntil([&]{return window.settings()->flushAutosave()&&resolved->text().endsWith("id_deploy");}))return 2;
+   if(!save("settings-sftp-sign-in",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialsEditor"),40)))return 2;
+   keyFile->clear();emit keyFile->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  }provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
  }
  // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
  // masked, and with its values stored for the session. The token is synthetic.
@@ -929,6 +957,10 @@ int main(int argc,char** argv){
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
   editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
   editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
+  // #1893: the Style tool with Graphite on, then Paper with large padding seen from Select: the canvas shows the frame.
+  editor.resize(1180,820);editor.setSavedStyle(CaptureStyle::preset("graphite"));editor.selectTool(editor::Tool::Style);
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","graphite"}}},code,message);if(!code.isEmpty()||!grab("30q-editor-style"))return 2;
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","paper"},{"padding","large"}}},code,message);editor.selectTool(editor::Tool::Select);if(!code.isEmpty()||!grab("30r-editor-style-canvas"))return 2;
   editor.allowClose();editor.close();
  }
  {
@@ -987,7 +1019,7 @@ int main(int argc,char** argv){
   if(!prompt("70a-sensitive-prompt",found))return 2;
   SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
   if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
-  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.redactAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.editAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
   if(!prompt("70c-sensitive-prompt-files",files))return 2;
   // #1820: card numbers on Redact automatically, email on Warn: the card is covered already, the prompt asks about the email.
   SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;

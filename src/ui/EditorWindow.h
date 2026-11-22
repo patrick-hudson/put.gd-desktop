@@ -14,7 +14,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QTimer;class QThread;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
+class QTimer;class QCheckBox;class QThread;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -198,6 +198,9 @@ public:
  void setQuickRedactGestureWaitMs(int ms){quickRedactGestureWaitMs_=ms;}
  // The saved Quick redact words and patterns (Settings), from the bootstrap.
  void setRedactList(QStringList terms,QStringList patterns);
+ // #1893: the look saved in Settings → Capture → Capture style, offered as Saved look when it
+ // is not one of the presets. Seeded from the bootstrap.
+ void setSavedStyle(const CaptureStyle& style);
  // editor.apply: the commands as one undo step, answered with the ids created and the document's state. A pointer
  // drag in progress owns the document's current undo step, so any change an agent asks for meanwhile answers
  // editor_busy instead of joining a step the drag may roll back (U13). On failure `code` and `message` say why.
@@ -288,6 +291,10 @@ private:
  QWidget *copyTextRow_=nullptr,*codeList_=nullptr;QVBoxLayout* codeLayout_=nullptr;quint64 codesShown_=~quint64(0);
  QLabel *textState_=nullptr,*textTruncated_=nullptr,*textFeedback_=nullptr,*codesTitle_=nullptr;QPushButton *copySelection_=nullptr,*copyAllText_=nullptr;
  void syncText();void rebuildCodes();void textOutcome(const QString& what,Error error,int characters,TextDone done);
+ // #1893: the Style tool's panel: on or off for this image, the look and the padding.
+ QWidget* styleRow_=nullptr;QCheckBox* styleEnabled_=nullptr;QComboBox* styleLook_=nullptr;QToolButton* stylePadding_[3]={};QLabel* styleSize_=nullptr;
+ CaptureStyle savedStyle_;bool syncingStyle_=false;
+ void syncCaptureStyle();void changeCaptureStyle(const std::function<void(CaptureStyle&)>& change);
  QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
  QStringList redactTerms_,redactPatterns_;int quickRedactGestureWaitMs_=textjob::maximumDeadlineMs;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
 };
