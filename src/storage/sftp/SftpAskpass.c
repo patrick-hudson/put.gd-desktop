@@ -5,6 +5,7 @@
  * starts under the host's own library path when put.gd runs from its AppImage. */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -26,6 +27,8 @@ int main(int argc, char** argv) {
     const char* socketPath = getenv("PUTGD_SFTP_ASKPASS_SOCKET");
     const char* token = getenv("PUTGD_SFTP_ASKPASS_TOKEN");
     const char* kind = getenv("SSH_ASKPASS_PROMPT"); /* "none": a notice; "confirm": yes or no */
+    /* ssh may exit before it reads the answer: the failed write then ends this program with status 1. */
+    signal(SIGPIPE, SIG_IGN);
     if (argc != 2 || !socketPath || !token || strlen(socketPath) >= sizeof(((struct sockaddr_un*)0)->sun_path)) return 1;
     int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (fd < 0) return 1;

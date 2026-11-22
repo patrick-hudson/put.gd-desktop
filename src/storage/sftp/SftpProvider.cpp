@@ -18,12 +18,6 @@ constexpr qint64 silenceLimitMs = 200000;
 // 20 s OPEN wait and its 8 s cleanup budget fit inside it.
 constexpr qint64 cancelGraceMs = 30000;
 Error parseError(const QJsonObject& value) { return {value["code"].toString("sftp_failed"), value["message"].toString("The SFTP request failed"), value["details"].toObject()}; }
-// Errors the worker reports before anything could have changed on the server.
-bool definite(const QString& code) {
-    return code.startsWith(QLatin1String("ssh_")) || QStringList{"sftp_settings_invalid", "sftp_folder_missing", "sftp_not_folder", "sftp_permission_denied", "sftp_disk_full",
-                                                                 "unsupported_capability", "artifact_invalid", "artifact_changed", "cancelled", "sftp_server_changed",
-                                                                 "sftp_delete_unavailable", "sftp_path_unsupported", "sftp_known_hosts_failed"}.contains(code);
-}
 // Only these methods sign in, so only they get the password and passphrase.
 bool signsIn(const QString& method) {
     static const QStringList methods{"connect", "checkName", "upload", "stat", "reconcile", "remove", "createFolder", "testDestination"};
@@ -308,7 +302,9 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     else retire(std::move(session));
     if (!final["ok"].toBool()) {
         error = parseError(final["error"].toObject());
-        if (uncertain) *uncertain = final["uncertain"].toBool() && !definite(error.code);
+        // The worker knows whether its failure came after it created the file (a refused write
+        // whose partial file it couldn't remove): its word stands, whatever the code.
+        if (uncertain) *uncertain = final["uncertain"].toBool();
     }
     return final["result"].toObject();
 }

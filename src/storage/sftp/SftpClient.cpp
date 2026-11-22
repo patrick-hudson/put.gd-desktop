@@ -72,13 +72,15 @@ Error Client::send(const QByteArray& packet) {
         if (count < 0 && errno == EINTR) continue;
         if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             if (waited.elapsed() > replyDeadlineMs) return lost();
-            // While ssh can't take more, read its replies so it never waits on us.
-            pollfd fds[2]{{ssh_.input(), POLLOUT, 0}, {ssh_.output(), POLLIN, 0}};
-            ::poll(fds, 2, 100);
+            // While ssh can't take more, read its replies and its stderr so it never waits on us.
+            pollfd fds[3]{{ssh_.input(), POLLOUT, 0}, {ssh_.output(), POLLIN, 0}, {ssh_.errors(), POLLIN, 0}};
+            ::poll(fds, ssh_.errors() >= 0 ? 3 : 2, 100);
+            if (ssh_.errors() >= 0 && fds[2].revents) ssh_.drainErrors();
             if (fds[1].revents)
                 if (auto e = pump(0)) return e;
             continue;
         }
+        // EPIPE (ssh has exited; the worker ignores SIGPIPE) and any other write error: the connection is gone.
         return lost();
     }
     return {};

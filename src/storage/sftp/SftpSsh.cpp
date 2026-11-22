@@ -148,10 +148,10 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
     } else resolved.agent = !agentSocket(env).isEmpty();
     if (resolved.userKnownHosts.isEmpty() && !resolved.userKnownHostsNone)
         resolved.userKnownHosts = {expandHome("~/.ssh/known_hosts", env), expandHome("~/.ssh/known_hosts2", env)};
-    // A path still holding a %-token or a ~user can't be read the way ssh reads it: put.gd then
-    // doesn't know what the user trusts, and fails closed.
+    // A path still holding a %-token, a ${VARIABLE} or a ~user can't be read the way ssh reads it:
+    // put.gd then doesn't know what the user trusts, and fails closed.
     for (const auto& file : resolved.userKnownHosts + resolved.globalKnownHosts)
-        if (file.contains('%') || file.startsWith('~')) resolved.knownHostsUnresolved = true;
+        if (file.contains('%') || file.contains(QLatin1String("${")) || file.startsWith('~')) resolved.knownHostsUnresolved = true;
     return resolved;
 }
 QString resolvedLine(const Resolved& r, bool password) {

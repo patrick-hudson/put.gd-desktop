@@ -29,6 +29,7 @@
 #include <QTimer>
 #include <QUuid>
 #include <condition_variable>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
@@ -695,15 +696,16 @@ private:
     }
     QJsonObject remove(Error& error, bool& uncertain) {
         const auto receipt = StorageReceipt::fromJson(request_["receipt"].toObject());
+        const auto path = receipt.objectReference["path"].toString();
+        // The intent is saved before the removal; it stays on record if the outcome is unclear.
+        // The identity check comes after it, so waiting for the journal never makes it stale.
+        const QJsonObject intent{{"schemaVersion", 1}, {"phase", "remove_intent"}, {"path", path}};
+        if (auto e = io.checkpoint(id_, intent)) { error = e; return {{"status", "failed"}}; }
         wire::Attributes checked;
         const auto found = identity(receipt, error, &checked);
         if (error) return {{"status", "failed"}};
         if (found["status"] == "missing") return {{"status", "missing"}};
         if (found["status"] != "own") return {{"status", "changed"}};
-        const auto path = receipt.objectReference["path"].toString();
-        // The intent is saved before the removal; it stays on record if the outcome is unclear.
-        const QJsonObject intent{{"schemaVersion", 1}, {"phase", "remove_intent"}, {"path", path}};
-        if (auto e = io.checkpoint(id_, intent)) { error = e; return {{"status", "failed"}}; }
         // Checked again right before REMOVE: the read-back above took time. SFTP has no
         // conditional remove, so another program could still replace the file in the one round
         // trip between this check and the removal.
@@ -916,6 +918,10 @@ int main(int argc, char** argv) {
     using namespace putgd::sftp;
     if (argc == 2 && std::strcmp(argv[1], "--version-json") == 0) { std::printf("%s\n", putgd::buildManifestJson()); return 0; }
     if (argc != 2 || std::strcmp(argv[1], "--session") != 0) return 2;
+    // A write to an ssh that has just exited (or to a resident that is gone) fails with EPIPE and
+    // is handled as a lost connection; it must not end the worker. ssh itself starts with SIGPIPE
+    // back at its default (SshProcess::start).
+    std::signal(SIGPIPE, SIG_IGN);
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(workerName);
     putgd::useHostCaBundle();

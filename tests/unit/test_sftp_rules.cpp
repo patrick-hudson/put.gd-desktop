@@ -133,6 +133,13 @@ private slots:
         QCOMPARE(sftp::withoutPassword("alice:p@ss@files.example.com:/srv", &had), QString("alice@files.example.com:/srv"));
         QCOMPARE(sftp::withoutPassword("alice@files.example.com:/srv", &had), QString("alice@files.example.com:/srv"));
         QVERIFY(!had);
+        // A percent-encoded separator counts as one, in either case.
+        QCOMPARE(sftp::withoutPassword("sftp://alice%3Apw@files.example.com/x", &had), QString("sftp://alice@files.example.com/x"));
+        QVERIFY(had);
+        QCOMPARE(sftp::withoutPassword("alice%3apw@files.example.com:/srv", &had), QString("alice@files.example.com:/srv"));
+        QVERIFY(had);
+        QCOMPARE(sftp::withoutPassword("sftp://alice@files.example.com/a%3Ab", &had), QString("sftp://alice@files.example.com/a%3Ab"));
+        QVERIFY(!had);
         QCOMPARE(sftp::withoutUserInfo("https://u:p@files.example.com/shots/", &had), QString("https://files.example.com/shots/"));
         QVERIFY(had);
     }

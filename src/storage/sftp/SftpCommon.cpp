@@ -132,7 +132,10 @@ QString withoutPassword(const QString& raw, bool* had) {
     }
     const auto at = text.lastIndexOf('@', end - 1);
     if (at < start) return text;
-    const auto colon = text.indexOf(':', start);
+    // The user part's password separator: a ':' or a percent-encoded one ("%3A", either case).
+    auto colon = text.indexOf(':', start);
+    const auto encoded = text.indexOf(QLatin1String("%3a"), start, Qt::CaseInsensitive);
+    if (encoded >= 0 && encoded < at && (colon < 0 || encoded < colon)) colon = encoded;
     if (colon < 0 || colon > at) return text;
     if (had) *had = true;
     return text.left(colon) + text.mid(at);
