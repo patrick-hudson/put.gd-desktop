@@ -1022,6 +1022,12 @@ private:
             }
             if (share["share_type"].toInt(-1) != 3) continue;
             const auto listed = share["token"].toString();
+            // A public link always carries its token; one without can't be matched, so it can't
+            // show that put.gd's link is absent either.
+            if (listed.isEmpty()) {
+                error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                return std::nullopt;
+            }
             const bool match = !token.isEmpty() ? listed == token : !digest.isEmpty() ? (!listed.isEmpty() && digestOf(listed) == digest) : share["label"].toString() == shareLabel(receipt);
             if (match) found.append(share);
         }
