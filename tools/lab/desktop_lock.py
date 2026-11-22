@@ -43,8 +43,11 @@ It is independent of the desktop lock: a timing run may need both.
                                                 CMD on HOST, renewing the lock while it runs
 
 `run` is the safe form of "acquire, then work": CMD never starts unless the lock
-is ours. CMD runs on the builder over the same pinned BatchMode SSH, with
+is ours. CMD runs on the builder over the same pinned BatchMode SSH, its words
+quoted as given (a shell expression goes in `sh -c '...'`), with
 $PUTGD_LAB_SESSION set to ID, so lab helpers' held and quiet checks know it.
+The lock is renewed three times per lease; two renewals in a row that can't
+reach the host, or one that is refused, stop CMD's SSH.
 The lock stays held after CMD unless --release is given (which releases it as
 `release --verified-clean` would, still refusing if CMD left something new).
 Lab helpers that install packages or drive a desktop call refuse_unless_held()
@@ -566,19 +569,11 @@ def refuse_unless_held(what, directory=None, session=None, resource='desktop'):
         raise SystemExit(f'{what} not started: {reason}. Run it through desktop_lock.py run HOST ... -- CMD')
 
 
-def refuse_unless_builder_held(what, address, session=None, run=subprocess.run):
-    """refuse_unless_held() for a workstation driver aimed at a builder by its address over SSH.
-    An address that is not one of the builders (a sandbox, a VM) has no desktop lock: no check."""
-    host = next((name for name, (known, _) in HOSTS.items() if known == address), None)
-    if host is None:
-        return
-    session = os.environ.get(SESSION_VARIABLE, '') if session is None else session
-    if not session:
-        raise SystemExit(f'{what} not started: pass the session that holds {host}\'s desktop lock '
-                         f'(lock_session, or {SESSION_VARIABLE})')
-    reply = call(host, {'action': 'held', 'resource': 'desktop', 'session': session}, run=run)
-    if not reply['ok']:
-        raise SystemExit(f'{what} not started: {reply["message"]}')
+def held_check_script(session, resource='desktop'):
+    """A shell script printing lock_problem() for `session` as JSON on the host it runs on, for a
+    workstation driver to send through its own transport to the host it will change."""
+    check = f'print(json.dumps({{"problem": lock_problem(session={session!r}, resource={resource!r})}}))'
+    return "python3 - <<'PUTGD_LOCK'\n" + Path(__file__).read_text() + '\n' + check + '\nPUTGD_LOCK\n'
 
 
 def remote(payload):
@@ -806,6 +801,9 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
         parser.error('run takes --resource desktop or quiet')
     if not command:
         parser.error('run needs a command after --')
+    if args.json:
+        parser.error('run prints its lock replies as text on stderr; --json does not apply')
+    every = min(every, args.minutes * 60 / 3)  # three renewals per lease, so one missed renewal never lapses it
 
     def lock_call(action, **fields):
         reply = call(args.host, dict(fields, action=action, resource=args.resource, session=args.session),
@@ -824,17 +822,20 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
     if not reply['ok']:
         print(f'{args.host}: command not run: this session does not hold the lock', file=sys.stderr)
         return 3 if reply.get('unreachable') else 1
-    remote = [f'export {SESSION_VARIABLE}={shlex.quote(args.session)};', *command]
+    # CMD's words reach the remote shell as they were given; a shell expression goes in `sh -c '...'`.
+    remote = [f'export {SESSION_VARIABLE}={shlex.quote(args.session)};', shlex.join(command)]
     process = popen(ssh_command(args.host, args.identity, args.pins, remote))
+    missed = 0
     while True:
         try:
             code = process.wait(timeout=every)
             break
         except subprocess.TimeoutExpired:
             renewed = lock_call('extend', minutes=args.minutes)
-            if not renewed['ok'] and not renewed.get('unreachable'):
-                print(f'{args.host}: the lock is no longer ours; stopping the command\'s SSH (anything it '
-                      'started on the host may still be running)', file=sys.stderr)
+            missed = missed + 1 if renewed.get('unreachable') else 0
+            if (not renewed['ok'] and not renewed.get('unreachable')) or missed >= 2:
+                print(f'{args.host}: the lock is no longer confirmed ours; stopping the command\'s SSH (anything '
+                      'it started on the host may still be running)', file=sys.stderr)
                 process.terminate()
                 process.wait()
                 return 1

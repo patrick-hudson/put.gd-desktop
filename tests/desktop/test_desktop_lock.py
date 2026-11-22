@@ -462,12 +462,19 @@ class HeldAndRun(LockTest):
                 lock.refuse_unless_held('record_run', self.directory, 'local_b')
             lock.refuse_unless_held('record_run', self.directory, 'local_a')
 
-    def test_a_workstation_driver_checks_only_builder_addresses(self):
-        def never(*args, **kwargs):
-            raise AssertionError('no SSH for a non-builder')
-        lock.refuse_unless_builder_held('physical.py', '127.0.0.1', '', run=never)
-        with self.assertRaisesRegex(SystemExit, "pass the session that holds k72's desktop lock"):
-            lock.refuse_unless_builder_held('physical.py', '192.168.68.72', '', run=never)
+    def test_a_workstation_driver_checks_the_host_its_own_transport_reaches(self):
+        def problem(home, session):
+            script = lock.held_check_script(session)
+            output = lock.subprocess.run(['sh', '-s'], input=script, capture_output=True, text=True,
+                                         env=dict(os.environ, HOME=str(home)), check=True).stdout
+            return json.loads(output.strip().splitlines()[-1])['problem']
+        with tempfile.TemporaryDirectory() as home:
+            self.assertIsNone(problem(home, ''))  # no lab lock directory: not a shared builder
+            locks = Path(home) / 'putgd-lab' / 'locks'
+            lock.Desktop(locks, 'k72', inventory=lambda: ([], [])).acquire('o', 'local_a', 'p', 5)
+            self.assertIn('is not set', problem(home, ''))
+            self.assertIn("not local_b", problem(home, "local_b"))
+            self.assertIsNone(problem(home, 'local_a'))
 
     def run_main(self, *argv, process=None):
         """Run the CLI with a local lock directory standing in for k72; returns (code, commands started)."""
@@ -481,6 +488,7 @@ class HeldAndRun(LockTest):
             return process or FakeProcess([0])
 
         with tempfile.TemporaryDirectory() as pins:
+            self.pins = Path(pins)
             (Path(pins) / 'k72').mkdir()
             (Path(pins) / 'k72' / 'known_hosts').write_text('')
             with mock.patch.object(lock, 'remote_script',
@@ -500,6 +508,8 @@ class HeldAndRun(LockTest):
         code, started = self.run_main('--', 'hostname')
         self.assertEqual(code, 0)
         self.assertEqual(started[0][-3:], ['patrick@192.168.68.72', "export PUTGD_LAB_SESSION=local_a;", 'hostname'])
+        _, started = self.run_main('--', 'printf', '[%s]', 'first second; rm x')
+        self.assertEqual(started[0][-1], "printf '[%s]' 'first second; rm x'")  # words survive the remote shell
         self.assertIn('BatchMode=yes', started[0])
         self.assertEqual(self.desktop.held('local_a')['lock']['purpose'], 'row')
         code, started = self.run_main('--', 'true')  # the holder's re-run renews its own lock
@@ -515,12 +525,17 @@ class HeldAndRun(LockTest):
         process = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 3], during=age)
         code, _ = self.run_main('--', 'sleep', '1200', process=process)
         self.assertEqual(code, 3)  # the command's own exit code
-        self.assertEqual(process.waits, [lock.RENEW_SECONDS] * 2)
+        self.assertEqual(process.waits, [200] * 2)  # a third of the 10-minute lease
         self.assertNotEqual(lock.parse_lock((self.directory / 'desktop.lock').read_text())['heartbeat'], old)
         broken = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 0],
                              during=lambda: self.desktop.release('local_a', verified_clean=True))
         code, _ = self.run_main('--', 'sleep', '1200', process=broken)
         self.assertEqual((code, broken.terminated), (1, True))
+        timeout = lock.subprocess.TimeoutExpired('ssh', 1)
+        unreachable = FakeProcess([timeout, timeout, 0],
+                                  during=lambda: (self.pins / 'k72' / 'known_hosts').unlink(missing_ok=True))
+        code, _ = self.run_main('--', 'sleep', '1200', process=unreachable)
+        self.assertEqual((code, unreachable.terminated, len(unreachable.waits)), (1, True, 2))
 
     def test_release_gives_the_lock_back_after_the_command(self):
         code, _ = self.run_main('--release', '--resource', 'quiet', '--', 'true')
