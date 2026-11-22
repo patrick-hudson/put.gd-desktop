@@ -144,6 +144,19 @@ Delete is unavailable for that upload, and Test leaves its test file on the serv
 - **Names**: an upload never replaces a file. A name that is taken follows the collision rule in
   Settings → Capture (rename or skip).
 
+## Limits
+
+- **A file replaced at the moment its link is made.** Nextcloud's share API picks the file by
+  its path only. put.gd checks that the file is still the one it uploaded just before it asks for
+  the link, and checks the link it gets back right after. If another app replaced the file in
+  between, put.gd removes that link at once and reports the file as changed; until the removal is
+  confirmed the outcome stays unknown. For that moment the link existed.
+- **An install path with an encoded slash** (`%2F`) is read as a plain `/` when an address is
+  pasted. Type the server address by hand for such an install.
+- **Credentials belong to an address.** An app password or WebDAV password is used only for the
+  server address (scheme, host and port) it was given for, as browsers scope Basic
+  authentication. Another folder on the same server keeps it.
+
 ## Agents
 
 `ui.davDestination` (`putgd-cli`) and `drive_dav_destination` (MCP) edit the form, press Sign in,
