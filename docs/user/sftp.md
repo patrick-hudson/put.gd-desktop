@@ -78,7 +78,7 @@ Settings shows the test's summary. Each step and what it proved comes through `s
 | folder | Folder on server exists and is a folder. |
 | upload | A small test file was uploaded under a name nothing else uses. |
 | link | The link, fetched anonymously as anyone given it would, returned the same bytes. Skipped without a Link address. |
-| cleanup | The test file was checked and deleted again, and the server confirmed it. |
+| cleanup | The test file was checked and deleted again and the server confirmed it, or it was already gone. |
 
 Every step's answer is checked: the flush to disk, the check after the file was closed and the
 removal. A test that stops at a step names it, and the message says what to change. The result's
@@ -103,10 +103,11 @@ files. If put.gd can't check your known_hosts files (ssh-keygen fails, or a file
 (`UserKnownHostsFile none`), put.gd uses none of its own either, and Trust key refuses with
 `ssh_known_hosts_off`.
 
-Host keys come only from those files: never from DNS, never skipped for localhost, with no
-second check by IP address, and no keys learned from the server. A `KnownHostsCommand` in your
-settings is honoured when connecting, but put.gd can't record what it vouches for, so an upload
-fails when that command is the only thing that trusts the server. A ProxyJump hop's own host key
+Host keys come from those files and, for ordinary connections, from a `KnownHostsCommand` in your
+settings; the reconnects that check an earlier upload (History, cancel cleanup) use only the
+recorded entries. Never from DNS, never skipped for localhost, with no second check by IP
+address, and no keys learned from the server. put.gd can't record what a `KnownHostsCommand`
+vouches for, so an upload fails when that command is the only thing that trusts the server. A ProxyJump hop's own host key
 is checked by your ssh settings, as in a terminal.
 
 - **Unknown key.** Uploads refuse with `ssh_host_unknown_key`. **Test** fetches the key over the
@@ -128,8 +129,9 @@ is checked by your ssh settings, as in a terminal.
   file put.gd found the server's key in. It can mean someone is intercepting the connection. Only
   after your server's admin confirms the key was rotated, remove the old one with
   `ssh-keygen -R '<lookup name>' -f '<known_hosts file>'`, using the name and file the error
-  gives, and test again. For a system-managed file (such as `/etc/ssh/ssh_known_hosts`), ask
-  its admin.
+  gives, and test again. The error names the first file with an entry for the server, which may
+  not be the one ssh objected to, so check your other known_hosts files too. For a
+  system-managed file (such as `/etc/ssh/ssh_known_hosts`), ask its admin.
 
 Changing the Server clears the recorded fingerprint, because another server has another key.
 It keeps the stored password and key passphrase, so review them.
@@ -163,11 +165,12 @@ counts from the moment you press it, even before the upload started. Once put.gd
 server to create the file, it waits up to 20 seconds for that answer, and then up to 5 seconds
 for the new file's owner, before it stops, so it can remove the file. A cancel that arrives
 after the server acknowledged every byte is too late, and the upload finishes. On a slow
-connection the removal can wait behind data ssh is still sending, and if the connection drops it
-can't be sent at all. After 3 seconds put.gd ends that connection and tries again over a new one
-to the same server, as the same user, checked against the same host key. That needs the owner
-the server reported right after creating the file, and it removes the file only while it is
-still a regular file with that owner, no larger than the upload. Otherwise the upload is shown
+connection the removal can wait behind data ssh is still sending; after 3 seconds put.gd ends
+that connection, and a connection that broke goes there at once. It then tries again over a new
+connection to the same server, as the same user, checked against the `known_hosts` entries the
+upload was verified by. That needs the size, owner, times and type the server reported for the
+new regular file right after creating it, and it removes the file only while it is still a
+regular file with that owner, no larger than the upload. Otherwise the upload is shown
 as unknown, with the path to check. When put.gd quits, a request still running gets up to 30
 seconds.
 
@@ -254,7 +257,7 @@ nothing asks again.
 | `sftp_not_folder` | That path is a file. Choose another Folder on server |
 | `sftp_permission_denied` | The user can't write there; fix the folder's permissions or choose another |
 | `sftp_disk_full` | Free space on the server |
-| `sftp_server_changed` | The server no longer holds the key it had at the upload, or the destination now reaches another server; put.gd leaves that upload alone |
+| `sftp_server_changed` | The server no longer satisfies the `known_hosts` entries recorded at the upload (any of those keys, or a certificate from a recorded authority), or the destination now reaches another server; put.gd leaves that upload alone |
 | `ssh_known_hosts_unreadable` | put.gd couldn't check your known_hosts files; fix the file or the `UserKnownHostsFile` setting the message names |
 | `sftp_path_unsupported` | Choose a folder whose name on the server is plain UTF-8 |
 

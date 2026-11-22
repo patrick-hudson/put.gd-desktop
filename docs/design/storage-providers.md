@@ -254,8 +254,8 @@ didn't ask for, or a second one, is a protocol error that ends the connection. O
 takes at most 1 MiB before it parses. Replies are bounded before use: a packet at most 1 MiB; a
 version reply at most 64 extensions (names up to 256 bytes, data up to 4096); a status message
 up to 4096 bytes and its language tag up to 256; a handle up to 256 bytes; a name list at most
-1024 entries, each name up to 4096 bytes and its long name up to 8192. Paths put.gd sends are
-at most 4096 bytes. At end of file the replies already read are still
+1024 entries, each name up to 4096 bytes and its long name up to 8192. The folder put.gd sends
+is at most 4096 bytes; the file name is appended after it. At end of file the replies already read are still
 delivered; only requests without one fail. The server must answer version 3 exactly.
 Extensions are used only at the versions put.gd implements (`fsync@openssh.com` 1,
 `statvfs@openssh.com` 2, `limits@openssh.com` 1); `limits@openssh.com` bounds read and write
@@ -281,7 +281,8 @@ askpass has stopped and with a fresh environment that has none: ssh with `BatchM
 `StrictHostKeyChecking=accept-new`, `HashKnownHosts=no`, a new temporary `UserKnownHostsFile`,
 `GlobalKnownHostsFile=/dev/null`, `PreferredAuthentications=none` and `IdentityAgent=none`
 over the same route, so the key ssh accepted is written to that file and no credential is
-offered. Its fingerprint (key type and unpadded base64 SHA-256 of the key blob, as
+offered to the destination (a jump host on the route still signs in with the user's own
+settings). Its fingerprint (key type and unpadded base64 SHA-256 of the key blob, as
 `ssh-keygen -l` prints it) goes into the error details. `trustHostKey` refuses when the user's
 settings turn known_hosts off (`ssh_known_hosts_off`), when the host token isn't one literal
 host (a `HostKeyAlias` pattern, list or negation: `ssh_host_alias_pattern`), and when the
@@ -312,8 +313,8 @@ aren't resolved again, so a parent link changed meanwhile can redirect it). The 
 name is the path every name check, receipt, lock key and deletion uses. The path and the
 verified server are checkpointed before the open. The file opens under its final name with
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
-its reply is awaited for up to 20 seconds whatever a cancel says, and a handle that comes back
-is closed and the file removed; a lost reply leaves the outcome unknown. Right after the open an `fstat`
+its reply is awaited for up to 20 seconds whatever a cancel says, so a handle that comes back is
+never lost and the cleanup below can be attempted; a lost reply leaves the outcome unknown. Right after the open an `fstat`
 records the new file's owner; it waits at most 5 seconds, and without an answer nothing can be
 removed safely, so the outcome is unknown with the path. After a cancel or failure the CLOSE and REMOVE get 3 seconds on the
 upload's own connection, sending included (a packet ssh can't take in time ends that
@@ -349,8 +350,8 @@ server's identity: a ProxyCommand or jump host could forge or displace it; `conc
 percent-encoded name, or empty. The lock key and History's identity are the resolved host, port,
 user and canonical path. `reconcile` claims a file only with the attempt's own journaled
 evidence: the path checkpointed before the open, then the handle's size, mtime and uid and the
-SHA-256 checkpointed before the close, an `lstat` that matches them and, up to 256 MiB, a read-back
-with that SHA-256. Without it the result is unknown with the path (`sftp_reconcile_unknown`); with
+SHA-256 checkpointed before the close, an `lstat` that matches them and a read-back with that SHA-256,
+which is done only up to 256 MiB, so a larger file stays unknown. Without it the result is unknown with the path (`sftp_reconcile_unknown`); with
 nothing journaled the attempt never opened a file, so the name is `missing` for this upload.
 
 **Deletion and capabilities.** `stat`, the check before removal and `reconcile` connect with
