@@ -42,13 +42,14 @@ int exitChild(int argc,char** argv) {
  const bool stuck=qEnvironmentVariable("PUTGD_RUNNER_EXIT_CHILD")=="stuck";
  ui::setQuickRedactAccountLookup([stuck](const std::function<bool()>& stopped){
   std::puts("lookup");std::fflush(stdout);
+  // The quit timer starts only now, so the exit always meets a running lookup.
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[]{QTimer::singleShot(200,QCoreApplication::instance(),[]{std::puts("quit");std::fflush(stdout);QCoreApplication::quit();});},Qt::QueuedConnection);
   if(stuck)QThread::msleep(10000);
   else{while(!stopped())QThread::msleep(5);std::puts("cancel seen");std::fflush(stdout);}
   return ui::Account{QStringLiteral("someone"),{}};
  });
  QObject context;
  ui::runQuickRedact(&context,words("someone filed JIRA-9"),{"name","list"},quickRedact::Sources{{},{},{},{R"(JIRA-\d)"}},[](quickRedact::Result){},10000);
- QTimer::singleShot(200,&app,[&app]{std::puts("quit");std::fflush(stdout);app.quit();});
  return app.exec();
 }
 }
@@ -275,6 +276,7 @@ private slots:
   out+=child.readAllStandardOutput();
   qInfo("%s: ended %lld ms after quitting",qPrintable(mode),ended);
   QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);
+  QVERIFY2(out.startsWith("lookup\n"),out.constData());
   QVERIFY2(ended<ui::quickRedactExitWaitMs+test::scaled(500),qPrintable(QString::number(ended)));
   // #1662: no lower bound for the stuck case. The clock starts when this
   // process notices "quit", which a loaded runner delays by a poll or more, so
