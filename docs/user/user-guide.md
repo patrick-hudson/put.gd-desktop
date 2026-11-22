@@ -92,11 +92,28 @@ Choose **Capture region & edit** from the action bar or the tray, or assign it a
 - **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
 - **Arrow** (A), **Line** (L), **Rectangle** (R), **Ellipse** (E), **Pen** (P), **Highlight** (H) and **Text** (T) add simple marks; Shift keeps a line at 0°, 45° or 90° and makes squares and circles.
 - **Step number** (N) drops numbered discs: each click places the next number. Change **Next number** to start elsewhere; deleting one leaves the others as they are.
+- **Style** (S) puts the image on a backdrop with padding, rounded corners and a shadow. See [Style your screenshots](#style-your-screenshots).
 - **Copy text** (G), the last tool, reads the text in the image so you can select and copy it. See [Copy text in the editor](#copy-text-in-the-editor).
 - Any drawing tool picks up a mark you can see under the pointer; hold Ctrl to draw over it. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
 - Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
 
 **Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file, and **Copy image** (Ctrl+Shift+C) puts it on the clipboard to paste elsewhere; neither uploads or adds anything to History. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
+
+## Style your screenshots
+
+**Settings → Capture → Capture style** puts screenshots on a backdrop, with padding around them, rounded corners and a soft shadow, so a capture looks finished when you paste the link into a chat or a document. It is off until you turn on **Style screenshots**. The capture is placed on a larger image with its corners rounded off; its solid pixels stay as captured, while see-through ones (a window's transparent corner, say) show the backdrop through them. Then pick a **Look**:
+
+- **Graphite**, a dark grey gradient, is chosen first.
+- **Amber** is a warm gold gradient.
+- **Paper** is a plain off-white.
+- **Clear** has no backdrop at all: rounded corners and a shadow on a transparent PNG. A shadow on transparency can disappear in dark chat apps.
+- **Custom** lets you choose a colour, a two-colour gradient, a picture of your own or no backdrop.
+
+**Padding** (Small, Medium or Large) grows with the capture, so a small region gets a little space and a full screen more. **Rounded corners** and **Soft shadow** can be turned off. The **Preview** shows the look on a sample window, with the size a 1920 × 1080 capture becomes.
+
+With the option on, region, window, monitor and desktop captures, Repeat last region and scrolling captures are styled before they upload or are saved. With **Keep a local copy** on, the capture as it was taken is saved beside the styled one, with `-original` in its name, and **Edit again** in History opens that original with the style on, so you can change the look. If that `-original` wasn't kept or has been deleted, Edit again opens the styled copy with the style off. If the styled copy itself isn't kept or has been deleted, Edit again isn't available, as for any capture. A capture that [Check captures for sensitive text](#check-captures-for-sensitive-text-before-uploading) covered is always reopened as its covered, styled copy, never as the original from before covering. A picture you choose is copied into put.gd's data folder, so moving or deleting your file later changes nothing; if put.gd can't read it, the capture gets Graphite's gradient and History says so. The sensitive text check reads only the capture, not the backdrop, so use a picture with nothing private in it. A capture too large to style is saved and uploaded as it was, with a note. Recordings, clipboard uploads and files are never styled.
+
+In the editor, the **Style** tool (S) turns the style on or off for the image you are editing and changes its look and padding. A new capture starts with it on while the option is on; a file and the clipboard image start with it off, and Edit again starts as described above. The canvas shows the frame as it will be saved, and Ctrl+Z undoes a style change like any edit.
 
 ## Capture a scrolling region
 
@@ -208,7 +225,7 @@ Turn on **Check captures for sensitive text before uploading** in **Settings →
 
 **Card numbers**, **Keys and tokens** and **My redaction list** are on **Warn** to start with. **Email addresses**, **Phone numbers**, **IP addresses** and **My username and name** start **Off**, because most chat and terminal screenshots show some of those. **Apply to all kinds** sets every kind at once: choose **Redact automatically** there to have everything put.gd finds covered every time. The option can't be turned on while text recognition is unavailable (the section says why).
 
-**Redact automatically covers only the text put.gd detects.** Text recognition can miss very small text (around 11 pixels or less), faint or low-contrast text, and a number broken across two lines. put.gd can follow a long secret that an editor wraps onto the next line, but the part there can stay uncovered, for example when the secret isn't in quotes or recognition misreads its closing quote. It follows only onto a line close below that starts no more than a small indent further right. A card number, email address or key at the start of that line is usually left to its own kind, and is covered or not by that kind's setting. So a covered upload isn't a guarantee that the image is clean. A key or token can be covered together with a name written right before it, such as `AWS_KEY = "…"`, depending on how that name is written.
+**Redact automatically covers only the text put.gd detects.** Text recognition can miss very small text (around 11 pixels or less), faint or low-contrast text, and a number broken across two lines. put.gd can follow a long secret that an editor wraps onto the next line, but the part there can stay uncovered, for example when the secret isn't in quotes or recognition misreads its closing quote. It follows only onto a line close below that starts no more than a small indent further right. A card number, email address or key at the start of that line is usually left to its own kind, and is covered or not by that kind's setting. So a covered upload isn't a guarantee that the image is clean. With [Capture style](#style-your-screenshots) on, the check reads the capture before the backdrop is added, so text in a backdrop picture is never checked. A key or token can be covered together with a name written right before it, such as `AWS_KEY = "…"`, depending on how that name is written.
 
 With it on, put.gd reads an image before it uploads it, the same way Quick redact reads it. That covers region, window, monitor, desktop and scrolling captures, images and image files you upload from the clipboard, and PNG and JPEG files you upload with **Upload with put.gd** (also those inside a folder when folders upload file by file). Captures that only go to your local archive aren't read, since nothing is uploaded.
 
