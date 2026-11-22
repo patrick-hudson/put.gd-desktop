@@ -1743,10 +1743,10 @@ void testEdgeLine() {
   line.inkRows = 0;
   ss.pinned.push_back(line);
   const Scene scene(doc.img, ss);
-  int seed = 5;
+  uint32_t seed = 5;
   const std::vector<int> pos = steps(0, std::min(doc.img.h - V, 4000), [&] {
-    seed = seed * 1103515245 + 12345;
-    return 20 + ((seed >> 16) & 0x7fff) % 160;
+    seed = seed * 1103515245u + 12345u;
+    return 20 + int((seed >> 16) & 0x7fffu) % 160;
   });
   const Played r = play(scene, pos);
   // The line's colour where the page has none, above the image's last row.

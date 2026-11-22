@@ -4128,23 +4128,38 @@ void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& bl
     uint64_t* open = &pend.open[slot * size_t(words)];
     for (int w = 0; w < words; ++w) open[w] &= ~blocked[size_t(brow) * words + size_t(w)];
     if (!moved || (y >= R && y < (blockRowCount_ - 1) * R)) continue;
+    // And the next frame must show something else where the page row moved
+    // to: page content that repeats at the step (a rule every step rows)
+    // agrees there too. The row is judged on its cells in sight and not held
+    // back there, and a row the next frame cannot show is not judged; once it
+    // is a line, its cells held back there (a scroll bar's column) go with it.
+    const long long ya = y - (pos - pend.pos);
+    if (ya < 0 || ya >= height_) continue;
+    const int browA = std::min(int(ya) / R, blockRowCount_ - 1);
+    const uint64_t* blkA = &blocked[size_t(browA) * words];
     // A line along the edge: most of the row's cells with texture stay, not
     // a few cells of text that happen to look alike.
     const uint64_t* plain = &pend.plain[slot * size_t(words)];
     const uint16_t* was = &pend.cells[slot * size_t(C)];
     const uint16_t* now = cur.cellRow(y);
+    const uint16_t* there = cur.cellRow(int(ya));
     std::vector<uint64_t> same(static_cast<size_t>(words), 0);
-    int tex = 0, kept = 0;
+    int judged = 0, kept = 0;
     for (int w = 0; w < words; ++w)
       for (uint64_t bits = open[w] & ~plain[w]; bits; bits &= bits - 1) {
         const int c = w * 64 + std::countr_zero(bits);
-        ++tex;
-        if (absDiff(was[c], now[c]) <= tol) {
+        const bool stays = absDiff(was[c], now[c]) <= tol && absDiff(was[c], there[c]) > tol;
+        if ((blkA[w] >> (c & 63)) & 1) {
+          if (stays) same[size_t(w)] |= 1ull << (c & 63);
+          continue;
+        }
+        ++judged;
+        if (stays) {
           ++kept;
           same[size_t(w)] |= 1ull << (c & 63);
         }
       }
-    if (kept >= kEdgeLineCells && 10 * kept >= 9 * tex)
+    if (kept >= kEdgeLineCells && 10 * kept >= 9 * judged)
       for (int w = 0; w < words; ++w) open[w] &= ~same[size_t(w)];
   }
 }
