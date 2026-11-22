@@ -108,7 +108,8 @@ public:
  EditorJob& withCheck(Check check){check_=std::move(check);return *this;}
  // #1893: the Settings capture style for the Style tool, and whether the document starts with it
  // on: a new capture while Capture style is on, or a file asked for with captureStyle (Edit again of an -original).
- EditorJob& withStyle(CaptureStyle saved,bool start){style_=std::move(saved);styleStart_=start;return *this;}
+ // `maxPixels`: the largest styled image the configured image limits allow (the editor also keeps to its own admission).
+ EditorJob& withStyle(CaptureStyle saved,bool start,qint64 maxPixels=admissionPixels){style_=std::move(saved);styleStart_=start;styleMaxPixels_=maxPixels;return *this;}
  // The longest a check may take to say what it found, from the helper's start.
  static constexpr int checkTimeoutMs=40000;
  // An agent's decision: the helper cancels after 5 minutes; this backstop follows.
@@ -124,7 +125,7 @@ public:
  static void discardStaging(const QString& stagingRoot);
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
- CaptureStyle style_;bool styleStart_=false;
+ CaptureStyle style_;bool styleStart_=false;qint64 styleMaxPixels_=admissionPixels;
  QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_,redactTerms_,redactPatterns_;
  Error submissionError_;
  std::optional<bool> links_;

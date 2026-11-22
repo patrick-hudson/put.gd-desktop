@@ -1,6 +1,7 @@
 #pragma once
 #include "core/CaptureStyle.h"
 #include <QColor>
+#include <algorithm>
 #include <QFont>
 #include <QImage>
 #include <QHash>
@@ -117,6 +118,8 @@ public:
  // edit; enabled false means none. The picture of a picture backdrop is read once per path.
  static constexpr qint64 maximumStyledPixels=24000000; // the editor's output admission
  const CaptureStyle& captureStyle() const {return state_.style;}
+ // The configured image limits, when lower than the output admission: padding steps down to fit them.
+ void setStyleLimit(qint64 pixels){styleLimit_=std::clamp<qint64>(pixels,1,maximumStyledPixels);++generation_;}
  bool setCaptureStyle(const CaptureStyle&);
  // The style's geometry for the current crop; invalid when the style is off or can't fit.
  CaptureStyle::Geometry styleGeometry() const;
@@ -176,7 +179,7 @@ private:
  // into `target` (mapping `window` onto it) wherever the shape covers it.
  void pixelatePreview(QImage& target,const QRect& window,const Shape&) const;
  QImage base_;
- CaptureStyle initialStyle_;
+ CaptureStyle initialStyle_;qint64 styleLimit_=maximumStyledPixels;
  State state_,gestureStart_;
  bool gesture_=false,truncated_=false;
  QList<State> undo_,redo_;

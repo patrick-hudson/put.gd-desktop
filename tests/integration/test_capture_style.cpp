@@ -30,10 +30,11 @@ struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
  // `style` is preferences.captureStyle; an undefined value leaves the key out.
- Fixture(QImage image,QJsonValue style,bool keepLocal=false){
+ Fixture(QImage image,QJsonValue style,bool keepLocal=false,QJsonValue maxFileBytes={}){
   registry.add("opaque",provider);
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=keepLocal;doc["archive"]=archive;
+  if(!maxFileBytes.isUndefined()){auto limits=doc["limits"].toObject();limits["maxFileBytes"]=maxFileBytes;doc["limits"]=limits;}
   if(!style.isUndefined()){auto preferences=doc["preferences"].toObject();preferences["captureStyle"]=style;doc["preferences"]=preferences;}
   if(!settings->save(doc,{}))qFatal("fixture configuration rejected");
   source.payload.kind="image";source.payload.image=std::move(image);
@@ -109,6 +110,16 @@ private slots:
   QCOMPARE(styled.size(),CaptureStyle::fromJson(style).geometry(image.size()).canvas);
   // Graphite's gradient starts at its first stop in the top-left corner.
   QVERIFY(qAbs(qRed(styled.pixel(0,0))-0x38)<=2);
+ }
+ // A styled PNG that only the style makes too large for the Largest file limit: the capture goes out as it was.
+ void aStyleThatWouldPassTheFileLimitIsLeftOff(){
+  QImage plain(300,200,QImage::Format_RGB32);plain.fill(Qt::white);
+  QVERIFY(encoded(plain).size()<4096);
+  Fixture f(plain,CaptureStyle::preset("graphite").toJson(),false,4096);PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.capture();QVERIFY(!id.isEmpty());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  QCOMPARE(f.artifact(id),encoded(plain));
+  const auto op=f.inspect(id);QVERIFY(!op.contains("style"));QVERIFY2(op["note"].toString().contains("file size limits"),qPrintable(op["note"].toString()));
  }
 };
 

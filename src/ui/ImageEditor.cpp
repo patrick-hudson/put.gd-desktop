@@ -111,7 +111,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
  // #1893: the look saved in Settings, and whether this document starts with it (a new capture).
- CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;
+ CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;qint64 styleMaxPixels=0;
  Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
@@ -429,7 +429,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // #1893: {saved, start}: the Settings look, and whether the document starts styled with it.
    if((hasStyle=object.contains("style"))){
     const auto style=object["style"].toObject();
-    if(!object["style"].isObject()||style.size()!=2||!style["start"].isBool()||CaptureStyle::validate(style["saved"],"style")){fail();return;}
+    if(!object["style"].isObject()||style.size()!=3||!style["start"].isBool()||CaptureStyle::validate(style["saved"],"style")||!number(style["maxPixels"],styleMaxPixels)||styleMaxPixels<1){fail();return;}
     savedStyle=CaptureStyle::fromJson(style["saved"].toObject());styleStart=style["start"].toBool();
    }
    // #1804: check mode, its categories, whether a person is asked and whether Redact and upload is offered.
@@ -501,7 +501,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
    // #1893: a new capture starts with the saved look on; a check's hidden document starts plain, so its own
    // covered export is the capture as it was (the resident styles it), and Redact and upload turns the look on.
-   if(hasStyle){window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}
+   if(hasStyle){document->setStyleLimit(styleMaxPixels);window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});

@@ -196,6 +196,7 @@ QByteArray ImageJob::preview(const QString& file,qint64 maxPixels,qint64 budget,
 }
 QByteArray ImageJob::style(const QByteArray& png,const CaptureStyle& captureStyle,const ResourceLimits& limits,Error& error,QString* note,Cancel cancelled) const {
  if(note)note->clear();
- return run("style",&png,{},limits.imagePixels,limits.imageBytes,limits.maxFileBytes,error,cancelled,captureStyle.toJson(),note);
+ // The output is bounded by the raster budget; the store's byte limits are the caller's decision, with its own note.
+ return run("style",&png,{},limits.imagePixels,limits.imageBytes,limits.imageBytes,error,cancelled,captureStyle.toJson(),note);
 }
 }

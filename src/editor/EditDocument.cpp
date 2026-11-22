@@ -402,7 +402,7 @@ bool EditDocument::setCaptureStyle(const CaptureStyle& requested){
 }
 CaptureStyle::Geometry EditDocument::styleGeometry() const {
  if(!state_.style.enabled)return {};
- return state_.style.fitted(state_.crop.size(),maximumStyledPixels);
+ return state_.style.fitted(state_.crop.size(),styleLimit_);
 }
 QSize EditDocument::exportSize() const {
  const auto geometry=styleGeometry();return geometry.valid()?geometry.canvas:state_.crop.size();
@@ -413,7 +413,7 @@ const QImage& EditDocument::stylePicture() const {
  if(path!=picturePath_){
   picturePath_=path;picture_={};
   // Decoded once for the largest canvas this document can export: the whole image, styled.
-  if(!path.isEmpty())picture_=style::loadPicture(path,style.fitted(base_.size(),maximumStyledPixels).canvas.expandedTo(base_.size()));
+  if(!path.isEmpty())picture_=style::loadPicture(path,style.fitted(base_.size(),styleLimit_).canvas.expandedTo(base_.size()));
  }
  return picture_;
 }

@@ -639,7 +639,7 @@ void OperationService::runCheck(Job job) {
  const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
- const auto captureStyle=op.settings.captureStyle;
+ const auto captureStyle=op.settings.captureStyle;const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  const auto coveredRoot=root_+"/covered/"+id;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
@@ -648,7 +648,7 @@ void OperationService::runCheck(Job job) {
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   // #1893: Redact and upload of a capture opens with its capture style on; a selected file's starts plain.
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action)).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -822,7 +822,7 @@ bool OperationService::needsStyle(const Job& job) {
  if(!actions.contains(op.action))return false;
  return (job.payload.kind=="image"&&!job.payload.image.isNull())||(job.payload.kind=="png"&&!job.payload.bytes.isEmpty());
 }
-void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit) {
+void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit,qint64 waitingBytes) {
  // The same PNG the artifact store would encode; the image-job child decodes, styles and encodes it.
  QByteArray png;
  if(job.payload.kind=="png")png=job.payload.bytes;
@@ -838,11 +838,13 @@ void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit) {
   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(error)}});
   return;
  }
- // A styled PNG is larger: when only the style would pass the Largest file limit or the destination's object limit,
- // the capture goes out as it was.
- const auto limit=objectLimit>0?std::min(objectLimit,op.settings.limits.maxFileBytes):op.settings.limits.maxFileBytes;
+ // A styled PNG is larger: when only the style would pass a byte limit the store applies (Largest file, Largest batch,
+ // Space for queued files) or the destination's object limit, the capture goes out as it was.
+ const auto& limits=op.settings.limits;
+ auto limit=std::min({limits.maxFileBytes,limits.maxBatchBytes,std::max<qint64>(0,limits.pendingArtifactBytes-waitingBytes)});
+ if(objectLimit>0)limit=std::min(limit,objectLimit);
  if(styled.size()>limit&&png.size()<=limit){
-  const auto why=QStringLiteral("Capture style wasn't applied: the styled image would be larger than this destination or put.gd's file size limit accepts.");
+  const auto why=QStringLiteral("Capture style wasn't applied: the styled image would be larger than this destination or put.gd's file size limits accept.");
   op.note=op.note.isEmpty()?why:op.note+" "+why;
   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"styledBytes",double(styled.size())},{"limitBytes",double(limit)}});
   return;
@@ -957,7 +959,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;const auto redactTerms=op.settings.quickRedactTerms,redactPatterns=op.settings.quickRedactPatterns;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
- const auto style=op.settings.captureStyle;const bool styleStart=styledEdits_.remove(op.id);
+ const auto style=op.settings.captureStyle;const bool styleStart=styledEdits_.remove(op.id);const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
  auto edited=std::make_shared<EditorResult>();
@@ -991,11 +993,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1344,7 +1346,7 @@ Operation OperationService::run(Job job) {
   }
   // #1893: a still capture goes on its capture style before it is stored. Off, nothing here runs.
   if(needsStyle(job)){
-   styleCapture(job,op,objectLimit);if(job.styleOriginal)styledOriginal=job.originalPath;
+   styleCapture(job,op,objectLimit,artifacts.bytes());if(job.styleOriginal)styledOriginal=job.originalPath;
    // A capture cancelled while it was being styled stores nothing.
    if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
   }
