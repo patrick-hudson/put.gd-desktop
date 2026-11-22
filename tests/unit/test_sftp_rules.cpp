@@ -35,6 +35,7 @@ private slots:
                  {"sftp://al%69ce@files.example.com/a%20b", "files.example.com", 0, "alice", "/a b"},
                  {"alice@files.example.com:/srv/shots", "files.example.com", 0, "alice", "/srv/shots"},
                  {"alice@files.example.com:shots", "files.example.com", 0, "alice", "shots"},
+                 {"sftp://files.example.com:2222/", "files.example.com", 2222, "", "/"},
                  {"  files.example.com  ", "files.example.com", 0, "", ""}}) {
             QString why;
             const auto address = sftp::parseServer(c.text, &why);
@@ -49,7 +50,7 @@ private slots:
     }
     void addressesThatAreNotOneAreRefused() {
         for (const auto* text : {"sftp://alice:secret@files.example.com/x", "alice:secret@files.example.com", "-oProxyCommand=x", "files.example.com:0",
-                                 "files.example.com:70000", "files .example.com", "[files.example.com]:22", "[2001:db8::7", "files.example.com:", "sftp://h/x?y"}) {
+                                 "files.example.com:70000", "files.example.com:123456", "files .example.com", "[files.example.com]:22", "[2001:db8::7", "files.example.com:", "sftp://h/x?y"}) {
             QString why;
             QVERIFY2(!sftp::parseServer(text, &why), text);
             QVERIFY(!why.isEmpty());
@@ -92,10 +93,41 @@ private slots:
         QStringList names;
         QVERIFY(sftp::namedCredentials(profile, {}, &names).code.isEmpty());
         QCOMPARE(names, QStringList({"password", "passphrase"}));
-        QVERIFY(sftp::namedCredentials(profile, {{"password", "x"}, {"passphrase", ""}}, nullptr).code.isEmpty());
-        QCOMPARE(sftp::namedCredentials(profile, {{"password", ""}, {"passphrase", ""}}, nullptr).code, QString("credential_invalid"));
+        QVERIFY(sftp::namedCredentials(profile, {{"password", "x"}}, nullptr).code.isEmpty());
+        // An empty value clears that one secret.
+        QVERIFY(sftp::namedCredentials(profile, {{"passphrase", ""}}, nullptr).code.isEmpty());
         QCOMPARE(sftp::namedCredentials(profile, {{"password", "a\nb"}}, nullptr).code, QString("credential_invalid"));
         QCOMPARE(sftp::namedCredentials(profile, {{"token", "x"}}, nullptr).code, QString("credential_invalid"));
+    }
+    // The password answers only ssh's own prompt for this target, the passphrase only its prompt
+    // for a configured key: a jump host's prompt or a server's keyboard-interactive text gets nothing.
+    void askpassAnswersOnlyExactLocalPrompts() {
+        using sftp::PromptKind;
+        const QStringList hosts{"files.example.com"}, keys{"/home/alice/.ssh/id_ed25519"};
+        const auto kind = [&](const QString& askpass, const QString& prompt) { return sftp::matchPrompt(askpass, prompt, "alice", hosts, keys).kind; };
+        QCOMPARE(kind({}, "alice@files.example.com's password: "), PromptKind::Password);
+        QCOMPARE(kind({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': "), PromptKind::Passphrase);
+        QCOMPARE(sftp::matchPrompt({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': ", "alice", hosts, keys).keyFile, keys.first());
+        for (const auto* other : {"alice@jump.example.com's password: ", "bob@files.example.com's password: ", "Password: ", "(alice@files.example.com) Password: ",
+                                  "Enter passphrase for key '/home/alice/.ssh/other': ", "Verification code: ", "Enter passphrase: "})
+            QCOMPARE(kind({}, other), PromptKind::Other);
+        QCOMPARE(kind("confirm", "alice@files.example.com's password: "), PromptKind::Other);
+        QCOMPARE(kind("none", "Confirm user presence for key ED25519-SK SHA256:x"), PromptKind::Touch);
+        QCOMPARE(sftp::hostToken("files.example.com", 2222, {}), QString("[files.example.com]:2222"));
+        QCOMPARE(sftp::hostToken("files.example.com", 22, "shots"), QString("shots"));
+        QVERIFY(sftp::literalHostToken("[files.example.com]:2222"));
+        for (const auto* pattern : {"*.example.com", "a,b", "!a", "|1|abc", ""}) QVERIFY2(!sftp::literalHostToken(pattern), pattern);
+    }
+    // A password typed or pasted into an address never stays in it.
+    void passwordsAreLeftOutOfAddresses() {
+        bool had = false;
+        QCOMPARE(sftp::withoutPassword("sftp://alice:pw@files.example.com:2222/srv", &had), QString("sftp://alice@files.example.com:2222/srv"));
+        QVERIFY(had);
+        QCOMPARE(sftp::withoutPassword("alice:p@ss@files.example.com:/srv", &had), QString("alice@files.example.com:/srv"));
+        QCOMPARE(sftp::withoutPassword("alice@files.example.com:/srv", &had), QString("alice@files.example.com:/srv"));
+        QVERIFY(!had);
+        QCOMPARE(sftp::withoutUserInfo("https://u:p@files.example.com/shots/", &had), QString("https://files.example.com/shots/"));
+        QVERIFY(had);
     }
     void hostKeysReadAsSshKeygenShowsThem() {
         // The fingerprint below is what ssh-keygen -lf prints for this public line.

@@ -9,6 +9,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QProcess>
 #include <QRandomGenerator>
 #include <QRegularExpression>
@@ -32,6 +33,7 @@ class SftpLiveTest : public QObject {
     QString knownHosts_;
     QString agent_;  // the test's own ssh-agent socket
     qint64 agentPid_ = 0;
+    QJsonObject journal_;  // the last upload journal entry
     QJsonObject settings(const QString& server, const QString& user, const QString& folder, bool link = false) const {
         auto s = sftp::defaults();
         s["server"] = server;
@@ -89,6 +91,8 @@ class SftpLiveTest : public QObject {
         request.condition = "absent";
         request.cancellation = cancel ? cancel : std::make_shared<std::atomic_bool>(false);
         request.progress = std::move(progress);
+        // As the resident does: every journal entry is acknowledged once it is saved.
+        request.checkpoint = [this](const QJsonObject& journal, std::function<void(Error)> ack) { journal_ = journal; ack({}); };
         UploadResult result;
         provider_->upload(request, [&](UploadResult r) { result = r; });
         return result;
@@ -101,14 +105,14 @@ class SftpLiveTest : public QObject {
     QString removeReceipt(const StorageReceipt& receipt) {
         DeleteResult result;
         DeleteRequest request{"d", receipt, {}, std::make_shared<std::atomic_bool>(false)};
-        provider_->remove(request, {}, [&](DeleteResult r) { result = r; });
+        provider_->remove(request, [this](const QJsonObject& journal, std::function<void(Error)> ack) { journal_ = journal; ack({}); }, [&](DeleteResult r) { result = r; });
         return result.status;
     }
     static QString name(const QString& suffix) { return "putgd-live-" + QUuid::createUuid().toString(QUuid::Id128).left(12) + suffix; }
 private slots:
     void initTestCase() {
         if (env("PUTGD_LAB_STORAGE_HOST").isEmpty()) QSKIP("Source the storage lab's storage-servers.env first");
-        knownHosts_ = dir_.filePath("known_hosts");
+        knownHosts_ = dir_.filePath("ssh/known_hosts");
         // The lab's public HTTPS location uses its own CA; the worker adds it as an AppImage adds the host's.
         qputenv("PUTGD_CA_BUNDLE", env("PUTGD_LAB_CA_FILE").toUtf8());
         provider_ = std::make_unique<SftpProvider>(credentials_, knownHosts_);
@@ -128,6 +132,7 @@ private slots:
         QVERIFY(!QFile::exists(knownHosts_));
         QVERIFY(trust(d, fingerprint).code.isEmpty());
         QVERIFY(QFile(knownHosts_).permissions() == (QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser));
+        QCOMPARE(QFileInfo(QFileInfo(knownHosts_).absolutePath()).permissions() & (QFileDevice::ReadGroup | QFileDevice::ReadOther | QFileDevice::ExeOther), QFileDevice::Permissions{});
         std::tie(result, error) = test(d);
         QVERIFY2(error.code.isEmpty(), qPrintable(error.code + ": " + error.message));
         QVERIFY(result["publicReachable"].toBool());
@@ -178,6 +183,24 @@ private slots:
         QCOMPARE(uploaded.receipt.directUrl, env("PUTGD_LAB_SFTP_PUBLIC_URL") + "/" + a.name);
         QCOMPARE(check(d, a.name), QString("present"));
         QCOMPARE(upload(d, a).status, QString("collision"));
+        // The receipt names the server it was verified as; History checks it before anything else.
+        QVERIFY(sftp::fingerprintValid(uploaded.receipt.objectReference["hostKeyFingerprint"].toString()));
+        QCOMPARE(uploaded.receipt.objectReference["user"].toString(), env("PUTGD_LAB_SFTP_KEY_USER"));
+        // An upload whose outcome was lost is never claimed without this attempt's own evidence.
+        {
+            UploadRequest lost;
+            lost.destination = d;
+            lost.artifact = a;
+            lost.candidate = a.name;
+            lost.publicationId = a.id;
+            lost.condition = "absent";
+            lost.resume = {{"schemaVersion", 1}, {"phase", "opening"}, {"path", uploaded.receipt.objectReference["path"]}, {"server", QJsonObject{
+                {"host", uploaded.receipt.objectReference["host"]}, {"port", uploaded.receipt.objectReference["port"]}, {"user", uploaded.receipt.objectReference["user"]},
+                {"hostKeyFingerprint", uploaded.receipt.objectReference["hostKeyFingerprint"]}}}};
+            StatResult result;
+            provider_->reconcile(lost, [&](StatResult r) { result = r; });
+            QCOMPARE(result.status, QString("unknown"));
+        }
         QCOMPARE(removeReceipt(uploaded.receipt), QString("removed"));
         QCOMPARE(check(d, a.name), QString("absent"));
         // The same name holding other bytes is not the recorded upload: deletion refuses it.

@@ -269,7 +269,7 @@ int main(int argc,char* argv[]) {
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
- auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/known_hosts");providers.add(putgd::sftp::providerId,sftp);
+ auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/ssh/known_hosts");providers.add(putgd::sftp::providerId,sftp);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -492,6 +492,23 @@ int main(int argc,char* argv[]) {
      if(!error&&journalError)error=journalError;
      reply(error,result);
     });
+    return;
+   }
+   if(kind=="trustHostKey"){
+    // The resident records the trusted key in the destination itself, only while the configuration is
+    // still the one the trust began with; the record changes its check, so an earlier Test no longer vouches.
+    operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},
+     [&settings,destination,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+      if(error){reply(error,result);return;}
+      auto document=settings.document();auto profiles=document["profiles"].toArray();bool found=false;
+      for(qsizetype i=0;i<profiles.size();++i){auto p=profiles[i].toObject();if(p["id"]!=destination.profileId||p["provider"]!=putgd::sftp::providerId)continue;auto s=p["settings"].toObject();s["hostKeyFingerprint"]=result["fingerprint"];p["settings"]=s;profiles[i]=p;found=true;}
+      if(!found){reply({"profile_not_found","The destination was removed while its host key was trusted",{}},result);return;}
+      document["profiles"]=profiles;
+      settings.saveAsync(document,destination.profileRevision,[reply,result](putgd::Result saved){
+       if(saved.error){auto e=saved.error;e.message="The key was trusted, but recording it in the destination failed: "+e.message+" Test the destination again.";reply(e,result);return;}
+       reply({},result);
+      });
+     });
     return;
    }
    operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},std::move(reply));

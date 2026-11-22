@@ -16,7 +16,7 @@
 // host-key probe and put.gd's own known_hosts file, and reading ssh's startup errors.
 namespace putgd::sftp {
 // ssh's environment: the host's (AppImage library overrides undone, put.gd's own
-// variables removed), LC_ALL=C so its messages read the same everywhere, and no terminal.
+// variables and any askpass removed), LC_ALL=C so its messages read the same everywhere.
 QProcessEnvironment sshEnvironment();
 // The ssh program on that environment's PATH, or empty.
 QString sshProgram(const QProcessEnvironment&);
@@ -26,12 +26,17 @@ Error sshMissing();
 QString agentSocket(const QProcessEnvironment&);
 // Where the destination's settings point, as `ssh -G` resolves them.
 struct Resolved {
-    QString host, user, alias;
+    QString host, user, alias, hostKeyAlias;
     int port = 22;
-    QStringList identityFiles;     // the key files ssh would try that exist
+    QStringList identityFiles;     // the key files ssh would try that exist, tilde-expanded
     QStringList userKnownHosts;    // the user's known_hosts files, as ssh -G names them
-    QString identityAgent, proxy;  // proxy: ProxyJump or ProxyCommand, as configured
+    QStringList globalKnownHosts;
+    bool userKnownHostsNone = false;  // UserKnownHostsFile none
+    QString identityAgent;
+    QString proxyKind;             // "ProxyJump", "ProxyCommand" or empty; never the command itself
     bool agent = false;            // an agent socket is there to use
+    // The known_hosts name of this server: the HostKeyAlias, the host, or [host]:port.
+    QString token() const;
 };
 // The ssh arguments that name the destination: [-p port] [-l user] -- host.
 QStringList destinationArguments(const QJsonObject& settings);
@@ -39,9 +44,16 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment&, const QJsonObje
 // "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)".
 QString resolvedLine(const Resolved&, bool password);
 QJsonObject toJson(const Resolved&);
+// Whether the user's own known_hosts files (their UserKnownHostsFile and GlobalKnownHostsFile)
+// already hold a key for this server, by ssh-keygen -F. Their entry then decides alone.
+bool userKnowsHost(const Resolved&, const QProcessEnvironment&);
+// The UserKnownHostsFile value a connection checks host keys against: the user's files, and
+// put.gd's own file only when the user's files know nothing of this server. "none" when the
+// user turned known_hosts files off.
+QString knownHostsOption(const Resolved&, const QString& putgdFile, bool userKnows);
 
 // One ssh child: its own session (no controlling terminal), stdin and stdout for the
-// SFTP stream, stderr kept (its last 16 KB) for the startup error.
+// SFTP stream, stderr kept (its last 64 KB) for the startup error and the host key it used.
 class SshProcess {
 public:
     SshProcess() = default;
@@ -68,32 +80,31 @@ private:
 };
 
 // The askpass socket for one connection: ssh's askpass child asks it for the password or
-// the key passphrase. Each answers once, and only the prompt it belongs to: a key
-// passphrase never goes to a password prompt. A one-time code prompt gets nothing and is
-// remembered, as is a security-key touch notice.
+// the key passphrase. Each answers once, and only its own exact prompt (matchPrompt): the
+// password only "<user>@<host>'s password: " for this target, the passphrase only
+// "Enter passphrase for key '<file>': " for a key file its settings name. Anything else is
+// remembered and gets nothing; a security-key touch notice is reported through onTouch.
 class Askpass {
 public:
-    Askpass(QString password, QString passphrase);
+    Askpass(QString password, QString passphrase, QString user, QStringList hosts, QStringList identityFiles);
     ~Askpass();
     // Creates the socket in a new 0700 directory under $XDG_RUNTIME_DIR (else /tmp) and
     // starts answering; sets the variables ssh's environment needs.
     bool start(QProcessEnvironment& environment, QString program, QString* error);
+    // Stops answering and forgets both secrets.
     void stop();
-    // What was asked: "password", "passphrase", "code", "touch", "confirm".
+    // What was asked: "password", "passphrase", "other", "touch".
     QStringList asked() const;
-    bool passwordRefused() const { return passwordRefused_; }
-    bool passphraseRefused() const { return passphraseRefused_; }
     QString passphraseKey() const;
-    // Called on the askpass thread when ssh asks for a security key touch.
     std::function<void()> onTouch;
 private:
     void serve();
-    QString password_, passphrase_;
+    QString password_, passphrase_, user_;
+    QStringList hosts_, identityFiles_;
     QByteArray token_;
     QString directory_, socket_;
     int listener_ = -1;
     std::atomic_bool stop_{false}, passwordUsed_{false}, passphraseUsed_{false};
-    std::atomic_bool passwordRefused_{false}, passphraseRefused_{false};
     mutable std::mutex mutex_;
     QStringList asked_;
     QString passphraseKey_;
@@ -101,27 +112,28 @@ private:
 };
 
 // The options every SFTP connection runs with, then the destination and the subsystem.
-// `knownHosts` are the files host keys are checked against: the user's, then put.gd's.
-QStringList connectionArguments(const QJsonObject& settings, const QStringList& knownHosts);
-// ssh's startup failure as one of the codes the design lists, from its stderr.
-// `context` carries what put.gd knows: the resolved user and port, whether a password or
-// passphrase was set, whether an agent was found, what askpass was asked, put.gd's file.
+QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption);
+// ssh's startup failure as one of the codes the design lists. Messages carry no raw ssh
+// output: only the code, put.gd's own words and fields put.gd parsed (a known_hosts path).
 struct FailureContext {
     Resolved resolved;
     bool password = false, passphrase = false;
     QStringList asked;
     QString passphraseKey, knownHostsFile;
     bool protocolNoise = false;  // the stream began with something that isn't SFTP
+    int exitCode = -1;
 };
 Error classify(const QByteArray& stderrText, const FailureContext&);
-// The last line of ssh's stderr that says something, for the generic error.
-QString lastLine(const QByteArray& stderrText);
+// The host key the connection was verified with ("ED25519 SHA256:…"), from ssh's debug output.
+QString usedHostKey(const QByteArray& stderrText);
 
 // Host keys (#1871). Fetches the server's key over the real route (ProxyJump and all),
-// with accept-new into a new temporary file and no authentication tried, so no
+// with accept-new into a new temporary file, no authentication tried and no askpass, so no
 // credential is sent: the known_hosts line ssh wrote, or empty with `error`.
-QString probeHostKey(const QString& ssh, const QProcessEnvironment&, const QJsonObject& settings, Error& error);
-// put.gd's known_hosts: adds `line`, first removing the lines for the same host token
-// whose key differs (a re-trust). Written whole through a temporary file, mode 0600.
-Error trustLine(const QString& file, const QString& line);
+QString probeHostKey(const QString& ssh, const QJsonObject& settings, Error& error);
+// put.gd's known_hosts, in its own 0700 folder: adds `line`, replacing this host's earlier
+// line only while it still holds `previous` (the fingerprint the destination recorded; empty:
+// none). Locked against other workers, written whole, mode 0600; a symbolic link or other
+// non-regular file there is refused.
+Error trustLine(const QString& file, const QString& line, const QString& previous);
 }

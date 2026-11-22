@@ -42,9 +42,10 @@ bool hostPort(const QString& text, Address& address, QString* error, bool allowP
         }
     }
     if (!rest.isEmpty()) {
-        static const auto digits = whole("[0-9]{1,5}");
+        // Digits after the colon are always a port, however many: never an SCP-style path.
+        static const auto digits = whole("[0-9]+");
         if (digits.match(rest).hasMatch()) {
-            address.port = rest.toInt();
+            address.port = rest.size() > 5 ? 0 : rest.toInt();
             if (address.port < 1 || address.port > 65535) return fail(QStringLiteral("The port is a number from 1 to 65535."));
         } else if (allowPath) {
             // user@host:path, as scp and sftp take it: the path follows the colon.
@@ -105,7 +106,11 @@ std::optional<Address> parseServer(const QString& raw, QString* error) {
         address.hasUser = true;
     }
     if (!hostPort(rest, address, error, !url)) return std::nullopt;
-    if (url && !path.isEmpty() && path != QLatin1String("/")) {
+    if (url && path == QLatin1String("/")) {
+        // sftp://host/ names the server's root folder.
+        address.folder = QStringLiteral("/");
+        address.hasFolder = true;
+    } else if (url && !path.isEmpty()) {
         // sftp://host/~/shots is the login folder's shots; sftp://host/srv/shots is absolute.
         auto decoded = QUrl::fromPercentEncoding(path.toUtf8());
         if (decoded.startsWith(QLatin1String("/~/")) || decoded == QLatin1String("/~")) decoded = decoded.mid(1);
@@ -114,6 +119,36 @@ std::optional<Address> parseServer(const QString& raw, QString* error) {
         address.hasFolder = true;
     }
     return address;
+}
+QString withoutPassword(const QString& raw, bool* had) {
+    if (had) *had = false;
+    const auto text = raw.trimmed();
+    qsizetype start = 0, end = text.size();
+    const auto scheme = text.indexOf(QLatin1String("://"));
+    if (scheme >= 0) {
+        start = scheme + 3;
+        const auto slash = text.indexOf('/', start);
+        if (slash >= 0) end = slash;
+    }
+    const auto at = text.lastIndexOf('@', end - 1);
+    if (at < start) return text;
+    const auto colon = text.indexOf(':', start);
+    if (colon < 0 || colon > at) return text;
+    if (had) *had = true;
+    return text.left(colon) + text.mid(at);
+}
+QString withoutUserInfo(const QString& link, bool* had) {
+    if (had) *had = false;
+    const auto text = link.trimmed();
+    const auto scheme = text.indexOf(QLatin1String("://"));
+    if (scheme < 0) return text;
+    const auto start = scheme + 3;
+    auto end = text.size();
+    for (const auto c : {'/', '?', '#'}) if (const auto i = text.indexOf(QLatin1Char(c), start); i >= 0 && i < end) end = i;
+    const auto at = text.lastIndexOf('@', end - 1);
+    if (at < start) return text;
+    if (had) *had = true;
+    return text.left(start) + text.mid(at + 1);
 }
 QString serverText(const QString& host, int port) {
     const auto shown = host.contains(':') ? "[" + host + "]" : host;
@@ -179,17 +214,14 @@ Error namedCredentials(const QJsonObject& profile, const QMap<QString, QString>&
     if (profile["provider"] != providerId) return {"setup_unsupported", "This destination does not store named values", {}};
     const QStringList keys{passwordKey(), passphraseKey()};
     if (names) *names = keys;
-    bool typed = false;
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         if (!keys.contains(it.key())) return {"credential_invalid", "An SFTP destination stores a password and a key passphrase, nothing else", {}};
         const auto label = it.key() == passwordKey() ? QStringLiteral("password") : QStringLiteral("key passphrase");
         if (it.value().size() > 4096) return {"credential_invalid", "The " + label + " is too long", {}};
         // ssh reads the answer up to a line break, so one inside it would cut it short.
         if (it.value().contains('\n') || it.value().contains('\r') || it.value().contains(QChar(0))) return {"credential_invalid", "The " + label + " has a line break in it", {}};
-        typed |= !it.value().isEmpty();
     }
-    if (!values.isEmpty() && !typed)
-        return {"credential_invalid", "Type a password or a key passphrase first. Leave both empty to sign in with your SSH agent or key files.", {}};
+    // Only the values given change; the others are kept. An empty one clears that secret.
     return {};
 }
 QString keyType(const QString& algorithm) {
@@ -221,6 +253,32 @@ QString fingerprintOfLine(const QString& line) {
     if (blob.isEmpty()) return {};
     auto digest = QCryptographicHash::hash(blob, QCryptographicHash::Sha256).toBase64(QByteArray::OmitTrailingEquals);
     return keyType(fields[1]) + " SHA256:" + QString::fromLatin1(digest);
+}
+PromptMatch matchPrompt(const QString& askpassKind, const QString& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles) {
+    if (askpassKind == QLatin1String("none")) {
+        const auto lower = prompt.toLower();
+        return {lower.contains(QLatin1String("touch")) || lower.contains(QLatin1String("presence")) ? PromptKind::Touch : PromptKind::Notice, {}};
+    }
+    if (!askpassKind.isEmpty()) return {};  // "confirm" and anything newer: no answer
+    auto text = prompt;
+    while (text.endsWith(' ')) text.chop(1);
+    // sshconnect2.c: "Enter passphrase for key '%.100s': " with the tilde-expanded path.
+    for (const auto& file : identityFiles)
+        if (!file.isEmpty() && text == "Enter passphrase for key '" + file.left(100) + "':") return {PromptKind::Passphrase, file};
+    // "%s@%s's password: ", older releases "%.30s@%.128s's password: ".
+    if (!user.isEmpty())
+        for (const auto& host : hosts)
+            if (!host.isEmpty() && (text == user + "@" + host + "'s password:" || text == user.left(30) + "@" + host.left(128) + "'s password:"))
+                return {PromptKind::Password, {}};
+    return {};
+}
+QString hostToken(const QString& host, int port, const QString& alias) {
+    if (!alias.isEmpty()) return alias;
+    return port > 0 && port != 22 ? "[" + host + "]:" + QString::number(port) : host;
+}
+bool literalHostToken(const QString& token) {
+    static const auto pattern = whole("[^*?,!|@ \\t]+");
+    return !token.isEmpty() && pattern.match(token).hasMatch();
 }
 bool fingerprintValid(const QString& fingerprint) {
     static const auto pattern = whole("[A-Z0-9-]{1,32} SHA256:[A-Za-z0-9+/]{43}");

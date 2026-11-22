@@ -3,7 +3,7 @@
 #include <QMap>
 #include <QWidget>
 #include <functional>
-class QFormLayout;class QLabel;class QLineEdit;
+class QFormLayout;class QLabel;class QLineEdit;class QPushButton;
 namespace putgd {
 namespace Ui { class Banner; }
 // Settings → Destinations → SFTP (#1871): Server, User, Folder on server, Link address,
@@ -24,7 +24,7 @@ public:
     QJsonObject settings() const;
     // Fills Server, User and Folder from an address, as a paste does; false when it isn't one.
     bool applyAddress(const QString& text);
-    // Typed values by credential-store name: both names, an untyped one empty.
+    // Typed values by credential-store name: only the ones typed; the others stay as stored.
     QMap<QString, QString> typedSecrets() const;
     bool hasTypedSecrets() const;
     void setTypedSecrets(const QMap<QString, QString>&);
@@ -38,8 +38,6 @@ public:
     void clearOffers();
     // The fingerprint Trust key would trust, or empty when none is offered.
     QString offeredFingerprint() const { return offeredFingerprint_; }
-    // Trust key succeeded: the profile records the fingerprint (an edit to save).
-    void setTrusted(const QString& fingerprint);
     // A refused save or test: the message beside the field it names.
     void showProblem(const QString& field, const QString& message);
     // The test button's words: Test upload, or Test upload and link with a Link address.
@@ -50,6 +48,8 @@ signals:
     void secretsEdited();
     void trustRequested(const QString& fingerprint);
     void createFolderRequested(const QString& folder);
+    // Clear next to a stored password or passphrase: forget that one (an empty value stored).
+    void clearRequested(const QString& name);
     // Server or User changed and saved: what ssh resolves may have changed.
     void addressChanged();
 private:
@@ -57,6 +57,11 @@ private:
     void finished(QLineEdit*);
     bool loading_ = false, built_ = false;
     QLineEdit *server_ = nullptr, *user_ = nullptr, *folder_ = nullptr, *link_ = nullptr, *password_ = nullptr, *passphrase_ = nullptr;
+    QPushButton *clearPassword_ = nullptr, *clearPassphrase_ = nullptr;
+    // The Folder on server a test found missing: Create folder makes only that one.
+    QString offeredFolderSetting_;
+    // A problem the panel found itself (a password left out of a paste), kept past refreshProblems.
+    QString pinnedField_, pinnedProblem_;
     QLabel* resolved_ = nullptr;
     Ui::Banner *hostKey_ = nullptr, *createFolder_ = nullptr;
     QString offeredFingerprint_, offeredFolder_, hostKeyFingerprint_;

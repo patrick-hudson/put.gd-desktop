@@ -6,6 +6,8 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <thread>
+#include <vector>
 #include <unordered_map>
 namespace putgd {
 class HelperProcess;
@@ -24,6 +26,7 @@ public:
     std::shared_ptr<void> anticipate(const Destination&) override;
     QJsonObject diagnostics() const override;
     ProviderCapabilities capabilities(const Destination&) const override;
+    ProviderCapabilities receiptCapabilities(const StorageReceipt&) const override;
     QJsonObject diagnosticSettings(const QJsonObject& settings) const override;
     QString serializationKey(const Destination&, const QJsonObject&, const QString&) const override;
     Error validateSettings(const QJsonObject&) const override;
@@ -57,8 +60,10 @@ private:
     std::atomic_int active_{0};
     std::atomic<qint64> nextId_{0};
     mutable std::mutex mutex_;
-    std::condition_variable threadsDone_;
-    int threads_ = 0;
+    std::condition_variable wake_;
+    struct Anticipation { std::thread thread; std::shared_ptr<std::atomic_bool> done; };
+    std::vector<Anticipation> anticipations_;
+    std::thread reaper_;
     std::unordered_map<std::string, std::unique_ptr<Session>> idle_;
 };
 }

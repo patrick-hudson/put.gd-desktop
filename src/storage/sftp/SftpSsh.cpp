@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <spawn.h>
+#include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -35,11 +36,22 @@ bool isSocket(const QString& path) {
     return !path.isEmpty() && ::stat(QFile::encodeName(path).constData(), &info) == 0 && S_ISSOCK(info.st_mode);
 }
 QString quoted(const QString& path) { return "\"" + path + "\""; }
-// What every connection, the probe and ssh -G share: no forwarding, no terminal, no
-// local commands, no shared master connection.
+// What every connection and the probe share: no forwarding, no terminal, no local commands,
+// no shared master connection, and host keys only from known_hosts files: never DNS, never
+// skipped for localhost, no second check by IP address, no keys learned from the server.
 QStringList baseOptions() {
     return {"-T", "-x", "-a", "-o", "ClearAllForwardings=yes", "-o", "RequestTTY=no", "-o", "RemoteCommand=none", "-o", "PermitLocalCommand=no",
-            "-o", "EscapeChar=none", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "UpdateHostKeys=no"};
+            "-o", "EscapeChar=none", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "UpdateHostKeys=no",
+            "-o", "NoHostAuthenticationForLocalhost=no", "-o", "VerifyHostKeyDNS=no", "-o", "CheckHostIP=no",
+            // A server's own prompts (one-time codes, keyboard-interactive passwords) never reach askpass.
+            "-o", "KbdInteractiveAuthentication=no"};
+}
+// ssh's stderr without its debug lines: what classify() reads.
+QString withoutDebug(const QByteArray& raw) {
+    QStringList kept;
+    for (const auto& line : QString::fromUtf8(raw).split('\n'))
+        if (!line.startsWith(QLatin1String("debug"))) kept.append(line);
+    return kept.join('\n');
 }
 }
 QProcessEnvironment sshEnvironment() {
@@ -67,6 +79,7 @@ QString agentSocket(const QProcessEnvironment& env) {
     }
     return {};
 }
+QString Resolved::token() const { return hostToken(host, port, hostKeyAlias); }
 QStringList destinationArguments(const QJsonObject& settings) {
     const auto address = parseServer(settings["server"].toString());
     QStringList args;
@@ -89,12 +102,12 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
         error = {"ssh_failed", "ssh did not finish reading your SSH settings", {}};
         return resolved;
     }
-    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        error = {"ssh_config_invalid", "ssh couldn't read your SSH settings for this server: " + lastLine(process.readAllStandardError()), {}};
-        return resolved;
-    }
     const auto address = parseServer(settings["server"].toString());
     resolved.alias = address ? address->host : QString();
+    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
+        error = {"ssh_config_invalid", "ssh couldn't read your SSH settings for this server. Run ssh -G " + resolved.alias + " in a terminal to see what it says.", {}};
+        return resolved;
+    }
     QString agentSetting;
     for (const auto& raw : QString::fromUtf8(process.readAllStandardOutput()).split('\n')) {
         const auto line = raw.trimmed();
@@ -104,20 +117,27 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
         if (key == QLatin1String("hostname")) resolved.host = value;
         else if (key == QLatin1String("user")) resolved.user = value;
         else if (key == QLatin1String("port")) resolved.port = value.toInt();
+        else if (key == QLatin1String("hostkeyalias") && value != QLatin1String("none")) resolved.hostKeyAlias = value;
         else if (key == QLatin1String("identityfile")) {
             const auto path = expandHome(value, env);
             if (QFileInfo(path).isFile() && !resolved.identityFiles.contains(path)) resolved.identityFiles.append(path);
         } else if (key == QLatin1String("userknownhostsfile")) {
-            for (const auto& file : value.split(' ', Qt::SkipEmptyParts)) resolved.userKnownHosts.append(expandHome(file, env));
+            // Paths are split on spaces, as ssh -G prints them; a path with a space in it isn't supported.
+            if (value.compare(QLatin1String("none"), Qt::CaseInsensitive) == 0) resolved.userKnownHostsNone = true;
+            else for (const auto& file : value.split(' ', Qt::SkipEmptyParts)) resolved.userKnownHosts.append(expandHome(file, env));
+        } else if (key == QLatin1String("globalknownhostsfile")) {
+            for (const auto& file : value.split(' ', Qt::SkipEmptyParts)) if (file != QLatin1String("none")) resolved.globalKnownHosts.append(expandHome(file, env));
         } else if (key == QLatin1String("identityagent")) agentSetting = value;
-        else if ((key == QLatin1String("proxyjump") || key == QLatin1String("proxycommand")) && value != QLatin1String("none")) resolved.proxy = value;
+        else if (key == QLatin1String("proxyjump") && value != QLatin1String("none")) resolved.proxyKind = QStringLiteral("ProxyJump");
+        else if (key == QLatin1String("proxycommand") && value != QLatin1String("none") && resolved.proxyKind.isEmpty()) resolved.proxyKind = QStringLiteral("ProxyCommand");
     }
     if (agentSetting.compare(QLatin1String("none"), Qt::CaseInsensitive) == 0) resolved.agent = false;
     else if (!agentSetting.isEmpty() && agentSetting != QLatin1String("SSH_AUTH_SOCK")) {
         resolved.identityAgent = expandHome(agentSetting, env);
         resolved.agent = isSocket(resolved.identityAgent);
     } else resolved.agent = !agentSocket(env).isEmpty();
-    if (resolved.userKnownHosts.isEmpty()) resolved.userKnownHosts = {expandHome("~/.ssh/known_hosts", env), expandHome("~/.ssh/known_hosts2", env)};
+    if (resolved.userKnownHosts.isEmpty() && !resolved.userKnownHostsNone)
+        resolved.userKnownHosts = {expandHome("~/.ssh/known_hosts", env), expandHome("~/.ssh/known_hosts2", env)};
     return resolved;
 }
 QString resolvedLine(const Resolved& r, bool password) {
@@ -126,13 +146,36 @@ QString resolvedLine(const Resolved& r, bool password) {
     else if (r.agent) line += QStringLiteral(" with the agent's keys");
     else if (password) line += QStringLiteral(" with a password");
     else line += QStringLiteral(" with no key: no SSH agent or key file was found");
-    if (!r.proxy.isEmpty()) line += " through " + r.proxy;
+    if (r.proxyKind == QLatin1String("ProxyJump")) line += QStringLiteral(" through a jump host");
+    else if (!r.proxyKind.isEmpty()) line += QStringLiteral(" through a proxy command");
     return line;
 }
 QJsonObject toJson(const Resolved& r) {
-    return {{"host", r.host}, {"port", r.port}, {"user", r.user}, {"alias", r.alias},
-            {"keyFiles", QJsonValue(QJsonArray::fromStringList([&] { QStringList names; for (const auto& f : r.identityFiles) names.append(QFileInfo(f).fileName()); return names; }()))},
-            {"agent", r.agent}, {"proxy", r.proxy}};
+    QJsonArray keys;
+    for (const auto& file : r.identityFiles) keys.append(QFileInfo(file).fileName());
+    return {{"host", r.host}, {"port", r.port}, {"user", r.user}, {"alias", r.alias}, {"keyFiles", keys}, {"agent", r.agent}, {"proxy", r.proxyKind}};
+}
+bool userKnowsHost(const Resolved& r, const QProcessEnvironment& env) {
+    const auto keygen = host::findProgram("ssh-keygen", env);
+    if (keygen.isEmpty()) return false;
+    for (const auto& file : r.userKnownHosts + r.globalKnownHosts) {
+        if (!QFileInfo(file).isFile()) continue;
+        QProcess lookup;
+        lookup.setProcessEnvironment(env);
+        lookup.setStandardInputFile(QProcess::nullDevice());
+        lookup.start(keygen, {"-F", r.token(), "-f", file});
+        if (lookup.waitForFinished(10000) && lookup.exitStatus() == QProcess::NormalExit && lookup.exitCode() == 0 && !lookup.readAllStandardOutput().trimmed().isEmpty())
+            return true;
+    }
+    return false;
+}
+QString knownHostsOption(const Resolved& r, const QString& putgdFile, bool userKnows) {
+    if (r.userKnownHostsNone) return QStringLiteral("none");
+    QStringList files;
+    for (const auto& file : r.userKnownHosts) files.append(quoted(file));
+    // The user's own trust decides alone once they have any key for this server.
+    if (!userKnows) files.append(quoted(putgdFile));
+    return files.join(' ');
 }
 
 SshProcess::~SshProcess() { kill(); }
@@ -189,7 +232,7 @@ void SshProcess::drainErrors() {
         const auto count = ::read(err_, buffer, sizeof buffer);
         if (count > 0) {
             errText_.append(buffer, qsizetype(count));
-            if (errText_.size() > 16384) errText_.remove(0, errText_.size() - 16384);
+            if (errText_.size() > 65536) errText_.remove(0, errText_.size() - 65536);
             continue;
         }
         if (count < 0 && errno == EINTR) continue;
@@ -228,12 +271,9 @@ void SshProcess::kill() {
     for (int* fd : {&in_, &out_, &err_}) if (*fd >= 0) { ::close(*fd); *fd = -1; }
 }
 
-Askpass::Askpass(QString password, QString passphrase) : password_(std::move(password)), passphrase_(std::move(passphrase)) {}
-Askpass::~Askpass() {
-    stop();
-    password_.fill(QChar(0));
-    passphrase_.fill(QChar(0));
-}
+Askpass::Askpass(QString password, QString passphrase, QString user, QStringList hosts, QStringList identityFiles)
+    : password_(std::move(password)), passphrase_(std::move(passphrase)), user_(std::move(user)), hosts_(std::move(hosts)), identityFiles_(std::move(identityFiles)) {}
+Askpass::~Askpass() { stop(); }
 bool Askpass::start(QProcessEnvironment& environment, QString program, QString* error) {
     auto base = qEnvironmentVariable("XDG_RUNTIME_DIR");
     if (base.isEmpty() || !QFileInfo(base).isDir()) base = QDir::tempPath();
@@ -272,6 +312,11 @@ void Askpass::stop() {
     if (!directory_.isEmpty()) ::rmdir(QFile::encodeName(directory_).constData());
     socket_.clear();
     directory_.clear();
+    password_.fill(QChar(0));
+    password_.clear();
+    passphrase_.fill(QChar(0));
+    passphrase_.clear();
+    token_.fill('\0');
 }
 QStringList Askpass::asked() const {
     std::lock_guard lock(mutex_);
@@ -308,41 +353,30 @@ void Askpass::serve() {
             unsigned char diff = 0;
             for (qsizetype i = 0; i < token_.size(); ++i) diff |= uchar(lines[0][i] ^ token_[i]);
             if (diff == 0) {
-                const auto kind = QString::fromUtf8(lines[1]);
-                const auto prompt = QString::fromUtf8(lines[2]);
-                const auto lower = prompt.toLower();
-                QString what;
-                QString* secret = nullptr;
+                const auto match = matchPrompt(QString::fromUtf8(lines[1]), QString::fromUtf8(lines[2]), user_, hosts_, identityFiles_);
+                QString what = QStringLiteral("other"), *secret = nullptr;
                 std::atomic_bool* used = nullptr;
-                std::atomic_bool* refused = nullptr;
-                if (kind == QLatin1String("none")) what = lower.contains("touch") || lower.contains("presence") ? QStringLiteral("touch") : QStringLiteral("notice");
-                else if (kind == QLatin1String("confirm")) what = QStringLiteral("confirm");
-                else if (lower.contains("passphrase")) {
-                    what = QStringLiteral("passphrase");
-                    secret = &passphrase_;
-                    used = &passphraseUsed_;
-                    refused = &passphraseRefused_;
-                    static const QRegularExpression keyFile(QStringLiteral("for (?:key )?'?([^':]+)'?:"));
-                    const auto match = keyFile.match(prompt);
+                switch (match.kind) {
+                case PromptKind::Password: what = QStringLiteral("password"); secret = &password_; used = &passwordUsed_; break;
+                case PromptKind::Passphrase: {
+                    what = QStringLiteral("passphrase"); secret = &passphrase_; used = &passphraseUsed_;
                     std::lock_guard lock(mutex_);
-                    if (match.hasMatch()) passphraseKey_ = match.captured(1).trimmed();
-                } else if (lower.contains("password") && !lower.contains("one-time") && !lower.contains("otp")) {
-                    what = QStringLiteral("password");
-                    secret = &password_;
-                    used = &passwordUsed_;
-                    refused = &passwordRefused_;
-                } else what = QStringLiteral("code");
+                    passphraseKey_ = match.keyFile;
+                    break;
+                }
+                case PromptKind::Touch: what = QStringLiteral("touch"); break;
+                case PromptKind::Notice: what = QStringLiteral("notice"); break;
+                case PromptKind::Other: break;
+                }
                 {
                     std::lock_guard lock(mutex_);
                     if (!asked_.contains(what)) asked_.append(what);
                 }
-                if (what == QLatin1String("touch") && onTouch) onTouch();
-                if (secret) {
-                    if (!secret->isEmpty() && !used->exchange(true)) {
-                        auto bytes = secret->toUtf8();
-                        reply = "ok\n" + bytes;
-                        bytes.fill('\0');
-                    } else *refused = true;
+                if (match.kind == PromptKind::Touch && onTouch) onTouch();
+                if (secret && !secret->isEmpty() && !used->exchange(true)) {
+                    auto bytes = secret->toUtf8();
+                    reply = "ok\n" + bytes;
+                    bytes.fill('\0');
                 }
             }
         }
@@ -357,27 +391,21 @@ void Askpass::serve() {
     }
 }
 
-QStringList connectionArguments(const QJsonObject& settings, const QStringList& knownHosts) {
-    QStringList files;
-    for (const auto& file : knownHosts) files.append(quoted(file));
-    return baseOptions() + QStringList{"-o", "StrictHostKeyChecking=yes", "-o", "NumberOfPasswordPrompts=1", "-o", "BatchMode=no",
+QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption) {
+    // LogLevel DEBUG1 makes ssh name the host key it verified ("Server host key: …"); its other
+    // debug lines are read by nothing and kept nowhere.
+    return baseOptions() + QStringList{"-o", "StrictHostKeyChecking=yes", "-o", "NumberOfPasswordPrompts=1", "-o", "BatchMode=no", "-o", "LogLevel=DEBUG1",
                                        "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "-o", "ConnectTimeout=20",
-                                       "-o", "UserKnownHostsFile=" + files.join(' '), "-s"} +
+                                       "-o", "UserKnownHostsFile=" + knownHostsOption, "-s"} +
            destinationArguments(settings) + QStringList{"sftp"};
 }
-QString lastLine(const QByteArray& text) {
-    const auto lines = QString::fromUtf8(text).split('\n', Qt::SkipEmptyParts);
-    for (auto it = lines.crbegin(); it != lines.crend(); ++it) {
-        auto line = it->trimmed();
-        if (line.isEmpty() || line.startsWith(QLatin1String("debug")) || line.startsWith(QLatin1String("Warning: Permanently added"))) continue;
-        line.replace(QRegularExpression(QStringLiteral("[\\x00-\\x1f\\x7f]")), QStringLiteral(" "));
-        return line.left(300);
-    }
-    return QStringLiteral("no error output");
+QString usedHostKey(const QByteArray& raw) {
+    static const QRegularExpression line(QStringLiteral("^debug1: Server host key: (\\S+) (SHA256:[A-Za-z0-9+/]{43})"), QRegularExpression::MultilineOption);
+    const auto match = line.match(QString::fromUtf8(raw));
+    return match.hasMatch() ? keyType(match.captured(1)) + " " + match.captured(2) : QString();
 }
 Error classify(const QByteArray& raw, const FailureContext& c) {
-    const auto text = QString::fromUtf8(raw);
-    const auto host = c.resolved.alias.isEmpty() ? c.resolved.host : c.resolved.alias;
+    const auto text = withoutDebug(raw);
     const auto port = c.resolved.port;
     if (text.contains(QLatin1String("REMOTE HOST IDENTIFICATION HAS CHANGED")) || text.contains(QRegularExpression(QStringLiteral("Host key for \\S+ has changed")))) {
         static const QRegularExpression offending(QStringLiteral("Offending \\S+ key in (.+):(\\d+)"));
@@ -388,10 +416,9 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                     "The server's host key changed since you trusted it in put.gd. Ask your server's admin whether it was replaced; trust the new key in "
                     "Settings → Destinations only if they confirm it.",
                     {}};
-        const auto target = port != 22 ? "[" + host + "]:" + QString::number(port) : host;
         return {"ssh_host_key_changed",
                 "The server's host key no longer matches the one in " + (file.isEmpty() ? QStringLiteral("your known_hosts file") : file + " line " + match.captured(2)) +
-                    ". That can mean someone is intercepting the connection. If your server's admin replaced the key, remove the old one with ssh-keygen -R " + target +
+                    ". That can mean someone is intercepting the connection. If your server's admin replaced the key, remove the old one with ssh-keygen -R " + c.resolved.token() +
                     " and test again.",
                 {{"knownHostsFile", file}}};
     }
@@ -404,8 +431,15 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
         return {"ssh_connection_refused", QString("The server refused the connection on port %1. Check the server name and port, and that its SSH service runs.").arg(port), {}};
     if (text.contains(QLatin1String("timed out")))
         return {"ssh_connection_timeout", QString("The server did not answer on port %1. Check the server name and port, and your network.").arg(port), {}};
-    if (c.asked.contains(QLatin1String("code")))
-        return {"ssh_needs_one_time_code", "The server asks for a one-time code, which put.gd can't answer. Sign in with a key or your SSH agent instead.", {}};
+    static const QRegularExpression denied(QStringLiteral("Permission denied \\(([^)]*)\\)"));
+    const auto methods = denied.match(text).captured(1).split(',', Qt::SkipEmptyParts);
+    // put.gd turns keyboard-interactive off: a server that offers only that wants a prompt answered
+    // (a one-time code, or a password typed into the server's own prompt).
+    if (c.asked.contains(QLatin1String("other")) || (!methods.isEmpty() && methods == QStringList{QStringLiteral("keyboard-interactive")}))
+        return {"ssh_needs_one_time_code",
+                "The server asks for keyboard-interactive sign-in (a one-time code, or a password typed into its own prompt), which put.gd can't answer. "
+                "Sign in with a key or your SSH agent, or ask the server's admin to allow password authentication.",
+                {}};
     if (text.contains(QLatin1String("Permission denied")) || text.contains(QLatin1String("Too many authentication failures"))) {
         const auto user = c.resolved.user;
         if (c.asked.contains(QLatin1String("passphrase")) && !c.passphrase)
@@ -422,19 +456,22 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                 "The server has no SFTP service for this account. Ask its admin to enable the sftp subsystem. If your shell prints text when it starts "
                 "(in .bashrc or similar), that text breaks SFTP: print it only in interactive shells.",
                 {}};
-    return {"ssh_failed", "ssh failed: " + lastLine(raw), {}};
+    return {"ssh_failed", QString("ssh stopped before SFTP started (exit status %1). Run ssh -v %2 in a terminal to see why.").arg(c.exitCode).arg(c.resolved.alias.isEmpty() ? c.resolved.host : c.resolved.alias),
+            {{"exitStatus", c.exitCode}}};
 }
 
-QString probeHostKey(const QString& ssh, const QProcessEnvironment& env, const QJsonObject& settings, Error& error) {
+QString probeHostKey(const QString& ssh, const QJsonObject& settings, Error& error) {
     QTemporaryDir folder;
     if (!folder.isValid()) { error = {"ssh_failed", "put.gd couldn't create a temporary file for the host key", {}}; return {}; }
     const auto file = folder.filePath("known_hosts");
     QProcess process;
-    process.setProcessEnvironment(env);
+    // A fresh environment with no askpass: nothing can be asked, so nothing is answered.
+    process.setProcessEnvironment(sshEnvironment());
     process.setStandardInputFile(QProcess::nullDevice());
-    // accept-new into a file of its own: the key ssh got is written there and nowhere else,
-    // and with no authentication method allowed no credential reaches the server.
-    process.start(ssh, baseOptions() + QStringList{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "HashKnownHosts=no", "-o", "CheckHostIP=no",
+    // accept-new into a file of its own: the key ssh got is written there and nowhere else, and
+    // with no authentication method allowed no credential reaches the server. A ProxyJump hop's
+    // own key is checked by the user's ssh settings, as in a terminal.
+    process.start(ssh, baseOptions() + QStringList{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "HashKnownHosts=no",
                                                     "-o", "UserKnownHostsFile=" + quoted(file), "-o", "GlobalKnownHostsFile=/dev/null",
                                                     "-o", "PreferredAuthentications=none", "-o", "IdentityAgent=none", "-o", "ConnectTimeout=20", "-s"} +
                            destinationArguments(settings) + QStringList{"sftp"});
@@ -448,35 +485,56 @@ QString probeHostKey(const QString& ssh, const QProcessEnvironment& env, const Q
         }
     FailureContext context;
     const auto address = parseServer(settings["server"].toString());
-    context.resolved.host = address ? address->host : settings["server"].toString();
+    context.resolved.host = context.resolved.alias = address ? address->host : settings["server"].toString();
     context.resolved.port = address && address->port ? address->port : 22;
-    const auto stderrText = process.readAllStandardError();
-    error = classify(stderrText, context);
-    if (error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_host_unknown_key"))
-        error = {"ssh_failed", "ssh ended before the server sent its host key: " + lastLine(stderrText), {}};
+    context.exitCode = process.exitCode();
+    error = classify(process.readAllStandardError(), context);
+    if (error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_host_unknown_key") || error.code == QLatin1String("ssh_needs_one_time_code"))
+        error = {"ssh_failed", "ssh ended before the server sent its host key. Run ssh -v " + context.resolved.alias + " in a terminal to see why.", {}};
     return {};
 }
-Error trustLine(const QString& path, const QString& line) {
+namespace {
+Error knownHostsError(const QString& path, const QString& why) { return {"sftp_known_hosts_failed", "put.gd couldn't update its known_hosts file " + path + ": " + why, {}}; }
+}
+Error trustLine(const QString& path, const QString& line, const QString& previous) {
     const auto host = hostOfLine(line), fingerprint = fingerprintOfLine(line);
     if (host.isEmpty() || fingerprint.isEmpty()) return {"sftp_protocol", "The host key line is not one put.gd can read", {}};
+    // Its own folder, private: other users can't add keys put.gd would then trust.
+    const auto folder = QFileInfo(path).absolutePath();
+    if (!QDir().mkpath(folder) || ::chmod(QFile::encodeName(folder).constData(), 0700) != 0) return knownHostsError(path, QStringLiteral("its folder can't be made private"));
+    // One worker at a time reads, changes and writes the file.
+    const int lock = ::open(QFile::encodeName(folder + "/known_hosts.lock").constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (lock < 0 || ::flock(lock, LOCK_EX) != 0) { if (lock >= 0) ::close(lock); return knownHostsError(path, QStringLiteral("it can't be locked")); }
+    struct Unlock { int fd; ~Unlock() { ::flock(fd, LOCK_UN); ::close(fd); } } unlock{lock};
+    struct stat info {};
+    const auto encoded = QFile::encodeName(path);
     QStringList kept;
-    QFile existing(path);
-    if (existing.exists()) {
-        if (!existing.open(QIODevice::ReadOnly)) return {"sftp_known_hosts_failed", "put.gd couldn't read its known_hosts file " + path, {}};
-        for (const auto& raw : QString::fromUtf8(existing.readAll()).split('\n')) {
+    if (::lstat(encoded.constData(), &info) == 0) {
+        if (!S_ISREG(info.st_mode)) return knownHostsError(path, QStringLiteral("it isn't a regular file"));
+        QFile existing(path);
+        if (!existing.open(QIODevice::ReadOnly)) return knownHostsError(path, QStringLiteral("it can't be read"));
+        for (const auto& raw : QString::fromUtf8(existing.read(4 * 1024 * 1024)).split('\n')) {
             const auto trimmed = raw.trimmed();
             if (trimmed.isEmpty()) continue;
-            if (hostOfLine(trimmed) == host) continue;  // this host's earlier key: replaced
+            if (hostOfLine(trimmed) == host) {
+                // A re-trust replaces only the key the destination recorded; another one there means
+                // the file changed since the key was shown.
+                const auto there = fingerprintOfLine(trimmed);
+                if (there != fingerprint && there != previous)
+                    return {"ssh_host_key_mismatch", "put.gd's known_hosts holds another key for this server than the one this destination trusted. Test again and compare the keys.", {}};
+                continue;
+            }
             kept.append(trimmed);
         }
-    }
+    } else if (errno != ENOENT) return knownHostsError(path, QStringLiteral("it can't be checked"));
     kept.append(line.trimmed());
-    QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile out(path);
-    if (!out.open(QIODevice::WriteOnly)) return {"sftp_known_hosts_failed", "put.gd couldn't write its known_hosts file " + path, {}};
+    if (!out.open(QIODevice::WriteOnly)) return knownHostsError(path, QStringLiteral("it can't be written"));
     out.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     out.write((kept.join('\n') + '\n').toUtf8());
-    if (!out.commit()) return {"sftp_known_hosts_failed", "put.gd couldn't write its known_hosts file " + path, {}};
+    if (!out.commit()) return knownHostsError(path, QStringLiteral("it can't be written"));
+    if (::lstat(encoded.constData(), &info) != 0 || !S_ISREG(info.st_mode) || (info.st_mode & 0777) != 0600 || info.st_uid != ::getuid())
+        return knownHostsError(path, QStringLiteral("it didn't end up as a private file"));
     return {};
 }
 }

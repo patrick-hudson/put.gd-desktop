@@ -8,7 +8,8 @@ namespace putgd {
 namespace {
 Error invalid() {return {"invalid_request","Invalid setup fields or parameter types",{}};}
 bool validInput(const QString& kind,const QJsonObject& input) {
- if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().size()<=255;
+ // An SFTP folder path may be up to 4096 bytes (#1871); Proton's folder name keeps its own 255 below.
+ if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().toUtf8().size()<=4096;
  // SFTP (#1871): the host key fingerprint the user (or agent) was shown, exactly.
  if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
@@ -55,6 +56,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)) {reply({"profile_not_found","Save the destination before setup",{}},{});return;}
  const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
+ if(kind=="createFolder"&&profile["provider"]!="sftp"&&input["name"].toString().size()>255){reply(invalid(),{});return;}
  const auto key=activeKey(profileId,kind);
  if(active_.contains(key)||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);

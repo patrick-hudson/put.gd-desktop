@@ -85,7 +85,7 @@ QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& prov
  // A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
  const auto provider=providers.find(op.destination.providerId);const bool links=!provider||provider->capabilities(op.destination).urls||provider->capabilities(op.destination).sharing;
  const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):links?QStringLiteral("Upload to %1 · Shared link").arg(label):QStringLiteral("Upload to %1").arg(label);
- return {{"destination",label},{"sharingMode",mode},{"summary",summary}};
+ return {{"destination",label},{"sharingMode",mode},{"summary",summary},{"links",links}};
 }
 // On-demand previews (#190) answer within historyPreviewReplyMs: at most this
 // long queued, then a local copy check and a decode of up to 10 s each.
@@ -427,7 +427,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
   released();
  }else {
   const auto output=uploadReviewOptions(op,providers_);
-  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
+  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):output["links"].toBool(true)?QStringLiteral("Shared link"):QStringLiteral("Upload only")):QStringLiteral("Saves locally"));
   const bool screenshotFirst=snapshot.regionSelectionMode=="screenshot_first";
   source_.setRegionScreenshotFirst(screenshotFirst);
   if(const auto refused=SourceAdapter::knownPermissionRefusal(source_.capabilities(),source);refused) {

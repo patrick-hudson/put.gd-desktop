@@ -3,6 +3,7 @@
 #include "ErrorLogPage.h"
 #include "CustomUploaderPanel.h"
 #include "SftpPanel.h"
+#include "core/CommandText.h"
 #include "MainWindow.h"
 #include "storage/proton/ProtonProvider.h"
 #include "storage/s3/PublicUrl.h"
@@ -1326,6 +1327,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(sftpPanel_,&SftpPanel::secretsEdited,this,[this]{if(!loading_){updateStoreButtons();emit viewStateChanged();}});
  connect(sftpPanel_,&SftpPanel::addressChanged,this,[this]{sftpInspected_.clear();QTimer::singleShot(900,this,[this]{inspectSftp();});});
  connect(sftpPanel_,&SftpPanel::trustRequested,this,[this](const QString& fingerprint){if(admitSetup())beginSetup("trustHostKey",{{"fingerprint",fingerprint}});});
+ connect(sftpPanel_,&SftpPanel::clearRequested,this,[this](const QString& name){if(admitSetup())beginSetup("storeCredentials",{{"values",QJsonObject{{name,QString()}}}});});
  connect(sftpPanel_,&SftpPanel::createFolderRequested,this,[this](const QString& folder){if(admitSetup())beginSetup("createFolder",{{"name",folder}});});
  connect(uploader_,&CustomUploaderPanel::imported,this,[this](const QString& name){if(!name.isEmpty()&&profileLabel_->text()=="Custom uploader"){profileLabel_->setText(name.left(128));queueEdit(profileLabel_);}});
  protonPanel_=new QWidget;protonPanel_->setObjectName("protonDestinationEditor");auto* protonLayout=new QVBoxLayout(protonPanel_);protonLayout->setContentsMargins(0,0,0,0);protonLayout->setSpacing(space(Space::xxl));pageLayout->addWidget(protonPanel_);auto* protonForm=PreferenceRows::card(protonLayout,"Account");auto* folderPrerequisite=new QLabel("Choose an upload folder after connecting");folderPrerequisite->setObjectName("protonFolderPrerequisite");folderPrerequisite->setWordWrap(true);Ui::role(folderPrerequisite,"muted");protonLayout->addWidget(folderPrerequisite);auto* folderForm=PreferenceRows::card(protonLayout,"Where files go");folderForm->parentWidget()->setObjectName("protonFolderSection");protonFolderStatus_=new QLabel;protonFolderStatus_->setObjectName("protonFolderStatus");protonFolderStatus_->setWordWrap(true);protonFolderStatus_->hide();folderForm->addRow(protonFolderStatus_);auto* publicationForm=PreferenceRows::card(protonLayout,"Links");auto* protonAdvancedPanel=new QWidget;auto* protonAdvancedBox=new QVBoxLayout(protonAdvancedPanel);protonAdvancedBox->setContentsMargins(0,0,0,0);auto* protonAdvancedForm=new QFormLayout;Ui::styleForm(protonAdvancedForm);protonAdvancedBox->addLayout(protonAdvancedForm);protonLayout->addWidget(protonAdvancedPanel);protonAdvancedForm->parentWidget()->setObjectName("protonAdvancedSettings");// The account and its Reconnect action share the field column.
@@ -2698,7 +2700,9 @@ QString SettingsWindow::outputSummary(QComboBox* profile,QComboBox* sharing)cons
  const auto id=profile->currentData().toString();const bool local=keep_->isChecked();
  if(id.isEmpty())return local?QString("Local only"):QString("Nothing is saved or uploaded");
  const auto mode=sharing->currentData().toString();const bool privateUpload=(mode=="default"?destinationDefaultSharing(id):mode)=="private";
- return QString(privateUpload?"Private upload":"Shared link")+" · "+profile->currentText()+(local?QString(" + local copy"):QString{});
+ // #1871: a destination that gives no links (SFTP without a Link address) never promises one.
+ bool links=true;const auto profiles=draft_["profiles"].toArray();for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]==id)links=commandtext::givesLinks(i==profileIndex_?editedProfile():profiles[i].toObject());
+ return QString(privateUpload?"Private upload":links?"Shared link":"Upload only")+" · "+profile->currentText()+(local?QString(" + local copy"):QString{});
 }
 QString SettingsWindow::destinationDefaultSharing(const QString& profileId)const{
  // Mirrors the providers' defaultPublicationMode: only Proton can default to private.
@@ -2995,6 +2999,8 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
    placeConflictBanners();return;
   }
   if(error.code.startsWith("http_")&&uploader_)uploader_->showProblem(field,error.message);
+  // #1871: a refused SFTP field gets its message beside it, as a local check would show it.
+  if(error.code=="sftp_settings_invalid"&&sftpPanel_)sftpPanel_->showProblem(field,error.message);
   status(error);return;
  }
  QWidget* control=nullptr;
@@ -3608,6 +3614,11 @@ void SettingsWindow::sftpCommand(const QJsonObject& params,std::function<void(Er
   auto* button=sftpPanel_->findChild<QPushButton*>("sftpCreateFolder");if(!usable(button)){reply(unavailable,{});return;}button->click();
  }else if(action=="test"){
   auto* button=findControl<QPushButton*>("testDestination");if(!usable(button)){reply(unavailable,{});return;}button->click();
+ }else if(action=="store"){
+  // Store what a person typed into Password or Key passphrase; no value travels through here.
+  auto* button=findControl<QPushButton*>("storeCredentials");if(!usable(button)||!sftpPanel_->hasTypedSecrets()){reply(unavailable,{});return;}button->click();
+ }else if(action=="clear"){
+  auto* button=sftpPanel_->findChild<QPushButton*>(params["field"]=="passphrase"?"sftpPassphraseClear":"sftpPasswordClear");if(!usable(button)){reply(unavailable,{});return;}button->click();
  }
  auto state=sftpPanel_->state();
  state["profileId"]=profileId_->text();state["label"]=profileLabel_->text();state["provider"]=providerType_->currentData().toString();
@@ -3760,7 +3771,8 @@ void SettingsWindow::pollSetup(){
     if(sftpJob){
      const bool shown=data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider();
      if(kind=="inspectAccount"){if(shown)sftpPanel_->setResolved(result["line"].toString());emit viewStateChanged();return;}
-     if(kind=="trustHostKey"){if(shown)sftpPanel_->setTrusted(result["fingerprint"].toString());setupFeedback("Host key "+result["fingerprint"].toString()+" trusted. Test again to finish checking the destination.",true);emit viewStateChanged();return;}
+     // The resident recorded the key in the destination; the reloaded form shows it.
+     if(kind=="trustHostKey"){if(shown)sftpPanel_->clearOffers();setupFeedback("Host key "+result["fingerprint"].toString()+" trusted. Test again to finish checking the destination.",true);emit viewStateChanged();return;}
      if(kind=="createFolder"){if(shown)sftpPanel_->clearOffers();setupFeedback("Folder "+result["path"].toString()+" created. Test again to check uploads there.",true);emit viewStateChanged();return;}
      if(kind=="testDestination"&&shown)sftpPanel_->clearOffers();
      if(kind=="testDestination"&&!result["summary"].toString().isEmpty()){setupFeedback(currentTest?result["summary"].toString():"Connection test succeeded for the original destination settings. Test again to check the current settings.",true);emit viewStateChanged();return;}

@@ -17,18 +17,56 @@ Error parseError(const QJsonObject& value) { return {value["code"].toString("sft
 // Errors the worker reports before anything could have changed on the server.
 bool definite(const QString& code) {
     return code.startsWith(QLatin1String("ssh_")) || QStringList{"sftp_settings_invalid", "sftp_folder_missing", "sftp_not_folder", "sftp_permission_denied", "sftp_disk_full",
-                                                                 "unsupported_capability", "artifact_invalid", "artifact_changed", "cancelled"}.contains(code);
+                                                                 "unsupported_capability", "artifact_invalid", "artifact_changed", "cancelled", "sftp_server_changed",
+                                                                 "sftp_delete_unavailable"}.contains(code);
+}
+// Only these methods sign in, so only they get the password and passphrase.
+bool signsIn(const QString& method) {
+    static const QStringList methods{"connect", "checkName", "upload", "stat", "reconcile", "remove", "createFolder", "testDestination"};
+    return methods.contains(method);
+}
+// What a recorded upload needs for the identity check before a deletion (#1871).
+bool recordable(const QJsonObject& object) {
+    for (const auto* key : {"path", "host", "user", "hostKeyFingerprint", "sha256"}) if (object[key].toString().isEmpty()) return false;
+    for (const auto* key : {"port", "size", "mtime", "uid"}) if (!object[key].isDouble()) return false;
+    return true;
 }
 }
 struct SftpProvider::Session {
     HelperProcess process;
     QElapsedTimer idle;
 };
-SftpProvider::SftpProvider(CredentialStore& credentials, QString knownHostsFile) : credentials_(credentials), knownHosts_(std::move(knownHostsFile)) {}
+SftpProvider::SftpProvider(CredentialStore& credentials, QString knownHostsFile) : credentials_(credentials), knownHosts_(std::move(knownHostsFile)) {
+    // Idle workers end when their time is up, whether or not their destination is asked again.
+    reaper_ = std::thread([this] {
+        std::unique_lock lock(mutex_);
+        while (!stopping_.load()) {
+            wake_.wait_for(lock, std::chrono::seconds(10));
+            for (auto it = idle_.begin(); it != idle_.end();) {
+                if (stopping_.load() || it->second->idle.elapsed() >= reuseWithinMs || !it->second->process.running()) {
+                    it->second->process.closeInput();
+                    it = idle_.erase(it);
+                } else ++it;
+            }
+        }
+    });
+}
 SftpProvider::~SftpProvider() {
-    stopping_ = true;
-    std::unique_lock lock(mutex_);
-    threadsDone_.wait_for(lock, std::chrono::seconds(5), [this] { return threads_ == 0; });
+    {
+        std::lock_guard lock(mutex_);
+        stopping_ = true;
+        wake_.notify_all();
+    }
+    // Every thread this provider started ends before its state goes: anticipations see
+    // stopping_ and stop their worker at once.
+    if (reaper_.joinable()) reaper_.join();
+    std::vector<Anticipation> threads;
+    {
+        std::lock_guard lock(mutex_);
+        threads = std::move(anticipations_);
+    }
+    for (auto& entry : threads) if (entry.thread.joinable()) entry.thread.join();
+    std::lock_guard lock(mutex_);
     for (auto& [key, session] : idle_) session->process.closeInput();
     idle_.clear();
 }
@@ -42,6 +80,16 @@ QString SftpProvider::workerPath() {
 QJsonObject SftpProvider::diagnostics() const {
     std::lock_guard lock(mutex_);
     return {{"activeRequests", active_.load()}, {"idleSessions", int(idle_.size())}, {"protocolVersion", 1}};
+}
+ProviderCapabilities SftpProvider::receiptCapabilities(const StorageReceipt& receipt) const {
+    auto caps = capabilities(receipt.destination);
+    // A record without the server's identity and the file's size, time, owner and hash can't be
+    // checked before a deletion, so it can't be deleted.
+    if (!recordable(receipt.objectReference)) {
+        caps.remove = false;
+        caps.removeUnavailable = QStringLiteral("This upload's record lacks the server identity and file details put.gd checks before deleting it.");
+    }
+    return caps;
 }
 ProviderCapabilities SftpProvider::capabilities(const Destination& destination) const {
     ProviderCapabilities caps;
@@ -66,6 +114,10 @@ QJsonObject SftpProvider::diagnosticSettings(const QJsonObject& settings) const 
 }
 QString SftpProvider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
     const auto& s = destination.settings;
+    // The server ssh resolved and the folder's canonical path, as the name check and the receipt
+    // record them: the same file has the same key however the destination names it.
+    if (object["path"].isString() && object["host"].isString())
+        return object["host"].toString() + "|" + QString::number(object["port"].toInt()) + "|" + object["user"].toString() + "|" + object["path"].toString();
     if (object["path"].isString()) return s["server"].toString() + "|" + s["user"].toString() + "|" + object["path"].toString();
     return s["server"].toString() + "|" + s["user"].toString() + "|" + sftp::remoteFolder(s["folder"].toString()) + "/" + candidate;
 }
@@ -108,20 +160,25 @@ void SftpProvider::retire(std::unique_ptr<Session> session) {
 }
 std::shared_ptr<void> SftpProvider::anticipate(const Destination& destination) {
     if (stopping_.load() || sftp::validate(destination.settings, true)) return {};
+    std::vector<Anticipation> finished;
     {
         std::lock_guard lock(mutex_);
-        if (idle_.count(sessionKey(destination).toStdString())) return {};
-        ++threads_;
+        if (stopping_.load() || idle_.count(sessionKey(destination).toStdString())) return {};
+        // Threads that are done are joined here, so none is ever left behind.
+        for (auto it = anticipations_.begin(); it != anticipations_.end();)
+            if (it->done->load()) { finished.push_back(std::move(*it)); it = anticipations_.erase(it); } else ++it;
+        if (anticipations_.size() >= 8) return {};
+        auto done = std::make_shared<std::atomic_bool>(false);
+        // Connects ahead of the requests an action is about to make; the connected worker waits
+        // in the pool for them, and ends itself after a minute if none comes.
+        anticipations_.push_back({std::thread([this, destination, done] {
+                                      Error ignored;
+                                      call("connect", destination, {}, ignored);
+                                      *done = true;
+                                  }),
+                                  done});
     }
-    // Connects ahead of the requests an action is about to make; the connected worker waits
-    // in the pool for them, and ends itself after a minute if none comes.
-    std::thread([this, destination] {
-        Error ignored;
-        call("connect", destination, {}, ignored);
-        std::lock_guard lock(mutex_);
-        --threads_;
-        threadsDone_.notify_all();
-    }).detach();
+    for (auto& entry : finished) entry.thread.join();
     return {};
 }
 QJsonObject SftpProvider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
@@ -138,8 +195,11 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     params["method"] = method;
     params["destination"] = destination.toJson();
     params["knownHostsFile"] = knownHosts_;
-    params["credentials"] = QJsonObject{{sftp::passwordKey(), credential ? credential->values.value(sftp::passwordKey()) : QString()},
-                                        {sftp::passphraseKey(), credential ? credential->values.value(sftp::passphraseKey()) : QString()}};
+    // Secrets go only with a request that signs in; Settings' address check learns only whether a password is set.
+    if (signsIn(method))
+        params["credentials"] = QJsonObject{{sftp::passwordKey(), credential ? credential->values.value(sftp::passwordKey()) : QString()},
+                                            {sftp::passphraseKey(), credential ? credential->values.value(sftp::passphraseKey()) : QString()}};
+    else if (method == QLatin1String("inspect")) params["passwordSet"] = credential && !credential->values.value(sftp::passwordKey()).isEmpty();
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
     const auto key = sessionKey(destination);
@@ -168,6 +228,12 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     QElapsedTimer silence, cancelClock;
     silence.start();
     while (!got) {
+        // The provider is going away: the helper is stopped at once, not asked.
+        if (stopping_.load() && method == QLatin1String("connect")) {
+            session->process.kill();
+            error = {"operation_cancelled", "The application is stopping", {}};
+            return {};
+        }
         if (kill && kill->load()) {
             session->process.kill();
             error = {"sftp_transport_unknown", "put.gd quit while the SFTP helper was working; check the server before retrying", {{"reason", "quit"}}};
@@ -257,7 +323,7 @@ void SftpProvider::upload(const UploadRequest& request, std::function<void(Uploa
     const auto r = call("upload", request.destination,
                         {{"artifact", request.artifact.toJson()}, {"candidate", request.candidate}, {"publicationId", request.publicationId},
                          {"condition", request.condition}, {"objectReference", request.objectReference}},
-                        e, &uncertain, request.cancellation, request.progress);
+                        e, &uncertain, request.cancellation, request.progress, request.checkpoint);
     const auto status = r["status"].toString();
     if (status == "uploaded" && !e) { reply({"uploaded", StorageReceipt::fromJson(r["receipt"].toObject()), {}}); return; }
     if (status == "collision") { reply({"collision", {}, {"sftp_name_taken", "A file with this name is already on the server", {}}}); return; }
@@ -273,16 +339,23 @@ void SftpProvider::reconcile(const UploadRequest& request, std::function<void(St
     Error e;
     const auto r = call("reconcile", request.destination,
                         {{"artifact", request.artifact.toJson()}, {"candidate", request.candidate}, {"publicationId", request.publicationId},
-                         {"objectReference", request.objectReference}}, e);
+                         {"objectReference", request.objectReference}, {"resume", request.resume}}, e, nullptr, request.cancellation);
     reply({e ? "unknown" : r["status"].toString("unknown"), StorageReceipt::fromJson(r["receipt"].toObject()), e});
 }
-void SftpProvider::remove(const DeleteRequest& request, DurableCheckpoint, std::function<void(DeleteResult)> reply) {
+void SftpProvider::remove(const DeleteRequest& request, DurableCheckpoint checkpoint, std::function<void(DeleteResult)> reply) {
     Error e;
     bool uncertain = false;
-    const auto r = call("remove", request.receipt.destination, {{"receipt", request.receipt.toJson()}}, e, &uncertain, request.cancellation, {}, {}, request.kill);
+    // The worker saves its intent through `checkpoint` and waits for it before REMOVE.
+    QJsonObject saved = request.progress;
+    DurableCheckpoint keep = [&saved, checkpoint](const QJsonObject& journal, std::function<void(Error)> ack) {
+        if (!checkpoint) { ack({"checkpoint_failed", "This deletion keeps no journal", {}}); return; }
+        checkpoint(journal, [&saved, journal, ack](Error error) { if (!error) saved = journal; ack(error); });
+    };
+    const auto r = call("remove", request.receipt.destination, {{"receipt", request.receipt.toJson()}}, e, &uncertain, request.cancellation, {}, keep, request.kill);
     auto status = r["status"].toString();
     if (status.isEmpty() || (e && status != "unknown")) status = uncertain ? "unknown" : "failed";
-    reply({status, request.progress, e});
+    // An unclear outcome keeps the saved intent; a settled one has nothing left to resume.
+    reply({status, status == "unknown" ? saved : QJsonObject{}, e});
 }
 void SftpProvider::testDestination(const Destination& destination, DurableCheckpoint checkpoint, std::function<void(QJsonObject, Error)> reply,
                                    std::function<void(const QString&)> notice) {

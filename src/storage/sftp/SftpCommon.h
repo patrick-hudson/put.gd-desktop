@@ -23,6 +23,11 @@ struct Address {
 };
 // The address, or the reason it isn't one (`error` names what to change).
 std::optional<Address> parseServer(const QString& text, QString* error = nullptr);
+// The text with any password in its user part left out ("sftp://alice:pw@h" → "sftp://alice@h",
+// "alice:pw@h:/x" → "alice@h:/x"); `had` says whether there was one. Nothing else changes.
+QString withoutPassword(const QString& text, bool* had = nullptr);
+// A Link address with any user name or password left out, the same way.
+QString withoutUserInfo(const QString& link, bool* had = nullptr);
 // host, host:port or [v6]:port: how the Server field stores an address.
 QString serverText(const QString& host, int port);
 // What is wrong with one field (server, user, folder, publicUrlBase, hostKeyFingerprint)
@@ -52,6 +57,19 @@ QString fingerprintOfLine(const QString& line);
 QString hostOfLine(const QString& line);
 // "ED25519 SHA256:<43 base64 characters>".
 bool fingerprintValid(const QString& fingerprint);
+// An SSH_ASKPASS prompt, matched exactly against OpenSSH's own local prompts (#1871): the
+// password answers only "<user>@<host>'s password: " for the resolved target (or its
+// HostKeyAlias), and the passphrase only "Enter passphrase for key '<path>': " for a key file
+// the destination's ssh settings name. Anything else, a jump host's prompt or a server's
+// keyboard-interactive text, gets no answer. `askpassKind` is SSH_ASKPASS_PROMPT ("none" for a
+// notice such as a security key touch, "confirm", or empty).
+enum class PromptKind { Password, Passphrase, Touch, Notice, Other };
+struct PromptMatch { PromptKind kind = PromptKind::Other; QString keyFile; };
+PromptMatch matchPrompt(const QString& askpassKind, const QString& prompt, const QString& user, const QStringList& hosts, const QStringList& identityFiles);
+// The known_hosts name ssh looks a host up by: the HostKeyAlias, the host, or [host]:port.
+QString hostToken(const QString& host, int port, const QString& alias);
+// One literal host: no pattern, list, negation, hashed name or marker.
+bool literalHostToken(const QString&);
 // The worker program's name, and its askpass mode's environment variables.
 inline constexpr char workerName[] = "putgd-sftp-worker";
 inline constexpr char askpassSocketVariable[] = "PUTGD_SFTP_ASKPASS_SOCKET";

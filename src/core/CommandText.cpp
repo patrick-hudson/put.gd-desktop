@@ -10,6 +10,9 @@ bool uploads(const QJsonObject& route) { return route["destination"] == "upload"
 bool editsOrRecords(const QString& action) { return action == "edit" || action == "record"; }
 }
 
+bool givesLinks(const QJsonObject& profile) {
+ return profile["provider"] != QLatin1String("sftp") || profile["settings"].toObject()["publicUrlBase"].isString();
+}
 QString outputName(const QJsonObject& document, const QJsonObject& route) {
  const bool local = document["archive"].toObject()["keepUploads"].toBool();
  if (route["destination"] == "local" || route["profileId"].toString().isEmpty()) return local ? QStringLiteral("Local only") : nothing;
@@ -19,7 +22,7 @@ QString outputName(const QJsonObject& document, const QJsonObject& route) {
   const auto mode = route["publicationMode"].toString("default");
   const bool proton = profile["provider"] == "proton-drive";
   const bool privateUpload = mode == "private" || (mode == "default" && proton && !profile["settings"].toObject()["shareByDefault"].toBool(true));
-  return (privateUpload ? (proton ? QStringLiteral("Private upload") : QStringLiteral("Private upload unavailable")) : QStringLiteral("Shared link"))
+  return (privateUpload ? (proton ? QStringLiteral("Private upload") : QStringLiteral("Private upload unavailable")) : givesLinks(profile) ? QStringLiteral("Shared link") : QStringLiteral("Upload only"))
    + " · " + profile["label"].toString() + (local ? QStringLiteral(" + local copy") : QString{});
  }
  return unchosen;

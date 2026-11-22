@@ -6,26 +6,31 @@
 #include <atomic>
 #include <functional>
 #include <map>
+#include <set>
 namespace putgd::sftp {
 class SshProcess;
 // put.gd's SFTP v3 client over one ssh child's stdin and stdout (#1871). Writes are
 // pipelined: up to 64 requests in flight, each acknowledged before its bytes count as sent.
+// Every reply must answer a request still outstanding, exactly once; anything else is a
+// protocol error and ends the connection.
 class Client {
 public:
     Client(SshProcess& ssh, const std::atomic_bool* cancelled) : ssh_(ssh), cancelled_(cancelled) {}
-    // INIT and VERSION. `noise` is set when the stream began with something that is not
-    // SFTP: text a shell printed at startup.
+    // INIT and VERSION (exactly 3), then limits@openssh.com when offered. `noise` is set
+    // when the stream began with something that is not SFTP: text a shell printed at startup.
     Error handshake(bool& noise);
-    bool has(const char* extension) const;
+    // An extension the server offered, at the version put.gd implements.
+    bool has(const char* extension, const char* version) const;
     void setCancellation(const std::atomic_bool* cancelled) { cancelled_ = cancelled; }
     struct Status { quint32 code = 0; QString message; };
     // An SFTP request that got a status other than OK: the code in `status`, no Error.
     Error realpath(const QByteArray& path, QByteArray& absolute, Status& status);
     Error lstat(const QByteArray& path, wire::Attributes& attributes, Status& status, bool follow = false);
+    Error fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status);
     Error openExclusive(const QByteArray& path, QByteArray& handle, Status& status);
     Error openRead(const QByteArray& path, QByteArray& handle, Status& status);
-    // Sends `total` bytes from `source`, hashing what it sends; `sent` is called with
-    // the bytes the server has acknowledged.
+    // Sends `total` bytes from `source`, hashing what it sends; `sent` is called with the
+    // bytes the server has acknowledged. No acknowledgement for two minutes ends it.
     Error write(const QByteArray& handle, QIODevice& source, qint64 total, QCryptographicHash& hash, const std::function<void(qint64)>& sent, Status& status);
     // Reads up to `bound` bytes and hashes them; `size` is how many there were.
     Error readHash(const QByteArray& handle, qint64 bound, QCryptographicHash& hash, qint64& size, Status& status);
@@ -38,20 +43,25 @@ public:
     bool broken() const { return broken_; }
 private:
     quint32 nextId() { return ++id_; }
+    // Sends one request and records its id as outstanding.
+    Error request(quint32 id, const QByteArray& packet);
     Error send(const QByteArray& packet);
-    // Reads what has arrived, waiting up to `milliseconds`; replies go into replies_.
+    // Reads what has arrived (at most a fixed budget), waiting up to `milliseconds`; replies to
+    // outstanding requests go into replies_.
     Error pump(int milliseconds);
     Error await(quint32 id, wire::Reply& reply);
     Error simple(const QByteArray& packet, quint32 id, Status& status);
+    Error statusOnly(const wire::Reply&, Status&);
     Error lost();
     SshProcess& ssh_;
     const std::atomic_bool* cancelled_;
     wire::Framer framer_;
     std::map<quint32, wire::Reply> replies_;
+    std::set<quint32> outstanding_, abandoned_;
     QList<std::pair<QByteArray, QByteArray>> extensions_;
     quint32 id_ = 0;
-    quint64 writeChunk_ = 32768;
-    bool broken_ = false;
+    quint64 writeChunk_ = 32768, readChunk_ = 32768;
+    bool broken_ = false, eof_ = false;
     QString protocolError_;
 };
 }
