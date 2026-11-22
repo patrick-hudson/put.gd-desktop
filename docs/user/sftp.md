@@ -49,8 +49,9 @@ progress and cancel cleanly. It links no SSH library.
    SSH agent or key files. **Save to keychain** keeps what you typed in the system keychain;
    **Use for this session** keeps it until put.gd quits. A new SFTP destination starts with
    **Use for this session**, so put.gd never asks the keychain about a destination that has
-   nothing stored. Storing saves only what you typed: a stored password stays when you store a
-   passphrase, and the other way round. **Clear**, beside a stored one, forgets just that one and
+   nothing stored. Storing saves only what you typed, and the other saved secret stays. If the
+   keychain entry isn't loaded yet, put.gd unlocks it first; if it can't be read, nothing is
+   stored and the message asks you to unlock it first. **Clear**, beside a stored one, forgets just that one and
    leaves whatever you typed into the other field.
    There are two fields so a key passphrase never answers a password prompt, and a password
    never answers a key's passphrase prompt.
@@ -65,22 +66,24 @@ typed is saved.
 
 ## What Test checks
 
-The test reports each step and what it proved:
+Settings shows the test's summary. Each step and what it proved comes through `setup.inspect`
+(see [Agents](#agents)):
 
 | Step | What passed means |
 | --- | --- |
 | connect | The server answered on its port (through any ProxyJump). |
 | hostKey | Its host key matches one you trust (see [Host keys](#host-keys)). |
 | signIn | The server accepted the user and key, agent or password. |
+| sftp | Reported only when it fails: the server has no SFTP subsystem for this user, or a shell's startup text broke the stream. |
 | folder | Folder on server exists and is a folder. |
 | upload | A small test file was uploaded under a name nothing else uses. |
 | link | The link, fetched anonymously as anyone given it would, returned the same bytes. Skipped without a Link address. |
 | cleanup | The test file was checked and deleted again, and the server confirmed it. |
 
 Every step's answer is checked: the flush to disk, the check after the file was closed and the
-removal. A test that stops at a step names it, and the message says what to change. If the
-server doesn't confirm the test file was removed, cleanup reads "unconfirmed" and the message
-names the file to check. The test never removes a file that changed under the test file's name,
+removal. A test that stops at a step names it, and the message says what to change. The result's
+`cleanupStatus` is `removed`, `missing` (already gone) or `unconfirmed`; when the server doesn't
+confirm the removal, the message names the file to check. The test never removes a file that changed under the test file's name,
 and a test file whose creation got no answer is reported the same way. The summary saying the
 test passed appears only when every step passed.
 
@@ -101,16 +104,20 @@ files. If put.gd can't check your known_hosts files (ssh-keygen fails, or a file
 `ssh_known_hosts_off`.
 
 Host keys come only from those files: never from DNS, never skipped for localhost, with no
-second check by IP address, and no keys learned from the server. A ProxyJump hop's own host key
+second check by IP address, and no keys learned from the server. A `KnownHostsCommand` in your
+settings is honoured when connecting, but put.gd can't record what it vouches for, so an upload
+fails when that command is the only thing that trusts the server. A ProxyJump hop's own host key
 is checked by your ssh settings, as in a terminal.
 
 - **Unknown key.** Uploads refuse with `ssh_host_unknown_key`. **Test** fetches the key over the
-  same route the upload takes, without sending any credential, and shows it, such as
+  same route the upload takes, sending no credential to the server (a jump host on the way
+  signs in with its own settings), and shows it, such as
   `ED25519 SHA256:lKD1cde7…`. Compare it with the key your server's admin gave you
   (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server), then press **Trust key**.
   put.gd fetches the key again and keeps it only if it is still exactly the one you were
-  shown, for that one exact host name. put.gd records its fingerprint in the destination
-  itself, if Settings haven't changed meanwhile. Then test again. Trust refuses when your own
+  shown, for that one exact host name. It writes the key to its `known_hosts` first and then
+  records the fingerprint in the destination; if Settings changed meanwhile, the key stays
+  trusted but the job says the fingerprint wasn't recorded. Then test again. Trust refuses when your own
   `known_hosts` already has a key for the server (`ssh_host_key_known`: that one decides), and
   when its `HostKeyAlias` is a pattern or a list (`ssh_host_alias_pattern`).
 - **Changed key you trusted in put.gd** (`ssh_trusted_key_changed`): Settings shows the old and
@@ -118,11 +125,14 @@ is checked by your ssh settings, as in a terminal.
   was replaced; **Trust new key** replaces the old one in put.gd's file, and only while the file
   still holds the key this destination trusted.
 - **Changed key in your own known_hosts** (`ssh_host_key_changed`): a hard error naming the
-  file put.gd found the server's key in. It can mean someone is intercepting the connection. If the key was replaced on
-  purpose, remove the old one with `ssh-keygen -R host` (`ssh-keygen -R "[host]:2222"` for
-  another port) and test again.
+  file put.gd found the server's key in. It can mean someone is intercepting the connection. Only
+  after your server's admin confirms the key was rotated, remove the old one with
+  `ssh-keygen -R '<lookup name>' -f '<known_hosts file>'`, using the name and file the error
+  gives, and test again. For a system-managed file (such as `/etc/ssh/ssh_known_hosts`), ask
+  its admin.
 
 Changing the Server clears the recorded fingerprint, because another server has another key.
+It keeps the stored password and key passphrase, so review them.
 A trusted key stays in put.gd's `known_hosts` after its last destination is removed; that
 leftover does no harm.
 
@@ -132,8 +142,9 @@ A missing folder is never created during an upload: the upload fails with
 `sftp_folder_missing` and the full path it looked for. **Test** offers **Create folder**, which
 creates that folder and any missing folders above it, with the server's default permissions.
 The offer is only for the folder the test found missing: editing Folder on server or Server,
-pasting included, hides it, and put.gd creates the folder only while it still resolves to the
-path the test reported. An agent's edit hides it too. A folder whose path on the server isn't
+pasting included, hides it, and put.gd creates the folder only while Folder on server, joined
+to your login folder, is still the path the test reported; it doesn't resolve symbolic links
+again. An agent's edit hides it too. A folder whose path on the server isn't
 valid UTF-8 is refused before anything is written (`sftp_path_unsupported`), and so is Create
 folder for a relative Folder on server when the server doesn't name your login folder in UTF-8.
 
@@ -146,27 +157,30 @@ servers. A name that is taken is handled by your naming rules (rename or skip); 
 never replace a file. When the server offers it, put.gd asks it to flush the file to disk
 before closing it.
 
-Cancelling an upload removes the part already on the server; the message says so only when the
-server confirmed it, and otherwise names the file to check. A cancel counts from the moment
-you press it, even before the upload started. Once put.gd has asked the server to create the
-file, it waits up to 20 seconds for that answer before it stops, so it can remove the file. A cancel that arrives
-after the last byte was sent is too late, and the upload finishes. On a slow connection the
-removal can wait behind data ssh is still sending, and if the connection drops it can't be sent
-at all. After 3 seconds put.gd ends that connection and removes the partial file over a new one
-to the same server, as the same user, checked against the same host key. It does so only while
-the file is still a regular file with the owner the server reported when it was created, and no
-larger than the upload. Otherwise the upload is shown as unknown, with the path of the partial
-file to check.
+Cancelling an upload tries to remove the part already on the server. The message says it was
+removed, was already gone, or that removal is unconfirmed, naming the file to check. A cancel
+counts from the moment you press it, even before the upload started. Once put.gd has asked the
+server to create the file, it waits up to 20 seconds for that answer, and then up to 5 seconds
+for the new file's owner, before it stops, so it can remove the file. A cancel that arrives
+after the server acknowledged every byte is too late, and the upload finishes. On a slow
+connection the removal can wait behind data ssh is still sending, and if the connection drops it
+can't be sent at all. After 3 seconds put.gd ends that connection and tries again over a new one
+to the same server, as the same user, checked against the same host key. That needs the owner
+the server reported right after creating the file, and it removes the file only while it is
+still a regular file with that owner, no larger than the upload. Otherwise the upload is shown
+as unknown, with the path to check. When put.gd quits, a request still running gets up to 30
+seconds.
 
 After an unknown upload, put.gd claims a file at its name as this upload only with its own
 evidence: before the file was closed, put.gd saved the size, time and owner the server reported
-for its own handle, with the file's SHA-256. A file that matches (and, up to 256 MiB, reads back
-the same) is this upload. Otherwise the upload stays unknown with the path to check
-(`sftp_reconcile_unknown`). A name that was taken when the file was created is never claimed.
+for its own handle, with the file's SHA-256. A file that matches and reads back with the same
+SHA-256 is this upload. Otherwise the upload stays unknown with the path to check
+(`sftp_reconcile_unknown`); above 256 MiB put.gd doesn't read it back, so it stays unknown. A name that was taken when the file was created is never claimed.
 
 Each upload's record names the server it went to: the host, port and user ssh resolved and the
-`known_hosts` lines that hold that server's key (shown as its fingerprint), besides the file's
-size, time, owner and SHA-256. An upload whose server put.gd can't find in those files isn't
+`known_hosts` entries that verified it, besides the file's size, time, owner and SHA-256. The
+fingerprint shown is the first ordinary key entry's, and there may be none (a server trusted
+only through a certificate authority). An upload whose server put.gd can't find in those files isn't
 sent.
 
 A full disk is reported as `sftp_disk_full` with the free space, but only when the server's
@@ -183,8 +197,9 @@ says "Local only").
 
 ## Deleting from History
 
-Before deleting, put.gd connects with only the recorded `known_hosts` lines, so ssh itself
-proves the server still holds the key it had at the upload; if it doesn't, or the destination
+Before deleting, put.gd connects with only the recorded `known_hosts` entries, so ssh itself
+proves the server still satisfies them (one of the recorded keys, or a certificate from a
+recorded authority); if it doesn't, or the destination
 now reaches another host, port or user, put.gd refuses with `sftp_server_changed`. Then it checks that the file is still the one it uploaded: a regular
 file with the same size, modification time and owner as recorded, and, for files up to 32 MiB,
 the same bytes (it reads the file back and compares its SHA-256). A file that changed is left
@@ -235,7 +250,8 @@ nothing asks again.
 | `ssh_failed` | ssh stopped for another reason; the message gives its exit status. Run `ssh -v <server>` in a terminal to see why |
 | `ssh_host_not_found`, `ssh_connection_refused`, `ssh_connection_timeout` | Check the server name, port and network |
 | `ssh_no_sftp` | Ask the admin to enable the `sftp` subsystem. Text your shell prints when it starts (from `.bashrc` or similar) also breaks SFTP: print it only in interactive shells |
-| `sftp_folder_missing`, `sftp_not_folder` | Fix Folder on server, or use **Create folder** |
+| `sftp_folder_missing` | Folder on server doesn't exist. Use **Create folder**, which the test offers, then run **Test** again |
+| `sftp_not_folder` | That path is a file. Choose another Folder on server |
 | `sftp_permission_denied` | The user can't write there; fix the folder's permissions or choose another |
 | `sftp_disk_full` | Free space on the server |
 | `sftp_server_changed` | The server no longer holds the key it had at the upload, or the destination now reaches another server; put.gd leaves that upload alone |
@@ -251,15 +267,17 @@ paste an address into Server, press Test upload, **Trust key** (only with the ex
 the form offers), **Create folder**, Store (for what a person typed into Password or Key
 passphrase) and **Clear**, and add an SFTP destination, as a person does. They carry no password
 or passphrase. `setup.inspectAccount`, `setup.trustHostKey` and `setup.createFolder` (the MCP
-tool `sftp_destination_setup`) resolve the address, trust a key by its exact fingerprint and
+tool `sftp_destination_setup`) answer a `setupId` at once, whose result `setup.inspect` gives;
+they resolve the address, trust a key by its exact fingerprint and
 create the saved folder (up to 4096 bytes, with the path the test reported) for a saved
 destination. A trust records the
 fingerprint in the destination itself. A password or key passphrase is stored with
 `setup.storeCredentials` over the session socket, one or both at a time, as
-`{"values":{"password":"…"}}`; the other one stays as stored, and an empty value clears that
-one. `putgd-cli` refuses to store credentials, as it does for every destination. A no-link
+`{"profileId":"…","expectedRevision":"…","credentials":{"values":{"password":"…"}}}`; the
+other one stays as stored (put.gd unlocks the entry first, or refuses), and an empty value
+clears that one. `putgd-cli` refuses to store credentials, as it does for every destination. A no-link
 upload's place on the server (what Copy path copies) is its receipt's
-`objectReference.location` in `history.detail` (MCP `get_history_entry`), beside the server
+`objectReference.location`, the full `host:/path`, in `history.detail` (MCP `get_history_entry`), beside the server
 identity it was verified as. See [cli.md](../automation/cli.md) and
 [mcp.md](../automation/mcp.md); the settings are described in
 [configuration.md](../design/configuration.md).
@@ -283,11 +301,11 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
   closed when it finds none.
 - A pasted Server text that isn't an address put.gd can read is refused as a whole; put.gd
   doesn't guess at malformed plain host text.
-- A folder that a symbolic link inside an existing parent points somewhere else between Test and
-  Create folder isn't noticed.
+- A symbolic link in a parent folder that changes between Test and Create folder can redirect
+  where the folder is created.
 - A symbolic link changed between the name check and the upload isn't noticed.
-- put.gd doesn't bound SFTP replies other than file data below the protocol's own limits; the
-  paths it sends are at most 4096 bytes.
-- A port written with leading zeros (`000022`) is read as its number.
+- Folder on server is at most 4096 bytes; the file name is limited separately by your naming
+  rules.
+- A port written with leading zeros (`00022`) is read as its number.
 - A server key replaced in your known_hosts while a connection is signing in isn't noticed: the
   upload records the key the file holds after sign-in.

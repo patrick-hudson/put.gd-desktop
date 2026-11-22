@@ -251,7 +251,11 @@ cancel already under way included.
 
 **Client.** Every reply must answer a request still outstanding, exactly once; a reply put.gd
 didn't ask for, or a second one, is a protocol error that ends the connection. One read pass
-takes at most 1 MiB before it parses. At end of file the replies already read are still
+takes at most 1 MiB before it parses. Replies are bounded before use: a packet at most 1 MiB; a
+version reply at most 64 extensions (names up to 256 bytes, data up to 4096); a status message
+up to 4096 bytes and its language tag up to 256; a handle up to 256 bytes; a name list at most
+1024 entries, each name up to 4096 bytes and its long name up to 8192. Paths put.gd sends are
+at most 4096 bytes. At end of file the replies already read are still
 delivered; only requests without one fail. The server must answer version 3 exactly.
 Extensions are used only at the versions put.gd implements (`fsync@openssh.com` 1,
 `statvfs@openssh.com` 2, `limits@openssh.com` 1); `limits@openssh.com` bounds read and write
@@ -266,7 +270,9 @@ missing, a file that can't be read, an exit status other than found or not found
 with `ssh_known_hosts_unreadable`. `UserKnownHostsFile none` is passed on as `none`. put.gd's
 file is `<config root>/ssh/known_hosts`, in its own 0700 folder; before it is handed to ssh an
 `lstat` must show a regular file of this user's with mode 0600 in a folder of this user's that
-isn't a symbolic link (a file not there yet is fine). put.gd never writes the user's. Keys never come from DNS or the server, localhost isn't exempt,
+isn't a symbolic link (a file not there yet is fine). put.gd never writes the user's. Ordinary
+connections honour the user's `KnownHostsCommand`, but an upload needs a known_hosts line it can
+record, so one whose server only that command vouches for fails before anything is sent. Keys never come from DNS or the server, localhost isn't exempt,
 and there is no second check by IP address. A ProxyJump hop's own host key follows the user's
 ssh settings, as in a terminal.
 
@@ -287,7 +293,8 @@ reads the whole file and refuses one over 16 MiB rather than drop lines, replace
 it still holds the fingerprint the destination recorded (else `ssh_host_key_mismatch`), writes
 through a temporary file and checks the result is a regular 0600 file of this user. The
 resident then records the fingerprint in the destination's `hostKeyFingerprint` itself,
-conditional on the configuration revision the trust began with; the record changes the
+conditional on the configuration revision the trust began with. The key is written first, so an
+edit meanwhile leaves it trusted while the job says the fingerprint wasn't recorded; the record changes the
 destination's check fingerprint, so an earlier Test no longer vouches. A changed key is in the
 user's file when their files had an entry for the server, `ssh_host_key_changed`, which names
 that file and `ssh-keygen -R`; otherwise only put.gd's file can hold it, `ssh_trusted_key_changed`
@@ -300,7 +307,8 @@ anything is written (`sftp_path_unsupported`); a
 missing one is `sftp_folder_missing` with the path as the settings name it, resolved from the
 login folder for a relative path, and only `createFolder` (an explicit setup step for the saved
 folder, up to 4096 bytes, given with the path its Test reported) creates it, level by level, and
-only while the folder still resolves to that path. The canonical (realpath) folder plus the
+only while the configured folder joined to the login folder is still that path (symbolic links
+aren't resolved again, so a parent link changed meanwhile can redirect it). The canonical (realpath) folder plus the
 name is the path every name check, receipt, lock key and deletion uses. The path and the
 verified server are checkpointed before the open. The file opens under its final name with
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
@@ -315,17 +323,18 @@ regular file of that owner and no larger than the upload. That connection is pin
 checks are: only the known_hosts lines the attempt was verified by, and the same host, port and
 user; otherwise nothing is removed. An upload keeps its password and
 passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
-before it stops the helper, and Quit at most 30, even with a cancel under way; cleanup that can't be confirmed is reported as unconfirmed, with the
+before it stops the helper; Quit gives an active request at most 30, even with a cancel under way; cleanup that can't be confirmed is reported as unconfirmed, with the
 path. When the `fstat` answer lacks the owner, type or times, CLOSE and REMOVE share one 8-second budget on the upload's own connection and no new connection is tried. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never
 cut short by a cancel. The bytes sent are hashed and must match the artifact's SHA-256. Then
 `fsync@openssh.com` when offered, `fstat` of the handle (which must report size, owner, times
 and permissions), a checkpoint of those plus the SHA-256, close, and an `lstat` that must show
-the same regular file. Once every byte is acknowledged a cancel is ignored and the upload
-finishes. A cancel or failure before that closes and removes the file; its message says the
+the same regular file. Finalization starts once the server has acknowledged every byte; a cancel
+from then on is ignored and the upload finishes. A cancel or failure before that is a cleanup
+attempt as above, with the outcome removed, already gone or unconfirmed; its message says the
 partial file was removed only when the server confirmed it, and otherwise names the path to
-check. A dropped connection can't remove it, and the upload is unknown. A write refused
+check. A write refused
 with the generic `SSH_FX_FAILURE` is `sftp_disk_full` only when `statvfs@openssh.com` shows less
 free space than the file needs.
 
@@ -347,11 +356,13 @@ nothing journaled the attempt never opened a file, so the name is `missing` for 
 **Deletion and capabilities.** `stat`, the check before removal and `reconcile` connect with
 `UserKnownHostsFile` set to a private temporary file holding only the recorded lines,
 `GlobalKnownHostsFile=/dev/null`, `KnownHostsCommand=none` and `StrictHostKeyChecking=yes`, so
-ssh itself proves the server still holds the recorded key (certificate authorities come only from
-known_hosts files, so the recorded lines are all of them); any host-key failure there is `sftp_server_changed`, as is a
+ssh itself proves the server satisfies the recorded entries: any recorded key, or a certificate
+from a recorded authority (certificate authorities come only from known_hosts files, so the
+recorded lines are all of them); any host-key failure there is `sftp_server_changed`, as is a
 destination that now resolves to another host, port or user. A session connection verified by
 exactly those lines (a test checking its own upload) is reused. A record whose server is known
-only through a certificate authority has no display fingerprint and can still be deleted: the
+only through a certificate authority has no display fingerprint (it is the first ordinary key
+entry's, when there is one) and can still be deleted: the
 recorded lines are what counts, in History and the worker alike. Then a
 regular file with the recorded size, mtime and uid and, up to 32 MiB, the recorded SHA-256. The
 intent is checkpointed through the deletion's durable checkpoint before that file check, so
