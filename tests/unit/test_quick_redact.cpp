@@ -378,6 +378,29 @@ private slots:
   for(int y=0;y<checks.height();++y)for(int x=0;x<checks.width();++x)checks.setPixel(x,y,(x+y)%2?qRgb(255,255,255):qRgb(0,0,0));
   QCOMPARE(quickRedact::markBoxes(row,{"card",{0}},checks.rect(),checks).first().mark.right(),116+9);
  }
+ // Sol review of #1842: the cover never stops at a gap inside the match. A gap
+ // between the match's glyphs wider than the space (S1), matched ink below the
+ // neighbour's rows (S2), and a transparent picture (S3) keep the glyph covered.
+ void marksNeverStopInsideTheMatch() {
+  const auto page=[](QImage::Format format,QRgb paper){QImage image(200,60,format);image.fill(paper);return image;};
+  const auto ink=[](QImage& image,int x0,int x1,int y0,int y1){for(int x=x0;x<=x1;++x)for(int y=y0;y<=y1;++y)image.setPixel(x,y,qRgba(0,0,0,255));};
+  // "abcd" with its box ending at 99 (10 px glyphs, a 15 px margin); its last
+  // glyph's ink is at 103-105, after a 3 px gap; the neighbour's ink starts at 107.
+  QImage wide=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(wide,62,99,12,27);ink(wide,103,105,12,27);ink(wide,107,120,12,27);
+  const QList<RecognizedWord> row{{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}};
+  QCOMPARE(quickRedact::markBoxes(row,{"list",{0}},wide.rect(),wide).first().mark.right(),105);
+  // Matched ink below the neighbour's rows runs to 104; the cover reaches it.
+  QImage low=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(low,62,99,12,17);ink(low,100,104,22,27);ink(low,107,126,10,17);
+  const QList<RecognizedWord> short_{{"abcd",QRect(60,10,40,20),90,0},{"up",QRect(107,10,20,8),90,0}};
+  QVERIFY(quickRedact::markBoxes(short_,{"list",{0}},low.rect(),low).first().mark.right()>=104);
+  // Opaque ink on a transparent picture: what shows between the words depends
+  // on the viewer, so the whole margin stays.
+  QImage clear=page(QImage::Format_ARGB32,qRgba(0,0,0,0));
+  ink(clear,62,99,12,27);ink(clear,107,120,12,27);
+  QCOMPARE(quickRedact::markBoxes(row,{"list",{0}},clear.rect(),clear).first().mark.right(),99+15);
+ }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
   const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));
