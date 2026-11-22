@@ -130,7 +130,9 @@ kernel's Landlock version, and nothing stronger.
 
 - `PR_SET_NO_NEW_PRIVS` and `PR_SET_DUMPABLE 0`.
 - Resource limits: no core file. `RLIMIT_DATA` at 576 MiB, lowered to 480 MiB when the job
-  reads English only. `RLIMIT_CPU` at 21 seconds for each recognition thread. `RLIMIT_FSIZE` at
+  reads English only. `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine ceiling counted
+  before confinement, with the hard limit one second higher. Both are capped at any hard limit the
+  helper inherits, so they can be equal. `RLIMIT_FSIZE` at
   8 MiB, which is also the output cap. `RLIMIT_NOFILE` at 32. There is no `RLIMIT_AS`, because
   mapped libraries and glibc's reservations would trip it.
 - **Landlock** through system calls, ABI 3 or later so that truncation by path is covered.
@@ -186,7 +188,7 @@ banded, parallel recognition, and all of them fail.
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
-The helper recognizes on up to four engines at once and starts another engine only while its
+The helper recognizes on up to eight engines at once and starts another engine only while its
 resident set stays under the budget, so the budget decides how many cores a job can use. A
 worker that has read one task reserves only the working memory its next task needs beyond the
 largest it has read, and an extra engine is counted without the language data it shares. There is no smaller memory figure for small regions. The helper is transient, and the memory buys
@@ -236,7 +238,7 @@ engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dens
 100,000 characters or more, therefore cannot be read on one engine inside the deadline, and no
 pixel limit changes that. Four engines still leave the densest test page cut.
 
-The figure of a millisecond a character is for one engine. The helper can use up to four, as
+The figure of a millisecond a character is for one engine. The helper can use up to eight, as
 many as the memory budget lets it start, so how much of a dense page it reads before the time
 budget depends on that budget too. Under the old 128 MiB budget a 4K screen ran on one engine
 and took as long as `--threads 1`. In the #1805 benchmark on aurora-amd, the dense 24-megapixel
@@ -290,7 +292,9 @@ On the corpus it lost whole terminal and plain-page regions.
   whole scaled image never exists.
 - **Single pass.** A panel is read in one pass up to 8,000,000 scaled pixels, and Tesseract's own
   layout gives the reading order. A single pass of at least 500,000 scaled pixels is cut into about
-  two strips for each engine, between text lines, and the strips are read in parallel.
+  two strips for each engine (at most four counted) when more than one engine may run. The cuts go
+  between text lines, the strips can be read in parallel, and a panel with no usable cut stays
+  whole.
   - A cut goes in the quietest rows of a blank run (a row counts as blank with up to a 256th of
     its width in ink pixels, so cutting through a descender would read "sample" as "samnle").
   - Where no row is blank, such as a border down a window or lines set without leading, the cut
@@ -301,8 +305,8 @@ On the corpus it lost whole terminal and plain-page regions.
     editor code the median error was 1.270 percent for the whole block and 1.481 percent in two
     strips for each engine (m74, Tesseract 5.3.4). Dense terminals read exactly the same.
 - **Bands.** A panel above 8,000,000 scaled pixels is cut into horizontal bands of the scaled
-  image over twice the number of engines, between 1 and 2 megapixels and at least eight line
-  heights, never more than 8 megapixels with overlap included.
+  image over twice the number of engines (at most four counted), between 1 and 2 megapixels and
+  at least eight line heights, never more than 8 megapixels with overlap included.
   - Each cut goes at the last blank row gap in the final quarter of the band.
   - With no gap there, the cut is made at the limit and the next band starts earlier by
     twice the estimated line height, and by no more than a quarter of the band. Every band
@@ -316,11 +320,35 @@ On the corpus it lost whole terminal and plain-page regions.
   column, then the whole right column, each banded within. Below 4 megapixels a two-column page is
   one panel, read as page segmentation 6 reads it. There is no global multi-column order across
   bands.
-- **Threads.** Recognition runs on up to four engines, one for each CPU the process may run on
-  (its affinity or a container's cpuset, not the machine's online count). The bands and strips of
-  every panel go into one pool. Results join in task order, never in the order the tasks finish. A
-  screen measures its first task before it shares, and an extra engine starts only while the time
-  left covers twice an engine's start plus the slowest task.
+- **Threads.** Recognition may run up to eight engines. Fewer start when the memory budget, the
+  number of tasks or the time left allows fewer.
+  - The ceiling is the CPUs the process may use: its affinity, or a container's cpuset, not the
+    machine's online count. If the affinity can't be read, it is the online count. That is
+    lowered to the tightest cgroup v2 `cpu.max` quota readable on the process's cgroup or a
+    visible parent, rounded up.
+  - The helper counts before confinement, because Landlock then hides `/sys/fs/cgroup`.
+  - Bands and strips are cut as for at most four engines. So with four to eight engines a job's
+    tasks are the same, and so is its text, unless the time budget cuts the job short. More
+    engines share the same tasks. When strips followed the engine count, six engines read 47 of
+    the 176 corpus captures differently.
+  - A task's memory growth is not measured while an extra engine is starting. With eight engines
+    on a GNOME 4K screen, a task measured beside seven engine starts showed 79 MiB, and every
+    extra worker then found no room and quit.
+  - On aurora-amd (Ryzen 5 PRO 8500GE, 6 cores and 12 threads), the AppImage's own resident and
+    helper, with eight engines against the four of #1809's CI AppImage:
+
+    | | 4 engines | 8 engines |
+    | --- | --- | --- |
+    | 176-capture corpus | 86.1 s | 78.5 s |
+    | 4 MP+ screens, mean | 1.31 s | 1.16 s |
+    | Dense 24 MP page | 12.8 s | 9.0 s |
+    | Peak, dense page | 139 MiB | 204 MiB |
+
+    The text was identical on all 176 captures. On k72's four cores nothing changed. The record
+    is [put.gd-evidence `records/2026-11-22-issue-1812-ocr-engine-count`](https://github.com/patrick-hudson/put.gd-evidence/tree/03ec9a20f11f719e5ddac17014e32073bf79c6dd/records/2026-11-22-issue-1812-ocr-engine-count).
+  - The bands and strips of every panel go into one pool. Results join in task order, never in
+    the order the tasks finish. A screen measures its first task before it shares, and an extra
+    engine starts only while the time left covers twice an engine's start plus the slowest task.
 - **Codes first.** ZXing-cpp reads the full grey image. Then each decoded code's area is
   filled with the background in every band's copy, so a band never needs a code, and code
   modules never leak into the text. Formats read are QR Code, Micro QR Code, Data Matrix and
@@ -1187,8 +1215,8 @@ Recognition costs roughly a millisecond a character on each core. A paragraph ta
 second. A region packed with text or a whole 4K screen takes several seconds. These are
 measurements of the helper alone, taken on the engine round four code (#1462), not acceptance of a
 put.gd build. Times are `TextJob`'s `totalMs` (spawn to the result read back), so they leave out
-the parent's grey conversion and the clipboard. Release builds, up to four engines, peak is the
-helper's VmHWM. m74 is an i5-6500T on Mint 22.3 with distribution Tesseract 5.3.4. k72 uses
+the parent's grey conversion and the clipboard. Release builds, up to four engines (the cap before
+#1812), peak is the helper's VmHWM. m74 is an i5-6500T on Mint 22.3 with distribution Tesseract 5.3.4. k72 uses
 Tesseract 5.5.4 built from source.
 
 | Input | m74 time and peak | k72 time and peak |
