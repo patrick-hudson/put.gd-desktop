@@ -168,6 +168,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   bool closed=false;                // under lock: nothing is handed over after this
   std::atomic<bool> closing{false}; // read without the lock before a band copy
   std::atomic<int> next{0},copying{0},running{0},busy{0};
+  // Extra engines starting now, and started so far: a task's growth is not
+  // measured across an engine's start, whose memory it would count.
+  std::atomic<int> starting{0},started{0};
   std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
   std::vector<qint64> taskPixels;   // scaled pixels of each task
   std::atomic<bool> stop{false};
@@ -274,7 +277,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
    largestRead=std::max(largestRead,shared->taskPixels[size_t(task)]);
    struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
-   const qint64 before=residentBytes();
+   const qint64 before=residentBytes();const bool quiet=shared->starting.load()==0;const int startsBefore=shared->started.load();
    // The time budget: never start a task that cannot finish, and give every
    // pass a deadline, so a pass that overruns returns its partial result.
    if(shared->budgetMs>0){const int remaining=shared->left();if(remaining<=0||(shared->slowest.load()>0&&remaining<shared->slowest.load())){shared->stop=true;return;}}
@@ -291,7 +294,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    outcome.done=true;
    if(outcome.failed||outcome.cutShort)shared->stop=true;
    const qint64 took=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-clock).count();
-   raise(shared->slowest,took);raise(shared->taskGrowth,residentBytes()-before);
+   raise(shared->slowest,took);
+   // (With seven engines starting beside a 4K screen's second task, it
+   // showed 79 MiB, and every extra worker then found no room for twice that.)
+   if(quiet&&shared->starting.load()==0&&shared->started.load()==startsBefore)raise(shared->taskGrowth,residentBytes()-before);
    {std::lock_guard<std::mutex> guard(shared->lock);if(shared->closed)return;shared->outcomes[task]=std::move(outcome);}
    if(afterFirstTask)afterFirstTask();
   }
@@ -306,16 +312,18 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   if(options.budgetMs>0&&shared->left()<2*result.timings.engineStartMs+shared->slowest.load()+250)return;
   for(int w=0;w<count;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
-   shared->running.fetch_add(1);
+   shared->running.fetch_add(1);shared->starting.fetch_add(1);
    const int worker=int(shared->extra.size());
    // A thread the system refuses (RLIMIT_DATA counts each stack, which the
    // memory gate does not see) ends the pool here; the engines running go on.
    try{
     pool.emplace_back([shared,engine,work,worker]{
-     if(engine->startLike(shared->first).isEmpty())work(engine,worker,{});
+     const bool engineStarted=engine->startLike(shared->first).isEmpty();
+     shared->started.fetch_add(1);shared->starting.fetch_sub(1);
+     if(engineStarted)work(engine,worker,{});
      std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
     });
-   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->extra.pop_back();break;}
+   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();break;}
   }
  };
  // How many extra engines fit in the memory budget when each costs this much.
