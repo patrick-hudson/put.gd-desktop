@@ -109,7 +109,7 @@ If that read fails, the store is refused (`credential_incomplete`) and the saved
 alone. The exception is a "not found" answer for an entry that isn't marked as saved; a locked
 entry can answer "not found" too. A successful keychain store marks its entry. The destination
 check records keep the mark across restarts while a destination names the entry or owns it as
-`putgd/sftp/<profile id>`, in either credentials mode. When the records are missing, unreadable
+`putgd/<profile id>` or `putgd/sftp/<profile id>`, in either credentials mode. When the records are missing, unreadable
 or from before this rule, every entry a keychain-mode destination names is marked as saved. A left-out name with no value
 to keep (nothing saved, or a session-mode destination with nothing loaded) is stored empty.
 Stores to one keychain entry run one at a time, and a cancel while the entry is read stores
@@ -124,7 +124,7 @@ the password and the key passphrase at most once each, answering ssh's own exact
 ([storage providers](storage-providers.md#sftp)): never ssh's command line or environment. The
 worker wipes both once sign-in ends, except that an upload keeps them until the request ends,
 since cleaning up a cancelled upload may need a new connection. A keychain-mode SFTP destination whose entry isn't loaded still connects,
-with the agent and key files. Its keychain reference is `putgd/sftp/<profile id>`; a new SFTP
+with the agent and key files. Its keychain reference is `putgd/<profile id>` once Settings switches it to the keychain; a new SFTP
 destination starts in session mode, so startup unlock never asks the keychain about one that
 has nothing stored.
 
