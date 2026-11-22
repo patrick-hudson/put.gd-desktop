@@ -497,7 +497,7 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
     // ssh skips a private key other users can read, then signs in without it: say how to fix the file.
     static const QRegularExpression tooOpen(QStringLiteral("Permissions 0[0-7]+ for '([^']+)' are too open"));
     if (const auto open = tooOpen.match(text); open.hasMatch() && text.contains(QLatin1String("Permission denied")))
-        return {"ssh_key_permissions", "ssh refused your key " + QFileInfo(open.captured(1)).fileName() + " because other users can read it. Run chmod 600 " + open.captured(1) +
+        return {"ssh_key_permissions", "ssh refused your key " + QFileInfo(open.captured(1)).fileName() + " because other users can read it. Run chmod 600 " + shellQuoted(open.captured(1)) +
                     " in a terminal, then test again.", {}};
     static const QRegularExpression denied(QStringLiteral("Permission denied \\(([^)]*)\\)"));
     const auto methods = denied.match(text).captured(1).split(',', Qt::SkipEmptyParts);

@@ -179,6 +179,7 @@ private slots:
         write("id_ed25519.pub", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA alice@laptop\n", owner | QFile::ReadOther | QFile::ReadGroup);
         write("lonely.pub", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA alice@laptop\n", owner);
         write("pasted", "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ alice@laptop\n", owner);
+        write("tabbed", "ssh-ed25519\tAAAAC3NzaC1lZDI1NTE5AAAAIA alice@laptop\n", owner);
         write("work.ppk", "PuTTY-User-Key-File-3: ssh-ed25519\n", owner);
         write("open", privateHead, owner | QFile::ReadGroup);
         QVERIFY(sftp::keyFileProblem(dir.filePath("id_ed25519")).code.isEmpty());
@@ -189,11 +190,12 @@ private slots:
         QCOMPARE(sftp::keyFileProblem(dir.filePath("lonely.pub"), &privateKey).code, QString("ssh_key_public"));
         QVERIFY(privateKey.isEmpty());
         QCOMPARE(sftp::keyFileProblem(dir.filePath("pasted")).code, QString("ssh_key_public"));
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("tabbed")).code, QString("ssh_key_public"));
         QCOMPARE(sftp::keyFileProblem(dir.filePath("work.ppk")).code, QString("ssh_key_putty"));
         // ssh refuses a private key of yours that others can read; the message says how to fix it.
         const auto open = sftp::keyFileProblem(dir.filePath("open"));
         QCOMPARE(open.code, QString("ssh_key_permissions"));
-        QVERIFY(open.message.contains("chmod 600 " + dir.filePath("open")));
+        QVERIFY(open.message.contains("chmod 600 '" + dir.filePath("open") + "'"));
         QCOMPARE(sftp::keyFileProblem(dir.filePath("gone")).code, QString("ssh_key_missing"));
         QCOMPARE(sftp::keyFileProblem(dir.path()).code, QString("ssh_key_unreadable"));
         // ssh's own refusal of a configured key that is too open reads the same way.
@@ -202,7 +204,9 @@ private slots:
         const auto refused = sftp::classify("Permissions 0644 for '/home/alice/.ssh/id_rsa' are too open.\nIt is required that your private key files are NOT accessible by others.\n"
                                             "alice@files.example.com: Permission denied (publickey).\n", context);
         QCOMPARE(refused.code, QString("ssh_key_permissions"));
-        QVERIFY(refused.message.contains("chmod 600 /home/alice/.ssh/id_rsa"));
+        QVERIFY(refused.message.contains("chmod 600 '/home/alice/.ssh/id_rsa'"));
+        // Advice to paste into a terminal names the file as one shell word, whatever its name.
+        QCOMPARE(sftp::shellQuoted("/home/al ice/it's"), QString("'/home/al ice/it'\\''s'"));
         context.resolved.chosenKey = "/home/alice/keys/deploy_ed25519";
         QVERIFY(sftp::classify("alice@files.example.com: Permission denied (publickey).\n", context).message.contains("with the key deploy_ed25519"));
     }

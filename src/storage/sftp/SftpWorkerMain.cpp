@@ -273,7 +273,11 @@ private:
         }
         QStringList hosts{resolved.host};
         if (!resolved.hostKeyAlias.isEmpty()) hosts.prepend(resolved.hostKeyAlias);
-        Askpass askpass(password_, passphrase_, resolved.user, hosts, resolved.identityFiles);
+        // The chosen key's prompt names it exactly as given, which ssh -G's output may not keep (a
+        // trailing space).
+        auto keyFiles = resolved.identityFiles;
+        if (!resolved.chosenKey.isEmpty() && !keyFiles.contains(resolved.chosenKey)) keyFiles.prepend(resolved.chosenKey);
+        Askpass askpass(password_, passphrase_, resolved.user, hosts, keyFiles);
         // A FIDO key waits for a touch while ssh signs in; the resident shows this while it waits.
         askpass.onTouch = [id = id_] { io.emitLine({{"id", double(id)}, {"event", "notice"}, {"notice", "touch"}, {"message", "Touch your security key"}}); };
         QString why;

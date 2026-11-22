@@ -106,14 +106,9 @@ void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
     });
 
     // Sign-in (#1892): one section with SSH key, Password, Key passphrase and where secrets are
-    // kept. Settings gives the rows its sign-in card; on its own the panel makes one.
-    QFormLayout* signIn = nullptr;
-    if (!signInRow) {
-        signIn = PreferenceRows::card(page, "Sign-in", "All optional. Leave them empty to sign in with your SSH agent and ~/.ssh/config, as ssh does in a terminal.");
-        signIn->parentWidget()->setObjectName("sftpSignInSection");
-    }
+    // kept, in the card Settings keeps the destination's sign-in in.
     const auto addSignIn = [&](const QString& label, QWidget* control, const QString& hint) {
-        auto* made = signInRow ? signInRow(nullptr, label, control, hint) : row(signIn, label, control, hint);
+        auto* made = signInRow(nullptr, label, control, hint);
         signInRows_.append(made);
         return made;
     };
@@ -178,7 +173,8 @@ bool SftpPanel::chooseKey() {
     });
 }
 void SftpPanel::takeKeyFile(const QString& raw) {
-    auto path = raw.trimmed();
+    // Exactly as chosen or typed: a file name may end in a space.
+    auto path = raw;
     if (path == QLatin1String("~") || path.startsWith(QLatin1String("~/"))) path = QDir::homePath() + path.mid(1);
     // A .pub picked by mistake: the private key next to it, when it is there.
     QString privateKey;
@@ -201,7 +197,7 @@ void SftpPanel::showKeyProblem() {
     if (!keyError_) return;
     // The path's own rule first, then what is wrong with the file.
     auto message = sftp::problem(settings(), "keyFile");
-    if (message.isEmpty() && !keyFile_->text().trimmed().isEmpty()) message = keyFileProblem_;
+    if (message.isEmpty() && !keyFile_->text().isEmpty()) message = keyFileProblem_;
     keyError_->setText(message);
     keyError_->setVisible(!message.isEmpty());
     keyFile_->setProperty("invalid", !message.isEmpty());
@@ -293,6 +289,7 @@ void SftpPanel::setSettings(const QJsonObject& s) {
     folder_->setText(s["folder"].toString());
     link_->setText(s["publicUrlBase"].toString());
     keyFile_->setText(sftp::keyFile(s));
+    keyFileNull_ = s.contains("keyFile") && s["keyFile"].isNull();
     hostKeyFingerprint_ = s["hostKeyFingerprint"].toString();
     typedServer_ = savedServer_ = server_->text();
     // What the saved key file needs fixed, read from the file as the form opens.
@@ -309,8 +306,10 @@ QJsonObject SftpPanel::settings() const {
     QJsonObject s{{"server", sftp::withoutPassword(server_->text())}, {"user", user_->text().trimmed()}, {"folder", folder_->text()},
                   {"publicUrlBase", link.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(link)},
                   {"hostKeyFingerprint", hostKeyFingerprint_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(hostKeyFingerprint_)}};
-    // Saved only when one is chosen (#1892), so a destination without one reads as before.
-    if (!keyFile_->text().trimmed().isEmpty()) s["keyFile"] = keyFile_->text().trimmed();
+    // Saved only when one is chosen (#1892), so a destination without one reads as before; a
+    // destination saved with an explicit null keeps it, or it would never read as saved.
+    if (!keyFile_->text().isEmpty()) s["keyFile"] = keyFile_->text();
+    else if (keyFileNull_) s["keyFile"] = QJsonValue(QJsonValue::Null);
     return s;
 }
 QMap<QString, QString> SftpPanel::typedSecrets() const {

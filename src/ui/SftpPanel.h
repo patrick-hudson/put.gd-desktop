@@ -21,8 +21,8 @@ public:
     static QJsonObject defaultSettings();
     explicit SftpPanel(QWidget* parent = nullptr);
     // `signIn` adds the SSH key, Password and Key passphrase rows where Settings keeps the
-    // destination's sign-in (#1892); without one they get a card of their own here.
-    void build(const RowBuilder&, const RowBuilder& signIn = {});
+    // destination's sign-in (#1892).
+    void build(const RowBuilder&, const RowBuilder& signIn);
     // The rows `signIn` made, so Settings shows them only for an SFTP destination.
     const QList<QWidget*>& signInRows() const { return signInRows_; }
     // Choose… beside SSH key: the desktop's file chooser, starting in ~/.ssh (ui.fileDialog sftpKey).
@@ -81,6 +81,7 @@ private:
     QList<QWidget*> signInRows_;
     // The chosen key's own problem (the file, or what ssh found), and the last pure rule's.
     QString keyFileProblem_;
+    bool keyFileNull_ = false;  // saved as an explicit null
     // The Folder on server a test found missing: Create folder makes only that one.
     QString offeredFolderSetting_, offeredServerSetting_;
     // A problem the panel found itself (a password left out of a paste), kept past refreshProblems.

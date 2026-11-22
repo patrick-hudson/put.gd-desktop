@@ -52,6 +52,8 @@ QString keyFile(const QJsonObject& settings);
 // a PuTTY key, a file other users can read (ssh refuses those), a file that isn't there.
 // `privateKey`, when given, gets the private key next to a picked .pub file, if there is one.
 Error keyFileProblem(const QString& path, QString* privateKey = nullptr);
+// A path as one single-quoted shell word, for commands put.gd suggests running.
+QString shellQuoted(const QString& path);
 // The credential-store names of the two optional secrets.
 inline QString passwordKey() { return QStringLiteral("password"); }
 inline QString passphraseKey() { return QStringLiteral("passphrase"); }

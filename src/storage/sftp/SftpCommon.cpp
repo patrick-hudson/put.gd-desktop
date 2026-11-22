@@ -228,6 +228,7 @@ QString location(const QJsonObject& settings, const QString& absolutePath) {
     return host + ":" + absolutePath;
 }
 QString keyFile(const QJsonObject& settings) { return settings.value("keyFile").toString(); }
+QString shellQuoted(const QString& path) { return "'" + QString(path).replace('\'', QLatin1String("'\\''")) + "'"; }
 Error keyFileProblem(const QString& path, QString* privateKey) {
     if (privateKey) privateKey->clear();
     const auto name = QFileInfo(path).fileName();
@@ -240,7 +241,7 @@ Error keyFileProblem(const QString& path, QString* privateKey) {
     QFile file(path);
     const auto head = file.open(QIODevice::ReadOnly) ? file.read(64) : QByteArray();
     // A public key: a .pub file, or one line such as "ssh-ed25519 AAAA…" whatever its name.
-    static const QRegularExpression publicLine(QStringLiteral("^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+ AAAA"));
+    static const QRegularExpression publicLine(QStringLiteral("^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+[ \\t]+AAAA"));
     if (path.endsWith(QLatin1String(".pub")) || publicLine.match(QString::fromLatin1(head)).hasMatch()) {
         if (path.endsWith(QLatin1String(".pub"))) {
             const auto candidate = path.chopped(4);
@@ -251,11 +252,11 @@ Error keyFileProblem(const QString& path, QString* privateKey) {
         return {"ssh_key_public", name + " is a public key. Choose the private key file, usually the same name without .pub.", {{"field", "keyFile"}}};
     }
     if (head.startsWith("PuTTY-User-Key-File"))
-        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it with puttygen " + name + " -O private-openssh -o " +
-                    QFileInfo(name).completeBaseName() + ", then choose the converted file.", {{"field", "keyFile"}}};
+        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it with puttygen " + shellQuoted(name) + " -O private-openssh -o " +
+                    shellQuoted(QFileInfo(name).completeBaseName()) + ", then choose the converted file.", {{"field", "keyFile"}}};
     // ssh refuses a private key of yours that anyone else may read (sshkey_perm_ok).
     if (info.st_uid == ::getuid() && (info.st_mode & 077) != 0)
-        return {"ssh_key_permissions", "ssh refuses a private key that other users can read. Run chmod 600 " + path + " in a terminal, then test again.",
+        return {"ssh_key_permissions", "ssh refuses a private key that other users can read. Run chmod 600 " + shellQuoted(path) + " in a terminal, then test again.",
                 {{"field", "keyFile"}}};
     return {};
 }

@@ -2,6 +2,8 @@
 #include "storage/s3/R2Provider.h"
 #include "storage/s3/R2Settings.h"
 #include "storage/sftp/SftpProvider.h"
+#include "ui/SftpPanel.h"
+#include <QFormLayout>
 #include <QClipboard>
 #include <QDir>
 #include <QFile>
@@ -120,12 +122,16 @@ private slots:
   auto* problem=window.findChild<QLabel*>("sftpKeyFileBoxError");QVERIFY(problem);QVERIFY(!problem->isVisible());
   QVERIFY(QFile::setPermissions(keys.filePath("id_deploy"),QFile::ReadOwner|QFile::WriteOwner|QFile::ReadOther));
   key->setText(keys.filePath("id_deploy"));emit key->editingFinished();
-  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("chmod 600 "+keys.filePath("id_deploy")));
+  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("chmod 600 '"+keys.filePath("id_deploy")+"'"));
   key->clear();emit key->editingFinished();
   PUTGD_TRY_VERIFY(!saved().contains("keyFile"));
   QVERIFY(!problem->isVisible());
   provider->setCurrentIndex(provider->findData("s3"));
   PUTGD_TRY_VERIFY(!key->isVisible());
+  // A destination saved with "keyFile": null reads back exactly, so it never shows as unsaved.
+  SftpPanel panel;const auto rows=[&](QFormLayout*,const QString&,QWidget* control,const QString&){auto* row=new QWidget(&panel);control->setParent(row);return row;};
+  panel.build(rows,rows);auto withNull=sftp::defaults();withNull["server"]="files.example.com";withNull["keyFile"]=QJsonValue::Null;
+  panel.setSettings(withNull);QCOMPARE(panel.settings(),withNull);
  }
  // #1676: a Region edit right after a provider change saves with the whole changed destination.
  void providerChangeThenRegionSavesBoth(){
