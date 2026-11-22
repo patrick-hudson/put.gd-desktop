@@ -877,9 +877,19 @@ other tool active it does not. The user's side is in the
       at once, without starting recognition, so it cannot fail for lack of a recognizer. The
       result line says "Your redaction list is empty. Add words in Settings → Capture → Text
       recognition." With other categories chosen, recognition runs as usual.
-  - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
+  - A match becomes Redact marks over its word boxes, one box per line (or per run of a line, below), padded by a quarter of the
     line height above and below and by one and a half characters on each side, clamped to the
-    image. A character's width comes from the edge word's own box, not from the line's span with
+    image. A line's matched words are taken left to right, and a new box starts where the gap from
+    the right edge of the run so far is more than three times the median height of the line's
+    matched words, as between two windows side by side or the columns of a table. Each run gets its
+    own box, as tall as the line's, with the usual margins. The shortening towards a neighbouring
+    word described below applies only on a side that doesn't face another run: a box there can
+    stop short of a matched glyph, so that margin stays whole and can reach into a label beside
+    the column, or into the gap when a recognized box runs wide. The runs get separate boxes, though
+    their margins, sized from the edge words, can still cover a narrow gap (#1846). Matching is unchanged: when a line already forms one key
+    match, as `Card 4111 1111 1111 1111 Card 5555 5555 5555 4444` does (test card numbers of
+    repeated digits), its box covers the labels between the numbers, such as "Card", and a
+    misread number stays covered as long as it is part of that key match. A character's width comes from the edge word's own box, not from the line's span with
     its spaces. Recognition boxes can stop a whole glyph short, which the side padding covers.
     Towards the nearest other recognized word on the same line, when the padding plus one
     character could reach it, the padding ends at the far side of the blank space before that
