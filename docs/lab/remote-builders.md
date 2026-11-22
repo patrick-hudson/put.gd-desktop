@@ -732,7 +732,7 @@ python3 tools/lab/desktop_lock.py status [HOST ...] [--check]
 python3 tools/lab/desktop_lock.py acquire f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--no-tray-host REASON]
 python3 tools/lab/desktop_lock.py heartbeat f44 --session ID [--blocked REASON]
 python3 tools/lab/desktop_lock.py extend f44 --session ID --minutes 30
-python3 tools/lab/desktop_lock.py release f44 --session ID [--verified-clean] [--not-mine ID ...]
+python3 tools/lab/desktop_lock.py release f44 --session ID [--verified-clean] [--not-mine ID ...] [--removed-ok REASON]
 python3 tools/lab/desktop_lock.py break f44 --session ID --reason TEXT
 python3 tools/lab/desktop_lock.py held [HOST] [--session ID]
 python3 tools/lab/desktop_lock.py run f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--resource quiet] [--release] -- CMD ...
@@ -856,7 +856,8 @@ Before you release:
    you started.
 2. Remove anything temporary you added: desktop entries (then run
    `kbuildsycoca6 --noincremental`), user extension copies (then log out and in
-   again, and check that the packaged extension loaded), installed packages, and
+   again, and check that the packaged extension loaded), packages you added (put back
+   the acquire-time version of any package you replaced), and
    `~/.local/share/putgd`, `~/.cache/putgd` or `~/.config/putgd` if your runs
    created them.
 3. Run `release HOST --session ID`. On the host it inventories `flatpak ps`
@@ -873,6 +874,12 @@ Before you release:
    collector, and is only counted. If a new item belongs to another session (its
    notes or its owner say so), name it with `--not-mine ID`; the receipt records
    it. Never use `--not-mine` for your own items.
+   Leave the putgd package as acquire found it: the same version, or none.
+   `acquire`, `release` and `status --check` say `no putgd package installed` when
+   there is none (with `config files of deb <ver> only` if a removal left them). A
+   changed version counts as new, and a package that was there at acquire and is
+   gone blocks the release. Reinstall it, or give `--removed-ok REASON` when the
+   removal is intended; the receipt records the reason under `removedOk`.
 4. Tell the next session in the queue and your coordinator.
 
 Each release and break writes a JSON receipt to `~/putgd-lab/locks/history/` on
