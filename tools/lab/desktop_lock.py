@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exclusive locks for the builders' physical desktops and Proton sessions (stdlib only).
+"""Exclusive locks for the builders' physical desktops, Proton sessions and quiet leases (stdlib only).
 
 Each builder's GNOME or Plasma desktop serves one session at a time. Its lock
 lives on that builder, in ~/putgd-lab/locks/, so every session that can reach
@@ -18,6 +18,13 @@ registered host on the desktop session bus (tools/lab/gnome_tray_host.py, the
 check the nightly's Fedora GNOME guest runs). A test of the no-tray path on
 purpose passes `--no-tray-host REASON`, which the lock's purpose records.
 
+`--resource quiet` is the builder's quiet lease: "don't load this host's CPU".
+A timing run takes it when it is ready to start, never booked ahead, heartbeats
+it and releases it the moment the timing ends. Acquire records the host's load.
+The lab's build, replay and benchmark helpers call refuse_while_quiet() and
+don't start while another session holds it (`guard` checks it from a shell).
+It is independent of the desktop lock: a timing run may need both.
+
   desktop_lock.py status [HOST ...] [--check] [--resource R]
   desktop_lock.py acquire HOST --owner NAME --session ID --purpose TEXT --minutes N [--resource R]
                            [--no-tray-host REASON]
@@ -25,6 +32,8 @@ purpose passes `--no-tray-host REASON`, which the lock's purpose records.
   desktop_lock.py extend HOST --session ID --minutes N [--resource R]
   desktop_lock.py release HOST --session ID [--verified-clean] [--not-mine ID ...] [--resource R]
   desktop_lock.py break HOST --session ID --reason TEXT [--resource R]
+  desktop_lock.py guard [HOST] [--session ID]   exit 1 while another session holds HOST's quiet lease
+                                                (no HOST: this machine's own lock directory)
 
 The script sends itself to the builder (`ssh ... python3 -`) and runs the lock
 operation there. Exit codes: 0 done, 1 refused, 2 usage, 3 host unreachable.
@@ -37,6 +46,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import time
@@ -53,7 +63,8 @@ USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
 PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
-RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session'}  # lock file <name>.lock
+RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session', 'quiet': 'quiet lease'}  # lock file <name>.lock
+SESSION_VARIABLE = 'PUTGD_LAB_SESSION'  # the session a lab helper runs for; its own quiet lease doesn't stop it
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
@@ -112,7 +123,7 @@ def parse_lock(text):
 
 
 def render_lock(record):
-    keys = FIELDS + tuple(key for key in ('resource', 'blocked') if record.get(key))
+    keys = FIELDS + tuple(key for key in ('resource', 'load', 'blocked') if record.get(key))
     return ''.join(f'{key}: {record[key]}\n' for key in keys)
 
 
@@ -359,7 +370,9 @@ class Desktop:
             now = self.clock()
             current = self.state(now)
             if current['state'] != 'free':
-                raise LockError(f'{self.name} is already locked', **current)
+                raise LockError(f'{self.name} is already locked' + (
+                    '. Do other work and retry acquire later; never sleep holding nothing'
+                    if self.resource == 'quiet' else ''), **current)
             # Under the mutex, so a holder releasing just now can't leave the tray down unseen.
             tray = self.tray_host() if self.tray_host else None
             if tray is not None and not tray.get('ready'):
@@ -370,6 +383,9 @@ class Desktop:
                       'heartbeat': stamp(now)}
             if self.resource != 'desktop':
                 record['resource'] = self.resource
+            if self.resource == 'quiet':
+                record['load'], note = host_load()
+                notes = notes + ([note] if note else [])
             temporary = self.directory / f'.{self.lock.name}.{os.getpid()}'
             temporary.write_text(render_lock(record))
             try:
@@ -423,7 +439,7 @@ class Desktop:
                 raise LockError('Confirm that no lent copy is outstanding (every carry-back confirmed, every '
                                 'putgd-lab guest entry cleaned up), then rerun with --verified-clean',
                                 check=check, notes=notes)
-            if not verified_clean:
+            if not verified_clean and self.resource == 'desktop':
                 raise LockError('Nothing new is left on the host. Finish the manual steps (workstation '
                                 'forwards, re-login after an extension copy), then rerun with --verified-clean',
                                 check=check, notes=notes)
@@ -455,6 +471,48 @@ class Desktop:
         return {'broken': current, 'check': check, 'notes': notes, 'receipt': receipt}
 
 
+def host_load():
+    """Return this host's load averages and CPU count as one line, and a note when the load is above the CPU count."""
+    loads, cpus = os.getloadavg(), os.cpu_count() or 1
+    text = ' '.join(f'{value:.2f}' for value in loads) + f' ({cpus} CPUs)'
+    note = (f'load {loads[0]:.2f} is above the {cpus} CPUs: heavy work is still running here; '
+            'find it before you time anything') if loads[0] > cpus else None
+    return text, note
+
+
+def quiet_holder(directory=None, session=None, clock=None):
+    """Return why heavy work may not start on this host now, or None.
+
+    Heavy work waits for another session's quiet lease while it is held, blocked or stale (a stale
+    lease can be broken; until then its timing run may still be going), and for a recent
+    unreadable one. A free or expired lease, or the caller's own (`session`, by default
+    $PUTGD_LAB_SESSION), lets it start."""
+    session = os.environ.get(SESSION_VARIABLE) if session is None else session
+    directory, clock = Path(directory or LOCK_DIR).expanduser(), clock or now_utc
+    lease = Desktop(directory, socket.gethostname(), clock, resource='quiet')
+    current = lease.state(clock())
+    if current['state'] == 'free' or current['state'] == 'expired' or \
+            (current['state'] == 'invalid' and current['breakable']):
+        return None
+    if current['state'] == 'invalid':
+        return f'this host\'s quiet lease is unreadable ({current["error"]}) and recent'
+    record = current['lock']
+    if session and record['session'] == session:
+        return None
+    expiry = minutes_text(current['expiresInSeconds'])
+    return (f'{record["owner"]} ({record["session"]}) holds this host\'s quiet lease for "{record["purpose"]}" '
+            f'({current["state"]}, expires in {expiry}). Do other work and retry later; never sleep waiting '
+            f'for it. Your own lease: set {SESSION_VARIABLE} to its session')
+
+
+def refuse_while_quiet(what, directory=None, session=None):
+    """The one check the lab's build, replay and benchmark helpers make before they start:
+    exit with the reason while another session holds this host's quiet lease."""
+    reason = quiet_holder(directory, session)
+    if reason:
+        raise SystemExit(f'{what} not started: {reason}')
+
+
 def remote(payload):
     """Run one lock operation on this host and print its JSON reply."""
     probe = payload.get('tray_probe')
@@ -476,6 +534,11 @@ def remote(payload):
                                     payload.get('not_mine', ()))
         elif action == 'break':
             reply = desktop.break_lock(payload['session'], payload['reason'])
+        elif action == 'guard':
+            reason = quiet_holder(desktop.directory, payload.get('session', ''), desktop.clock)
+            reply = dict(desktop.status(), quiet=reason is None)
+            if reason:
+                raise LockError(reason, **reply)
         else:
             raise LockError('Unknown action ' + action)
         reply = dict(reply, ok=True)
@@ -525,7 +588,7 @@ def describe_items(title, items):
                               for item in items]
 
 
-DONE = {'acquire': 'locked', 'heartbeat': 'heartbeat recorded', 'extend': 'expiry moved',
+DONE = {'guard': 'quiet lease free for heavy work', 'acquire': 'locked', 'heartbeat': 'heartbeat recorded', 'extend': 'expiry moved',
         'release': 'released', 'break': 'lock broken'}
 
 
@@ -560,7 +623,7 @@ def describe(reply):
     if action == 'status' and reply.get('breakable'):
         lines.append('  Message the holder. With no answer in 10 min, check the host (status --check) '
                      'and break the lock')
-    if action == 'acquire' and not reply['ok'] and lock:
+    if action == 'acquire' and not reply['ok'] and lock and reply.get('resource') != 'quiet':
         lines.append("  Don't poll the holder or wait idle: tell your coordinator, do other work, "
                      'and try again later')
     if action in ('heartbeat', 'extend') and reply['ok'] and state == 'expired':
@@ -588,6 +651,8 @@ def describe(reply):
             lines += describe_items('already there when the lock was taken', check['preexisting'])
         if check['unmatchedNotMine']:
             lines.append('  --not-mine matched nothing new: ' + ', '.join(check['unmatchedNotMine']))
+    if lock and lock.get('load'):
+        lines.append('  load at acquire: ' + lock['load'])
     for note in reply.get('notes') or ():
         lines.append('  note: ' + note)
     if reply.get('receipt'):
@@ -619,11 +684,24 @@ def tray_host_module():
     return module
 
 
+def guard_command(args, run):
+    session = os.environ.get(SESSION_VARIABLE, '') if args.session is None else args.session
+    if args.host is None:  # on the builder itself
+        reason = quiet_holder(session=session)
+        reply = {'ok': reason is None, 'quiet': reason is None, 'message': reason}
+        print(json.dumps(reply) if args.json else reason or 'quiet lease free for heavy work')
+        return 0 if reason is None else 1
+    reply = call(args.host, {'action': 'guard', 'resource': 'quiet', 'session': session}, args.identity, args.pins, run)
+    print(json.dumps(reply, indent=2) if args.json else '\n'.join(describe(reply)))
+    return 3 if reply.get('unreachable') else 0 if reply['ok'] else 1
+
+
 def main(argv=None, run=subprocess.run):
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('--json', action='store_true', help='print the raw replies')
     common.add_argument('--resource', choices=sorted(RESOURCES), default='desktop',
-                        help="what to lock: the desktop (default) or the builder's put.gd Proton session")
+                        help="what to lock: the desktop (default), the builder's put.gd Proton session, or its "
+                             'quiet lease (no heavy work on the host)')
     common.add_argument('--identity', type=Path, default=IDENTITY, help=argparse.SUPPRESS)
     common.add_argument('--pins', type=Path, default=PINS, help=argparse.SUPPRESS)
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -636,6 +714,12 @@ def main(argv=None, run=subprocess.run):
     extend = commands.add_parser('extend', parents=[common], help='move the expiry to N minutes from now')
     release = commands.add_parser('release', parents=[common], help='check the host and give the desktop back')
     breaking = commands.add_parser('break', parents=[common], help='remove an expired or stale lock')
+    guard = commands.add_parser('guard', help="exit 1 while another session holds the host's quiet lease")
+    guard.add_argument('host', nargs='?', choices=sorted(HOSTS), help="omit on a builder to check its own lock directory")
+    guard.add_argument('--session', help=f'your session id; your own lease passes (default ${SESSION_VARIABLE})')
+    guard.add_argument('--json', action='store_true', help='print the raw reply')
+    guard.add_argument('--identity', type=Path, default=IDENTITY, help=argparse.SUPPRESS)
+    guard.add_argument('--pins', type=Path, default=PINS, help=argparse.SUPPRESS)
     for command in (acquire, heartbeat, extend, release, breaking):
         command.add_argument('host', choices=sorted(HOSTS))
         command.add_argument('--session', required=True, help='your session id, how others reach you')
@@ -652,6 +736,8 @@ def main(argv=None, run=subprocess.run):
                          help="another session's item that appeared during your lock (repeat)")
     breaking.add_argument('--reason', required=True)
     args = parser.parse_args(argv)
+    if args.action == 'guard':
+        return guard_command(args, run)
 
     payload = {key: value for key, value in vars(args).items()
                if key not in ('json', 'identity', 'pins', 'host', 'hosts', 'no_tray_host') and value is not None}

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -66,6 +67,14 @@ class Quiet(unittest.TestCase):
             with self.assertRaises(weekly.Skip):
                 self.check(directory)
 
+
+    def test_another_sessions_quiet_lease_skips_the_week(self):
+        with tempfile.TemporaryDirectory() as directory:
+            locks = Path(directory) / 'locks'
+            desktop_lock.Desktop(locks, 'k72', resource='quiet').acquire('timer', 'local_timing', 'theme pair', 20)
+            with mock.patch.dict(os.environ, {desktop_lock.SESSION_VARIABLE: 'local_timing'}), \
+                    self.assertRaisesRegex(weekly.Skip, 'holds this host.s quiet lease'):
+                self.check(directory)
 
 class Suites(unittest.TestCase):
     def test_exact_names_only(self):

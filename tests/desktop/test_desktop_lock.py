@@ -367,6 +367,75 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['state'], 'free')
 
 
+class QuietLease(LockTest):
+    def quiet(self):
+        return lock.Desktop(self.directory, 'aurora-amd', self.clock, resource='quiet')
+
+    def holder(self, session=None):
+        return lock.quiet_holder(self.directory, session, self.clock)
+
+    def test_records_the_load_refuses_a_second_session_and_releases_without_a_check(self):
+        self.acquire()  # the desktop lock is independent
+        with mock.patch.object(lock.os, 'getloadavg', return_value=(20.5, 3.0, 1.0)), \
+                mock.patch.object(lock.os, 'cpu_count', return_value=16):
+            reply = self.quiet().acquire('timer', 'local_timing', 'fluidity pair #1808', 30)
+        self.assertEqual((reply['lock']['resource'], reply['lock']['load']), ('quiet', '20.50 3.00 1.00 (16 CPUs)'))
+        self.assertIn('above the 16 CPUs', reply['notes'][0])
+        self.assertIn('load: 20.50 3.00 1.00 (16 CPUs)\n', (self.directory / 'quiet.lock').read_text())
+        with self.assertRaisesRegex(lock.LockError, 'Do other work and retry acquire later; never sleep holding nothing'):
+            self.quiet().acquire('other', 'local_other', 'second timing', 10)
+        self.clock.advance(minutes=10)
+        self.assertEqual(self.quiet().heartbeat('local_timing')['state'], 'held')
+        self.assertEqual(self.quiet().extend('local_timing', 20)['lock']['expires'], '2026-10-19T03:30:00Z')
+        receipt = self.quiet().release('local_timing')['receipt']
+        self.assertTrue(receipt.endswith('-quiet-release.json'))
+        self.assertEqual(self.quiet().status()['state'], 'free')
+        self.assertEqual(self.desktop.status()['state'], 'held')
+
+    def test_heavy_work_waits_only_for_another_sessions_live_lease(self):
+        self.assertIsNone(self.holder(''))
+        self.quiet().acquire('timer', 'local_timing', 'fluidity pair', 30)
+        self.assertIn('timer (local_timing) holds this host\'s quiet lease for "fluidity pair"', self.holder(''))
+        self.assertIn('never sleep waiting', self.holder('local_other'))
+        self.assertIsNone(self.holder('local_timing'))
+        with mock.patch.dict(os.environ, {lock.SESSION_VARIABLE: 'local_timing'}):
+            self.assertIsNone(self.holder())
+        self.clock.advance(minutes=16)  # stale: breakable, but its timing may still be running
+        self.assertIn('(stale,', self.holder(''))
+        self.quiet().break_lock('local_other', 'timer stopped heartbeating')
+        self.assertIsNone(self.holder(''))
+        self.quiet().acquire('timer', 'local_timing', 'short', 5)
+        self.clock.advance(minutes=5)
+        self.assertIsNone(self.holder(''))  # expired
+
+    def test_a_guarded_helper_refuses_to_start(self):
+        sys.path.insert(0, str(Path(lock.__file__).parent))
+        import rr_loop
+        self.assertIs(rr_loop.desktop_lock, lock)
+        self.quiet().acquire('timer', 'local_timing', 'fluidity pair', 30)
+        argv = ['rr_loop.py', '--build', 'build/rrb', '--test', 'any', '--run-dir', str(self.directory / 'rr')]
+        with mock.patch.object(lock, 'LOCK_DIR', str(self.directory)), mock.patch.object(lock, 'now_utc', self.clock), \
+                mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {lock.SESSION_VARIABLE: 'local_b'}), \
+                mock.patch.object(rr_loop.run_scope, 'available', side_effect=AssertionError('started')):
+            with self.assertRaisesRegex(SystemExit, 'rr_loop not started: timer .local_timing. holds'):
+                rr_loop.main()
+            os.environ[lock.SESSION_VARIABLE] = 'local_timing'  # the holder's own run passes the guard
+            with self.assertRaisesRegex(AssertionError, 'started'):
+                rr_loop.main()
+
+    def test_guard_command_checks_the_host_over_the_script_channel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def call(**payload):
+                return lock.call('aurora-amd', dict(payload, directory=folder), command=[sys.executable, '-'])
+            self.assertTrue(call(action='guard', resource='quiet', session='')['ok'])
+            self.assertTrue(call(action='acquire', owner='o', session='local_a', purpose='timing', minutes=5,
+                                 resource='quiet')['ok'])
+            refused = call(action='guard', resource='quiet', session='local_b')
+            self.assertFalse(refused['ok'])
+            self.assertIn('Do other work and retry later', '\n'.join(lock.describe(refused)))
+            self.assertTrue(call(action='guard', resource='quiet', session='local_a')['ok'])
+            self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['quiet.lock'])
+
 class RemoteProtocol(unittest.TestCase):
     def test_ssh_uses_the_pinned_host_key_and_never_trusts_on_first_use(self):
         command = lock.ssh_command('k72', '/keys/id', '/pins')

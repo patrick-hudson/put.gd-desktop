@@ -28,6 +28,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not put the script's folder on the path
+import desktop_lock  # noqa: E402
 import run_scope  # noqa: E402
 
 HOG = 'import os, signal\nsignal.signal(signal.SIGTERM, signal.SIG_DFL)\nsignal.signal(signal.SIGINT, lambda *_: os._exit(0))\nwhile True:\n    pass\n'
@@ -136,6 +137,7 @@ def main():
     parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
     parser.add_argument('--keep-limit', type=int, default=4, help='MiB a clean seed may keep after pruning; more is reported')
     options = parser.parse_args()
+    desktop_lock.refuse_while_quiet('race_loop')
     # Ctrl+C or SIGTERM to this script alone stops the running seed (a session of its own) and the busy loops through their handles.
     signal.signal(signal.SIGINT, interrupted)
     signal.signal(signal.SIGTERM, interrupted)
