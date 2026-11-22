@@ -450,6 +450,21 @@ class ProtonSessionLock(LockTest):
         self.assertTrue(any(name.endswith('-release-1.json') for name in names), names)
         self.assertTrue(self.desktop.status()['last']['receipt'].endswith('-release-1.json'))
 
+    def test_last_event_takes_a_release_after_a_break_of_the_same_second(self):
+        self.acquire('local_desktop')
+        self.clock.advance(minutes=46)
+        self.desktop.break_lock('local_x', 'stopped heartbeating')
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        history = self.directory / 'history'
+        brk = next(history.glob('*-break.json'))
+        rel = next(history.glob('*-release.json'))
+        os.utime(brk, ns=(1, 1))  # the break was written first
+        os.utime(rel, ns=(2, 2))
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+        os.utime(brk, ns=(3, 3))  # and the other way round
+        self.assertEqual(self.desktop.status()['last']['event'], 'break')
+
 
 class QuietLease(LockTest):
     def quiet(self):
