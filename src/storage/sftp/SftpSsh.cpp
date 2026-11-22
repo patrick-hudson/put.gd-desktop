@@ -495,10 +495,9 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
     if (text.contains(QLatin1String("timed out")))
         return {"ssh_connection_timeout", QString("The server did not answer on port %1. Check the server name and port, and your network.").arg(port), {}};
     // ssh skips a private key other users can read, then signs in without it: say how to fix the file.
-    static const QRegularExpression tooOpen(QStringLiteral("Permissions 0[0-7]+ for '([^']+)' are too open"));
+    static const QRegularExpression tooOpen(QStringLiteral("Permissions 0[0-7]+ for '(.+)' are too open"));
     if (const auto open = tooOpen.match(text); open.hasMatch() && text.contains(QLatin1String("Permission denied")))
-        return {"ssh_key_permissions", "ssh refused your key " + QFileInfo(open.captured(1)).fileName() + " because other users can read it. Run chmod 600 " + shellQuoted(open.captured(1)) +
-                    " in a terminal, then test again.", {}};
+        return {"ssh_key_permissions", "ssh refused your key " + QFileInfo(open.captured(1)).fileName() + " because other users can read it. Make it private (chmod 600 on the file), then test again.", {}};
     static const QRegularExpression denied(QStringLiteral("Permission denied \\(([^)]*)\\)"));
     const auto methods = denied.match(text).captured(1).split(',', Qt::SkipEmptyParts);
     // put.gd turns keyboard-interactive off: a server that offers only that wants a prompt answered

@@ -3583,7 +3583,9 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  if(kind=="connectAccount"||kind=="inspectAccount")folderRequests_.insert(profileId);
  ++setupAccepting_;updateSetupButton();emit viewStateChanged();
  const bool sftpClear=kind=="storeCredentials"&&std::exchange(sftpClearPending_,false);
- settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear](Error e,QJsonObject data){
+ // #1892: what an SFTP address check was asked about, so a late answer for another key is dropped.
+ const auto sftpInspect=kind=="inspectAccount"?sftpInspectKey():QString();
+ settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
   if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
   if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text()){davSignInSetup_=data["setupId"].toString();
@@ -3600,6 +3602,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   // #1871: a Clear is marked on its own job record; its completion keeps the other typed secret.
   QJsonObject record{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",destinationcheck::fingerprint(editedProfile())}};
   if(sftpClear)record["sftpClear"]=QStringLiteral("true");  // the saved view state keeps string fields only
+  if(!sftpInspect.isEmpty())record["sftpInspect"]=sftpInspect;
   setupJobs_.append(record);
   // Say what is happening; the confirmed result replaces it. Folder loading is
   // shown beside the folder, so the page status doesn't repeat it.
@@ -3636,11 +3639,12 @@ void SettingsWindow::uploaderCommand(const QJsonObject& params,std::function<voi
  reply({"invalid_request","Unknown custom uploader action.",{}},{});
 }
 // #1871: reads what ssh resolves the shown SFTP destination to, once per saved address.
+QString SettingsWindow::sftpInspectKey()const{const auto settings=editedProfile()["settings"].toObject();return profileId_->text()+"|"+settings["server"].toString()+"|"+settings["user"].toString()+"|"+settings.value("keyFile").toString();}
 void SettingsWindow::inspectSftp(){
  if(!sftpPanel_||providerType_->currentData()!=SftpPanel::provider()||profileIndex_<0||initialProfile_||conflict_||saving_||savePending()||selectedDestinationChanged())return;
  const auto settings=editedProfile()["settings"].toObject();
  if(settings["server"].toString().isEmpty()){sftpPanel_->setResolved({});return;}
- const auto key=profileId_->text()+"|"+settings["server"].toString()+"|"+settings["user"].toString()+"|"+settings.value("keyFile").toString();
+ const auto key=sftpInspectKey();
  if(key==sftpInspected_||setupAccepting_||!setupJobs_.isEmpty())return;
  sftpInspected_=key;beginSetup("inspectAccount");
 }
@@ -3829,7 +3833,9 @@ void SettingsWindow::pollSetup(){
    if(davSetupFinished(job,data,e,currentTest)){emit viewStateChanged();return;}
    // #1871: what ssh resolves goes on its own line; a test that met a host key or a missing folder offers its fix.
    const bool sftpShown=data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider();
-   if(e&&sftpShown&&data["kind"]=="inspectAccount"){sftpPanel_->setResolved(e.message,true);emit viewStateChanged();return;}
+   // #1892: an answer for an address or key the form no longer holds is dropped and asked again.
+   if(sftpShown&&data["kind"]=="inspectAccount"&&sftpInspectKey()!=job["sftpInspect"].toString()){sftpInspected_.clear();QTimer::singleShot(0,this,[this]{inspectSftp();});emit viewStateChanged();return;}
+   if(e&&sftpShown&&data["kind"]=="inspectAccount"){if(e.details.value("field").toString()=="keyFile"){sftpPanel_->setResolved({});sftpPanel_->setKeyProblem(e.message);}else sftpPanel_->setResolved(e.message,true);emit viewStateChanged();return;}
    if(e&&sftpShown&&data["kind"]=="testDestination"&&currentTest){sftpPanel_->showTestError(e.code,e.message,e.details);
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
     if(!sftpPanel_->offeredFingerprint().isEmpty())e.message=e.code=="ssh_trusted_key_changed"?QStringLiteral("The server's host key changed. Compare the new key above before you trust it."):QStringLiteral("put.gd doesn't know this server's host key yet. Compare it above before you trust it.");}
@@ -3845,7 +3851,7 @@ void SettingsWindow::pollSetup(){
     const bool sftpJob=[&]{for(const auto& v:settings_.document()["profiles"].toArray())if(v.toObject()["id"]==data["profileId"])return v.toObject()["provider"]==SftpPanel::provider();return false;}();
     if(sftpJob){
      const bool shown=data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider();
-     if(kind=="inspectAccount"){if(shown){sftpPanel_->setResolved(result["line"].toString());if(result.contains("keyProblem"))sftpPanel_->setKeyProblem(result["keyProblem"].toObject()["message"].toString());}emit viewStateChanged();return;}
+     if(kind=="inspectAccount"){if(shown)sftpPanel_->setResolved(result["line"].toString());emit viewStateChanged();return;}
      // The resident recorded the key in the destination; the reloaded form shows it.
      if(kind=="trustHostKey"){if(shown)sftpPanel_->clearOffers();setupFeedback("Host key "+result["fingerprint"].toString()+" trusted. Test again to finish checking the destination.",true);emit viewStateChanged();return;}
      if(kind=="createFolder"){if(shown)sftpPanel_->clearOffers();setupFeedback("Folder "+result["path"].toString()+" created. Test again to check uploads there.",true);emit viewStateChanged();return;}

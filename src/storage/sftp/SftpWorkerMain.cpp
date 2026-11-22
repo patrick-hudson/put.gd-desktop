@@ -409,14 +409,14 @@ private:
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return {{"sshInstalled", false}}; }
         if (auto e = validate(settings_, true)) { error = e; return {{"sshInstalled", true}}; }
+        // A chosen key file ssh can't use is the answer, before ssh -G runs with it (#1892);
+        // Settings shows it beside SSH key (details.field keyFile).
+        if (const auto key = keyFile(settings_); !key.isEmpty())
+            if (auto e = keyFileProblem(key)) { error = e; return {{"sshInstalled", true}}; }
         const auto resolved = resolve(program, env, settings_, error);
         if (error) return {{"sshInstalled", true}};
         // Inspect learns only whether a password is set, never the password.
-        QJsonObject out{{"sshInstalled", true}, {"resolved", toJson(resolved)}, {"line", resolvedLine(resolved, request_["passwordSet"].toBool())}};
-        // What is wrong with the chosen key file, which Settings shows beside SSH key (#1892).
-        if (const auto key = keyFile(settings_); !key.isEmpty())
-            if (const auto e = keyFileProblem(key)) out["keyProblem"] = QJsonObject{{"code", e.code}, {"message", e.message}};
-        return out;
+        return {{"sshInstalled", true}, {"resolved", toJson(resolved)}, {"line", resolvedLine(resolved, request_["passwordSet"].toBool())}};
     }
     // Trust: fetches the key again over the real route and keeps it only when it is the one
     // the user (or an agent) was shown, for one literal host, and only where the user's own

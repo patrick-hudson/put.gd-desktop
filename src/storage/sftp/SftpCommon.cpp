@@ -228,16 +228,15 @@ QString location(const QJsonObject& settings, const QString& absolutePath) {
     return host + ":" + absolutePath;
 }
 QString keyFile(const QJsonObject& settings) { return settings.value("keyFile").toString(); }
-QString shellQuoted(const QString& path) { return "'" + QString(path).replace('\'', QLatin1String("'\\''")) + "'"; }
 Error keyFileProblem(const QString& path, QString* privateKey) {
     if (privateKey) privateKey->clear();
     const auto name = QFileInfo(path).fileName();
     const auto encoded = QFile::encodeName(path);
     struct stat info {};
     if (::stat(encoded.constData(), &info) != 0)
-        return {"ssh_key_missing", "The SSH key file " + path + " isn't there. Choose the private key file again, or leave SSH key empty.", {{"field", "keyFile"}}};
+        return {"ssh_key_missing", "The SSH key file " + name + " isn't there. Choose the private key file again, or leave SSH key empty.", {{"field", "keyFile"}}};
     if (!S_ISREG(info.st_mode) || ::access(encoded.constData(), R_OK) != 0)
-        return {"ssh_key_unreadable", "put.gd can't read the SSH key file " + path + ". Choose a private key file of yours.", {{"field", "keyFile"}}};
+        return {"ssh_key_unreadable", "put.gd can't read the SSH key file " + name + ". Choose a private key file of yours.", {{"field", "keyFile"}}};
     QFile file(path);
     const auto head = file.open(QIODevice::ReadOnly) ? file.read(64) : QByteArray();
     // A public key: a .pub file, or one line such as "ssh-ed25519 AAAA…" whatever its name.
@@ -252,11 +251,10 @@ Error keyFileProblem(const QString& path, QString* privateKey) {
         return {"ssh_key_public", name + " is a public key. Choose the private key file, usually the same name without .pub.", {{"field", "keyFile"}}};
     }
     if (head.startsWith("PuTTY-User-Key-File"))
-        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it with puttygen " + shellQuoted(name) + " -O private-openssh -o " +
-                    shellQuoted(QFileInfo(name).completeBaseName()) + ", then choose the converted file.", {{"field", "keyFile"}}};
+        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it to OpenSSH's format with PuTTYgen (Conversions → Export OpenSSH key, or puttygen with -O private-openssh), then choose the converted file.", {{"field", "keyFile"}}};
     // ssh refuses a private key of yours that anyone else may read (sshkey_perm_ok).
     if (info.st_uid == ::getuid() && (info.st_mode & 077) != 0)
-        return {"ssh_key_permissions", "ssh refuses a private key that other users can read. Run chmod 600 " + shellQuoted(path) + " in a terminal, then test again.",
+        return {"ssh_key_permissions", "ssh refuses " + name + " because other users can read it. Make it private (chmod 600 on the file), then test again.",
                 {{"field", "keyFile"}}};
     return {};
 }

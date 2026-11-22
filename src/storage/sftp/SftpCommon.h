@@ -48,12 +48,11 @@ QString location(const QJsonObject& settings, const QString& absolutePath);
 // The SSH key file a destination names (#1892), or empty: an absolute path ssh gets with -i.
 QString keyFile(const QJsonObject& settings);
 // Why ssh can't use the private key file at `path`, in words saying how to fix it, or no error.
+// Messages name the file, never its folder: they reach logs and diagnostics.
 // Reads the file's first bytes and its mode the way ssh does: a public key (.pub or its text),
 // a PuTTY key, a file other users can read (ssh refuses those), a file that isn't there.
 // `privateKey`, when given, gets the private key next to a picked .pub file, if there is one.
 Error keyFileProblem(const QString& path, QString* privateKey = nullptr);
-// A path as one single-quoted shell word, for commands put.gd suggests running.
-QString shellQuoted(const QString& path);
 // The credential-store names of the two optional secrets.
 inline QString passwordKey() { return QStringLiteral("password"); }
 inline QString passphraseKey() { return QStringLiteral("passphrase"); }

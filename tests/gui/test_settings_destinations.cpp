@@ -122,7 +122,7 @@ private slots:
   auto* problem=window.findChild<QLabel*>("sftpKeyFileBoxError");QVERIFY(problem);QVERIFY(!problem->isVisible());
   QVERIFY(QFile::setPermissions(keys.filePath("id_deploy"),QFile::ReadOwner|QFile::WriteOwner|QFile::ReadOther));
   key->setText(keys.filePath("id_deploy"));emit key->editingFinished();
-  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("chmod 600 '"+keys.filePath("id_deploy")+"'"));
+  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("chmod 600"));
   key->clear();emit key->editingFinished();
   PUTGD_TRY_VERIFY(!saved().contains("keyFile"));
   QVERIFY(!problem->isVisible());
