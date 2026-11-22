@@ -1,7 +1,11 @@
 #include "SftpCommon.h"
 #include <QCryptographicHash>
+#include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QUrl>
+#include <sys/stat.h>
+#include <unistd.h>
 namespace putgd::sftp {
 namespace {
 QRegularExpression whole(const char* pattern) { return QRegularExpression(QRegularExpression::anchoredPattern(QString::fromLatin1(pattern))); }
@@ -74,7 +78,7 @@ QString urlProblem(const QJsonValue& value) {
 }
 }
 const QStringList& settingKeys() {
-    static const QStringList keys{"server", "user", "folder", "publicUrlBase", "hostKeyFingerprint"};
+    static const QStringList keys{"server", "user", "folder", "publicUrlBase", "hostKeyFingerprint", "keyFile"};
     return keys;
 }
 QJsonObject defaults() {
@@ -180,6 +184,16 @@ QString problem(const QJsonObject& settings, const QString& field, bool forUse) 
             return QStringLiteral("Write another user's folder as its full path, such as /home/alice/shots.");
     } else if (field == QLatin1String("publicUrlBase")) {
         if (!value.isNull()) return urlProblem(value);
+    } else if (field == QLatin1String("keyFile")) {
+        // Optional (#1892): absent or null is no chosen key.
+        if (value.isUndefined() || value.isNull()) return {};
+        const auto path = value.toString();
+        if (!value.isString() || path.isEmpty() || !QFileInfo(path).isAbsolute() || !controlFree(path))
+            return QStringLiteral("Choose the private key file, such as /home/alice/keys/id_ed25519, or leave SSH key empty.");
+        if (path.toUtf8().size() > 4096) return QStringLiteral("The key file path is at most 4096 bytes.");
+        // ssh expands % tokens and ${VARIABLES} in a key path, so it would open another file.
+        if (path.contains('%') || path.contains(QLatin1String("${")))
+            return QStringLiteral("ssh reads % and ${ in a key path as its own placeholders. Rename the key or its folder, or name the key in ~/.ssh/config.");
     } else if (field == QLatin1String("hostKeyFingerprint")) {
         if (!value.isNull() && !(value.isString() && fingerprintValid(value.toString())))
             return QStringLiteral("A trusted host key is recorded as its type and SHA256 fingerprint, such as ED25519 SHA256:….");
@@ -190,7 +204,7 @@ Error validate(const QJsonObject& settings, bool forUse) {
     for (auto it = settings.begin(); it != settings.end(); ++it)
         if (!settingKeys().contains(it.key())) return {"sftp_settings_invalid", "Invalid SFTP settings: " + it.key() + " is not one of them", {}};
     for (const auto& key : settingKeys())
-        if (!settings.contains(key)) return {"sftp_settings_invalid", "Invalid SFTP settings: " + key + " is missing", {}};
+        if (!settings.contains(key) && key != QLatin1String("keyFile")) return {"sftp_settings_invalid", "Invalid SFTP settings: " + key + " is missing", {}};
     for (const auto& field : settingKeys())
         if (const auto message = problem(settings, field, forUse); !message.isEmpty()) return {"sftp_settings_invalid", message, {{"field", field}}};
     return {};
@@ -212,6 +226,38 @@ QString location(const QJsonObject& settings, const QString& absolutePath) {
     const auto address = parseServer(settings["server"].toString());
     const auto host = address ? serverText(address->host, 0) : settings["server"].toString();
     return host + ":" + absolutePath;
+}
+QString keyFile(const QJsonObject& settings) { return settings.value("keyFile").toString(); }
+Error keyFileProblem(const QString& path, QString* privateKey) {
+    if (privateKey) privateKey->clear();
+    const auto name = QFileInfo(path).fileName();
+    const auto encoded = QFile::encodeName(path);
+    struct stat info {};
+    if (::stat(encoded.constData(), &info) != 0)
+        return {"ssh_key_missing", "The SSH key file " + path + " isn't there. Choose the private key file again, or leave SSH key empty.", {{"field", "keyFile"}}};
+    if (!S_ISREG(info.st_mode) || ::access(encoded.constData(), R_OK) != 0)
+        return {"ssh_key_unreadable", "put.gd can't read the SSH key file " + path + ". Choose a private key file of yours.", {{"field", "keyFile"}}};
+    QFile file(path);
+    const auto head = file.open(QIODevice::ReadOnly) ? file.read(64) : QByteArray();
+    // A public key: a .pub file, or one line such as "ssh-ed25519 AAAA…" whatever its name.
+    static const QRegularExpression publicLine(QStringLiteral("^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+ AAAA"));
+    if (path.endsWith(QLatin1String(".pub")) || publicLine.match(QString::fromLatin1(head)).hasMatch()) {
+        if (path.endsWith(QLatin1String(".pub"))) {
+            const auto candidate = path.chopped(4);
+            if (privateKey && QFileInfo(candidate).isFile()) *privateKey = candidate;
+            if (QFileInfo(candidate).isFile())
+                return {"ssh_key_public", name + " is the public half of the key. Choose " + QFileInfo(candidate).fileName() + ", the private key next to it.", {{"field", "keyFile"}}};
+        }
+        return {"ssh_key_public", name + " is a public key. Choose the private key file, usually the same name without .pub.", {{"field", "keyFile"}}};
+    }
+    if (head.startsWith("PuTTY-User-Key-File"))
+        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it with puttygen " + name + " -O private-openssh -o " +
+                    QFileInfo(name).completeBaseName() + ", then choose the converted file.", {{"field", "keyFile"}}};
+    // ssh refuses a private key of yours that anyone else may read (sshkey_perm_ok).
+    if (info.st_uid == ::getuid() && (info.st_mode & 077) != 0)
+        return {"ssh_key_permissions", "ssh refuses a private key that other users can read. Run chmod 600 " + path + " in a terminal, then test again.",
+                {{"field", "keyFile"}}};
+    return {};
 }
 Error namedCredentials(const QJsonObject& profile, const QMap<QString, QString>& values, QStringList* names) {
     if (profile["provider"] != providerId) return {"setup_unsupported", "This destination does not store named values", {}};

@@ -240,6 +240,9 @@ private:
         auto env = sshEnvironment();
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return false; }
+        // A chosen key file ssh would skip or refuse says why now, in put.gd's words (#1892).
+        if (const auto key = keyFile(settings_); !key.isEmpty())
+            if (auto e = keyFileProblem(key)) { error = e; return false; }
         auto resolved = resolve(program, env, settings_, error);
         if (error) return false;
         if (!env.contains("SSH_AUTH_SOCK") || env.value("SSH_AUTH_SOCK").isEmpty())
@@ -405,7 +408,11 @@ private:
         const auto resolved = resolve(program, env, settings_, error);
         if (error) return {{"sshInstalled", true}};
         // Inspect learns only whether a password is set, never the password.
-        return {{"sshInstalled", true}, {"resolved", toJson(resolved)}, {"line", resolvedLine(resolved, request_["passwordSet"].toBool())}};
+        QJsonObject out{{"sshInstalled", true}, {"resolved", toJson(resolved)}, {"line", resolvedLine(resolved, request_["passwordSet"].toBool())}};
+        // What is wrong with the chosen key file, which Settings shows beside SSH key (#1892).
+        if (const auto key = keyFile(settings_); !key.isEmpty())
+            if (const auto e = keyFileProblem(key)) out["keyProblem"] = QJsonObject{{"code", e.code}, {"message", e.message}};
+        return out;
     }
     // Trust: fetches the key again over the real route and keeps it only when it is the one
     // the user (or an agent) was shown, for one literal host, and only where the user's own
@@ -837,8 +844,11 @@ private:
         QJsonObject out;
         const auto step = [&](const QString& name, const QString& status, const QString& detail) { steps.append(QJsonObject{{"step", name}, {"status", status}, {"detail", detail}}); out["steps"] = steps; };
         if (!connect(error, true)) {
+            // The chosen key file (#1892) ssh can't use: found before anything connects.
+            if (error.details.value("field").toString() == QLatin1String("keyFile")) { step("signIn", "failed", error.message); return out; }
             const bool key = error.code.startsWith(QLatin1String("ssh_host")) || error.code == QLatin1String("ssh_trusted_key_changed");
-            const bool reached = key || error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_needs_one_time_code") || error.code == QLatin1String("ssh_no_sftp");
+            const bool reached = key || error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_key_permissions") ||
+                                 error.code == QLatin1String("ssh_needs_one_time_code") || error.code == QLatin1String("ssh_no_sftp");
             step("connect", reached ? "passed" : "failed", reached ? QStringLiteral("Reached the server") : error.message);
             if (reached) step("hostKey", key ? "failed" : "passed", key ? error.message : QStringLiteral("The host key matches"));
             if (reached && !key) step("signIn", error.code == QLatin1String("ssh_no_sftp") ? "passed" : "failed", error.code == QLatin1String("ssh_no_sftp") ? QStringLiteral("Signed in") : error.message);

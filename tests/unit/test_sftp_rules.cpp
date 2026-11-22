@@ -1,5 +1,8 @@
 #include "storage/sftp/SftpCommon.h"
+#include "storage/sftp/SftpSsh.h"
 #include "storage/sftp/SftpWire.h"
+#include <QFile>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QtEndian>
 using namespace putgd;
@@ -124,6 +127,84 @@ private slots:
         QCOMPARE(sftp::hostToken("files.example.com", 22, "shots"), QString("shots"));
         QVERIFY(sftp::literalHostToken("[files.example.com]:2222"));
         for (const auto* pattern : {"*.example.com", "a,b", "!a", "|1|abc", ""}) QVERIFY2(!sftp::literalHostToken(pattern), pattern);
+    }
+    // #1892: the SSH key file is passed to ssh on its own, as one argument, and ssh then offers that
+    // key rather than every agent key first; without one, nothing changes.
+    void aChosenKeyIsPassedToSshAlone() {
+        auto s = settings("files.example.com:2222");
+        s["user"] = "alice";
+        QVERIFY(sftp::validate(s).code.isEmpty());  // a destination saved without keyFile
+        QVERIFY(sftp::identityArguments(s).isEmpty());
+        QVERIFY(!sftp::connectionArguments(s, "none").contains("-i"));
+        s["keyFile"] = QJsonValue::Null;
+        QVERIFY(sftp::validate(s).code.isEmpty());
+        s["keyFile"] = "/home/alice/keys/deploy key";
+        QVERIFY(sftp::validate(s).code.isEmpty());
+        const auto args = sftp::connectionArguments(s, "none");
+        const auto i = args.indexOf("-i");
+        QVERIFY(i >= 0);
+        QCOMPARE(args[i + 1], QString("/home/alice/keys/deploy key"));
+        QCOMPARE(args.mid(i + 2, 2), QStringList({"-o", "IdentitiesOnly=yes"}));
+        // Before the subsystem and the destination, so ssh reads it as an option.
+        QVERIFY(i < args.indexOf("-s") && i < args.indexOf("--"));
+        for (const auto* refused : {"keys/id_ed25519", "", "/home/alice/%h_key", "/home/${USER}/key", "/home/alice/a\nb"}) {
+            s["keyFile"] = QString::fromUtf8(refused);
+            QCOMPARE(sftp::validate(s).details.value("field").toString(), QString("keyFile"));
+        }
+        s["keyFile"] = 7;
+        QCOMPARE(sftp::validate(s).details.value("field").toString(), QString("keyFile"));
+        sftp::Resolved r;
+        r.host = "files.example.com";
+        r.port = 2222;
+        r.user = "alice";
+        r.agent = true;
+        r.identityFiles = {"/home/alice/keys/deploy_ed25519", "/home/alice/.ssh/id_rsa"};
+        r.chosenKey = "/home/alice/keys/deploy_ed25519";
+        QCOMPARE(sftp::resolvedLine(r, false), QString("Connects to files.example.com:2222 as alice with key deploy_ed25519"));
+    }
+    // A key file ssh would skip says why, in words that say how to fix it, before ssh runs.
+    void keyFilesSshCannotUseSayWhy() {
+        QTemporaryDir dir;
+        const auto write = [&](const QString& name, const QByteArray& content, QFile::Permissions mode) {
+            QFile file(dir.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write(content);
+            file.close();
+            QVERIFY(file.setPermissions(mode));
+        };
+        const auto owner = QFile::ReadOwner | QFile::WriteOwner;
+        // A private key's first line, put together here so no key-shaped text sits in the source.
+        const QByteArray privateHead = QByteArray("-----BEGIN OPENSSH ") + "PRIVATE " + "KEY-----\n";
+        write("id_ed25519", privateHead, owner);
+        write("id_ed25519.pub", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA alice@laptop\n", owner | QFile::ReadOther | QFile::ReadGroup);
+        write("lonely.pub", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA alice@laptop\n", owner);
+        write("pasted", "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ alice@laptop\n", owner);
+        write("work.ppk", "PuTTY-User-Key-File-3: ssh-ed25519\n", owner);
+        write("open", privateHead, owner | QFile::ReadGroup);
+        QVERIFY(sftp::keyFileProblem(dir.filePath("id_ed25519")).code.isEmpty());
+        // A .pub picked by mistake names the private key next to it.
+        QString privateKey;
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("id_ed25519.pub"), &privateKey).code, QString("ssh_key_public"));
+        QCOMPARE(privateKey, dir.filePath("id_ed25519"));
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("lonely.pub"), &privateKey).code, QString("ssh_key_public"));
+        QVERIFY(privateKey.isEmpty());
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("pasted")).code, QString("ssh_key_public"));
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("work.ppk")).code, QString("ssh_key_putty"));
+        // ssh refuses a private key of yours that others can read; the message says how to fix it.
+        const auto open = sftp::keyFileProblem(dir.filePath("open"));
+        QCOMPARE(open.code, QString("ssh_key_permissions"));
+        QVERIFY(open.message.contains("chmod 600 " + dir.filePath("open")));
+        QCOMPARE(sftp::keyFileProblem(dir.filePath("gone")).code, QString("ssh_key_missing"));
+        QCOMPARE(sftp::keyFileProblem(dir.path()).code, QString("ssh_key_unreadable"));
+        // ssh's own refusal of a configured key that is too open reads the same way.
+        sftp::FailureContext context;
+        context.resolved.user = "alice";
+        const auto refused = sftp::classify("Permissions 0644 for '/home/alice/.ssh/id_rsa' are too open.\nIt is required that your private key files are NOT accessible by others.\n"
+                                            "alice@files.example.com: Permission denied (publickey).\n", context);
+        QCOMPARE(refused.code, QString("ssh_key_permissions"));
+        QVERIFY(refused.message.contains("chmod 600 /home/alice/.ssh/id_rsa"));
+        context.resolved.chosenKey = "/home/alice/keys/deploy_ed25519";
+        QVERIFY(sftp::classify("alice@files.example.com: Permission denied (publickey).\n", context).message.contains("with the key deploy_ed25519"));
     }
     // A password typed or pasted into an address never stays in it.
     void passwordsAreLeftOutOfAddresses() {

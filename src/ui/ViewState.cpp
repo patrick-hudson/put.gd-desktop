@@ -13,7 +13,7 @@ const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","o
 const QStringList& r2Keys() {static const QStringList value{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
 // Nextcloud and WebDAV (#1872): addresses, the folder, the plain HTTP switch and the account's name.
 const QStringList& davKeys() {static const QStringList value{"server","folder","allowInsecureHttp","accountName","address","linkBase"};return value;}
-const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint"};return value;}
+const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint","keyFile"};return value;}
 const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():provider=="nextcloud"||provider=="webdav"?davKeys():provider=="sftp"?sftpKeys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
