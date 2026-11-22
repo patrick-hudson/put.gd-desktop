@@ -1,0 +1,39 @@
+# Lab HTTPS front for Nextcloud, the WebDAV server and the public file locations (#1872).
+# One internal CA signs every certificate here; "ca" exports its root certificate.
+{
+	admin off
+	auto_https disable_redirects
+	local_certs
+	skip_install_trust
+	default_sni @BIND@
+}
+https://@BIND@:18374 {
+	tls internal
+	reverse_proxy 127.0.0.1:80
+}
+https://@BIND@:18375 {
+	tls internal
+	reverse_proxy 127.0.0.1:8080
+}
+(public) {
+	handle /sftp/* {
+		uri strip_prefix /sftp
+		root * /public/sftp
+		file_server
+	}
+	handle /webdav/* {
+		uri strip_prefix /webdav
+		root * /public/webdav
+		file_server
+	}
+	handle {
+		respond "put.gd lab public files: /sftp/<file> and /webdav/<file>" 404
+	}
+}
+https://@BIND@:18376 {
+	tls internal
+	import public
+}
+http://@BIND@:18377 {
+	import public
+}
