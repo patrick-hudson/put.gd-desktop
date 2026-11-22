@@ -240,6 +240,12 @@ private slots:
   const auto headTwoWords=QString("ley JhbGci0i JSUZI1NiIsInR5cCI6IkpXVCJ9.")+"ey"+"IzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
   QTest::newRow("a JWT head split over two words, the payload's J misread")<<"Seen "+headTwoWords<<all<<QStringList{"key: "+headTwoWords};
   QTest::newRow("a JWT head read with its y and J misread")<<"Seen "+jewSplit<<all<<QStringList{"key: "+jewSplit};
+  // As putgd-ocr read the caret merged with the e: in a Firefox text field on m74 and k72, and in Kate on k72.
+  const auto browserField=QString("k")+"yJhbGci0iJSUZI1INiIsInR5cCI6IkpXVCIsImtpZC1I6ImxhYiO3In0."+"ey | "
+   +"JzdW1i0iJzdmMtcmVwb3JOcyIsImF1ZC16ImFwaSIsImV4cCI6MTcSNTAW | MDAWMHO . s8wEdbt4pQJ gmIWOmIms9mbTEGLVEOMDMU7KMdNucvI";
+  QTest::newRow("a JWT behind a text field's caret read as kyJ")<<browserField<<all<<QStringList{"key: "+QString(browserField).remove("| ")};
+  const auto kateRead=QString("b")+"yJhbGc iOiJIUZIANiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIiOiIxMjMONTY30Dkw | TiwibmFtZSI6IkpvaG4gRG9LIiwiawFOI j oxNTE2MjJM5MDIyfQ.Sf LKxwRJISM";
+  QTest::newRow("a JWT behind an editor's caret read as byJ")<<kateRead<<all<<QStringList{"key: "+QString(kateRead).remove("| ")};
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};

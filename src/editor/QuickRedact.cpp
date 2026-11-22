@@ -267,9 +267,10 @@ const QList<Prefix>& prefixes() {
   {QRegularExpression(R"((whsec)([_,.]?)([A-Za-z0-9]{20,}))"),38,true,false,true},
   // A JSON web token's header is base64url of "{"…", so it starts with eyJ.
   // #1875: a text caret just left of the token reads as a character joined before it
-  // ("leyJhbGci…", "|eyJ…", "JeyJ…" in the corpus); that character is taken as part of the
-  // prefix only before a whole "eyJ", which no word holds.
-  {QRegularExpression(R"(((?:[lI|1!jJ[{](?=eyJ))?ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
+  // ("leyJhbGci…", "|eyJ…", "JeyJ…" in the corpus), or merged with its e into a k or b (kyJ…
+  // behind a browser field's caret, byJ… behind Kate's); that reading is taken as the prefix
+  // only before a whole "yJ", which no word holds.
+  {QRegularExpression(R"(((?:[lI|1!jJ[{](?=eyJ))?ey[JjIl1)\]}|]|[kb]yJ)()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
  };
  return list;
 }
@@ -326,9 +327,9 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // Inside a word, a token's body has a digit and a capital, as real keys do; a URL slug
    // (/glagent-installation-guide, “glagent-installation-guide-v2”) has neither or only a digit.
    // So does a JSON web token read with a stray character before it, which shares a word with
-   // the eyJ and more of the token ("ley" "January" is two words).
-   const bool stray=prefix.dotted&&candidate.capturedLength(1)==4;
-   if(stray&&pieceAt(segment,at+8)!=pieceAt(segment,at))continue;
+   // the prefix and two more characters ("ley" "January" is two words).
+   const bool stray=prefix.dotted&&!candidate.captured(1).startsWith(QLatin1String("ey"));
+   if(stray&&pieceAt(segment,at+int(candidate.capturedLength(1))+1)!=pieceAt(segment,at))continue;
    if(afterSeparator||stray){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
