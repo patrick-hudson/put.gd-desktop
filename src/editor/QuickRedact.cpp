@@ -1102,8 +1102,10 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
   }
   // A side split off from the rest of its row keeps the whole margin (#1846): the neighbour test
   // was measured on row ends, and a word there may be matched ink the box missed.
-  if(leftNeighbour&&!row.innerLeft)if(const auto limit=reach(image,box,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
-  if(rightNeighbour&&!row.innerRight)if(const auto limit=reach(image,box,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
+  // The scan covers the run's width and the whole row's height, as the mark does.
+  const QRect scan(QPoint(box.left(),row.whole.top()),QPoint(box.right(),row.whole.bottom()));
+  if(leftNeighbour&&!row.innerLeft)if(const auto limit=reach(image,scan,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
+  if(rightNeighbour&&!row.innerRight)if(const auto limit=reach(image,scan,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
   const auto mark=QRect(QPoint(left,row.whole.top()-pad),QPoint(right,row.whole.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
  }
  return out;
