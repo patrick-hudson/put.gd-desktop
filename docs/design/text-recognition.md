@@ -917,7 +917,9 @@ other tool active it does not. The user's side is in the
     underscore recognition dropped: `jane` and `doe@example.com` read from `jane.doe@example.com`
     (#1854). The join needs that ink and no blank run wider than a quarter of a character between
     the matched ink and the word's box, where a word space would be. It needs the picture, never
-    applies on a side that faces another run, and only widens a mark. A mark never shrinks inside the
+    applies on a side that faces another run, and only widens a mark. A dot of a single dark pixel
+    whose fainter edge touches the letter before it is not seen, and that word stays uncovered as
+    before. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
     kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
