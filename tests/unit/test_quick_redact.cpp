@@ -294,6 +294,15 @@ private slots:
   {const auto masked=QString("sk")+"_li"+"ve_"+QString(32,'X')+"9aB3dE5fG7hJ";
    QTest::newRow("a masked key with an unmasked tail stays covered")<<"key "+masked<<all<<QStringList{"key: "+masked};}
   QTest::newRow("half zeros and the rest a token stays covered")<<"TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"<<QStringList{"key"}<<QStringList{"key: TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"};
+  // Sol on #1901, round 2.
+  QTest::newRow("a Brazilian mobile after a country code word is a phone")<<"Celular BR 91234-5678"<<all<<QStringList{"phone: 91234-5678"};
+  QTest::newRow("a bare ZIP+4 is not a phone")<<"Ship to 71674-4468"<<all<<QStringList{};
+  QTest::newRow("a phone after a two-digit label is a phone")<<"Phone12:202-555-0143"<<all<<QStringList{"phone: Phone12:202-555-0143"};
+  QTest::newRow("a phone after an ISBN on its line is a phone")<<"ISBN 978-4-579-64374-5, phone 202-555-0143"<<all<<QStringList{"phone: 202-555-0143"};
+  {const auto hex=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
+   QTest::newRow("an acronym secret name beats a hash word")<<"clientAPISecret = "+hex+" // SHA-256"<<all<<QStringList{"key: clientAPISecret = "+hex+" // SHA-256"};}
+  QTest::newRow("a placeholder Stripe key before prose stays visible")<<QString("sk")+"_li"+"ve_"+QString(32,'X')+" was a redacted example"<<all<<QStringList{};
+  QTest::newRow("a placeholder after its name stays visible")<<"API_TOKEN="+QString(32,'X')<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a phone after a label's colon is still a phone")<<"Tel:+1 202 555 0143"<<all<<QStringList{"phone: Tel:+1 202 555 0143"};
   {const auto stripeMask=QString("sk")+"_li"+"ve_"+QString(24,'X'),awsMask=QString("AK")+"IA"+QString(16,'X'),partly=QString("sk")+"_li"+"ve_"+"51HqZK"+QString(18,'X');
    QTest::newRow("a placeholder Stripe key stays visible")<<"Placeholder key "+stripeMask<<all<<QStringList{};
@@ -355,6 +364,9 @@ private slots:
   // digest line are not remainders.
   QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5=\","),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5=\","});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL=\"\""),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
+  QVERIFY(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D // note"),QStringList{"key"}).first().startsWith("key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D"));
+  QCOMPARE(found(words("KEY=\""+secret+" | shaB7m2QaK8V\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" shaB7m2QaK8V\""});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | SHA1 "+QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
  }
  void namesAndListsMatchTheirSpellings_data() {

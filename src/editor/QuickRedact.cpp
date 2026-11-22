@@ -218,9 +218,11 @@ bool repeatedRun(const QString& run) {
  if(characters<24||characters*10<int(run.size())*9)return false;
  // #1895: but a run almost all of mask characters (x or 0, nine in ten) is a placeholder, not a token: see placeholder().
  for(const QChar mask:{QChar('x'),QChar('0')})if(counts.value(mask)*10>=characters*9)return false;
+ // ...or one that holds twenty x in a row, which no key does (a placeholder before prose)...
+ {static const QRegularExpression xs(QStringLiteral("[xX]{20}"));if(xs.match(run).hasMatch())return false;}
  // ...or one after a prefix: the part after the last separator (sk_live_XXXX…) at least 16
  // characters, nine in ten of one mask character.
- {const auto cut=qMax(run.lastIndexOf('_'),qMax(run.lastIndexOf('-'),run.lastIndexOf('.')));
+ {qsizetype cut=-1;for(const QChar c:{QChar('_'),QChar('-'),QChar('.'),QChar('='),QChar(':')})cut=qMax(cut,run.lastIndexOf(c));
   const auto tail=run.mid(cut+1);
   if(cut>=0&&tail.size()>=16)for(const QChar mask:{QChar('x'),QChar('0')})if(tail.count(mask,Qt::CaseInsensitive)*10>=tail.size()*9)return false;}
  QList<int> sizes=counts.values();std::sort(sizes.begin(),sizes.end(),std::greater<int>());
@@ -296,9 +298,10 @@ struct Segment {QList<int> words;QString text;QList<int> starts;};
 // payload: a JSON web token found by its payload, its header misread or on the line above.
 struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;bool payload=false;};
 // The token segments of one line: maximal runs of token pieces, joined.
-// #1895: a gap of more than three characters between two pieces ends a segment. Recognition splits
-// a token with gaps no wider than a word space, while a table's label cell ("Git SHA", "AWS") sits a
-// column away from its value.
+// #1895: a gap of more than six characters between two pieces ends a segment. Recognition splits a
+// token with gaps of a word space, or a few characters where it dropped some (a JWT on the corpus:
+// three and a third), while a table's label cell ("Git SHA", "AWS") sits a column away from its value
+// (14 and 24 characters on Patrick's decoy page).
 QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
  QList<Segment> out;Segment current;
  const auto close=[&]{if(!current.words.isEmpty())out.append(current);current={};};
@@ -308,7 +311,7 @@ QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const
   if(!current.words.isEmpty()){
    const int previous=current.words.last();
    const int gap=candidates.at(index).rect.left()-candidates.at(previous).rect.right();
-   if(gap>3*qMax(glyph(previous),glyph(index)))close();
+   if(gap>6*qMax(glyph(previous),glyph(index)))close();
   }
   current.starts.append(int(current.text.size()));current.words.append(index);current.text+=plain.at(index);
  }
@@ -371,7 +374,12 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // A kind of one length is judged on its body up to that length (a word can run on past it); any
    // other on its whole body, so an unmasked tail keeps it a key (Sol on #1901).
    {const auto body=candidate.captured(3);
-    if(placeholder(prefix.exact?body.left(qMax(8,prefix.length-int(candidate.capturedLength(1)+candidate.capturedLength(2)))):body))continue;}
+    // ...and never past the piece it starts in: the body pattern runs on through the words joined
+    // after it ("…XXXX" "was" "a" "redacted" "example"; Sol on #1901).
+    const int bodyAt=base+int(candidate.capturedStart(3)),piece=pieceAt(segment,bodyAt);
+    const int pieceEnd=piece+1<segment.starts.size()?segment.starts.at(piece+1):int(segment.text.size());
+    const auto own=body.left(qMax(0,pieceEnd-bodyAt));
+    if(placeholder(prefix.exact?own.left(qMax(8,prefix.length-int(candidate.capturedLength(1)+candidate.capturedLength(2)))):own))continue;}
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
   }
@@ -419,10 +427,12 @@ bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<
 bool digestLine(const QList<int>& line,const QList<QString>& plain) {
  static const QSet<QString> hashes{"sha","sha1","sha224","sha256","sha384","sha512","md5","commit","digest","checksum","hash","etag","integrity","blake2b","blake3"};
  static const QSet<QString> secrets{"secret","key","token","password","passwd","pwd","signing","private","hmac","auth","credential","credentials","apikey","api"};
- // clientSecret is client and secret (Sol on #1901).
- static const QRegularExpression split(QStringLiteral("[^A-Za-z0-9]+|(?<=[a-z])(?=[A-Z])"));
+ // A secret word counts inside a camelCase name too (clientSecret, clientAPISecret); a hash word only
+ // as a word of its own, so a token's tail such as "shaB7m2…" is no label (Sol on #1901).
+ static const QRegularExpression words(QStringLiteral("[^A-Za-z0-9]+")),camel(QStringLiteral("[^A-Za-z0-9]+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"));
+ for(const int w:line)for(const auto& part:plain.at(w).split(camel,Qt::SkipEmptyParts))if(secrets.contains(part.toLower()))return false;
  bool hash=false;
- for(const int w:line)for(auto part:plain.at(w).split(split,Qt::SkipEmptyParts)){
+ for(const int w:line)for(auto part:plain.at(w).split(words,Qt::SkipEmptyParts)){
   part=part.toLower();
   if(secrets.contains(part))return false;
   hash=hash||hashes.contains(part);
@@ -560,9 +570,14 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      // padding at its end.
      // Base64 padding before closing punctuation ("…L=\",") is a remainder's end, not an assignment;
      // an empty snake-case assignment ("DATABASE_URL=") is a new statement (Sol on #1901).
-     {static const QRegularExpression assignment(QStringLiteral("^(?:\\d{1,5}|[^A-Za-z0-9])?[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
-      static const QRegularExpression empty(QStringLiteral("^(?:\\d{1,5}|[^A-Za-z0-9])?(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:]$"));
-      if(assignment.match(next.first().text).hasMatch()||empty.match(next.first().text).hasMatch())break;
+     // Judged on the line's first recognized word (after a line number), not on the words joined
+     // (Sol on #1901: "…==”" "// note").
+     {static const QRegularExpression assignment(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
+      static const QRegularExpression empty(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:][\"'`\u201C\u201D]*[;,]?$"));
+      int lead=0;
+      if(nextLine.size()>1&&(number.match(plain.at(nextLine.first())).hasMatch()||(plain.at(nextLine.first()).size()==1&&!plain.at(nextLine.first()).front().isLetterOrNumber())))lead=1;
+      const auto& firstWord=plain.at(nextLine.at(lead));
+      if(assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch())break;
       // A line with a hash word is a digest of its own, not a wrapped remainder (Sol on #1901).
       if(digestLine(nextLine,plain))break;
       if(nextLine.size()>1&&number.match(plain.at(nextLine.first())).hasMatch()&&number.match(plain.at(line.first())).hasMatch())break;}
@@ -622,7 +637,7 @@ const QList<Rule>& rules() {
   {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d)&&!isbn13(d);},1},
   {"ip",QRegularExpression(R"((?<![\d.vV])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
-  {"phone",QRegularExpression(R"((?<![\w+.-])(?<!\d\d:)(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
+  {"phone",QRegularExpression(R"((?<![\w+.-])(?<!(?<![A-Za-z0-9])\d\d:)(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
     // At least 7 digits and at most 15 (E.164); a date or an IPv4 address is not a number to call.
     static const QRegularExpression date(R"(^(?:\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4})$)"),dotted(R"(^\d{1,3}(?:\.\d{1,3}){3}$)");
     // Separated by dots alone, a number is a phone in the 3-3-4 grouping or in
@@ -1112,11 +1127,26 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     // #1895: a ZIP+4-shaped number after a ZIP word or a state code, and any number on a line that
     // names an ISBN, are no phone numbers; 9XXXX-XXXX alone stays one (a Brazilian mobile).
     if(rule.category=="phone"){
-     static const QRegularExpression zip(R"(^\d{5}-\d{4}$)"),zipWord(QStringLiteral("^(?:zip|zip:|zipcode|zip-code|postal|postcode|[A-Z]{2},?)$"),QRegularExpression::CaseInsensitiveOption);
+     static const QRegularExpression zip(R"(^\d{5}-\d{4}$)"),zipWord(QStringLiteral("^(?:zip|zip:|zipcode|zip-code|postal|postcode)$"),QRegularExpression::CaseInsensitiveOption);
+     static const QSet<QString> states{"AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC","PR"};
      const int first=words.first();const int line=candidates.at(first).line;
-     if(zip.match(joined.text.mid(found.capturedStart(),length)).hasMatch()&&first>0&&candidates.at(first-1).line==line&&zipWord.match(candidates.at(first-1).text).hasMatch()&&(candidates.at(first-1).text.size()!=2||(candidates.at(first-1).text.at(0).isUpper()&&candidates.at(first-1).text.at(1).isUpper())))continue;
-     bool isbn=false;for(int w=first-1;w>=0&&candidates.at(w).line==line;--w)isbn=isbn||candidates.at(w).text.startsWith(QLatin1String("ISBN"),Qt::CaseInsensitive);
-     if(isbn)continue;
+     const auto number=joined.text.mid(found.capturedStart(),length);
+     if(zip.match(number).hasMatch()){
+      // A ZIP+4 is no phone, except one shaped as a Brazilian mobile (9XXXX-XXXX) with no ZIP word or
+      // state code before it.
+      QString before=first>0&&candidates.at(first-1).line==line?candidates.at(first-1).text:QString();
+      while(before.endsWith(',')||before.endsWith(':'))before.chop(1);
+      if(!number.startsWith('9')||zipWord.match(before).hasMatch()||states.contains(before))continue;
+     }
+     // Inside an ISBN's own number ("ISBN 978 4 579 64374 5", "ISBN-13: 978-…"): the words after an
+     // ISBN word made of digits and hyphens, up to 13 digits.
+     {QSet<int> isbnWords;
+      for(int w=0;w<candidates.size();++w){
+       if(candidates.at(w).line!=line||!candidates.at(w).text.startsWith(QLatin1String("ISBN"),Qt::CaseInsensitive))continue;
+       static const QRegularExpression part(QStringLiteral("^[0-9Xx-]+[,.;]?$"));
+       int count=0;for(int v=w+1;v<candidates.size()&&candidates.at(v).line==line&&count<13&&part.match(candidates.at(v).text).hasMatch();++v){isbnWords.insert(v);count+=digits(candidates.at(v).text);}
+      }
+      if(!isbnWords.isEmpty()&&std::all_of(words.cbegin(),words.cend(),[&](int w){return isbnWords.contains(w);}))continue;}
     }
     // Merge both views before reserving any word, so a wrapped continuation
     // cannot be discarded merely because its prefix matched the plain view.
