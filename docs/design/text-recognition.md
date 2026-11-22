@@ -130,7 +130,8 @@ kernel's Landlock version, and nothing stronger.
 
 - `PR_SET_NO_NEW_PRIVS` and `PR_SET_DUMPABLE 0`.
 - Resource limits: no core file. `RLIMIT_DATA` at 576 MiB, lowered to 480 MiB when the job
-  reads English only. `RLIMIT_CPU` at 21 seconds for each recognition thread. `RLIMIT_FSIZE` at
+  reads English only. `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine count, with the
+  hard limit one second higher, both kept within any hard limit the helper inherits. `RLIMIT_FSIZE` at
   8 MiB, which is also the output cap. `RLIMIT_NOFILE` at 32. There is no `RLIMIT_AS`, because
   mapped libraries and glibc's reservations would trip it.
 - **Landlock** through system calls, ABI 3 or later so that truncation by path is covered.
@@ -236,7 +237,7 @@ engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dens
 100,000 characters or more, therefore cannot be read on one engine inside the deadline, and no
 pixel limit changes that. Four engines still leave the densest test page cut.
 
-The figure of a millisecond a character is for one engine. The helper can use up to four, as
+The figure of a millisecond a character is for one engine. The helper can use up to eight, as
 many as the memory budget lets it start, so how much of a dense page it reads before the time
 budget depends on that budget too. Under the old 128 MiB budget a 4K screen ran on one engine
 and took as long as `--threads 1`. In the #1805 benchmark on aurora-amd, the dense 24-megapixel
@@ -290,8 +291,8 @@ On the corpus it lost whole terminal and plain-page regions.
   whole scaled image never exists.
 - **Single pass.** A panel is read in one pass up to 8,000,000 scaled pixels, and Tesseract's own
   layout gives the reading order. A single pass of at least 500,000 scaled pixels is cut into about
-  two strips for each engine, counting at most four engines, between text lines, and the strips
-  are read in parallel.
+  two strips for each engine (at most four counted) when more than one engine may run. The cuts go
+  between text lines and the strips are read in parallel, and a panel with no usable cut stays whole.
   - A cut goes in the quietest rows of a blank run (a row counts as blank with up to a 256th of
     its width in ink pixels, so cutting through a descender would read "sample" as "samnle").
   - Where no row is blank, such as a border down a window or lines set without leading, the cut
@@ -317,27 +318,32 @@ On the corpus it lost whole terminal and plain-page regions.
   column, then the whole right column, each banded within. Below 4 megapixels a two-column page is
   one panel, read as page segmentation 6 reads it. There is no global multi-column order across
   bands.
-- **Threads.** Recognition runs on up to eight engines, one for each CPU the process may use. That
-  is its affinity or a container's cpuset, not the machine's online count, lowered to the tightest
-  cgroup v2 `cpu.max` quota on its cgroup or a parent, rounded up. The helper counts before
-  confinement, because Landlock then hides `/sys/fs/cgroup`. `RLIMIT_CPU` stays 21 seconds per
-  engine, within any hard limit the helper inherits.
-  - Bands and strips are cut as for at most four engines, so a job's tasks, and its text, are the
-    same on four cores or more. More engines share the same tasks. When strips followed the
-    engine count, six engines read 47 of the 176 corpus captures differently.
+- **Threads.** Recognition may run up to eight engines, and the memory budget decides how many
+  actually start.
+  - The ceiling is the CPUs the process may use: its affinity, or a container's cpuset, not the
+    machine's online count. If the affinity can't be read, it is the online count. That is
+    lowered to the tightest cgroup v2 `cpu.max` quota readable on the process's cgroup or a
+    visible parent, rounded up.
+  - The helper counts before confinement, because Landlock then hides `/sys/fs/cgroup`.
+  - Bands and strips are cut as for at most four engines. So with four to eight engines a job's
+    tasks are the same, and so is its text, unless the time budget cuts the job short. More
+    engines share the same tasks. When strips followed the engine count, six engines read 47 of
+    the 176 corpus captures differently.
   - A task's memory growth is not measured while an extra engine is starting. With eight engines
     on a GNOME 4K screen, a task measured beside seven engine starts showed 79 MiB, and every
     extra worker then found no room and quit.
-  - On aurora-amd (Ryzen 5 PRO 8500GE, 6 cores and 12 threads), eight engines against four:
+  - On aurora-amd (Ryzen 5 PRO 8500GE, 6 cores and 12 threads), the AppImage's own resident and
+    helper, with eight engines against the four of the release before:
 
     | | 4 engines | 8 engines |
     | --- | --- | --- |
-    | 176-capture corpus | 76.5 s | 69.4 s |
-    | 4 MP+ screens, mean | 1.25 s | 1.11 s |
-    | Dense 24 MP page | 13.8 s | 10.5 s (the budget starts five engines) |
-    | Peak, dense page | 184 MiB | 235 MiB |
+    | 176-capture corpus | 86.1 s | 78.5 s |
+    | 4 MP+ screens, mean | 1.31 s | 1.16 s |
+    | Dense 24 MP page | 12.8 s | 9.0 s |
+    | Peak, dense page | 139 MiB | 204 MiB |
 
-    The text was identical on all 176 captures (#1812).
+    The text was identical on all 176 captures. On k72's four cores nothing changed. The record
+    is [put.gd-evidence `records/2026-11-22-issue-1812-ocr-engine-count`](https://github.com/patrick-hudson/put.gd-evidence/tree/03ec9a20f11f719e5ddac17014e32073bf79c6dd/records/2026-11-22-issue-1812-ocr-engine-count).
   - The bands and strips of every panel go into one pool. Results join in task order, never in
     the order the tasks finish. A screen measures its first task before it shares, and an extra
     engine starts only while the time left covers twice an engine's start plus the slowest task.
