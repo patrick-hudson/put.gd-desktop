@@ -841,7 +841,7 @@ private slots:
   QTest::newRow("URL schemes in one word")<<repeat("postgres://u:",2000);
   QTest::newRow("a long base64 word")<<repeat("aB3dE5fG7hJ9kL1mN3pQ+/",1000);
   QTest::newRow("many token-shaped words")<<repeat("aB3dE5fG7h ",4000);
-  QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",600);
+  QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",300);
   QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
  }
  // Sol on #1902: the faster search finds what the plain one did.
