@@ -90,7 +90,8 @@ public:
  const Shape* find(quint64 id) const;
  bool modified() const {return state_.shapes.size()>0||state_.crop!=base_.rect()||state_.style!=initialStyle_;}
  // The style the editor opened with (a new capture with Capture style on), which is not an edit.
- void setInitialStyle(const CaptureStyle& style){state_.style=style;initialStyle_=style;}
+ // Redact and upload sets it after Quick redact's steps: every history state gets it, so undo keeps it.
+ void setInitialStyle(const CaptureStyle& style){state_.style=style;initialStyle_=style;for(auto& state:undo_)state.style=style;for(auto& state:redo_)state.style=style;++generation_;}
  // Bumped by every change to what export renders (edits, live drags, undo,
  // redo), so a saved copy can tell whether it still matches the draft.
  quint64 generation() const {return generation_;}

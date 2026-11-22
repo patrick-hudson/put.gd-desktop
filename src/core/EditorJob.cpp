@@ -191,7 +191,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(sound(redactTerms_,textjob::maxRedactTerms,textjob::redactTermError))request["redactTerms"]=QJsonArray::fromStringList(redactTerms_);
   if(sound(redactPatterns_,textjob::maxRedactPatterns,Settings::quickRedactPatternError))request["redactPatterns"]=QJsonArray::fromStringList(redactPatterns_);
  }
- request["style"]=QJsonObject{{"saved",style_.toJson()},{"start",styleStart_&&style_.enabled}};
+ request["style"]=QJsonObject{{"saved",style_.toJson()},{"start",styleStart_}};
  if(check_){
   QJsonObject check{{"categories",QJsonArray::fromStringList(check_->categories)},{"prompt",check_->prompt},{"redact",check_->redact}};
   if(!check_->file.isEmpty())check["file"]=check_->file.left(300);

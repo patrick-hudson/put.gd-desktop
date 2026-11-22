@@ -107,7 +107,7 @@ public:
  struct Check {QStringList categories;bool prompt=true,redact=true;QString file;QStringList cover={};};
  EditorJob& withCheck(Check check){check_=std::move(check);return *this;}
  // #1893: the Settings capture style for the Style tool, and whether the document starts with it
- // on (a new capture while Capture style is on; never a file, the clipboard or Edit again).
+ // on: a new capture while Capture style is on, or a file asked for with captureStyle (Edit again of an -original).
  EditorJob& withStyle(CaptureStyle saved,bool start){style_=std::move(saved);styleStart_=start;return *this;}
  // The longest a check may take to say what it found, from the helper's start.
  static constexpr int checkTimeoutMs=40000;

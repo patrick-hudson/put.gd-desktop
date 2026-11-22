@@ -144,7 +144,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  auto scrollHost=host;
  scrollHost.accept=[this](Operation& op){return acceptScroll(op);};
  scrollHost.admit=[this,admit=host.admit](Operation op,ClipboardPayload payload,std::function<void()> released){
-  if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);styledEdits_.insert(op.id);startEditing(op,active_.value(op.id),std::move(payload));}
+  if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);if(op.settings.captureStyle.enabled)styledEdits_.insert(op.id);startEditing(op,active_.value(op.id),std::move(payload));}
   // One scrolling capture at a time: the mode is the one its invoke or scroll.prepare set (#1804).
   else {if(!sensitiveModes_.contains(op.id))sensitiveModes_.insert(op.id,scrollSensitiveMode_);admit(op,std::move(payload),std::move(released));}
  };
@@ -390,7 +390,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if(interactive||styleValue.toBool())styledEdits_.insert(op.id);}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
@@ -648,7 +648,7 @@ void OperationService::runCheck(Job job) {
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   // #1893: Redact and upload of a capture opens with its capture style on; a selected file's starts plain.
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,shared->payload.kind!="files").withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action)).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -822,7 +822,7 @@ bool OperationService::needsStyle(const Job& job) {
  if(!actions.contains(op.action))return false;
  return (job.payload.kind=="image"&&!job.payload.image.isNull())||(job.payload.kind=="png"&&!job.payload.bytes.isEmpty());
 }
-void OperationService::styleCapture(Job& job,Operation& op) {
+void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit) {
  // The same PNG the artifact store would encode; the image-job child decodes, styles and encodes it.
  QByteArray png;
  if(job.payload.kind=="png")png=job.payload.bytes;
@@ -836,6 +836,15 @@ void OperationService::styleCapture(Job& job,Operation& op) {
   const auto why=error.code=="input_excessive"?QStringLiteral("Capture style wasn't applied: the styled image would be larger than put.gd's image limits."):QStringLiteral("Capture style wasn't applied: put.gd couldn't draw it.");
   op.note=op.note.isEmpty()?why:op.note+" "+why;
   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(error)}});
+  return;
+ }
+ // A styled PNG is larger: when only the style would pass the Largest file limit or the destination's object limit,
+ // the capture goes out as it was.
+ const auto limit=objectLimit>0?std::min(objectLimit,op.settings.limits.maxFileBytes):op.settings.limits.maxFileBytes;
+ if(styled.size()>limit&&png.size()<=limit){
+  const auto why=QStringLiteral("Capture style wasn't applied: the styled image would be larger than this destination or put.gd's file size limit accepts.");
+  op.note=op.note.isEmpty()?why:op.note+" "+why;
+  logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"styledBytes",double(styled.size())},{"limitBytes",double(limit)}});
   return;
  }
  // With Keep a local copy on, the capture as it was is kept beside the styled copy, as for automatic covers.
@@ -1334,7 +1343,11 @@ Operation OperationService::run(Job job) {
    op.advance(OperationState::Failed);save();return op;
   }
   // #1893: a still capture goes on its capture style before it is stored. Off, nothing here runs.
-  if(needsStyle(job)){styleCapture(job,op);if(job.styleOriginal)styledOriginal=job.originalPath;}
+  if(needsStyle(job)){
+   styleCapture(job,op,objectLimit);if(job.styleOriginal)styledOriginal=job.originalPath;
+   // A capture cancelled while it was being styled stores nothing.
+   if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
+  }
   auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   // A file-manager upload names the requested file or folder a late failure came from.

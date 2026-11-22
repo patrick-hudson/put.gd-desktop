@@ -118,6 +118,24 @@ private slots:
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
  }
 
+ // #1893: a new capture's editor starts with the saved capture style, and Upload hands off the styled image:
+ // the checkpoint's size is the styled canvas, which the resident checks against the PNG.
+ void aStyledEditUploadsTheStyledImage(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");const auto original=noise({240,150},31);
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=original;result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withStyle(CaptureStyle::preset("paper"),true).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const auto state=ask(*session,"inspect").result;
+  QVERIFY(state["style"].toObject()["enabled"].toBool());QCOMPARE(state["style"].toObject()["preset"].toString(),QString("paper"));QVERIFY(!state["modified"].toBool());
+  auto applied=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","style"},{"padding","large"}}}}});QVERIFY2(!applied.error,qPrintable(applied.error.message));
+  const auto size=applied.result["state"].toObject()["exportSize"].toArray();
+  const auto expected=CaptureStyle::preset("paper").geometry(original.size(),2).canvas;QCOMPARE(QSize(size[0].toInt(),size[1].toInt()),expected);
+  QVERIFY(!ask(*session,"submit").error);worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QCOMPARE(QSize(result.width,result.height),expected);QCOMPARE(QImage::fromData(result.png,"PNG").size(),expected);
+ }
+
  // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when
  // not empty, and the editor accepts them (its exact key count allows both). redactText's own
  // checks answer at once, before any recognition: terms and patterns need the list category.

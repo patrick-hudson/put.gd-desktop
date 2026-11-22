@@ -155,7 +155,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
-   {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
+   // #1893: the exported size, which a capture style makes larger than the crop.
+   {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
    if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
    if(png.size()>outputBytes){
     recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
@@ -362,7 +363,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
-   {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
+   // #1893: the exported size, which a capture style makes larger than the crop.
+   {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
    if(png.isEmpty()){refuse("edit_export_failed");return;}
    if(png.size()>outputBytes){refuse("input_excessive");return;}
    const auto digest=files.write(png);const auto bytes=png.size();png.clear();png.squeeze();

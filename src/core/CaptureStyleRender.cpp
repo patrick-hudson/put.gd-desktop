@@ -110,7 +110,7 @@ QImage loadPicture(const QString& path, const QSize& canvas) {
     if (path.isEmpty() || !canvas.isValid() || canvas.isEmpty()) return {};
     QFile file;
 #ifdef Q_OS_UNIX
-    const int fd = ::open(QFile::encodeName(path).constData(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    const int fd = ::open(QFile::encodeName(path).constData(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
     struct stat info {};
     if (fd < 0) return {};
     if (::fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size < 8 || info.st_size > maximumPictureFileBytes || !file.open(fd, QIODevice::ReadOnly, QFileDevice::AutoCloseHandle)) {::close(fd);return {};}
@@ -132,7 +132,8 @@ QImage loadPicture(const QString& path, const QSize& canvas) {
     if (target.width() > size.width() || target.height() > size.height()) target = size;
     if (std::max(target.width(), target.height()) > maximumPictureEdge) target.scale(maximumPictureEdge, maximumPictureEdge, Qt::KeepAspectRatio);
     reader.setScaledSize(target.expandedTo(QSize(1, 1)));
-    reader.setAllocationLimit(int(std::min<qint64>(qint64(target.width()) * target.height() * 4 / (1024 * 1024) + 2, 1024)));
+    // Interlaced and 16-bit PNGs decode at full size before scaling: allow the source's raster.
+    reader.setAllocationLimit(int(std::min<qint64>(qint64(size.width()) * size.height() * 8 / (1024 * 1024) + 2, 1024)));
     auto image = reader.read();
     if (image.isNull()) return {};
     // Its pixels only, in sRGB, as the editor converts a source on load.

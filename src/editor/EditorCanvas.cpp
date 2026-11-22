@@ -403,17 +403,19 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   style::paintBackdrop(painter,doc_.captureStyle(),styleGeometry,bounds.size(),doc_.stylePicture());painter.restore();
  };
  if(styleGeometry.valid())paintFrame();else Ui::paintImageShadow(painter,target);
+ // Rounded corners: the image and its marks are clipped to the capture's outline, as export cuts them.
+ QPainterPath outline;if(styleGeometry.valid()&&styleGeometry.radius>0)outline.addRoundedRect(target,styleGeometry.radius*scale_,styleGeometry.radius*scale_);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
  if(!visible.isEmpty()){
   painter.setRenderHint(QPainter::SmoothPixmapTransform,scale_<1.0);
-  painter.save();painter.setClipRect(visible,Qt::IntersectClip);
+  painter.save();painter.setClipRect(visible,Qt::IntersectClip);if(!outline.isEmpty())painter.setClipPath(outline,Qt::IntersectClip);
   doc_.paintPreviewSource(painter,target,QRectF(bounds),[&](QPainter& p,const QRectF& patch){
    p.fillRect(patch,canvasBackground());
    if(!target.adjusted(4,4,-4,-4).contains(patch))Ui::paintImageShadow(p,target);
   },bounds);painter.restore();
  }
- painter.save();painter.setClipRect(target);
+ painter.save();painter.setClipRect(target);if(!outline.isEmpty())painter.setClipPath(outline,Qt::IntersectClip);
  painter.translate(offset_);painter.scale(scale_,scale_);painter.translate(-QPointF(bounds.topLeft()));
  // Effects paint in the export's order, whatever order they were added in:
  // redactions, then blurs (whose tiles hold the redactions they cover,
@@ -429,12 +431,6 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   for(int i=textLayer_->first();i<=textLayer_->last();++i)painter.fillRect(QRectF(textLayer_->words().at(i).rect).adjusted(-1,-1,1,1),tint);
  }
  painter.restore();
- // Rounded corners: the backdrop drawn again over what lies outside the capture's outline.
- if(styleGeometry.valid()&&styleGeometry.radius>0){
-  QPainterPath outline;outline.addRoundedRect(target,styleGeometry.radius*scale_,styleGeometry.radius*scale_);
-  QPainterPath corners;corners.addRect(target);corners=corners.subtracted(outline);
-  painter.save();painter.setClipPath(corners);paintFrame();painter.restore();
- }
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());

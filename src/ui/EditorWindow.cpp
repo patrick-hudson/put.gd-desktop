@@ -876,7 +876,7 @@ bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QBy
  copyImage_->setMinimumWidth(copyImage_->sizeHint().width());copyImage_->setText("Copying…");
  struct Result {QByteArray png;QSize size;QString staged;};
  auto result=std::make_shared<Result>();
- auto* thread=QThread::create([snapshot=std::move(snapshot),result,stage=std::move(stage)]{result->png=snapshot.exportPng();result->size=snapshot.crop().size();if(stage&&!result->png.isEmpty())result->staged=stage(result->png);});
+ auto* thread=QThread::create([snapshot=std::move(snapshot),result,stage=std::move(stage)]{result->png=snapshot.exportPng();result->size=snapshot.exportSize();if(stage&&!result->png.isEmpty())result->staged=stage(result->png);});
  // The window joins this worker before it goes, so `stage` never outlives the
  // host's staging; a callback for a closed window is never made.
  copyThread_=thread;

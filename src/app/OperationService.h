@@ -280,7 +280,7 @@ private:
  static bool needsStyle(const Job&);
  // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
  QSet<QString> styledEdits_;
- void styleCapture(Job&,Operation&);
+ void styleCapture(Job&,Operation&,qint64 objectLimit);
  // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
  void keepOriginals(Job&,Operation&);
  // #1820: operations with a check that couldn't finish: their notification never says what was covered.
