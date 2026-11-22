@@ -14,13 +14,15 @@ namespace {
 // The keychain entries configured destinations own, in any credentials mode: the reference each
 // names, and putgd/<id> (what Settings writes when it switches to the keychain) and
 // putgd/sftp/<id> for each one, so keychain → session → keychain keeps an entry's mark.
+QSet<QString> ownedBy(const QString& id,const QJsonObject& profile) {
+ QSet<QString> owned{"putgd/"+id};
+ if(const auto reference=profile["credentials"].toObject().value("reference");reference.isString()&&!reference.toString().isEmpty())owned.insert(reference.toString());
+ if(profile["provider"]=="sftp")owned.insert("putgd/sftp/"+id);
+ return owned;
+}
 QSet<QString> ownedEntries(const QHash<QString,QJsonObject>& profiles) {
  QSet<QString> owned;
- for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
-  if(const auto reference=(*it)["credentials"].toObject().value("reference");reference.isString()&&!reference.toString().isEmpty())owned.insert(reference.toString());
-  owned.insert("putgd/"+it.key());
-  if((*it)["provider"]=="sftp")owned.insert("putgd/sftp/"+it.key());
- }
+ for(auto it=profiles.cbegin();it!=profiles.cend();++it)owned.unite(ownedBy(it.key(),*it));
  return owned;
 }
 constexpr qint64 maximumFileBytes=1024*1024;
@@ -42,17 +44,24 @@ DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObj
 void DestinationStatus::load() {
  records_.clear();credentialRevisions_.clear();keychainEntries_.clear();
  QFile file(path_);
- // A file from before #1890 has no record of saved keychain entries: every entry a destination
- // owns then counts as saved, so a store of one secret never overwrites one.
- // An unreadable file is left as it is: the entries count as saved for this run only.
- const auto upgrade=[this](bool persist){
-  keychainEntries_.unite(ownedEntries(settings_.snapshot().profiles));
+ // A file from before #1890 has no record of saved keychain entries: the entries of a destination
+ // that stored credentials (a revision above 0 in that file) then count as saved, so a store of
+ // one secret never overwrites one. Without revisions to go by (no file, or an unreadable one),
+ // only the entries keychain-mode destinations name count. An unreadable file is left as it is:
+ // the entries count as saved for this run only.
+ const auto upgrade=[this](bool persist,bool revisions){
+  const auto profiles=settings_.snapshot().profiles;
+  for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
+   const auto credentials=(*it)["credentials"].toObject();
+   if(revisions){if(credentialRevisions_.value(it.key())>0)keychainEntries_.unite(ownedBy(it.key(),*it));}
+   else if(credentials["mode"]=="keychain"&&!credentials["reference"].toString().isEmpty())keychainEntries_.insert(credentials["reference"].toString());
+  }
   if(persist)save();
  };
- if(!file.exists()){upgrade(true);return;}
- if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});upgrade(false);return;}
+ if(!file.exists()){upgrade(true,false);return;}
+ if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});upgrade(false,false);return;}
  QJsonParseError parse;const auto document=QJsonDocument::fromJson(file.readAll(),&parse);
- if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});upgrade(false);return;}
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});upgrade(false,false);return;}
  const auto root=document.object();
  const auto revisions=root["credentialRevisions"].toObject();
  for(auto it=revisions.begin();it!=revisions.end();++it)if(quint64 revision=0;revisionValue(it.value(),&revision))credentialRevisions_.insert(it.key(),revision);
@@ -63,7 +72,7 @@ void DestinationStatus::load() {
   records_.insert(it.key(),{value["state"].toString(),value["source"].toString(),value["errorCode"].toString(),value["fingerprint"].toString(),revision});
  }
  // After the records are read, so the upgrade's save keeps them.
- if(!root.contains("keychainEntries"))upgrade(true);
+ if(!root.contains("keychainEntries"))upgrade(true,true);
 }
 void DestinationStatus::follow(OperationService& operations) {
  connect(&settings_,&SettingsService::accepted,this,[this]{prune();});

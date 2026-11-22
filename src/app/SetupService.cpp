@@ -71,7 +71,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  // whole, so only one at a time per entry, from the read through the write (#1890).
  // An unlock holds it too, so a read begun before a store can't put older values back after it.
  const auto entry=(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
- if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
+ if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()-entrySlots_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
  // Whether put.gd ever saved to this keychain entry: only such a save marks it (#1890).
  const bool storedBefore=kind=="storeCredentials"&&!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);

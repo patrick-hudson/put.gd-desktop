@@ -156,7 +156,7 @@ private slots:
         {
             QFile file(rig.dir.filePath("destination-status.json"));
             QVERIFY(file.open(QIODevice::WriteOnly));
-            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"destinations", QJsonObject{}}, {"credentialRevisions", QJsonObject{}}}).toJson(QJsonDocument::Compact));
+            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"destinations", QJsonObject{}}, {"credentialRevisions", QJsonObject{{"test", 2}}}}).toJson(QJsonDocument::Compact));
         }
         rig.status.load();
         QVERIFY(rig.status.keychainSaved("putgd/test"));
@@ -166,6 +166,24 @@ private slots:
         store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
         QCOMPARE(job["state"].toString(), QString("failed"));
         QCOMPARE(rig.keychain.saves, 0);
+    }
+    // A destination that never stored credentials (revision 0) isn't marked by the upgrade, so its
+    // first password-only store after switching to the keychain goes through.
+    void anUpgradeLeavesNeverStoredDestinationsUnmarked() {
+        Rig rig({sftpProfile("test", {}, "session")});
+        {
+            QFile file(rig.dir.filePath("destination-status.json"));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"destinations", QJsonObject{}}, {"credentialRevisions", QJsonObject{}}}).toJson(QJsonDocument::Compact));
+        }
+        rig.status.load();
+        QVERIFY(!rig.status.keychainSaved("putgd/test"));
+        rig.use({sftpProfile("test", "putgd/test")});
+        rig.keychain.unlockError = notFound;
+        QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-first-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+        QCOMPARE(rig.keychain.saved->values, both("synthetic-first-password", QString()).values);
     }
     // An unlock holds the entry like a store, so a read begun before a store can't finish after it.
     void anUnlockHoldsTheEntry() {
