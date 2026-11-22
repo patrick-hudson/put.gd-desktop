@@ -734,12 +734,40 @@ python3 tools/lab/desktop_lock.py heartbeat f44 --session ID [--blocked REASON]
 python3 tools/lab/desktop_lock.py extend f44 --session ID --minutes 30
 python3 tools/lab/desktop_lock.py release f44 --session ID [--verified-clean] [--not-mine ID ...]
 python3 tools/lab/desktop_lock.py break f44 --session ID --reason TEXT
+python3 tools/lab/desktop_lock.py held [HOST] [--session ID]
+python3 tools/lab/desktop_lock.py run f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--resource quiet] [--release] -- CMD ...
 ```
+
+Use `run` for lab work on a builder. It is the safe form of "acquire, then
+work": it takes the lock, or confirms that your session already holds it, and
+only then runs CMD on the builder over the same pinned BatchMode SSH, with
+`PUTGD_LAB_SESSION` set to your session. If the lock isn't yours it exits 1
+without running CMD. While CMD runs it renews the lock every 5 minutes; if the
+lock is lost it stops CMD's SSH and exits 1. Otherwise it exits with CMD's exit
+code and keeps the lock, so you can run the next step the same way.
+`--release` gives the lock back after CMD as `release --verified-clean` would,
+and is still refused if something new is left on the host.
+
+Don't write `acquire ...; CMD` or acquire in one step and work in another. On
+2026-11-22 both forms ran lab work on builders that other sessions held: a
+refused acquire followed by `;` installed a different candidate deb over the
+holder's on k72.
+
+`held` exits 0 only while your session (`--session`, default
+`$PUTGD_LAB_SESSION`) holds a current lock, neither expired nor stale. Without
+HOST it checks the builder's own lock directory. Scripts check it before each
+step. The lab helpers that install packages or drive a builder's desktop
+(`physical.py`, `record_run.py`, `fluidity_run.py`, `recording_bar_shots.py`)
+refuse to start unless your session holds that builder's desktop lock. Under
+`run` this is automatic. `physical.py` runs on the workstation, so give it
+`lock_session` in its config or set `PUTGD_LAB_SESSION`. A host with no lock
+directory, such as a VM guest, is not checked.
 
 - `--session` is how other sessions reach you. Use your Claude Code `local_...`
   id; a Codex or terminal session uses a unique name such as `codex-<branch>`
   and says in `--purpose` where its notes are.
-- Acquire before you start anything on the desktop, not while you prepare. If
+- Acquire before you start anything on the desktop, not while you prepare, and
+  chain the work to it with `run`. If
   you have a coordinator, wait until its schedule lists you next. `--minutes` is
   at most 45. Run `extend` before the lock expires; it moves the expiry to N
   minutes from now.
