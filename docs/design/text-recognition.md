@@ -937,8 +937,8 @@ on the tray icon brings the panel back instead of opening History, where the tra
 click. Ubuntu's AppIndicator tray opens put.gd's menu on a click instead. The tray menu's **Open
 put.gd** still opens History. On every desktop put.gd also sends one notification for each prompt a
 person is shown, "A capture is waiting for your decision", while notifications are on ([#1829](https://github.com/patrick-hudson/put.gd-desktop/issues/1829)).
-It has **Show**, which brings the panel back, where the desktop's notifications support buttons. With
-no notification server, clicking Qt's tray balloon does the same. During a scrolling capture the
+It has **Show**, which brings the panel back, where the desktop's notifications support buttons. Where Qt
+shows a tray balloon instead (no notification server, on the Qt tray), clicking it does the same. During a scrolling capture the
 notification waits until the capture ends, and goes out then only if the prompt still waits. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
 float it. Where the desktop lets a window choose (X11), it opens centred on the screen with the pointer.
 Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offered.
