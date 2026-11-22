@@ -3,7 +3,7 @@
 #include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "core/CaptureStyle.h"
-#include "editor/CaptureStyleRender.h"
+#include "core/CaptureStyleRender.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QFile>
@@ -85,8 +85,8 @@ QString styleCapture(PrivateFiles& files,const QJsonObject& styleObject,qint64 m
  reader.setAllocationLimit(int(std::min<qint64>(qint64(size.width())*size.height()*4/(1024*1024)+2,INT_MAX)));
  const auto capture=reader.read();if(capture.isNull())return "source_unsupported";
  QImage picture;
- if(style.backdrop=="picture"){picture=editor::style::loadPicture(style.picture,geometry.canvas);if(picture.isNull())note="picture_missing";}
- const auto styled=editor::style::render(capture,style,geometry,picture);
+ if(style.backdrop=="picture"){picture=style::loadPicture(style.picture,geometry.canvas);if(picture.isNull())note="picture_missing";}
+ const auto styled=style::render(capture,style,geometry,picture);
  if(styled.isNull())return "input_excessive";
  width=styled.width();height=styled.height();
  QImageWriter writer(&files.output,"png");

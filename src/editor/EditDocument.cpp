@@ -1,5 +1,5 @@
 #include "EditDocument.h"
-#include "CaptureStyleRender.h"
+#include "core/CaptureStyleRender.h"
 #include "HighlightFilter.h"
 #include <QBuffer>
 #include <QColorSpace>

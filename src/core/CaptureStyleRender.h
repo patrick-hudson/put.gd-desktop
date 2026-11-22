@@ -1,14 +1,14 @@
 #pragma once
-#include "core/CaptureStyle.h"
+#include "CaptureStyle.h"
 #include <QImage>
 #include <QPainterPath>
 #include <QRectF>
 
 class QPainter;
 // #1893: drawing a capture style. One code path for the editor's export, its canvas preview,
-// Settings' preview and the image-job child's `style` task, so they all agree. Only putgd-ui
-// links this; the resident never paints or decodes.
-namespace putgd::editor::style {
+// Settings' preview and the image-job child's `style` task, so they all agree. It is its own
+// library (putgd_capture_style_render), which only putgd-ui links; the resident never paints or decodes.
+namespace putgd::style {
 // The largest edge a backdrop picture is decoded to: enough for a backdrop, never a full
 // photo's raster.
 constexpr int maximumPictureEdge = 4096;

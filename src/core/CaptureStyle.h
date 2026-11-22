@@ -12,7 +12,7 @@
 // nothing in the capture, upload, local copy or editor output changes.
 //
 // This header is data and geometry only (no painting): the resident validates and routes it,
-// and the drawing lives in src/editor/CaptureStyleRender, which only putgd-ui links.
+// and the drawing lives in src/core/CaptureStyleRender (its own library), which only putgd-ui links.
 namespace putgd {
 struct CaptureStyle {
     bool enabled = false;

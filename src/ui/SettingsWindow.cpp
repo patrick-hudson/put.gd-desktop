@@ -36,7 +36,7 @@
 #include <QDoubleSpinBox>
 #include <QCompleter>
 #include "FileDialog.h"
-#include "editor/CaptureStyleRender.h"
+#include "core/CaptureStyleRender.h"
 #include "Theme.h"
 #include <QBuffer>
 #include <QColorDialog>
@@ -1792,7 +1792,7 @@ void SettingsWindow::pickStyleColor(bool end){
 void SettingsWindow::chooseStylePicture(){
  pictureChooser_->open({FileDialog::Mode::Open,"Choose a backdrop picture",{},{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){
   if(!result.chosen()){if(result.failed())stylePictureName_->setText(result.error);return;}
-  const auto picture=editor::style::loadPicture(result.path,QSize(editor::style::maximumPictureEdge,editor::style::maximumPictureEdge));
+  const auto picture=style::loadPicture(result.path,QSize(style::maximumPictureEdge,style::maximumPictureEdge));
   if(picture.isNull()){stylePictureName_->setText("That picture can't be used: choose a PNG or JPEG of at most 64 MB.");return;}
   QByteArray png;{QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);QImageWriter writer(&buffer,"png");if(!writer.write(picture))png.clear();}
   const auto folder=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/putgd/backdrops";
@@ -1819,8 +1819,8 @@ QImage SettingsWindow::captureStyleSample(const CaptureStyle& requested){
  }
  auto style=requested;style.enabled=true;
  const auto geometry=style.geometry(sample.size());
- const auto picture=style.backdrop=="picture"?editor::style::loadPicture(style.picture,geometry.canvas):QImage();
- return editor::style::render(sample,style,geometry,picture);
+ const auto picture=style.backdrop=="picture"?style::loadPicture(style.picture,geometry.canvas):QImage();
+ return style::render(sample,style,geometry,picture);
 }
 void SettingsWindow::renderStylePreview(){
  const auto styled=captureStyleSample(styleDraft_);if(styled.isNull()){stylePreview_->clear();return;}
@@ -1835,7 +1835,7 @@ void SettingsWindow::renderStylePreview(){
  }
  stylePreview_->setPixmap(shown);
  const auto example=styleDraft_.geometry(QSize(1920,1080));
- styleSize_->setText(QString("A 1920 × 1080 capture becomes %1 × %2.").arg(example.canvas.width()).arg(example.canvas.height())+(styleDraft_.backdrop=="picture"&&editor::style::loadPicture(styleDraft_.picture,QSize(64,64)).isNull()?QStringLiteral(" The picture can't be read, so Graphite is used until you choose another."):QString()));
+ styleSize_->setText(QString("A 1920 × 1080 capture becomes %1 × %2.").arg(example.canvas.width()).arg(example.canvas.height())+(styleDraft_.backdrop=="picture"&&style::loadPicture(styleDraft_.picture,QSize(64,64)).isNull()?QStringLiteral(" The picture can't be read, so Graphite is used until you choose another."):QString()));
 }
 void SettingsWindow::showSensitiveCheck(){
  // Without text recognition there is nothing to check with; a saved choice stays as it was.

@@ -22,6 +22,11 @@ add_library(putgd_capture_style STATIC src/core/CaptureStyle.cpp)
 set_target_properties(putgd_capture_style PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_capture_style PUBLIC src)
 target_link_libraries(putgd_capture_style PUBLIC Qt6::Core putgd_build_options)
+# Drawing it: Qt GUI painting and the backdrop picture's decoding, linked only by putgd-ui
+# (the editor, Settings and the image-job child), never by the resident.
+add_library(putgd_capture_style_render STATIC src/core/CaptureStyleRender.cpp)
+target_include_directories(putgd_capture_style_render PUBLIC src)
+target_link_libraries(putgd_capture_style_render PUBLIC putgd_capture_style Qt6::Gui putgd_build_options)
 add_library(putgd_core STATIC src/core/Settings.cpp src/core/SensitiveText.cpp src/core/DestinationCheck.cpp src/core/CommandText.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp

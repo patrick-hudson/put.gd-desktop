@@ -32,7 +32,7 @@ foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
     src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.h src/storage/s3/TlsCompatibility.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
     src/storage/s3/R2Settings.h src/storage/s3/R2Settings.cpp
     src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
-    src/core/BuildInfo.h src/core/Settings.h src/ipc/UiControl.h
+    src/core/BuildInfo.h src/core/Settings.h src/core/CaptureStyle.h src/ipc/UiControl.h
     src/core/Error.h src/core/ClipboardPayload.h src/secrets/CredentialStore.h cmake/dependency-lock.json)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}")
   file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}" s3_contract_hash)

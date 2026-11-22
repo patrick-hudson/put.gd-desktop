@@ -1,5 +1,4 @@
 #include "CaptureStyleRender.h"
-#include "EditDocument.h"
 #include <QBrush>
 #include <QColorSpace>
 #include <QFile>
@@ -9,14 +8,40 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
+#include <vector>
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
 
-namespace putgd::editor::style {
+namespace putgd::style {
 namespace {
+// Three box passes over the alpha of a premultiplied ARGB image approximate a Gaussian of about `box`.
+void blurAlpha(QImage& image, int box) {
+    if (box < 1) return;
+    const int width = image.width(), height = image.height();
+    std::vector<int> line(size_t(std::max(width, height)));
+    const auto pass = [&](auto at, int count) {
+        // A running sum over 2*box+1 values, with the edges held at zero.
+        long sum = 0;
+        for (int i = 0; i < count; ++i) line[size_t(i)] = at(i);
+        for (int i = 0; i <= box && i < count; ++i) sum += line[size_t(i)];
+        for (int i = 0; i < count; ++i) {
+            at(i, int(sum / (2 * box + 1)));
+            if (i + box + 1 < count) sum += line[size_t(i + box + 1)];
+            if (i - box >= 0) sum -= line[size_t(i - box)];
+        }
+    };
+    for (int round = 0; round < 3; ++round) {
+        for (int y = 0; y < height; ++y) {
+            auto* row = reinterpret_cast<QRgb*>(image.scanLine(y));
+            pass([&](int i, int value = -1) { if (value >= 0) row[i] = qRgba(0, 0, 0, value); return qAlpha(row[i]); }, width);
+        }
+        for (int x = 0; x < width; ++x)
+            pass([&](int i, int value = -1) { auto* pixel = reinterpret_cast<QRgb*>(image.scanLine(i)) + x; if (value >= 0) *pixel = qRgba(0, 0, 0, value); return qAlpha(*pixel); }, height);
+    }
+}
 // The shadow's colour: black at this opacity, the same on every backdrop.
 constexpr int shadowAlpha = 96;
 // A blurred rounded square holding the shadow's four corners and its edge profile. It is drawn
@@ -36,6 +61,7 @@ ShadowTile shadowTile(double sigma, int radius) {
     tile.half = std::max(radius, 1) + 1;
     const int core = 2 * tile.half + 1;
     const int side = 2 * tile.reach + core;
+    // Black with the coverage in alpha: blurring the alpha alone blurs the whole shadow.
     QImage image(side, side, QImage::Format_ARGB32);
     image.fill(Qt::transparent);
     {
@@ -45,8 +71,7 @@ ShadowTile shadowTile(double sigma, int radius) {
         painter.setBrush(QColor(0, 0, 0, shadowAlpha));
         painter.drawRoundedRect(QRectF(tile.reach, tile.reach, core, core), radius, radius);
     }
-    // Three box passes of radius/2 approximate a Gaussian of sigma about radius/2.
-    EditDocument::blurInPlace(image, image.rect(), std::max(2, int(std::lround(2 * sigma))));
+    blurAlpha(image, std::max(1, int(std::lround(sigma))));
     tile.image = image;
     lastSigma = sigma;lastRadius = radius;last = tile;
     return tile;

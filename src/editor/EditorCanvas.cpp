@@ -1,5 +1,5 @@
 #include "EditorCanvas.h"
-#include "CaptureStyleRender.h"
+#include "core/CaptureStyleRender.h"
 #include "HighlightFilter.h"
 #include "ui/Theme.h"
 #include "ui/Ui.h"

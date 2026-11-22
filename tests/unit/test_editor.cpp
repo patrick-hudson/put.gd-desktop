@@ -1,7 +1,7 @@
 #include "core/SanitizedPng.h"
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
-#include "editor/CaptureStyleRender.h"
+#include "core/CaptureStyleRender.h"
 #include "editor/HighlightFilter.h"
 #include <QBuffer>
 #include <QColorSpace>

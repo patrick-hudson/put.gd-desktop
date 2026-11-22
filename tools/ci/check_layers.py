@@ -46,6 +46,8 @@ ALLOWED = {
     'storage/s3': {'core', 'ipc', 'secrets', 'storage/worker'},
     'storage/sftp': {'core', 'secrets', 'storage/worker'},
     'app': {'client', 'core', 'ipc', 'secrets'},
+    # The edit document reads capture style data and geometry (#1893); core never includes the editor.
+    'editor': {'core'},
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
