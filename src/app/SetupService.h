@@ -4,6 +4,7 @@
 #include "DestinationStatus.h"
 #include <QQueue>
 #include <QSet>
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -27,6 +28,12 @@ public:
  void setDestinationStatus(DestinationStatus* status){status_=status;}
  void start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply);
  void inspect(const QString& id,JsonReply);
+ // Asks a running provider setup job to stop (a Nextcloud sign-in waiting for the browser,
+ // #1872). The job then ends on its own with its provider's answer.
+ void cancel(const QString& id,JsonReply);
+ // The stop flag of the running provider setup job of this kind for this destination, for the
+ // provider handler; a fresh unset flag when none is running.
+ std::shared_ptr<std::atomic_bool> cancellation(const QString& profileId,const QString& kind) const;
  void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
  void revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply);
  // Once per resident: starts an unlock job for each saved S3 keychain profile
@@ -62,6 +69,7 @@ private:
  QHash<QString,QJsonObject> jobs_;
  QQueue<QString> completed_;
  QSet<QString> active_;
+ QHash<QString,std::shared_ptr<std::atomic_bool>> cancellations_; // by job ID
  std::shared_ptr<CompletionContext> completion_;
 };
 }

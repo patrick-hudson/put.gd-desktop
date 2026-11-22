@@ -28,9 +28,10 @@ bool validInput(const QString& kind,const QJsonObject& input) {
 QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+kind;}
 }
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
-// (#282), Cloudflare R2 (#1678), and a provider with named values when its settings need any (#1361).
+// (#282), Cloudflare R2 (#1678), Nextcloud and WebDAV (#1872), and a provider with named values
+// when its settings need any (#1361).
 bool SetupService::usesCredentialStore(const QJsonObject& profile) const {
- if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]=="cloudflare-r2")return true;
+ if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]=="cloudflare-r2"||profile["provider"]=="nextcloud"||profile["provider"]=="webdav")return true;
  QStringList names;
  return namedCredentials_&&!namedCredentials_(profile,{},&names)&&!names.isEmpty();
 }
@@ -42,7 +43,7 @@ SetupService::~SetupService() {
  std::lock_guard lock(completion_->mutex);completion_->owner=nullptr;
 }
 void SetupService::start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply reply) {
- if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
+ if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()) {
   reply({"config_conflict","Configuration changed; save or reload before setup",{}},{});return;
@@ -59,9 +60,10 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  jobs_.insert(id,{{"setupId",id},{"kind",kind},{"profileId",profileId},{"state","running"},{"error",Error{}.toJson()}});
  active_.insert(key);
  if(kind=="testDestination"&&status_)testStarts_.insert(id,{destinationcheck::fingerprint(profile),status_->credentialRevision(profileId)});
+ cancellations_.insert(id,std::make_shared<std::atomic_bool>(false));
  // The keys change from here on, so an earlier check never vouches for the new ones, even
  // when the resident stops before this job ends.
- if(status_&&(kind=="storeCredentials"||kind=="connectAccount"))status_->credentialsChanged(profileId);
+ if(status_&&(kind=="storeCredentials"||kind=="connectAccount"||kind=="signOut"))status_->credentialsChanged(profileId);
  // Only a safe job ID and lifetime context cross the asynchronous boundary.
  // Queue under the lock so destruction cannot race the context passed to Qt.
  const auto complete=[context=completion_,id](Error error) {
@@ -74,7 +76,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  if(!guarded)return;
  emit changed(id);
  if(!guarded)return;
- if((kind=="testDestination"&&providerSetup_)||QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)) {
+ if((kind=="testDestination"&&providerSetup_)||QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword","signOut"}.contains(kind)) {
   if(!providerSetup_){complete({"setup_unsupported","Account setup is unavailable",{}});return;}
   const Destination destination{profile["provider"].toString(),profileId,expectedRevision,profile["settings"].toObject(),reference};
   auto finish=[context=completion_,id](Error error,QJsonObject result){
@@ -164,8 +166,21 @@ void SetupService::inspect(const QString& id,JsonReply reply) {
  if(found==jobs_.cend()) {reply({"setup_not_found","Setup job is no longer available in this resident",{}},{});return;}
  reply({},*found);
 }
+void SetupService::cancel(const QString& id,JsonReply reply) {
+ const auto found=jobs_.constFind(id);
+ if(found==jobs_.cend()){reply({"setup_not_found","Setup job is no longer available in this resident",{}},{});return;}
+ const auto flag=cancellations_.value(id);
+ if((*found)["state"]!="running"||!flag){reply({},{{"cancelRequested",false}});return;}
+ flag->store(true);reply({},{{"cancelRequested",true}});
+}
+std::shared_ptr<std::atomic_bool> SetupService::cancellation(const QString& profileId,const QString& kind) const {
+ for(auto job=jobs_.cbegin();job!=jobs_.cend();++job)
+  if((*job)["profileId"]==profileId&&(*job)["kind"]==kind&&(*job)["state"]=="running"&&cancellations_.contains(job.key()))return cancellations_.value(job.key());
+ return std::make_shared<std::atomic_bool>(false);
+}
 void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto found=jobs_.find(id);if(found==jobs_.end()||(*found)["state"]!="running")return;
+ cancellations_.remove(id);
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
  startupUnlocks_.remove(id);
@@ -176,7 +191,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
   const auto profileId=record["profileId"].toString();
   if(record["kind"]=="testDestination")status_->testFinished(profileId,started.fingerprint,started.credentialRevision,error);
   // New keys, or a Proton sign-in, are another connection than the one checked before.
-  else if(!error&&(record["kind"]=="storeCredentials"||record["kind"]=="connectAccount"))status_->credentialsChanged(profileId);
+  else if(!error&&(record["kind"]=="storeCredentials"||record["kind"]=="connectAccount"||record["kind"]=="signOut"))status_->credentialsChanged(profileId);
  }
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);

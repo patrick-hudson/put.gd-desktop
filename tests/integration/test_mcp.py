@@ -71,6 +71,10 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('drive_r2_destination', {'action': 'move', 'profile_id': '\x00', 'label': '\x00'}),
             ('drive_r2_destination', {'action': 'move', 'label': 'Lab'}),
             ('drive_r2_destination', {'action': 'add'}),
+            # #1872: the Nextcloud and WebDAV form takes only its own fields.
+            ('drive_dav_destination', {'action': 'set', 'field': 'password', 'value': 'x'}),
+            ('drive_dav_destination', {'action': 'add', 'label': 'Lab', 'provider': 's3'}),
+            ('drive_dav_destination', {'action': 'signIn', 'value': 'x'}),
             ('drive_r2_destination', {'action': 'add', 'label': 'Lab', 'profile_id': 'lab'}),
             ('drive_r2_destination', {'action': 'set', 'field': 'advanced', 'value': 'half'}),
             ('drive_r2_destination', {'action': 'set', 'field': 'bucket', 'value': 'x' * 2049}),
@@ -283,6 +287,11 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
                     ('drive_r2_destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profile_id': 'synthetic-r2'},
                      'ui.r2Destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profileId': 'synthetic-r2'}),
+                    # #1872: the Nextcloud and WebDAV form, sign-in and its cancel.
+                    ('drive_dav_destination', {'action': 'set', 'field': 'server', 'value': 'https://cloud.example.com', 'profile_id': 'synthetic-nc'},
+                     'ui.davDestination', {'action': 'set', 'field': 'server', 'value': 'https://cloud.example.com', 'profileId': 'synthetic-nc'}),
+                    ('sign_in_destination', {'profile_id': 'synthetic-nc', 'expected_revision': 'r'}, 'setup.connectAccount', {'profileId': 'synthetic-nc', 'expectedRevision': 'r'}),
+                    ('cancel_setup_job', {'id': 'synthetic-setup'}, 'setup.cancel', {'id': 'synthetic-setup'}),
                     ('list_errors', {'kind': 'deletion', 'resolved': False, 'history_id': 'synthetic-entry'},
                      'errors.list', {'kind': 'deletion', 'resolved': False, 'historyId': 'synthetic-entry'}),
                     ('drive_error_log', {'action': 'step', 'step': 'show_in_history'}, 'ui.errorLog', {'action': 'step', 'step': 'show_in_history'}),

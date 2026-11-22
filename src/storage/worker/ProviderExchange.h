@@ -30,5 +30,8 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
                      const ExchangePolicy& policy, std::atomic_bool& stopping, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
                      DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill = {},
-                     std::function<int()> lanes = {});
+                     std::function<int()> lanes = {},
+                     // `notice`, when set, hears a helper's {"event":"signIn",...} line (a
+                     // Nextcloud Login Flow v2 page to open, #1872); without it such a line is malformed.
+                     std::function<void(const QJsonObject&)> notice = {});
 }

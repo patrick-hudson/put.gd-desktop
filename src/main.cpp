@@ -10,6 +10,7 @@
 #include "storage/b2/B2Provider.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
+#include "storage/dav/DavProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -268,6 +269,8 @@ int main(int argc,char* argv[]) {
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
+ auto nextcloud=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::nextcloudId);providers.add(putgd::dav::nextcloudId,nextcloud);
+ auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -443,7 +446,7 @@ int main(int argc,char* argv[]) {
  // uploads found, kept in the data folder so Settings shows it after a restart.
  putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
  // The destinations whose keys a session-mode check would outlive: the ones SetupService stores keys for.
- destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]==putgd::r2::providerId||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
+ destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]==putgd::r2::providerId||putgd::dav::isDav(profile["provider"].toString())||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
  destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
  server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
@@ -452,6 +455,27 @@ int main(int argc,char* argv[]) {
   setup.inspect(id,[guard=QPointer<putgd::ErrorLog>(&errorLog)](putgd::Error error,QJsonObject job){if(guard&&!error)guard->setupFinished(job);});
  });
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+  // Nextcloud and WebDAV (#1872): sign-in, sign-out, account and folder steps, and a Test whose
+  // result (warnings, the account) comes back with it. Share tokens never reach its journal.
+  if(putgd::dav::isDav(destination.providerId)){
+   const auto dav=destination.providerId==putgd::dav::nextcloudId?nextcloud:webdav;
+   if(kind!="testDestination"){dav->setup(kind,destination,input,[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));},std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind));return;}
+   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+   auto trail=std::make_shared<putgd::DestinationTestTrail>();
+   auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+    const auto written=putgd::withoutSignedTestLinks(data);auto error=checkpointFile(path,written);if(!error)trail->record(written);ack(error);
+   };
+   operations.background([dav,destination,checkpoint](putgd::Error& error){
+    QJsonObject out;dav->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+   },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    result=trail->completed(result);
+    auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
+    if(!error&&journalError)error=journalError;
+    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+    reply(error,result);
+   });
+   return;
+  }
   if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2"||destination.providerId==putgd::r2::providerId)){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;

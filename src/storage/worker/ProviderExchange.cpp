@@ -27,7 +27,7 @@ QString startFailureMessage(StartFailure failure, const QString& installationMes
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill,
-                     std::function<int()> lanes) {
+                     std::function<int()> lanes, std::function<void(const QJsonObject&)> notice) {
     QProcess process;
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start(program, {"--stdio"});
@@ -80,6 +80,7 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
             process.write(QJsonDocument(ack).toJson(QJsonDocument::Compact) + '\n');
             return true;
         }
+        if (value["event"] == "signIn" && notice) { notice(value); return true; }
         if (got || !value["ok"].isBool()) { error = {policy.prefix + "_protocol", "Invalid completion from the " + policy.name + " helper", {}}; return false; }
         final = value;
         got = true;

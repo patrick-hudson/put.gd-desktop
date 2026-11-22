@@ -392,6 +392,9 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("bucket",settings["bucket"].toString());redactor.literal("endpoint",settings["endpoint"].toString());
   redactor.literal("url",settings["publicUrlBase"].toString());redactor.literal("name",settings["folderName"].toString());
   redactor.literal("url",settings["requestUrl"].toString());
+  // Nextcloud and WebDAV (#1872): the server, folder and link addresses, and the account's name.
+  for(const auto* key:{"server","address","linkBase"})redactor.literal("url",settings[key].toString());
+  redactor.literal("name",settings["accountName"].toString());
   // Cloudflare R2's account ID also names its endpoint host in logs and errors (#1699).
   for(const auto* key:{"accountRootUid","folderUid","accountId"})redactor.literal("id",settings[key].toString());
  }
