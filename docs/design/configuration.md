@@ -403,6 +403,24 @@ loopback host, or any HTTP with `allowInsecureHttp`. Validation performs no netw
 secret-store IO. Credentials are a keychain or session reference to the named values.
 See [Custom uploader](../user/custom-uploader.md#settings).
 
+`sftp` profiles (#1871) hold exactly `server`, `user`, `folder`, `publicUrlBase` and
+`hostKeyFingerprint` (schema `$defs/sftpSettings`). `server` is `host`, `host:port`,
+`[v6]:port`, a bare IPv6 literal or a `~/.ssh/config` Host alias: letters, digits, dots,
+hyphens and underscores, not starting with a hyphen or a dot, port 1–65535. It holds no user
+or path; Settings splits a pasted `sftp://user@host:port/path` or `user@host:/path` into the
+three fields and refuses one with a password. An empty `server` saves (a destination still
+being set up) but is refused for any request. `user` is empty (ssh's own choice) or a user
+name without `:` or `@`. `folder` is any path without control characters, at most 4096 bytes;
+`~` and `~/…` mean the login folder, and `~name` is refused. `publicUrlBase` is null or an
+HTTPS address without user information, query or fragment. `hostKeyFingerprint` is null or
+`TYPE SHA256:<43 base64 characters>`, the key trusted for this destination in put.gd's own
+`known_hosts` (`<config root>/known_hosts`, which the resident reads after the user's files);
+Settings clears it when `server` changes. The check fingerprint below covers all five fields,
+so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
+has credentials `{"mode":"session","reference":null}`; switching it to the keychain gives it
+`putgd/sftp/<profile id>`. Validation performs no network, process or secret-store IO. See
+[SFTP](../user/sftp.md).
+
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`) for every request except a PUT with a
 body of positive `Content-Length` (PutObject, UploadPart). That one has no

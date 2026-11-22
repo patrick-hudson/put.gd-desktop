@@ -31,7 +31,7 @@ filenames, history URLs, authorization values or credential references.
 | copy `suppressed` / `failed` | Explicitly copy the existing result; no new PUT is needed |
 | `delete_confirmation_changed`, `delete_target_changed` | Review the exact original targets/effects again. When an earlier deletion of the file saved its progress, a new deletion isn't started: choose **Retry deletion** in History |
 | remote `unsupported_safe_removal` / `version_retained` | The file, or an earlier version of it, may still be at the destination. **Retry deletion**, or choose **Remove from History only…** to stop tracking it; check the file at the destination yourself |
-| `destination_removed` | The destination the file was uploaded to was removed from Settings, so put.gd can't delete it there; the file stays where it was uploaded. Choose **Remove from History only**, or add a destination for the same place again (an S3 destination with the same endpoint, bucket and effective addressing (Auto counts as Path, or as Virtual on an amazonaws.com endpoint for a bucket name without dots), a Cloudflare R2 destination with the same account, jurisdiction and bucket, or a Backblaze B2 destination with the same API address and bucket) and delete it through that. Proton Drive and custom uploader files can't move to another destination |
+| `destination_removed` | The destination the file was uploaded to was removed from Settings, so put.gd can't delete it there; the file stays where it was uploaded. Choose **Remove from History only**, or add a destination for the same place again (an S3 destination with the same endpoint, bucket and effective addressing (Auto counts as Path, or as Virtual on an amazonaws.com endpoint for a bucket name without dots), a Cloudflare R2 destination with the same account, jurisdiction and bucket, a Backblaze B2 destination with the same API address and bucket, or an SFTP destination with the same Server, User and Folder on server) and delete it through that. Proton Drive and custom uploader files can't move to another destination |
 | `destination_readded` | A deletion saved its progress through one destination, which was then removed, and a destination for the same place was added back; or it saved its progress through a destination added back whose credentials were changed afterwards. A request may have reached the file, so put.gd won't finish that deletion through the new destination or credentials. **Retry deletion** checks the recorded file there without changing anything. If the check reports the recorded file missing, the deletion ends as already missing; if what it finds is no longer that recorded file, it ends as changed. Either way History lets the entry go. If the check found the file (`details.found` is `own`), the deletion stays as it was: open **Advanced file details** for its exact name and version, delete that file at the destination yourself and choose **Retry deletion** again. If the check failed (`details.found` is `unknown`, with the reason in `details.checkError`), the deletion stays as it was: choose **Retry deletion** to check again rather than deleting anything by hand. If only the credentials of the destination added back changed, restore the original credentials in Destinations and choose **Retry deletion** to resume the saved deletion. put.gd doesn't check when a version can remain while the file looks gone (the deletion ended `hidden_version_retained` or `version_retained`, or its saved progress names an S3 delete marker), or when no destination points at the recorded place any more: check the file at the destination. Remove from History only is offered only when that deletion had ended `unsupported_safe_removal` or `version_retained`, after a warning that put.gd stops tracking the file |
 | `history_record_retained` | Remove from History only kept the record: an earlier deletion may have reached the file, or a share link change hasn't finished (`details.retainedBy` says which). Check the file at the destination, or its link in History, first |
 | `destination_not_removed` | The error log entry's destination is in Settings again, so the file can be deleted there: delete it from History instead of removing the record |
@@ -62,6 +62,42 @@ filenames, history URLs, authorization values or credential references.
 | `http_delete_unsupported` | The upload has no deletion URL put.gd may use: none came back, or the one that did is on another host and would need a stored value, uses plain HTTP the destination does not allow, or points at this computer. History says which; delete it on the server |
 | `public_url_unreachable` (custom uploader) | Test connection uploaded the file but could not open the returned link. When the link is plain HTTP and **Allow plain HTTP** is off, put.gd does not open it and says so |
 | `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file (also when a check of the link was cut short and its bytes match as far as they came); nothing is recorded as deleted. Try again later or delete it on the server |
+
+## SFTP
+
+These come from the [SFTP destination](sftp.md) (#1871). The `ssh_` codes are what put.gd
+reads from the startup errors of your own `ssh`; anything it doesn't recognize is
+`ssh_failed` with ssh's last line, which a diagnostics package redacts with the server, user
+and folder. Each refusal before a file was created leaves nothing on the server.
+
+| Code | `details` | User action |
+|---|---|---|
+| `ssh_not_installed` | none | "put.gd uploads over SFTP with your OpenSSH client, and ssh isn't installed". Install `openssh-client` (Debian, Ubuntu, Mint), `openssh-clients` (Fedora) or `openssh` (Arch) |
+| `ssh_config_invalid` | none | `ssh -G` couldn't read your SSH settings for this server; the message ends with ssh's own words. Fix `~/.ssh/config` |
+| `ssh_host_unknown_key` | `fingerprint`, `host` after a test | put.gd doesn't know the server's host key. Uploads refuse; **Test** shows the key with **Trust key**. Trust it only if it matches the key your server's admin gave you |
+| `ssh_trusted_key_changed` | `fingerprint`, `previousFingerprint`, `host` after a test | The key you trusted in put.gd changed; the message gives both fingerprints. Trust the new key only if your server's admin confirms it was replaced |
+| `ssh_host_key_changed` | `knownHostsFile` | The key in your own `known_hosts` (file and line named) no longer matches. It can mean someone is intercepting the connection. If the key was replaced on purpose, run the `ssh-keygen -R` the message names, then test again |
+| `ssh_host_key_mismatch` | `fingerprint` | **Trust key** fetched the key again and it isn't the one you were shown, or an agent passed another fingerprint. Nothing was trusted; test again and compare |
+| `ssh_auth_failed` | `touched` when a security key was asked for a touch | The server refused the sign-in. The message says why when put.gd knows: a key that needs its passphrase in **Key passphrase**, a server that asks for a password, or no agent, key file or password at all |
+| `ssh_needs_one_time_code` | none | The server asks for a one-time code, which put.gd can't answer. Sign in with a key or your SSH agent |
+| `ssh_host_not_found` | none | ssh couldn't find the server; check its name or the Host alias |
+| `ssh_connection_refused`, `ssh_connection_timeout` | none | The server refused or didn't answer on its port; check the name, port, SSH service and network |
+| `ssh_no_sftp` | none | The server has no SFTP subsystem for this account, or text a shell prints at startup broke the SFTP stream. Ask its admin to enable `sftp`, or print that text only in interactive shells. SCP-only servers aren't supported |
+| `ssh_failed` | none | Anything else ssh reported, with its last line |
+| `sftp_settings_invalid` | `field` | Fix the named field: `server`, `user`, `folder`, `publicUrlBase` or `hostKeyFingerprint` |
+| `sftp_folder_missing` | `path` | Folder on server doesn't exist; the path is the one put.gd looked for. Create it, or use **Create folder** after a test. Uploads never create folders |
+| `sftp_not_folder` | `path` | That path is a file; choose another Folder on server |
+| `sftp_permission_denied` | `path` | The server refused to create, write or delete there; the user needs write access |
+| `sftp_disk_full` | `path` | The server's free-space figure confirms there's no room (it says how much is free). Free space on the server; the partial file was removed |
+| `sftp_failed` | `path`, `status` | The server refused a request with the reason in the message |
+| `sftp_name_taken` | none | The name was taken when the file was created; your naming rules rename or skip it |
+| `sftp_connection_lost`, `sftp_timeout` | none | The connection ended, or the server stopped answering for two minutes. An upload this cut short is unknown and may have left a partial file |
+| `sftp_protocol` | none | The server sent something that isn't valid SFTP |
+| `sftp_reconcile_unknown` | `path` | After an unknown upload, a file over 256 MB with the same name and size is there; put.gd won't read it all to tell whether it is this upload. Check it on the server |
+| `sftp_known_hosts_failed` | none | put.gd couldn't read or write its own `known_hosts` file in its configuration folder; fix that folder's permissions |
+| `sftp_link_mismatch`, `public_url_unreachable` (SFTP) | `httpStatus` | **Test** uploaded the file, but the link returned other content or didn't open. Check that Link address serves Folder on server |
+| `destination_test_incomplete` (SFTP) | `path` | The test file couldn't be deleted; delete it on the server |
+| `sftp_worker_start`, `sftp_transport_unknown`, `sftp_checkpoint_timeout` | `reason` | put.gd's SFTP helper didn't start, stopped answering or was ended by put.gd quitting. Check the server before retrying a deletion or an upload |
 
 ## Scrolling capture
 

@@ -33,7 +33,7 @@ The resident keeps these costs in temporary helpers:
 | Recording, review, GStreamer and FFmpeg | `putgd-record` |
 | Text and QR code recognition: Tesseract, Leptonica and ZXing-cpp | `putgd-ocr`, one job then exit ([text recognition](text-recognition.md#bounds-and-budgets)) |
 | AWS SDK/module and TLS | `putgd-s3-worker`, per Linux driver call |
-| Native B2 HTTP; custom uploader HTTP; Proton SDK/account work | `putgd-b2-worker`; `putgd-http-worker`; `putgd-proton-runtime` |
+| Native B2 HTTP; custom uploader HTTP; SFTP over the user's ssh; Proton SDK/account work | `putgd-b2-worker`; `putgd-http-worker`; `putgd-sftp-worker` (with `ssh` as its child); `putgd-proton-runtime` |
 | Update network checks and AppImage installation | short-lived `putgd-cli` |
 
 GNOME retains its authenticated Shell bridge. Native tray menus are rendered by

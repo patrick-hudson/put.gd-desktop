@@ -162,7 +162,9 @@ the adapter reconciles its own bounded attempts. A crashed, timed-out or abnorma
 worker never authorizes blind replay of a possible mutation. See [S3](../user/s3.md).
 
 `putgd-b2-worker` performs B2 HTTP in a fresh process per request, and
-`putgd-http-worker` the one request of a custom HTTP uploader. Proton uses the
+`putgd-http-worker` the one request of a custom HTTP uploader. `putgd-sftp-worker`
+runs the user's own `ssh` and keeps that connection for a destination's requests
+(see [storage providers](storage-providers.md#sftp)). Proton uses the
 privately packaged `putgd-proton-runtime`, with account operations serialized by
 the provider. One runtime process serves an operation's name check, upload and
 link (`StorageProvider::openSession`, held with the destination lease on the
@@ -177,7 +179,7 @@ follows (`UploadRequest::linkFollows`) and which storage host the account last
 used, both only to save time. The provider checks
 the runtime's hash once per file, in the background after start when a Proton
 destination is configured. Their distinct collision, version and sharing semantics remain
-behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../user/proton-drive.md).
+behind the common receipt contract. See [B2](../user/b2.md), [SFTP](../user/sftp.md) and [Proton](../user/proton-drive.md).
 
 `SetupService` owns explicit credential storage/unlock and destination/account
 setup. Configuration and journals contain references, never secret inputs.

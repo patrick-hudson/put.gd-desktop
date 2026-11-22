@@ -61,6 +61,20 @@ in the error's details is set only if that removal itself failed. Three edges:
   answers `credential_store_timeout` and gives its turn back. The entry stays reserved
   until the store answers after all; what it wrote then is erased.
 
+An SFTP destination (#1871) stores two named values, `password` and `passphrase`, in one
+entry, and either may be empty. `setup.storeCredentials` takes
+`{"values":{"password":…,"passphrase":…}}`; a name left out keeps its loaded value, or is
+stored empty when none is loaded, and both empty is refused (`credential_invalid`: leave both
+empty to use the agent and key files, and store nothing). A value holds no line break, since
+ssh reads its askpass answer up to one, and is at most 4096 characters.
+`setup.credentialHint` lists in `storedValues` only the values that aren't empty. The values
+reach `putgd-sftp-worker` with each request and from there only the single-use askpass socket
+of one connection ([storage providers](storage-providers.md#sftp)): never ssh's command line
+or environment. A keychain-mode SFTP destination whose entry isn't loaded still connects,
+with the agent and key files. Its keychain reference is `putgd/sftp/<profile id>`; a new SFTP
+destination starts in session mode, so startup unlock never asks the keychain about one that
+has nothing stored.
+
 What is looked for as a credential in a server's replies and addresses is narrower
 than what is stored: see
 [What counts as a credential](../user/custom-uploader.md#what-counts-as-a-credential).
