@@ -130,8 +130,9 @@ kernel's Landlock version, and nothing stronger.
 
 - `PR_SET_NO_NEW_PRIVS` and `PR_SET_DUMPABLE 0`.
 - Resource limits: no core file. `RLIMIT_DATA` at 576 MiB, lowered to 480 MiB when the job
-  reads English only. `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine count, with the
-  hard limit one second higher, both kept within any hard limit the helper inherits. `RLIMIT_FSIZE` at
+  reads English only. `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine ceiling counted
+  before confinement, with the hard limit one second higher. Both are capped at any hard limit the
+  helper inherits, so they can be equal. `RLIMIT_FSIZE` at
   8 MiB, which is also the output cap. `RLIMIT_NOFILE` at 32. There is no `RLIMIT_AS`, because
   mapped libraries and glibc's reservations would trip it.
 - **Landlock** through system calls, ABI 3 or later so that truncation by path is covered.
@@ -292,7 +293,8 @@ On the corpus it lost whole terminal and plain-page regions.
 - **Single pass.** A panel is read in one pass up to 8,000,000 scaled pixels, and Tesseract's own
   layout gives the reading order. A single pass of at least 500,000 scaled pixels is cut into about
   two strips for each engine (at most four counted) when more than one engine may run. The cuts go
-  between text lines and the strips are read in parallel, and a panel with no usable cut stays whole.
+  between text lines, the strips can be read in parallel, and a panel with no usable cut stays
+  whole.
   - A cut goes in the quietest rows of a blank run (a row counts as blank with up to a 256th of
     its width in ink pixels, so cutting through a descender would read "sample" as "samnle").
   - Where no row is blank, such as a border down a window or lines set without leading, the cut
@@ -318,8 +320,8 @@ On the corpus it lost whole terminal and plain-page regions.
   column, then the whole right column, each banded within. Below 4 megapixels a two-column page is
   one panel, read as page segmentation 6 reads it. There is no global multi-column order across
   bands.
-- **Threads.** Recognition may run up to eight engines, and the memory budget decides how many
-  actually start.
+- **Threads.** Recognition may run up to eight engines. Fewer start when the memory budget, the
+  number of tasks or the time left allows fewer.
   - The ceiling is the CPUs the process may use: its affinity, or a container's cpuset, not the
     machine's online count. If the affinity can't be read, it is the online count. That is
     lowered to the tightest cgroup v2 `cpu.max` quota readable on the process's cgroup or a
@@ -333,7 +335,7 @@ On the corpus it lost whole terminal and plain-page regions.
     on a GNOME 4K screen, a task measured beside seven engine starts showed 79 MiB, and every
     extra worker then found no room and quit.
   - On aurora-amd (Ryzen 5 PRO 8500GE, 6 cores and 12 threads), the AppImage's own resident and
-    helper, with eight engines against the four of the release before:
+    helper, with eight engines against the four of #1809's CI AppImage:
 
     | | 4 engines | 8 engines |
     | --- | --- | --- |
