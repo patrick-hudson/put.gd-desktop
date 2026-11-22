@@ -45,32 +45,32 @@ VM for other required guest profiles. Preserve the release matrix's exact versio
 
 ### GNOME rows run with a tray host
 
-Most GNOME users have a tray: Ubuntu enables its AppIndicator extension by default, and
-a Fedora user who wants put.gd's tray turns it on ([GNOME](../desktops/gnome.md)). So GNOME
-acceptance on f44 runs with a tray host by default. f44 has Fedora's
-`gnome-shell-extension-appindicator` installed, and `appindicatorsupport@rgcjonas.gmail.com`
-is in the desktop user's `org.gnome.shell enabled-extensions`, next to `putgd@put.gd`. A
-fresh login therefore loads it. Check it with
-`gnome-extensions info appindicatorsupport@rgcjonas.gmail.com` (`Enabled: Yes`,
-`State: ACTIVE`).
+Ubuntu enables its AppIndicator extension by default, and a Fedora user who wants put.gd's
+tray turns it on ([GNOME](../desktops/gnome.md)). So GNOME acceptance on f44 runs with a
+tray host by default. f44 has Fedora's `gnome-shell-extension-appindicator` installed, and
+`appindicatorsupport@rgcjonas.gmail.com` is in the desktop user's
+`org.gnome.shell enabled-extensions`, next to `putgd@put.gd`. A fresh login therefore loads
+it. Check it with `gnome-extensions info appindicatorsupport@rgcjonas.gmail.com`
+(`Enabled: Yes`, `State: ACTIVE`).
 
 You don't have to remember to check. `desktop_lock.py acquire f44` runs the same check
 the nightly's Fedora GNOME guest runs: the extension must be enabled and active, and an
 `org.kde.StatusNotifierWatcher` on the desktop session bus must have a registered host.
 If either is missing, the lock is refused with one line that says what's wrong and how to
 fix it. Usually the fix is `gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com`
-in the desktop session. If the extension stays `INACTIVE`, re-login. A re-login ends the
-desktop session, so take the lock first with `--no-tray-host "repairing the tray host"`,
-then run `sudo -n systemctl restart gdm`. A locked screen also shows the extension
-`INACTIVE`.
+in the desktop session. If the extension stays `INACTIVE`, check whether the screen is
+locked first, because a locked screen also makes it `INACTIVE`, and unlock it. If it's
+still `INACTIVE`, re-login. A re-login ends the desktop session, so take the lock first
+with `--no-tray-host "repairing the tray host"`, then run `sudo -n systemctl restart gdm`.
 
 **Testing the no-tray path on purpose.** A case that covers GNOME without a tray, such
 as quitting from the main window's menu or the prompt fallback when no tray can show it,
-takes the lock with `--no-tray-host "<reason>"`. The reason is added to the lock's
-purpose, so `status` shows that the desktop is in a no-tray state on purpose. Disable the
+takes the lock with `--no-tray-host "<reason>"`. The lock then skips the tray check and
+adds the reason to its purpose, so `status` shows why the check was skipped. Disable the
 extension for the test with `gnome-extensions disable appindicatorsupport@rgcjonas.gmail.com`.
-Then turn it back on with `gnome-extensions enable` before you release, and confirm
-`IsStatusNotifierHostRegistered` is true again so the next session gets a tray. A row
+Before you release, turn it back on with
+`gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com` and confirm
+`IsStatusNotifierHostRegistered` is true again, so the next session gets a tray. A row
 that ran without a tray says so in its record.
 
 ## Pinned SSH access

@@ -112,8 +112,8 @@ back in once so the Shell loads it. Without a tray host, quit from the main wind
 (**☰ → Quit put.gd**). The nightly's Fedora GNOME guest installs the extension, restarts the
 session, enables it and waits for a registered tray host before put.gd starts
 ([how](../lab/remote-builders.md#what-the-nightly-check-runs)). The physical f44 builder keeps the
-extension enabled, and its desktop lock refuses a GNOME acceptance run without it unless the
-run tests the no-tray path on purpose
+extension enabled, and by default its desktop lock is granted only while a tray host is
+serving, unless the run tests the no-tray path on purpose
 ([GNOME rows run with a tray host](../lab/remote-builders.md#gnome-rows-run-with-a-tray-host)).
 
 ## Modal dialogs
