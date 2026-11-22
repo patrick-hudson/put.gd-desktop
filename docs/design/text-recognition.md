@@ -663,13 +663,14 @@ other tool active it does not. The user's side is in the
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
     token alphabet joined without spaces (one misread character allowed in eight). A segment is
-    marked when it holds a known prefix at the start of a word (tolerant of the usual confusions and
-    of a lost or doubled separator), a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
+    `@`, a quote, `(`, `[` or a backtick inside one (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`,
+    #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
     digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
-    colon or comma in 80 characters. A prefix never fires inside a word ("ghosts", "they"). A token
+    colon or comma in 80 characters. A prefix never fires inside a word otherwise ("ghosts", "they"). A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
     three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
     Prose never repeats so few letters for so long, and a masked secret shown as a run of `x` has the same
@@ -678,7 +679,10 @@ other tool active it does not. The user's side is in the
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
-    phone number only with a leading `+`, so the tail of a UUID is not taken for one.
+    phone number only with a leading `+`, so the tail of a UUID is not taken for one. A number
+    grouped as a card is printed (4-4-4-4, or 4-6-5 and 4-6-4, with one separator) is never a phone
+    number, so a card number that fails the Luhn check is not suggested as one (#1820). Every
+    dash and the minus sign read as a hyphen (`4111–1111–1111–1111`).
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
     `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs,
