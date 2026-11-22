@@ -738,7 +738,7 @@ bool OperationService::raiseSensitivePrompt(const QString& activationToken) {
 bool OperationService::raiseSensitivePrompt(const QString& id,const QString& activationToken) {
  const auto session=checkSessions_.value(id);
  if(!session||session->phase()!="prompt"||sensitiveModes_.value(id)!="prompt")return false;
- session->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});
+ session->request("raisePrompt",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});
  return true;
 }
 void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {

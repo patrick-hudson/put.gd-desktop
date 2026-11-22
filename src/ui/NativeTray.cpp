@@ -225,6 +225,8 @@ public:
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
+ // The notification server's xdg-activation token for a click, sent just before ActionInvoked (#1804).
+ void notificationToken(uint id, const QString& token) {notificationTokens_.insert(id, token);}
  void notificationClosed(uint id, uint reason);
 private:
  void setOwner(const QString& owner);
@@ -237,7 +239,7 @@ private:
  QString service_, owner_, registeredOwner_;
  QDBusServiceWatcher watcher_, notificationWatcher_;
  QHash<uint,QUrl> notificationLinks_;
- QHash<uint,QHash<QString,QString>> notificationActions_;
+ QHash<uint,QHash<QString,QString>> notificationActions_;QHash<uint,QString> notificationTokens_;
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
@@ -313,6 +315,7 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
  });
  closeDeadline_.setSingleShot(true);
  connect(&closeDeadline_,&QTimer::timeout,this,[this]{closedCheck(true);});
+ bus_.connect(notificationService,notificationPath,notificationService,"ActivationToken",this,SLOT(notificationToken(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
  queryNotificationServer();
@@ -599,9 +602,9 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
  // A button or a click on the body uses a resident notification up.
  closeNotification(id);
  if(action!="default"&&notificationActions_.value(id).contains(action)) {
-  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);
-  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value] {
-   if(guard)emit guard->notificationAction(action,value);
+  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);const auto token=notificationTokens_.take(id);
+  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value,token] {
+   if(guard)emit guard->notificationAction(action,value,token);
   });
   return;
  }
@@ -706,7 +709,8 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  if (!menu_) {
   if ((member == "Activate" || member == "SecondaryActivate" || member == "ContextMenu") && sig == "ii") {
    const auto token = owner_->takeActivationToken();
-   if (member == "Activate") owner_->dispatch("history", token);
+   // A click on the icon itself: a waiting sensitive text prompt comes first (#1804), else History.
+   if (member == "Activate") owner_->dispatch("icon", token);
    if (member == "ContextMenu") {
     auto show = QDBusMessage::createSignal("/Menu", menuInterface, "ItemActivationRequested");
     show.setArguments({0, uint(0)}); bus.send(show);

@@ -209,15 +209,16 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     return {{"decided",choice}};
    }
    // The tray or a notification brings the panel forward (#1804): it is an ordinary window another can cover.
-   if(name=="raise"&&prompt){
+   if(name=="raisePrompt"&&prompt){
     const auto token=params["activationToken"].toString();
     if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
-    prompt->show();putgd::activateWindow(prompt.get(),token);return {{"raised",true}};
+    prompt->show();putgd::activateWindow(prompt.get(),token);return {{"requested",true}};
    }
    return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
   }
   // A decision already taken: a late one is answered, never fatal (#1804).
-  if(!window||name=="decide")return denied("editor_finalizing","The capture was already decided");
+  // A queued raisePrompt behind the decision never reaches the editor.
+  if(!window||name=="decide"||name=="raisePrompt")return denied("editor_finalizing","The capture was already decided");
   const bool open=!terminal&&!finalizing;
   if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(window->copying()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","The image is still being copied");

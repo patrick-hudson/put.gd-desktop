@@ -247,7 +247,8 @@ TrayController::TrayController(OperationService& operations,
 #ifdef Q_OS_LINUX
   const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
   if(native_){native_->notify("put.gd",message,false,{},actions);return;}
-  if(tray_)showTrayMessage("put.gd",message,false,actions);
+  // The Qt balloon has no buttons of its own: no action there.
+  if(tray_)showTrayMessage("put.gd",message,false,{});
 #endif
  });
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
@@ -300,11 +301,11 @@ TrayController::TrayController(OperationService& operations,
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
-  connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value) {
+  connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value,const QString& token) {
    if(key=="save-diagnostics")saveDiagnostics(value);
    else if(key=="show-in-folder")showSavedPackage(value);
    else if(key.startsWith("restart-file-manager-"))restartFileManager(value);
-   else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,{});
+   else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,token);
   });
   connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
@@ -731,8 +732,9 @@ void TrayController::runCommand(const QString& action) {
  else if (action == "edit-file") showView("editFile");
  else if (action == "capture-settings") showView("captureSettings");
  else if (action == "settings") showSettings();
- // A tray click brings a waiting sensitive text prompt forward before anything else (#1804).
- else if (action == "history") {if(!operations_.raiseSensitivePrompt(activationToken_))showHistory();}
+ else if (action == "history") showHistory();
+ // A click on the icon brings a waiting sensitive text prompt forward before History (#1804).
+ else if (action == "icon") {if(!operations_.raiseSensitivePrompt(activationToken_))showHistory();}
  // Lands on Settings → General → Updates with its action focused, not the first settings page.
  else if (action == "update") showView("updates");
  else if (action == "quit") { const auto quit = quit_; quit(); }
