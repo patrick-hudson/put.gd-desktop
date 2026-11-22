@@ -223,12 +223,22 @@ private slots:
   QTest::newRow("Stripe key")<<stripe+" set"<<all<<QStringList{"key: "+stripe+" set"};
   QTest::newRow("JWT")<<"Bearer "+jwt<<all<<QStringList{"key: "+jwt};
   // #1875: a stray character read joined before an unlabelled token's eyJ is covered with it.
-  for(const auto stray:{QString("l"),QString("I"),QString("|"),QString("1")})
+  for(const auto stray:{QString("l"),QString("I"),QString("|"),QString("1"),QString("J"),QString("j"),QString("["),QString("{")})
    QTest::newRow(qPrintable("unlabelled JWT read with a stray "+stray))<<"$ echo "+stray+jwt<<all<<QStringList{"key: "+stray+jwt};
   // As putgd-ocr read xed's caret and an unlabelled JWT over three rows on m74 (PR #1863's acceptance).
   const auto caretRead=QString("l")+"eyJhbGci0iJIUZIINiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIi0iIxXMjMONTY30Dkwliw- | ibmFtZSI6IkpvaG4gRG9LIiwiaWFOI "
    +"joxNTE2MjM5MDIyfQ.SfLKxwRISMeKKF2Q- | T4fwpMeJ f36POk6yJV_adQssw5c";
   QTest::newRow("unlabelled JWT behind an editor's caret, over three rows")<<caretRead<<all<<QStringList{"key: "+QString(caretRead).remove("| ")};
+  // The caret and the header's J both misread: the payload's eyJ after the dot finds the token.
+  const auto headerMisread=QString("|eyf")+"hbGciOiJIUzI1NiJ9."+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("unlabelled JWT whose header is misread")<<"Seen "+headerMisread<<all<<QStringList{"key: "+headerMisread};
+  for(const auto head:{QString("ey"),QString("ley"),QString("Jey")}){
+   const auto split=head+" JhbGciOiJIUzI1NiJ9."+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+   QTest::newRow(qPrintable("a JWT head read as a word of its own: "+head))<<"Seen "+split<<all<<QStringList{"key: "+split};
+  }
+  const auto jewSplit=QString("Jew hbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head read with its y and J misread")<<"Seen "+jewSplit<<all<<QStringList{"key: "+jewSplit};
+  QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
   QTest::newRow("hex digest run")<<"sha256 "+hexRun<<all<<QStringList{"key: sha256 "+hexRun};

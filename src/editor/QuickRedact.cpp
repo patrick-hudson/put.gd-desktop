@@ -266,9 +266,10 @@ const QList<Prefix>& prefixes() {
   {QRegularExpression(R"(((?:sk|pk|rk)[_,.]?(?:live|test))([_,.]?)([A-Za-z0-9]{10,}))"),40,true},
   {QRegularExpression(R"((whsec)([_,.]?)([A-Za-z0-9]{20,}))"),38,true,false,true},
   // A JSON web token's header is base64url of "{"…", so it starts with eyJ.
-  // #1875: recognition can read a stray l, I, | or 1 joined before it ("leyJhbGci…"); that
-  // character is taken as part of the prefix only before a whole "eyJ", which no word holds.
-  {QRegularExpression(R"(((?:[lI|1!](?=eyJ))?ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
+  // #1875: a text caret just left of the token reads as a character joined before it
+  // ("leyJhbGci…", "|eyJ…", "JeyJ…" in the corpus); that character is taken as part of the
+  // prefix only before a whole "eyJ", which no word holds.
+  {QRegularExpression(R"(((?:[lI|1!jJ[{](?=eyJ))?ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
  };
  return list;
 }
@@ -318,10 +319,17 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
    static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
    const bool afterSeparator=!segment.starts.contains(at);
-   if(afterSeparator&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
+   // #1875: a JSON web token's payload starts with eyJ after the header's dot, so a token whose
+   // header recognition misread past the prefix ("|eyfhbGci….eyJzdWIi…") is found by its payload.
+   const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
+   if(afterSeparator&&!payload&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
    // Inside a word, a token's body has a digit and a capital, as real keys do; a URL slug
    // (/glagent-installation-guide, “glagent-installation-guide-v2”) has neither or only a digit.
-   if(afterSeparator){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
+   // So does a JSON web token read with a stray character before it, which shares a word with
+   // the eyJ and more of the token ("ley" "January" is two words).
+   const bool stray=prefix.dotted&&candidate.capturedLength(1)==4;
+   if(stray&&pieceAt(segment,at+8)!=pieceAt(segment,at))continue;
+   if(afterSeparator||stray){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
@@ -401,7 +409,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     };
     int core=int(segment.words.size()),coreEnd=-1;Found last;for(const auto& f:std::as_const(found)){core=qMin(core,f.from);if(f.to>coreEnd){coreEnd=f.to;last=f;}}
     int a=0,b=int(segment.words.size())-1;
-    while(a<core&&plainWord(a))++a;
+    // #1875: the head of a JSON web token split off as a word of its own, a caret read before it
+    // and its y or J misread ("ey" "JhbGci…", "ley", "Jew", "jeya"), is the token's, not a
+    // word: kept just before the mark of a segment that holds a JWT.
+    static const QRegularExpression jwtHead(QStringLiteral("^[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw][JjIl1)\\]}|a]?$"));
+    const bool jwt=std::any_of(found.cbegin(),found.cend(),[](const Found& f){return f.dotted;});
+    while(a<core&&plainWord(a)&&!(jwt&&a==core-1&&jwtHead.match(plain.at(segment.words.at(a))).hasMatch()))++a;
     while(b>coreEnd&&plainWord(b))--b;
     QList<int> words=segment.words.mid(a,b-a+1);
     // A token the line wrapped: the next line's first segment, when it starts
