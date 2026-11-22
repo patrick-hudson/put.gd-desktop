@@ -1041,8 +1041,12 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
 // a click instead of activating put.gd (Ubuntu's AppIndicator). Show raises the prompt another window covers.
 void TrayController::announceSensitivePrompt(const QString& id) {
  if(!operations_.settingsSnapshot().notifications)return;
+ // Once per prompt: a file selection's later prompt is new, a repeat of one already announced is not.
+ const int prompt=operations_.sensitivePromptNumber(id);
+ if(prompt>0&&announcedSensitive_.value(id)>=prompt)return;
  // Never into a scrolling capture's frames: it goes out after the capture, if the prompt still waits.
  if(holdNotices_){if(!heldSensitivePrompts_.contains(id)&&heldSensitivePrompts_.size()<32)heldSensitivePrompts_.append(id);return;}
+ if(prompt>0){announcedSensitive_.insert(id,prompt);while(announcedSensitive_.size()>64)announcedSensitive_.erase(announcedSensitive_.begin());}
  const auto message=QStringLiteral("A capture is waiting for your decision");
  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
 #ifdef Q_OS_LINUX
