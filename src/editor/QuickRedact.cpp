@@ -266,7 +266,9 @@ const QList<Prefix>& prefixes() {
   {QRegularExpression(R"(((?:sk|pk|rk)[_,.]?(?:live|test))([_,.]?)([A-Za-z0-9]{10,}))"),40,true},
   {QRegularExpression(R"((whsec)([_,.]?)([A-Za-z0-9]{20,}))"),38,true,false,true},
   // A JSON web token's header is base64url of "{"…", so it starts with eyJ.
-  {QRegularExpression(R"((ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
+  // #1875: recognition can read a stray l, I, | or 1 joined before it ("leyJhbGci…"); that
+  // character is taken as part of the prefix only before a whole "eyJ", which no word holds.
+  {QRegularExpression(R"(((?:[lI|1!](?=eyJ))?ey[JjIl1)\]}|])()([A-Za-z0-9_\-.,|!\]})]{24,}))"),400,false,true},
  };
  return list;
 }

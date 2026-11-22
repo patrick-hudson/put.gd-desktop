@@ -222,6 +222,14 @@ private slots:
   QTest::newRow("Slack token")<<"chat "+slack+" here"<<all<<QStringList{"key: "+slack+" here"};
   QTest::newRow("Stripe key")<<stripe+" set"<<all<<QStringList{"key: "+stripe+" set"};
   QTest::newRow("JWT")<<"Bearer "+jwt<<all<<QStringList{"key: "+jwt};
+  // #1875: a stray character read joined before an unlabelled token's eyJ is covered with it.
+  for(const auto stray:{QString("l"),QString("I"),QString("|"),QString("1")})
+   QTest::newRow(qPrintable("unlabelled JWT read with a stray "+stray))<<"$ echo "+stray+jwt<<all<<QStringList{"key: "+stray+jwt};
+  // As putgd-ocr read xed's caret and an unlabelled JWT over three rows on m74 (PR #1863's acceptance).
+  const auto caretRead=QString("l")+"eyJhbGci0iJIUZIINiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIi0iIxXMjMONTY30Dkwliw- | ibmFtZSI6IkpvaG4gRG9LIiwiaWFOI "
+   +"joxNTE2MjM5MDIyfQ.SfLKxwRISMeKKF2Q- | T4fwpMeJ f36POk6yJV_adQssw5c";
+  QTest::newRow("unlabelled JWT behind an editor's caret, over three rows")<<caretRead<<all<<QStringList{"key: "+QString(caretRead).remove("| ")};
+  QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
   QTest::newRow("hex digest run")<<"sha256 "+hexRun<<all<<QStringList{"key: sha256 "+hexRun};
   QTest::newRow("base64 run")<<"value "+base64Run<<all<<QStringList{"key: value "+base64Run};
