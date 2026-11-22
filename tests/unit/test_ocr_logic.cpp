@@ -89,9 +89,11 @@ private slots:
   // A bright line two rows above stays out of the faint band (Sol on #1904): its ink would pull
   // the band's threshold above the faint line again.
   {auto tight=page(72,false);
-   for(int y=86;y<98;++y)for(int x=20;x<380;++x)if((x/2)%2==0)tight[y*width+x]=char(220);
+   for(int y=86;y<97;++y)for(int x=20;x<380;++x)if((x/2)%2==0)tight[y*width+x]=char(220);
+   // and two bright pixels in each of the rows just above it, which a padding of two would take in.
+   for(const int y:{97,98})for(const int x:{30,31})tight[y*width+x]=char(220);
    const auto close=lines(tight);
-   QCOMPARE(close.size(),qsizetype(1));QVERIFY2(close.first().top>=98,qPrintable(QString::number(close.first().top)));}
+   QCOMPARE(close.size(),qsizetype(1));QVERIFY2(close.first().top>=99,qPrintable(QString::number(close.first().top)));}
   QVERIFY(lines(page(0,true)).isEmpty());
   GreyImage band;band.width=4;band.height=1;band.pixels=QByteArray("\xb6\xc8\xdc\xdc",4);
   stretchContrast(band,220);

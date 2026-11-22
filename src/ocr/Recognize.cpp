@@ -380,7 +380,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  struct Faint { int panel=0;Band band;Outcome outcome; };
  QList<Faint> faint;bool faintCut=false;
  if(options.candidates&&!shared->stop.load()){
-  for(int i=0;i<panelList.size()&&!shared->stop.load();++i){
+  bool engineFailed=false;
+  for(int i=0;i<panelList.size()&&!shared->stop.load()&&!engineFailed;++i){
    const auto& p=panelList[i];
    // At most eight runs a panel; one more left unread, or one the budget leaves unread, cut
    // short or failed, marks the result truncated, so the check before uploading never takes it
@@ -396,7 +397,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
     if(shared->budgetMs>0&&deadline<=0){faintCut=true;break;}
     Faint f{i,band,{}};
     f.outcome.text=shared->first.recognize(copy,p.plan.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
-    if(f.outcome.failed||f.outcome.cutShort){faintCut=true;if(f.outcome.failed)break;}
+    // A failed engine reads nothing more (Sol on #1904); what the main pass read stands.
+    if(f.outcome.failed||f.outcome.cutShort){faintCut=true;if(f.outcome.failed){engineFailed=true;break;}}
     f.outcome.done=!f.outcome.failed;
     if(f.outcome.done)faint.append(std::move(f));
    }

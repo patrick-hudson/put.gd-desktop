@@ -367,8 +367,8 @@ QList<Band> faintLines(const Profile& profile,int width,int height,int limit){
    // in the copy would pull Otsu's threshold above the faint line again (Sol on #1904).
    if(run>=least&&run<=most){
     int top=start,bottom=y;
-    while(top>0&&start-top<2&&profile.blank(top-1,width))--top;
-    while(bottom<height&&bottom-y<2&&profile.blank(bottom,width))++bottom;
+    while(top>0&&start-top<2&&profile.rowInk[top-1]==0)--top;
+    while(bottom<height&&bottom-y<2&&profile.rowInk[bottom]==0)++bottom;
     out.append({top,bottom,false});
    }
    start=-1;
