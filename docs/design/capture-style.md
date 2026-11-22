@@ -3,21 +3,24 @@
 [#1893](https://github.com/patrick-hudson/put.gd-desktop/issues/1893) adds **Capture style**:
 put.gd places a still capture on a styled canvas when it exports it. The canvas has padding
 around the capture, a backdrop in that space, rounded corners on the capture and a soft shadow
-under it. The captured pixels are never changed. Only the corners are cut, and the capture sits
-on a larger image.
+under it. The captured pixels are not changed: the capture is placed on a larger image and its
+corners are cut (see [Rendering](#rendering) for exactly which pixels are copied as they are).
 
 It is an option, and it is **off by default**. With `preferences.captureStyle` absent, or with
-`enabled: false`, no styling code runs anywhere. Every capture, upload, local copy and editor
-export is byte for byte what it was before this feature. `capture_style_integration` checks that
-for both forms, and `editor_contract` checks it for the editor export.
+`enabled: false`, no capture is styled, and every capture, upload and local copy is byte for byte
+what it was before this feature. An edit is styled only when the user or an agent turns the style
+on in that edit (the Style tool, an `editor.apply` `style` command, or a file opened with
+`captureStyle: true`); an edit with no style exports exactly what it did before.
+`capture_style_integration` checks captures with the option absent and off, and `editor_contract`
+checks the editor export with no style.
 
 ## Where it applies
 
 | Path | Rule |
 | --- | --- |
 | Region, window, monitor, desktop, Repeat last region, scrolling captures | Styled when the option is on, just before the capture is stored. This happens before the upload and before the local copy, so both get the styled PNG. Scrolling captures are included because they reach the same step as a PNG |
-| Capture region & edit | A new capture (region, window, desktop, scrolling) opens with the style on, as does **Redact and upload** from the sensitive text prompt for a capture (not for a clipboard image or a file) in the editor's Style tool, and the editor's export draws it. The resident does not style an editor's output again |
-| Files, the clipboard and Edit again in the editor | Open with the style off. Edit again of a styled capture opens the `-original` kept beside it, with the style on (see [Originals](#originals-and-edit-again)) |
+| Capture region & edit | While the option is on, a new capture (region, window, desktop, scrolling) opens with the style on in the editor's Style tool, and the editor's export draws it. So does **Redact and upload** from the sensitive text prompt, for a capture but not for a clipboard image or a file. The resident does not style an editor's output again |
+| Files, the clipboard and Edit again in the editor | Open with the style off, except Edit again of a styled capture whose style-only `-original` still exists, which opens that original with the style on (see [Originals](#originals-and-edit-again)) |
 | Clipboard images and text, file uploads, recordings | Never styled |
 | Retries | Upload the stored artifact as it was stored |
 
@@ -35,8 +38,9 @@ equal it, so a later change to a preset never changes saved settings.
 | Paper | Colour `#efeee9` | Medium |
 | Clear | None (transparent PNG) | Small |
 
-Every preset has rounded corners and a shadow. Gradients always run at 135°, from the top-left
-corner to the bottom-right one. Clear is never the default: a black shadow on transparency
+Every preset has rounded corners and a shadow. A gradient runs from the canvas's top-left corner to
+its bottom-right corner, so its angle follows the canvas's shape (45° below the horizontal on a
+square canvas). Clear is never the default: a black shadow on transparency
 disappears in dark chat apps, and apps that flatten alpha to black turn it into a black band. A
 design council (Gemini Neon, Sol and Opus, 2026-11-22) chose the presets, the sizes and the
 layout below.
@@ -50,16 +54,22 @@ the Look to Custom.
 
 ### Picture backdrops
 
-**Choose picture…** opens the desktop's file chooser for a PNG or JPEG of at most 64 MB. `putgd-ui`
-decodes it once, at most 4,096 pixels on its longer side, and saves its own PNG as
+**Choose picture…** opens the desktop's file chooser for a PNG or JPEG of at most 64 MiB and
+100 megapixels. It must be a regular file, not a symbolic link. `putgd-ui` decodes it once, at most
+4,096 pixels on its longer side, and saves its own PNG as
 `<data>/putgd/backdrops/<sha256>.png`. The setting stores that path. Moving or deleting the
 original file changes nothing, and the resident never decodes the picture. The picture covers
 the canvas: it is scaled to fill it, centred and cropped, and never stretched or tiled.
 
 If the picture can't be read when a capture is styled (the copy was deleted, or an agent named a
-path that is not an image), the capture is styled with Graphite instead. Its History item says
-"The backdrop picture couldn't be read, so put.gd used Graphite.", and the operation's `style`
-has `pictureMissing: true`. Settings shows the same note under the preview.
+path that is not an image), Graphite's gradient replaces the backdrop; the padding, corners and
+shadow stay as set. Its History item says "The backdrop picture couldn't be read, so put.gd used
+Graphite.", and the operation's `style` has `pictureMissing: true`. Settings says "The picture
+can't be read, so Graphite is used until you choose another." under the preview, and the editor's
+Style panel says so too.
+
+The sensitive text check reads the capture before the backdrop is added, so text in a backdrop
+picture is never checked. Choose a picture with nothing private in it.
 
 ## Geometry
 
@@ -76,35 +86,50 @@ A 1920 × 1080 capture with Medium padding becomes 2072 × 1232.
 
 ### Size limits
 
-The styled image must fit `limits.imagePixels` and `limits.imageBytes / 4`, and the editor's
-24-megapixel output admission for an edit. When it doesn't fit, the padding steps down a size at a
-time. When even Small doesn't fit, the capture is stored as it was captured, and its History item
-says "Capture style wasn't applied: the styled image would be larger than put.gd's image limits."
+A styled capture must fit `limits.imagePixels`, `limits.imageBytes / 4` and 32,767 pixels on a
+side. When it doesn't fit, the padding steps down a size at a time. When even Small doesn't fit,
+the capture is stored as it was captured, and its History item says "Capture style wasn't applied:
+the styled image would be larger than put.gd's image limits."
+
 A styled PNG is larger than the capture alone. When the artifact store refuses the styled PNG for
 its size (the Largest file, Largest batch or Space for queued files limits, or the destination's
-maximum object size) or for free disk space, the capture as it was is stored instead, once, and its
-History item says "Capture style wasn't applied: the styled image was too large to store or upload,
-so the capture was kept as it was." No `-original` is kept then. For a capture the sensitive text
-check covered, that is the covered PNG. A style problem never fails or blocks a capture. If the style can't be drawn for another reason
-(the image-job child fails or times out), the capture is stored as captured, with "Capture style
-wasn't applied: put.gd couldn't draw it." and a warning in the log.
+maximum object size) or for free disk space, put.gd stores the capture as it was instead, once. If
+that succeeds, its History item says "Capture style wasn't applied: the styled image was too large
+to store or upload, so the capture was kept as it was." The private original made for styling is
+removed first, so its disk space is free, and no style `-original` is kept. For a capture the
+sensitive text check covered, what is stored is the covered PNG, and the original from before
+covering is still saved locally under `sensitive.original` with Keep a local copy, as without
+a style. If the image-job child can't draw the style for another reason (it fails or times out),
+the capture is stored as captured, with "Capture style wasn't applied: put.gd couldn't draw it."
+and a warning in the log. A capture that doesn't fit even unstyled fails as it would without a
+style.
+
+The editor keeps its styled export within the same image limits and its own 24-megapixel output
+admission, stepping the padding down the same way; when no padding fits, it exports without a
+frame, and the Style panel says so. An edited PNG over the output's byte limit keeps the edit open
+and reports the error, as any edit does; the editor doesn't drop the style by itself.
 
 ## Rendering
 
-One renderer, `src/editor/CaptureStyleRender`, draws for every path:
+One renderer, `src/core/CaptureStyleRender` (the library `putgd_capture_style_render`), draws the
+export for every path, and the editor canvas draws its frame with the same backdrop and outline
+geometry:
 
 1. Fill the canvas with the backdrop (colour, gradient, the covering picture, or transparent).
 2. Draw the shadow. A small blurred rounded square, whose size depends only on the sigma and the
    radius, is drawn as nine slices: its corners as they are, its edges stretched along the
-   capture. A tall scrolling capture costs no more than a small one.
+   capture. The tile costs the same for a tall scrolling capture as for a small one; filling,
+   drawing and encoding the canvas still grow with its size.
 3. Fill the capture's rounded outline with the capture as a texture at an integer offset, with
-   antialiasing. Every pixel inside the outline is copied unchanged.
+   antialiasing. Every fully opaque pixel inside the outline, away from its antialiased edge, is
+   copied unchanged; a translucent pixel (a window's transparent corner, an edited image with
+   alpha) is drawn over the backdrop.
 4. With a transparent backdrop, clear the hidden colour of fully transparent pixels, as the
    editor's sanitized export does.
 
-The data and geometry (`src/core/CaptureStyle`) are Qt Core only, and the resident links them to
-validate settings and route work. The painting and the picture decoding are in `putgd_editor`,
-which only `putgd-ui` links.
+The data and geometry (`src/core/CaptureStyle`, the library `putgd_capture_style`) are Qt Core
+only, and the resident links them to validate settings and route work. The painting and the
+picture decoding are in `putgd_capture_style_render`, which only `putgd-ui` links.
 
 ### Captures: the image-job `style` task
 
@@ -114,11 +139,11 @@ object in the bootstrap (see [the image worker](image-worker.md)). The child dec
 (PNG only, within the image limits), works out the geometry within those limits, reads the picture
 for a picture backdrop, renders, and writes the styled PNG through the usual private files. Its
 checkpoint may carry `note: "picture_missing"`. The resident replaces the payload with the styled
-PNG and records `style: {applied: true}` on the operation.
+PNG and, once the store has accepted it, records `style: {applied: true}` on the operation.
 
 With **Check captures for sensitive text before uploading** also on, the check runs first, on the
 capture as it was taken. Recognition and the covers never see a backdrop, so text in a backdrop
-picture can never be flagged and the cover positions never shift. The covered PNG is then styled
+picture is never checked (and never flagged) and the cover positions never shift. The covered PNG is then styled
 like any capture. After **Redact and upload**, the editor opens with the style on, and its export
 is not styled again.
 
@@ -148,27 +173,30 @@ styled copy, with `-original` added to its name, the same rule as automatic cove
 ([checking captures before uploading](text-recognition.md#checking-captures-before-uploading)).
 The resident writes it as a private PNG under `<data>/styled/` while the capture is stored, copies
 it to the archive, and removes it. Startup clears anything left there. The original is never
-uploaded. `operation.style.original` is `{status, paths}`, as `sensitive.original` is. A covered
-capture keeps its original from before covering, which is also from before styling.
+uploaded. The operation records it as `style.original`, `{status, paths}`; `status` is `failed`
+when it couldn't be saved. A capture the sensitive text check covered keeps no style original: its
+only original is the one from before covering, recorded under `sensitive.original`, because the
+covered PNG is what was styled.
 
-History's **Edit again** on a styled item opens that `-original`, with `captureStyle: true`, so the
+The History item of a styled capture has `style: {applied: true}`, and `style.original`, the path of
+that style-only original, when it was saved. **Edit again** needs the item's local copy, as
+always. When `style.original` still exists, Edit again opens it with `captureStyle: true`, so the
 editor starts with the style on (even if the option has been turned off since) and the result is
-styled once. Without a kept original (Keep a
-local copy was off), Edit again opens the styled copy, and the Style tool starts off, so frames
-never stack. A capture the sensitive text check covered and then styled is the same: its kept original
-is from before covering, and Edit again never opens it, so it opens the styled copy with the Style
-tool off. Its frame can't be changed in the editor; a new capture can.
+styled once. Otherwise (the original was not kept, or was deleted) it opens the styled copy with
+the Style tool off, so frames never stack. A capture the sensitive text check covered and then
+styled always opens its styled, covered copy with the Style tool off: Edit again never opens the
+original from before covering. Its frame can't be changed in the editor; a new capture can.
 
 ## Agents
 
 | Surface | Contract |
 | --- | --- |
 | `settings.patch`, MCP `patch_configuration` | `preferences.captureStyle` |
-| `operation.inspect`, MCP `get_operation` | `style`: `{applied: true}`, `pictureMissing` when Graphite stood in, `original` with Keep a local copy |
+| `operation.inspect`, MCP `get_operation` | `style` on a capture the image job styled: `{applied: true}`, `pictureMissing` when Graphite stood in, and `original` (`{status, paths}`) when a style-only original was kept. A covered capture's original is under `sensitive.original`. An edit's export has no `style` member even when it has a frame |
 | `editor.open`, `action.invoke` with `action: edit`, MCP `open_editor` | `captureStyle` (MCP `capture_style`): `true` starts an edit of a file with the saved style on; only with `source: file` |
-| `editor.apply`, MCP `edit_image` | `{op: style, enabled?, preset?, backdrop?, padding?, corners?, shadow?}`: a preset sets its whole look and turns the style on, the other fields change one part, `enabled: false` turns it off. One undo step. A backdrop of kind `picture` needs `picture`. Invalid values answer `edit_command_invalid` |
-| `editor.inspect`, MCP `get_editor` | `style` (the resolved values, `preset` or `custom`, and `pictureMissing` when Graphite stands in) and `exportSize` |
-| `editor.view`, MCP `drive_editor` | `{action: tool, tool: style}` chooses the Style tool |
+| `editor.apply`, MCP `edit_image` | `{op: style, enabled?, preset?, backdrop?, padding?, corners?, shadow?}` with at least one field. `preset` is `graphite`, `amber`, `paper` or `clear`; it is applied first, sets the whole look and turns the style on, and the other fields then override single parts. A `backdrop` object merges into the current one (a `picture` path already there is kept for kind `picture` and dropped for another kind unless given). `enabled: false` turns the style off. A change is one undo step; a command that leaves the style as it was adds none. A backdrop of kind `picture` needs a `picture` path. Invalid values answer `edit_command_invalid` |
+| `editor.inspect`, MCP `get_editor` | `style`: the resolved fields, `preset` (a preset ID or `custom`) and `pictureMissing` when Graphite stands in; `exportSize`: `[width, height]` of the export |
+| `editor.view`, MCP `drive_editor` | `{action: tool, tool: style}` chooses the Style tool; style changes go through `editor.apply` / `edit_image` |
 
 ## Cost
 
