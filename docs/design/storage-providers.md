@@ -197,7 +197,8 @@ key and the `IdentityFile` keys, and no other agent key. Before ssh starts, the 
 file as ssh would (`sftp::keyFileProblem`: missing, not readable, a public or PuTTY key, or a key
 of the user's that group or others can read, which ssh refuses) and fails with an `ssh_key_*`
 code and `details.field` `keyFile`; Test reports that as a failed sign-in step without
-connecting. `ssh -G` with the same destination and `-i` arguments gives the resolved host, port,
+connecting; `setup.inspectAccount` answers the same error before it runs `ssh -G`. These
+messages name the key file, never its folder. `ssh -G` with the same destination and `-i` arguments gives the resolved host, port,
 user, `HostKeyAlias`, the key files that exist (tilde-expanded), `IdentityAgent`, whether a
 ProxyJump or ProxyCommand is set (never its value), and the user's `UserKnownHostsFile` and
 `GlobalKnownHostsFile`, which are split on spaces, so a path with a space in it isn't

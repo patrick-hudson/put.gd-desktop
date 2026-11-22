@@ -290,7 +290,7 @@ the form offers), **Create folder**, Store (for what a person typed into Passwor
 passphrase) and **Clear**, and add an SFTP destination, as a person does. They carry no password
 or passphrase. `setup.inspectAccount`, `setup.trustHostKey` and `setup.createFolder` (the MCP
 tool `sftp_destination_setup`) answer a `setupId` at once, whose result `setup.inspect` gives;
-they resolve the address (with `keyProblem` when the chosen key file can't be used), trust a key by its exact fingerprint and
+they resolve the address (or answer the chosen key file's problem, with `details.field` `keyFile`, before running `ssh -G`), trust a key by its exact fingerprint and
 create the saved folder (up to 4096 bytes, with the path the test reported) for a saved
 destination. A trust records the
 fingerprint in the destination itself. A password or key passphrase is stored with
