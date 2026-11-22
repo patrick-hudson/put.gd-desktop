@@ -100,8 +100,8 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
    for(auto* button:right)if(button)layout->addWidget(button);
    return layout;
   };
-  // Width of a row of these buttons, with the spacing and the stretch's minimum between them.
-  const auto width=[](std::initializer_list<QPushButton*> buttons){int sum=0,count=0;for(auto* button:buttons)if(button){sum+=button->sizeHint().width();++count;}return sum+std::max(0,count-1)*space(Space::s)+space(Space::l);};
+  // Width of a row of these buttons with the spacing between them; the stretch needs none.
+  const auto width=[](std::initializer_list<QPushButton*> buttons){int sum=0,count=0;for(auto* button:buttons)if(button){sum+=button->sizeHint().width();++count;}return sum+std::max(0,count-1)*space(Space::s);};
   if(width({cancel_,edit_,upload_,redact_})<=inner){rows_=1;box->addLayout(row({cancel_,edit_},{upload_,redact_}));}
   else if(std::max(width({cancel_,edit_}),width({upload_,redact_}))<=inner){rows_=2;box->addLayout(row({cancel_,edit_},{}));box->addLayout(row({},{upload_,redact_}));}
   // Not even a pair fits (a narrow screen at large text): one button a row, the primary last.

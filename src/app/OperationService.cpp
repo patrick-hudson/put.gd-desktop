@@ -660,7 +660,8 @@ void OperationService::runCheck(Job job) {
    EditorJob::Check check{categories,prompt,single,{},cover};
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
    // A file chosen twice that changed between its checks matches neither: its uncovered place fails as changed (#1898).
-   {const auto identity=fileIdentity(images[index]);const auto known=shared->checkedFiles.constFind(images[index]);
+   const auto identity=fileIdentity(images[index]);
+   {const auto known=shared->checkedFiles.constFind(images[index]);
     shared->checkedFiles.insert(images[index],known!=shared->checkedFiles.cend()&&*known!=identity?QStringLiteral("-"):identity);}
    *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
    // #1820: a file covered automatically uploads as its covered PNG, staged privately in its place; the selection goes on.
@@ -678,7 +679,7 @@ void OperationService::runCheck(Job job) {
     staged.close();
     for(auto it=outcome->covered.begin();it!=outcome->covered.end();++it)shared->covered[it.key()]=shared->covered[it.key()].toInt()+it.value().toInt();
     const auto place=QString::number(places[index]);
-    shared->replacedFiles.insert(place,staged.fileName());shared->originalIdentities.insert(place,shared->checkedFiles.value(images[index]));
+    shared->replacedFiles.insert(place,staged.fileName());shared->originalIdentities.insert(place,identity);
     outcome->png.clear();outcome->covered={};outcome->check="upload";
     continue;
    }
