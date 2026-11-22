@@ -33,11 +33,11 @@ public:
         reply({});
     }
 };
-QJsonObject sftpProfile(const QString& id, const QString& reference) {
+QJsonObject sftpProfile(const QString& id, const QString& reference, const QString& mode = "keychain") {
     auto settings = sftp::defaults();
     settings["server"] = "files.example.com";
     return {{"id", id}, {"label", "Synthetic SFTP server " + id}, {"provider", "sftp"}, {"settings", settings},
-            {"credentials", QJsonObject{{"mode", "keychain"}, {"reference", reference}}}};
+            {"credentials", mode == "keychain" ? QJsonObject{{"mode", "keychain"}, {"reference", reference}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}}}};
 }
 Credentials both(const QString& password, const QString& passphrase) {
     Credentials c;
@@ -52,13 +52,18 @@ struct Rig {
     DestinationStatus status{dir.filePath("destination-status.json"), settings};
     SetupService setup{settings, keychain, {}};
     explicit Rig(QJsonArray profiles = {sftpProfile("test", "putgd/sftp/test")}) {
-        auto document = test::configuration(dir.path());
-        document["profiles"] = profiles;
-        if (!settings.save(document, {})) qFatal("synthetic configuration refused");
+        use(profiles);
         setup.setNamedCredentials(sftp::namedCredentials);
         setup.setDestinationStatus(&status);
     }
+    void use(const QJsonArray& profiles) {
+        auto document = test::configuration(dir.path());
+        document["profiles"] = profiles;
+        if (const auto saved = settings.save(document, settings.revision()); !saved) qFatal("synthetic configuration refused: %s", qPrintable(saved.error.code + " " + saved.error.message + " " + QJsonDocument(saved.error.details).toJson(QJsonDocument::Compact)));
+    }
+    const QJsonObject keychain_reference() const { return {{"mode", "keychain"}, {"reference", "putgd/sftp/test"}}; }
 };
+const Error notFound{"credential_store_unavailable", "Synthetic entry that reads as missing", {{"missing", true}}};
 }
 
 class SftpStoreSecrets : public QObject {
@@ -102,18 +107,58 @@ private slots:
         QCOMPARE(job["state"].toString(), QString("completed"));
         QCOMPARE(rig.keychain.saved->values, both("synthetic-new-password", QString()).values);
     }
-    // A locked entry can read as "not found"; once put.gd stored credentials here, that isn't trusted.
-    void notFoundAfterAStoreIsRefused() {
+    // A locked entry can read as "not found"; once put.gd saved to this entry, that isn't trusted.
+    void notFoundAfterASaveIsRefused() {
         Rig rig;
-        rig.status.credentialsChanged("test");
-        rig.keychain.unlockError = {"credential_store_unavailable", "Synthetic entry that reads as missing", {{"missing", true}}};
+        rig.keychain.unlockError = notFound;
         QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-first-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+        rig.keychain.forget("test", rig.keychain_reference());  // as after a restart: nothing loaded
         store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
         QCOMPARE(job["state"].toString(), QString("failed"));
         QCOMPARE(job["error"].toObject()["code"].toString(), QString("credential_incomplete"));
-        QCOMPARE(rig.keychain.saves, 0);
+        QCOMPARE(rig.keychain.saves, 1);
         // Both secrets typed: nothing to keep, so it stores.
         store(rig, {{sftp::passwordKey(), "synthetic-new-password"}, {sftp::passphraseKey(), "synthetic-new-passphrase"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+    }
+    // Only a successful keychain save counts: a session store, or a failed first store, doesn't.
+    void sessionStoresAndFailedStoresDontCount() {
+        Rig rig({sftpProfile("test", {}, "session")});
+        QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-session-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+        rig.use({sftpProfile("test", "putgd/sftp/test")});
+        rig.keychain.unlockError = {"credential_access_denied", "Synthetic locked keychain", {}};
+        store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("failed"));
+        QVERIFY(rig.status.credentialRevision("test") > 0);
+        rig.keychain.unlockError = notFound;
+        store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
+        QCOMPARE(rig.keychain.saved->values, both("synthetic-new-password", QString()).values);
+    }
+    // setup.cancel while the entry is being read: nothing is written, and the entry is free again.
+    void aCancelWhileReadingWritesNothing() {
+        Rig rig;
+        rig.keychain.holdUnlock = true;
+        QString id;
+        rig.setup.start("storeCredentials", "test", rig.settings.revision(), {{"values", QJsonObject{{sftp::passwordKey(), "synthetic-a"}}}},
+                        [&](Error e, QJsonObject result) { QVERIFY(!e); id = result["setupId"].toString(); });
+        QVERIFY(rig.keychain.heldReply);
+        bool requested = false;
+        rig.setup.cancel(id, [&](Error e, QJsonObject result) { QVERIFY(!e); requested = result["cancelRequested"].toBool(); });
+        QVERIFY(requested);
+        auto reply = std::move(rig.keychain.heldReply);
+        reply(notFound);
+        QJsonObject job;
+        PUTGD_TRY_VERIFY((rig.setup.inspect(id, [&](Error, QJsonObject value) { job = value; }), job["state"] != "running"));
+        QCOMPARE(job["error"].toObject()["code"].toString(), QString("cancelled"));
+        QCOMPARE(rig.keychain.saves, 0);
+        rig.keychain.holdUnlock = false;
+        rig.keychain.unlockError = notFound;
+        store(rig, {{sftp::passwordKey(), "synthetic-b"}}, job);
         QCOMPARE(job["state"].toString(), QString("completed"));
     }
     // Two destinations sharing one keychain entry store one at a time.
