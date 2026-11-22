@@ -115,6 +115,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
+ // Bands and strips are cut as for at most four engines (#1812): more engines
+ // share the same tasks, so the text does not change with the core count
+ // above four (cut for six, 47 of the 176 corpus captures read differently).
+ const int cutThreads=std::min(threads,4);
 
  // Panels: a whole screen of windows (an input of largeInputPixels or more)
  // is read window by window, column by column; anything smaller is one
@@ -145,7 +149,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  const double lower=wantedPixels>double(cap)?std::sqrt(double(cap)/wantedPixels):1.0;
  for(auto& p:panelList){
-  auto limits=options.limits;limits.threads=threads;limits.scaledPixels=std::numeric_limits<qint64>::max();
+  auto limits=options.limits;limits.threads=cutThreads;limits.scaledPixels=std::numeric_limits<qint64>::max();
   const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
   limits.forcedScale=std::max(1.0,s*lower);
   p.plan=putgd::ocr::plan(p.rect.width(),p.rect.height(),p.profile,limits);
@@ -212,7 +216,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   auto& p=panelList[i];
   const qint64 scaled=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil(p.rect.height()*p.plan.scale));
   if(!p.plan.banded()&&threads>1&&scaled>=options.parallelPixels){
-   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*options.stripsPerThread);
+   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),cutThreads*options.stripsPerThread);
    if(cut.size()>1){p.tasks=cut;p.split=true;}
   }
   anyBanded|=p.plan.banded();
@@ -277,7 +281,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
    largestRead=std::max(largestRead,shared->taskPixels[size_t(task)]);
    struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
-   const qint64 before=residentBytes();const bool quiet=shared->starting.load()==0;const int startsBefore=shared->started.load();
+   const bool quiet=shared->starting.load()==0;const int startsBefore=shared->started.load();const qint64 before=residentBytes();
    // The time budget: never start a task that cannot finish, and give every
    // pass a deadline, so a pass that overruns returns its partial result.
    if(shared->budgetMs>0){const int remaining=shared->left();if(remaining<=0||(shared->slowest.load()>0&&remaining<shared->slowest.load())){shared->stop=true;return;}}
@@ -297,7 +301,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    raise(shared->slowest,took);
    // (With seven engines starting beside a 4K screen's second task, it
    // showed 79 MiB, and every extra worker then found no room for twice that.)
-   if(quiet&&shared->starting.load()==0&&shared->started.load()==startsBefore)raise(shared->taskGrowth,residentBytes()-before);
+   const qint64 after=residentBytes();
+   if(quiet&&shared->starting.load()==0&&shared->started.load()==startsBefore)raise(shared->taskGrowth,after-before);
    {std::lock_guard<std::mutex> guard(shared->lock);if(shared->closed)return;shared->outcomes[task]=std::move(outcome);}
    if(afterFirstTask)afterFirstTask();
   }
