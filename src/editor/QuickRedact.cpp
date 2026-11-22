@@ -757,8 +757,9 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  for(const auto& pattern:urls){
   for(auto it=pattern.globalMatch(segment.text);it.hasNext();){
    const auto m=it.next();
-   // A URL's scheme starts a piece or follows a separator ("DATABASE_URL=postgres://…"), never inside a word.
-   static const QString separators=QStringLiteral("=:\"'`(<[“‘");
+   // A URL's scheme starts a piece or follows a separator ("DATABASE_URL=postgres://…", a CSV row's comma),
+   // never inside a word.
+   static const QString separators=QStringLiteral("=:,\"'`(<[“‘");
    const int at=int(m.capturedStart());
    if((&pattern==&urls.first()||&pattern==sentry)&&!pieceStart(segment,at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
    if(&pattern==sentry){

@@ -371,6 +371,8 @@ private slots:
    QTest::newRow("a secret-named URL with a key in its userinfo")<<"ANALYTICS_TOKEN=https://"+QString("q9Lm2Vx7Tz4R")+"@collect.example.test/1"<<QStringList{"key"}<<QStringList{"key: ANALYTICS_TOKEN=https://"+QString("q9Lm2Vx7Tz4R")+"@collect.example.test/1"};}
   QTest::newRow("a database URL with a username alone stays visible")<<"DATABASE_DSN=postgresql://reporting@localhost/analytics"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a Sentry-like host or path that is no DSN stays visible")<<"https://8f2c41d07b9e4a63@notsentry.io/552 https://example.test/docs/https://8f2c41d07b9e4a63@o1.ingest.sentry.io/1"<<QStringList{"key"}<<QStringList{};
+  {const auto dsn=QString("https://8f2c41d0")+"7b9e4a63@o41872.ingest.sentry.io/552";
+   QTest::newRow("a Sentry DSN in a CSV row read as one word")<<"production,"+dsn<<QStringList{"key"}<<QStringList{"key: production,"+dsn};}
   QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
   for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})
