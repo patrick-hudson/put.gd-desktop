@@ -386,6 +386,7 @@ private slots:
    QTest::newRow("a quoted JSON password ending an array entry")<<entry<<QStringList{"key"}<<QStringList{"key: "+entry};}
   QTest::newRow("a detached value before closing brackets")<<"\"password\": \"RedF"+QString("ox42\" }]")<<QStringList{"key"}<<QStringList{"key: \"RedF"+QString("ox42\"")};
   QTest::newRow("an IPv6 address after a bracketed shell prompt")<<"[db]alice@2001:db8::1:~$ ping"<<QStringList{"ip"}<<QStringList{"ip: [db]alice@2001:db8::1:~$"};
+  QTest::newRow("an IPv6 address with a misread zero before a comma")<<"Endpoints: [db]fe80::1ff:fe23:89Oa, reachable"<<QStringList{"ip"}<<QStringList{"ip: [db]fe80::1ff:fe23:89Oa,"};
   QTest::newRow("an IPv6 address after a user name")<<"ssh alice@2001:db8::1"<<QStringList{"ip"}<<QStringList{"ip: alice@2001:db8::1"};
   QTest::newRow("an IPv4 CIDR with a group read as @ or i")<<"nets 192.168.@.10/24 192.168.i.10/24"<<QStringList{"ip"}<<QStringList{"ip: 192.168.@.10/24","ip: 192.168.i.10/24"};
   {const auto spaced=QString("{\"password\":\"N4!&v")+" blue-lake\"}";
@@ -521,8 +522,6 @@ private slots:
   // #1914: an inline comment after padding read as its own word, and an empty detached assignment.
   QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5 = # development"),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5 ="});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL = # dev"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
-  // #1917: a compact comment after the tail.
-  QCOMPARE(found(words("KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5== #development"),QStringList{"key"}),QStringList{"key: KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5=="});
   QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm //Q1WEr3Ty8Ui5==\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm //Q1WEr3Ty8Ui5==\""});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL ="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   QCOMPARE(found(words("KEY="+secret+" | shaB7m2QaK8V= # dev"),QStringList{"key"}),QStringList{"key: KEY="+secret+" shaB7m2QaK8V="});

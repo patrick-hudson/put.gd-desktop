@@ -56,6 +56,8 @@ QString hexView(const QString& word) {
   // A ']' before the first ':' closes a prompt's label ("[db]alice@2001:…"), not the address (#1917).
   {const auto close=head.indexOf(']'),colon=head.indexOf(':');if(close>=0&&colon>=0&&close<colon)head=head.mid(close+1);}
   if(head.contains(']'))head=head.left(head.indexOf(']'));
+  // Punctuation after the address ("…:89Oa, reachable") is no part of its last group (Sol on #1919).
+  while(!head.isEmpty()&&QStringLiteral(",;)").contains(head.back()))head.chop(1);
   if(groups.match(head).hasMatch())return word;}
  // A colon of "::" is read as a dash or a dot beside the other one; a stray
  // one beside a whole "::" is dropped rather than making ":::".
@@ -903,9 +905,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     for(int i=1;i<first.words.size();++i){
      const auto& t=plain.at(first.words.at(i));
      // A comment marker as a word of its own: "//Q1WEr3…" inside an open quoted value is the value.
-     // ...or "#" with a word joined to it ("#development"): no base64, hex or JWT holds a "#" (#1917).
-     static const QRegularExpression compact(QStringLiteral("^#[A-Za-z]+$"));
-     if(t==QLatin1String("#")||t==QLatin1String("//")||compact.match(t).hasMatch()){first.text.truncate(first.starts.at(i));first.words.resize(i);first.starts.resize(i);first.heads.clear();first.headsFound=false;first.counts={};break;}
+     if(t==QLatin1String("#")||t==QLatin1String("//")){first.text.truncate(first.starts.at(i));first.words.resize(i);first.starts.resize(i);first.heads.clear();first.headsFound=false;first.counts={};break;}
     }
    }
    if(!f.segments.isEmpty()){
