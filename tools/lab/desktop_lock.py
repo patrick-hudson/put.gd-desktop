@@ -64,6 +64,7 @@ import datetime
 import fcntl
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import socket
@@ -83,6 +84,7 @@ USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
 PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
+RECEIPT_NAME = re.compile(r'(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z)-(?:(?:proton|quiet)-)?(?:release|break)(?:-([1-9][0-9]?))?\.json')  # receipt()
 RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session', 'quiet': 'quiet lease'}  # lock file <name>.lock
 SESSION_VARIABLE = 'PUTGD_LAB_SESSION'  # the session a lab helper runs for; its own quiet lease doesn't stop it
 RENEW_SECONDS = 300  # how often `run` renews its lock while CMD runs (at most); well inside STALE_AFTER
@@ -380,7 +382,19 @@ class Desktop:
         raise LockError('Could not write a unique receipt name')
 
     def last_event(self):
-        receipts = sorted(self.history.glob('*.json')) if self.history.is_dir() else []
+        # Only this tool's own receipts, which start with their UTC stamp and so sort by time;
+        # other files kept in history (retired scratch notes) must not stand in for the last event.
+        # Ordered by stamp, then by write time (receipts are created once), then by the -1..-99 suffix:
+        # suffixes count per event, so only write time orders a break and a release of one second.
+        def written(path):
+            try:
+                return path.stat().st_mtime_ns
+            except OSError:
+                return 0
+        named = [(RECEIPT_NAME.fullmatch(path.name), path) for path in self.history.glob('*.json')] \
+            if self.history.is_dir() else []
+        receipts = [path for match, path in sorted(((m, p) for m, p in named if m),
+                                                   key=lambda item: (item[0][1], written(item[1]), int(item[0][2] or 0)))]
         for receipt in reversed(receipts):
             try:
                 body = json.loads(receipt.read_text())

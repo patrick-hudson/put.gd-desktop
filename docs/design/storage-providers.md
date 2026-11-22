@@ -6,8 +6,72 @@ No profile is accepted without its registered validator. The production registry
 no test provider. S3 implementation belongs exclusively under `src/storage/s3/`,
 Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)), Cloudflare R2's under
 `src/storage/s3/` as a provider over the S3 one (`R2Provider`, [r2.md](../user/r2.md)) and the custom HTTP
-uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)) and the
-SFTP destination's under `src/storage/sftp/` ([sftp.md](../user/sftp.md), [below](#sftp)).
+uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)), Nextcloud's and
+plain WebDAV's under `src/storage/dav/` ([nextcloud.md](../user/nextcloud.md)), and the SFTP
+destination's under `src/storage/sftp/` ([sftp.md](../user/sftp.md), [below](#sftp)).
+
+Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class and one helper,
+`putgd-webdav-worker`, which reuses the custom uploader's plain-HTTP rule
+(`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
+Nextcloud files above 50 MiB use chunked upload v2 (`MKCOL` an upload folder, `PUT` chunks of 16 MiB by default, larger to stay within 10,000,
+then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
+size and content read back at the target's strong ETag (a failed probe leaves it unknown; a 412
+stays a collision), and an abandoned upload folder is deleted through its journal, which keeps it
+until the deletion is confirmed. The `MOVE` has its own 30-minute deadline and no stall limit, and
+the helper sends a heartbeat while it waits. A file's identity is what the write itself returned:
+the `PUT` or `MOVE` reply's strong ETag and Nextcloud's `OC-FileId` (its number, without the
+padding). A server whose write returns no strong ETag (Apache returns none, and reports a weak
+ETag for a file written within the last second) is asked for the file's strong ETag, and the bytes
+at that ETag are read back (`GET` with `If-Match`) and compared; only then is the ETag recorded,
+for files up to 256 MiB. A validator is exactly one quoted strong ETag (`"…"`, no `W/`, no `*`, no
+list); anything else is neither recorded nor sent. Otherwise the receipt has no concurrency token and records
+`identity: unconfirmed`: History can't delete it and Nextcloud makes no link for it. Receipts also
+record the canonical DAV target (scheme, host, port, path) and, for Nextcloud, the account ID;
+requests serialize on that target. `stat` compares the target and the ETag exactly as recorded (weak and strong never equal),
+and the file ID and size when both the receipt and the server have them; deletion sends `If-Match` with the recorded ETag
+unchanged, and the first 412 is `changed`, with no second attempt. Nextcloud has
+`capabilities.sharing`: the link is a public read-only share (`shareType=3`, `permissions=1`, no
+password) made in the two-step sharing pipeline, with the date an enforced expiry allows, and its
+page URL is the `directUrl`. Every form value is percent-encoded, `+` included. put.gd's share
+carries the label `put.gd <publication ID>`. Inspection, Finish share link and revoke find that
+share by the share ID a step journaled (it stays the sharing record's progress whatever the
+outcome, and History's link actions and retries pass it on), else by the recorded link's token (a
+revoke from History passes a SHA-256 of the token, never the link, and the helper compares it
+with each listed link's token locally and never sends it; only the share ID goes to Nextcloud,
+and neither appears in History detail or share replies), else by the label, which must match exactly one share; a
+lookup by ID must name exactly that share, and an ID it confirms gone is forgotten before the next
+step. A confirmed absence means no share; several matches, an unreadable entry, or a link
+listed without its token when put.gd's isn't found is unknown, never a guess, and revoke deletes
+only a share found this way. A share that comes back as anything but a public read-only link of
+the uploaded file (its `item_source`) is deleted again, and the file counts as without a link only
+once that deletion is confirmed; otherwise the outcome is unknown and the journaled ID stays. A
+create that can't go ahead (links off, an enforced password, a definite refusal, a share lookup
+that failed before any create) answers `private` with the error and its HTTP and OCS statuses, so
+History offers Finish share link. Capabilities are on, off or
+unknown (an empty or malformed `files_sharing` is unknown); upload is refused beforehand only when
+they confirm public links off. Upload and reconcile check the name check's and receipt's target
+and account against the bound account, and write or claim nothing on a mismatch. Removing an
+unfinished upload's chunk folder counts only when its `DELETE` succeeds or a 207 multistatus shows
+every member removed. Test journals the Nextcloud folder it may create and the probes it sends
+before them, and reports its file removed only once that is journaled. Share tokens are
+secrets in a path: test journals keep receipts without the link, the journal boundary redacts
+the whole `/s/<segment>` in link fields (DAV targets and identities stay), log redaction replaces
+every `/s/<segment>`, diagnostics keep only the scheme and host of the server, folder and link
+addresses, and server reply text never reaches a message,
+journal or log (errors carry `httpStatus` and `ocsStatus`). TLS uses the system trust
+store only; a refused certificate is described by issuer, expiry or host name, with its SHA-256
+when one was received.
+Credentials are bound to the origin they were given for and, for Nextcloud, the account ID
+([credentials.md](credentials.md)); the provider refuses before sending anything when the
+destination names another origin. Login Flow v2's page and poll endpoint must have the server's
+scheme, host and port and a path below its base once dot segments are resolved, without user
+information (Settings checks again before Open browser again); only a 404 while
+polling means "not yet". Test fetches the link as a visitor through the custom uploader's
+returned-address rules on every redirect.
+Requests with file data have only a stall limit, as B2's. A read-back that checks a file's identity
+sends no progress to the resident, so on a very slow link (about 270 KB/s or less for the 256 MiB
+limit) the resident's 16-minute silence limit can stop it; during an upload that leaves the outcome
+unknown with no receipt, as any lost reply does.
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider
@@ -180,11 +244,14 @@ check and upload and a burst of uploads; a reaper thread retires idle workers ev
 whether or not their destination is asked again. `anticipate` connects one ahead when an
 upload action is invoked; the provider joins those threads before it is destroyed. A worker
 whose request was cancelled is not reused. A worker that sends nothing for 200 seconds, or
-doesn't finish a cancel within 30, is killed and a mutation's outcome is unknown.
+doesn't finish a cancel within 45, is killed and a mutation's outcome is unknown, with the path
+of the worker's last checkpoint. Resident shutdown calls `SftpProvider::shutdown()` before it
+waits for operations: running requests are cancelled and get at most 30 seconds from then, a
+cancel already under way included.
 
 **Client.** Every reply must answer a request still outstanding, exactly once; a reply put.gd
 didn't ask for, or a second one, is a protocol error that ends the connection. One read pass
-takes at most 1 MB before it parses. At end of file the replies already read are still
+takes at most 1 MiB before it parses. At end of file the replies already read are still
 delivered; only requests without one fail. The server must answer version 3 exactly.
 Extensions are used only at the versions put.gd implements (`fsync@openssh.com` 1,
 `statvfs@openssh.com` 2, `limits@openssh.com` 1); `limits@openssh.com` bounds read and write
@@ -216,7 +283,7 @@ user's files already know the host (`ssh_host_key_known`). Otherwise it probes a
 the line only when it is recorded under that exact token with exactly the fingerprint given.
 Writing holds an exclusive lock (`known_hosts.lock` in the same folder) across workers,
 refuses a folder or file that is a symbolic link or not a regular one (checked with `lstat`),
-reads the whole file and refuses one over 16 MB rather than drop lines, replaces this host's earlier line only while
+reads the whole file and refuses one over 16 MiB rather than drop lines, replaces this host's earlier line only while
 it still holds the fingerprint the destination recorded (else `ssh_host_key_mismatch`), writes
 through a temporary file and checks the result is a regular 0600 file of this user. The
 resident then records the fingerprint in the destination's `hostKeyFingerprint` itself,
@@ -239,15 +306,17 @@ verified server are checkpointed before the open. The file opens under its final
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
 its reply is awaited for up to 20 seconds whatever a cancel says, and a handle that comes back
 is closed and the file removed; a lost reply leaves the outcome unknown. Right after the open an `fstat`
-records the new file's owner. After a cancel or failure the CLOSE and REMOVE get 3 seconds on the
-upload's own connection; on a slow link they wait behind the writes already in ssh's buffers
+records the new file's owner; it waits at most 5 seconds, and without an answer nothing can be
+removed safely, so the outcome is unknown with the path. After a cancel or failure the CLOSE and REMOVE get 3 seconds on the
+upload's own connection, sending included (a packet ssh can't take in time ends that
+connection); on a slow link they wait behind the writes already in ssh's buffers
 (#1888), so ssh is then ended and a new connection removes the file, only while it is still a
 regular file of that owner and no larger than the upload. That connection is pinned as History's
 checks are: only the known_hosts lines the attempt was verified by, and the same host, port and
 user; otherwise nothing is removed. An upload keeps its password and
 passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
 before it stops the helper, and Quit at most 30, even with a cancel under way; cleanup that can't be confirmed is reported as unconfirmed, with the
-path. Without the `fstat` answer, CLOSE and REMOVE share one 8-second budget on the upload's own connection. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
+path. When the `fstat` answer lacks the owner, type or times, CLOSE and REMOVE share one 8-second budget on the upload's own connection and no new connection is tried. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never
 cut short by a cancel. The bytes sent are hashed and must match the artifact's SHA-256. Then
@@ -271,7 +340,7 @@ server's identity: a ProxyCommand or jump host could forge or displace it; `conc
 percent-encoded name, or empty. The lock key and History's identity are the resolved host, port,
 user and canonical path. `reconcile` claims a file only with the attempt's own journaled
 evidence: the path checkpointed before the open, then the handle's size, mtime and uid and the
-SHA-256 checkpointed before the close, an `lstat` that matches them and, up to 256 MB, a read-back
+SHA-256 checkpointed before the close, an `lstat` that matches them and, up to 256 MiB, a read-back
 with that SHA-256. Without it the result is unknown with the path (`sftp_reconcile_unknown`); with
 nothing journaled the attempt never opened a file, so the name is `missing` for this upload.
 
@@ -284,7 +353,7 @@ destination that now resolves to another host, port or user. A session connectio
 exactly those lines (a test checking its own upload) is reused. A record whose server is known
 only through a certificate authority has no display fingerprint and can still be deleted: the
 recorded lines are what counts, in History and the worker alike. Then a
-regular file with the recorded size, mtime and uid and, up to 32 MB, the recorded SHA-256. The
+regular file with the recorded size, mtime and uid and, up to 32 MiB, the recorded SHA-256. The
 intent is checkpointed through the deletion's durable checkpoint before that file check, so
 waiting for the journal never makes the check stale, an
 `lstat` right before `REMOVE` must still match, and an unclear outcome keeps the intent as the

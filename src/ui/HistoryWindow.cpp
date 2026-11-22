@@ -1823,7 +1823,7 @@ namespace {
 // service and the bucket or folder recorded at upload.
 QString originalDestination(const QJsonObject& receipt,const QJsonArray& profiles){
  const auto d=receipt["destination"].toObject();const auto provider=d["providerId"].toString();const auto settings=d["settings"].toObject();
- const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="cloudflare-r2"?"Cloudflare R2":provider=="proton-drive"?"Proton Drive":provider=="custom-http"?"Custom uploader":provider;QString label;
+ const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="cloudflare-r2"?"Cloudflare R2":provider=="proton-drive"?"Proton Drive":provider=="custom-http"?"Custom uploader":provider=="nextcloud"?"Nextcloud":provider=="webdav"?"WebDAV":provider;QString label;
  for(const auto& v:profiles)if(v.toObject()["id"]==d["profileId"]&&!d["profileId"].toString().isEmpty())label=v.toObject()["label"].toString();
  QStringList parts{label.isEmpty()?service:label};
  if(!settings["bucket"].toString().isEmpty())parts<<settings["bucket"].toString();if(!settings["folderName"].toString().isEmpty())parts<<settings["folderName"].toString();

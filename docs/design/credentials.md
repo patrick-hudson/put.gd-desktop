@@ -29,6 +29,46 @@ startup read.
 requires explicit entry again. `forget` revokes future cache access. Already-sent
 requests drain using their original client/credential generation.
 
+Nextcloud and WebDAV (#1872) store a key pair: the access key is the login name (WebDAV: the
+user) and the secret key the app password (WebDAV: the password). A Nextcloud sign-in
+(`setup.connectAccount`, Login Flow v2) saves the app password Nextcloud hands over to the
+profile's reference, keychain or session, and the job's result never holds it. The DAV user
+in request paths is the account ID the server reports (`/ocs/v2.php/cloud/user`), which can
+differ from the login name. `setup.signOut` tries to revoke the app password on the server
+(`DELETE /ocs/v2.php/core/apppassword`) and then erases the entry. A refusal (401, 403 or 404:
+not an app password, or already revoked) gives `revoked` false with no error, so it reads as
+signed out; after the Server's origin changed, the binding check stops the old app password
+from being sent to revoke it, so users sign out first and remove leftovers under Devices &
+sessions; a keychain entry not read yet is read first so
+it can be revoked. Removing a Nextcloud destination in Settings waits for that sign-out and says
+when the server didn't confirm the revocation, then removes it. Sign-in and sign-out run one at a
+time per destination. A sign-in that finishes after it was cancelled, after the destination was
+removed or changed its server, or whose account lookup or keychain save fails, revokes the new
+app password instead of keeping it, in a helper of its own, and says when the server didn't
+confirm it. Signing in again reads the earlier app password from the keychain first and revokes
+it only once the new one is saved; when it can't be read or the revocation isn't confirmed, the
+result says so and where to remove it. An earlier app password bound to another server address isn't
+revoked (put.gd never sends it there), so sign out before changing servers. The worker keeps no cookies, so every request authenticates with the app
+password alone.
+
+The key pair is bound to where it was given: beside it, in the entry's session-token field, put.gd
+keeps non-secret JSON naming the origin (scheme, host and port) and, for Nextcloud, the account
+ID. `setup.connectAccount` writes it; `setup.storeCredentials` writes the origin for these
+providers, and the first `setup.inspectAccount` adds the account ID, for the credential it
+inspected only: one changed meanwhile is left unbound. A Nextcloud app password stored by hand
+does nothing but that inspection (and sign-out) until it is bound; Test runs the inspection
+first. Storing credentials, signing in, signing out, the inspection and Test (including the
+check a diagnostics package upload runs) run one at a time per destination. Signing in again reads any earlier app password from the keychain first (an entry
+that isn't there is no earlier grant). Binding is by origin, as browsers scope Basic authentication: another folder on the
+same server keeps the same credentials. Before any request that
+carries the credentials (upload, Test, History stat, delete and links, sign-out) the provider
+checks the bound origin against the destination and answers `credential_setup_required`
+(`details.reason` `binding`) without sending anything when it differs. The account ID can only
+be checked after the authenticated `/ocs/v2.php/cloud/user` request: a mismatch there answers
+`credential_setup_required` and stops that operation before its next request. An app password made by hand is entered in
+Settings (Use an app password instead) or through the session socket; `putgd-cli` and the MCP
+helper never carry it, as for every service.
+
 A custom HTTP uploader (#1361) stores named values instead of a key pair: one entry
 holds a map from credential-store name to value, where a name is `headers/<name>`,
 `parameters/<name>`, `arguments/<name>`, `secrets/<name>` or `data` (the request body).

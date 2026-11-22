@@ -150,13 +150,17 @@ Cancelling an upload removes the part already on the server; the message says so
 server confirmed it, and otherwise names the file to check. A cancel counts from the moment
 you press it, even before the upload started. Once put.gd has asked the server to create the
 file, it waits up to 20 seconds for that answer before it stops, so it can remove the file. A cancel that arrives
-after the last byte was sent is too late, and the upload finishes. If the connection drops in
-the middle, put.gd can't remove the part; the upload is shown as unknown, and the partial file
-may be left on the server.
+after the last byte was sent is too late, and the upload finishes. On a slow connection the
+removal can wait behind data ssh is still sending, and if the connection drops it can't be sent
+at all. After 3 seconds put.gd ends that connection and removes the partial file over a new one
+to the same server, as the same user, checked against the same host key. It does so only while
+the file is still a regular file with the owner the server reported when it was created, and no
+larger than the upload. Otherwise the upload is shown as unknown, with the path of the partial
+file to check.
 
 After an unknown upload, put.gd claims a file at its name as this upload only with its own
 evidence: before the file was closed, put.gd saved the size, time and owner the server reported
-for its own handle, with the file's SHA-256. A file that matches (and, up to 256 MB, reads back
+for its own handle, with the file's SHA-256. A file that matches (and, up to 256 MiB, reads back
 the same) is this upload. Otherwise the upload stays unknown with the path to check
 (`sftp_reconcile_unknown`). A name that was taken when the file was created is never claimed.
 
@@ -172,15 +176,17 @@ own free-space figure confirms it: SFTP version 3 reports a full disk as a plain
 
 The upload still works. Nothing is copied, so the clipboard stays as it was, and the notice says
 "Saved to files.example.com:/srv/www/shots/shot.png". In History, the file's menu has
-**Copy path**, which copies that same `host:/path`. The upload summary never says "Shared link",
-and the capture output in the status band and Settings says "Upload only".
+**Copy path**, which copies that same `host:/path`. No summary says "Shared link": the capture
+output in the status band and Settings, the recording review's destination, the image editor's
+upload bar and the Redact and upload prompt say "Upload only" (a recording saved only locally
+says "Local only").
 
 ## Deleting from History
 
 Before deleting, put.gd connects with only the recorded `known_hosts` lines, so ssh itself
 proves the server still holds the key it had at the upload; if it doesn't, or the destination
 now reaches another host, port or user, put.gd refuses with `sftp_server_changed`. Then it checks that the file is still the one it uploaded: a regular
-file with the same size, modification time and owner as recorded, and, for files up to 32 MB,
+file with the same size, modification time and owner as recorded, and, for files up to 32 MiB,
 the same bytes (it reads the file back and compares its SHA-256). A file that changed is left
 alone and the deletion answers `changed`. put.gd saves its intent to delete before these checks,
 checks the file once more right before the removal, and keeps that intent on record when the
@@ -267,7 +273,7 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
   from put.gd's own. Neither is a file another program creates under put.gd's own upload name
   while a cancelled upload is being cleaned up (say, after a removal whose answer was lost): if it
   has the same owner and isn't larger, the cleanup removes it.
-- Only files up to 32 MB are read back to check their bytes before a deletion; a larger one is
+- Only files up to 32 MiB are read back to check their bytes before a deletion; a larger one is
   checked by its size, time, owner and the server's recorded key.
 - ssh shows only the first 100 bytes of a key's path in its passphrase prompt. When two of
   your key files share those 100 bytes, put.gd can't tell which one ssh asks about and

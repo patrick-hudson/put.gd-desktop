@@ -35,6 +35,9 @@ public:
  void qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply,QrShow show={});
  void changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply);
  void inspectSharing(const QString&,JsonReply);
+ // Nextcloud (#1872): the share ID an earlier step recorded and, for a revoke, a SHA-256 of the
+ // recorded link's token, for the provider to find put.gd's own share. Empty for other providers.
+ static QJsonObject recordedShare(const StorageReceipt& receipt,const QJsonObject& previousProgress,const QString& action);
  void prepareDelete(const QStringList&,JsonReply);
  void deleteConfirmed(const QStringList&,const QString& acknowledgement,JsonReply);
  void inspectDelete(const QString&,JsonReply);

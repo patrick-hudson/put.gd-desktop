@@ -102,7 +102,7 @@ nothing on the server.
 | `sftp_server_changed` | none | Checked with only the `known_hosts` lines recorded at the upload, the server no longer holds that key, or the destination now reaches another host, port or user, so put.gd won't check or delete the file there |
 | `sftp_path_unsupported` | `path` | The folder's path on the server isn't valid UTF-8, so put.gd can't record it. Nothing was written; choose a folder with a plain name |
 | `sftp_delete_unavailable` | none | This upload's record lacks the server identity and file details put.gd checks before deleting it |
-| `sftp_known_hosts_failed` | none | put.gd won't use or couldn't update its own `known_hosts` (`ssh/known_hosts` in its configuration folder): the folder or file is a symbolic link, not yours or not private (the file must be a regular 0600 file), it is over 16 MB, or it couldn't be locked, read or written |
+| `sftp_known_hosts_failed` | none | put.gd won't use or couldn't update its own `known_hosts` (`ssh/known_hosts` in its configuration folder): the folder or file is a symbolic link, not yours or not private (the file must be a regular 0600 file), it is over 16 MiB, or it couldn't be locked, read or written |
 | `sftp_link_mismatch`, `public_url_unreachable` (SFTP) | `httpStatus` | **Test** uploaded the file, but the link returned other content or didn't open. Check that Link address serves Folder on server |
 | `destination_test_incomplete` (SFTP) | `path` | The server didn't confirm the test file was deleted, or the name held another file by then (which put.gd left alone); check the path on the server and delete the test file if it is still there |
 | `sftp_worker_start`, `sftp_transport_unknown`, `sftp_checkpoint_timeout` | `reason` | put.gd's SFTP helper didn't start, stopped answering or was ended by put.gd quitting. Check the server before retrying a deletion or an upload |
@@ -203,3 +203,28 @@ settings, and `credentials_not_stored` when a screen capture would close unfinis
 credential entry. The window stays open. Resolve the displayed save failure or
 Store/clear the credentials, then start the action again. No action is admitted
 by either rejection.
+
+## Nextcloud and WebDAV
+
+| Code | User action |
+|---|---|
+| `webdav_auth_failed` | Nextcloud refused the app password (it may have been revoked): Sign in again. WebDAV: check the user and password and store them again |
+| `webdav_quota` | The account is out of space (507). For Nextcloud the message gives the space left or used and the quota. Free some space or ask the administrator for more, then Retry |
+| `webdav_folder_missing` | The WebDAV folder doesn't exist; Test offers **Create folder** (`details.createFolder`). For Nextcloud, the folder disappeared during the upload: Retry creates it again |
+| `webdav_too_large` | The server refused a file this large (413). Its upload size limit is lower than the file |
+| `webdav_forbidden`, `webdav_locked` | The server refused access (403) or the file is locked by another app (423) |
+| `webdav_rate_limited` | The server is limiting requests (429). Try again in a few minutes |
+| `webdav_server_error`, `webdav_failed`, `webdav_unreachable` | The server had an error, gave another answer, or couldn't be reached; the message names the status or the connection problem |
+| `webdav_tls_failed` | The server's certificate isn't trusted, has expired, or is for another host. When a certificate was received, the message gives its SHA-256 and, for an untrusted issuer, the command that adds your own certificate authority to this distribution's trust store |
+| `webdav_plain_http_refused` | An `http://` address on another computer needs **Allow plain HTTP for this destination** |
+| `public_url_unreachable` (Nextcloud, WebDAV) | Test uploaded the file, but Nextcloud made no share link, or the link didn't open without signing in, opened a web page, or gave other bytes than the test file. WebDAV: set **Link address** to where the folder is served publicly, or allow public reading. Nextcloud: check the server's sharing settings |
+| `webdav_settings_invalid`, `webdav_name_invalid` | Fix the field the message names |
+| `webdav_cleanup_failed` | put.gd couldn't remove the parts of an unfinished chunked upload; Nextcloud's own cleanup removes them later |
+| `credential_setup_required` (Nextcloud, WebDAV) | Not signed in, or the saved credentials are locked: unlock them, or sign in. `details.reason` `binding`: they were given for another server address; sign in (WebDAV: enter them) again. `unbound`: an app password entered by hand hasn't been checked yet; run Test. Without a reason: the app password belongs to another account; sign in again. Or the item was prepared for a folder this destination no longer uses (a folder edit on the same server, for example); signing in doesn't change that, so upload the file again |
+| `webdav_transport_unknown` | The helper stopped without a confirmed result; Retry reconciles before sending again |
+| `nextcloud_not_found` | The address doesn't answer like a Nextcloud server; use the address you open Nextcloud at in a browser |
+| `nextcloud_sharing_disabled` | Public links are turned off on the server. Found before the upload, nothing was uploaded; found by the share step, the file stays without a link and History offers Finish share link. Ask the administrator to allow sharing with public links |
+| `nextcloud_share_password_required` | The server enforces a password on public links, which put.gd doesn't set. The upload stays in your files without a link |
+| `nextcloud_signin_unavailable` | The server has no browser sign-in (Login Flow v2); use **Use an app password instead** |
+| `nextcloud_signin_timeout`, `nextcloud_signin_cancelled` | Sign-in wasn't finished in the browser within 20 minutes, or was cancelled; choose Sign in again |
+| `nextcloud_server_mismatch` | Nextcloud named another address for sign-in or finished it for another server (its `overwrite.cli.url` or trusted proxies may be wrong); enter the address it names, or ask the administrator |

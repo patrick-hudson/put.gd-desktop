@@ -687,6 +687,27 @@ int main(int argc,char** argv){
   destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-move-to-r2"))return 2;
   endpoint->setText(original);emit endpoint->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
  }
+ // #1872: Nextcloud (server, Sign in, folder) and WebDAV (folder and link addresses, user and
+ // password), filled through ui.davDestination as an agent drives them.
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");
+  const auto drive=[&](const QJsonObject& params){window.settings()->davCommand(params,[](putgd::Error,QJsonObject){});};
+  provider->setCurrentIndex(provider->findData("nextcloud"));
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLineEdit*>("nextcloudServer")->isVisible();}))return 2;
+  drive({{"action","set"},{"field","server"},{"value","https://cloud.example.com/index.php/apps/files/?dir=/"}});
+  if(window.findChild<QLineEdit*>("nextcloudServer")->text()!="https://cloud.example.com"||!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-nextcloud"))return 2;
+  drive({{"action","appPassword"},{"value","show"}});putgd::test::settle(50);
+  if(!save("settings-nextcloud-app-password",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialAccessKey"),40)))return 2;
+  drive({{"action","appPassword"},{"value","hide"}});
+  provider->setCurrentIndex(provider->findData("webdav"));
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLineEdit*>("webdavAddress")->isVisible();}))return 2;
+  drive({{"action","set"},{"field","address"},{"value","dav.example.com/uploads"}});
+  drive({{"action","set"},{"field","linkBase"},{"value","https://files.example.com/uploads/"}});
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-webdav"))return 2;
+  provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
  // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
  // masked, and with its values stored for the session. The token is synthetic.
  {

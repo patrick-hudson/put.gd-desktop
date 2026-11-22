@@ -162,7 +162,8 @@ the adapter reconciles its own bounded attempts. A crashed, timed-out or abnorma
 worker never authorizes blind replay of a possible mutation. See [S3](../user/s3.md).
 
 `putgd-b2-worker` performs B2 HTTP in a fresh process per request, and
-`putgd-http-worker` the one request of a custom HTTP uploader. `putgd-sftp-worker`
+`putgd-http-worker` the one request of a custom HTTP uploader, `putgd-webdav-worker`
+the one request of a Nextcloud or WebDAV destination (#1872), and `putgd-sftp-worker`
 runs the user's own `ssh` and keeps that connection for a destination's requests
 (see [storage providers](storage-providers.md#sftp)). Proton uses the
 privately packaged `putgd-proton-runtime`, with account operations serialized by

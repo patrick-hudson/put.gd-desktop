@@ -1,0 +1,262 @@
+// Settings → Destinations for Nextcloud and WebDAV (#1872): the sign-in flow around the
+// panel, the results of its setup jobs, and ui.davDestination. Kept out of
+// SettingsWindow.cpp; the panel itself is DavDestinationPanel.
+#include "SettingsWindow.h"
+#include "DavDestinationPanel.h"
+#include "Ui.h"
+#include "platform/HostOpen.h"
+#include "storage/dav/DavCommon.h"
+#include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QJsonArray>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QPointer>
+#include <QPushButton>
+#include <QTimer>
+namespace putgd {
+// Each poll of a running sign-in. A sign-in Settings didn't start in this window (it was reopened
+// meanwhile) is taken up as it stands: waiting, with Open browser again and Cancel, and no browser
+// opened by itself.
+void SettingsWindow::davSignInEvent(const QString& setupId, const QUrl& url) {
+    if (!dav_ || dav_->provider() != dav::nextcloudId) return;
+    QJsonObject job;
+    for (const auto& value : std::as_const(setupJobs_)) if (value.toObject()["setupId"] == setupId) job = value.toObject();
+    if (job["kind"] != "connectAccount" || job["profileId"] != profileId_->text()) return;
+    if (davSignInSetup_.isEmpty()) {
+        davSignInSetup_ = setupId;
+        davAdoptedSetup_ = setupId;
+        if (dav_->signIn() == DavDestinationPanel::SignIn::Idle) dav_->setSignIn(DavDestinationPanel::SignIn::Starting);
+    }
+    if (setupId != davSignInSetup_ || url.isEmpty() || dav_->signIn() == DavDestinationPanel::SignIn::Waiting || dav_->signIn() == DavDestinationPanel::SignIn::BrowserFailed) return;
+    // Only a page of the server this destination names, below its base, is opened.
+    const auto settings = dav_->settings();
+    if (!dav::loginPageAllowed(url, settings["server"].toString(), settings["allowInsecureHttp"].toBool())) return;
+    dav_->setSignIn(DavDestinationPanel::SignIn::Waiting, url);
+    if (davAdoptedSetup_ != setupId) openDavBrowser();
+    emit viewStateChanged();
+}
+void SettingsWindow::revokeBeforeRemoving(const QString& profileId) {
+    // The removal goes on whatever the answer, for the destination confirmed in the dialog; a
+    // revocation the server didn't confirm is said.
+    const auto proceed = [guard = QPointer<SettingsWindow>(this), profileId](bool confirmed) {
+        if (!guard) return;
+        const int index = guard->profile_->findData(profileId);
+        if (index < 0) return;
+        if (guard->profile_->currentIndex() != index) guard->profile_->setCurrentIndex(index);
+        if (guard->profileId_->text() != profileId) return;
+        guard->davRemoving_ = profileId;
+        if (auto* remove = guard->findControl<QPushButton*>("removeDestination")) remove->click();
+        if (!confirmed) guard->setupFeedback("put.gd couldn't confirm that the server revoked its app password; if Nextcloud still lists put.gd under Personal settings → Security → Devices & sessions, remove it there.");
+    };
+    setupFeedback(QString::fromUtf8("Signing out of Nextcloud…"));
+    settings_.request("setup.signOut", {{"profileId", profileId}, {"expectedRevision", settings_.revision()}}, this, [this, proceed](Error e, QJsonObject data) {
+        if (e) { proceed(false); return; }
+        const auto id = data["setupId"].toString();
+        // One inspection in flight at a time; the timer goes with this window.
+        QPointer<QTimer> timer = new QTimer(this);
+        auto polls = std::make_shared<int>(0);
+        auto inFlight = std::make_shared<bool>(false);
+        connect(timer, &QTimer::timeout, this, [this, timer, id, polls, inFlight, proceed] {
+            if (*inFlight || !timer) return;
+            if (++*polls > 400) { timer->stop(); timer->deleteLater(); proceed(false); return; }
+            *inFlight = true;
+            settings_.request("setup.inspect", {{"id", id}}, this, [timer, inFlight, proceed](Error e, QJsonObject job) {
+                *inFlight = false;
+                if (!timer || !timer->isActive()) return;
+                if (!e && job["state"] == "running") return;
+                timer->stop();
+                timer->deleteLater();
+                // Confirmed only when the server said so: revoked false, with a reason or without, isn't.
+                proceed(!e && job["state"] == "completed" && job["result"].toObject()["revoked"].toBool());
+            });
+        });
+        timer->start(300);
+    });
+}
+void SettingsWindow::openDavBrowser() {
+    if (!dav_ || !dav_->signInUrl().isValid()) return;
+    // Against the destination as it is now: a server changed meanwhile gets no page opened.
+    const auto settings = dav_->settings();
+    if (!dav::loginPageAllowed(dav_->signInUrl(), settings["server"].toString(), settings["allowInsecureHttp"].toBool())) return;
+    const auto id = davSignInSetup_;
+    host::openLink(dav_->signInUrl(), [guard = QPointer<SettingsWindow>(this), id](const QJsonObject& result) {
+        if (!guard || guard->davSignInSetup_ != id || guard->dav_->signIn() == DavDestinationPanel::SignIn::Idle) return;
+        guard->dav_->setSignIn(result["opened"].toBool() ? DavDestinationPanel::SignIn::Waiting : DavDestinationPanel::SignIn::BrowserFailed);
+        emit guard->viewStateChanged();
+    });
+}
+void SettingsWindow::cancelDavSignIn() {
+    if (davSignInSetup_.isEmpty()) {
+        // Not accepted yet: the cancel waits for the job's ID and is sent as soon as it arrives.
+        if (dav_->signIn() != DavDestinationPanel::SignIn::Idle) davCancelPending_ = true;
+        dav_->setSignIn(DavDestinationPanel::SignIn::Idle);
+        emit viewStateChanged();
+        return;
+    }
+    settings_.request("setup.cancel", {{"id", davSignInSetup_}}, this, [this](Error e, QJsonObject) { if (e) status(e); });
+}
+bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject& data, const Error& error, bool currentTest) {
+    const auto profileId = job["profileId"].toString();
+    const auto kind = job["kind"].toString();
+    auto profiles = draft_["profiles"].toArray();
+    int index = -1;
+    for (int i = 0; i < profiles.size(); ++i) if (profiles[i].toObject()["id"] == profileId) index = i;
+    const auto provider = index >= 0 ? profiles[index].toObject()["provider"].toString() : QString();
+    if (!dav::isDav(provider)) return false;
+    const bool shown = profileId == profileId_->text() && dav_->provider() == provider;
+    const auto result = data["result"].toObject();
+    // The account name Settings shows as "Signed in as …": saved with the destination, never a credential.
+    const auto applyAccount = [&](const QString& name) -> bool {
+        if (!shown || conflict_) return false;
+        auto settings = dav_->settings();
+        if (settings["accountName"] == name) return true;
+        settings["accountName"] = name;
+        dav_->setSettings(settings);
+        dirty();
+        queueEdit(dav_, "/profiles/{profile}/settings/accountName");
+        refreshDestinationList();
+        return true;
+    };
+    if (kind == "connectAccount") {
+        if (data["setupId"] == davSignInSetup_ || job["setupId"] == davSignInSetup_) davSignInSetup_.clear();
+        if (shown) dav_->setSignIn(DavDestinationPanel::SignIn::Idle);
+        // Cancelled: its message also says when the app password just given couldn't be revoked.
+        if (error.code == "nextcloud_signin_cancelled") { setupFeedback(error.details.value("grantRevoked").toBool(true) ? QStringLiteral("Sign-in cancelled.") : error.message); return true; }
+        // Signed in, but the server enforces link passwords: the account is shown, and the error said.
+        if (error.code == "nextcloud_share_password_required" && error.details.value("credentialSaved").toBool()) {
+            applyAccount(error.details.value("accountName").toString(error.details.value("userId").toString()));
+            refreshCredentialHint();
+        }
+        if (error) { status(error); return true; }
+        const auto name = result["accountName"].toString(result["userId"].toString());
+        if (!applyAccount(name)) { setupFeedback("Signed in for the original destination. Select it again to see its account."); return true; }
+        refreshCredentialHint();
+        const auto warning = result["revokeWarning"].toString();
+        if (!warning.isEmpty()) { setupFeedback("Signed in as " + name + ". " + warning); return true; }
+        setupFeedback(result["sharePasswordEnforced"].toBool()
+            ? "Signed in as " + name + ". This server requires a password on every public link, which put.gd doesn't set, so uploads there won't get a link."
+            : result["sharing"].isBool() && !result["sharing"].toBool() ? "Signed in as " + name + ". Public links are turned off on this server, so uploads would get no link."
+            : "Signed in as " + name + ".", true);
+        return true;
+    }
+    if (kind == "inspectAccount") {
+        if (error.code == "nextcloud_share_password_required" && error.details.value("credentialSaved").toBool())
+            applyAccount(error.details.value("accountName").toString(error.details.value("userId").toString()));
+        if (error) { status(error); return true; }
+        if (provider == dav::nextcloudId) {
+            const auto name = result["accountName"].toString(result["userId"].toString());
+            applyAccount(name);
+            setupFeedback("Signed in as " + name + ".", true);
+        } else setupFeedback("The folder is there.", true);
+        return true;
+    }
+    if (kind == "signOut") {
+        if (error) { status(error); return true; }
+        applyAccount({});
+        refreshCredentialHint();
+        const auto revokeError = result["revokeError"].toObject();
+        setupFeedback(result["revoked"].toBool() ? QStringLiteral("Signed out. put.gd's app password was revoked on the server.")
+                      : !revokeError.isEmpty() ? "Signed out here, but put.gd couldn't revoke its app password on the server (" + revokeError["message"].toString() +
+                                                     "). Revoke it in Nextcloud under Personal settings → Security."
+                                               : QStringLiteral("Signed out."), true);
+        return true;
+    }
+    if (kind == "createFolder") {
+        if (error) { status(error); return true; }
+        if (shown) dav_->setFolderMissing(false);
+        setupFeedback(result["created"].toBool() ? QStringLiteral("Folder created. Test again to check it.") : QStringLiteral("The folder already exists."), true);
+        return true;
+    }
+    if (kind == "storeCredentials" && !error && provider == dav::nextcloudId && shown) {
+        // An app password names no account: ask Nextcloud whose it is, for "Signed in as …".
+        QTimer::singleShot(0, this, [this] { if (setupBlockedReason().isEmpty()) beginSetup("inspectAccount"); });
+        return false;
+    }
+    if (kind == "testDestination" && shown && currentTest) {
+        dav_->setFolderMissing(error.code == "webdav_folder_missing" && error.details.value("createFolder").toBool());
+        QStringList warnings;
+        for (const auto& value : result["warnings"].toArray()) warnings.append(value.toObject()["message"].toString());
+        dav_->setNotice(warnings.join("\n"));
+    }
+    return false;
+}
+
+// ui.davDestination (#1872): the open Nextcloud or WebDAV form, driven as a user drives it. The
+// reply is the form's state; it never carries a credential. Sign in presses Sign in…: the
+// browser page put.gd opens is in the state as signInUrl, where an agent completes it.
+void SettingsWindow::davCommand(const QJsonObject& params, std::function<void(Error, QJsonObject)> reply) {
+    const auto action = params["action"].toString();
+    const auto shown = [this](QWidget* widget) { return widget && widget->isVisibleTo(destinationPage_); };
+    const auto usable = [&shown](QWidget* widget) { return shown(widget) && widget->isEnabled(); };
+    const Error unavailable{"control_unavailable", "That control isn't shown or can't be used for this destination right now.", {}};
+    if (!destinationPage_ || !destinationPage_->isVisible()) { reply({"ui_view_closed", "Open Destinations before driving it.", {}}, {}); return; }
+    if (QApplication::activeModalWidget()) { reply(unavailable, {}); return; }
+    if (action == "add") {
+        const auto provider = params["provider"].toString();
+        if (!usable(addDestination_)) { reply(unavailable, {}); return; }
+        const auto count = profile_->count();
+        addS3Profile(provider == dav::nextcloudId ? "Nextcloud" : "WebDAV", params["label"].toString(), provider);
+        if (profile_->count() == count) { reply({"profile_limit", "The destination could not be added.", {}}, {}); return; }
+        queueEdit(profileLabel_);
+    } else {
+        const auto requested = params["profileId"].toString();
+        if (!requested.isEmpty() && requested != profileId_->text()) {
+            const int index = profile_->findData(requested);
+            if (index < 0) { reply({"profile_not_found", "No destination has this ID.", {}}, {}); return; }
+            if (!usable(destinationList_)) { reply(unavailable, {}); return; }
+            profile_->setCurrentIndex(index);
+        }
+    }
+    if (profileIndex_ < 0 || !dav::isDav(providerType_->currentData().toString())) {
+        reply({"dav_not_selected", "Select a Nextcloud or WebDAV destination in Destinations first, or name it with profileId.", {}}, {});
+        return;
+    }
+    const auto press = [&](const char* name) -> bool {
+        auto* button = findControl<QPushButton*>(name);
+        if (!usable(button)) return false;
+        button->click();
+        return true;
+    };
+    if (action == "set") {
+        const auto field = params["field"].toString(), value = params["value"].toString();
+        const bool nextcloud = dav_->provider() == dav::nextcloudId;
+        if (field == "allowInsecureHttp") {
+            auto* box = findControl<QCheckBox*>(nextcloud ? "nextcloudAllowHttp" : "webdavAllowHttp");
+            if (value != "true" && value != "false") { reply({"invalid_request", "Allow plain HTTP is true or false.", {}}, {}); return; }
+            if (!usable(box)) { reply(unavailable, {}); return; }
+            if (box->isChecked() != (value == "true")) box->click();
+        } else {
+            static const QHash<QString, QString> nextcloudFields{{"server", "nextcloudServer"}, {"folder", "nextcloudFolder"}};
+            static const QHash<QString, QString> webdavFields{{"address", "webdavAddress"}, {"linkBase", "webdavLinkBase"}};
+            const auto name = (nextcloud ? nextcloudFields : webdavFields).value(field);
+            auto* edit = name.isEmpty() ? nullptr : findControl<QLineEdit*>(name);
+            if (!usable(edit)) { reply(unavailable, {}); return; }
+            edit->setFocus();
+            edit->setText(value);
+            edit->setModified(true);
+            emit edit->editingFinished();
+        }
+    } else if (action == "appPassword") {
+        auto* button = findControl<QPushButton*>("nextcloudUseAppPassword");
+        if (!usable(button)) { reply(unavailable, {}); return; }
+        if (button->isChecked() != (params["value"].toString() == "show")) button->click();
+    } else {
+        static const QHash<QString, const char*> buttons{{"signIn", "nextcloudSignIn"}, {"cancelSignIn", "nextcloudCancelSignIn"}, {"openBrowser", "nextcloudRetryBrowser"},
+                                                         {"signOut", "nextcloudSignOut"}, {"createFolder", "webdavCreateFolder"}, {"test", "testDestination"}, {"unlock", "unlockCredentials"}};
+        if (buttons.contains(action) && !press(buttons.value(action))) { reply(unavailable, {}); return; }
+    }
+    auto state = dav_->state();
+    state["profileId"] = profileId_->text();
+    state["label"] = profileLabel_->text();
+    state["saved"] = !selectedDestinationChanged() && !savePending();
+    state["status"] = destinationStatus_ ? destinationStatus_->text() : QString();
+    state["storedHint"] = credentialHint_->text();
+    state["storeEnabled"] = usable(findControl<QPushButton*>("storeCredentials"));
+    state["testEnabled"] = usable(findControl<QPushButton*>("testDestination"));
+    state["setupRunning"] = !setupJobs_.isEmpty();
+    reply({}, state);
+}
+}
