@@ -54,6 +54,28 @@ QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
 class ReviewWindowTest : public ReviewWindowFixture {
     Q_OBJECT
 private slots:
+    // #1871: a destination that gives no links (SFTP without a Link address) is named
+    // "Upload only", never "Shared link".
+    void aDestinationWithoutLinksIsUploadOnly() {
+        auto o = options();
+        o.links = false;
+        o.uploadSummary = "Upload to Project archive";
+        ReviewWindow window(o, config());
+        auto* menu = window.findChild<QToolButton*>("uploadDestinationMenu");
+        QVERIFY(menu);
+        QCOMPARE(menu->text(), QString("Project archive · Upload only"));
+        QCOMPARE(window.inspect()["sharing"].toString(), QString("Upload only"));
+        ReviewWindow shared(options(), config());
+        QCOMPARE(shared.inspect()["sharing"].toString(), QString("Shared link"));
+        // A local recording is no link at all.
+        auto local = options();
+        local.destination = "local";
+        local.sharingMode = "local";
+        local.links = false;
+        local.uploadSummary = "Save to the local archive";
+        ReviewWindow saved(local, config());
+        QCOMPARE(saved.inspect()["sharing"].toString(), QString("Local only"));
+    }
     void discardAsksBeforeTheRecordingGoes() {
         ReviewWindow window(options(), config());
         QSignalSpy cancelled(&window, &ReviewWindow::cancelRequested);

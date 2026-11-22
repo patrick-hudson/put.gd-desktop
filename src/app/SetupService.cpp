@@ -8,7 +8,14 @@ namespace putgd {
 namespace {
 Error invalid() {return {"invalid_request","Invalid setup fields or parameter types",{}};}
 bool validInput(const QString& kind,const QJsonObject& input) {
- if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().size()<=255;
+ // An SFTP folder path may be up to 4096 bytes (#1871); Proton's folder name keeps its own 255 below.
+ if(kind=="createFolder"){
+  // SFTP also names the path its test found missing (#1871); Proton names the folder only.
+  if(input.contains("path")&&(input.size()!=2||!input["path"].isString()||input["path"].toString().isEmpty()||input["path"].toString().toUtf8().size()>4096))return false;
+  return input.size()==(input.contains("path")?2:1)&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().toUtf8().size()<=4096;
+ }
+ // SFTP (#1871): the host key fingerprint the user (or agent) was shown, exactly.
+ if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
  if(kind!="storeCredentials")return input.isEmpty();
  // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
@@ -46,7 +53,7 @@ SetupService::~SetupService() {
  std::lock_guard lock(completion_->mutex);completion_->owner=nullptr;
 }
 void SetupService::start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply reply) {
- if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
+ if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()) {
   reply({"config_conflict","Configuration changed; save or reload before setup",{}},{});return;
@@ -57,6 +64,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)) {reply({"profile_not_found","Save the destination before setup",{}},{});return;}
  const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
+ if(kind=="createFolder"&&profile["provider"]!="sftp"&&input["name"].toString().size()>255){reply(invalid(),{});return;}
  const auto key=activeKey(profileId,kind);
  if(active_.contains(key)||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -79,7 +87,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  if(!guarded)return;
  emit changed(id);
  if(!guarded)return;
- if((kind=="testDestination"&&providerSetup_)||QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword","signOut"}.contains(kind)) {
+ if((kind=="testDestination"&&providerSetup_)||QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(kind)) {
   if(!providerSetup_){complete({"setup_unsupported","Account setup is unavailable",{}});return;}
   const Destination destination{profile["provider"].toString(),profileId,expectedRevision,profile["settings"].toObject(),reference};
   auto finish=[context=completion_,id](Error error,QJsonObject result){
@@ -103,6 +111,8 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    for(const auto& name:std::as_const(names)) {
     if(typed.contains(name))value.values.insert(name,typed.value(name));
     else if(cached&&cached->values.contains(name))value.values.insert(name,cached->values.value(name));
+    // An SFTP destination's password and key passphrase are each optional (#1871).
+    else if(profile["provider"]=="sftp")value.values.insert(name,QString());
     else missing.append(name);
    }
    if(!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
@@ -145,7 +155,8 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
  QStringList names;
  if(namedCredentials_&&!namedCredentials_(profile,{},&names)) {
   QJsonArray stored,missing;
-  for(const auto& name:std::as_const(names))(cached&&cached->values.contains(name)?stored:missing).append(name);
+  // An SFTP destination stores its unused secret as empty: that one is not stored (#1871).
+  for(const auto& name:std::as_const(names))(cached&&cached->values.contains(name)&&(profile["provider"]!="sftp"||!cached->values.value(name).isEmpty())?stored:missing).append(name);
   hint["storedValues"]=stored;hint["missingValues"]=missing;hint.remove("accessKeyHint");hint.remove("secretStored");hint.remove("tokenStored");
  }
  reply({},hint);

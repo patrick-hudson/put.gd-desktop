@@ -42,3 +42,5 @@ putgd_fuzz_target(localipc LIBS putgd_log SOURCES src/app/LocalIpc.cpp)
 putgd_fuzz_target(hyprland LIBS putgd_core SOURCES src/platform/hyprland/HyprlandIpc.cpp)
 # The custom uploader reader and rules, and the import (HttpImport.cpp) that runs them on a file.
 putgd_fuzz_target(httpimport LIBS putgd_http_rules putgd_core putgd_credentials SOURCES src/storage/http/HttpImport.cpp)
+# The SFTP v3 replies putgd-sftp-worker reads from a server (#1871).
+putgd_fuzz_target(sftpwire LIBS putgd_sftp_wire)

@@ -60,6 +60,7 @@ ReviewWindow::Options options() {
     o.durationUs = duration;
     o.destination = "Project archive";
     o.sharingMode = "share";
+    o.links = true;
     o.uploadSummary = "Upload to Project archive · Shared link";
     o.canvas = QSize(1280, 720);
     o.formats = QStringList{"mp4", "webm", "gif"};

@@ -62,8 +62,10 @@ def package_metadata(package: Path, kind: str) -> dict:
 # Qt loads image plugins by name, so neither dpkg-shlibdeps nor RPM's
 # dependency generator sees them: History reads WebP recordings and images
 # through the WebP plugin (#189), which the distros package apart from Qt GUI.
-RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins", "tesseract-ocr-eng"),
-                    "RPM": ("qt6-qtimageformats", "tesseract-langpack-eng")}
+# The SFTP destination (#1871) runs the OpenSSH client as a program, which no
+# generator sees either.
+RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins", "tesseract-ocr-eng", "openssh-client"),
+                    "RPM": ("qt6-qtimageformats", "tesseract-langpack-eng", "openssh-clients")}
 
 
 def require_runtime_packages(metadata: dict) -> None:

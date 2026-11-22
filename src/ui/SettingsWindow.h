@@ -15,7 +15,7 @@
 #include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;class CustomUploaderPanel;class DavDestinationPanel;class ErrorLogPage;namespace Ui{class Banner;}
+class ShortcutEditor;class CustomUploaderPanel;class DavDestinationPanel;class SftpPanel;class ErrorLogPage;namespace Ui{class Banner;}
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -59,6 +59,8 @@ public:
  void r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.davDestination (#1872): the Nextcloud and WebDAV forms, edited and signed in as a user does.
  void davCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // ui.sftpDestination (#1871): the SFTP form, edited, pasted into, tested and trusted as a user does.
+ void sftpCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
  // used, a cancel changes nothing, a failure shows its reason beside the
  // originating row with Try again (tests drive failures through here).
@@ -211,6 +213,10 @@ private:
  void davSignInEvent(const QString& setupId,const QUrl& url);void openDavBrowser();void cancelDavSignIn();
  // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
  bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
+ // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
+ SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();
+ // #1871: a Clear about to start; its setup job record carries the mark from then on.
+ bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
  QHash<QString,CredentialInputs> provisionalCredentials_;
  QJsonObject provisionalProfile_;

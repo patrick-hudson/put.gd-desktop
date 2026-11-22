@@ -728,6 +728,22 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "sftp"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/sftpSettings"
+                }
+              }
+            }
           }
         ]
       }
@@ -1788,6 +1804,49 @@
           "minimum": 1000,
           "maximum": 3600000,
           "default": 600000
+        }
+      }
+    },
+    "sftpSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "SFTP destination (#1871): the user's own OpenSSH client carries put.gd's SFTP client. The provider validator is authoritative.",
+      "required": [
+        "folder",
+        "hostKeyFingerprint",
+        "publicUrlBase",
+        "server",
+        "user"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "host, host:port, [v6]:port or a Host alias from ~/.ssh/config; empty while it is being set up"
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Empty: the user ssh would pick"
+        },
+        "folder": {
+          "type": "string",
+          "description": "The folder on the server; a relative path starts in the login folder"
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The HTTPS address the folder is served at, or null for uploads without links"
+        },
+        "hostKeyFingerprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z0-9-]{1,32} SHA256:[A-Za-z0-9+/]{43}$",
+          "description": "The host key trusted in put.gd's own known_hosts, as TYPE SHA256:…"
         }
       }
     },

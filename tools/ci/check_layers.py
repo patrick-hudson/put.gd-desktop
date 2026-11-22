@@ -42,8 +42,9 @@ ALLOWED = {
     'storage/http': {'core', 'secrets', 'storage/worker'},
     # Nextcloud and WebDAV (#1872) reuse the custom uploader's plain-HTTP and address rules.
     'storage/dav': {'core', 'secrets', 'storage/http', 'storage/worker'},
-    'storage/proton': {'core'},
+    'storage/proton': {'core', 'storage/worker'},
     'storage/s3': {'core', 'ipc', 'secrets', 'storage/worker'},
+    'storage/sftp': {'core', 'secrets', 'storage/worker'},
     'app': {'client', 'core', 'ipc', 'secrets'},
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
@@ -51,7 +52,7 @@ ALLOWED = {
     'ocr': {'core', 'ipc'},
     'cli': {'core'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
-             'storage/b2', 'storage/dav', 'storage/http', 'storage/proton', 'storage/s3', 'ui'},
+             'storage/b2', 'storage/dav', 'storage/http', 'storage/proton', 'storage/s3', 'storage/sftp', 'ui'},
 }
 
 # (including file, included module): why that file may still do it.
@@ -73,6 +74,7 @@ TOLERATED = {
     ('src/ui/CustomUploaderPanel.cpp', 'storage/http'): 'the custom uploader form reads .sxcu files and names secret values with the provider\'s rules',
     ('src/ui/DavDestinationPanel.cpp', 'storage/dav'): 'the Nextcloud and WebDAV form reduces pasted addresses with the provider\'s rules',
     ('src/ui/SettingsDav.cpp', 'storage/dav'): 'Settings checks a sign-in page against the Nextcloud server with the provider\'s rules',
+    ('src/ui/SftpPanel.cpp', 'storage/sftp'): 'the SFTP form reads a pasted address and checks its fields with the provider\'s rules',
     ('src/ui/EditorWindow.h', 'editor'): 'the editor window hosts the canvas; editor and ui are not yet split',
     ('src/ui/ImageEditor.cpp', 'editor'): 'the image editor drives the edit document; editor and ui are not yet split',
     ('src/ui/QuickRedactRunner.h', 'editor'): 'the editor window runs Quick redact matching off its thread; editor and ui are not yet split',

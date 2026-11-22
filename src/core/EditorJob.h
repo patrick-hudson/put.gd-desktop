@@ -88,6 +88,9 @@ public:
  EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}
  // An existing image can be edited and saved without a submission output.
  EditorJob& withSubmissionError(Error error){submissionError_=std::move(error);return *this;}
+ // Whether the destination gives a link (commandtext::givesLinks): the upload bar says so, not the
+ // label. Unset, the editor promises no link.
+ EditorJob& withLinks(bool links){links_=links;return *this;}
  // "dark" or "light": the helper's scheme, the interface's resolved one.
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
  // The saved text recognition languages (#1428) for Copy text and Quick redact.
@@ -119,6 +122,7 @@ private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_,redactTerms_,redactPatterns_;
  Error submissionError_;
+ std::optional<bool> links_;
  std::optional<Check> check_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };

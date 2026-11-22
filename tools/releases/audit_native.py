@@ -20,7 +20,7 @@ except ModuleNotFoundError:
 RESIDENT_FORBIDDEN_NEEDED = re.compile(r"^lib(Qt6Network|ssl|crypto|gtk)")
 # The interface helper reaches the resident over a native Unix socket (#1161).
 UI_FORBIDDEN_NEEDED = re.compile(r"^libQt6Network")
-PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-webdav-worker", "putgd-launcher", "putgd-ocr")
+PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-webdav-worker", "putgd-sftp-worker", "putgd-launcher", "putgd-ocr")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
         "aws-c-auth", "aws-c-cal", "aws-c-common", "aws-c-compression", "aws-c-event-stream",
@@ -78,6 +78,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     if require_kde or (root / "usr/bin/putgd-region").exists():
         programs.append("putgd-region")
     keeper = ["usr/bin/putgd-clipboard-keeper"] if (root / "usr/bin/putgd-region").exists() else []  # Budgie and Hyprland quit path; not a Qt product
+    keeper.append("usr/bin/putgd-sftp-askpass")  # ssh's askpass for the SFTP destination (#1871); C library only
     if (root / "usr/bin/putgd-record").exists():
         programs.append("putgd-record")  # optional screen-recording helper (docs/design/recording.md)
     required = ["usr/bin/" + name for name in programs] + keeper
@@ -195,7 +196,7 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")
-        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-webdav-worker", "putgd-ocr"):
+        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-webdav-worker", "putgd-sftp-worker", "putgd-ocr"):
             version = command([str(path), "--version"], env=env)
             if version != name + " " + result["manifest"]["version"]:
                 raise ValueError(f"Compiled version mismatch: {name}")
