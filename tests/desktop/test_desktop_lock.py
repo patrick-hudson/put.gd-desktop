@@ -441,6 +441,15 @@ class ProtonSessionLock(LockTest):
         (self.directory / 'history' / '2099-01-01T00-00-00Z-scratch-retired.json').write_text('{"note": "retired"}\n')
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
 
+    def test_last_event_takes_the_later_receipt_of_one_second(self):
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        names = sorted(path.name for path in (self.directory / 'history').glob('*.json'))
+        self.assertTrue(any(name.endswith('-release-1.json') for name in names), names)
+        self.assertTrue(self.desktop.status()['last']['receipt'].endswith('-release-1.json'))
+
 
 class QuietLease(LockTest):
     def quiet(self):
