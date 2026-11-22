@@ -351,15 +351,19 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('upload.files', params, timeout=150)
 
     @server.tool(annotations=effect)
-    async def open_editor(source: str = 'region', path: str | None = None) -> Json:
-        """Start Capture region & edit (the edit action) from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user."""
+    async def open_editor(source: str = 'region', path: str | None = None, capture_style: bool | None = None) -> Json:
+        """Start Capture region & edit (the edit action) from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user. A new capture starts with the Settings capture style on when it is enabled (#1893); capture_style true starts a file's edit with it on too (History's Edit again of a styled capture's -original)."""
         if source not in EDITOR_SOURCES or (source == 'file') != (path is not None):
+            return invalid()
+        if capture_style is not None and (type(capture_style) is not bool or source != 'file'):
             return invalid()
         if path is not None and (not identifier(path, 4096) or not path.startswith('/')):
             return invalid()
         params: Json = {'source': source}
         if path is not None:
             params['path'] = path
+        if capture_style is not None:
+            params['captureStyle'] = capture_style
         return await adapter.call('editor.open', params)
 
     @server.tool(annotations=read)

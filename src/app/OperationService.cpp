@@ -367,6 +367,8 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  // delaySeconds (#1363): region, window, monitor and desktop captures, a repeat
  // and an edit of a screen capture can start after 3, 5 or 10 seconds; 0 is immediate.
  auto stripped=requested;const auto delayValue=stripped.take("delaySeconds");
+ // #1893: captureStyle true opens a file's edit with the capture style on (Edit again of a styled capture's original).
+ const auto styleValue=stripped.take("captureStyle");
  const QJsonObject options=stripped; // const: operator[] must not insert
  const int delay=delayValue.toInt();
  if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop, repeat and edit captures",{}},{});return;}
@@ -376,6 +378,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
  // An edit of the clipboard or a file reads no screen, so it has nothing to delay.
+ if(!styleValue.isUndefined()&&(action!="edit"||source!="file"||!styleValue.isBool())){reply({"invalid_request","captureStyle is true or false, for an edit of a file",{}},{});return;}
  if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is active; stop or cancel it before editing",{{"operationId",recording_->activeId()}}},{});return;}
@@ -387,7 +390,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if(interactive)styledEdits_.insert(op.id);}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if(interactive||styleValue.toBool())styledEdits_.insert(op.id);}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__

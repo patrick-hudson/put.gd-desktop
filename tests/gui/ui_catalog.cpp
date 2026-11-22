@@ -570,6 +570,15 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1893: Capture style, off by default; turned on (Graphite) and then Custom with a gradient, each a draft Settings can keep.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStyleEnabled"),0,160);if(!save("settings-capture-style-off"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style"))return 2;
+ {auto* look=window.findChild<QComboBox*>("captureStyleLook");emit look->activated(look->findData("custom"));auto* backdrop=window.findChild<QComboBox*>("captureStyleBackdrop");emit backdrop->activated(backdrop->findData("gradient"));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style-custom"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(false);
  // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
  // Turned on, with its draft still a view state Settings can keep (#1804).
  window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
@@ -929,6 +938,10 @@ int main(int argc,char** argv){
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
   editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
   editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
+  // #1893: the Style tool with Graphite on, then Paper with large padding seen from Select: the canvas shows the frame.
+  editor.resize(1180,820);editor.setSavedStyle(CaptureStyle::preset("graphite"));editor.selectTool(editor::Tool::Style);
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","graphite"}}},code,message);if(!code.isEmpty()||!grab("30q-editor-style"))return 2;
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","paper"},{"padding","large"}}},code,message);editor.selectTool(editor::Tool::Select);if(!code.isEmpty()||!grab("30r-editor-style-canvas"))return 2;
   editor.allowClose();editor.close();
  }
  {

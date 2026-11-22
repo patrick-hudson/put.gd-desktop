@@ -22,7 +22,8 @@ constexpr int shadowAlpha = 96;
 // A blurred rounded square holding the shadow's four corners and its edge profile. It is drawn
 // as nine slices: the corners as they are, the edges stretched along their length. Its size
 // depends on sigma and radius only, never on the capture, so a scrolling capture costs the same.
-struct ShadowTile { QImage image; int reach = 0, core = 0; };
+// The core is odd: two corner halves and the one-pixel middle column and row that the edges stretch.
+struct ShadowTile { QImage image; int reach = 0, half = 0; };
 ShadowTile shadowTile(double sigma, int radius) {
     static std::mutex lock;
     static double lastSigma = -1;
@@ -32,8 +33,9 @@ ShadowTile shadowTile(double sigma, int radius) {
     if (lastSigma == sigma && lastRadius == radius) return last;
     ShadowTile tile;
     tile.reach = int(std::ceil(3 * sigma)) + 1;
-    tile.core = std::max(2 * radius, 2) + 2;
-    const int side = 2 * tile.reach + tile.core;
+    tile.half = std::max(radius, 1) + 1;
+    const int core = 2 * tile.half + 1;
+    const int side = 2 * tile.reach + core;
     QImage image(side, side, QImage::Format_ARGB32);
     image.fill(Qt::transparent);
     {
@@ -41,7 +43,7 @@ ShadowTile shadowTile(double sigma, int radius) {
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(0, 0, 0, shadowAlpha));
-        painter.drawRoundedRect(QRectF(tile.reach, tile.reach, tile.core, tile.core), radius, radius);
+        painter.drawRoundedRect(QRectF(tile.reach, tile.reach, core, core), radius, radius);
     }
     // Three box passes of radius/2 approximate a Gaussian of sigma about radius/2.
     EditDocument::blurInPlace(image, image.rect(), std::max(2, int(std::lround(2 * sigma))));
@@ -52,11 +54,11 @@ ShadowTile shadowTile(double sigma, int radius) {
 void paintShadow(QPainter& painter, const QRectF& box, double sigma, int radius) {
     if (sigma <= 0 || box.isEmpty()) return;
     const auto tile = shadowTile(sigma, radius);
-    const double reach = tile.reach, half = tile.core / 2.0;
+    const double reach = tile.reach, half = tile.half;
     const QRectF outer = box.adjusted(-reach, -reach, reach, reach);
     const double side = tile.image.width();
-    // Slice edges in the tile and on the canvas: corner, stretched middle, corner.
-    const double sx[4] = {0, reach + half, side - reach - half, side};
+    // Slice edges in the tile and on the canvas: a corner, the one-pixel middle stretched along the edge, a corner.
+    const double sx[4] = {0, reach + half, reach + half + 1, side};
     const double dx[4] = {outer.left(), outer.left() + reach + half, outer.right() - reach - half, outer.right()};
     const double dy[4] = {outer.top(), outer.top() + reach + half, outer.bottom() - reach - half, outer.bottom()};
     if (dx[2] < dx[1] || dy[2] < dy[1]) {painter.drawImage(outer, tile.image);return;}

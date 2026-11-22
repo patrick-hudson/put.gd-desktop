@@ -206,7 +206,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("davDestination",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle"})||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
@@ -221,7 +221,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive);return;
  }
  if(method=="editor.open") {
-  if(!fields(p,{},{"source","path"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
+  if(!fields(p,{},{"source","path","captureStyle"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("captureStyle")&&!p["captureStyle"].isBool())){reply(invalid(),{});return;}
   operations_.invoke("edit",reply,p);return;
  }
  // Agent control of the one open editor; the helper validates each command.

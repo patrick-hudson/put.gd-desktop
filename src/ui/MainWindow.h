@@ -32,7 +32,7 @@ public:
  static QString droppedImage(const QMimeData*);
 signals:void settingsCreated(SettingsWindow*);void viewStateChanged();void actionRequested(const QString&);
  // Edit & upload from a source other than a region: "clipboard" or "file" with a path.
- void editRequested(const QString& source,const QString& path);void quitRequested();void aboutRequested();
+ void editRequested(const QString& source,const QString& path,bool captureStyle=false);void quitRequested();void aboutRequested();
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:

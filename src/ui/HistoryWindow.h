@@ -58,7 +58,7 @@ signals:void viewStateChanged();void activityChanged();
  void destinationSettingsRequested(const QString& profileId);
  void captureSettingsRequested();void localCopySettingsRequested();
  // Edit & upload from another source: "clipboard", or "file" with a path.
- void editRequested(const QString& source,const QString& path);void chooseImageRequested();
+ void editRequested(const QString& source,const QString& path,bool captureStyle=false);void chooseImageRequested();
 protected:bool eventFilter(QObject*,QEvent*) override;void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
 private:
  // History's error notice (#1753): an error shows briefly with Open error log, then clears;

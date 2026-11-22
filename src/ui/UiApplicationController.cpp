@@ -275,9 +275,12 @@ void UiApplicationController::requestAction(const QString& action){
  if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::invocableActionNames().contains(action))return;
  pendingAction_=action;pendingOptions_={};prepareAction();
 }
-void UiApplicationController::requestEdit(const QString& source,const QString& path){
+void UiApplicationController::requestEdit(const QString& source,const QString& path,bool captureStyle){
  if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||(source!="clipboard"&&source!="file"))return;
- pendingAction_="edit";pendingOptions_={{"source",source}};if(source=="file")pendingOptions_["path"]=path;prepareAction();
+ pendingAction_="edit";pendingOptions_={{"source",source}};if(source=="file")pendingOptions_["path"]=path;
+ // #1893: Edit again of a styled capture opens its original with the capture style on.
+ if(source=="file"&&captureStyle)pendingOptions_["captureStyle"]=true;
+ prepareAction();
 }
 void UiApplicationController::prepareAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()){pendingAction_.clear();return;}

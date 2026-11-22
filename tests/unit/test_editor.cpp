@@ -159,6 +159,10 @@ private slots:
   QVERIFY(!inspectSanitizedPng(styled.exportPng()));
   // Undo takes the style off again, back to the plain export.
   QVERIFY(styled.undo());QCOMPARE(styled.exportPng(),plain.exportPng());
+  // The shadow runs along the whole bottom edge, not only under the corners.
+  {EditDocument paper(base);QVERIFY(paper.setCaptureStyle(CaptureStyle::preset("paper")));const auto shown=paper.render();const auto at=CaptureStyle::preset("paper").geometry(base.size());
+   const int below=at.padding+base.height()+int(at.offsetY)+1;
+   QVERIFY2(qGray(shown.pixel(shown.width()/2,below))<qGray(QColor("#efeee9").rgb())-8,"no shadow under the middle of the bottom edge");}
   // Clear: transparent around the capture, with no colour hidden under alpha 0.
   EditDocument clear(base);QVERIFY(clear.setCaptureStyle(CaptureStyle::preset("clear")));
   const auto transparent=clear.render();QVERIFY(transparent.hasAlphaChannel());
