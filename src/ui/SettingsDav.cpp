@@ -89,7 +89,13 @@ void SettingsWindow::openDavBrowser() {
     });
 }
 void SettingsWindow::cancelDavSignIn() {
-    if (davSignInSetup_.isEmpty()) { dav_->setSignIn(DavDestinationPanel::SignIn::Idle); emit viewStateChanged(); return; }
+    if (davSignInSetup_.isEmpty()) {
+        // Not accepted yet: the cancel waits for the job's ID and is sent as soon as it arrives.
+        if (dav_->signIn() != DavDestinationPanel::SignIn::Idle) davCancelPending_ = true;
+        dav_->setSignIn(DavDestinationPanel::SignIn::Idle);
+        emit viewStateChanged();
+        return;
+    }
     settings_.request("setup.cancel", {{"id", davSignInSetup_}}, this, [this](Error e, QJsonObject) { if (e) status(e); });
 }
 bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject& data, const Error& error, bool currentTest) {

@@ -58,7 +58,6 @@ QJsonObject DavProvider::diagnosticSettings(const QJsonObject& settings) const {
     // Addresses keep only their scheme and host, as the custom uploader's request URL does.
     for (const auto* key : {"server", "address", "linkBase"})
         if (out[key].isString()) out[key] = dav::originOnly(out[key].toString());
-    if (out.contains("folder")) out["folder"] = out["folder"].toString().isEmpty() ? QString() : QStringLiteral("<set>");
     // The account's display name is a person's name; the package says only whether one is set.
     if (out.contains("accountName")) out["accountName"] = out["accountName"].toString().isEmpty() ? QString() : QStringLiteral("<set>");
     return out;
@@ -279,8 +278,14 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
                     });
                 };
                 if (error) {
-                    if (error.details.value("grantReturned").toBool() && !grant.secretKey.isEmpty()) refuse(error);
-                    else reply(error, {});
+                    if (error.details.value("grantReturned").toBool() && !grant.secretKey.isEmpty()) { refuse(error); return; }
+                    // The helper stopped before its last word (killed, stalled, or its answer lost): a grant
+                    // it may already have had can't be revoked from here, and the user is told so.
+                    if (error.code == "webdav_transport_unknown" || error.code == "webdav_protocol" || error.code == "webdav_worker_start") {
+                        error.details["grantRevocation"] = "unknown";
+                        error.message += " If you had already allowed put.gd in the browser, remove its app password in Nextcloud under Personal settings → Security → Devices & sessions.";
+                    }
+                    reply(error, {});
                     return;
                 }
                 // Cancelled meanwhile, or the destination is gone or names another server.

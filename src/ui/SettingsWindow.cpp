@@ -1327,8 +1327,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // Each setting saves on its own, so a refused address never holds back the folder (#1872). An
  // address and the plain HTTP switch it may need go together.
  connect(dav_,&DavDestinationPanel::edited,this,[this](const QString& field){if(loading_)return;dirty();
-  const QStringList addresses{"server","address","linkBase","allowInsecureHttp"};
-  for(const auto& key:addresses.contains(field)?(dav_->provider()==dav::nextcloudId?QStringList{"server","allowInsecureHttp"}:QStringList{"address","linkBase","allowInsecureHttp"}):QStringList{field})queueEdit(dav_,"/profiles/{profile}/settings/"+key);
+  // An address and the plain HTTP switch are one field group (fieldGroups): one edit queues the group.
+  queueEdit(dav_,"/profiles/{profile}/settings/"+field);
   if(updateProviderVisibility_)updateProviderVisibility_();});
  connect(dav_,&DavDestinationPanel::signInRequested,this,[this]{if(!admitSetup())return;dav_->setSignIn(DavDestinationPanel::SignIn::Starting);beginSetup("connectAccount");});
  connect(dav_,&DavDestinationPanel::cancelSignInRequested,this,&SettingsWindow::cancelDavSignIn);
@@ -1922,7 +1922,11 @@ bool within(const QString& path,const QString& ancestor){return ancestor.isEmpty
 // Fields that save only together. #1676: Region and Endpoint, so a fix to one is never refused
 // because of the other's saved value and then left looking saved.
 // Cloudflare R2's group belongs to R2 destinations alone (#1699): an S3 or B2 Bucket stays a field of its own.
-QList<QStringList> fieldGroups(const QString& provider){QList<QStringList> groups{{"settings/endpoint","settings/region"}};if(provider==r2::providerId)groups.append(r2Group());return groups;}
+QList<QStringList> fieldGroups(const QString& provider){QList<QStringList> groups{{"settings/endpoint","settings/region"}};if(provider==r2::providerId)groups.append(r2Group());
+ // #1872: an address saves together with Allow plain HTTP, in one operation.
+ if(provider==dav::nextcloudId)groups.append(QStringList{"settings/server","settings/allowInsecureHttp"});
+ if(provider==dav::webdavId)groups.append(QStringList{"settings/address","settings/linkBase","settings/allowInsecureHttp"});
+ return groups;}
 QStringList fieldGroup(const QString& path,const QString& provider){for(const auto& group:fieldGroups(provider))if(group.contains(path))return group;return {path};}
 }
 QStringList SettingsWindow::profileOrder()const{QStringList ids;for(const auto& p:draft_["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
@@ -3524,8 +3528,11 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  ++setupAccepting_;updateSetupButton();emit viewStateChanged();
  settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
-  if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);}emit viewStateChanged();return;}
-  if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text())davSignInSetup_=data["setupId"].toString();
+  if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
+  if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text()){davSignInSetup_=data["setupId"].toString();
+   // Cancel was pressed before the sign-in was accepted: it is cancelled now, and no browser opens.
+   if(davCancelPending_){davCancelPending_=false;davAdoptedSetup_=davSignInSetup_;cancelDavSignIn();}}
+  else if(kind=="connectAccount")davCancelPending_=false;
   // Only an admitted request consumes typed secrets; a refusal preserves them.
   if(profileId==profileId_->text()){
    // A custom uploader's values often come from an imported file: they are kept until the store has succeeded.

@@ -463,6 +463,8 @@ int main(int argc,char* argv[]) {
    const auto current=[&settings](const putgd::Destination& d){const auto p=settings.snapshot().profiles.value(d.profileId);const auto s=p["settings"].toObject();return p["provider"]==d.providerId&&s["server"]==d.settings["server"]&&s["address"]==d.settings["address"]&&p["credentials"].toObject()==d.credentialReference;};
    const putgd::DavProvider::Background background=[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));};
    if(kind!="testDestination"){dav->setup(kind,destination,input,background,std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind),current);return;}
+   // Journal recovery first, as for S3, B2 and R2: a test that never reached the provider leaves the last check as it was.
+   if(!operations.destinationTestsReady()){auto error=operations.notReadyError();error.details["notAttempted"]=true;reply(error,{});return;}
    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
    auto trail=std::make_shared<putgd::DestinationTestTrail>();
    auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){

@@ -393,7 +393,13 @@ public:
         if (method == "stat") return stat(error);
         if (method == "reconcile") return reconcile(error);
         if (method == "remove") return remove(error, uncertain);
-        if (method == "share") return share(error, uncertain);
+        if (method == "share") {
+            // A recorded share confirmed gone is forgotten whatever the step's outcome, an uncertain
+            // create included; a replacement this step checkpointed stays (the resident checks).
+            auto out = share(error, uncertain);
+            if (shareIdGone_ && !out.contains("forgetShareId")) out["forgetShareId"] = request_["progress"].toObject()["shareId"];
+            return out;
+        }
         if (method == "abandon") return abandon(error);
         if (method == "testDestination") return testDestination(error);
         error = {"webdav_protocol", "Unsupported WebDAV worker method", {}};
@@ -621,13 +627,18 @@ private:
     // at that ETag are read back and compared; only then is that ETag the file's. Without a
     // confirmed identity the receipt has no concurrency token: History can't delete it and
     // Nextcloud makes no link for it, with the reason recorded.
-    QJsonObject storedReceipt(const QUrl& target, const Reply& write, const QString& name, const Artifact& artifact) {
+    // `verified`: an entry whose strong ETag a recovery has already confirmed by reading the bytes
+    // back at it (any size); its identity is used as it is.
+    QJsonObject storedReceipt(const QUrl& target, const Reply& write, const QString& name, const Artifact& artifact, const Entry* verified = nullptr) {
         auto out = reference(name);
         out["bytes"] = double(artifact.bytes);
         out["sha256"] = artifact.sha256;
         const auto writeTag = write.header("etag").isEmpty() ? write.header("oc-etag") : write.header("etag");
         QString etag, fileId = headerFileId(write.header("oc-fileid"));
-        if (strongTag(writeTag)) {
+        if (verified && strongTag(verified->etag)) {
+            etag = verified->etag;
+            if (fileId.isEmpty()) fileId = verified->fileId;
+        } else if (strongTag(writeTag)) {
             etag = writeTag;
             if (fileId.isEmpty()) {
                 const auto entry = stored(target);
@@ -727,7 +738,9 @@ private:
                     if (!((code >= 200 && code < 300) || code == 404)) return false;
                 }
             }
-            return any && !reader.hasError();
+            if (!any || reader.hasError()) return false;
+            // A multistatus speaks for its members, not the folder: gone only once the folder is.
+            return propfind(chunkFolder(id)).status == 404;
         }
         return r.ok() || r.status == 404;
     }
@@ -798,7 +811,7 @@ private:
                         const auto content = sameContent(target, artifact, entry.etag);
                         if (content == Content::Same) {
                             journal(dropChunks(id) ? QString() : id, earlier);
-                            auto receipt = StorageReceipt::fromJson(storedReceipt(target, Reply{}, name, artifact));
+                            auto receipt = StorageReceipt::fromJson(storedReceipt(target, Reply{}, name, artifact, &entry));
                             return {{"status", "uploaded"}, {"receipt", receipt.toJson()}};
                         }
                         if (content == Content::Unknown) break;
@@ -874,7 +887,8 @@ private:
         const auto content = sameContent(target, artifact, strongTag(entry.etag) ? entry.etag : QString());
         if (content == Content::Unknown) return {{"status", "unknown"}};
         if (content == Content::Different) return {{"status", "foreign"}};
-        return {{"status", "own"}, {"receipt", storedReceipt(target, Reply{}, name, artifact)}};
+        // Read back at its strong ETag: that ETag is confirmed, whatever the file's size.
+        return {{"status", "own"}, {"receipt", storedReceipt(target, Reply{}, name, artifact, strongTag(entry.etag) ? &entry : nullptr)}};
     }
     QJsonObject remove(Error& error, bool& uncertain) {
         const auto expected = StorageReceipt::fromJson(request_["receipt"].toObject());
@@ -933,7 +947,7 @@ private:
         const auto source = share["item_source"].toVariant().toString();
         // Read only: no create, update or delete (Nextcloud may add the reshare bit, 16).
         return share["share_type"].toInt(-1) == 3 && (share["permissions"].toInt(-1) & 15) == 1 && !share["token"].toString().isEmpty() &&
-               share["password"].toString().isEmpty() && (fileId.isEmpty() || source.isEmpty() || source == fileId);
+               share["password"].toString().isEmpty() && !fileId.isEmpty() && source == fileId;
     }
     // put.gd's share of this upload: by the share ID this step journaled, else by the recorded
     // link's token, else by its label, which must match exactly one share. Empty when there is
@@ -946,7 +960,12 @@ private:
             // Gone (404, or not among the shares named): forgotten, and none is put.gd's.
             if (r.status == 404) { shareIdGone_ = true; return QJsonObject{}; }
             if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
+            // Only a readable OCS answer says anything about the share: a proxy's page doesn't.
             const auto data = r.data();
+            if (r.ocs().isEmpty() || !(data.isArray() || data.isObject())) {
+                error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                return std::nullopt;
+            }
             const auto list = data.isArray() ? data.toArray() : QJsonArray{data};
             QList<QJsonObject> named;
             for (const auto& value : list) if (value.toObject()["id"].toVariant().toString() == recordedId) named.append(value.toObject());
@@ -976,6 +995,10 @@ private:
         const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares?path=" + QString::fromLatin1(QUrl::toPercentEncoding(path)) + "&reshares=false");
         if (r.status == 404) return QJsonObject{};
         if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
+        if (r.ocs().isEmpty() || !r.data().isArray()) {
+            error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+            return std::nullopt;
+        }
         // The recorded link: the receipt's token, or the digest of it History passed with a revoke.
         // The label is the fallback only when neither was recorded.
         const auto token = shareToken(receipt.directUrl);
@@ -1039,6 +1062,9 @@ private:
         if (action != "create") { error = {"invalid_request", "Unknown sharing action", {}}; return {}; }
         // put.gd's own link from an earlier attempt is the link.
         if (!existing->isEmpty() && publicReadOnly(*existing, receipt)) return shareResult("shared", receipt, *existing);
+        // Without the file's ID put.gd couldn't tell its link apart later, nor remove it: none is made.
+        if (receipt.objectReference["fileId"].toString().isEmpty())
+            return notMade({"webdav_protocol", "Nextcloud didn't report this file's ID, so put.gd makes no link it couldn't manage later.", {{"requestStage", "share_create"}}});
         loadCapabilities();
         if (linkState() == 0) return notMade(sharingDisabled());
         if (passwordEnforced()) return notMade(passwordRequired());
@@ -1063,14 +1089,16 @@ private:
                 const auto removed = deleteShare(made);
                 if (removed.ok() || removed.status == 404)
                     return notMade({"webdav_protocol", "Nextcloud made a link put.gd didn't ask for (not a public read-only link of this file), so put.gd removed it.", {{"requestStage", "share_create"}}});
+                // The share ID stays in the journal only, never in the error.
                 error = failure(removed, QUrl(server()), "share_rollback");
-                error.details["shareId"] = shareId;
                 uncertain = true;
                 return {{"status", "unknown"}};
             }
             return shareResult("shared", receipt, made);
         }
         // Nextcloud's own text only tells the cases apart; the message is put.gd's.
+        // A request that may have reached the server is unknown, whatever its text says.
+        if (uncertainAfter(r)) { error = failure(r, QUrl(server()), "share_create"); uncertain = true; return {{"status", "unknown"}}; }
         const auto message = r.ocsMessage();
         const auto classified = [&](Error e) {
             const auto statuses = failure(r, QUrl(server()), "share_create").details;
@@ -1310,11 +1338,16 @@ private:
             if (wrong) { if (!error) error = wrong; out["cleanupStatus"] = "retained"; return out; }
             const auto refused = client_.send("DELETE", file(artifact.name), {{"If-Match", "\"putgd-test-mismatch\""}});
             out["conditionalDelete"] = refused.status == 412;
-            if (refused.status != 412) {
-                warn("webdav_conditional_delete_ignored", "The server ignores If-Match on delete: it deleted the test file although its ETag didn't match. A file replaced on the server after an upload could then be deleted from History.");
-                // Done is recorded only once the file's absence is confirmed.
+            if (refused.status != 412 && !refused.ok()) {
+                // Neither refused for the ETag nor done: the probe says nothing about If-Match.
+                warn("webdav_conditional_delete_unchecked", QString("put.gd couldn't check whether the server honours If-Match on delete (HTTP %1).").arg(refused.status));
+            } else if (refused.status != 412) {
+                // The warning only once the file is confirmed gone: then the delete took effect.
                 const auto after = propfind(file(artifact.name));
-                if (after.status == 404) {
+                if (after.status != 404)
+                    warn("webdav_conditional_delete_unchecked", QString("put.gd couldn't check whether the server honours If-Match on delete (HTTP %1).").arg(refused.status));
+                else {
+                    warn("webdav_conditional_delete_ignored", "The server ignores If-Match on delete: it deleted the test file although its ETag didn't match. A file replaced on the server after an upload could then be deleted from History.");
                     // Removed only once that is on record.
                     if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "done"}, {"target", recorded.toJson()}})) { if (!error) error = e; out["cleanupStatus"] = "unknown"; return out; }
                     out["cleanupStatus"] = "removed";
@@ -1329,6 +1362,9 @@ private:
         const auto removed = remove(cleanup, cleanupUncertain);
         out["cleanupStatus"] = removed["status"];
         out["cleanupProgress"] = removed["progress"];
+        // Not removed (changed meanwhile, or unknown): the file stays, and the user is told which.
+        if (!QStringList{"removed", "missing"}.contains(removed["status"].toString()))
+            warn("webdav_test_file_left", "The test file " + artifact.name + " was left on the server (" + removed["status"].toString("unknown") + "). Delete it there.");
         if (!error && cleanup) error = cleanup;
         return out;
     }

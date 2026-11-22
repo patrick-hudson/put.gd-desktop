@@ -66,7 +66,9 @@ void CredentialStore::setSession(const QString& profile, Credentials value) {
 }
 void CredentialStore::forget(const QString& profile, const QJsonObject& reference) {
     QMutexLocker lock(&mutex_);
-    cache_.remove(cacheKey(profile, reference));
+    const auto key = cacheKey(profile, reference);
+    cache_.remove(key);
+    ++erased_[key];
 }
 std::optional<Credentials> CredentialStore::cached(const QString& profile, const QJsonObject& reference) const {
     QMutexLocker lock(&mutex_);
@@ -81,10 +83,16 @@ void CredentialStore::unlock(const QString& profile, const QJsonObject& referenc
         reply({"credential_setup_required", "Select and provide credentials explicitly", {}});
         return;
     }
+    const auto key = cacheKey(profile, reference);
+    quint64 erasedBefore = 0;
+    {
+        QMutexLocker lock(&mutex_);
+        erasedBefore = erased_.value(key);
+    }
     auto* job = new QKeychain::ReadPasswordJob("putgd", this);
     job->setInsecureFallback(false);
     job->setKey(reference["reference"].toString());
-    connect(job, &QKeychain::Job::finished, this, [this, profile, reference, reply](QKeychain::Job* base) {
+    connect(job, &QKeychain::Job::finished, this, [this, profile, reference, reply, key, erasedBefore](QKeychain::Job* base) {
         auto* read = static_cast<QKeychain::ReadPasswordJob*>(base);
         if (auto error = storeError(read)) {
             reply(error);
@@ -95,7 +103,16 @@ void CredentialStore::unlock(const QString& profile, const QJsonObject& referenc
             reply(error);
             return;
         }
-        remember(cacheKey(profile, reference), std::move(value));
+        {
+            // Erased (a sign-out) while this read was in flight: what it read is not kept.
+            QMutexLocker lock(&mutex_);
+            if (erased_.value(key) != erasedBefore) {
+                lock.unlock();
+                reply({"credential_setup_required", "These credentials were removed while put.gd was reading them", {}});
+                return;
+            }
+        }
+        remember(key, std::move(value));
         reply({});
     });
     job->start();

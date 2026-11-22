@@ -204,7 +204,7 @@ private:
  // for agents (inspect, import a .sxcu file into the form, open or close its dialog).
  CustomUploaderPanel* uploader_=nullptr;
  // Nextcloud and WebDAV (#1872): the panel, the running sign-in job, and its steps (SettingsDav.cpp).
- DavDestinationPanel* dav_=nullptr;QString davSignInSetup_,davRemoving_,davAdoptedSetup_;
+ DavDestinationPanel* dav_=nullptr;QString davSignInSetup_,davRemoving_,davAdoptedSetup_;bool davCancelPending_=false;
  // Remove destination for Nextcloud: sign out (revoke) first, say whether the server confirmed it,
  // then remove.
  void revokeBeforeRemoving(const QString& profileId);
