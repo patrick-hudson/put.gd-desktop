@@ -106,6 +106,13 @@ QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
 // leaves it out; the growth takes it back in, and stops at a window's edge,
 // where a desktop or frame of another shade would be counted as ink.
 QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance=6);
+// #1912: in a panel grown through its window, the rows outside the rows the
+// panel was read in [readTop, readBottom) that hold ink or faint ink: text the
+// first pass never saw. Over a whole window of plain background, Otsu's
+// threshold can fall below a long faint line, which then counts as ink and
+// not as faint, so faintLines() alone misses it. Runs of half a line to three
+// lines, padded by up to two rows short of the read rows, at most `limit`.
+QList<Band> unreadLines(const Profile& profile,int width,int height,int readTop,int readBottom,int limit=8);
 // Stretches a band copy's contrast so its darkest pixel is black and the
 // background white: faint ink becomes ink Otsu keeps.
 void stretchContrast(GreyImage& band,int background);

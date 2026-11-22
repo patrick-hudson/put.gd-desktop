@@ -117,6 +117,20 @@ private slots:
   const GreyView window{view.row(grown.y())+grown.x(),grown.width(),grown.height(),width};
   const auto found=faintLines(measure(window,{}),grown.width(),grown.height());
   QCOMPARE(found.size(),qsizetype(1));QVERIFY(found.first().top<=260-40&&found.first().bottom>=272-40);
+  // A long faint line below the read rows that Otsu takes for ink over the
+  // whole window is still read again as text the first pass never saw.
+  {auto heavy=grey;
+   for(int y=320;y<338;++y)for(int x=80;x<740;++x)if(x%3!=0)heavy[y*width+x]=char(70);
+   const GreyView heavyView{reinterpret_cast<const uint8_t*>(heavy.constData()),width,height,width};
+   const auto g=plainAround(heavyView,trimmed,{},44);
+   const GreyView w{heavyView.row(g.y())+g.x(),g.width(),g.height(),width};
+   const auto prof=measure(w,{});
+   const int readTop=trimmed.top()-g.top(),readBottom=trimmed.bottom()+1-g.top();
+   const auto unread=unreadLines(prof,g.width(),g.height(),readTop,readBottom);
+   // The faint line at row 260 and the heavy one, both below the read rows.
+   QCOMPARE(unread.size(),qsizetype(2));
+   QVERIFY(unread.first().top>=readBottom&&unread.first().top<=260-g.top());
+   QVERIFY(unread.last().top<=320-g.top()&&unread.last().bottom>=338-g.top());}
   // Never into another panel: one beside it on the same plain background.
   QCOMPARE(plainAround(view,trimmed,{QRect(500,40,100,360)},44).right(),499);
   // A dense faint line, two thirds ink across the window, still lets it grow past (Sol on #1920).

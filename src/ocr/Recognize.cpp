@@ -384,7 +384,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // window's edge: a desktop of another shade in the region would be taken for
  // ink, and no row would look blank. Anything smaller is one panel, the whole
  // image, as before.
- struct FaintRegion { QRect rect;GreyView view;QList<Quad> codes;Profile profile;double scale=1;bool invert=false; };
+ // readTop/readBottom: the rows its panel was read in, when the region grew past them.
+ struct FaintRegion { QRect rect;GreyView view;QList<Quad> codes;Profile profile;double scale=1;bool invert=false;int readTop=0,readBottom=0; };
  QList<FaintRegion> faintRegions;
  if(options.candidates){
   if(panelList.size()==1&&panelList.first().rect==QRect(0,0,image.width,image.height)){
@@ -405,6 +406,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
      if(inside)r.codes.append(moved);
     }
     r.profile=measure(r.view,r.codes);r.invert=options.invertDark&&r.profile.dark;r.scale=p.plan.scale;
+    r.readTop=p.rect.top()-rect.top();r.readBottom=p.rect.bottom()+1-rect.top();
     faintRegions.append(std::move(r));
    }
   }
@@ -418,7 +420,17 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    // At most eight runs a region; one more left unread, or one the budget leaves unread, cut
    // short or failed, marks the result truncated, so the check before uploading never takes it
    // for a whole read (Sol on #1904).
-   const auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
+   auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
+   // In a grown panel, also the text outside the rows its panel was read in (#1912).
+   // All of them, before the cap below counts the bands (Sol on #1924); one is
+   // left out only when a faint band holds all of it (CodeRabbit on #1924): read
+   // whole otherwise, a word read twice is dropped when the faint words join.
+   if(p.readBottom>p.readTop){
+    const auto faintOnly=bands;
+    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height()))
+     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return b.top<=u.top&&u.bottom<=b.bottom;}))bands.append(u);
+    std::sort(bands.begin(),bands.end(),[](const Band& a,const Band& b){return a.top<b.top;});
+   }
    if(bands.size()>8)faintCut=true;
    for(int b=0;b<bands.size()&&b<8;++b){
     const auto& band=bands.at(b);
