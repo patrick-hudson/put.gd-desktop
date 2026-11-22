@@ -112,16 +112,21 @@ void stretchContrast(GreyImage& band,int background);
 inline constexpr int tokenLength=12;
 inline constexpr float tokenConfidence=70;
 bool uncertainToken(const QString& text,float confidence);
-// The rows to read again around such words (each word's box grown by a third of
-// its height and one row, joined where they touch), at most `limit`, the least
-// confident first, returned top to bottom. Boxes are in the region's pixels.
+// The areas to read again around such words: each word's box grown by a third
+// of its height and one row above and below and by its height either side,
+// joined where they touch, inside width x height. The least confident first,
+// until `limit` areas or areas covering `share` of width x height are taken;
+// returned top to bottom. Only the words are read again, not their rows: on a
+// 4K terminal of tokens, whole rows made one band of the page (2.1 s to 7.6 s).
 struct TokenWord { QRect rect;float confidence=0; };
-QList<Band> tokenLines(const QList<TokenWord>& words,int height,int limit=24);
+QList<QRect> tokenAreas(const QList<TokenWord>& words,int width,int height,int limit=64,double share=0.25);
 // A band copy for that second read: every pixel's distance from its local
 // background (the median of the 80 px around it), stretched so the strongest
 // ink nearby is black, on white. It reads dark and light, faint and coloured
 // backgrounds alike; scaled and bordered like bandImage.
 GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes);
+// The same for an area: columns [area.left(), area.right()] of the band.
+GreyImage contrastArea(const GreyView& source,const QRect& area,double scale,int border,const QList<Quad>& codes);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.

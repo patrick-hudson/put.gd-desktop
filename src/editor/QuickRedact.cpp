@@ -1596,8 +1596,8 @@ Result findRead(const QList<RecognizedWord>& candidates,const QStringList& chose
 // apart from the first read's. Side by side on one row the two readings of a
 // line would be taken for one ("SHORT_SHA=2f6424a SHORT_SHA=2f6424a"). The
 // second read is matched in the first read's page instead: its words take the
-// place of the first read's on their rows, so the lines around them (a key's
-// name above it, a PEM block's header) still count; read on their own, PEM
+// place of the first read's they overlap, so the words around them (a key's
+// name beside or above it, a PEM block's header) still count; read on their own, PEM
 // public-key lines were taken for keys. Only matches holding a second-read
 // word are added to the first read's; they get what is left of the budget.
 Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel,const PatternMatcher& matcher) {
@@ -1605,12 +1605,13 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
  for(int i=0;i<candidates.size();++i)(candidates.at(i).second?secondRead:firstRead).append(i);
  if(secondRead.isEmpty())return findRead(candidates,chosen,sources,budgetMs,progress,cancel,matcher);
  QElapsedTimer clock;clock.start();
- // The page with the second read in place: first-read words whose centre lies
- // within a second-read word's height on its row leave.
+ // The page with the second read in place: a first-read word leaves when a
+ // second-read word overlaps it on its row (centre within that word's height),
+ // so a token's name beside it stays.
  QList<int> replaced;
  for(const int i:std::as_const(firstRead)){
-  const auto centre=candidates.at(i).rect.center().y();
-  if(std::none_of(secondRead.cbegin(),secondRead.cend(),[&](int j){const auto& r=candidates.at(j).rect;return centre>=r.top()&&centre<=r.bottom();}))replaced.append(i);
+  const auto& own=candidates.at(i).rect;const auto centre=own.center().y();
+  if(std::none_of(secondRead.cbegin(),secondRead.cend(),[&](int j){const auto& r=candidates.at(j).rect;return centre>=r.top()&&centre<=r.bottom()&&r.left()<=own.right()&&r.right()>=own.left();}))replaced.append(i);
  }
  replaced+=secondRead;std::sort(replaced.begin(),replaced.end());
  const auto subset=[&](const QList<int>& indexes){QList<RecognizedWord> out;out.reserve(indexes.size());for(const int i:indexes)out.append(candidates.at(i));return out;};

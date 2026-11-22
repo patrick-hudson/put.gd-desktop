@@ -498,7 +498,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // redact's candidates only. Both readings stay candidates: one misread
  // character breaks a token, and the second read is a second chance. Only the
  // first read is copied, and a page with no such word costs nothing.
- struct Token { int panel=0;Band band;BandText text; };
+ struct Token { int panel=0;QRect area;BandText text; };
  QList<Token> tokens;
  if(options.candidates&&!result.truncated&&!late){
   for(int i=0;i<panelList.size();++i){
@@ -509,12 +509,12 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
     if(uncertainToken(word.text,word.confidence))unsure.append({word.rect.translated(-p.rect.topLeft()),word.confidence});
    }
    if(unsure.isEmpty())continue;
-   for(const auto& band:tokenLines(unsure,p.rect.height())){
+   for(const auto& area:tokenAreas(unsure,p.rect.width(),p.rect.height())){
     const int deadline=options.budgetMs>0?shared->left():0;
     if(options.budgetMs>0&&deadline<=0)break;
-    const auto copy=contrastBand(p.view,band,p.plan.scale,options.limits.border,p.codes);
+    const auto copy=contrastArea(p.view,area,p.plan.scale,options.limits.border,p.codes);
     bool cutShort=false,failed=false;
-    Token t{i,band,shared->first.recognize(copy,p.plan.scale,deadline,&cutShort,&failed)};
+    Token t{i,area,shared->first.recognize(copy,p.plan.scale,deadline,&cutShort,&failed)};
     // What the first read found stands; a failed or cut second read adds nothing.
     if(failed)break;
     if(!cutShort)tokens.append(std::move(t));
@@ -552,13 +552,14 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // readings of one line side by side would be read as one.
  for(const auto& tk:std::as_const(tokens)){
   const auto& p=panelList[tk.panel];
-  Recognition part;mergeBand(part,tk.text,tk.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
+  const QPoint origin=p.rect.topLeft()+QPoint(tk.area.x(),0);
+  Recognition part;mergeBand(part,tk.text,{tk.area.top(),tk.area.bottom()+1,false},nullptr,0,p.plan.scale,options.limits.border,0,tk.area.width(),p.rect.height());
   const int lineBase=int(result.recognition.lines.size());
   const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
-  for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
+  for(auto line:std::as_const(part.lines)){line.rect.translate(origin);line.block=block;result.recognition.lines.append(line);}
   for(auto word:std::as_const(part.words)){
-   word.rect.translate(p.rect.topLeft());word.line+=lineBase;word.kept=false;word.second=true;
-   for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
+   word.rect.translate(origin);word.line+=lineBase;word.kept=false;word.second=true;
+   for(auto& symbol:word.symbols)symbol.rect.translate(origin);
    result.recognition.words.append(std::move(word));
   }
  }

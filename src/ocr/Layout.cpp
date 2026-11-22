@@ -434,26 +434,33 @@ bool uncertainToken(const QString& text,float confidence){
  for(qsizetype i=from;i<to;++i){const QChar c=text.at(i);letter|=c.isLetter();digit|=c.isDigit();}
  return letter&&digit;
 }
-QList<Band> tokenLines(const QList<TokenWord>& words,int height,int limit){
- struct Run { int top=0,bottom=0;float confidence=0; };
- QList<Run> runs;
+QList<QRect> tokenAreas(const QList<TokenWord>& words,int width,int height,int limit,double share){
+ const QRect whole(0,0,width,height);
+ struct Area { QRect rect;float confidence=0; };
+ QList<Area> areas;
  for(const auto& w:words){
-  const int grow=w.rect.height()/3+1;
-  runs.append({std::clamp(w.rect.top()-grow,0,height),std::clamp(w.rect.bottom()+1+grow,0,height),w.confidence});
+  const int h=w.rect.height(),grow=h/3+1;
+  const QRect r=w.rect.adjusted(-h,-grow,h,grow).intersected(whole);
+  if(!r.isEmpty())areas.append({r,w.confidence});
  }
- std::sort(runs.begin(),runs.end(),[](const Run& a,const Run& b){return a.top<b.top;});
- QList<Run> joined;
- for(const auto& r:std::as_const(runs)){
-  if(r.bottom<=r.top)continue;
-  if(!joined.isEmpty()&&r.top<=joined.last().bottom){auto& j=joined.last();j.bottom=std::max(j.bottom,r.bottom);j.confidence=std::min(j.confidence,r.confidence);}
-  else joined.append(r);
+ // Joined where they touch, until none do.
+ for(bool joined=true;joined;){
+  joined=false;
+  for(int i=0;i<areas.size()&&!joined;++i)for(int j=i+1;j<areas.size();++j){
+   if(!areas[i].rect.intersects(areas[j].rect))continue;
+   areas[i].rect=areas[i].rect.united(areas[j].rect);areas[i].confidence=std::min(areas[i].confidence,areas[j].confidence);
+   areas.removeAt(j);joined=true;break;
+  }
  }
- if(joined.size()>limit){
-  std::stable_sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.confidence<b.confidence;});
-  joined.resize(std::max(0,limit));
-  std::sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.top<b.top;});
+ std::stable_sort(areas.begin(),areas.end(),[](const Area& a,const Area& b){return a.confidence<b.confidence;});
+ QList<QRect> out;qint64 taken=0;const double most=share*double(width)*double(height);
+ for(const auto& a:std::as_const(areas)){
+  if(out.size()>=limit)break;
+  const qint64 size=qint64(a.rect.width())*a.rect.height();
+  if(!out.isEmpty()&&double(taken+size)>most)continue;
+  out.append(a.rect);taken+=size;
  }
- QList<Band> out;for(const auto& r:std::as_const(joined))out.append({r.top,r.bottom,false});
+ std::sort(out.begin(),out.end(),[](const QRect& a,const QRect& b){return a.top()!=b.top()?a.top()<b.top():a.left()<b.left();});
  return out;
 }
 GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes){
@@ -504,5 +511,13 @@ GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int 
  QList<Quad> moved;
  for(const auto& q:codes){Quad m=q;for(auto& p:m)p.ry()-=top;moved.append(m);}
  return bandImage(distance.view(),{band.top-top,band.bottom-top,false},scale,border,moved,255,false);
+}
+GreyImage contrastArea(const GreyView& source,const QRect& area,double scale,int border,const QList<Quad>& codes){
+ const QRect r=area.intersected(QRect(0,0,source.width,source.height));
+ if(r.isEmpty())return {};
+ const GreyView columns{source.row(0)+r.x(),r.width(),source.height,source.stride};
+ QList<Quad> moved;
+ for(const auto& q:codes){Quad m=q;for(auto& p:m)p.rx()-=r.x();moved.append(m);}
+ return contrastBand(columns,{r.top(),r.bottom()+1,false},scale,border,moved);
 }
 }
