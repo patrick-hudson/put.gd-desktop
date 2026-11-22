@@ -337,6 +337,27 @@ private slots:
   {const auto begin=QString("-----BEGIN RSA ")+"PRIV"+"ATE KEY-----",end=QString("-----END RSA ")+"PRIV"+"ATE KEY-----";
    const auto damaged=QString("MITEOWIBAAKCAQEAHr€Lx")+"O6iBCd5V$NA LeO1 Lp§Mw";
    QTest::newRow("a PEM block takes a damaged first body line")<<begin+" | "+damaged+" | q7XbSLr2Vt4kKps8NmiZc6wd3Hs5JgoFy | "+end<<all<<QStringList{"key: "+begin+" "+damaged+" q7XbSLr2Vt4kKps8NmiZc6wd3Hs5JgoFy "+end};}
+  // Sol on #1903.
+  {const QStringList urls{QString("postgres://app:%40Ri")+"dge7@db/prod",QString("redis://:82")+"9413@db/0",QString("postgres://alice:Hi")+"ll:8x@db/prod"};
+   for(const auto& url:urls)QTest::newRow(qPrintable("a connection string's password: "+url.left(10)))<<"url "+url<<QStringList{"key"}<<QStringList{"key: "+url};}
+  QTest::newRow("a port at the end of a word is no password")<<"http://localhost:3000 ready"<<QStringList{"key"}<<QStringList{};
+  QTest::newRow("a numeric password")<<"PASSWORD="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: PASSWORD="+QString("82")+"9413"};
+  QTest::newRow("a value with a filler word inside")<<"SESSION_SECRET=H7-ex"+QString("ample-r9F4")<<QStringList{"key"}<<QStringList{"key: SESSION_SECRET=H7-ex"+QString("ample-r9F4")};
+  QTest::newRow("a password of symbols in one word")<<"PASSWORD='R!$^"+QString("&*()#'")<<QStringList{"key"}<<QStringList{"key: PASSWORD='R!$^"+QString("&*()#'")};
+  {const auto aws=QString("AK")+"IA"+"QXXXXZ7TBNV2XK4L";QTest::newRow("an AWS key with four X in it")<<"id "+aws<<QStringList{"key"}<<QStringList{"key: "+aws};}
+  QTest::newRow("acronym names")<<"APIKey="+QString("q9Lm2Vx7")+"Tz4Rb8Nc | DBPassword: Hn4!"+QString("vQ8zR2#wLp")<<QStringList{"key"}<<QStringList{"key: APIKey="+QString("q9Lm2Vx7")+"Tz4Rb8Nc","key: Hn4!"+QString("vQ8zR2#wLp")};
+  QTest::newRow("a public-named password")<<"PUBLIC_DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<QStringList{"key"}<<QStringList{"key: PUBLIC_DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
+  {const auto cert=QString("-----BEGIN CERTIFICATE-----"),priv=QString("-----BEGIN RSA PRIV")+"ATE KEY-----",privEnd=QString("-----END RSA PRIV")+"ATE KEY-----";
+   const auto body=QString("MIIEowIBAAKCAQEAHrLx06iBCd5V")+"NAle01lpMwSBDLe";
+   QTest::newRow("a private key after a certificate missing its END")<<cert+" | MIIDdzCCAl+gAwIBAgIEAgAAuTAN | "+priv+" | "+body+" | "+privEnd+" | -----END PUBLIC KEY-----"<<QStringList{"key"}<<QStringList{"key: "+priv+" "+body+" "+privEnd};}
+  {const auto grafana=QString("bt")+"Zq8Lm2Vx7Tz4Rb8Nc1Kp6Wd3Hs5Jg0Fy";
+   QTest::newRow("a Grafana token split after glc")<<"token gl"+QString("c ")+grafana<<QStringList{"key"}<<QStringList{"key: gl"+QString("c ")+grafana};}
+  {const auto bot=QString("123456:")+"ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
+   QTest::newRow("a Telegram bot token")<<"bot "+bot<<QStringList{"key"}<<QStringList{"key: "+bot};
+   QTest::newRow("a Telegram bot API URL")<<"https://api.telegram.org/bot"+bot+"/getMe"<<QStringList{"key"}<<QStringList{"key: https://api.telegram.org/bot"+bot+"/getMe"};}
+  QTest::newRow("a Slack webhook cut short or masked stays visible")<<"https://hooks.slack.com/services/T00000000 https://hooks.slack.com/services/T00000000/B00000000/"+QString(24,'X')<<QStringList{"key"}<<QStringList{};
+  {const auto none=QString("eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.")+"eyJzdWIiOiIxIn0.";
+   QTest::newRow("an unsigned JWT with typ first stays visible")<<"TOKEN="+none<<QStringList{"key"}<<QStringList{};}
   QTest::newRow("hex run with no word about it")<<"value "+hexRun<<all<<QStringList{"key: value "+hexRun};
   // #1895: Patrick's decoy page. A hex run beside a hash word is a digest; a secret word beside it wins.
   {const auto sha1=QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab",sha256=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
@@ -359,7 +380,8 @@ private slots:
   {const auto hex=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
    QTest::newRow("a camelCase secret name beats a hash word")<<"clientSecret = "+hex+" // SHA-256"<<all<<QStringList{"key: clientSecret = "+hex+" // SHA-256"};}
   {const auto masked=QString("sk")+"_li"+"ve_"+QString(32,'X')+"9aB3dE5fG7hJ";
-   QTest::newRow("a masked key with an unmasked tail stays covered")<<"key "+masked<<all<<QStringList{"key: "+masked};}
+   // #1894: a run of X no key holds marks a masked display, whose tail is meant to be seen.
+   QTest::newRow("a masked key with a tail shown stays visible")<<"key "+masked<<all<<QStringList{};}
   QTest::newRow("half zeros and the rest a token stays covered")<<"TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"<<QStringList{"key"}<<QStringList{"key: TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"};
   // Sol on #1901, round 2.
   QTest::newRow("a Brazilian mobile after a country code word is a phone")<<"Celular BR 91234-5678"<<all<<QStringList{"phone: 91234-5678"};

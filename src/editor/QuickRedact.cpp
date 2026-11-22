@@ -178,6 +178,9 @@ bool tokenCharacter(QChar c) {return (c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'
 // loose (#1894): one in four, for passwords and connection strings, which use symbols freely.
 bool tokenPiece(const QString& word,bool loose=false) {
  if(word.isEmpty())return false;
+ // An assignment is one, whatever its value's symbols (PASSWORD='R!$^&*()#', Sol on #1903).
+ static const QRegularExpression assigned(QStringLiteral("^[\"'`]?[A-Za-z_][A-Za-z0-9_.-]{1,63}[\"'`]?[=:]\\S"));
+ if(loose&&assigned.match(word).hasMatch())return true;
  // #1820: quotes around a word are punctuation, not misread characters ("“AKIA…" in an editor's string).
  static const QString quotes=QStringLiteral("\"'`\u201C\u201D\u2018\u2019\u00AB\u00BB");
  qsizetype from=0,to=word.size();
@@ -268,11 +271,11 @@ bool placeholder(const QString& body) {
  const auto other=std::count_if(body.cbegin(),body.cend(),[](QChar c){return !mask.contains(c);});
  return other*8<=body.size();
 }
-// #1894: a masked secret shows a run of four or more of one mask character (sk-proj-••••a1b2,
-// glptt-7******130f6, Z4CP2X4yXXXXXXXXICC==): what is left is meant to be seen. Random key text
-// almost never repeats one of these four times.
+// #1894: a masked secret shows a run of four or more of one mask character that no key uses
+// (sk-proj-••••a1b2, glptt-7******130f6), or six or more X or x (Z4CP2X4yXXXXXXXXICC==): what is
+// left is meant to be seen. A key's own alphabet can hold four X in a row (Sol on #1903).
 bool masked(const QString& text) {
- static const QRegularExpression run(QStringLiteral("(X{4,}|x{4,}|\\*{4,}|\u2022{4,}|\u00B7{4,}|\u25CF{4,})"));
+ static const QRegularExpression run(QStringLiteral("(X{6,}|x{6,}|\\*{4,}|\u2022{4,}|\u00B7{4,}|\u25CF{4,})"));
  return run.match(text).hasMatch();
 }
 // Known prefixes, tolerant of a lost or misread separator and of the usual
@@ -589,20 +592,21 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
 }
 bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards=nullptr);
 // #1894: a hex or base64 run that is public or no secret by its shape: a subresource integrity digest
-// (sha512-…), an Ethereum address (0x and 40 hex; a private key has 64), a Twilio account SID (AC and
-// 32 hex, an identifier), or base64 of plain text with spaces in it (TG9yZW0gaXBzdW0g…).
+// (sha512-…), an Ethereum address (0x and 40 hex; a private key has 64) or a Twilio account SID (AC and
+// 32 hex, an identifier).
 bool publicRun(const QString& run) {
  static const QRegularExpression shapes(QStringLiteral("(?:^|[^A-Za-z0-9])(?:sha(?:256|384|512)-[A-Za-z0-9+/]|0x[0-9a-fA-F]{40}(?![0-9a-fA-F])|AC[0-9a-f]{32}(?![0-9a-f]))"));
- if(shapes.match(run).hasMatch())return true;
- static const QRegularExpression base64(QStringLiteral("[A-Za-z0-9+/]{16,}={0,2}"));
- const auto m=base64.match(run);if(!m.hasMatch())return false;
- const auto text=QByteArray::fromBase64(m.captured().toLatin1());
- if(text.size()<12)return false;
- int printable=0,spaces=0;for(const char c:text){if(c==' ')++spaces;if(c>=32&&c<127)++printable;}
- return spaces>=2&&printable*10>=int(text.size())*9;
+ return shapes.match(run).hasMatch();
 }
-// A JSON web token signed with "alg":"none" (its header starts eyJhbGciOiJub25lI) carries no signature.
-bool unsignedJwt(const QString& token) {return token.startsWith(QLatin1String("eyJhbGciOiJub25lI"));}
+// A JSON web token that carries no signature: its header decodes to JSON with "alg":"none" and its
+// signature part is empty (Sol on #1903). Anything recognition garbled is no such token.
+bool unsignedJwt(const QString& token) {
+ const auto parts=token.trimmed().split('.');
+ if(parts.size()!=3||!parts.at(2).isEmpty())return false;
+ const auto header=QByteArray::fromBase64(parts.at(0).toLatin1(),QByteArray::Base64UrlEncoding);
+ static const QRegularExpression none(QStringLiteral("\"alg\"\\s*:\\s*\"none\""),QRegularExpression::CaseInsensitiveOption);
+ return none.match(QString::fromLatin1(header)).hasMatch();
+}
 // Whether a line names a digest (a part of one of its words, split at anything but a letter or digit
 // and at a lowercase-to-capital change, is a hash word) and no secret.
 bool digestLine(const QList<int>& line,const QList<QString>& plain) {
@@ -634,15 +638,20 @@ bool secretName(const QString& name) {
  for(qsizetype i=0;i<name.size();++i){
   const auto c=name.at(i);
   if(!c.isLetterOrNumber()){if(!part.isEmpty())parts.append(part.toLower());part.clear();continue;}
-  if(c.isUpper()&&i>0&&name.at(i-1).isLower()&&!part.isEmpty()){parts.append(part.toLower());part.clear();}
+  // A lowercase-to-capital change, and an acronym's end before a word (APIKey, DBPassword; Sol on #1903).
+  const bool acronymEnd=c.isUpper()&&i>0&&name.at(i-1).isUpper()&&i+1<name.size()&&name.at(i+1).isLower();
+  if(((c.isUpper()&&i>0&&name.at(i-1).isLower())||acronymEnd)&&!part.isEmpty()){parts.append(part.toLower());part.clear();}
   part+=c;
  }
  if(!part.isEmpty())parts.append(part.toLower());
  if(parts.isEmpty())return false;
  static const QSet<QString> settings{"ttl","length","len","min","max","timeout","expiry","expires","expiration","file","path","dir","enabled","enable","disabled","header","type","mode","count","id","name","user","username","host","port","size","prefix","format","version","field","rotation","policy","required","hint","days","age","lifetime","endpoint","url","uri","hash","algorithm","alg","strength","reset","manager","store","provider","source","env","var","label","placeholder","length"};
  if(settings.contains(parts.last()))return false;
- // A public value says so: NEXT_PUBLIC_…, MAPBOX_PUBLIC_TOKEN, PUBLISHABLE_KEY, PUBLIC_KEY.
- if(parts.contains(QLatin1String("public"))||parts.contains(QLatin1String("publishable")))return false;
+ // A public value says so: NEXT_PUBLIC_…, MAPBOX_PUBLIC_TOKEN, PUBLISHABLE_KEY, PUBLIC_KEY; never a
+ // password or a private one (PUBLIC_DB_PASSWORD; Sol on #1903).
+ static const QSet<QString> privateParts{"password","passwords","passwd","pwd","pass","passphrase","private","privatekey"};
+ const bool privatePart=std::any_of(parts.cbegin(),parts.cend(),[](const QString& p){return privateParts.contains(p);});
+ if(!privatePart&&(parts.contains(QLatin1String("public"))||parts.contains(QLatin1String("publishable"))))return false;
  if(parts.size()==1&&(parts.first()=="pwd"||parts.first()=="oldpwd"))return false;
  static const QSet<QString> alone{"token","tokens","secret","secrets","password","passwords","passwd","pwd","pass","passphrase","credential","credentials","dsn","apikey","privatekey","accesskey","secretkey","authtoken","authorization"};
  static const QSet<QString> beforeKey{"api","access","secret","private","signing","encryption","master","account","app"};
@@ -658,15 +667,22 @@ bool secretName(const QString& name) {
 // secret unless it is empty or under four characters, digits alone, a placeholder (placeholder()), a
 // reference to one (${…}, $(…), {{…}}, <…>, %…%, $NAME) or a word that is no secret (true, none,
 // required…).
-bool secretValue(QString value) {
+// Whether a name is a password's (a PIN too): its value may be digits alone.
+bool passwordName(const QString& name) {
+ const auto lower=name.toLower();
+ return lower.contains(QLatin1String("pass"))||lower.contains(QLatin1String("pwd"))||lower.contains(QLatin1String("pin"));
+}
+// numeric: a value of digits alone counts (a password-family name, a URL's password; Sol on #1903).
+bool secretValue(QString value,bool numeric=false) {
  static const QString quotes=QStringLiteral("\"'`“”‘’");
  while(!value.isEmpty()&&(quotes.contains(value.back())||value.back()==','||value.back()==';'))value.chop(1);
  while(!value.isEmpty()&&quotes.contains(value.front()))value.remove(0,1);
  if(value.size()<4||placeholder(value)||masked(value))return false;
- if(std::all_of(value.cbegin(),value.cend(),[](QChar c){return c.isDigit();}))return false;
+ if(!numeric&&std::all_of(value.cbegin(),value.cend(),[](QChar c){return c.isDigit();}))return false;
+ if(unsignedJwt(value))return false;
  // A reference names where the secret is kept: ${…}, $(…), {{…}}, <…>, %…%, $NAME, process.env.X,
  // os.environ[…], ENV['…'], getenv(…), a 1Password op:// or Vault reference, a cloud secret's ARN.
- static const QRegularExpression reference(QStringLiteral("^(?:\\$[({]|\\{\\{|<|%|\\$[A-Za-z_][A-Za-z0-9_]*$|process\\.env\\b|os\\.environ|os\\.getenv|ENV\\[|(?:System\\.)?getenv\\(|env\\(|op://|vault:|arn:aws:)"),QRegularExpression::CaseInsensitiveOption);
+ static const QRegularExpression reference(QStringLiteral("^(?:\\$[({]|\\{\\{|<|%[A-Za-z_][A-Za-z0-9_]*%$|\\$[A-Za-z_][A-Za-z0-9_]*$|process\\.env\\b|os\\.environ|os\\.getenv|ENV\\[|(?:System\\.)?getenv\\(|env\\(|op://|vault:|arn:aws:)"),QRegularExpression::CaseInsensitiveOption);
  if(reference.match(value).hasMatch())return false;
  // A URL with no password in it (redis://localhost:6379/0) is an address, not a secret; one with a
  // password is matched as a URL.
@@ -674,11 +690,15 @@ bool secretValue(QString value) {
  if(address.match(value).hasMatch())return false;
  static const QSet<QString> words{"true","false","null","none","nil","yes","no","on","off","required","optional","undefined","empty","redacted","hidden","secret","password","token","string","example","changeme"};
  if(words.contains(value.toLower()))return false;
- // A placeholder written out: YOUR_TOKEN_HERE, your-api-key-here, <insert key>, "not-a-real-token".
- static const QSet<QString> filler{"your","here","example","placeholder","changeme","dummy","fake","redacted","replace","insert","sample","notreal"};
+ // A placeholder written out, made of filler words alone: YOUR_TOKEN_HERE, your-api-key-here,
+ // not-a-real-token. One filler word inside a real value (H7-example-r9F4) does not make it one.
+ static const QSet<QString> filler{"your","here","example","placeholder","changeme","dummy","fake","redacted","replace","insert","sample","not","a","real","the","my","api","key","token","secret","password","access","value","goes","put","this","will","work","test"};
+ static const QSet<QString> marker{"your","here","example","placeholder","changeme","dummy","fake","redacted","replace","insert","sample"};
  const auto lower=value.toLower();
- if(lower.contains(QLatin1String("not-a-real"))||lower.contains(QLatin1String("not_a_real")))return false;
- for(const auto& part:lower.split(QRegularExpression(QStringLiteral("[^a-z0-9]+")),Qt::SkipEmptyParts))if(filler.contains(part))return false;
+ {const auto parts=lower.split(QRegularExpression(QStringLiteral("[^a-z0-9]+")),Qt::SkipEmptyParts);
+  const bool allFiller=!parts.isEmpty()&&std::all_of(parts.cbegin(),parts.cend(),[](const QString& p){return filler.contains(p);});
+  const bool notReal=lower.contains(QLatin1String("not-a-real"))||lower.contains(QLatin1String("not_a_real"));
+  if(allFiller&&(notReal||std::any_of(parts.cbegin(),parts.cend(),[](const QString& p){return marker.contains(p);})))return false;}
  // A publishable key is public by design.
  static const QRegularExpression publishable(QStringLiteral("^(?:pk[_.](?:live|test)_|pk\\.ey|sb_publishable_)"));
  if(publishable.match(value).hasMatch())return false;
@@ -710,13 +730,15 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  // URLs with a password, webhooks and bot tokens.
  static const QList<QRegularExpression> urls{
   QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?![0-9]{1,5}(?:[/?#,;]|$))[^\\s/@]{3,}")),
-  QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}")),
+  // The credential-bearing path whole: team, hook and secret (Sol on #1903).
+  QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}/[A-Za-z0-9]{6,}/(?:[0-9]{6,}/)?[A-Za-z0-9]{12,}")),
   QRegularExpression(QStringLiteral("(?i)discord(?:app)?[.,]?com/api/webhooks/[0-9]{6,}/[A-Za-z0-9_-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)webhook[.,]?office[.,]?com/webhookb2/[A-Za-z0-9@-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?zapier[.,]?com/hooks/catch/[A-Za-z0-9]{3,}/[A-Za-z0-9]{3,}")),
-  QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/\\S*[?&](?:key|token)=[A-Za-z0-9_-]{8,}")),
-  QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com\\S*[?&]sig=[A-Za-z0-9_%-]{8,}")),
-  QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{8,10}:AA[A-Za-z0-9_-]{30,}")),
+  QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&)?(?:key|token)=[A-Za-z0-9_-]{8,}")),
+  QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,4}sig=[A-Za-z0-9_%-]{8,}")),
+  // A Telegram bot token: the bot's id, a colon and 35 characters (core.telegram.org/bots/api).
+  QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{6,12}:[A-Za-z0-9_-]{30,}")),
  };
  for(const auto& pattern:urls){
   for(auto it=pattern.globalMatch(segment.text);it.hasNext();){
@@ -724,12 +746,22 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
    // A URL's scheme starts a piece or follows a separator ("DATABASE_URL=postgres://…"), never inside a word.
    static const QString separators=QStringLiteral("=:\"'`(<[“‘");
    const int at=int(m.capturedStart());
-   if(&pattern==&urls.first()&&!segment.starts.contains(at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
-   // A URL's password as read: a placeholder or a reference is no secret.
+   if(&pattern==&urls.first()&&!pieceStart(segment,at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
+   // A URL's password as read, from the user's colon to the @ (or the end, the @ lost): a
+   // placeholder or a reference is no secret; digits alone are a password like any other. Digits
+   // after the colon that end a recognized word are a port, the @ never lost (Sol on #1903).
    if(&pattern==&urls.first()){
-    auto password=m.captured().mid(m.captured().lastIndexOf(':')+1);password=password.left(password.indexOf('@')<0?password.size():password.indexOf('@'));
-    if(!secretValue(password))continue;
+    const auto text=m.captured();const auto scheme=text.indexOf(QLatin1String("//"));
+    const auto colon=text.indexOf(':',scheme<0?0:scheme+2);const auto at2=text.indexOf('@',colon);
+    const auto password=text.mid(colon+1,at2<0?-1:at2-colon-1);
+    if(at2<0){
+     qsizetype d=colon+1;while(d<text.size()&&text.at(d).isDigit()&&d-colon<=5)++d;
+     if(d>colon+1&&d-colon<=6&&pieceStart(segment,int(m.capturedStart()+d)))continue;
+    }
+    if(!secretValue(password,true))continue;
    }
+   // A webhook whose credential is masked ("…/XXXXXXXX") stays visible.
+   if(&pattern!=&urls.first()&&masked(m.captured().mid(m.captured().lastIndexOf('/')+1)))continue;
    out.append(from(pieceAt(segment,m.capturedStart()),pieces-1));
   }
  }
@@ -744,7 +776,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
    // After a comma (a CSV row) the value needs a digit and a letter, so "Password,please" stays visible.
    const auto value=m.captured(3);
    if(m.captured(2)==QLatin1String(",")&&!(hasDigit(value)&&std::any_of(value.cbegin(),value.cend(),[](QChar c){return c.isLetter();})))continue;
-   if(secretName(m.captured(1))&&secretValue(value)){int last=p;while(last+1<pieces&&glued(last+1))++last;out.append(from(p,last));break;}
+   if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)))){int last=p;while(last+1<pieces&&glued(last+1))++last;out.append(from(p,last));break;}
   }
  }
  // Assignments, from a piece's start (after a line number recognition joined to it).
@@ -756,7 +788,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   const int valueAt=segment.starts.at(p)+int(m.capturedEnd());
   if(valueAt<pieceEnd(p)){
    int last=p;while(last+1<pieces&&glued(last+1))++last;
-   if(!secretValue(segment.text.mid(valueAt,pieceEnd(last)-valueAt)))continue;
+   if(!secretValue(segment.text.mid(valueAt,pieceEnd(last)-valueAt),passwordName(m.captured(1))))continue;
    out.append(from(p,last));continue;
   }
   // The value in the next piece (after a lone "=" or ":" piece too), the last on the segment. A name
@@ -771,7 +803,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   if(m.captured(1).compare(QLatin1String("authorization"),Qt::CaseInsensitive)==0&&first+1<pieces&&schemes.contains(plain.at(segment.words.at(first)).toLower()))++first;
   int last=first;while(last+1<pieces&&glued(last+1))++last;
   if(last!=pieces-1)continue;
-  if(!secretValue(segment.text.mid(segment.starts.at(first),pieceEnd(last)-segment.starts.at(first))))continue;
+  if(!secretValue(segment.text.mid(segment.starts.at(first),pieceEnd(last)-segment.starts.at(first)),passwordName(m.captured(1))))continue;
   out.append(from(first,last));
  }
  return out;
@@ -843,9 +875,19 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
   // #1894: a certificate or a public key block is public: its lines stay visible up to its END line.
   {static const QRegularExpression publicBegin(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)")),publicEnd(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?END\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)"));
-   if(publicBegin.match(lineText(line)).hasMatch()){
-    int j=k+1;while(j<keys.size()&&j<=k+100&&!publicEnd.match(lineText(lines[keys.at(j)])).hasMatch())++j;
-    if(j<keys.size()&&j<=k+100){k=j;continue;}
+   // Its own END (CERTIFICATE with CERTIFICATE), and no BEGIN of any block between: otherwise it is
+   // read line by line as any text (Sol on #1903).
+   const auto opened=publicBegin.match(lineText(line));
+   if(opened.hasMatch()){
+    const bool certificate=opened.captured().contains(QLatin1String("CERTIFICATE"));
+    int j=k+1;bool closed=false;
+    for(;j<keys.size()&&j<=k+100;++j){
+     const auto text=lineText(lines[keys.at(j)]);
+     if(begin.match(text).hasMatch()||publicBegin.match(text).hasMatch())break;
+     const auto shut=publicEnd.match(text);
+     if(shut.hasMatch()){closed=shut.captured().contains(QLatin1String("CERTIFICATE"))==certificate;break;}
+    }
+    if(closed){k=j;continue;}
    }}
   for(const auto& segment:segments(line,plain,candidates,true))out+=structuralMatches(segment,plain,candidates);
   for(const auto& segment:segments(line,plain,candidates)){
@@ -864,8 +906,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      // ...or holding one in its first piece ("STRIPE_PUBLISHABLE_KEY=pk_live_…" is one word).
      static const QRegularExpression publishableIn(QStringLiteral("(?:^|[^A-Za-z0-9])(?:pk[_,.](?:live|test)[_,.]|sb[_,.]publishable[_,.]|pk[.,]ey)"),QRegularExpression::CaseInsensitiveOption);
          const int runEnd=f.to+1<segment.starts.size()?segment.starts.at(f.to+1):int(segment.text.size());
+     const int firstEnd=f.from+1<segment.starts.size()?segment.starts.at(f.from+1):int(segment.text.size());
      const auto run=segment.text.mid(at,qMax(0,runEnd-at));
-     return publishable.match(segment.text.left(at)).hasMatch()||publishableIn.match(run).hasMatch()||(sshPublic&&f.length==0)||(f.length==0&&publicRun(run))||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,24)));
+     // Each exemption only for the public payload itself: the publishable prefix in the run's first
+     // piece, an SSH key's AAAA… blob (Sol on #1903).
+     static const QRegularExpression blob(QStringLiteral("^[\"'`]?(?:ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-[a-z0-9]+|sk-(?:ssh|ecdsa)-[a-z0-9@.-]+)?AAAA[A-Za-z0-9+/]"));
+     return publishable.match(segment.text.left(at)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||(f.length==0&&publicRun(run))||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
     }),found.end());}
    if(digestLine(line,plain))found.erase(std::remove_if(found.begin(),found.end(),[&](const Found& f){
     if(f.length>0)return false;
