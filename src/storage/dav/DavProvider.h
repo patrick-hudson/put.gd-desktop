@@ -43,6 +43,9 @@ public:
     // finishes after it changed is revoked, never saved.
     void setup(const QString& kind, const Destination&, const QJsonObject& input, const Background&, std::function<void(Error, QJsonObject)> reply,
                std::function<void(QJsonObject)> event, std::shared_ptr<std::atomic_bool> cancelled, std::function<bool(const Destination&)> current = {});
+    // Binds a Nextcloud app password stored by hand to its account (an inspection) before `then`;
+    // at once when there is nothing to bind. Test runs through it.
+    void bindThen(const Destination&, const Background&, std::function<bool(const Destination&)> current, std::function<void(Error)> then);
     // History's Unlock saved credentials, before a delete or a link change (#1872).
     void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
     // The worker executable: the installed sibling, or the build tree's.

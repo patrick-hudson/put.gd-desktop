@@ -37,6 +37,7 @@
 #include <QTimer>
 #include <QUrlQuery>
 #include <QUuid>
+#include <QRegularExpression>
 #include <QXmlStreamReader>
 #include <atomic>
 #include <cstring>
@@ -347,7 +348,7 @@ Entry parsePropfind(const QByteArray& xml) {
     return out;
 }
 // A validator If-Match can use: a strong ETag. A weak one never matches (RFC 9110, 13.1.1).
-bool strongTag(const QString& etag) { return !etag.isEmpty() && !etag.startsWith("W/"); }
+bool strongTag(const QString& etag) { return strongETag(etag); }
 // Nextcloud's OC-FileId header is the file ID zero-padded and followed by the instance ID
 // ("00000315oc…"); PROPFIND's oc:fileid is the number alone.
 QString headerFileId(const QString& header) {
@@ -499,7 +500,7 @@ private:
     int linkState() const {
         if (!capabilities_["capabilities"].isObject()) return -1;
         const auto s = sharing();
-        if (s.isEmpty()) return 0; // the sharing app is disabled
+        if (s.isEmpty()) return -1; // missing or malformed: not known
         if (s["api_enabled"].isBool() && !s["api_enabled"].toBool()) return 0;
         const auto enabled = s["public"].toObject()["enabled"];
         return enabled.isBool() ? (enabled.toBool() ? 1 : 0) : -1;
@@ -590,6 +591,13 @@ private:
         if (nextcloud()) { out["userId"] = userId_; out["path"] = sharePath(name); }
         return out;
     }
+    // A name check's or receipt's reference belongs to this account and DAV target, or nothing is
+    // written or claimed under it.
+    bool referenceMatches(const QJsonObject& reference, const QString& name) const {
+        if (reference.contains("target") && reference["target"].toString() != canonicalUrl(file(name))) return false;
+        if (nextcloud() && reference.contains("userId") && reference["userId"].toString() != userId_) return false;
+        return true;
+    }
     QJsonObject checkName(Error& error) {
         const auto name = request_["candidate"].toString();
         if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long or has a /", {}}; return {{"status", "inconclusive"}}; }
@@ -661,6 +669,7 @@ private:
         if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long or has a /", {}}; return {{"status", "failed"}}; }
         progress("preparing", 0, artifact.bytes);
         if ((error = resolveAccount())) return {{"status", "failed"}};
+        if (!referenceMatches(request_["objectReference"].toObject(), name)) { error = signInAgain(); return {{"status", "failed"}}; }
         if (nextcloud()) {
             // The only refusal before the upload: links confirmed off, so no link could follow.
             loadCapabilities();
@@ -702,6 +711,20 @@ private:
     bool dropChunks(const QString& id) {
         if (!id.startsWith("putgd-") || resolveAccount()) return false;
         const auto r = client_.send("DELETE", chunkFolder(id), {});
+        // A 207 multistatus names what wasn't deleted: any failed member means not confirmed.
+        if (r.status == 207) {
+            QXmlStreamReader reader(r.body);
+            bool any = false;
+            while (!reader.atEnd()) {
+                reader.readNext();
+                if (reader.isStartElement() && reader.name() == QLatin1String("status")) {
+                    any = true;
+                    const auto status = reader.readElementText();
+                    if (!status.contains(" 2") && !status.contains(" 404")) return false;
+                }
+            }
+            return any && !reader.hasError();
+        }
         return r.ok() || r.status == 404;
     }
     // The journal of a chunked upload: its chunk folder, and earlier ones not yet removed.
@@ -836,6 +859,7 @@ private:
         const auto artifact = Artifact::fromJson(request_["artifact"].toObject());
         const auto name = request_["objectReference"].toObject()["name"].toString(request_["candidate"].toString());
         if ((error = resolveAccount())) return {{"status", "unknown"}};
+        if (!referenceMatches(request_["objectReference"].toObject(), name)) { error = signInAgain(); return {{"status", "unknown"}}; }
         const auto target = file(name);
         const auto r = propfind(target);
         if (r.status == 404 || r.status == 409) return {{"status", "missing"}};
@@ -898,7 +922,7 @@ private:
     // Shares: put.gd's own link share of this upload carries a label naming the upload, so an
     // inspection, a Finish share link or a revoke finds that share and no other: a link someone
     // made by hand, or another app's, is never taken for put.gd's.
-    QString shareLabel(const StorageReceipt& receipt) const { return "put.gd " + receipt.publicationId.left(8); }
+    QString shareLabel(const StorageReceipt& receipt) const { return "put.gd " + receipt.publicationId; }
     // A public, read-only link share of exactly this file, without a password.
     bool publicReadOnly(const QJsonObject& share, const StorageReceipt& receipt) const {
         const auto fileId = receipt.objectReference["fileId"].toString();
@@ -907,18 +931,34 @@ private:
         return share["share_type"].toInt(-1) == 3 && (share["permissions"].toInt(-1) & 15) == 1 && !share["token"].toString().isEmpty() &&
                share["password"].toString().isEmpty() && (fileId.isEmpty() || source.isEmpty() || source == fileId);
     }
-    // put.gd's share of this upload, by the link's token when one is recorded, else by its label.
+    // put.gd's share of this upload: by the share ID this step journaled, else by the recorded
+    // link's token, else by its label, which must match exactly one share. Empty when there is
+    // none; nullopt (with `error`) when it can't be told: two labelled shares are never guessed.
     std::optional<QJsonObject> ownShare(const QString& path, const StorageReceipt& receipt, Error& error) {
+        const auto recordedId = request_["progress"].toObject()["shareId"].toString();
+        if (!recordedId.isEmpty()) {
+            const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares/" + QString::fromLatin1(QUrl::toPercentEncoding(recordedId)));
+            if (r.status == 404) return QJsonObject{};
+            if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
+            const auto data = r.data();
+            const auto share = data.isArray() ? data.toArray().first().toObject() : data.toObject();
+            return share["share_type"].toInt(-1) == 3 ? share : QJsonObject{};
+        }
         const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares?path=" + QString::fromLatin1(QUrl::toPercentEncoding(path)) + "&reshares=false");
         if (r.status == 404) return QJsonObject{};
         if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
         const auto token = shareToken(receipt.directUrl);
+        QList<QJsonObject> found;
         for (const auto& value : r.data().toArray()) {
             const auto share = value.toObject();
             if (share["share_type"].toInt(-1) != 3) continue;
-            if (!token.isEmpty() ? share["token"].toString() == token : share["label"].toString() == shareLabel(receipt)) return share;
+            if (!token.isEmpty() ? share["token"].toString() == token : share["label"].toString() == shareLabel(receipt)) found.append(share);
         }
-        return QJsonObject{};
+        if (found.size() > 1) {
+            error = {"webdav_protocol", "Nextcloud has more than one link labelled as this upload's, so put.gd can't tell which is its own.", {{"requestStage", "share_inspect"}}};
+            return std::nullopt;
+        }
+        return found.isEmpty() ? QJsonObject{} : found.first();
     }
     QJsonObject shareResult(const QString& status, StorageReceipt receipt, const QJsonObject& share = {}) {
         receipt.directUrl = status == "shared" ? sharePage(server(), share["token"].toString()) : QString();
@@ -948,8 +988,10 @@ private:
         if (checked.details.value("reason") == "identity_unconfirmed") return notMade(checked);
         if (current != "own") { error = checked; return {{"status", "unknown"}}; }
         const auto path = receipt.objectReference["path"].toString(sharePath(receipt.objectReference["name"].toString()));
-        const auto existing = ownShare(path, receipt, error);
-        if (!existing) return {{"status", action == "inspect" ? "unknown" : "failed"}};
+        Error lookup;
+        const auto existing = ownShare(path, receipt, lookup);
+        // Not told apart, or not read: a create that never started stays finishable.
+        if (!existing) { if (action == "create") return notMade(lookup); error = lookup; return {{"status", action == "inspect" ? "unknown" : "failed"}}; }
         if (action == "inspect") return existing->isEmpty() || !publicReadOnly(*existing, receipt) ? shareResult("private", receipt) : shareResult("shared", receipt, *existing);
         if (action == "revoke") {
             if (existing->isEmpty()) return shareResult("revoked", receipt);
@@ -978,17 +1020,29 @@ private:
             // The share's ID is on record before the link is used.
             if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "created"}, {"shareId", shareId}})) { error = e; uncertain = true; return {{"status", "unknown"}}; }
             if (!publicReadOnly(made, receipt)) {
-                // Not the public read-only link of this file: put.gd's own share goes again.
-                deleteShare(made);
-                return notMade({"webdav_protocol", "Nextcloud made a link put.gd didn't ask for (not a public read-only link of this file), so put.gd removed it.", {{"requestStage", "share_create"}}});
+                // Not the public read-only link of this file: put.gd's own share goes again. Only a
+                // confirmed removal leaves the file without a link; otherwise the outcome is unknown
+                // and the journaled share ID stays.
+                const auto removed = deleteShare(made);
+                if (removed.ok() || removed.status == 404)
+                    return notMade({"webdav_protocol", "Nextcloud made a link put.gd didn't ask for (not a public read-only link of this file), so put.gd removed it.", {{"requestStage", "share_create"}}});
+                error = failure(removed, QUrl(server()), "share_rollback");
+                error.details["shareId"] = shareId;
+                uncertain = true;
+                return {{"status", "unknown"}};
             }
             return shareResult("shared", receipt, made);
         }
         // Nextcloud's own text only tells the cases apart; the message is put.gd's.
         const auto message = r.ocsMessage();
-        if (message.contains("assword", Qt::CaseInsensitive)) return notMade(passwordRequired());
+        const auto classified = [&](Error e) {
+            const auto statuses = failure(r, QUrl(server()), "share_create").details;
+            for (auto it = statuses.begin(); it != statuses.end(); ++it) e.details.insert(it.key(), it.value());
+            return notMade(e);
+        };
+        if (message.contains("assword", Qt::CaseInsensitive)) return classified(passwordRequired());
         if ((r.status == 403 || r.status == 404) && (message.contains("disabled", Qt::CaseInsensitive) || message.contains("not allowed", Qt::CaseInsensitive)))
-            return notMade(sharingDisabled());
+            return classified(sharingDisabled());
         if (uncertainAfter(r)) { error = failure(r, QUrl(server()), "share_create"); uncertain = true; return {{"status", "unknown"}}; }
         return notMade(failure(r, QUrl(server()), "share_create"));
     }
@@ -1040,19 +1094,22 @@ private:
             if (poll.ok()) { granted = QJsonDocument::fromJson(poll.body).object(); break; }
             // Only "not yet" (404) waits; a TLS or connection failure ends sign-in with its own error.
             if (poll.status != 404) { error = failure(poll, endpoint, "sign_in_poll"); return {}; }
-            for (int wait = 0; wait < 40 && !cancelled.load(); ++wait) QThread::msleep(50);
+            // The pause between polls ends at the deadline at the latest.
+            for (int wait = 0; wait < 40 && !cancelled.load() && clock.elapsed() < timeout; ++wait) QThread::msleep(50);
         }
         const QUrl returned(granted["server"].toString());
         const auto loginName = granted["loginName"].toString();
         auto appPassword = granted["appPassword"].toString();
         if (loginName.isEmpty() || appPassword.isEmpty()) { error = {"webdav_protocol", "Nextcloud finished sign-in without an app password", {}}; return {}; }
         Client signedIn(loginName, appPassword, insecure);
-        // A grant put.gd won't keep is revoked at once: it would otherwise stay valid on the server.
+        // A grant put.gd won't keep goes back to the resident with the error, which revokes it in a
+        // helper of its own: this one may be stopping (a cancelled sign-in sends nothing more).
         const auto drop = [&](Error e) {
-            signedIn.ocs("DELETE", server, "/ocs/v2.php/core/apppassword");
-            appPassword.fill(QChar('\0'));
             error = std::move(e);
-            return QJsonObject{};
+            error.details["grantReturned"] = true;
+            QJsonObject grant{{"loginName", loginName}, {"appPassword", appPassword}, {"binding", binding(settings(), provider_)}};
+            appPassword.fill(QChar('\0'));
+            return grant;
         };
         if (!sameOrigin(returned, entered) || !loginPageAllowed(QUrl(returned.toString() + "/"), server, insecure))
             return drop({"nextcloud_server_mismatch", "Nextcloud finished sign-in for another address. Enter the address it uses as the server, or ask the administrator to fix overwrite.cli.url.", {}});
@@ -1098,6 +1155,8 @@ private:
             if (const auto days = enforcedDays(); days > 0)
                 warn("nextcloud_share_expiry_enforced", QString("This server makes every public link expire after %1 days; put.gd's links follow that.").arg(days));
             bool created = false;
+            // The folder Test may create is journaled before it is.
+            if ((error = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_folder_intent"}, {"folder", settings()["folder"]}}))) return out;
             if ((error = ensureFolder(&created))) return out;
             out["folderCreated"] = created;
         } else {
@@ -1214,7 +1273,8 @@ private:
                 // Done is recorded only once the file's absence is confirmed.
                 const auto after = propfind(file(artifact.name));
                 if (after.status == 404) {
-                    checkpoint({{"schemaVersion", 1}, {"phase", "done"}, {"target", recorded.toJson()}});
+                    // Removed only once that is on record.
+                    if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "done"}, {"target", recorded.toJson()}})) { if (!error) error = e; out["cleanupStatus"] = "unknown"; return out; }
                     out["cleanupStatus"] = "removed";
                     return out;
                 }

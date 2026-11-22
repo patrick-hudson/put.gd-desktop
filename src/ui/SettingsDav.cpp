@@ -39,27 +39,38 @@ void SettingsWindow::davSignInEvent(const QString& setupId, const QUrl& url) {
     emit viewStateChanged();
 }
 void SettingsWindow::revokeBeforeRemoving(const QString& profileId) {
-    // The removal goes on whatever the answer; a revocation the server didn't confirm is said.
+    // The removal goes on whatever the answer, for the destination confirmed in the dialog; a
+    // revocation the server didn't confirm is said.
     const auto proceed = [guard = QPointer<SettingsWindow>(this), profileId](bool confirmed) {
         if (!guard) return;
+        const int index = guard->profile_->findData(profileId);
+        if (index < 0) return;
+        if (guard->profile_->currentIndex() != index) guard->profile_->setCurrentIndex(index);
+        if (guard->profileId_->text() != profileId) return;
         guard->davRemoving_ = profileId;
         if (auto* remove = guard->findControl<QPushButton*>("removeDestination")) remove->click();
-        if (!confirmed) guard->setupFeedback("put.gd couldn't revoke the app password on the server; remove it under Nextcloud's Devices & sessions.");
+        if (!confirmed) guard->setupFeedback("put.gd couldn't confirm that the server revoked its app password; if Nextcloud still lists put.gd under Personal settings → Security → Devices & sessions, remove it there.");
     };
-    setupFeedback("Signing out of Nextcloud…");
+    setupFeedback(QString::fromUtf8("Signing out of Nextcloud…"));
     settings_.request("setup.signOut", {{"profileId", profileId}, {"expectedRevision", settings_.revision()}}, this, [this, proceed](Error e, QJsonObject data) {
         if (e) { proceed(false); return; }
         const auto id = data["setupId"].toString();
-        auto* timer = new QTimer(this);
+        // One inspection in flight at a time; the timer goes with this window.
+        QPointer<QTimer> timer = new QTimer(this);
         auto polls = std::make_shared<int>(0);
-        connect(timer, &QTimer::timeout, this, [this, timer, id, polls, proceed] {
-            if (++*polls > 400) { timer->deleteLater(); proceed(false); return; }
-            settings_.request("setup.inspect", {{"id", id}}, this, [timer, proceed](Error e, QJsonObject job) {
+        auto inFlight = std::make_shared<bool>(false);
+        connect(timer, &QTimer::timeout, this, [this, timer, id, polls, inFlight, proceed] {
+            if (*inFlight || !timer) return;
+            if (++*polls > 400) { timer->stop(); timer->deleteLater(); proceed(false); return; }
+            *inFlight = true;
+            settings_.request("setup.inspect", {{"id", id}}, this, [timer, inFlight, proceed](Error e, QJsonObject job) {
+                *inFlight = false;
+                if (!timer || !timer->isActive()) return;
                 if (!e && job["state"] == "running") return;
-                if (!timer->isActive()) return;
                 timer->stop();
                 timer->deleteLater();
-                proceed(!e && job["state"] == "completed" && !job["result"].toObject().contains("revokeError"));
+                // Confirmed only when the server said so: revoked false, with a reason or without, isn't.
+                proceed(!e && job["state"] == "completed" && job["result"].toObject()["revoked"].toBool());
             });
         });
         timer->start(300);
@@ -67,6 +78,9 @@ void SettingsWindow::revokeBeforeRemoving(const QString& profileId) {
 }
 void SettingsWindow::openDavBrowser() {
     if (!dav_ || !dav_->signInUrl().isValid()) return;
+    // Against the destination as it is now: a server changed meanwhile gets no page opened.
+    const auto settings = dav_->settings();
+    if (!dav::loginPageAllowed(dav_->signInUrl(), settings["server"].toString(), settings["allowInsecureHttp"].toBool())) return;
     const auto id = davSignInSetup_;
     host::openLink(dav_->signInUrl(), [guard = QPointer<SettingsWindow>(this), id](const QJsonObject& result) {
         if (!guard || guard->davSignInSetup_ != id || guard->dav_->signIn() == DavDestinationPanel::SignIn::Idle) return;
@@ -113,6 +127,8 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
         const auto name = result["accountName"].toString(result["userId"].toString());
         if (!applyAccount(name)) { setupFeedback("Signed in for the original destination. Select it again to see its account."); return true; }
         refreshCredentialHint();
+        const auto warning = result["revokeWarning"].toString();
+        if (!warning.isEmpty()) { setupFeedback("Signed in as " + name + ". " + warning); return true; }
         setupFeedback(result["sharePasswordEnforced"].toBool()
             ? "Signed in as " + name + ". This server requires a password on every public link, which put.gd doesn't set, so uploads there won't get a link."
             : result["sharing"].isBool() && !result["sharing"].toBool() ? "Signed in as " + name + ". Public links are turned off on this server, so uploads would get no link."

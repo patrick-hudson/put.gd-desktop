@@ -146,7 +146,8 @@ QString redactShareTokens(const QString& text) {
     return out.replace(token, QStringLiteral("/s/…"));
 }
 QJsonValue redactShareTokensIn(const QJsonValue& value) {
-    if (value.isString()) return redactShareTokens(value.toString());
+    // Only the fields that hold a share link: a DAV target or an object's identity stays as it is.
+    static const QStringList linkFields{"directUrl", "link", "url", "shareUrl"};
     if (value.isArray()) {
         QJsonArray out;
         for (const auto& item : value.toArray()) out.append(redactShareTokensIn(item));
@@ -155,7 +156,8 @@ QJsonValue redactShareTokensIn(const QJsonValue& value) {
     if (value.isObject()) {
         QJsonObject out;
         const auto object = value.toObject();
-        for (auto it = object.begin(); it != object.end(); ++it) out[it.key()] = redactShareTokensIn(it.value());
+        for (auto it = object.begin(); it != object.end(); ++it)
+            out[it.key()] = linkFields.contains(it.key()) && it.value().isString() ? QJsonValue(redactShareTokens(it.value().toString())) : redactShareTokensIn(it.value());
         return out;
     }
     return value;
@@ -187,10 +189,22 @@ bool sameOrigin(const QUrl& a, const QUrl& b) {
     const auto port = [](const QUrl& url) { return url.port(url.scheme() == "https" ? 443 : 80); };
     return a.scheme() == b.scheme() && a.host().compare(b.host(), Qt::CaseInsensitive) == 0 && port(a) == port(b);
 }
-bool loginPageAllowed(const QUrl& page, const QString& server, bool allowInsecure) {
+bool loginPageAllowed(const QUrl& given, const QString& server, bool allowInsecure) {
+    // Dot segments resolved first: /nc/../other is not below /nc/.
+    const auto page = given.adjusted(QUrl::NormalizePathSegments);
     const QUrl base(server + "/", QUrl::StrictMode);
     if (!page.isValid() || !page.userInfo().isEmpty() || !sameOrigin(page, base) || !http::transportAllowed(page, allowInsecure)) return false;
-    return page.path().startsWith(base.path());
+    const auto path = page.path(QUrl::FullyDecoded);
+    return path.startsWith(base.path()) && !path.contains("/../") && !path.endsWith("/..");
+}
+bool strongETag(const QString& etag) {
+    static const QRegularExpression strong(QStringLiteral("^\"[\\x{21}\\x{23}-\\x{7e}\\x{80}-\\x{ff}]*\"$"));
+    return strong.match(etag).hasMatch();
+}
+QString originOnly(const QString& address) {
+    const QUrl url(address);
+    if (!url.isValid() || url.host().isEmpty()) return address.isEmpty() ? address : QStringLiteral("<address>");
+    return url.scheme() + "://" + url.host();
 }
 bool plainHttpAddress(const QString& typed) {
     const QUrl url(typed.trimmed());

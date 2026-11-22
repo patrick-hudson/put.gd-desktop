@@ -78,6 +78,7 @@ class DavIntegrationTest final : public QObject {
     Q_OBJECT
     QTemporaryDir files_;
     CredentialStore credentials_;
+    Error bound_; // the binding inspection's outcome for the last nextcloud() destination
     QString run_ = "putgd-it-" + QUuid::createUuid().toString(QUuid::Id128).left(12);
     Destination nextcloud(const QString& server, const QString& folder) {
         auto settings = dav::nextcloudDefaults();
@@ -86,6 +87,9 @@ class DavIntegrationTest final : public QObject {
         Destination d{dav::nextcloudId, "it-nextcloud", "r1", settings, {{"mode", "session"}, {"reference", QJsonValue::Null}}};
         // Bound to this server, as a store from Settings binds them.
         credentials_.setSession(d.profileId, {env("PUTGD_TEST_NEXTCLOUD_USER"), secret("PUTGD_TEST_NEXTCLOUD_PASSWORD_FILE"), dav::binding(settings, dav::nextcloudId)});
+        // A password stored by hand is bound to its account before anything uses it, as Test does.
+        DavProvider binder(credentials_, dav::nextcloudId);
+        binder.bindThen(d, [](auto work, auto done) { Error e; auto r = work(e); done(e, r); }, {}, [this](Error e) { bound_ = e; });
         return d;
     }
     Destination webdav() {
@@ -274,8 +278,9 @@ private slots:
         if (env("PUTGD_TEST_NEXTCLOUD_UNTRUSTED_URL").isEmpty()) QSKIP("PUTGD_TEST_NEXTCLOUD_UNTRUSTED_URL names no server");
         DavProvider provider(credentials_, dav::nextcloudId);
         const auto d = nextcloud(env("PUTGD_TEST_NEXTCLOUD_UNTRUSTED_URL"), "putgd-it/" + run_);
-        Error error;
-        test(provider, d, error);
+        // The first request with a hand-stored password is the inspection that binds it (Test runs it
+        // first too): that is where an untrusted certificate is refused.
+        const auto error = bound_;
         QCOMPARE(error.code, QStringLiteral("webdav_tls_failed"));
         QVERIFY2(error.message.contains("doesn't trust") && error.message.contains("SHA-256") && error.message.contains("sudo"), qPrintable(error.message));
     }

@@ -2923,6 +2923,9 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
  if(!settings_.document()["profiles"].toArray().isEmpty())initialProfile_=false;
  if(op.kind==SaveOperation::Kind::Fields){
   notSaved_.remove(op.id+"|*");
+  // #1872: a Nextcloud or WebDAV field saved now loses its earlier refusal; the plain HTTP switch
+  // saved clears the addresses it was saved with.
+  if(dav_&&op.id==profileId_->text())for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(it.key().isEmpty()||it.key()=="settings")dav_->showProblem({},{});else if(it.key().startsWith("settings/")){const auto field=it.key().mid(9);dav_->showProblem(field,{});if(field=="allowInsecureHttp")for(const auto* other:{"server","address","linkBase"})dav_->showProblem(other,{});}
   // Saved: what comes next for it is an edit, and a removal waiting on this add may go.
   for(auto& queuedOp:saveQueue_)if(queuedOp.key==op.key||(queuedOp.kind==SaveOperation::Kind::Remove&&queuedOp.id==op.id))queuedOp.adding=false;
   // Routes to it that the form holds and that waited for nothing go now.

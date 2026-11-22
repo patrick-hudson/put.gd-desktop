@@ -72,6 +72,12 @@ private slots:
         QVERIFY(!dav::loginPageAllowed(QUrl("http://cloud.example.com/nc/login"), server, false));
         QVERIFY(!dav::loginPageAllowed(QUrl("https://u@cloud.example.com/nc/login"), server, false));
         QVERIFY(!dav::loginPageAllowed(QUrl("https://cloud.example.com:8443/nc/login"), server, false));
+        QVERIFY(!dav::loginPageAllowed(QUrl("https://cloud.example.com/nc/../other/login"), server, false));
+    }
+    void onlyOneStrongETagIsAValidator() {
+        QVERIFY(dav::strongETag("\"6-660d9a1fc2dfd\""));
+        QVERIFY(dav::strongETag("\"\""));
+        for (const auto* tag : {"W/\"6-660d\"", "*", "\"a\", \"b\"", "abc", "\"a", "\"a\"b\"", ""}) QVERIFY2(!dav::strongETag(QString::fromLatin1(tag)), tag);
     }
 };
 QTEST_GUILESS_MAIN(DavRulesTest)

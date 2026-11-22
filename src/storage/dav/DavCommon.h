@@ -80,6 +80,11 @@ QJsonObject parseBinding(const QString& stored);
 // Whether a Login Flow v2 page or poll endpoint may be used for this server: the server's scheme,
 // host and port, a path below its base, no user information, and plain HTTP only where allowed.
 bool loginPageAllowed(const QUrl& page, const QString& server, bool allowInsecure);
+// Exactly one quoted strong ETag ("…" of etagc characters, RFC 9110): no W/, no *, no list.
+// Anything else is no validator, neither recorded nor sent in If-Match.
+bool strongETag(const QString&);
+// An address as a diagnostics package keeps it: scheme and host only.
+QString originOnly(const QString& address);
 // Whether the two addresses have the same scheme, host and port (Login Flow v2's
 // server and poll endpoint must be the server the user entered).
 bool sameOrigin(const QUrl& a, const QUrl& b);

@@ -14,8 +14,7 @@ using Ui::space;
 using Ui::Space;
 DavDestinationPanel::DavDestinationPanel(QWidget* parent) : QWidget(parent) { setObjectName("davDestinationEditor"); }
 void DavDestinationPanel::finished(const QString& field) {
-    // An edit answers the field's earlier refusal; a new one comes back with the save.
-    if (problems_.contains(field)) showProblem(field, {});
+    // A refusal stays beside the field until a save of it goes through.
     sync();
     if (!loading_) emit edited(field);
 }
