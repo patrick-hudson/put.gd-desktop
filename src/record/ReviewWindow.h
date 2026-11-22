@@ -238,7 +238,7 @@ class ReviewWindow final : public QWidget {
     Q_OBJECT
 public:
     // availableSize optionally supplies the embedding host's workspace; otherwise use QScreen.
-    struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; QSize availableSize;
+    struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; bool links = true; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; QSize availableSize;
         // #1364: what the recorded track holds; with neither set, a recorded track is system audio.
         bool systemRecorded = false, microphoneRecorded = false; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);

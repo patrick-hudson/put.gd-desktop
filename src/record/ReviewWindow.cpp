@@ -77,7 +77,8 @@ int toolRowHeight(const QWidget* w) { return std::max(52, textControlHeight(w) +
 int transportHeight(const QWidget* w) { return std::max(42, textControlHeight(w) + 12); }
 int footerHeight(const QWidget* w) { return std::max(56, textControlHeight(w) + 24); }
 int destinationMenuPadding() { return 6 + Ui::scaled(8) + 2; }
-QString sharingName(const QString& mode) { return mode == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link"); }
+// A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
+QString sharingName(const QString& mode, bool links) { return mode == "private" ? QStringLiteral("Private upload") : links ? QStringLiteral("Shared link") : QStringLiteral("Upload only"); }
 QString formatShort(const QString& format) {
     return format == "webm" ? QStringLiteral("WebM") : format == "webp" ? QStringLiteral("WebP") : format.toUpper();
 }
@@ -2600,7 +2601,7 @@ void ReviewWindow::refreshFooter() {
     includeAudio_->blockSignals(true);
     includeAudio_->setChecked(audioIntent_);
     includeAudio_->blockSignals(false);
-    const auto mode = sharingName(options_.sharingMode);
+    const auto mode = sharingName(options_.sharingMode, options_.links);
     const auto shown = options_.destination.isEmpty() ? options_.uploadSummary : options_.destination + QStringLiteral(" · ") + mode;
     destinationMenu_->setText(shown);
     destinationMenu_->setProperty("destinationName", options_.destination.isEmpty() ? options_.uploadSummary : options_.destination);
@@ -2972,7 +2973,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"adviceDialog", QJsonObject{{"open", bool(adviceDialog_ && adviceDialog_->isVisible())}, {"text", adviceDialog_ && adviceDialog_->isVisible() ? QJsonValue(adviceDialog_->findChild<QLabel*>("reviewAdviceText")->property("plainText").toString()) : QJsonValue(QJsonValue::Null)}}},
         {"status", lines.join('\n')}, {"statusRow", statusRow}, {"statusFacts", statusFacts},
         {"audio", format_->text()}, {"previewMuted", true}, {"audioRequested", audioIntent_}, {"audioEffective", effectiveAudio(config_, options_.audioRecorded, audioIntent_)},
-        {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"uploadSummary", options_.uploadSummary},
+        {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"sharing", sharingName(options_.sharingMode, options_.links)}, {"uploadSummary", options_.uploadSummary},
         {"notice", noticeBand_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
         {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}, {"shownUs", shownFor_ == playhead_ ? QJsonValue(double(shownActual_)) : QJsonValue(QJsonValue::Null)}, {"frameSize", QJsonArray{view_->frameSize().width(), view_->frameSize().height()}}, {"skimSize", QJsonArray{view_->skimSize().width(), view_->skimSize().height()}},
             // An edge drag's frame shown and held until its proposal is answered (W4).

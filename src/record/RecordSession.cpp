@@ -935,6 +935,7 @@ void RecordSession::openReview() {
     options.workingClip = workingClip_;
     options.destination = reviewOptions_["destination"].toString();
     options.sharingMode = reviewOptions_["sharingMode"].toString();
+    options.links = reviewOptions_["links"].toBool(true);
     options.uploadSummary = reviewOptions_["summary"].toString();
     options.durationUs = durationUs_;
     options.canvas = resolved_.canvas;
