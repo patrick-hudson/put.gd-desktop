@@ -18,14 +18,32 @@ Omarchy's core and extra repositories come from its own pinned Arch mirror, whic
 Arch. Arch has had OpenSSL 4 since 2026-10-24; on 2026-11-22 (UTC) a guest from this golden
 still had `openssl 3.6.5-1` and only `libcrypto.so.3` after `omarchy update -y`
 ([#1909](https://github.com/patrick-hudson/put.gd-desktop/issues/1909)). That update
-changed only `[omarchy]` packages and pulled three new dependencies from extra. The mirror's
-`core.db` and `lastsync` both date from 2026-10-22. So the golden matches what Omarchy users
+changed only `[omarchy]` packages and pulled three new dependencies from extra (`ada`,
+`nodejs`, `simdjson`). On `stable-mirror.omarchy.org`, `core.db`'s `Last-Modified` header and
+the `lastsync` file both read 2026-10-22. So the golden matches what Omarchy users
 have, and the installer's AppImage fallback is the right result on it: the Arch package
 links `libcrypto.so.4` ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
 Refresh the golden for the Arch package only once Omarchy's own update brings OpenSSL 4.
-Check that with `pacman -Q openssl` in a guest after `omarchy update -y`. The update needs
-the session's `OMARCHY_PATH` and `PATH`, taken from quickshell's environment, and
-passwordless sudo, which you add only in the overlay.
+Check that with `pacman -Q openssl` in a guest after `omarchy update -y`, over SSH as `lab`
+in an overlay you will retire. The updater starts with `sudo true`, and the golden allows
+only `pacman` without a password, so first add a rule in the overlay (the lab password goes
+on stdin; see `sudo -n` under [Guest traps](#guest-traps)):
+
+```sh
+sudo -S -p '' sh -c 'echo "lab ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-update && chmod 440 /etc/sudoers.d/99-update'
+```
+
+Then run the update with the session environment (see the SSH trap under Guest traps). It
+refuses to run without the session's `OMARCHY_PATH`. Run it with `ssh -tt`, because it logs
+through `script`:
+
+```sh
+p=$(pgrep -u lab -x quickshell | head -1)
+for v in OMARCHY_PATH PATH WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS; do
+  export "$(tr '\0' '\n' < /proc/$p/environ | grep "^$v=")"
+done
+omarchy update -y
+```
 
 The golden was built end to end on a temporary EC2 instance on 2026-11-08 (UTC), uploaded
 to S3 from there, and only downloaded to the builders. The instance is terminated.
