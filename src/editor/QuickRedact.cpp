@@ -369,10 +369,31 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // the line and is token-shaped, belongs to it.
     // #1820: a token soft-wrapped over several lines (a JWT in an editor) takes each following line
     // while that line is all token and the token runs on; a short remainder ("08edc") counts too.
+    // #1850: the quote the token's line opens and leaves open ("SIGNING_HEX =" then "\"6311…343"),
+    // which a short remainder of the token closes on the next line ("edc\"", "edc\")," ).
+    // Recognition reads the closing quote straight or curly ("edc\u201D" in 82 of the 101 misses
+    // measured with a straight one only), so each opening quote closes with any of its forms.
+    // A quote is open when its family (straight and curly forms together, and a prime with the single
+    // quotes) is counted an odd number of times on the token's line.
+    QString closing;
+    {
+     QString first;for(const int w:words)first+=plain.at(w);
+     const auto odd=[&](const QString& family){qsizetype n=0;for(const auto c:std::as_const(first))if(family.contains(c))++n;return n%2==1;};
+     for(const auto& family:{QStringLiteral("\"\u201C\u201D"),QStringLiteral("'\u2018\u2019\u2032"),QStringLiteral("`")})if(odd(family)){closing=family;break;}
+    }
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
      const auto next=segments(nextLine,plain);
      const auto nextText=lineText(nextLine);
+     // A remainder of letters alone that closes the quote the token opened: the next line's first
+     // word, at most seven token characters, then the closing quote and only closing brackets or
+     // separators ("edc\");"). Checked first, since its punctuation can keep it from being a token piece.
+     if(!closing.isEmpty()&&follow==k+1){
+      const auto& tailWord=plain.at(nextLine.first());
+      qsizetype at=-1;for(qsizetype i=0;i<tailWord.size()&&at<0;++i)if(closing.contains(tailWord.at(i)))at=i;
+      static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/=_-]{1,7}$")),after(QStringLiteral("^[)\\]};,]*$"));
+      if(at>0&&alphabet.match(tailWord.left(at)).hasMatch()&&after.match(tailWord.mid(at+1)).hasMatch()){words.append(nextLine.first());break;}
+     }
      if(next.isEmpty()||next.first().words.first()!=nextLine.first()||begin.match(nextText).hasMatch()||end.match(nextText).hasMatch())break;
      // The remainder of a token, not a line of words: a digit or a capital,
      // and few letters in lowercase runs of five or more.
