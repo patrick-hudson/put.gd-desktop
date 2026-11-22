@@ -6,7 +6,71 @@ No profile is accepted without its registered validator. The production registry
 no test provider. S3 implementation belongs exclusively under `src/storage/s3/`,
 Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)), Cloudflare R2's under
 `src/storage/s3/` as a provider over the S3 one (`R2Provider`, [r2.md](../user/r2.md)) and the custom HTTP
-uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)).
+uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)), and Nextcloud's and
+plain WebDAV's under `src/storage/dav/` ([nextcloud.md](../user/nextcloud.md)).
+
+Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class and one helper,
+`putgd-webdav-worker`, which reuses the custom uploader's plain-HTTP rule
+(`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
+Nextcloud files above 50 MiB use chunked upload v2 (`MKCOL` an upload folder, `PUT` chunks of 16 MiB by default, larger to stay within 10,000,
+then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
+size and content read back at the target's strong ETag (a failed probe leaves it unknown; a 412
+stays a collision), and an abandoned upload folder is deleted through its journal, which keeps it
+until the deletion is confirmed. The `MOVE` has its own 30-minute deadline and no stall limit, and
+the helper sends a heartbeat while it waits. A file's identity is what the write itself returned:
+the `PUT` or `MOVE` reply's strong ETag and Nextcloud's `OC-FileId` (its number, without the
+padding). A server whose write returns no strong ETag (Apache returns none, and reports a weak
+ETag for a file written within the last second) is asked for the file's strong ETag, and the bytes
+at that ETag are read back (`GET` with `If-Match`) and compared; only then is the ETag recorded,
+for files up to 256 MiB. A validator is exactly one quoted strong ETag (`"…"`, no `W/`, no `*`, no
+list); anything else is neither recorded nor sent. Otherwise the receipt has no concurrency token and records
+`identity: unconfirmed`: History can't delete it and Nextcloud makes no link for it. Receipts also
+record the canonical DAV target (scheme, host, port, path) and, for Nextcloud, the account ID;
+requests serialize on that target. `stat` compares the target and the ETag exactly as recorded (weak and strong never equal),
+and the file ID and size when both the receipt and the server have them; deletion sends `If-Match` with the recorded ETag
+unchanged, and the first 412 is `changed`, with no second attempt. Nextcloud has
+`capabilities.sharing`: the link is a public read-only share (`shareType=3`, `permissions=1`, no
+password) made in the two-step sharing pipeline, with the date an enforced expiry allows, and its
+page URL is the `directUrl`. Every form value is percent-encoded, `+` included. put.gd's share
+carries the label `put.gd <publication ID>`. Inspection, Finish share link and revoke find that
+share by the share ID a step journaled (it stays the sharing record's progress whatever the
+outcome, and History's link actions and retries pass it on), else by the recorded link's token (a
+revoke from History passes a SHA-256 of the token, never the link, and the helper compares it
+with each listed link's token locally and never sends it; only the share ID goes to Nextcloud,
+and neither appears in History detail or share replies), else by the label, which must match exactly one share; a
+lookup by ID must name exactly that share, and an ID it confirms gone is forgotten before the next
+step. A confirmed absence means no share; several matches, an unreadable entry, or a link
+listed without its token when put.gd's isn't found is unknown, never a guess, and revoke deletes
+only a share found this way. A share that comes back as anything but a public read-only link of
+the uploaded file (its `item_source`) is deleted again, and the file counts as without a link only
+once that deletion is confirmed; otherwise the outcome is unknown and the journaled ID stays. A
+create that can't go ahead (links off, an enforced password, a definite refusal, a share lookup
+that failed before any create) answers `private` with the error and its HTTP and OCS statuses, so
+History offers Finish share link. Capabilities are on, off or
+unknown (an empty or malformed `files_sharing` is unknown); upload is refused beforehand only when
+they confirm public links off. Upload and reconcile check the name check's and receipt's target
+and account against the bound account, and write or claim nothing on a mismatch. Removing an
+unfinished upload's chunk folder counts only when its `DELETE` succeeds or a 207 multistatus shows
+every member removed. Test journals the Nextcloud folder it may create and the probes it sends
+before them, and reports its file removed only once that is journaled. Share tokens are
+secrets in a path: test journals keep receipts without the link, the journal boundary redacts
+the whole `/s/<segment>` in link fields (DAV targets and identities stay), log redaction replaces
+every `/s/<segment>`, diagnostics keep only the scheme and host of the server, folder and link
+addresses, and server reply text never reaches a message,
+journal or log (errors carry `httpStatus` and `ocsStatus`). TLS uses the system trust
+store only; a refused certificate is described by issuer, expiry or host name, with its SHA-256
+when one was received.
+Credentials are bound to the origin they were given for and, for Nextcloud, the account ID
+([credentials.md](credentials.md)); the provider refuses before sending anything when the
+destination names another origin. Login Flow v2's page and poll endpoint must have the server's
+scheme, host and port and a path below its base once dot segments are resolved, without user
+information (Settings checks again before Open browser again); only a 404 while
+polling means "not yet". Test fetches the link as a visitor through the custom uploader's
+returned-address rules on every redirect.
+Requests with file data have only a stall limit, as B2's. A read-back that checks a file's identity
+sends no progress to the resident, so on a very slow link (about 270 KB/s or less for the 256 MiB
+limit) the resident's 16-minute silence limit can stop it; during an upload that leaves the outcome
+unknown with no receipt, as any lost reply does.
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider

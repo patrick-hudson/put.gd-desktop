@@ -244,6 +244,20 @@ resolves to, this computer, because the scripted receiver is on loopback and a l
 destination may be answered with loopback addresses. The tables that covered it went
 in the second round of [removed tests](removed-tests.md#second-round).
 
+### Nextcloud and WebDAV suites
+
+- `dav_rules`: Nextcloud and WebDAV address and settings rules (#1872): pasted Files and share
+  links reduce to the server (route suffixes only), plain HTTP only where allowed, per-segment
+  URL encoding, share token redaction, sign-in pages kept on the server and strong ETags only.
+- `dav_integration`: the production provider and `putgd-webdav-worker` against real Nextcloud and
+  WebDAV servers named by `PUTGD_TEST_NEXTCLOUD_*` and `PUTGD_TEST_WEBDAV_*` (the lab servers in
+  `tools/lab/storage_servers/`); each case skips when its server isn't named. It covers Test,
+  upload, collision, share link fetched as a visitor, a changed file refused on delete, 60 MiB
+  chunked upload and cancel, an untrusted certificate, Login Flow v2 sign-in and sign-out
+  (`PUTGD_TEST_NEXTCLOUD_SIGNIN_URL_FILE`, completed by a browser), a missing WebDAV folder and
+  Create folder, a wrong password, and with `PUTGD_TEST_NEXTCLOUD_EXPECT` a full quota, public
+  links off, an enforced link password and an enforced expiry.
+
 ## Scrolling capture suites
 
 A wrong stitch looks like a valid image, and the feature sends input to a live desktop, so

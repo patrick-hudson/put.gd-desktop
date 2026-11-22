@@ -388,6 +388,21 @@ then apply to those settings. Credentials are a keychain or session reference to
 R2 API token's access key ID and secret. Receipts record the `cloudflare-r2`
 destination. See [Cloudflare R2](../user/r2.md).
 
+`nextcloud` profiles (#1872) hold exactly `server` (the install's base address: http(s), host,
+port and a subfolder install path, no `/index.php`, `/s/…`, `/remote.php/…` or trailing `/`;
+empty until it is entered), `folder` (a path below the user's files without a leading or
+trailing `/`, default `put.gd`; empty means the files root), `allowInsecureHttp` and
+`accountName` (the account's display name, shown as Signed in as; set by sign-in, empty when
+signed out, never used for requests). `webdav` profiles hold exactly `address` (the folder's
+WebDAV URL, ending with `/`), `linkBase` (null, or the public address that serves the same
+folder; Settings stores it ending with `/`, but validation doesn't require one) and `allowInsecureHttp`. An `http://` address to another computer
+needs `allowInsecureHttp` true, as for a custom uploader. Credentials are a keychain or session
+reference to the login name (WebDAV: user) and the app password (WebDAV: password). Receipts
+record the file's name, size, SHA-256, its strong ETag (the concurrency token: the one the
+write returned, or when it returned none, one verified by reading the file back; when neither gives one, or a file over 256 MiB can't be read back, the receipt has no ETag, its identity is unconfirmed, and share and delete are unavailable for it) and, for
+Nextcloud, its path and file ID; a Nextcloud link is the share page `…/s/TOKEN`, made in the
+sharing step. See [Nextcloud and WebDAV](../user/nextcloud.md).
+
 `custom-http` profiles (#1361) hold exactly `requestMethod`, `requestUrl`,
 `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`,
 `secrets`, `data`, `dataSecret`, `accepts`, `connectTimeoutMs`, `requestTimeoutMs`,
