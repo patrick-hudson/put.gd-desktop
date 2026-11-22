@@ -45,6 +45,8 @@ public:
  // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
  bool raiseSensitivePrompt(const QString& activationToken={});
  bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
+ // Whether this capture's prompt is open for a person, waiting for a decision (#1829).
+ bool sensitivePromptWaiting(const QString& id) const;
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}

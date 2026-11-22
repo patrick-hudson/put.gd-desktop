@@ -731,6 +731,10 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
 }
+bool OperationService::sensitivePromptWaiting(const QString& id) const {
+ const auto session=checkSessions_.value(id);
+ return session&&session->phase()=="prompt"&&sensitiveModes_.value(id)=="prompt";
+}
 bool OperationService::raiseSensitivePrompt(const QString& activationToken) {
  for(auto it=checkOperations_.cbegin();it!=checkOperations_.cend();++it)if(it->phase=="sensitive_text_found"&&raiseSensitivePrompt(it.key(),activationToken))return true;
  return false;

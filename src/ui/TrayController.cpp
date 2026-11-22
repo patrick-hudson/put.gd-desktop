@@ -240,19 +240,7 @@ TrayController::TrayController(OperationService& operations,
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
  // #1804, #1829: one notification leads back to a prompt another window may cover.
- connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){
-  // On every desktop, tray or not: a tray host may open the menu on a click instead of activating put.gd
-  // (Ubuntu's AppIndicator, #1829). Once per prompt a person is shown; never for an agent's check.
-  if(!operations_.settingsSnapshot().notifications)return;
-  const auto message=QStringLiteral("A capture is waiting for your decision");
-  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
-#ifdef Q_OS_LINUX
-  const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
-  if(native_){native_->notify("put.gd",message,false,{},actions);return;}
-  // The Qt balloon has no buttons of its own: no action there.
-  if(tray_)showTrayMessage("put.gd",message,false,{});
-#endif
- });
+ connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){announceSensitivePrompt(id);});
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
   logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
   if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
@@ -282,6 +270,8 @@ TrayController::TrayController(OperationService& operations,
   for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
 #endif
   for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
+  // A prompt announced during the capture, if it still waits (#1829).
+  for(const auto& id:std::exchange(heldSensitivePrompts_,{}))if(operations_.sensitivePromptWaiting(id))announceSensitivePrompt(id);
   for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
  },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
@@ -926,6 +916,13 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
+  // A waiting sensitive text prompt (#1829): a click on the balloon brings it forward.
+  if(actions.first().key=="show-sensitive"){
+   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[this,tray,id=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))operations_.raiseSensitivePrompt(id,{});},Qt::SingleShotConnection);
+   tray->showMessage(title,message+" Click here to show it.",icon,balloonMs);
+   QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
+   return;
+  }
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
   // Qt reports a click on the tray icon as a click on the balloon too; that one only dismisses it.
   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[tray,name=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))restartFileManager(name);},Qt::SingleShotConnection);
@@ -1034,6 +1031,22 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
 #ifdef Q_OS_LINUX
  // One button per file manager; each key is unique, its value names the file manager.
  QList<NotificationAction> actions;for(const auto& name:restartable)actions.append({"restart-file-manager-"+name,"Restart "+fileManagerName(name),name});
+ if(native_){native_->notify("put.gd",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("put.gd",message,false,actions);
+#else
+ if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
+#endif
+}
+// #1804, #1829: one notice per prompt a person is shown, on every desktop: a tray host may open the menu on
+// a click instead of activating put.gd (Ubuntu's AppIndicator). Show raises the prompt another window covers.
+void TrayController::announceSensitivePrompt(const QString& id) {
+ if(!operations_.settingsSnapshot().notifications)return;
+ // Never into a scrolling capture's frames: it goes out after the capture, if the prompt still waits.
+ if(holdNotices_){if(!heldSensitivePrompts_.contains(id)&&heldSensitivePrompts_.size()<32)heldSensitivePrompts_.append(id);return;}
+ const auto message=QStringLiteral("A capture is waiting for your decision");
+ logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
+#ifdef Q_OS_LINUX
+ const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
  if(native_){native_->notify("put.gd",message,false,{},actions);return;}
  if(tray_)showTrayMessage("put.gd",message,false,actions);
 #else
