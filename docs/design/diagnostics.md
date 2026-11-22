@@ -29,8 +29,8 @@ itself and its helpers, so their Qt warnings reach that pipe instead of the jour
 and its outcome is recorded with the upload or deletion that started it. The custom
 uploader worker (`putgd-http-worker`, #1361) and the SFTP worker (`putgd-sftp-worker`, #1871)
 follow the same rule. An SFTP destination's server, user and folder are redacted in a
-package, its profile shows only whether each is set, and ssh's last error line in a message
-is redacted with them.
+package, its profile shows only whether each is set, and no SFTP error message carries ssh's
+own output or the server's status text in the first place.
 
 ## Records
 

@@ -229,8 +229,10 @@ The SFTP destination (#1871) is tested in three layers:
 
 - `sftp_rules` (unit, no network or files): the Server field's paste forms and refusals
   (a password in the address, a leading hyphen, a bad port), the saved settings' rules,
-  folders, links and `host:/path`, the optional password and passphrase, host-key
-  fingerprints as `ssh-keygen -l` prints them, and the bounds of the SFTP reply parser.
+  folders, links and `host:/path`, passwords left out of addresses and user parts out of
+  links, the optional password and passphrase, askpass answering only ssh's exact local
+  password and passphrase prompts, literal host tokens, host-key fingerprints as
+  `ssh-keygen -l` prints them, and the bounds of the SFTP reply parser.
 - `fuzz_sftpwire` ([fuzzing](fuzzing.md)): the same parser on arbitrary bytes.
 - `test_sftp_live`, opt-in and not a CTest entry: the production provider, `putgd-sftp-worker`,
   `putgd-sftp-askpass` and the machine's own `ssh` against the storage lab's real OpenSSH
@@ -241,10 +243,13 @@ The SFTP destination (#1871) is tested in three layers:
   file's variables. Two `~/.ssh/config` Host aliases for the key user, one with the plain key
   and one with the passphrase key (`IdentityFile`, `IdentitiesOnly yes`), named in
   `PUTGD_SFTP_LAB_ALIAS` and `PUTGD_SFTP_LAB_PP_ALIAS`, cover key files and `ssh -G`. It
-  covers an unknown host key shown and trusted only by its exact fingerprint, then a full
+  covers an unknown host key shown and trusted only by its exact fingerprint (put.gd's
+  `ssh/known_hosts` private, its folder closed to others), then a full
   Test with the link fetched over the lab's HTTPS location and compared; the password user
   with no, a wrong and a misplaced secret; an agent of its own; a cancelled 256 MB upload
-  whose partial file is removed; upload, collision, deletion and a changed file's refusal;
+  whose partial file is removed; upload, collision, the verified server identity in the
+  receipt, an unknown upload not reconciled without its own evidence, deletion and a changed
+  file's refusal;
   the passphrase key with and without its passphrase (and a password refused at that
   prompt); the read-only and full folders, a missing folder and Create folder, and the server
   without the SFTP subsystem. The host-key rotation (`servers.py rotate-hostkey`, then
