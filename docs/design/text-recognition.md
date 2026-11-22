@@ -1108,7 +1108,10 @@ notification waits until the capture ends, and goes out then only if the prompt 
 float it. Where the desktop lets a window choose (X11), it opens centred on the screen with the pointer.
 Its four buttons sit in one row, **Cancel** and **Open in editor** on the left, **Upload anyway** and
 **Redact and upload** on the right ([#1898](https://github.com/patrick-hudson/put.gd-desktop/issues/1898)). Where that row is wider than 90% of the screen (large text on a
-small display), **Upload anyway** and **Redact and upload** move to a second row under the other two.
+small display), **Upload anyway** and **Redact and upload** move to a second row under the other two;
+where even a pair doesn't fit, each button takes a row of its own, **Redact and upload** last. The panel
+is never wider than that 90%: the preview shrinks to fit, and a long file or destination name is
+shortened in the middle.
 Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
 
 - The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
@@ -1134,7 +1137,9 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
 - For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png", counted among
   the PNG and JPEG files of the selection) and offers **Redact and upload**, **Upload anyway** and
   **Cancel**, without **Open in editor**. Redact and upload covers that file and Upload anyway keeps it;
-  either goes on checking the rest, which can ask again. Cancel uploads none of the files. A selection
+  either goes on checking the rest, which can ask again. Cancel uploads none of the files. A file chosen
+  twice is asked about at each place, and each place keeps its own answer. If it changed between those
+  two checks and a place stays uncovered, the upload fails as a changed file (`file_changed`). A selection
   of one decodable image within 24 megapixels offers all four; one that is too large or couldn't be
   read offers only Upload anyway and Cancel.
 
@@ -1166,6 +1171,8 @@ settles a panel that a person is looking at.
   - `sensitive_decision_unavailable` when nothing waits. It has `details.operationId` when the resident
     answers, and no details when the decision named another prompt.
   - `editor_finalizing` for a second decision that reached the panel after the first.
+  - `editor_busy` in report mode for a decision sent while another is still being answered: the
+    resident forwards one at a time, and accepts only the outcome of the decision it forwarded.
   - `sensitive_choice_unavailable` for `edit` where Open in editor isn't offered, or `redact_upload`
     where nothing was found to cover.
 
