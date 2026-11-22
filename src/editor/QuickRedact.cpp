@@ -476,7 +476,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      if(last.length>0&&!last.dotted&&used+tail.size()>last.length*3/2)break;
      if(ownLine){
       // More card digits, or the hex run's own wrapped tail ("5ad015a3"), never words such as "SIGNING_HEX =".
-      static const QRegularExpression hexTail(QStringLiteral("^[0-9A-Fa-f]+[\"'`)\\]};,\u201D\u2019]*$"));
+      static const QRegularExpression hexTail(QStringLiteral("^[0-9A-Fa-f]+[\"'`)\\]};,\u201D\u2019\u00BB]*$"));
       int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
       if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
      }
