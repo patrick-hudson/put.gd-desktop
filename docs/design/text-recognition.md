@@ -287,8 +287,9 @@ each panel first grows through its window's plain background: a side moves out w
 quarter of the next row or column is within 6 levels of the panel's background and it meets no
 other panel or area already grown (so no faint line is read twice). It stops at the window's edge, so a darker desktop around a dark editor is not taken for ink. A faint
 line below a window's last bright line, or running past its text, is then read again; a window
-holding only faint text, with no panel of its own, is not. Anything smaller is one panel, the
-whole image.
+holding only faint text, with no panel of its own, is not. A long faint line beside short bright
+text can still be missed: over the whole window, Otsu's threshold then counts it as ink, not as
+faint (#1912, still open). Anything smaller is one panel, the whole image.
 
 Limit: ink within about 25 levels of the background is not found as faint ink (a gradient or
 noise looks the same).
