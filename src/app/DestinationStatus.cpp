@@ -5,11 +5,26 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <cmath>
 namespace putgd {
 namespace {
+// The keychain entries configured destinations own, in any credentials mode: the reference each
+// names, and putgd/<id> (what Settings writes when it switches to the keychain) and
+// putgd/sftp/<id> for each one, so keychain → session → keychain keeps an entry's mark.
+QSet<QString> ownedBy(const QString& id,const QJsonObject& profile) {
+ QSet<QString> owned{"putgd/"+id};
+ if(const auto reference=profile["credentials"].toObject().value("reference");reference.isString()&&!reference.toString().isEmpty())owned.insert(reference.toString());
+ if(profile["provider"]=="sftp")owned.insert("putgd/sftp/"+id);
+ return owned;
+}
+QSet<QString> ownedEntries(const QHash<QString,QJsonObject>& profiles) {
+ QSet<QString> owned;
+ for(auto it=profiles.cbegin();it!=profiles.cend();++it)owned.unite(ownedBy(it.key(),*it));
+ return owned;
+}
 constexpr qint64 maximumFileBytes=1024*1024;
 // A JSON number that is an exact integer from 0 to 2^53: a revision this file can hold.
 bool revisionValue(const QJsonValue& value,quint64* out) {
@@ -27,20 +42,37 @@ bool validRecord(const QJsonObject& record,quint64* revision) {
 DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObject* parent)
  :QObject(parent),path_(std::move(path)),settings_(settings) {}
 void DestinationStatus::load() {
- records_.clear();credentialRevisions_.clear();
+ records_.clear();credentialRevisions_.clear();keychainEntries_.clear();
  QFile file(path_);
- if(!file.exists())return;
- if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});return;}
+ // A file from before #1890 has no record of saved keychain entries: the entries of a destination
+ // that stored credentials (a revision above 0 in that file) then count as saved, so a store of
+ // one secret never overwrites one. Without revisions to go by (no file, or an unreadable one),
+ // only the entries keychain-mode destinations name count. An unreadable file is left as it is:
+ // the entries count as saved for this run only.
+ const auto upgrade=[this](bool persist,bool revisions){
+  const auto profiles=settings_.snapshot().profiles;
+  for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
+   const auto credentials=(*it)["credentials"].toObject();
+   if(revisions){if(credentialRevisions_.value(it.key())>0)keychainEntries_.unite(ownedBy(it.key(),*it));}
+   else if(credentials["mode"]=="keychain"&&!credentials["reference"].toString().isEmpty())keychainEntries_.insert(credentials["reference"].toString());
+  }
+  if(persist)save();
+ };
+ if(!file.exists()){upgrade(true,false);return;}
+ if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});upgrade(false,false);return;}
  QJsonParseError parse;const auto document=QJsonDocument::fromJson(file.readAll(),&parse);
- if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});return;}
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});upgrade(false,false);return;}
  const auto root=document.object();
  const auto revisions=root["credentialRevisions"].toObject();
  for(auto it=revisions.begin();it!=revisions.end();++it)if(quint64 revision=0;revisionValue(it.value(),&revision))credentialRevisions_.insert(it.key(),revision);
+ for(const auto& entry:root["keychainEntries"].toArray())if(entry.isString()&&!entry.toString().isEmpty()&&entry.toString().size()<=256)keychainEntries_.insert(entry.toString());
  const auto destinations=root["destinations"].toObject();
  for(auto it=destinations.begin();it!=destinations.end();++it) {
   const auto value=it.value().toObject();quint64 revision=0;if(!validRecord(value,&revision))continue;
   records_.insert(it.key(),{value["state"].toString(),value["source"].toString(),value["errorCode"].toString(),value["fingerprint"].toString(),revision});
  }
+ // After the records are read, so the upgrade's save keeps them.
+ if(!root.contains("keychainEntries"))upgrade(true,true);
 }
 void DestinationStatus::follow(OperationService& operations) {
  connect(&settings_,&SettingsService::accepted,this,[this]{prune();});
@@ -59,7 +91,10 @@ void DestinationStatus::save() {
   destinations.insert(it.key(),record);
  }
  for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
- const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions}}).toJson(QJsonDocument::Compact);
+ // Always written, even empty: a file without it is one from before #1890.
+ auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();
+ QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)}};
+ const auto bytes=QJsonDocument(root).toJson(QJsonDocument::Compact);
  QDir().mkpath(QFileInfo(path_).absolutePath());
  QSaveFile file(path_);file.setDirectWriteFallback(false);
  // The record stays in memory when the write fails; the next change writes it again.
@@ -85,6 +120,10 @@ void DestinationStatus::credentialsChanged(const QString& profileId) {
  credentialRevisions_[profileId]+=1;
  if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials)credentialRevisions_[it.key()]+=1;
  save();emit changed();
+}
+void DestinationStatus::keychainWritten(const QString& reference) {
+ if(reference.isEmpty()||reference.size()>256||keychainEntries_.contains(reference))return;
+ keychainEntries_.insert(reference);save();
 }
 void DestinationStatus::testFinished(const QString& profileId,const QString& fingerprint,quint64 revision,const Error& error) {
  // A test held back before it reached the provider, such as during journal recovery, proves nothing.
@@ -121,6 +160,8 @@ void DestinationStatus::prune() {
  bool removed=false;
  for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
  for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
+ const auto owned=ownedEntries(profiles);
+ for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!owned.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;
  if(removed){save();emit changed();}
 }
 QJsonObject DestinationStatus::publicJson() const {
