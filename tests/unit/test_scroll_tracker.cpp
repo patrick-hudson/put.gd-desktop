@@ -1852,6 +1852,69 @@ void testTurnBackLookAlike() {
   }
 }
 
+// A known limit of #1837's fix: cells in the frame's two outermost columns no
+// longer join a held-back bar up or down (the window's scroll bar there
+// stretched GitHub's header 280 rows down the page). A header with a 1-px
+// border, whose block rows are joined only by that border down the frame's
+// edges, can then lose one header-width row to the page: 8 of 4,000 randomized
+// scenes, 300-486 px each. This one (seed 120) is kept to show it: 38 px
+// differ on the nightly before the fix, 486 after. A change that fixes or
+// worsens it shows here.
+void testBorderedHeaderEdgeRow() {
+  std::printf("\n[bordered header] known limit: at most one header-width row (#1837)\n");
+  const int W = 480, V = 480, P = 200, header = 33;
+  Image doc(W, 7000, kBg);
+  Rng prose(23 + 120);
+  for (int y = 10; y + 12 < 1000; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  const std::vector<int> twoHeadings{7, 10, 11, 13, 14, 17, 22, 26, 28, 29, 31};
+  for (int b = 1000 / P; b * P < doc.h; ++b) {
+    Rng head(500 + uint64_t(b) + 120000ull);
+    if (b % 3 == 0) {  // every third block a paragraph
+      for (int y = b * P + 6; y + 12 < (b + 1) * P; y += 18) drawTextLine(doc, y, 40, W - 40, head);
+      continue;
+    }
+    drawTextLine(doc, b * P + 6, 40, W - 40, head);
+    if (std::find(twoHeadings.begin(), twoHeadings.end(), b) != twoHeadings.end()) drawTextLine(doc, b * P + 24, 40, W - 40, head);
+    for (int j = 0; j < 4 && b * P + 44 + j * 19 + 12 < (b + 1) * P; ++j) {
+      Rng words(77 + uint64_t(j));  // rows the same in every table
+      drawTextLine(doc, b * P + 44 + j * 19, 40, W - 40, words);
+    }
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  PinnedPart h;
+  h.w = W;
+  h.h = header;
+  h.background = 0xEDEFF2;
+  h.ink = 0x30303A;
+  h.inkRows = 15;
+  h.border = true;
+  ss.pinned.push_back(h);
+  const Scene scene(doc, ss);
+  const std::vector<int> pos{0,    63,   126,  189,  252,  315,  378,  441,  504,  567,  630,  693,  756,  819,  882,  945,
+                             1008, 1071, 1134, 1197, 1582, 1581, 1578, 1576, 1576, 1581, 1583, 1579, 1576, 1576, 1575, 1583,
+                             1582, 1583, 1581, 1578, 1578, 1577, 1580, 1578, 1582, 1583, 1580, 1581, 1580, 1577, 1576, 1582,
+                             1581, 1605, 1635, 1692, 1714, 1738, 1761, 1799, 1849, 1868, 1886, 1940, 1975, 2018, 2054, 2067};
+  const Played r = play(scene, pos);
+  long long bad = 0;
+  int firstBad = -1;
+  for (long long y = std::max<long long>(r.totals.top, header + 2); y < r.totals.bottom; ++y)
+    for (int x = 1; x < W - 1; ++x) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[(size_t(y - r.totals.top) * W + x) * 4], 4);
+      const uint32_t e = y >= 0 && y < doc.h ? doc.at(x, int(y)) : kBg;
+      int worst = 0;
+      for (int sh = 0; sh < 24; sh += 8) worst = std::max(worst, std::abs(int((v >> sh) & 255) - int((e >> sh) & 255)));
+      if (worst > 40) {
+        ++bad;
+        if (firstBad < 0) firstBad = int(y);
+      }
+    }
+  report("a bordered header loses at most one header-width row (known limit)", r.wrong == 0 && bad <= W + 20,
+         counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+}
+
 // A playing video in the region (#1537): a part of the page that keeps
 // changing while the rest of the frame agrees must not contradict the image
 // or stall a capture the person scrolls themselves (slow scrolling, pausing,
@@ -2795,6 +2858,7 @@ int main() {
   testLostGuessMarksNothing();
   testEdgeLine();
   testTurnBackLookAlike();
+  testBorderedHeaderEdgeRow();
   testPlayingVideo();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
