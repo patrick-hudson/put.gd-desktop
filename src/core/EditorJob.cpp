@@ -234,6 +234,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
  HelperOutput helperOutput("putgd-ui --edit-image",logUi());
  helperfiles::captureStandardError(process,protocolFailed,[&helperOutput](const QByteArray& bytes){helperOutput.append(bytes);});
+ // #1898: with no panel (report mode) only the agent's decision ends a prompt, so an outcome that uploads or edits
+ // must be the one forwarded: the first decide sent, until the helper refuses it. With a panel, a person may have
+ // chosen first. Cancel and the helper's own deadline upload nothing and need no match.
+ QString decideRequest,decided;
+ const auto decidedAs=[&](const QString& choice){return check_->prompt||decided==choice;};
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
   if(protocolFailed||!validEnvelope(payload,nonce)){protocolFailed=true;return;}
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
@@ -250,11 +255,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(const auto handler=session->phaseHandler())handler("prompt",result.findings);
    return;
   }
-  if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3&&(!checking||prompting)){editing=true;prompting=false;session->setPhase("editing");if(checking)if(const auto handler=session->phaseHandler())handler("editing",result.findings);return;}
+  if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3&&(!checking||(prompting&&decidedAs("edit")))){editing=true;prompting=false;session->setPhase("editing");if(checking)if(const auto handler=session->phaseHandler())handler("editing",result.findings);return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
   // #1820: the check covered what it found automatically and hands that PNG off, with no prompt or after Upload anyway.
   // #1898: or, marked redacted, after Redact and upload at a prompt: every suggestion covered, whatever the kinds' settings.
-  if(type=="finalizing"&&checking&&ready&&!editing&&!finalizing&&!checkpoint&&((payload.size()==3&&!check_->cover.isEmpty())||(payload.size()==4&&prompting&&payload["redacted"]==true&&!result.findings["found"].toObject().isEmpty()))){
+  if(type=="finalizing"&&checking&&ready&&!editing&&!finalizing&&!checkpoint&&((payload.size()==3&&!check_->cover.isEmpty()&&(!prompting||decidedAs("upload")))||(payload.size()==4&&prompting&&payload["redacted"]==true&&!result.findings["found"].toObject().isEmpty()&&decidedAs("redact_upload")))){
    finalizing=true;covering=true;redacting=payload.size()==4;session->setPhase("finalizing");phaseClock.restart();
    if(prompting){prompting=false;if(const auto handler=session->phaseHandler())handler("checking",result.findings);}
    return;
@@ -268,6 +273,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
    const auto callback=found->reply;outstanding.remove(id);
+   // A refused decision forwarded nothing: the next one may stand.
+   if(id==decideRequest&&!payload["ok"].toBool()){decideRequest.clear();decided.clear();}
    if(payload["ok"].toBool()){if(payload.size()!=6||!payload["result"].isObject()){protocolFailed=true;return;}callback({},payload["result"].toObject());}
    else{if(payload.size()!=7||!payload["code"].isString()||!payload["message"].isString()){protocolFailed=true;return;}callback({payload["code"].toString().left(64),payload["message"].toString().left(512),{}},{});}
    return;
@@ -306,7 +313,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
     const auto code=payload["code"].toString();
     // #1820: after covers were reported, an original never uploads: check_upload is refused, and so is check_clean once covering began.
     const bool reportedCovers=!result.findings["covered"].toObject().isEmpty();
-    const bool checkCode=checking&&!editing&&!covering&&(code=="check_clean"?!prompting:QStringList{"check_upload","check_cancel","check_expired"}.contains(code)&&prompting&&!(code=="check_upload"&&reportedCovers));
+    const bool checkCode=checking&&!editing&&!covering&&(code=="check_clean"?!prompting:QStringList{"check_upload","check_cancel","check_expired"}.contains(code)&&prompting&&!(code=="check_upload"&&reportedCovers)
+     &&(code!="check_upload"||decidedAs("upload")));
     if(payload.size()!=6||!(checkCode||QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code))){protocolFailed=true;return;}
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
@@ -365,6 +373,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   for(auto& pending:session->take()){
    if(!(editing||prompting)||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
+   if(pending.command=="decide"&&decideRequest.isEmpty()){decideRequest=id;decided=pending.params["choice"].toString();}
    auto frame=envelope(nonce);frame["requestId"]=id;frame["command"]=pending.command;frame["params"]=pending.params;
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
    // Quick redact (#1428) answers when recognition is done, under the recognition deadline.

@@ -662,7 +662,10 @@ void OperationService::runCheck(Job job) {
    // #1820: a file covered automatically uploads as its covered PNG, staged privately in its place; the selection goes on.
    if(!outcome->png.isEmpty()&&!outcome->covered.isEmpty()){
     const auto folder=QStringLiteral("%1/%2").arg(coveredRoot).arg(index);
-    const auto name=QFileInfo(images[index]).completeBaseName().left(200)+QStringLiteral(".png");
+    // Within the 255-byte name limit after ".png" is added, cut at a whole character (#1898).
+    auto base=QFileInfo(images[index]).completeBaseName().left(200);
+    while(base.toUtf8().size()>200){base.chop(1);if(!base.isEmpty()&&base.back().isHighSurrogate())base.chop(1);}
+    const auto name=base+QStringLiteral(".png");
     QFile staged(folder+"/"+name);
     if(!QDir().mkpath(folder)||!QFile::setPermissions(coveredRoot,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!staged.open(QIODevice::WriteOnly|QIODevice::NewOnly)||staged.write(outcome->png)!=outcome->png.size()||!staged.flush()){
      staged.close();QFile::remove(staged.fileName());

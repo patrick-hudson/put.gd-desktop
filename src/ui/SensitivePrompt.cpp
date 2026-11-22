@@ -2,6 +2,7 @@
 #include "Ui.h"
 #include "Theme.h"
 #include <QCursor>
+#include <algorithm>
 #include <QGuiApplication>
 #include <QMouseEvent>
 #include <QPainter>
@@ -44,6 +45,11 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  setWindowTitle(complete?QStringLiteral("Sensitive text found — put.gd"):QStringLiteral("Check before uploading — put.gd"));
  Ui::styleWindow(*this);
  auto* box=new QVBoxLayout(this);box->setContentsMargins(space(Space::xl),space(Space::xl),space(Space::xl),space(Space::l));box->setSpacing(space(Space::m));
+ // #1898: the panel never outgrows 90% of the screen with the pointer: the preview, the minimum width and the
+ // buttons' rows all fit inside it, at any text size.
+ const auto* screen=QGuiApplication::screenAt(QCursor::pos());if(!screen)screen=QGuiApplication::primaryScreen();
+ const int room=screen?screen->availableGeometry().width()*9/10:Ui::scaled(1200);
+ const int inner=room-box->contentsMargins().left()-box->contentsMargins().right();
  auto* heading=new QHBoxLayout;heading->setSpacing(space(Space::s));
  auto* glyph=new QLabel(this);glyph->setObjectName("sensitiveGlyph");const int glyphSize=Ui::scaled(24);
  glyph->setPixmap(Ui::icon("alert",Theme::current().warning).pixmap(glyphSize,glyphSize));glyph->setFixedSize(glyphSize,glyphSize);heading->addWidget(glyph,0,Qt::AlignTop);
@@ -63,7 +69,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  if(!model_.preview.isNull()){
   // The capture as Redact and upload sends it (and Open in editor starts it), scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);
-  const auto dpr=devicePixelRatioF();auto pixmap=QPixmap::fromImage(model_.preview.scaled(QSize(Ui::scaled(480),Ui::scaled(300))*dpr,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(dpr);
+  const auto dpr=devicePixelRatioF();auto pixmap=QPixmap::fromImage(model_.preview.scaled(QSize(std::min(Ui::scaled(480),inner),Ui::scaled(300))*dpr,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(dpr);
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
  auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
@@ -92,16 +98,14 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
    for(auto* button:right)if(button)layout->addWidget(button);
    return layout;
   };
-  int needed=box->contentsMargins().left()+box->contentsMargins().right();int count=0;
+  int needed=0,count=0;
   for(auto* button:{cancel_,edit_,upload_,redact_})if(button){needed+=button->sizeHint().width();++count;}
   needed+=(count-1)*space(Space::s)+space(Space::l);
-  const auto* screen=QGuiApplication::screenAt(QCursor::pos());if(!screen)screen=QGuiApplication::primaryScreen();
-  const int room=screen?screen->availableGeometry().width()*9/10:Ui::scaled(1200);
-  twoRows_=needed>room;
+  twoRows_=needed>inner;
   if(twoRows_){box->addLayout(row({cancel_,edit_},{}));box->addLayout(row({},{upload_,redact_}));}
   else box->addLayout(row({cancel_,edit_},{upload_,redact_}));
  }
- setMinimumWidth(Ui::scaled(460));
+ setMinimumWidth(std::min(Ui::scaled(460),room));
  // A fixed size: tiling compositors (Hyprland, Budgie's labwc) float such a window instead of tiling it.
  adjustSize();setFixedSize(sizeHint().expandedTo(minimumSize()));
 }
