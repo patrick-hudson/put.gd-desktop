@@ -25,4 +25,5 @@ Physical builders, disposable VMs, goldens and cloud workers.
 - [Boat candidates](boat-candidates.md): exact candidate builds in disposable Boat workers.
 - [Boat snapshots](boat-snapshots.md): snapshot recipes and package targets.
 - [HTTP receivers](http-receivers.md): Zipline, Chibisafe and XBackBone in containers, their own `.sxcu` files and the upload check for the custom uploader.
+- [Storage servers](storage-servers.md): SFTP, Nextcloud and WebDAV servers in containers, with the failure cases the SFTP and Nextcloud destinations need, and a verifier.
 - [Lab storage and retention](lab-storage.md): capacity checks and storage retention.

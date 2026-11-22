@@ -49,6 +49,9 @@ const QList<Rule>& rules() {
   // Presigned queries and share-link fragments (Proton keeps the share
   // password in the fragment). The scheme, host and path stay.
   {QRegularExpression("(?i)\\b((?:https?|wss?|s3)://[^\\s?#\"'<>]+)[?#][^\\s\"'<>]*"),"\\1?<redacted>"},
+  // A Nextcloud share link's token is the link's only secret, in its path (#1872).
+  // A lookbehind, so overlapping segments ("/s/s/TOKEN") are each replaced.
+  {QRegularExpression("(?<=/s/)(?!<redacted>)[^\\s/?#\"'<>]+"),"<redacted>"},
   {QRegularExpression("(?i)\\b(aws_secret_access_key|aws_session_token|secret_?access_?key|secret_?key|session_?token|security_?token|access_?token|refresh_?token|id_?token|share_?password|password|passphrase|passwd|api_?key|client_?secret|private_?key|cookie|token|secret)(\"?\\s*[:=]\\s*\"?)[^\\s\",;&}\\]]+"),"\\1\\2<redacted>"},
   {QRegularExpression("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}"),"\\1 <redacted>"},
   {QRegularExpression("\\b(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ABIA|ACCA)[A-Z0-9]{16}\\b"),"<access-key-id>"},

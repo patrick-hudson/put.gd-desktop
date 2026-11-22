@@ -37,6 +37,8 @@ private:
     void remember(const QString&, Credentials);
     mutable QMutex mutex_;
     QHash<QString, Credentials> cache_;
+    // Erasures per cache key: a keychain read that started before one never fills the cache after it.
+    QHash<QString, quint64> erased_;
     quint64 generation_ = 0;
 };
 }

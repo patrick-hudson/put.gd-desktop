@@ -33,6 +33,8 @@ QString providerName(const QString& provider) {
  if(provider=="cloudflare-r2")return "Cloudflare R2";
  if(provider=="proton-drive")return "Proton Drive";
  if(provider=="custom-http")return "Custom uploader";
+ if(provider=="nextcloud")return "Nextcloud";
+ if(provider=="webdav")return "WebDAV";
  if(provider=="sftp")return "SFTP";
  return provider;
 }

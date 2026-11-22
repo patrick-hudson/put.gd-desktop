@@ -82,7 +82,7 @@ QString HistoryModel::destination(int row)const{
  const auto profileId=r["profileId"].toString(op["destination"].toObject()["profileId"].toString());
  for(const auto& value:history_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId&&!profileId.isEmpty())return value.toObject()["label"].toString();
  auto provider=r["receipt"].toObject()["destination"].toObject()["providerId"].toString();if(provider.isEmpty())provider=op["destination"].toObject()["providerId"].toString();
- if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="cloudflare-r2")return QStringLiteral("Cloudflare R2");if(provider=="custom-http")return QStringLiteral("Custom uploader");if(provider=="sftp")return QStringLiteral("SFTP");if(provider=="s3")return QStringLiteral("S3 destination");
+ if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="cloudflare-r2")return QStringLiteral("Cloudflare R2");if(provider=="custom-http")return QStringLiteral("Custom uploader");if(provider=="nextcloud")return QStringLiteral("Nextcloud");if(provider=="webdav")return QStringLiteral("WebDAV");if(provider=="sftp")return QStringLiteral("SFTP");if(provider=="s3")return QStringLiteral("S3 destination");
  return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
 }
 HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){

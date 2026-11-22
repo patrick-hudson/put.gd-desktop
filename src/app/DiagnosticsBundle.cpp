@@ -144,6 +144,8 @@ QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) con
    if(objectKeys().contains(key))return token("key",string);
    if(idKeys().contains(key))return token("id",string);
    if(key=="bucket")return token("bucket",string);
+   // A Nextcloud destination's folder is a name the user chose (#1872).
+   if(key=="folder")return token("name",string);
    if(key=="endpoint")return token("endpoint",string);
   }
   return text(string);
@@ -392,6 +394,9 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("bucket",settings["bucket"].toString());redactor.literal("endpoint",settings["endpoint"].toString());
   redactor.literal("url",settings["publicUrlBase"].toString());redactor.literal("name",settings["folderName"].toString());
   redactor.literal("url",settings["requestUrl"].toString());
+  // Nextcloud and WebDAV (#1872): the server, folder and link addresses, and the account's name.
+  for(const auto* key:{"server","address","linkBase"})redactor.literal("url",settings[key].toString());
+  redactor.literal("name",settings["accountName"].toString());redactor.literal("name",settings["folder"].toString());
   // Cloudflare R2's account ID also names its endpoint host in logs and errors (#1699).
   for(const auto* key:{"accountRootUid","folderUid","accountId"})redactor.literal("id",settings[key].toString());
   // An SFTP destination's server, user and folder name private machines and people (#1871); ssh's

@@ -10,6 +10,7 @@
 #include "storage/b2/B2Provider.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
+#include "storage/dav/DavProvider.h"
 #include "storage/sftp/SftpProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
@@ -269,6 +270,8 @@ int main(int argc,char* argv[]) {
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
+ auto nextcloud=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::nextcloudId);providers.add(putgd::dav::nextcloudId,nextcloud);
+ auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
  auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/ssh/known_hosts");providers.add(putgd::sftp::providerId,sftp);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
@@ -445,7 +448,7 @@ int main(int argc,char* argv[]) {
  // uploads found, kept in the data folder so Settings shows it after a restart.
  putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
  // The destinations whose keys a session-mode check would outlive: the ones SetupService stores keys for.
- destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]==putgd::r2::providerId||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
+ destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]==putgd::r2::providerId||putgd::dav::isDav(profile["provider"].toString())||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
  destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
  server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
@@ -454,6 +457,37 @@ int main(int argc,char* argv[]) {
   setup.inspect(id,[guard=QPointer<putgd::ErrorLog>(&errorLog)](putgd::Error error,QJsonObject job){if(guard&&!error)guard->setupFinished(job);});
  });
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+  // Nextcloud and WebDAV (#1872): sign-in, sign-out, account and folder steps, and a Test whose
+  // result (warnings, the account) comes back with it. Share tokens never reach its journal.
+  if(putgd::dav::isDav(destination.providerId)){
+   const auto dav=destination.providerId==putgd::dav::nextcloudId?nextcloud:webdav;
+   // A sign-in or a binding is kept only while the destination still exists with the server it was for.
+   const auto current=[&settings](const putgd::Destination& d){const auto p=settings.snapshot().profiles.value(d.profileId);const auto s=p["settings"].toObject();return p["provider"]==d.providerId&&s["server"]==d.settings["server"]&&s["address"]==d.settings["address"]&&p["credentials"].toObject()==d.credentialReference;};
+   const putgd::DavProvider::Background background=[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));};
+   if(kind!="testDestination"){dav->setup(kind,destination,input,background,std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind),current);return;}
+   // Journal recovery first, as for S3, B2 and R2: a test that never reached the provider leaves the last check as it was.
+   if(!operations.destinationTestsReady()){auto error=operations.notReadyError();error.details["notAttempted"]=true;reply(error,{});return;}
+   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+   auto trail=std::make_shared<putgd::DestinationTestTrail>();
+   auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+    // A share link's token is a secret in its path: no journal keeps one (#1872).
+    const auto written=putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks(data))).toObject();auto error=checkpointFile(path,written);if(!error)trail->record(written);ack(error);
+   };
+   // An app password stored by hand is bound to its account first, as an inspection does.
+   dav->bindThen(destination,background,current,[&operations,dav,destination,checkpoint,path,trail,reply=std::move(reply)](putgd::Error bound)mutable{
+   if(bound){reply(bound,{});return;}
+   operations.background([dav,destination,checkpoint](putgd::Error& error){
+    QJsonObject out;dav->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+   },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    result=trail->completed(result);
+    auto journalError=checkpointFile(path,putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}))).toObject());
+    if(!error&&journalError)error=journalError;
+    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+    reply(error,result);
+   });
+   });
+   return;
+  }
   if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2"||destination.providerId==putgd::r2::providerId)){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
@@ -520,6 +554,7 @@ int main(int argc,char* argv[]) {
  };
  setup.setProviderSetup(providerSetup);
  setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
+ setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);
  server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
  // A diagnostics package uploads only to a destination whose Test connection
@@ -530,10 +565,21 @@ int main(int argc,char* argv[]) {
    if(!error&&job["kind"]=="testDestination"&&job["state"]=="completed")bundles.destinationTested(job["profileId"].toString());
   });
  });
- bundles.setDestinationTest([&settings,providerSetup](const QString& profileId,std::function<void(putgd::Error)> done){
-  const auto profile=settings.snapshot().profiles.value(profileId);
-  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
-  providerSetup("testDestination",destination,{},[done](putgd::Error error,QJsonObject){done(error);},[](QJsonObject){});
+ // Through SetupService, so it takes the destination's one setup slot like any other Test (#1872).
+ bundles.setDestinationTest([&settings,&setup](const QString& profileId,std::function<void(putgd::Error)> done){
+  setup.start("testDestination",profileId,settings.revision(),{},[&setup,done](putgd::Error error,QJsonObject started){
+   if(error){done(error);return;}
+   const auto id=started["setupId"].toString();auto connection=std::make_shared<QMetaObject::Connection>();
+   *connection=QObject::connect(&setup,&putgd::SetupService::changed,&setup,[&setup,id,done,connection](const QString& changed){
+    if(changed!=id)return;
+    setup.inspect(id,[done,connection](putgd::Error e,QJsonObject job){
+     if(!e&&job["state"]=="running")return;
+     QObject::disconnect(*connection);
+     const auto failed=job["error"].toObject();
+     done(e?e:putgd::Error{failed["code"].toString(),failed["message"].toString(),failed["details"].toObject()});
+    });
+   });
+  });
  });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.

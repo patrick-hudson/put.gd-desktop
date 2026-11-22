@@ -15,7 +15,7 @@
 #include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;class CustomUploaderPanel;class SftpPanel;class ErrorLogPage;namespace Ui{class Banner;}
+class ShortcutEditor;class CustomUploaderPanel;class DavDestinationPanel;class SftpPanel;class ErrorLogPage;namespace Ui{class Banner;}
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -57,6 +57,8 @@ public:
  void uploaderCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.r2Destination (#1678): the Cloudflare R2 form, edited, pasted into and moved to as a user does.
  void r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // ui.davDestination (#1872): the Nextcloud and WebDAV forms, edited and signed in as a user does.
+ void davCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.sftpDestination (#1871): the SFTP form, edited, pasted into, tested and trusted as a user does.
  void sftpCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
@@ -203,6 +205,14 @@ private:
  // Settings → Destinations → Custom uploader (HTTP): its form, and ui.customUploader
  // for agents (inspect, import a .sxcu file into the form, open or close its dialog).
  CustomUploaderPanel* uploader_=nullptr;
+ // Nextcloud and WebDAV (#1872): the panel, the running sign-in job, and its steps (SettingsDav.cpp).
+ DavDestinationPanel* dav_=nullptr;QString davSignInSetup_,davRemoving_,davAdoptedSetup_;bool davCancelPending_=false;
+ // Remove destination for Nextcloud: sign out (revoke) first, say whether the server confirmed it,
+ // then remove.
+ void revokeBeforeRemoving(const QString& profileId);
+ void davSignInEvent(const QString& setupId,const QUrl& url);void openDavBrowser();void cancelDavSignIn();
+ // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
+ bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
  SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();
  // #1871: a Clear about to start; its setup job record carries the mark from then on.
