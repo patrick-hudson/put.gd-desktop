@@ -1,0 +1,28 @@
+# Lab sshd with SFTP only (#1871). putgd-key signs in with a key, putgd-pw with a password.
+Port 22
+HostKey /server/hostkeys/ssh_host_ed25519_key
+HostKey /server/hostkeys/ssh_host_rsa_key
+AuthorizedKeysFile /server/authorized_keys.%u
+PidFile /tmp/sshd.pid
+LogLevel VERBOSE
+PermitRootLogin no
+# Every client reaches the pod through one gateway address, so a failed sign-in by one test must not
+# delay the next one (OpenSSH penalises a source address that fails authentication).
+PerSourcePenalties no
+Subsystem sftp internal-sftp -u 022
+AllowUsers putgd-key putgd-pw
+PubkeyAuthentication yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+AllowTcpForwarding no
+X11Forwarding no
+Match User putgd-key
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    ChrootDirectory /srv/sftp
+    ForceCommand internal-sftp -u 022
+Match User putgd-pw
+    AuthenticationMethods password
+    PubkeyAuthentication no
+    ChrootDirectory /srv/sftp
+    ForceCommand internal-sftp -u 022
