@@ -312,7 +312,7 @@ private:
         QByteArray home;
         Client::Status status;
         if (auto e = connection_.client->realpath(".", home, status)) { error = e; connection_.close(); return false; }
-        connection_.homeValid = status.code == wire::Ok && utf8RoundTrip(home);
+        connection_.homeValid = status.code == wire::Ok && !home.isEmpty() && utf8RoundTrip(home);
         connection_.home = connection_.homeValid ? textOf(home) : QString();
         return true;
     }
@@ -466,9 +466,14 @@ private:
         const std::atomic_bool never{false};
         client().setCancellation(&never);
         struct Restore { Client& c; ~Restore() { c.setCancellation(&io.cancelled); } } restore{client()};
+        // CLOSE and REMOVE share one 8-second budget, so a cancelled upload ends inside the 30 the
+        // resident gives it after its 20-second OPEN wait; what doesn't finish stays unconfirmed.
+        QElapsedTimer budget;
+        budget.start();
+        const auto left = [&] { return int(qMax<qint64>(0, 8000 - budget.elapsed())); };
         Client::Status status;
-        if (!handle.isEmpty() && client().close(handle, status)) return Gone::Unconfirmed;
-        if (client().remove(bytesOf(path), status)) return Gone::Unconfirmed;
+        if (!handle.isEmpty() && client().close(handle, status, left())) return Gone::Unconfirmed;
+        if (left() <= 0 || client().remove(bytesOf(path), status, left())) return Gone::Unconfirmed;
         return status.code == wire::Ok ? Gone::Removed : status.code == wire::NoSuchFile ? Gone::Already : Gone::Unconfirmed;
     }
     QJsonObject upload(Error& error, bool& uncertain) {
@@ -494,8 +499,8 @@ private:
         {
             // The final name, created only if nothing has it: never a temporary name renamed over it,
             // which several servers would let replace another file. Once OPEN is sent its reply is
-            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds. The
-            // resident gives a cancelled request time for that and the CLOSE and REMOVE after it.
+            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, then 8
+            // for CLOSE and REMOVE, inside the 30 the resident gives a cancelled request.
             if (io.cancelled) { error = {"cancelled", "Cancelled before anything was sent", {}}; return {}; }
             const std::atomic_bool never{false};
             client().setCancellation(&never);

@@ -205,8 +205,8 @@ private:
  CustomUploaderPanel* uploader_=nullptr;
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
  SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();
- // #1871: a Clear about to start, and the setup job that is one: its completion keeps the other typed secret.
- bool sftpClearPending_=false;QString sftpClearJob_;
+ // #1871: a Clear about to start; its setup job record carries the mark from then on.
+ bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
  QHash<QString,CredentialInputs> provisionalCredentials_;
  QJsonObject provisionalProfile_;

@@ -169,10 +169,10 @@ Error Client::statusOnly(const wire::Reply& reply, Status& status) {
     status = {reply.code, reply.message};
     return {};
 }
-Error Client::simple(const QByteArray& packet, quint32 id, Status& status) {
+Error Client::simple(const QByteArray& packet, quint32 id, Status& status, int deadlineMs) {
     if (auto e = request(id, packet)) return e;
     wire::Reply reply;
-    if (auto e = await(id, reply)) return e;
+    if (auto e = await(id, reply, deadlineMs)) return e;
     return statusOnly(reply, status);
 }
 Error Client::realpath(const QByteArray& path, QByteArray& absolute, Status& status) {
@@ -304,13 +304,13 @@ Error Client::fsync(const QByteArray& handle, Status& status) {
     const auto id = nextId();
     return simple(wire::extended(id, "fsync@openssh.com", wire::string(handle)), id, status);
 }
-Error Client::close(const QByteArray& handle, Status& status) {
+Error Client::close(const QByteArray& handle, Status& status, int deadlineMs) {
     const auto id = nextId();
-    return simple(wire::close(id, handle), id, status);
+    return simple(wire::close(id, handle), id, status, deadlineMs);
 }
-Error Client::remove(const QByteArray& path, Status& status) {
+Error Client::remove(const QByteArray& path, Status& status, int deadlineMs) {
     const auto id = nextId();
-    return simple(wire::path(wire::Remove, id, path), id, status);
+    return simple(wire::path(wire::Remove, id, path), id, status, deadlineMs);
 }
 Error Client::mkdir(const QByteArray& path, Status& status) {
     const auto id = nextId();

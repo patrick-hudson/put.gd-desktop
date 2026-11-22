@@ -12,11 +12,11 @@ namespace putgd {
 namespace {
 // A worker that answered within this long still has its minute left; its own idle exit is 60 s.
 constexpr qint64 reuseWithinMs = 50000;
-// The worker reports at least every 250 ms while a file moves. Its quiet stretches are bounded by
-// its own SFTP deadlines: an OPEN reply (20 s), then a CLOSE and a REMOVE (120 s each) to clean up.
-constexpr qint64 silenceLimitMs = 300000;
-// How long a cancelled request may take to finish its cleanup before the helper is stopped.
-constexpr qint64 cancelGraceMs = 300000;
+// The worker reports at least every 250 ms while a file moves and has a 120 s SFTP deadline.
+constexpr qint64 silenceLimitMs = 200000;
+// How long a cancelled request may take to finish before the helper is stopped: the worker's
+// 20 s OPEN wait and its 8 s cleanup budget fit inside it.
+constexpr qint64 cancelGraceMs = 30000;
 Error parseError(const QJsonObject& value) { return {value["code"].toString("sftp_failed"), value["message"].toString("The SFTP request failed"), value["details"].toObject()}; }
 // Errors the worker reports before anything could have changed on the server.
 bool definite(const QString& code) {

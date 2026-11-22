@@ -497,7 +497,7 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
         const auto user = c.resolved.user;
         if (c.asked.contains(QLatin1String("ambiguous")))
             return {"ssh_auth_failed",
-                    "ssh asked for a key's passphrase, but two of your key files share the first 100 characters of their path, which is all ssh shows, so put.gd "
+                    "ssh asked for a key's passphrase, but two of your key files share the first 100 bytes of their path, which is all ssh shows, so put.gd "
                     "didn't answer. Give one key a shorter path, or add it to your SSH agent.",
                     {}};
         if (c.asked.contains(QLatin1String("passphrase")) && !c.passphrase)

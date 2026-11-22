@@ -36,8 +36,8 @@ public:
     // Reads up to `bound` bytes and hashes them; `size` is how many there were.
     Error readHash(const QByteArray& handle, qint64 bound, QCryptographicHash& hash, qint64& size, Status& status);
     Error fsync(const QByteArray& handle, Status& status);
-    Error close(const QByteArray& handle, Status& status);
-    Error remove(const QByteArray& path, Status& status);
+    Error close(const QByteArray& handle, Status& status, int deadlineMs = 120000);
+    Error remove(const QByteArray& path, Status& status, int deadlineMs = 120000);
     Error mkdir(const QByteArray& path, Status& status);
     std::optional<wire::FileSystem> statvfs(const QByteArray& path);
     // The connection is gone, or the server broke the protocol: nothing more can be asked.
@@ -51,7 +51,7 @@ private:
     // outstanding requests go into replies_.
     Error pump(int milliseconds);
     Error await(quint32 id, wire::Reply& reply, int deadlineMs = 120000);
-    Error simple(const QByteArray& packet, quint32 id, Status& status);
+    Error simple(const QByteArray& packet, quint32 id, Status& status, int deadlineMs = 120000);
     Error statusOnly(const wire::Reply&, Status&);
     Error lost();
     SshProcess& ssh_;
