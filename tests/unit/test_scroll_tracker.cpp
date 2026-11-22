@@ -1721,6 +1721,53 @@ void testLostGuessMarksNothing() {
   }
 }
 
+// A line along the region's bottom edge (#1796): Firefox's page on Cinnamon
+// ends one row above the selected region, so every frame's last row is a dark
+// line that never moves. It lies inside a block row that moves with the page,
+// so it was written into the page's rows as seen once, and where the page is
+// blank there no later frame overruled it: stray dark lines across white
+// space. It belongs at most in the image's last row.
+void testEdgeLine() {
+  std::printf("\n[edge line] a line along the frame's edge stays out of the page's rows\n");
+  const int W = 480, V = 400;
+  const Document doc = plainPage(97, W, V);
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  PinnedPart line;
+  line.y = V - 1;
+  line.w = W;
+  line.h = 1;
+  line.background = 0x242424;
+  line.border = false;
+  line.inkRows = 0;
+  ss.pinned.push_back(line);
+  const Scene scene(doc.img, ss);
+  uint32_t seed = 5;
+  const std::vector<int> pos = steps(0, std::min(doc.img.h - V, 4000), [&] {
+    seed = seed * 1103515245u + 12345u;
+    return 20 + int((seed >> 16) & 0x7fffu) % 160;
+  });
+  const Played r = play(scene, pos);
+  // The line's colour where the page has none, above the image's last row.
+  long long stray = 0;
+  int firstRow = -1;
+  const long long rows = r.totals.bottom - r.totals.top;
+  for (long long y = 0; y + 1 < rows; ++y)
+    for (int x = 0; x < W; ++x) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
+      const long long p = r.totals.top + y;
+      const uint32_t e = p >= 0 && p < doc.img.h ? doc.img.at(x, int(p)) : kBg;
+      if ((v & 0xFFFFFF) == 0x242424 && (e & 0xFFFFFF) != 0x242424) {
+        ++stray;
+        if (firstRow < 0) firstRow = int(y);
+      }
+    }
+  report("a dark line on the frame's last row is not drawn into the page", r.wrong == 0 && stray == 0,
+         counts(r) + fmt(", %d wrong%s, %lld stray line px (row %d)", r.wrong, r.firstWrong.c_str(), stray, firstRow));
+}
+
 // A playing video in the region (#1537): a part of the page that keeps
 // changing while the rest of the frame agrees must not contradict the image
 // or stall a capture the person scrolls themselves (slow scrolling, pausing,
@@ -2662,6 +2709,7 @@ int main() {
   testRepeatAtStep();
   testJumpPastLookAlikes();
   testLostGuessMarksNothing();
+  testEdgeLine();
   testPlayingVideo();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
