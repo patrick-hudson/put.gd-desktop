@@ -43,6 +43,7 @@ struct Word {
  QList<Symbol> symbols={};
  bool emoji=false;    // an emoji glyph the colour plane named (#1748), not Tesseract's
  bool attach=false;   // joins the word before it with no space
+ bool second=false;   // #1911: from the second read of an uncertain token's line
 };
 struct Line {
  QRect rect;          // source pixels

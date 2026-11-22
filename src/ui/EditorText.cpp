@@ -11,7 +11,7 @@ namespace {
 QPolygon polygon(const QList<QPoint>& points,const QPoint& offset){QPolygon quad;for(const auto& point:points)quad<<point+offset;return quad;}
 QList<editor::RecognizedWord> words(const QList<TextWord>& found,const QPoint& offset){
  QList<editor::RecognizedWord> out;out.reserve(found.size());
- for(const auto& word:found)out.append({word.text,word.rect.translated(offset),word.confidence,0});
+ for(const auto& word:found)out.append({word.text,word.rect.translated(offset),word.confidence,0,word.second});
  return out;
 }
 }

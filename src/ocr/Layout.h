@@ -95,9 +95,49 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
 // tall, padded by up to two rows that hold no ink at the threshold, at most
 // `limit` of them, top to bottom.
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
+// #1912: a trimmed panel grown through its window's plain background: each
+// side moves out while at least a quarter of the next row or column, across
+// the area so far, is within `tolerance` of `background` and, on a line of 8 px
+// or more, each of its quarters holds such pixels for at least 1/32 of the
+// line's length (a line of text leaves that much paper; a desktop or frame of
+// another shade leaves none, and a stripe of the window's shade across it
+// leaves quarters empty),
+// and it meets none of `others` (the other panels and the areas already grown). A faint line has no grey step of 32 levels, so trimming
+// leaves it out; the growth takes it back in, and stops at a window's edge,
+// where a desktop or frame of another shade would be counted as ink.
+QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance=6);
 // Stretches a band copy's contrast so its darkest pixel is black and the
 // background white: faint ink becomes ink Otsu keeps.
 void stretchContrast(GreyImage& band,int background);
+
+// #1911: a word recognition was unsure of that looks like a key or token: at
+// least tokenLength characters once quotes and brackets are trimmed, letters and
+// digits both, below tokenConfidence. One misread character breaks such a token
+// for Quick redact, and a second, different read of its line is a second chance
+// (on the 10k secret corpus it covered 83 more of 1,933 secrets; on 176 ordinary
+// captures the test held on 8, 0.3% of their rows).
+inline constexpr int tokenLength=12;
+inline constexpr float tokenConfidence=70;
+bool uncertainToken(const QString& text,float confidence);
+// The rows to read again around such words: each word's box grown by a third
+// of its height and one row, joined where they overlap while the band stays
+// within four of its words' heights (a dense page is many short bands, not one
+// band of the page), inside [0, height). The least confident band first, so a
+// read cut short by time keeps the most doubtful lines. Whole rows, not only
+// the words: Tesseract reads a token in its line better (on the corpus, word
+// areas alone covered 47 more secrets against 96 for rows).
+struct TokenWord { QRect rect;float confidence=0; };
+struct TokenBand { Band band;float confidence=0; };  // its least confident word's
+QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height);
+// The second read stops when it has taken as long as the first pass, or this
+// long when the first was quicker (on the corpus it took at most 694 ms; a 4K
+// terminal full of tokens took 5.5 s, against 2.1 s for its first pass).
+inline constexpr int tokenTimeFloorMs=750;
+// A band copy for that second read: every pixel's distance from its local
+// background (the median of the 80 px around it), stretched so the strongest
+// ink nearby is black, on white. It reads dark and light, faint and coloured
+// backgrounds alike; scaled and bordered like bandImage.
+GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.

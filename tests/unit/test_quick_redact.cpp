@@ -36,6 +36,53 @@ Q_DECLARE_METATYPE(putgd::editor::quickRedact::Sources)
 class QuickRedactTest final:public QObject {
  Q_OBJECT
 private slots:
+ // #1911: the second read of an uncertain token's line is matched apart from
+ // the first. Side by side on one row the two readings would be one line:
+ // SHORT_SHA=... read twice became a key. A token only the second read got
+ // right is still found, and its marks are sized against its own read's words.
+ void secondReadIsMatchedApart() {
+  const auto twice=[](const QString& a,const QString& b,bool mark){
+   QList<RecognizedWord> out{{a,QRect(0,0,int(a.size())*8,20),40,0}};
+   out.append({b,QRect(1,1,int(b.size())*8,20),70,0,mark});
+   return out;
+  };
+  const QString sha=QStringLiteral("SHORT_SHA=")+QStringLiteral("2f6424a");
+  QCOMPARE(found(twice(sha,sha,false),all),QStringList{"key: "+sha+" "+sha});
+  QCOMPARE(found(twice(sha,sha,true),all),QStringList{});
+  const QString token=QStringLiteral("gh")+QStringLiteral("p_")+QStringLiteral("a1B2c3D4e5").repeated(3)+QStringLiteral("F6g7H8");
+  const QString misread=QStringLiteral("gnp_")+QStringLiteral("a1B2c3D4e5").repeated(2);
+  QCOMPARE(found(twice(misread,misread,true),all),QStringList{});
+  const auto both=twice(misread,token,true);
+  const auto matches=quickRedact::find(both,all);
+  QCOMPARE(matches.size(),qsizetype(1));QCOMPARE(matches.first().words,QList<int>{1});
+  QCOMPARE(matches.first().category,QStringLiteral("key"));
+  // The second read is matched among the first read's other lines: a line of
+  // a public key read again stays part of its PEM block, not a key.
+  {const QString body=QStringLiteral("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo");
+   QList<RecognizedWord> pem{{QStringLiteral("-----BEGIN"),QRect(0,0,80,20),90,0},{QStringLiteral("PUBLIC"),QRect(88,0,48,20),90,0},{QStringLiteral("KEY-----"),QRect(144,0,64,20),90,0},
+                             {body.left(40)+QStringLiteral("§"),QRect(0,30,520,20),35,1},{QStringLiteral("-----END"),QRect(0,60,64,20),90,2},{QStringLiteral("PUBLIC"),QRect(72,60,48,20),90,2},{QStringLiteral("KEY-----"),QRect(128,60,64,20),90,2}};
+   QCOMPARE(found(pem,all),QStringList{});
+   pem.append({body,QRect(1,31,520,20),80,0,true});
+   QCOMPARE(found(pem,all),QStringList{});}
+  // Both reads right about the same token: one finding, not two (Sol on #1920).
+  {const auto same=twice(token,token,true);
+   QCOMPARE(found(same,all),QStringList{"key: "+token});}
+  // A first-read match that wraps from the end of one row to the start of the
+  // next spans a box over words it does not cover; a second-read match there
+  // is its own finding (Sol on #1920).
+  {auto wrapped=words(QStringLiteral("aaaaaaaaaaaaaaaaaaaaaaaa 123456 | 654321"));
+   wrapped.append({QStringLiteral("111111"),QRect(60,0,48,20),70,0,true});
+   wrapped.append({QStringLiteral("222222"),QRect(116,0,48,20),70,0,true});
+   const auto result=quickRedact::find(wrapped,{"list"},patterns({R"(\d{6}\s\d{6})"}));
+   QCOMPARE(found(wrapped,result),(QStringList{"list: 123456 654321","list: 111111 222222"}));}
+  // A second read longer than a clipped first read reaches past its cover: both stay.
+  {QList<RecognizedWord> clipped{{QStringLiteral("JIRA-123456789012"),QRect(0,0,136,20),40,0},{QStringLiteral("JIRA-123456789012345"),QRect(0,0,160,20),70,0,true}};
+   QCOMPARE(found(clipped,quickRedact::find(clipped,{"list"},patterns({R"(JIRA-\d+)"}))),(QStringList{"list: JIRA-123456789012","list: JIRA-123456789012345"}));}
+  // The first read's overlapping word is no neighbour of the second read's match.
+  QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
+  const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);
+  QCOMPARE(boxes.size(),qsizetype(1));QVERIFY(boxes.first().mark.contains(both.at(1).rect));
+ }
  void categoriesMatchTheirShapes_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<QStringList>("expected");
   QTest::newRow("two phones on one line")<<"2125550100 4155550100"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: 4155550100"};

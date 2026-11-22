@@ -48,6 +48,30 @@ private slots:
  }
  // Decision 6. A language name becomes a file the helper opens: one that is a
  // path, an engine file or an option would let a caller choose what it reads.
+ // #1911: a candidate from the second read of an uncertain token's line says
+ // so, and Quick redact matches it apart from the first read; the mark is
+ // carried only when set, and only as true.
+ void secondReadCandidatesKeepTheirMark() {
+  Options options;options.candidates=true;options.languages={"eng"};
+  const InputHeader input{200,100,200,600};
+  TextResult result;result.languagesUsed={"eng"};
+  result.candidates={{"first",QRect(10,12,60,14),41,false},{"second",QRect(10,12,60,14),77,true}};
+  const auto json=encodeResult(result,options);
+  const auto object=QJsonDocument::fromJson(json).object();
+  QVERIFY(!object.value("candidates").toArray().at(0).toObject().contains("second"));
+  QCOMPARE(object.value("candidates").toArray().at(1).toObject().value("second"),QJsonValue(true));
+  TextResult back;QVERIFY(decodeResult(json,input,options,back));
+  QCOMPARE(back.candidates.size(),qsizetype(2));QVERIFY(!back.candidates.at(0).second);QVERIFY(back.candidates.at(1).second);
+  auto falseMark=object;auto list=falseMark.value("candidates").toArray();auto word=list.at(0).toObject();word["second"]=false;list[0]=word;falseMark["candidates"]=list;
+  TextResult refused;QVERIFY(!decodeResult(QJsonDocument(falseMark).toJson(QJsonDocument::Compact),input,options,refused));
+  // Only candidates carry it: a filtered word marked second is refused.
+  Options both=options;both.words=true;
+  auto inWords=object;auto marked=object.value("candidates").toArray().at(1).toObject();marked["text"]=QStringLiteral("w");
+  inWords["words"]=QJsonArray{marked};
+  TextResult wrongList;QVERIFY(!decodeResult(QJsonDocument(inWords).toJson(QJsonDocument::Compact),input,both,wrongList));
+  marked.remove("second");inWords["words"]=QJsonArray{marked};
+  TextResult plainWord;QVERIFY(decodeResult(QJsonDocument(inWords).toJson(QJsonDocument::Compact),input,both,plainWord));
+ }
  void languageNamesAreIdentifiersOnly() {
   for(const auto* valid:{"eng","deu","chi_sim","chi_tra_vert","frak"})QVERIFY2(validLanguage(valid),valid);
   for(const auto* bad:{"","en","ENG","eng.traineddata","../eng","/usr/share/eng","eng deu","eng+deu","osd","equ","eng_","eng_a_b_c","-c","eng\n"})QVERIFY2(!validLanguage(bad),bad);

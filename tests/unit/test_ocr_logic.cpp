@@ -1,6 +1,7 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips cut between lines and joined in page order, faint lines read again (#1894), the input limit, and
+// strips cut between lines and joined in page order, faint lines read again (#1894) in each
+// window of a screen grown past its trimmed text (#1912), uncertain tokens' lines read again (#1911), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
 // confident letters. The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
@@ -99,6 +100,70 @@ private slots:
   stretchContrast(band,220);
   QCOMPARE(uchar(band.pixels.at(0)),uchar(0));QCOMPARE(uchar(band.pixels.at(3)),uchar(255));
   QVERIFY(uchar(band.pixels.at(1))>0&&uchar(band.pixels.at(1))<255);
+ }
+ // #1912: a trimmed panel grows through its window's plain background to a
+ // faint line below and beside its text, and stops at the window's edge on a
+ // desktop of another shade; then that line is found as faint.
+ void panelsGrowThroughTheirWindow(){
+  const int width=900,height=500;
+  QByteArray grey(width*height,char(21));                       // desktop
+  for(int y=40;y<400;++y)for(int x=60;x<760;++x)grey[y*width+x]=char(44);   // window
+  for(int line=0;line<5;++line)for(int y=80+line*30;y<92+line*30;++y)for(int x=100;x<300;++x)if((x/3)%2==0)grey[y*width+x]=char(190);
+  for(int y=260;y<272;++y)for(int x=100;x<700;++x)if((x/3)%2==0)grey[y*width+x]=char(70);   // faint, longer
+  const GreyView view{reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width};
+  const QRect trimmed(92,72,216,160);
+  const auto grown=plainAround(view,trimmed,{},44);
+  QCOMPARE(grown,QRect(QPoint(60,40),QPoint(759,399)));
+  const GreyView window{view.row(grown.y())+grown.x(),grown.width(),grown.height(),width};
+  const auto found=faintLines(measure(window,{}),grown.width(),grown.height());
+  QCOMPARE(found.size(),qsizetype(1));QVERIFY(found.first().top<=260-40&&found.first().bottom>=272-40);
+  // Never into another panel: one beside it on the same plain background.
+  QCOMPARE(plainAround(view,trimmed,{QRect(500,40,100,360)},44).right(),499);
+  // A dense faint line, two thirds ink across the window, still lets it grow past (Sol on #1920).
+  {auto dense=grey;
+   for(int y=300;y<312;++y)for(int x=60;x<760;++x)if(x%3!=0)dense[y*width+x]=char(70);
+   const GreyView denseView{reinterpret_cast<const uint8_t*>(dense.constData()),width,height,width};
+   QCOMPARE(plainAround(denseView,trimmed,{},44),QRect(QPoint(60,40),QPoint(759,399)));}
+  // A stripe of the window's shade across the desktop below does not carry it out.
+  {auto striped=grey;
+   for(int y=400;y<height;++y)for(int x=60;x<300;++x)striped[y*width+x]=char(44);
+   const GreyView stripedView{reinterpret_cast<const uint8_t*>(striped.constData()),width,height,width};
+   QCOMPARE(plainAround(stripedView,trimmed,{},44).bottom(),399);}
+ }
+ // #1911: only an uncertain word shaped like a key or token is read again;
+ // its line's rows, joined with a neighbour's, and the least confident first
+ // when there are too many. The copy read again is dark ink on white whatever
+ // the page's polarity or contrast.
+ void uncertainTokensAreReadAgain(){
+  QVERIFY(uncertainToken(QStringLiteral("ghp_a1B2c3D4e5F6g7"),40));
+  QVERIFY(uncertainToken(QStringLiteral("\"sk-ant-api03-x9Y8z7\","),69));
+  QVERIFY(!uncertainToken(QStringLiteral("ghp_a1B2c3D4e5F6g7"),70));       // confident
+  QVERIFY(!uncertainToken(QStringLiteral("internationalization"),20));    // no digit
+  QVERIFY(!uncertainToken(QStringLiteral("2026-11-22.193401"),20));       // no letter
+  QVERIFY(!uncertainToken(QStringLiteral("\"a1b2c3d4e5f\""),20));        // 11 once trimmed
+  // Words of one row are one band, the least confident band first; a dense
+  // run of rows is cut into bands of at most four word heights.
+  const auto bands=tokenLines({{QRect(10,100,200,12),50},{QRect(300,104,100,12),20},{QRect(10,10,200,12),60}},200);
+  QCOMPARE(bands.size(),qsizetype(2));
+  QCOMPARE(bands[0].band.top,100-5);QCOMPARE(bands[0].band.bottom,116+5);QCOMPARE(bands[0].confidence,20.f);
+  QCOMPARE(bands[1].band.top,10-5);QCOMPARE(bands[1].band.bottom,22+5);QCOMPARE(bands[1].confidence,60.f);
+  QList<TokenWord> dense;for(int y=0;y<240;y+=16)dense.append({QRect(10,y,300,12),50});
+  const auto cut=tokenLines(dense,400);
+  QVERIFY(cut.size()>=4);
+  for(const auto& b:cut)QVERIFY2(b.band.bottom-b.band.top<=48,qPrintable(QString::number(b.band.bottom-b.band.top)));
+  const int width=320,height=80;
+  for(const auto& [paper,ink]:{std::pair{30,200},std::pair{240,40},std::pair{30,62},std::pair{0x58,0x93}}){
+   QByteArray grey(width*height,char(paper));
+   for(int y=30;y<42;++y)for(int x=20;x<300;++x)if((x/3)%2==0)grey[y*width+x]=char(ink);
+   const auto copy=contrastBand({reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width},{26,46,false},2,4,{});
+   QCOMPARE(copy.width,width*2+8);QCOMPARE(copy.height,20*2+8);
+   int darkest=255,lightest=0;
+   for(int y=0;y<copy.height;++y)for(int x=0;x<copy.width;++x){const int v=uchar(copy.pixels.at(y*copy.width+x));darkest=std::min(darkest,v);lightest=std::max(lightest,v);}
+   QVERIFY2(darkest<=40,qPrintable(QStringLiteral("paper %1 ink %2: darkest %3").arg(paper).arg(ink).arg(darkest)));
+   QCOMPARE(lightest,255);
+   // The rows above the glyphs are paper: white.
+   QCOMPARE(uchar(copy.pixels.at((4+2)*copy.width+copy.width/2)),uchar(255));
+  }
  }
  // Every row is in a band; bands cut at a gap meet, bands cut with no gap
  // overlap by two lines; a word cut by a seam comes from the band that holds

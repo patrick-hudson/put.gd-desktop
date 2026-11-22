@@ -420,4 +420,113 @@ GreyImage bandImage(const GreyView& source,const Band& band,double scale,int bor
  if(invert){auto* p=reinterpret_cast<uint8_t*>(out.pixels.data());for(qsizetype i=0;i<out.pixels.size();++i)p[i]=uint8_t(255-p[i]);}
  return out;
 }
+bool uncertainToken(const QString& text,float confidence){
+ if(confidence>=tokenConfidence)return false;
+ static const QString edges=QStringLiteral("\"'`()[]{}<>,;:.‘’“”");
+ qsizetype from=0,to=text.size();
+ while(from<to&&edges.contains(text.at(from)))++from;
+ while(to>from&&edges.contains(text.at(to-1)))--to;
+ if(to-from<tokenLength)return false;
+ bool letter=false,digit=false;
+ for(qsizetype i=from;i<to;++i){const QChar c=text.at(i);letter|=c.isLetter();digit|=c.isDigit();}
+ return letter&&digit;
+}
+QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height){
+ struct Run { int top=0,bottom=0,tallest=0;float confidence=0; };
+ QList<Run> runs;
+ for(const auto& w:words){
+  const int grow=w.rect.height()/3+1;
+  const Run r{std::clamp(w.rect.top()-grow,0,height),std::clamp(w.rect.bottom()+1+grow,0,height),w.rect.height(),w.confidence};
+  if(r.bottom>r.top)runs.append(r);
+ }
+ std::sort(runs.begin(),runs.end(),[](const Run& a,const Run& b){return a.top<b.top;});
+ QList<Run> joined;
+ for(const auto& r:std::as_const(runs)){
+  if(!joined.isEmpty()){
+   auto& j=joined.last();
+   const int bottom=std::max(j.bottom,r.bottom),tallest=std::max(j.tallest,r.tallest);
+   if(r.top<j.bottom&&bottom-j.top<=4*tallest){j.bottom=bottom;j.tallest=tallest;j.confidence=std::min(j.confidence,r.confidence);continue;}
+  }
+  joined.append(r);
+ }
+ std::stable_sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.confidence<b.confidence;});
+ QList<TokenBand> out;for(const auto& r:std::as_const(joined))out.append({{r.top,r.bottom,false},r.confidence});
+ return out;
+}
+GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes){
+ // The band with two tiles of context above and below, where the local
+ // background and ink are measured on 16 px tiles over 5 x 5 of them.
+ constexpr int tile=16,reach=2;
+ const int top=std::max(0,band.top-reach*tile),bottom=std::min(source.height,band.bottom+reach*tile);
+ const int width=source.width,height=bottom-top;
+ if(width<1||height<1)return bandImage(source,band,scale,border,codes,255,false);
+ const int columns=(width+tile-1)/tile,rows=(height+tile-1)/tile;
+ const auto at=[&](int y,int x){return source.row(top+y)[x];};
+ // Per tile histograms, then a 5 x 5 window's percentile.
+ std::vector<std::array<uint32_t,256>> histogram(size_t(columns)*size_t(rows));
+ const auto windowed=[&](std::vector<uint8_t>& result,double fraction){
+  result.assign(size_t(columns)*size_t(rows),0);
+  for(int ty=0;ty<rows;++ty)for(int tx=0;tx<columns;++tx){
+   std::array<uint32_t,256> sum{};uint32_t total=0;
+   for(int y=std::max(0,ty-reach);y<=std::min(rows-1,ty+reach);++y)for(int x=std::max(0,tx-reach);x<=std::min(columns-1,tx+reach);++x){
+    const auto& h=histogram[size_t(y)*size_t(columns)+size_t(x)];
+    for(int v=0;v<256;++v)sum[size_t(v)]+=h[size_t(v)];
+   }
+   for(const auto n:sum)total+=n;
+   const uint32_t want=uint32_t(std::ceil(fraction*total));uint32_t seen=0;int v=0;
+   for(;v<255;++v){seen+=sum[size_t(v)];if(seen>=want&&seen>0)break;}
+   result[size_t(ty)*size_t(columns)+size_t(tx)]=uint8_t(v);
+  }
+ };
+ for(auto& h:histogram)h.fill(0);
+ for(int y=0;y<height;++y)for(int x=0;x<width;++x)++histogram[size_t(y/tile)*size_t(columns)+size_t(x/tile)][at(y,x)];
+ std::vector<uint8_t> background;windowed(background,0.5);
+ GreyImage distance;distance.width=width;distance.height=height;distance.pixels=QByteArray(qsizetype(width)*height,char(0));
+ for(auto& h:histogram)h.fill(0);
+ for(int y=0;y<height;++y){
+  auto* row=distance.row(y);
+  for(int x=0;x<width;++x){
+   const int d=std::abs(int(at(y,x))-int(background[size_t(y/tile)*size_t(columns)+size_t(x/tile)]));
+   row[x]=uint8_t(d);++histogram[size_t(y/tile)*size_t(columns)+size_t(x/tile)][size_t(d)];
+  }
+ }
+ std::vector<uint8_t> strongest;windowed(strongest,0.98);
+ for(int y=0;y<height;++y){
+  auto* row=distance.row(y);
+  for(int x=0;x<width;++x){
+   const int s=std::max<int>(32,strongest[size_t(y/tile)*size_t(columns)+size_t(x/tile)]);
+   row[x]=uint8_t(255-std::min(255,row[x]*255/s));
+  }
+ }
+ QList<Quad> moved;
+ for(const auto& q:codes){Quad m=q;for(auto& p:m)p.ry()-=top;moved.append(m);}
+ return bandImage(distance.view(),{band.top-top,band.bottom-top,false},scale,border,moved,255,false);
+}
+QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance){
+ const QRect bounds(0,0,image.width,image.height);
+ QRect r=from.intersected(bounds);
+ if(r.isEmpty())return r;
+ const auto plain=[&](int x0,int y0,int x1,int y1){  // inclusive span
+  const QRect line(QPoint(x0,y0),QPoint(x1,y1));
+  if(std::any_of(others.cbegin(),others.cend(),[&](const QRect& o){return o.intersects(line);}))return false;
+  // A quarter of the line is paper, and every quarter of it holds some, so a
+  // stripe of the window's shade across a desktop does not pass (Sol on #1920).
+  const bool across=y0==y1;const int from=across?x0:y0,to=across?x1:y1,length=to-from+1;
+  qint64 paper=0;std::array<qint64,4> part{};
+  for(int i=0;i<length;++i){
+   const int v=across?image.row(y0)[from+i]:image.row(from+i)[x0];
+   if(std::abs(v-background)<=tolerance){++paper;++part[size_t(std::min(3,4*i/length))];}
+  }
+  if(4*paper<length)return false;
+  return length<8||std::all_of(part.cbegin(),part.cend(),[&](qint64 p){return 32*p>=length;});
+ };
+ for(bool grew=true;grew;){
+  grew=false;
+  if(r.top()>bounds.top()&&plain(r.left(),r.top()-1,r.right(),r.top()-1)){r.setTop(r.top()-1);grew=true;}
+  if(r.bottom()<bounds.bottom()&&plain(r.left(),r.bottom()+1,r.right(),r.bottom()+1)){r.setBottom(r.bottom()+1);grew=true;}
+  if(r.left()>bounds.left()&&plain(r.left()-1,r.top(),r.left()-1,r.bottom())){r.setLeft(r.left()-1);grew=true;}
+  if(r.right()<bounds.right()&&plain(r.right()+1,r.top(),r.right()+1,r.bottom())){r.setRight(r.right()+1);grew=true;}
+ }
+ return r;
+}
 }

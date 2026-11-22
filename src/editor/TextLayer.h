@@ -15,6 +15,7 @@ struct RecognizedWord {
  QRect rect;
  int confidence=0;
  int line=0; // which line of the result it is on, in reading order
+ bool second=false; // #1911: from the second read of an uncertain token's line
 };
 struct RecognizedCode {
  QString format;
