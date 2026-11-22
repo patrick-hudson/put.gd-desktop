@@ -3,9 +3,11 @@
 // Only test values: Visa's documented test number and AWS's documented example key.
 #include "fixtures/U2Fixtures.h"
 #include "core/SanitizedPng.h"
+#include "core/SensitiveText.h"
 #include "core/AllocatorPolicy.h"
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
+#include <algorithm>
 #include <QFileInfo>
 #include <QFont>
 #include <QPainter>
@@ -135,13 +137,15 @@ private slots:
   QCOMPARE(f.inspect(id)["error"].toObject()["details"].toObject()["cause"].toString(),QString("file_changed"));
   QCOMPARE(f.provider->uploads.load(),0);
  }
- // Redact and upload opens the editor with the suggestions placed; its PNG is what uploads.
- void redactOpensTheEditorWithTheSuggestionsPlaced(){
+ // Open in editor opens the editor with the suggestions placed; its PNG is what uploads.
+ void openInEditorPlacesTheSuggestions(){
   Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
   const auto id=f.start();
   QVERIFY(f.reaches(id,"sensitive_text_found"));
   QCOMPARE(call([&](JsonReply r){f.operations->editorCommand(id,"inspect",{},r);}).error.code,QString("editor_unavailable"));
-  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact",r);}).error);
+  // #1898: the choice that used to open the editor has a name of its own now.
+  QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"redact",r);}).error.code,QString("invalid_request"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"edit",r);}).error);
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["phase"].toString(),QString("editing"),20000);
   Call state;PUTGD_TRY_VERIFY((state=call([&](JsonReply r){f.operations->editorCommand(id,"inspect",{},r);}),!state.error));
   const auto shapes=state.result["shapes"].toArray();QVERIFY(!shapes.isEmpty());
@@ -152,6 +156,92 @@ private slots:
   HistoryStore journal(f.operations->databasePath());const auto item=journal.operation(id).items.first();
   QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto bytes=artifact.readAll();QVERIFY(!inspectSanitizedPng(bytes));
   QCOMPARE(QImage::fromData(bytes,"PNG").convertToFormat(QImage::Format_RGB32).pixel(covered.center()),qRgb(0,0,0));
+ }
+ // #1898: Redact and upload covers exactly what the prompt's preview shows, the suggestions Open in editor places,
+ // and uploads with no editor step; the notification's counts name what was covered.
+ void redactAndUploadSendsThePreviewedCoversInOneStep(){
+  Fixture f(page({card.first(),key.first()}),true,true,kinds({{"card","redact"},{"key","warn"}}));PUTGD_TRY_VERIFY(f.operations->ready());
+  // The reference: the same capture through Open in editor, submitted untouched.
+  const auto edited=f.start();QVERIFY(f.reaches(edited,"sensitive_text_found"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(edited,"edit",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(edited)["phase"].toString(),QString("editing"),20000);
+  QVERIFY(!call([&](JsonReply r){f.operations->editorCommand(edited,"submit",{},r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(edited)["state"].toString(),QString("completed"),20000);
+  const auto id=f.start();QVERIFY(f.reaches(id,"sensitive_text_found"));
+  QCOMPARE(f.inspect(id)["sensitive"].toObject()["found"].toObject(),(QJsonObject{{"key",1}}));
+  bool editing=false;
+  const auto decided=call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);});QVERIFY2(!decided.error,qPrintable(decided.error.code));
+  QCOMPARE(decided.result["decided"].toString(),QString("redact_upload"));
+  QVERIFY(putgd::test::waitFor([&]{const auto op=f.inspect(id);editing=editing||op["phase"]=="editing";return !Operation::activeState(op["state"].toString());},20000));
+  QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));QVERIFY2(!editing,"no editor step");QCOMPARE(f.provider->uploads.load(),2);
+  const auto image=uploaded(*f.operations,id);
+  QVERIFY2(blackShare(image,digits(0))>0.7,"the card, on Redact automatically, is covered");QVERIFY2(blackShare(image,digits(1))>0.7,"the key, on Warn, is covered too");
+  QCOMPARE(image.convertToFormat(QImage::Format_RGB32),uploaded(*f.operations,edited).convertToFormat(QImage::Format_RGB32));
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QCOMPARE(sensitive["covered"].toObject(),(QJsonObject{{"card",1},{"key",1}}));QVERIFY(sensitive["complete"].toBool());
+  QCOMPARE(coveredSentence(sensitive["covered"].toObject()),QString("Covered 1 card number and 1 key or token."));
+  // With Keep a local copy on, the uncovered original is kept locally, as automatic covers keep it.
+  const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
+  const QImage kept(original["paths"].toArray().first().toString());QVERIFY(blackShare(kept,digits(0))<0.4);QVERIFY(blackShare(kept,digits(1))<0.4);
+  QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+ }
+ // #1898: Redact and upload covers each file of a selection that asks; the user's own files stay as they are.
+ void redactAndUploadCoversEachFileOfASelection(){
+  Fixture f(page({"nothing"}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto first=f.dir.filePath("receipt.png"),second=f.dir.filePath("notes.png");QVERIFY(page(card).save(first,"PNG"));QVERIFY(page(key).save(second,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({first,second},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  for(int prompt=1;prompt<=2;++prompt){
+   QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==prompt;},40000));
+   // A selection never opens the editor.
+   QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"edit",r,prompt);}).error.code,QString("sensitive_choice_unavailable"));
+   QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r,prompt);}).error);
+  }
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),40000);
+  QCOMPARE(f.provider->uploads.load(),2);QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject(),(QJsonObject{{"card",1},{"key",1}}));
+  HistoryStore journal(f.operations->databasePath());for(const auto& item:journal.operation(id).items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));QVERIFY(blackShare(QImage::fromData(artifact.readAll()),digits(0))>0.7);}
+  QVERIFY(blackShare(QImage(first),digits(0))<0.4);QVERIFY(blackShare(QImage(second),digits(0))<0.4);
+ }
+ // #1898: a file chosen twice is answered at each place: Redact and upload at the first never becomes the second's
+ // Upload anyway, which keeps only the automatic cover, nor the reverse.
+ void aFileChosenTwiceKeepsEachPlacesAnswer(){
+  Fixture f(page({"nothing"}),true,false,kinds({{"card","redact"},{"key","warn"}}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto path=f.dir.filePath("receipt.png");QVERIFY(page({card.first(),key.first()}).save(path,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({path,path},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  const QStringList choices{"redact_upload","upload"};
+  for(int prompt=1;prompt<=2;++prompt){
+   QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==prompt;},40000));
+   QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,choices[prompt-1],r,prompt);}).error);
+  }
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),40000);
+  HistoryStore journal(f.operations->databasePath());const auto items=journal.operation(id).items;QCOMPARE(items.size(),2);
+  QList<double> keys;for(const auto& item:items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto image=QImage::fromData(artifact.readAll());QVERIFY(blackShare(image,digits(0))>0.7);keys.append(blackShare(image,digits(1)));}
+  std::sort(keys.begin(),keys.end());QVERIFY2(keys[0]<0.4&&keys[1]>0.7,"one place covered the key, the other left it as chosen");
+ }
+ // #1898: a file chosen twice that changes between its two checks never uploads unchecked at the place left uncovered.
+ void aFileChosenTwiceThatChangesBetweenChecksIsNotUploaded(){
+  Fixture f(page({"nothing"}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto path=f.dir.filePath("receipt.png");QVERIFY(page({card.first(),key.first()}).save(path,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({path,path},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==1;},40000));
+  QVERIFY(page({card.first(),key.first(),"changed"}).save(path,"PNG"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r,1);}).error);
+  QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==2;},40000));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r,2);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("failed"),40000);
+  QCOMPARE(f.inspect(id)["error"].toObject()["details"].toObject()["cause"].toString(),QString("file_changed"));
+  QCOMPARE(f.provider->uploads.load(),0);
+ }
+ // #1898: a check that couldn't finish and found nothing has nothing to cover: Redact and upload is refused.
+ void redactAndUploadNeedsSomethingFound(){
+  Fixture f(page({"Meeting notes for Tuesday"}),true,false,{},QJsonArray{"eng","zzz"});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();QVERIFY(f.reaches(id,"sensitive_text_found"));
+  QVERIFY(!f.inspect(id)["sensitive"].toObject()["complete"].toBool());
+  QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);}).error.code,QString("sensitive_choice_unavailable"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"cancel",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("cancelled"),20000);QCOMPARE(f.provider->uploads.load(),0);
  }
  // #1820: every kind on Redact automatically: the card is covered and the capture uploads with no decision.
  // With Keep a local copy on, the original is kept locally too, beside the covered copy.
