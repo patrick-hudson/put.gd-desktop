@@ -8,7 +8,10 @@ Usage (workstation, repo root):
 HOSTCFG.json: name, host, user, identity (workstation key path), known_hosts (pinned), vnc_port (workstation
 loopback tunnel), run (private directory whose qmp.sock is the forwarded
 tools/lab/host_input.py socket) and profile (name, desktop, session,
-qt_platform, session_process, fixture_hotkeys). Optional fixture_bin names a
+qt_platform, session_process, fixture_hotkeys). On a host with a lab lock
+directory (a builder), nothing starts unless lock_session (default
+$PUTGD_LAB_SESSION) holds its desktop lock.
+Optional fixture_bin names a
 host directory prepended to PATH, for a lab-built putgd-desktop-fixture when
 the installed package was built without PUTGD_LAB_FIXTURE.
 
@@ -16,7 +19,7 @@ The runner's helpers are redirected: shell -> pinned SSH into the real desktop
 session's environment, files -> scp, input -> forwarded uinput agent socket
 (qmp.sock), screenshots -> the host's loopback VNC tile. Evidence is labelled
 graphical-physical. put.gd runs with the runner's isolated XDG directories."""
-import argparse, hashlib, json, runpy, shlex, subprocess, sys, time
+import argparse, hashlib, json, os, runpy, shlex, subprocess, sys, time
 from pathlib import Path
 sys.path.insert(0, 'tools/lab'); import lab
 sys.path.insert(0, str(Path(__file__).parent)); import rfb
@@ -26,6 +29,11 @@ def main():
     run = Path(cfg['run']).resolve(); run.mkdir(parents=True, exist_ok=True)
     from physical_host import PhysicalHost
     target = PhysicalHost(cfg)
+    import desktop_lock  # checked through the transport that will do the work, whatever the host is called
+    session = cfg.get('lock_session') or os.environ.get(desktop_lock.SESSION_VARIABLE, '')
+    problem = json.loads(target.ssh(run, desktop_lock.held_check_script(session)).strip().splitlines()[-1])['problem']
+    if problem:
+        raise SystemExit(f'physical.py not started: {problem}. Set lock_session to the session that holds it')
     lab.write_json(run / 'state.json', {'schemaVersion': 1, 'id': cfg['name'], 'profile': cfg['profile']['name'],
                                         'guest_user': cfg['user'], 'acceleration': 'physical', 'host': cfg['host']})
     host_ssh, host_put, host_get, host_screenshot = target.ssh, target.put, target.get, target.screenshot
