@@ -47,8 +47,10 @@ public:
  bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
  // Whether this capture's prompt is open for a person, waiting for a decision (#1829).
  bool sensitivePromptWaiting(const QString& id) const;
- // The number of the capture's current prompt (a file selection can ask once per file), 0 when none.
- int sensitivePromptNumber(const QString& id) const {return checkOperations_.value(id).sensitive["prompt"].toInt();}
+ // The number of the prompt a person is shown now for this capture (a file selection can ask once per
+ // file), 0 when its prompt was answered, -1 when no check runs for it: read from the helper's session,
+ // phase and number together.
+ int sensitivePromptNumber(const QString& id) const;
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
