@@ -118,7 +118,7 @@ The methods that save to a given path without a dialog remain:
 | --- | --- | --- |
 | `recording.review {id, action: saveCopyDialog \| closeFileDialog}`; `inspect` reports `fileDialog` | `drive_recording_review` | Review's Save copy…; other review actions wait while it is open |
 | `editor.fileDialog {id, action: open \| inspect \| cancel}` | `editor_file_dialog` | the editor's Save a copy… |
-| `ui.fileDialog {dialog, action: open \| inspect \| cancel, field?, id?}` | `drive_file_dialog` | `editImage`; `historySaveAs`, for the selected file or the row with history or operation `id`; `outputFolder`, with `field` `root`, `images`, `videos`, `text` or `other`; `diagnosticsFolder` (open the package dialog first) |
+| `ui.fileDialog {dialog, action: open \| inspect \| cancel, field?, id?}` | `drive_file_dialog` | `editImage`; `historySaveAs`, for the selected file or the row with history or operation `id`; `outputFolder`, with `field` `root`, `images`, `videos`, `text` or `other`; `diagnosticsFolder` (open the package dialog first); `sftpKey`, SSH key's **Choose…** (show an SFTP destination in Destinations first) |
 
 Each step also logs a `putgd.filedialog` line naming the backend and, for the
 fallback, the reason. Each portal `Response` is logged with its code and how long

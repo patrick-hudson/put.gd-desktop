@@ -467,6 +467,15 @@ int main(int argc,char** argv){
  };
  if(qEnvironmentVariableIsSet("PUTGD_CATALOG_BAR_ONLY")){
   if(!commandBand({{"82-command-band-large-text",{1440,880}},{"83-command-band-large-text-narrow",{1060,680}}},"command-band-measurements-large-text.json"))return 2;
+  {
+   // #1898: the sensitive text prompt's four choices at enlarged text: one row where the screen has room, else two.
+   QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+   {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);}
+   SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+   SensitivePrompt prompt(std::move(found));prompt.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(prompt);if(!image.save(QDir(output).filePath("70e-sensitive-prompt-large-text.png")))return 2;
+   captures.append(QJsonObject{{"file","70e-sensitive-prompt-large-text.png"},{"width",image.width()},{"height",image.height()}});prompt.hide();
+  }
   QSaveFile file(QDir(output).filePath("large-text-captures.json"));if(!file.open(QIODevice::WriteOnly)||file.write(QJsonDocument(captures).toJson())<=0||!file.commit())return 2;
   return source.reads==0?0:2;
  }
@@ -997,7 +1006,7 @@ int main(int argc,char** argv){
   if(!prompt("70a-sensitive-prompt",found))return 2;
   SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
   if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
-  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.redactAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.editAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
   if(!prompt("70c-sensitive-prompt-files",files))return 2;
   // #1820: card numbers on Redact automatically, email on Warn: the card is covered already, the prompt asks about the email.
   SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;

@@ -99,7 +99,8 @@ public:
  EditorJob& withRedactList(QStringList terms,QStringList patterns){redactTerms_=std::move(terms);redactPatterns_=std::move(patterns);return *this;}
  // #1804: check the image for these Quick redact categories before it uploads.
  // `prompt` shows the prompt to a person; without it the check waits for an
- // agent's decide. `redact` offers Redact and upload. `file` names the file
+ // agent's decide. `redact` offers Open in editor (#1898; Redact and upload is offered whenever
+ // something is found). `file` names the file
  // of a selection ("File 2 of 3: notes.png"). `cover` (#1820), a subset of
  // categories, is covered without asking: with nothing else found the helper
  // hands off the covered PNG, and Upload anyway keeps those covers.
