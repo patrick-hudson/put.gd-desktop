@@ -125,8 +125,8 @@ geometry:
 2. Draw the shadow. A small blurred rounded square, whose size depends only on the sigma and the
    radius, is drawn as nine slices: its corners as they are, its edges stretched along the
    capture. The tile's size follows the blur and the corner radius, which grow with the
-   capture's shorter edge up to their limits, never with its length: a tall scrolling capture
-   needs no bigger tile than a short one as wide. Filling, drawing and encoding the canvas still
+   capture's shorter edge up to their limits, never with its length: with the shorter edge and the
+   padding size fixed, a longer capture needs no bigger tile. Filling, drawing and encoding the canvas still
    grow with its size.
 3. Fill the capture's rounded outline with the capture as a texture at an integer offset, with
    antialiasing. Every fully opaque pixel inside the outline, away from its antialiased edge, is
