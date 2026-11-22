@@ -56,11 +56,21 @@ static int availableCores(){
  QStringList parts;bool found=false;
  for(const auto& line:self.readAll().split('\n'))if(line.startsWith("0::/")){parts=QString::fromUtf8(line.mid(4)).split(QLatin1Char('/'),Qt::SkipEmptyParts);found=true;break;}
  if(!found||parts.contains(QLatin1String(".."))||parts.contains(QLatin1String(".")))return cores;
- // When /sys/fs/cgroup shows a subtree (bind-mounted, not a cgroup
- // namespace), the path's leading components are above it: drop them until
- // the cgroup is there.
+ // /sys/fs/cgroup may show a subtree (a bind mount, not a cgroup namespace):
+ // the path is relative to the hierarchy's root, so take off the mount's own
+ // root, from mountinfo ("id parent dev root mountpoint ... - cgroup2 ...").
+ QFile mounts(QStringLiteral("/proc/self/mountinfo"));
+ if(!mounts.open(QIODevice::ReadOnly))return cores;
+ QStringList mountRoot;bool mounted=false;
+ for(const auto& line:mounts.readAll().split('\n')){
+  const auto fields=line.split(' ');const auto dash=fields.indexOf("-");
+  if(fields.size()>4&&dash>4&&dash+1<fields.size()&&fields[4]=="/sys/fs/cgroup"&&fields[dash+1]=="cgroup2"){
+   mountRoot=QString::fromUtf8(fields[3]).split(QLatin1Char('/'),Qt::SkipEmptyParts);mounted=true;
+  }
+ }
+ if(!mounted||parts.mid(0,int(mountRoot.size()))!=mountRoot)return cores;
+ parts=parts.mid(int(mountRoot.size()));
  const QString root=QStringLiteral("/sys/fs/cgroup/");
- while(!parts.isEmpty()&&!QFile::exists(root+parts.join(QLatin1Char('/'))))parts.removeFirst();
  for(;;){
   QFile max(root+parts.join(QLatin1Char('/'))+QStringLiteral("/cpu.max"));
   if(max.open(QIODevice::ReadOnly)){
