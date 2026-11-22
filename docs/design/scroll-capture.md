@@ -509,12 +509,20 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   written. Cells held back there keep their piece of the line (the scroll
   bar's column), and so does a pinned part drawn from the first screen (Firefox's link
   bubble at the bottom).
-- **Frames that come far apart over a page that repeats** (a stream that stalls to a few frames a second on a pull
-  request's tables) can still land a table period short in two known ways, being fixed in
-  [#1823](https://github.com/patrick-hudson/put.gd-desktop/issues/1823): a place found again by the image lookup
-  after a lost stretch, and a distant frame judged "no movement" after ambiguous skips, after which a later frame
-  becomes the reference at the wrong place. A look-alike ahead in the same direction after a jump of more than a screen did not show on recorded
-  frames and stays a limit ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
+- **Frames that come far apart over a page that repeats** (a stream that stalls to about 4-8 frames a second on a
+  pull request's tables) can land a table period short, or more, after the tracker loses the page. It happens in two
+  ways ([#1823](https://github.com/patrick-hudson/put.gd-desktop/issues/1823)):
+  - After a lost stretch, the frame pair takes a look-alike place while the page has gone past the image's end, where
+    the image holds no rival place.
+  - A distant frame is judged "no movement" after ambiguous skips, and a later frame becomes the reference at the
+    wrong place.
+
+  Both count as finding the page again, so the capture carries the "lost the page … found it again. Rows may be
+  missing there: check the image" notice. One guard that rejected the first look-alike only led to the next one.
+  Requiring a second agreeing frame before a place found again is taken is the design change for it
+  ([#1847](https://github.com/patrick-hudson/put.gd-desktop/issues/1847)). A look-alike ahead in the same direction
+  after a jump of more than a screen did not show on recorded frames and stays a limit
+  ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - **A header with a 1-pixel border** whose block rows are joined only by that border down the frame's edges can let
   header pixels into the captured page. The two cell columns nearest each side of the frame no longer join a held-back
   bar up or down, because the window's scroll bar there once stretched GitHub's header 280 rows down the page and those
