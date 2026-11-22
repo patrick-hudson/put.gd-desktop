@@ -69,7 +69,8 @@ polling means "not yet". Test fetches the link as a visitor through the custom u
 returned-address rules on every redirect.
 Requests with file data have only a stall limit, as B2's. A read-back that checks a file's identity
 sends no progress to the resident, so on a very slow link (about 270 KB/s or less for the 256 MiB
-limit) the resident's 16-minute silence limit can stop it, and the identity stays unconfirmed.
+limit) the resident's 16-minute silence limit can stop it; during an upload that leaves the outcome
+unknown with no receipt, as any lost reply does.
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider
