@@ -13,6 +13,7 @@
 #include <QtTest>
 #include <atomic>
 #include <cstdio>
+#include <memory>
 #include <optional>
 using namespace putgd;
 using namespace putgd::editor;
@@ -41,13 +42,14 @@ int exitChild(int argc,char** argv) {
  const bool stuck=qEnvironmentVariable("PUTGD_RUNNER_EXIT_CHILD")=="stuck";
  ui::setQuickRedactAccountLookup([stuck](const std::function<bool()>& stopped){
   std::puts("lookup");std::fflush(stdout);
+  // The quit timer starts only now, so the exit always meets a running lookup.
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[]{QTimer::singleShot(200,QCoreApplication::instance(),[]{std::puts("quit");std::fflush(stdout);QCoreApplication::quit();});},Qt::QueuedConnection);
   if(stuck)QThread::msleep(10000);
   else{while(!stopped())QThread::msleep(5);std::puts("cancel seen");std::fflush(stdout);}
   return ui::Account{QStringLiteral("someone"),{}};
  });
  QObject context;
  ui::runQuickRedact(&context,words("someone filed JIRA-9"),{"name","list"},quickRedact::Sources{{},{},{},{R"(JIRA-\d)"}},[](quickRedact::Result){},10000);
- QTimer::singleShot(200,&app,[&app]{std::puts("quit");std::fflush(stdout);app.quit();});
  return app.exec();
 }
 }
@@ -208,8 +210,20 @@ private slots:
  // is reported unchecked, and a second run while the lookup is still stalled
  // waits for that same lookup rather than starting another.
  void aSlowAccountLookupNeverHoldsTheRest() {
-  Restore restore;std::atomic_int calls{0};
-  ui::setQuickRedactAccountLookup([&calls](const std::function<bool()>&){++calls;QThread::msleep(2500);return ui::Account{QStringLiteral("someone"),{}};});
+  Restore restore;
+  // #1662: the lookup stalls until the test lets it go, not for a fixed time a
+  // loaded runner could outlast across both runs. Shared, since the lookup
+  // thread is detached; however the test ends, the lookup is let go and has
+  // ended before the next test starts.
+  struct Stall {std::atomic_int calls{0};std::atomic_bool release{false};};
+  const auto stall=std::make_shared<Stall>();
+  struct Release {std::shared_ptr<Stall> stall;~Release(){
+   stall->release=true;
+   const bool stopped=ui::stopQuickRedactWorkers(QDeadlineTimer(test::scaled(5000)));
+   const bool idle=test::waitFor([]{return !ui::quickRedactAccountLookupRunning();});
+   if(!stopped||!idle)QTest::qFail("the stalled lookup or a worker did not end",__FILE__,__LINE__);
+  }} releaseAtEnd{stall};
+  ui::setQuickRedactAccountLookup([stall](const std::function<bool()>&){++stall->calls;while(!stall->release.load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
   const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
   quickRedact::Sources sources;sources.terms={"Hammond"};sources.patterns={R"(JIRA-\d)"};
   for(int run=0;run<2;++run){
@@ -220,8 +234,10 @@ private slots:
    QVERIFY(result->nameUnchecked);
    QCOMPARE(found(candidates,*result),(QStringList{"email: jane@example.com","list: Hammond","list: JIRA-9"}));
   }
-  QCOMPARE(calls.load(),1);
+  QCOMPARE(stall->calls.load(),1);
+  QVERIFY(ui::quickRedactAccountLookupRunning());
   // The stalled lookup ends on its own; the next run asks again.
+  stall->release=true;
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!ui::quickRedactAccountLookupRunning(),5000);
  }
  // M2, U6: a worker waiting on a stalled lookup stops at once when the editor
@@ -260,9 +276,12 @@ private slots:
   out+=child.readAllStandardOutput();
   qInfo("%s: ended %lld ms after quitting",qPrintable(mode),ended);
   QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);
+  QVERIFY2(out.startsWith("lookup\n"),out.constData());
   QVERIFY2(ended<ui::quickRedactExitWaitMs+test::scaled(500),qPrintable(QString::number(ended)));
+  // #1662: no lower bound for the stuck case. The clock starts when this
+  // process notices "quit", which a loaded runner delays by a poll or more, so
+  // a floor fails on a correct child; the bound that matters is the upper one.
   if(mode=="cooperative"){QVERIFY2(out.contains("cancel seen\n"),out.constData());QVERIFY2(ended<test::scaled(300),qPrintable(QString::number(ended)));}
-  else QVERIFY2(ended>=ui::quickRedactExitWaitMs-100,qPrintable(QString::number(ended)));
  }
 };
 int main(int argc,char** argv) {
