@@ -1227,6 +1227,7 @@ def main(argv=None):
         # The private output is not made again, so a second recording would have nothing to record from.
         parser.error('--output-gone-at removes the run\'s private output for good: one --build, one --format and --rounds 1 per run')
     desktop_lock.refuse_while_quiet('record_run')
+    desktop_lock.refuse_unless_held('record_run')
     return Driver(args).main()
 
 

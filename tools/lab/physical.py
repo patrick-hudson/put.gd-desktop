@@ -8,7 +8,9 @@ Usage (workstation, repo root):
 HOSTCFG.json: name, host, user, identity (workstation key path), known_hosts (pinned), vnc_port (workstation
 loopback tunnel), run (private directory whose qmp.sock is the forwarded
 tools/lab/host_input.py socket) and profile (name, desktop, session,
-qt_platform, session_process, fixture_hotkeys). Optional fixture_bin names a
+qt_platform, session_process, fixture_hotkeys). On a builder, nothing starts
+unless lock_session (default $PUTGD_LAB_SESSION) holds its desktop lock.
+Optional fixture_bin names a
 host directory prepended to PATH, for a lab-built putgd-desktop-fixture when
 the installed package was built without PUTGD_LAB_FIXTURE.
 
@@ -23,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent)); import rfb
 
 def main():
     cfg = json.loads(Path(sys.argv[1]).read_text())
+    import desktop_lock
+    desktop_lock.refuse_unless_builder_held('physical.py', cfg['host'], cfg.get('lock_session'))
     run = Path(cfg['run']).resolve(); run.mkdir(parents=True, exist_ok=True)
     from physical_host import PhysicalHost
     target = PhysicalHost(cfg)

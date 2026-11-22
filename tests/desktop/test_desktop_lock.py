@@ -436,6 +436,129 @@ class QuietLease(LockTest):
             self.assertTrue(call(action='guard', resource='quiet', session='local_a')['ok'])
             self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['quiet.lock'])
 
+class HeldAndRun(LockTest):
+    """`held` and `run`: lab work starts only while the caller's session holds the builder (#1865)."""
+
+    def test_held_is_true_only_for_the_holding_session_while_the_lock_is_current(self):
+        with self.assertRaisesRegex(lock.LockError, 'not locked'):
+            self.desktop.held('local_a')
+        self.acquire(minutes=30)
+        self.assertEqual(self.desktop.held('local_a')['state'], 'held')
+        with self.assertRaisesRegex(lock.LockError, 'held by holder .local_a., not local_b'):
+            self.desktop.held('local_b')
+        self.clock.advance(minutes=16)
+        with self.assertRaisesRegex(lock.LockError, 'stale under local_a'):
+            self.desktop.held('local_a')
+
+    def test_a_helper_refuses_unless_its_session_holds_this_host(self):
+        with mock.patch.dict(os.environ, {lock.SESSION_VARIABLE: ''}):
+            self.assertIsNone(lock.lock_problem(self.directory / 'none', clock=self.clock))  # a guest: no locks here
+            self.acquire(session='local_a')
+            with self.assertRaisesRegex(SystemExit, 'record_run not started: PUTGD_LAB_SESSION is not set'):
+                with mock.patch.object(lock, 'now_utc', self.clock):
+                    lock.refuse_unless_held('record_run', self.directory)
+        with mock.patch.object(lock, 'now_utc', self.clock):
+            with self.assertRaisesRegex(SystemExit, 'record_run not started: .* not local_b. Run it through'):
+                lock.refuse_unless_held('record_run', self.directory, 'local_b')
+            lock.refuse_unless_held('record_run', self.directory, 'local_a')
+
+    def test_a_workstation_driver_checks_only_builder_addresses(self):
+        def never(*args, **kwargs):
+            raise AssertionError('no SSH for a non-builder')
+        lock.refuse_unless_builder_held('physical.py', '127.0.0.1', '', run=never)
+        with self.assertRaisesRegex(SystemExit, "pass the session that holds k72's desktop lock"):
+            lock.refuse_unless_builder_held('physical.py', '192.168.68.72', '', run=never)
+
+    def run_main(self, *argv, process=None):
+        """Run the CLI with a local lock directory standing in for k72; returns (code, commands started)."""
+        started = []
+
+        def run(command, input, **kwargs):
+            return lock.subprocess.run([sys.executable, '-'], input=input, **kwargs)
+
+        def popen(command):
+            started.append(command)
+            return process or FakeProcess([0])
+
+        with tempfile.TemporaryDirectory() as pins:
+            (Path(pins) / 'k72').mkdir()
+            (Path(pins) / 'k72' / 'known_hosts').write_text('')
+            with mock.patch.object(lock, 'remote_script',
+                                   lambda payload: real_script(dict(payload, directory=str(self.directory)))), \
+                    mock.patch('sys.stderr'):
+                code = lock.main(['run', 'k72', '--owner', 'o', '--session', 'local_a', '--purpose', 'row',
+                                  '--minutes', '10', '--pins', pins, *argv], run=run, popen=popen)
+        return code, started
+
+    def test_a_refused_acquire_never_runs_the_command(self):
+        self.acquire(session='local_other')
+        code, started = self.run_main('--', 'dpkg', '-r', 'putgd')
+        self.assertEqual((code, started), (1, []))
+        self.assertEqual(self.desktop.status()['lock']['session'], 'local_other')
+
+    def test_runs_the_command_with_its_session_and_keeps_the_lock(self):
+        code, started = self.run_main('--', 'hostname')
+        self.assertEqual(code, 0)
+        self.assertEqual(started[0][-3:], ['patrick@192.168.68.72', "export PUTGD_LAB_SESSION=local_a;", 'hostname'])
+        self.assertIn('BatchMode=yes', started[0])
+        self.assertEqual(self.desktop.held('local_a')['lock']['purpose'], 'row')
+        code, started = self.run_main('--', 'true')  # the holder's re-run renews its own lock
+        self.assertEqual((code, len(started)), (0, 1))
+
+    def test_renews_the_lock_while_a_long_command_runs_and_stops_once_it_is_lost(self):
+        old = '2026-01-01T00:00:00Z'
+
+        def age():  # the lock's last renewal, long ago
+            path = self.directory / 'desktop.lock'
+            path.write_text(path.read_text().replace('heartbeat: ', f'heartbeat: {old}\nx: '))
+
+        process = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 3], during=age)
+        code, _ = self.run_main('--', 'sleep', '1200', process=process)
+        self.assertEqual(code, 3)  # the command's own exit code
+        self.assertEqual(process.waits, [lock.RENEW_SECONDS] * 2)
+        self.assertNotEqual(lock.parse_lock((self.directory / 'desktop.lock').read_text())['heartbeat'], old)
+        broken = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 0],
+                             during=lambda: self.desktop.release('local_a', verified_clean=True))
+        code, _ = self.run_main('--', 'sleep', '1200', process=broken)
+        self.assertEqual((code, broken.terminated), (1, True))
+
+    def test_release_gives_the_lock_back_after_the_command(self):
+        code, _ = self.run_main('--release', '--resource', 'quiet', '--', 'true')
+        self.assertEqual(code, 0)
+        self.assertEqual(list(self.directory.glob('*.lock')), [])
+
+    def test_held_command_checks_the_host(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def call(**payload):
+                return lock.call('d69', dict(payload, directory=folder), command=[sys.executable, '-'])
+            self.assertFalse(call(action='held', session='local_a')['ok'])
+            self.assertTrue(call(action='acquire', owner='o', session='local_a', purpose='p', minutes=5)['ok'])
+            self.assertTrue(call(action='held', session='local_a')['ok'])
+            refused = call(action='held', session='local_b')
+            self.assertFalse(refused['ok'])
+            self.assertIn('not local_b', '\n'.join(lock.describe(refused)))
+
+
+class FakeProcess:
+    """The command's SSH: each wait returns the next exit code or raises the next timeout."""
+
+    def __init__(self, outcomes, during=lambda: None):
+        self.outcomes, self.during, self.waits, self.terminated = list(outcomes), during, [], False
+
+    def wait(self, timeout=None):
+        if self.terminated:
+            return -15
+        self.waits.append(timeout)
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            self.during()
+            raise outcome
+        return outcome
+
+    def terminate(self):
+        self.terminated = True
+
+
 class RemoteProtocol(unittest.TestCase):
     def test_ssh_uses_the_pinned_host_key_and_never_trusts_on_first_use(self):
         command = lock.ssh_command('k72', '/keys/id', '/pins')

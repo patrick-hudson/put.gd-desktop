@@ -63,6 +63,7 @@ def main():
     parser.add_argument('--settings-wait', type=float, default=8)
     parser.add_argument('--click-highlights', action='store_true', help='prepare with click highlights, so the bar lists them')
     a = parser.parse_args()
+    record_run.desktop_lock.refuse_unless_held('recording_bar_shots')
     run = Path(a.run).resolve()
     for name in ('config', 'data', 'cache', 'state', 'shots', 'logs'):
         (run / name).mkdir(parents=True, exist_ok=True)

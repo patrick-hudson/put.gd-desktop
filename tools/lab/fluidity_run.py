@@ -554,6 +554,7 @@ def main(argv=None):
             p.add_argument('--settle', type=float, default=2.0)
     args = parser.parse_args(argv)
     desktop_lock.refuse_while_quiet('fluidity_run')
+    desktop_lock.refuse_unless_held('fluidity_run')
     driver = Driver(args)
     results = driver.record() if args.command == 'record' else driver.select()
     failed = [r for r in results['rounds'] if r.get('error')]

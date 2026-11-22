@@ -34,6 +34,21 @@ It is independent of the desktop lock: a timing run may need both.
   desktop_lock.py break HOST --session ID --reason TEXT [--resource R]
   desktop_lock.py guard [HOST] [--session ID]   exit 1 while another session holds HOST's quiet lease
                                                 (no HOST: this machine's own lock directory)
+  desktop_lock.py held [HOST] [--session ID] [--resource R]
+                                                exit 0 only while session ID holds HOST's lock and it is
+                                                current (no HOST: this machine's own lock directory)
+  desktop_lock.py run HOST --owner NAME --session ID --purpose TEXT --minutes N [--resource desktop|quiet]
+                       [--no-tray-host REASON] [--release] -- CMD ...
+                                                take the lock (or confirm session ID holds it), then run
+                                                CMD on HOST, renewing the lock while it runs
+
+`run` is the safe form of "acquire, then work": CMD never starts unless the lock
+is ours. CMD runs on the builder over the same pinned BatchMode SSH, with
+$PUTGD_LAB_SESSION set to ID, so lab helpers' held and quiet checks know it.
+The lock stays held after CMD unless --release is given (which releases it as
+`release --verified-clean` would, still refusing if CMD left something new).
+Lab helpers that install packages or drive a desktop call refuse_unless_held()
+before they change anything.
 
 The script sends itself to the builder (`ssh ... python3 -`) and runs the lock
 operation there. Exit codes: 0 done, 1 refused, 2 usage, 3 host unreachable.
@@ -46,6 +61,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import shlex
 import socket
 import subprocess
 import sys
@@ -65,6 +81,7 @@ PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
 RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session', 'quiet': 'quiet lease'}  # lock file <name>.lock
 SESSION_VARIABLE = 'PUTGD_LAB_SESSION'  # the session a lab helper runs for; its own quiet lease doesn't stop it
+RENEW_SECONDS = 300  # how often `run` renews its lock while CMD runs; well inside STALE_AFTER
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
@@ -307,6 +324,16 @@ class Desktop:
                             f'({current["lock"]["session"]}), not {session}', **current)
         return current['lock']
 
+    def held(self, session):
+        """The lock's state if `session` holds it and it is current (not expired or stale); else LockError."""
+        now = self.clock()
+        record = self.held_by(session, now)
+        current = dict(assess(record, now), lock=record)
+        if current['breakable']:
+            raise LockError(f'{self.name} is {current["state"]} under {session}: anyone may break it now. '
+                            'Extend it before more work', **current)
+        return current
+
     def replace(self, path, text):
         temporary = path.with_name(f'.{path.name}.{os.getpid()}')
         temporary.write_text(text)
@@ -513,6 +540,47 @@ def refuse_while_quiet(what, directory=None, session=None):
         raise SystemExit(f'{what} not started: {reason}')
 
 
+def lock_problem(directory=None, session=None, clock=None, resource='desktop'):
+    """Return why this host's lock is not the caller's, or None.
+
+    The caller is `session`, by default $PUTGD_LAB_SESSION (which `run` sets). A host with no lock
+    directory is not a shared builder (a VM guest, a sandbox) and has no lock to hold: None."""
+    session = os.environ.get(SESSION_VARIABLE, '') if session is None else session
+    directory = Path(directory or LOCK_DIR).expanduser()
+    if not directory.is_dir():
+        return None
+    if not session:
+        return f'{SESSION_VARIABLE} is not set to the session that holds this host\'s {RESOURCES[resource]} lock'
+    try:
+        Desktop(directory, socket.gethostname(), clock or now_utc, resource=resource).held(session)
+    except LockError as error:
+        return str(error)
+    return None
+
+
+def refuse_unless_held(what, directory=None, session=None, resource='desktop'):
+    """The check the lab's package-installing and desktop-driving helpers make before they change
+    anything on a builder: exit with the reason unless the caller holds this host's lock."""
+    reason = lock_problem(directory, session, resource=resource)
+    if reason:
+        raise SystemExit(f'{what} not started: {reason}. Run it through desktop_lock.py run HOST ... -- CMD')
+
+
+def refuse_unless_builder_held(what, address, session=None, run=subprocess.run):
+    """refuse_unless_held() for a workstation driver aimed at a builder by its address over SSH.
+    An address that is not one of the builders (a sandbox, a VM) has no desktop lock: no check."""
+    host = next((name for name, (known, _) in HOSTS.items() if known == address), None)
+    if host is None:
+        return
+    session = os.environ.get(SESSION_VARIABLE, '') if session is None else session
+    if not session:
+        raise SystemExit(f'{what} not started: pass the session that holds {host}\'s desktop lock '
+                         f'(lock_session, or {SESSION_VARIABLE})')
+    reply = call(host, {'action': 'held', 'resource': 'desktop', 'session': session}, run=run)
+    if not reply['ok']:
+        raise SystemExit(f'{what} not started: {reply["message"]}')
+
+
 def remote(payload):
     """Run one lock operation on this host and print its JSON reply."""
     probe = payload.get('tray_probe')
@@ -534,6 +602,8 @@ def remote(payload):
                                     payload.get('not_mine', ()))
         elif action == 'break':
             reply = desktop.break_lock(payload['session'], payload['reason'])
+        elif action == 'held':
+            reply = desktop.held(payload['session'])
         elif action == 'guard':
             reason = quiet_holder(desktop.directory, payload.get('session', ''), desktop.clock)
             reply = dict(desktop.status(), quiet=reason is None)
@@ -549,11 +619,11 @@ def remote(payload):
     return 0
 
 
-def ssh_command(host, identity=IDENTITY, pins=PINS):
+def ssh_command(host, identity=IDENTITY, pins=PINS, remote_command=('python3', '-')):
     return ['ssh', '-i', str(identity), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
             '-o', 'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=8',
             '-o', 'UserKnownHostsFile=' + str(Path(pins) / host / 'known_hosts'),
-            f'{USER}@{HOSTS[host][0]}', 'python3', '-']
+            f'{USER}@{HOSTS[host][0]}', *remote_command]
 
 
 def remote_script(payload):
@@ -588,7 +658,7 @@ def describe_items(title, items):
                               for item in items]
 
 
-DONE = {'guard': 'quiet lease free for heavy work', 'acquire': 'locked', 'heartbeat': 'heartbeat recorded', 'extend': 'expiry moved',
+DONE = {'guard': 'quiet lease free for heavy work', 'held': 'held by this session', 'acquire': 'locked', 'heartbeat': 'heartbeat recorded', 'extend': 'expiry moved',
         'release': 'released', 'break': 'lock broken'}
 
 
@@ -696,7 +766,86 @@ def guard_command(args, run):
     return 3 if reply.get('unreachable') else 0 if reply['ok'] else 1
 
 
-def main(argv=None, run=subprocess.run):
+def held_command(args, run):
+    session = os.environ.get(SESSION_VARIABLE, '') if args.session is None else args.session
+    if not session:
+        print(f'held: pass --session or set {SESSION_VARIABLE}', file=sys.stderr)
+        return 2
+    if args.host is None:  # on the builder itself
+        desktop = Desktop(Path(LOCK_DIR).expanduser(), socket.gethostname(), resource=args.resource)
+        try:
+            desktop.held(session)
+            reason = None
+        except LockError as error:
+            reason = str(error)
+        reply = {'ok': reason is None, 'message': reason}
+        print(json.dumps(reply) if args.json else reason or 'held by this session')
+        return 0 if reason is None else 1
+    reply = call(args.host, {'action': 'held', 'resource': args.resource, 'session': session},
+                 args.identity, args.pins, run)
+    print(json.dumps(reply, indent=2) if args.json else '\n'.join(describe(reply)))
+    return 3 if reply.get('unreachable') else 0 if reply['ok'] else 1
+
+
+def add_tray_host(payload, args, parser):
+    """An acquire of a GNOME desktop carries the tray host probe, or records why it is skipped."""
+    if payload['action'] == 'acquire' and args.resource == 'desktop' and args.host in GNOME_HOSTS:
+        if args.no_tray_host is None:
+            payload['tray_probe'] = tray_host_module().probe_source()
+        elif not args.no_tray_host.strip():
+            parser.error('--no-tray-host needs a reason')
+        else:
+            payload['purpose'] = f'{args.purpose} [no tray host: {args.no_tray_host.strip()}]'
+    elif getattr(args, 'no_tray_host', None) is not None:
+        parser.error('--no-tray-host applies only to the desktop of a GNOME host: ' + ', '.join(sorted(GNOME_HOSTS)))
+
+
+def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Popen, every=RENEW_SECONDS):
+    """`run`: CMD starts on the builder only once the lock is ours, and the lock is renewed while it runs."""
+    if args.resource not in ('desktop', 'quiet'):
+        parser.error('run takes --resource desktop or quiet')
+    if not command:
+        parser.error('run needs a command after --')
+
+    def lock_call(action, **fields):
+        reply = call(args.host, dict(fields, action=action, resource=args.resource, session=args.session),
+                     args.identity, args.pins, run)
+        print('\n'.join(describe(reply)), file=sys.stderr)
+        return reply
+
+    acquire = {'action': 'acquire', 'owner': args.owner, 'purpose': args.purpose, 'minutes': args.minutes}
+    add_tray_host(acquire, args, parser)
+    reply = explain_tray_host(call(args.host, dict(acquire, resource=args.resource, session=args.session),
+                                   args.identity, args.pins, run))
+    if not reply['ok'] and (reply.get('lock') or {}).get('session') == args.session:
+        reply = lock_call('extend', minutes=args.minutes)  # already ours: confirm it under the mutex and renew it
+    else:
+        print('\n'.join(describe(reply)), file=sys.stderr)
+    if not reply['ok']:
+        print(f'{args.host}: command not run: this session does not hold the lock', file=sys.stderr)
+        return 3 if reply.get('unreachable') else 1
+    remote = [f'export {SESSION_VARIABLE}={shlex.quote(args.session)};', *command]
+    process = popen(ssh_command(args.host, args.identity, args.pins, remote))
+    while True:
+        try:
+            code = process.wait(timeout=every)
+            break
+        except subprocess.TimeoutExpired:
+            renewed = lock_call('extend', minutes=args.minutes)
+            if not renewed['ok'] and not renewed.get('unreachable'):
+                print(f'{args.host}: the lock is no longer ours; stopping the command\'s SSH (anything it '
+                      'started on the host may still be running)', file=sys.stderr)
+                process.terminate()
+                process.wait()
+                return 1
+    if args.release:
+        released = lock_call('release', verified_clean=True)
+        if code == 0 and not released['ok']:
+            return 3 if released.get('unreachable') else 1
+    return code
+
+
+def main(argv=None, run=subprocess.run, popen=subprocess.Popen):
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('--json', action='store_true', help='print the raw replies')
     common.add_argument('--resource', choices=sorted(RESOURCES), default='desktop',
@@ -720,37 +869,45 @@ def main(argv=None, run=subprocess.run):
     guard.add_argument('--json', action='store_true', help='print the raw reply')
     guard.add_argument('--identity', type=Path, default=IDENTITY, help=argparse.SUPPRESS)
     guard.add_argument('--pins', type=Path, default=PINS, help=argparse.SUPPRESS)
-    for command in (acquire, heartbeat, extend, release, breaking):
+    held = commands.add_parser('held', parents=[common], help='exit 0 only while your session holds the lock')
+    held.add_argument('host', nargs='?', choices=sorted(HOSTS), help="omit on a builder to check its own lock directory")
+    held.add_argument('--session', help=f'your session id (default ${SESSION_VARIABLE})')
+    running = commands.add_parser('run', parents=[common], help='take the lock, then run -- CMD on the host',
+                                  usage='%(prog)s HOST --owner NAME --session ID --purpose TEXT --minutes N '
+                                        '[--resource desktop|quiet] [--no-tray-host REASON] [--release] -- CMD ...')
+    running.add_argument('--release', action='store_true', help='release the lock after CMD (--verified-clean)')
+    for command in (acquire, heartbeat, extend, release, breaking, running):
         command.add_argument('host', choices=sorted(HOSTS))
         command.add_argument('--session', required=True, help='your session id, how others reach you')
-    acquire.add_argument('--owner', required=True, help='short session name')
-    acquire.add_argument('--purpose', required=True)
-    for command in (acquire, extend):
+    for command in (acquire, running):
+        command.add_argument('--owner', required=True, help='short session name')
+        command.add_argument('--purpose', required=True)
+        command.add_argument('--no-tray-host', metavar='REASON',
+                             help='lock a GNOME desktop without its tray host, to test the no-tray path on purpose')
+    for command in (acquire, extend, running):
         command.add_argument('--minutes', type=int, required=True, help=f'1-{MAX_MINUTES}')
     heartbeat.add_argument('--blocked', metavar='REASON', help='say you are blocked (cleared by the next heartbeat)')
-    acquire.add_argument('--no-tray-host', metavar='REASON',
-                         help='lock a GNOME desktop without its tray host, to test the no-tray path on purpose')
     release.add_argument('--verified-clean', action='store_true',
                          help='you stopped and removed everything you started there')
     release.add_argument('--not-mine', action='append', default=[], metavar='ID',
                          help="another session's item that appeared during your lock (repeat)")
     breaking.add_argument('--reason', required=True)
+    argv = sys.argv[1:] if argv is None else list(argv)
+    command = []
+    if argv[:1] == ['run'] and '--' in argv:
+        argv, command = argv[:argv.index('--')], argv[argv.index('--') + 1:]
     args = parser.parse_args(argv)
     if args.action == 'guard':
         return guard_command(args, run)
+    if args.action == 'held':
+        return held_command(args, run)
+    if args.action == 'run':
+        return run_command(args, command, parser, run, popen)
 
     payload = {key: value for key, value in vars(args).items()
                if key not in ('json', 'identity', 'pins', 'host', 'hosts', 'no_tray_host') and value is not None}
     hosts = (args.hosts or sorted(HOSTS)) if args.action == 'status' else [args.host]
-    if args.action == 'acquire' and args.resource == 'desktop' and args.host in GNOME_HOSTS:
-        if args.no_tray_host is None:
-            payload['tray_probe'] = tray_host_module().probe_source()
-        elif not args.no_tray_host.strip():
-            parser.error('--no-tray-host needs a reason')
-        else:
-            payload['purpose'] = f'{args.purpose} [no tray host: {args.no_tray_host.strip()}]'
-    elif getattr(args, 'no_tray_host', None) is not None:
-        parser.error('--no-tray-host applies only to the desktop of a GNOME host: ' + ', '.join(sorted(GNOME_HOSTS)))
+    add_tray_host(payload, args, parser)
     unknown = sorted(set(hosts) - set(HOSTS))
     if unknown:
         parser.error('unknown host ' + ', '.join(unknown) + '; choose from ' + ', '.join(sorted(HOSTS)))
