@@ -434,7 +434,7 @@ bool uncertainToken(const QString& text,float confidence){
  for(qsizetype i=from;i<to;++i){const QChar c=text.at(i);letter|=c.isLetter();digit|=c.isDigit();}
  return letter&&digit;
 }
-QList<Band> tokenLines(const QList<TokenWord>& words,int height){
+QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height){
  struct Run { int top=0,bottom=0,tallest=0;float confidence=0; };
  QList<Run> runs;
  for(const auto& w:words){
@@ -453,7 +453,7 @@ QList<Band> tokenLines(const QList<TokenWord>& words,int height){
   joined.append(r);
  }
  std::stable_sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.confidence<b.confidence;});
- QList<Band> out;for(const auto& r:std::as_const(joined))out.append({r.top,r.bottom,false});
+ QList<TokenBand> out;for(const auto& r:std::as_const(joined))out.append({{r.top,r.bottom,false},r.confidence});
  return out;
 }
 GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes){

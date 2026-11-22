@@ -120,7 +120,8 @@ bool uncertainToken(const QString& text,float confidence);
 // the words: Tesseract reads a token in its line better (on the corpus, word
 // areas alone covered 47 more secrets against 96 for rows).
 struct TokenWord { QRect rect;float confidence=0; };
-QList<Band> tokenLines(const QList<TokenWord>& words,int height);
+struct TokenBand { Band band;float confidence=0; };  // its least confident word's
+QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height);
 // The second read stops when it has taken as long as the first pass, or this
 // long when the first was quicker (on the corpus it took at most 694 ms; a 4K
 // terminal full of tokens took 5.5 s, against 2.1 s for its first pass).

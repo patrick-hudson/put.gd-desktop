@@ -67,6 +67,14 @@ private slots:
   // Both reads right about the same token: one finding, not two (Sol on #1920).
   {const auto same=twice(token,token,true);
    QCOMPARE(found(same,all),QStringList{"key: "+token});}
+  // A first-read match that wraps from the end of one row to the start of the
+  // next spans a box over words it does not cover; a second-read match there
+  // is its own finding (Sol on #1920).
+  {auto wrapped=words(QStringLiteral("aaaaaaaaaaaaaaaaaaaaaaaa 123456 | 654321"));
+   wrapped.append({QStringLiteral("111111"),QRect(60,0,48,20),70,0,true});
+   wrapped.append({QStringLiteral("222222"),QRect(116,0,48,20),70,0,true});
+   const auto result=quickRedact::find(wrapped,{"list"},patterns({R"(\d{6}\s\d{6})"}));
+   QCOMPARE(found(wrapped,result),(QStringList{"list: 123456 654321","list: 111111 222222"}));}
   // The first read's overlapping word is no neighbour of the second read's match.
   QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
   const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);

@@ -511,11 +511,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
     const auto& word=result.recognition.words.at(w);
     if(uncertainToken(word.text,word.confidence))unsure.append({word.rect.translated(-p.rect.topLeft()),word.confidence});
    }
-   for(const auto& band:tokenLines(unsure,p.rect.height())){
-    float least=tokenConfidence;
-    for(const auto& u:std::as_const(unsure))if(u.rect.center().y()>=band.top&&u.rect.center().y()<band.bottom)least=std::min(least,u.confidence);
-    pending.append({i,band,least});
-   }
+   for(const auto& t:tokenLines(unsure,p.rect.height()))pending.append({i,t.band,t.confidence});
   }
   std::stable_sort(pending.begin(),pending.end(),[](const Pending& a,const Pending& b){return a.confidence<b.confidence;});
  }
@@ -524,9 +520,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const qint64 tokenAllowance=std::max<qint64>(tokenTimeFloorMs,stage.elapsed());QElapsedTimer tokenClock;tokenClock.start();
  for(const auto& b:std::as_const(pending)){
   const auto& p=panelList[b.panel];
+  const auto remaining=[&]{qint64 d=tokenAllowance-tokenClock.elapsed();if(options.budgetMs>0)d=std::min<qint64>(d,shared->left());return d;};
+  if(remaining()<=0)break;
   const auto copy=contrastBand(p.view,b.band,p.plan.scale,options.limits.border,p.codes);
-  qint64 deadline=tokenAllowance-tokenClock.elapsed();
-  if(options.budgetMs>0)deadline=std::min<qint64>(deadline,shared->left());
+  const qint64 deadline=remaining();
   if(deadline<=0)break;
   bool cutShort=false,failed=false;
   Token t{b.panel,b.band,shared->first.recognize(copy,p.plan.scale,int(deadline),&cutShort,&failed)};

@@ -116,12 +116,12 @@ private slots:
   // run of rows is cut into bands of at most four word heights.
   const auto bands=tokenLines({{QRect(10,100,200,12),50},{QRect(300,104,100,12),20},{QRect(10,10,200,12),60}},200);
   QCOMPARE(bands.size(),qsizetype(2));
-  QCOMPARE(bands[0].top,100-5);QCOMPARE(bands[0].bottom,116+5);
-  QCOMPARE(bands[1].top,10-5);QCOMPARE(bands[1].bottom,22+5);
+  QCOMPARE(bands[0].band.top,100-5);QCOMPARE(bands[0].band.bottom,116+5);QCOMPARE(bands[0].confidence,20.f);
+  QCOMPARE(bands[1].band.top,10-5);QCOMPARE(bands[1].band.bottom,22+5);QCOMPARE(bands[1].confidence,60.f);
   QList<TokenWord> dense;for(int y=0;y<240;y+=16)dense.append({QRect(10,y,300,12),50});
   const auto cut=tokenLines(dense,400);
   QVERIFY(cut.size()>=4);
-  for(const auto& b:cut)QVERIFY2(b.bottom-b.top<=48,qPrintable(QString::number(b.bottom-b.top)));
+  for(const auto& b:cut)QVERIFY2(b.band.bottom-b.band.top<=48,qPrintable(QString::number(b.band.bottom-b.band.top)));
   const int width=320,height=80;
   for(const auto& [paper,ink]:{std::pair{30,200},std::pair{240,40},std::pair{30,62},std::pair{0x58,0x93}}){
    QByteArray grey(width*height,char(paper));
