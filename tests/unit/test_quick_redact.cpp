@@ -565,6 +565,14 @@ private slots:
   // Split twice, each pair of boxes overlapping by a pixel; "Mail" only touches.
   const QList<RecognizedWord> twice{{"Mail",QRect(0,0,40,20),90,0},{"jane.",QRect(40,0,40,20),90,0},{"q.",QRect(79,0,16,20),90,0},{"doe@example.com",QRect(94,0,120,20),90,0}};
   QCOMPARE(found(twice,QStringList{"email"}),QStringList{"email: jane. q. doe@example.com"});
+  // Sol on #1840: split after a plus; a fragment the address can't start with stays out.
+  const QList<RecognizedWord> plus{{"jane+",QRect(0,0,40,20),90,0},{"tag@example.com",QRect(39,0,120,20),90,0}};
+  QCOMPARE(found(plus,QStringList{"email"}),QStringList{"email: jane+ tag@example.com"});
+  const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
+  QCOMPARE(found(dash,QStringList{"email"}),QStringList{"email: bob@example.com"});
+  // A word another kind matches stays with that kind: the card keeps its last group.
+  const QList<RecognizedWord> card{{"4111",QRect(0,0,32,20),90,0},{"1111",QRect(40,0,32,20),90,0},{"1111",QRect(80,0,32,20),90,0},{"1111",QRect(120,0,32,20),90,0},{"doe@example.com",QRect(150,0,120,20),90,0}};
+  QCOMPARE(found(card,QStringList{"email","card"}),(QStringList{"card: 4111 1111 1111 1111","email: doe@example.com"}));
  }
  // The five kinds are unchanged with the new sources beside them.
  void builtInKindsIgnoreTheSources() {

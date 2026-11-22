@@ -98,28 +98,32 @@ bool wrapEvidence(const QString& left,const QString& right,const QString& catego
  static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/_=.-]+$"));
  return alphabet.match(left).hasMatch()&&alphabet.match(right).hasMatch();
 }
+// #1840: recognition may split an address in its local part, at a dot or with
+// the dot lost ("jane." or "jane", then "doe@example.com"). Measured on
+// putgd-ocr, the two boxes then overlap (by 1 to 20 px), while the space after a
+// sentence before an address stays open (a quarter of a character or more) and
+// ordinary words before one at most touch. A word of local-part characters
+// joins the next word on its line when their boxes overlap and that word goes
+// on to the "@", itself or through more such words; the joined part starts with
+// a letter or digit, as the email rule needs. Entry i is true when word i joins
+// word i - 1.
+QList<bool> localJoins(const QList<QString>& words,const QList<RecognizedWord>& candidates) {
+ static const QRegularExpression part(QStringLiteral("^[A-Za-z0-9._%+-]+$")),address(QStringLiteral("^[A-Za-z0-9._%+-]+@"));
+ QList<bool> local(words.size()+1,false);
+ for(int i=int(words.size())-1;i>0;--i){
+  const auto& before=candidates.at(i-1);const auto& after=candidates.at(i);
+  if(after.line!=before.line||after.rect.left()>before.rect.right()||!part.match(words.at(i-1)).hasMatch())continue;
+  local[i]=address.match(words.at(i)).hasMatch()||(part.match(words.at(i)).hasMatch()&&local.at(i+1));
+ }
+ for(int i=1;i<words.size();++i)if(local.at(i)&&!local.at(i-1)&&!words.at(i-1).front().isLetterOrNumber())local[i]=false;
+ return local;
+}
 // Every character keeps its word owner. Both views retain an unsupported
 // line boundary; only the wrapped view removes a supported boundary entirely.
 struct Joined {QString text;QList<int> owner;};
 Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full) {
  Joined joined;
- // #1840: recognition may split an address in its local part, at a dot or
- // with the dot lost ("jane." or "jane", then "doe@example.com"). Measured on
- // putgd-ocr, the two boxes then overlap (by 1 to 20 px), while the space
- // after a sentence before an address stays open (a quarter of a character or
- // more) and ordinary words before one at most touch. A word of local-part
- // characters joins the next word on its line when their boxes overlap and
- // that word goes on to the "@", itself or through more such words.
- QList<bool> local(words.size()+1,false);
- if(category=="email"){
-  static const QRegularExpression part(QStringLiteral("^[A-Za-z0-9._%+-]*[A-Za-z0-9]\\.?$")),rest(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._%+-]*(@.*)?$"));
-  for(int i=int(words.size())-1;i>0;--i){
-   const auto& before=candidates.at(i-1);const auto& after=candidates.at(i);
-   if(after.line!=before.line||after.rect.left()>before.rect.right()||!part.match(words.at(i-1)).hasMatch())continue;
-   const auto next=rest.match(words.at(i));
-   local[i]=next.hasMatch()&&(next.capturedLength(1)>0||(part.match(words.at(i)).hasMatch()&&local.at(i+1)));
-  }
- }
+ const auto local=category=="email"?localJoins(words,candidates):QList<bool>(words.size()+1,false);
  for(int i=0;i<words.size();++i){
   const bool boundary=i>0&&candidates.at(i).line!=candidates.at(i-1).line;
   const bool evidence=boundary&&wrapEvidence(words.at(i-1),words.at(i),category,full.contains(candidates.at(i-1).line));
@@ -806,6 +810,11 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  const QList<QString>* views[4]={&plain,&numbers,&hex,&email};
  const auto full=wrappingLines(candidates);
  QSet<int> taken;QList<Match> matches;
+ // #1840: the words an email match took in by a local-part join are claimed
+ // last, and only where no other match holds them, so a join never costs
+ // another kind its match or an address its match.
+ const auto local=chosen.contains("email")?localJoins(email,candidates):QList<bool>();
+ QList<QPair<int,QList<int>>> soft;
  // Keys and tokens first: the most specific kind, matched line by line.
  // A key match that overlaps an earlier one keeps its other words: dropping it
  // would leave a token bare because a neighbour claimed one of its words.
@@ -866,10 +875,19 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     std::sort(words.begin(),words.end());pending.append(words);
    }
   }
-  for(const auto& words:pending){
-   if(std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
+  for(auto words:pending){
+   QList<int> joined;
+   if(rule.category=="email")for(const int w:std::as_const(words))if(local.value(w+1)&&words.contains(w+1))joined.append(w);
+   words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return joined.contains(w);}),words.end());
+   if(words.isEmpty()||std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
    for(int w:words)taken.insert(w);matches.append({rule.category,words});
+   if(!joined.isEmpty())soft.append({int(matches.size())-1,joined});
   }
+ }
+ for(const auto& [index,words]:std::as_const(soft)){
+  auto& match=matches[index].words;
+  for(const int w:words)if(!taken.contains(w)){taken.insert(w);match.append(w);}
+  std::sort(match.begin(),match.end());
  }
  std::sort(matches.begin(),matches.end(),[](const Match& a,const Match& b){return a.words.first()<b.words.first();});
  return matches;
