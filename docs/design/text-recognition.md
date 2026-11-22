@@ -485,7 +485,8 @@ helper finds emoji in the colour plane and names them itself, from templates bui
     Tesseract's buffers.
   - No growth sample is taken from a task that overlaps the scan, so the scan's pages never count
     as a task's growth. The gate still checks the helper's whole resident set, scan included,
-    before it starts an engine or hands a worker a task.
+    before it starts extra engines and before an extra worker takes a task that needs more
+    memory. The first engine and its worker are never gated.
   - If the system refuses the thread, the scan runs first, inline, as before.
   - The scan's 3-second limit is unchanged and still counts from the start of recognition. The
     scan now shares the CPU with the engines, so on a very busy screen it may get through less
