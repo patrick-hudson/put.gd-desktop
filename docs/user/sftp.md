@@ -53,10 +53,10 @@ progress and cancel cleanly. It links no SSH library.
    `~/.ssh/config`, for example a key kept outside `~/.ssh`. Type its path (`~/…` works) or press **Choose…**,
    which opens in the chosen key's folder, else `~/.ssh`, else your home folder. put.gd passes it
    to ssh as `-i <file>` with `IdentitiesOnly=yes`, so ssh uses only the keys your settings name,
-   this one included, and not every other key in your agent. If you pick or type a `.pub` file and
-   the private key without `.pub` is next to it, put.gd takes that; otherwise the field says it
-   is a public key (or that it isn't there or can't be read). The field says what to fix when ssh couldn't use the
-   file: it isn't there, it is a public key, it is a PuTTY key (convert it with
+   this one included, and not every other key in your agent. If you pick or type a readable `.pub`
+   file and the private key without `.pub` is next to it, put.gd takes that; otherwise the field says it
+   is a public key (or that it isn't there or can't be read). The field says what to fix when put.gd's own check of the
+   file fails: it isn't there, it is a public key, it is a PuTTY key (convert it with
    `puttygen key.ppk -O private-openssh -o key`), or other users have any access to it (ssh
    refuses such a key: run `chmod 600` on the key file's full path, the one in SSH key). A path with `%` or `${` in it isn't taken,
    because ssh would read those as its own placeholders.
@@ -238,8 +238,8 @@ deleted file for a while.
   `openssh_agent` and `gnupg/S.gpg-agent.ssh`. An `IdentityAgent` in `~/.ssh/config` wins.
 - **Key files** are the one chosen in **SSH key**, else the ones ssh tries on its own or that
   `IdentityFile` names. With a chosen key, ssh uses only the identities your settings name,
-  this one included (`IdentitiesOnly=yes`): `IdentityFile` lines, configured certificates and
-  certificates ssh loads from a `-cert.pub` next to a key still count, and ssh may try those first; other agent keys are not offered. An encrypted key needs its passphrase
+  this one included (`IdentitiesOnly=yes`): `IdentityFile` lines and certificates
+  (`CertificateFile`, or else a `-cert.pub` next to a key) still count, and ssh may try those first; other agent keys are not offered. An encrypted key needs its passphrase
   in **Key passphrase**, unless it is already in your agent.
 - **Password.** put.gd answers ssh's own password prompt for this server
   (`alice@files.example.com's password:`) once, through a private socket only that connection

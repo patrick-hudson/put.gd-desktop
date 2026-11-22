@@ -193,8 +193,8 @@ overrides undone (`host::environment()`), and these options:
 `BatchMode` stays off because it disables askpass. Keyboard-interactive is off so a server's
 own prompts never reach askpass. A check of a recorded upload adds
 `GlobalKnownHostsFile=/dev/null` (see Receipts). The `-i` pair is there only when the destination names a key file (#1892): ssh then uses only
-the identities the settings name (this key, `IdentityFile` keys, configured certificates and
-certificates loaded from a `-cert.pub` next to a key),
+the identities the settings name (this key, `IdentityFile` keys, and certificates: `CertificateFile`, or
+else a `-cert.pub` next to a key),
 in ssh's own order, and no other agent key. Before a new connection starts ssh, and in
 `setup.inspectAccount` before it runs `ssh -G`, the worker checks the file
 (`sftp::keyFileProblem`: missing, not a readable regular file, a public or PuTTY key, or a key
