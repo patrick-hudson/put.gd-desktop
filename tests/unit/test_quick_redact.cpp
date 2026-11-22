@@ -246,6 +246,18 @@ private slots:
   QTest::newRow("a JWT behind a text field's caret read as kyJ")<<browserField<<all<<QStringList{"key: "+QString(browserField).remove("| ")};
   const auto kateRead=QString("b")+"yJhbGc iOiJIUZIANiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIiOiIxMjMONTY30Dkw | TiwibmFtZSI6IkpvaG4gRG9LIiwiawFOI j oxNTE2MjJM5MDIyfQ.Sf LKxwRJISM";
   QTest::newRow("a JWT behind an editor's caret read as byJ")<<kateRead<<all<<QStringList{"key: "+QString(kateRead).remove("| ")};
+  // Sol on #1883: a JWT wrapped inside its header keeps its continuation, the first fragment
+  // there included; a head split over short words or merged into "ky" is covered; a dotted
+  // name or prose with a date is no JWT; a whole JWT takes no short word before it.
+  const auto wrapHead=QString("ey")+"JhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Imxh | Nkl YWItMDci9."+"ey"+"JzdWIiOiIxIn0.c2lnbmF0";
+  QTest::newRow("a JWT wrapped inside its header keeps its next line")<<"token: "+wrapHead<<all<<QStringList{"key: "+QString(wrapHead).remove("| ")};
+  const auto headThree=QString("ley Jhb GciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split over three words")<<"Seen "+headThree<<all<<QStringList{"key: "+headThree};
+  const auto kySplit=QString("ky JhbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a caret merged into ky and split off")<<"Seen "+kySplit<<all<<QStringList{"key: "+kySplit};
+  QTest::newRow("a dotted name is no JWT payload")<<"see archive.eyJanuary2026.ReleaseNotes.pdf today"<<all<<QStringList{};
+  QTest::newRow("prose with a date after a stray-read prefix is no JWT")<<"leyJanuary 2026. Release notes for the new version"<<all<<QStringList{};
+  QTest::newRow("a whole JWT takes no short word before it")<<"Seen ley "+jwt<<all<<QStringList{"key: "+jwt};
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};

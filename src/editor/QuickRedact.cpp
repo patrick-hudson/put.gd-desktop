@@ -277,7 +277,8 @@ const QList<Prefix>& prefixes() {
 struct Segment {QList<int> words;QString text;QList<int> starts;};
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
-struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;};
+// payload: a JSON web token found by its payload, its header misread or on the line above.
+struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;bool payload=false;};
 // The token segments of one line: maximal runs of token pieces, joined.
 QList<Segment> segments(const QList<int>& line,const QList<QString>& plain) {
  QList<Segment> out;Segment current;
@@ -331,6 +332,14 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    const bool stray=prefix.dotted&&!candidate.captured(1).startsWith(QLatin1String("ey"));
    if(stray&&pieceAt(segment,at+int(candidate.capturedLength(1))+1)!=pieceAt(segment,at))continue;
    if(afterSeparator||stray){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
+   // And both read as a JWT part up to the next dot: base64url of JSON, at least 12 characters,
+   // a fifth of them capitals and few long lowercase runs, not a dotted name ("archive.eyJanuary2026.pdf").
+   if(payload||stray){
+    const auto body=candidate.captured(3);const auto part=body.left(body.indexOf(QRegularExpression(QStringLiteral("[.,]"))));
+    static const QRegularExpression words(QStringLiteral("[a-z]{5,}"));
+    qsizetype lowercase=0;for(auto it=words.globalMatch(part);it.hasNext();)lowercase+=it.next().capturedLength();
+    if(part.size()<12||std::count_if(part.cbegin(),part.cend(),[](QChar c){return c.isUpper();})*5<part.size()||lowercase*10>part.size()*3)continue;
+   }
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
@@ -356,7 +365,9 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    while(end<last&&segment.starts.at(end+1)-segment.starts.at(start)<prefix.length*3/2)++end;
    end=qMax(end,pieceAt(segment,base+match.capturedEnd()-1));
   }
-  segmentMatches(segment,first,start-1,found);found.append({start,end,base+int(match.capturedStart()),prefix.length,prefix.dotted});segmentMatches(segment,end+1,last,found);return;
+  segmentMatches(segment,first,start-1,found);const int at=base+int(match.capturedStart());
+  const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
+  found.append({start,end,at,prefix.length,prefix.dotted,payload});segmentMatches(segment,end+1,last,found);return;
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the
  // interface thread; a longer blob passes on a part of it and is marked whole.
@@ -410,13 +421,15 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     };
     int core=int(segment.words.size()),coreEnd=-1;Found last;for(const auto& f:std::as_const(found)){core=qMin(core,f.from);if(f.to>coreEnd){coreEnd=f.to;last=f;}}
     int a=0,b=int(segment.words.size())-1;
-    // #1875: the head of a JSON web token split off as a word of its own, a caret read before it
-    // and its y or J misread ("ey" "JhbGci…", "ley", "Jew", "jeya"), is the token's, not a
-    // word: kept in a segment that holds a JWT when the word after it is kept (token-shaped, or
-    // the mark itself: "ley" "JhbGci0i" "…eyIzdW…").
-    static const QRegularExpression jwtHead(QStringLiteral("^[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw][JjIl1)\\]}|a]?$"));
-    const bool jwt=std::any_of(found.cbegin(),found.cend(),[](const Found& f){return f.dotted;});
-    while(a<core&&plainWord(a)&&!(jwt&&(a+1==core||!plainWord(a+1))&&jwtHead.match(plain.at(segment.words.at(a))).hasMatch()))++a;
+    while(a<core&&plainWord(a))++a;
+    // #1875: a JSON web token found by its payload lost its head to recognition. The short words
+    // just before what is kept that join into the head as read ("ley" "JhbGci0i", "ley" "Jhb",
+    // "ky" "JhbGci…", "Jew" "hbGci…") are the token's: kept, up to three words and nine characters.
+    if(std::any_of(found.cbegin(),found.cend(),[&](const Found& f){return f.from==core&&f.payload;})){
+     static const QRegularExpression head(QStringLiteral("^(?:[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw]|[kb]y)[A-Za-z0-9_-]*$"));
+     QString joined;
+     for(int j=a-1;j>=qMax(0,a-3);--j){joined.prepend(plain.at(segment.words.at(j)));if(joined.size()>9)break;if(head.match(joined).hasMatch()){a=j;break;}}
+    }
     while(b>coreEnd&&plainWord(b))--b;
     QList<int> words=segment.words.mid(a,b-a+1);
     // A token the line wrapped: the next line's first segment, when it starts
@@ -499,9 +512,11 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      }
      else if(otherMatch(next.first().words,plain,candidates))break;
      {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
-      // A JSON web token wrapped just after one of its dots starts its next line with "eyJ".
+      // A JSON web token wrapped just after one of its dots starts its next line with "eyJ"; one
+      // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
+      // the next line (#1875).
       const bool part=last.dotted&&(ending.endsWith('.')||ending.endsWith(','));
-      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!(part&&f.dotted);}))break;}
+      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!((part||((last.dotted||last.length==0)&&f.payload))&&f.dotted);}))break;}
      used+=int(tail.size());ending=tail;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;
