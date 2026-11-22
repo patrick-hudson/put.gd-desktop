@@ -914,7 +914,8 @@ other tool active it does not. The user's side is in the
     starts on a matched glyph (#1849). A neighbouring word joined to the match by dropped punctuation
     is covered with it (#1854): `jane` and `doe@example.com`, read from `jane.doe@example.com` with
     the dot left out and a word space's gap between the boxes. Quick redact checks the nearest
-    unmatched word on the row that the padding plus one character could reach. It is joined when,
+    unmatched word on that side of the row whose box lies wholly beyond the words covered so far and
+    that the padding plus one character could reach. It is joined when,
     between the two boxes, there is a separate piece of ink: pixels connected edge to edge that stay
     strictly between the two boxes' columns and are at most half the row's height, such as a dot,
     comma, hyphen or underscore. The pieces are looked for at half and at a quarter of the text's
@@ -923,9 +924,10 @@ other tool active it does not. The user's side is in the
     down, at least one pixel), where a word space would be. The background is found as for the
     padding above, and nothing is joined without the picture or where those background checks fail.
     The check repeats from each word it joins, and the padding then goes on from the last one. It
-    never applies on a side that faces another run, and it only widens a mark. A dot with a single
-    pixel at half contrast whose fainter edge, at a quarter, touches the letter before it is not
-    found, so that word is not joined, though the padding can still reach part of it. A mark never shrinks inside the
+    never applies on a side that faces another run, and it only adds to a mark, which grows to take
+    in each joined word's whole box. A dot of a single pixel at half contrast is missed when, at a
+    quarter, its fainter edge links it to ink that reaches either box's columns; with no other piece
+    that qualifies, the word is not joined, though the padding can still reach part of it. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
     kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
