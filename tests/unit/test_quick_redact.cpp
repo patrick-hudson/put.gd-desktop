@@ -57,6 +57,17 @@ private slots:
   QTest::newRow("IPv6 with O confused")<<"Peer fe80::1ff:fe23:4567:89Oa up"<<all<<QStringList{"ip: fe80::1ff:fe23:4567:89Oa"};
   QTest::newRow("code scope and time are not IPv6")<<"std::vector at 12:30:45 a::b"<<all<<QStringList{};
   QTest::newRow("card in groups, Luhn valid")<<"Card 4111 1111 1111 1111 expires"<<all<<QStringList{"card: 4111 1111 1111 1111"};
+  // #1820 acceptance: shapes found on real screens.
+  QTest::newRow("AWS key after an equals sign")<<"export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"<<all<<QStringList{"key: AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"};
+  // The token's whole segment is covered, its identifier-like name too, as for any token (#1618).
+  QTest::newRow("AWS key in quotes")<<"AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""<<all<<QStringList{"key: AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""};
+  {const auto token=QString("gh")+"p_"+QString("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A");
+   QTest::newRow("GitHub token inside a URL")<<"git clone https://"+token+"@github.com/example/acme-build-7.git"<<QStringList{"key"}<<QStringList{"key: https://"+token+"@github.com/example/acme-build-7.git"};}
+  QTest::newRow("dashed cards in a table")<<"Visa 4111-1111-1111-1111 | MC 5555-5555-5555-4444"<<QStringList{"card"}<<QStringList{"card: 4111-1111-1111-1111","card: 5555-5555-5555-4444"};
+  QTest::newRow("card with en dashes and a minus sign")<<QString("Visa 4111\u20131111\u20131111\u20131111 MC 5555\u22125555\u22125555\u22124444")<<QStringList{"card"}<<QStringList{QString("card: 4111\u20131111\u20131111\u20131111"),QString("card: 5555\u22125555\u22125555\u22124444")};
+  QTest::newRow("IPv6 with a prefix length")<<"addr 2001:db8::8a2e:370:7334/64 up"<<all<<QStringList{"ip: 2001:db8::8a2e:370:7334/64"};
+  QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};
+  QTest::newRow("a Luhn-failing Amex is not a phone")<<"Test 3782 822463 10006 rejected"<<all<<QStringList{};
   QTest::newRow("card with dashes and O confused")<<"Paid 5500-0000-0000-0OO4 ok"<<all<<QStringList{"card: 5500-0000-0000-0OO4"};
   QTest::newRow("Luhn invalid is no card")<<"Ref 4111 1111 1111 1112 x"<<QStringList{"card"}<<QStringList{};
   // Token shapes are put together here, so that no literal in the source looks

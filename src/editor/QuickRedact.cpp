@@ -18,6 +18,8 @@ namespace {
 QString normalized(const QString& word) {
  auto text=word.normalized(QString::NormalizationForm_KC);
  for(auto& c:text)if(c.category()==QChar::Number_DecimalDigit&&c.unicode()>'9')c=QChar('0'+c.digitValue());
+ // Recognition reads a printed hyphen as any of the dashes or a minus sign (#1820: 4111–1111–1111–1111).
+ for(auto& c:text)if((c.unicode()>=0x2010&&c.unicode()<=0x2015)||c.unicode()==0x2212||c.unicode()==0xFE63||c.unicode()==0xFF0D)c=QChar('-');
  return text;
 }
 bool hasDigit(const QString& text) {return std::any_of(text.cbegin(),text.cend(),[](QChar c){return c>='0'&&c<='9';});}
@@ -249,7 +251,10 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   QRegularExpressionMatch match;
   for(auto it=prefix.pattern.globalMatch(prefix.dotted?text:bodies);it.hasNext();){
    const auto candidate=it.next();
-   if(!segment.starts.contains(base+int(candidate.capturedStart())))continue;
+   // A prefix starts a piece, or follows a separator inside one (#1820: KEY_ID=AKIA…, "AKIA…", https://ghp_…@host).
+   const int at=base+int(candidate.capturedStart());
+   static const QString separators=QStringLiteral("=:/@\"'([`");
+   if(!segment.starts.contains(at)&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
@@ -336,6 +341,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  return out;
 }
 struct Rule {QString category;QRegularExpression pattern;std::function<bool(const QString&)> valid;int view=0;};
+// Grouped as a card is printed (4-4-4-4, with an optional short fifth group, or 4-6-5 and 4-6-4), with one
+// separator throughout: a card number, valid or not, never a phone number (#1820).
+bool cardShaped(const QString& text){
+ static const QRegularExpression shape(R"(^(?:\d{4}([ -])\d{4}\1\d{4}\1\d{4}(?:\1\d{1,3})?|\d{4}([ -])\d{6}\2\d{4,5})$)");
+ return shape.match(text.trimmed()).hasMatch();
+}
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
@@ -353,6 +364,7 @@ const QList<Rule>& rules() {
     // More than ten digits unbroken is written only after a "+" (16-446655440000 was a UUID's tail).
     static const QRegularExpression longGroup(R"(\d{11,})");
     if(!m.startsWith('+')&&longGroup.match(m).hasMatch())return false;
+    if(cardShaped(m))return false;
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
@@ -770,7 +782,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     auto length=found.capturedLength();
     // A greedy phone span may contain two separate numbers. Retry prefixes at
     // word boundaries, then resume at the accepted prefix's end.
-    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15){
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!cardShaped(found.captured())){
      for(qsizetype end=found.capturedEnd()-1;end>found.capturedStart();--end){
       if(!joined.text.at(end).isSpace())continue;
       const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
