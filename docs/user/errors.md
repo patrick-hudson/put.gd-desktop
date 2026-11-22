@@ -77,10 +77,11 @@ nothing on the server.
 | `ssh_config_invalid` | none | `ssh -G` couldn't read your SSH settings for this server. Run `ssh -G <server>` in a terminal to see what it says, and fix `~/.ssh/config` |
 | `ssh_host_unknown_key` | `fingerprint`, `host` after a test | put.gd doesn't know the server's host key. Uploads refuse; **Test** shows the key with **Trust key**. Trust it only if it matches the key your server's admin gave you |
 | `ssh_trusted_key_changed` | `fingerprint`, `previousFingerprint`, `host` after a test | The key you trusted in put.gd changed; the message gives both fingerprints. Trust the new key only if your server's admin confirms it was replaced |
-| `ssh_host_key_changed` | `knownHostsFile` | The key in your own `known_hosts` (file and line named) no longer matches. It can mean someone is intercepting the connection. If the key was replaced on purpose, run the `ssh-keygen -R` the message names, then test again |
+| `ssh_host_key_changed` | `knownHostsFile` | The key in your own `known_hosts` (the file put.gd found the server's key in) no longer matches. It can mean someone is intercepting the connection. If the key was replaced on purpose, run the `ssh-keygen -R` the message names, then test again |
 | `ssh_host_key_mismatch` | `fingerprint` | **Trust key** fetched the key again and it isn't the one you were shown, an agent passed another fingerprint, or put.gd's `known_hosts` holds another key for the server than the one this destination trusted. Nothing was trusted; test again and compare |
 | `ssh_host_key_known` | none | **Trust key** refused: your own `known_hosts` already has a key for this server, and that one decides. If the server's key changed, run the `ssh-keygen -R` the message names, then test again |
 | `ssh_known_hosts_off` | none | **Trust key** refused: your SSH settings turn known_hosts files off for this server (`UserKnownHostsFile none`), so put.gd can't keep a key for it |
+| `ssh_known_hosts_unreadable` | none | put.gd couldn't check your known_hosts files: ssh-keygen is missing or failed on a file, a file can't be read, or your settings name a file with a `%` token or `~user` put.gd can't expand. Nothing connects until it can; fix the file or setting the message names |
 | `ssh_host_alias_pattern` | none | **Trust key** refused: the server's `HostKeyAlias` isn't one literal host name (a pattern or a list), or ssh recorded the key under another name. put.gd trusts a key only for one exact host |
 | `ssh_auth_failed` | `touched` when a security key was asked for a touch | The server refused the sign-in. The message says why when put.gd knows: a key that needs its passphrase in **Key passphrase**, a server that asks for a password, or no agent, key file or password at all |
 | `ssh_needs_one_time_code` | none | The server asks for keyboard-interactive sign-in (a one-time code, or a password typed into its own prompt), or something else put.gd can't answer. Sign in with a key or your SSH agent, or ask the admin to allow password authentication |
@@ -92,17 +93,18 @@ nothing on the server.
 | `sftp_folder_missing` | `path` | Folder on server doesn't exist; the path is the one put.gd looked for. Create it, or use **Create folder** after a test. Uploads never create folders |
 | `sftp_not_folder` | `path` | That path is a file; choose another Folder on server |
 | `sftp_permission_denied` | `path` | The server refused to create, write or delete there; the user needs write access |
-| `sftp_disk_full` | `path` | The server's free-space figure confirms there's no room (it says how much is free). Free space on the server; the partial file was removed |
+| `sftp_disk_full` | `path` | The server's free-space figure confirms there's no room (it says how much is free). Free space on the server. The message says the partial file was removed only when the server confirmed it, and otherwise names it to check |
 | `sftp_failed` | `path`, `status` | The server refused a request; the message names the SFTP status (permission denied, failure, …), never the server's own text |
 | `sftp_name_taken` | none | The name was taken when the file was created; your naming rules rename or skip it |
 | `sftp_connection_lost`, `sftp_timeout` | none | The connection ended, or the server stopped answering (or acknowledging an upload's writes) for two minutes. An upload this cut short is unknown and may have left a partial file |
 | `sftp_protocol` | none | The server sent something that isn't valid SFTP |
 | `sftp_reconcile_unknown` | `path` | After an upload whose outcome was lost, a file is at its name but put.gd has no evidence of its own that it is this upload (the size, time and owner its handle reported and its SHA-256, journaled before the file was closed), or it is over 256 MB. Check it on the server |
-| `sftp_server_changed` | none | The destination now reaches another server, user or host key than the one this upload was verified as, so put.gd won't check or delete the file there |
+| `sftp_server_changed` | none | Checked with only the `known_hosts` lines recorded at the upload, the server no longer holds that key, or the destination now reaches another host, port or user, so put.gd won't check or delete the file there |
+| `sftp_path_unsupported` | `path` | The folder's path on the server isn't valid UTF-8, so put.gd can't record it. Nothing was written; choose a folder with a plain name |
 | `sftp_delete_unavailable` | none | This upload's record lacks the server identity and file details put.gd checks before deleting it |
-| `sftp_known_hosts_failed` | none | put.gd couldn't update its own `known_hosts` (`ssh/known_hosts` in its configuration folder): the folder can't be made private, the file is a symbolic link or not a regular file, or it couldn't be locked, read or written |
+| `sftp_known_hosts_failed` | none | put.gd won't use or couldn't update its own `known_hosts` (`ssh/known_hosts` in its configuration folder): the folder or file is a symbolic link, not yours or not private (the file must be a regular 0600 file), it is over 16 MB, or it couldn't be locked, read or written |
 | `sftp_link_mismatch`, `public_url_unreachable` (SFTP) | `httpStatus` | **Test** uploaded the file, but the link returned other content or didn't open. Check that Link address serves Folder on server |
-| `destination_test_incomplete` (SFTP) | `path` | The server didn't confirm the test file was deleted; delete it on the server if it is still there |
+| `destination_test_incomplete` (SFTP) | `path` | The server didn't confirm the test file was deleted, or the name held another file by then (which put.gd left alone); check the path on the server and delete the test file if it is still there |
 | `sftp_worker_start`, `sftp_transport_unknown`, `sftp_checkpoint_timeout` | `reason` | put.gd's SFTP helper didn't start, stopped answering or was ended by put.gd quitting. Check the server before retrying a deletion or an upload |
 
 ## Scrolling capture

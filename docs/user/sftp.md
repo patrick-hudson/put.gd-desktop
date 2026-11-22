@@ -30,15 +30,18 @@ progress and cancel cleanly. It links no SSH library.
    `~/.ssh/config`. You can also paste a whole address: `sftp://alice@files.example.com:2222/srv/www/shots`
    or `alice@files.example.com:/srv/www/shots` fills **Server**, **User** and **Folder on server**
    at once, and `sftp://files.example.com/` sets Folder on server to `/`. Digits after a colon
-   are always a port (1 to 65535), never a path. A password in the address is left out at once,
-   wherever it was typed or pasted, and the field says so; enter it in **Password** instead.
+   are always a port (1 to 65535), never a path. A pasted address must be valid as a whole: if
+   any part isn't, no field changes, Server goes back to what it was, and the field says why.
+   A password in the address is left out at once, wherever it was typed or pasted, and the field
+   says so; enter it in **Password** instead.
 3. **User** is optional. Left empty, put.gd uses the user ssh would: the one `~/.ssh/config`
    names for this server, else your own.
 4. **Folder on server** is where uploads go. A path that doesn't start with `/` starts in the
    folder you log in to: `shots` and `~/shots` are the same folder; empty is the login folder
    itself. Another user's home is written as its full path (`/home/alice/shots`), not `~alice`.
 5. **Link address** is optional: the public HTTPS address the folder is served at, such as
-   `https://files.example.com/shots/`. A user name or password in it is left out. See
+   `https://files.example.com/shots/`. A user name or password in it is left out as you type or
+   paste it. See
    [Without a Link address](#without-a-link-address).
 
    A field that isn't valid isn't saved: its message stays beside it until you fix it.
@@ -47,7 +50,8 @@ progress and cancel cleanly. It links no SSH library.
    **Use for this session** keeps it until put.gd quits. A new SFTP destination starts with
    **Use for this session**, so put.gd never asks the keychain about a destination that has
    nothing stored. Storing saves only what you typed: a stored password stays when you store a
-   passphrase, and the other way round. **Clear**, beside a stored one, forgets just that one.
+   passphrase, and the other way round. **Clear**, beside a stored one, forgets just that one and
+   leaves whatever you typed into the other field.
    There are two fields so a key passphrase never answers a password prompt, and a password
    never answers a key's passphrase prompt.
 7. Press **Test upload** (or **Test upload and link** with a Link address).
@@ -76,7 +80,9 @@ The test reports each step and what it proved:
 Every step's answer is checked: the flush to disk, the check after the file was closed and the
 removal. A test that stops at a step names it, and the message says what to change. If the
 server doesn't confirm the test file was removed, cleanup reads "unconfirmed" and the message
-names the file to check.
+names the file to check. The test never removes a file that changed under the test file's name,
+and a test file whose creation got no answer is reported the same way. The summary saying the
+test passed appears only when every step passed.
 
 In the destination list an SFTP destination shows **Needs a server** until Server is filled in,
 then **Ready to test**, and **Connected** once a test passes, like the other destinations.
@@ -87,7 +93,10 @@ When your own `known_hosts` files (the `UserKnownHostsFile` and `GlobalKnownHost
 `ssh -G` names, looked up with `ssh-keygen -F`) have any key for the server, they decide alone,
 as in a terminal. Only when they know nothing of it does put.gd add its own `known_hosts`, kept
 at `ssh/known_hosts` in put.gd's configuration folder (a private folder, the file readable only
-by you). It never writes your `~/.ssh` files. If your SSH settings turn known_hosts files off
+by you; put.gd won't hand it to ssh if it is anything else). It never writes your `~/.ssh`
+files. If put.gd can't check your known_hosts files (ssh-keygen fails, or a file named with a
+`%` token or `~user` it can't expand), nothing connects and you see
+`ssh_known_hosts_unreadable`. If your SSH settings turn known_hosts files off
 (`UserKnownHostsFile none`), put.gd uses none of its own either, and Trust key refuses with
 `ssh_known_hosts_off`.
 
@@ -108,8 +117,8 @@ is checked by your ssh settings, as in a terminal.
   new fingerprints with a warning. Trust the new key only if your server's admin confirms it
   was replaced; **Trust new key** replaces the old one in put.gd's file, and only while the file
   still holds the key this destination trusted.
-- **Changed key in your own known_hosts** (`ssh_host_key_changed`): a hard error naming the file
-  and line. It can mean someone is intercepting the connection. If the key was replaced on
+- **Changed key in your own known_hosts** (`ssh_host_key_changed`): a hard error naming the
+  file put.gd found the server's key in. It can mean someone is intercepting the connection. If the key was replaced on
   purpose, remove the old one with `ssh-keygen -R host` (`ssh-keygen -R "[host]:2222"` for
   another port) and test again.
 
@@ -122,7 +131,10 @@ leftover does no harm.
 A missing folder is never created during an upload: the upload fails with
 `sftp_folder_missing` and the full path it looked for. **Test** offers **Create folder**, which
 creates that folder and any missing folders above it, with the server's default permissions.
-The offer is only for the folder the test found missing: editing Folder on server hides it.
+The offer is only for the folder the test found missing: editing Folder on server or Server,
+pasting included, hides it, and put.gd creates the folder only while it still resolves to the
+path the test reported. A folder whose path on the server isn't valid UTF-8 is refused before
+anything is written (`sftp_path_unsupported`).
 
 ## Uploads
 
@@ -133,9 +145,10 @@ servers. A name that is taken is handled by your naming rules (rename or skip); 
 never replace a file. When the server offers it, put.gd asks it to flush the file to disk
 before closing it.
 
-Cancelling an upload removes the part already on the server. A cancel counts from the moment
-you press it, even before the upload started. Once the file has been opened on the server,
-put.gd waits for that answer before it stops, so it can remove the file. A cancel that arrives
+Cancelling an upload removes the part already on the server; the message says so only when the
+server confirmed it, and otherwise names the file to check. A cancel counts from the moment
+you press it, even before the upload started. Once put.gd has asked the server to create the
+file, it waits up to 20 seconds for that answer before it stops, so it can remove the file. A cancel that arrives
 after the last byte was sent is too late, and the upload finishes. If the connection drops in
 the middle, put.gd can't remove the part; the upload is shown as unknown, and the partial file
 may be left on the server.
@@ -146,8 +159,10 @@ for its own handle, with the file's SHA-256. A file that matches (and, up to 256
 the same) is this upload. Otherwise the upload stays unknown with the path to check
 (`sftp_reconcile_unknown`). A name that was taken when the file was created is never claimed.
 
-Each upload's record names the server it was verified as: the host, port and user ssh resolved
-and the host key it checked, besides the file's size, time, owner and SHA-256.
+Each upload's record names the server it went to: the host, port and user ssh resolved and the
+`known_hosts` lines that hold that server's key (shown as its fingerprint), besides the file's
+size, time, owner and SHA-256. An upload whose server put.gd can't find in those files isn't
+sent.
 
 A full disk is reported as `sftp_disk_full` with the free space, but only when the server's
 own free-space figure confirms it: SFTP version 3 reports a full disk as a plain failure.
@@ -161,9 +176,9 @@ and the capture output in the status band and Settings says "Upload only".
 
 ## Deleting from History
 
-Before deleting, put.gd checks that it reaches the same server the file went to (host, port,
-user and host key); if the destination now reaches another one, it refuses with
-`sftp_server_changed`. Then it checks that the file is still the one it uploaded: a regular
+Before deleting, put.gd connects with only the recorded `known_hosts` lines, so ssh itself
+proves the server still holds the key it had at the upload; if it doesn't, or the destination
+now reaches another host, port or user, put.gd refuses with `sftp_server_changed`. Then it checks that the file is still the one it uploaded: a regular
 file with the same size, modification time and owner as recorded, and, for files up to 32 MB,
 the same bytes (it reads the file back and compares its SHA-256). A file that changed is left
 alone and the deletion answers `changed`. put.gd saves its intent to delete before it does,
@@ -186,8 +201,9 @@ deleted file for a while.
 - **Password.** put.gd answers ssh's own password prompt for this server
   (`alice@files.example.com's password:`) once, through a private socket only that connection
   can use; a wrong password is not retried. The passphrase answers only ssh's
-  `Enter passphrase for key '…':` for a key file your settings name. Any other prompt gets no
-  answer: a jump host's password prompt, a server's own keyboard-interactive text, a PIN. Only
+  `Enter passphrase for key '…':` for a key file your settings name, compared as the whole
+  prompt, and only when the ssh put.gd started asks. Any other prompt gets no answer: a jump
+  host's password prompt, a server's own keyboard-interactive text, a PIN. Only
   requests that sign in get the password and passphrase; checking the address learns only
   whether a password is set, and put.gd's helper forgets both once it has signed in.
 - **Security keys** (FIDO, `-sk` keys) work as they do in a terminal: touch the key when it
@@ -214,7 +230,9 @@ nothing asks again.
 | `sftp_folder_missing`, `sftp_not_folder` | Fix Folder on server, or use **Create folder** |
 | `sftp_permission_denied` | The user can't write there; fix the folder's permissions or choose another |
 | `sftp_disk_full` | Free space on the server |
-| `sftp_server_changed` | The destination now reaches another server; put.gd leaves that upload alone |
+| `sftp_server_changed` | The server no longer holds the key it had at the upload, or the destination now reaches another server; put.gd leaves that upload alone |
+| `ssh_known_hosts_unreadable` | put.gd couldn't check your known_hosts files; fix the file or the `UserKnownHostsFile` setting the message names |
+| `sftp_path_unsupported` | Choose a folder whose name on the server is plain UTF-8 |
 
 Every code is listed in [errors.md](errors.md#sftp).
 
@@ -226,7 +244,8 @@ the form offers), **Create folder**, Store (for what a person typed into Passwor
 passphrase) and **Clear**, and add an SFTP destination, as a person does. They carry no password
 or passphrase. `setup.inspectAccount`, `setup.trustHostKey` and `setup.createFolder` (the MCP
 tool `sftp_destination_setup`) resolve the address, trust a key by its exact fingerprint and
-create the saved folder (up to 4096 bytes) for a saved destination. A trust records the
+create the saved folder (up to 4096 bytes, with the path the test reported) for a saved
+destination. A trust records the
 fingerprint in the destination itself. A password or key passphrase is stored with
 `setup.storeCredentials` over the session socket, one or both at a time, as
 `{"values":{"password":"…"}}`; the other one stays as stored, and an empty value clears that
@@ -244,3 +263,11 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
 - A file someone else writes with exactly the bytes, size, time and owner of an upload, and a
   file swapped in at the path while put.gd's own upload still holds it open, aren't told apart
   from put.gd's own.
+- Only files up to 32 MB are read back to check their bytes before a deletion; a larger one is
+  checked by its size, time, owner and the server's recorded key.
+- ssh cuts a key's path at 100 characters in its passphrase prompt, so the passphrase of a key
+  whose path is longer is never sent. Add that key to your agent instead.
+- A symbolic link changed between the name check and the upload isn't noticed.
+- put.gd doesn't bound SFTP replies other than file data below the protocol's own limits; the
+  paths it sends are at most 4096 bytes.
+- A port written with leading zeros (`000022`) is read as its number.

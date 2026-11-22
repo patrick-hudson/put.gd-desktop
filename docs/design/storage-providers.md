@@ -119,20 +119,21 @@ overrides undone (`host::environment()`), and these options:
 -o PermitLocalCommand=no -o EscapeChar=none -o ControlMaster=no -o ControlPath=none
 -o UpdateHostKeys=no -o NoHostAuthenticationForLocalhost=no -o VerifyHostKeyDNS=no
 -o CheckHostIP=no -o KbdInteractiveAuthentication=no
--o StrictHostKeyChecking=yes -o NumberOfPasswordPrompts=1 -o BatchMode=no -o LogLevel=DEBUG1
+-o StrictHostKeyChecking=yes -o NumberOfPasswordPrompts=1 -o BatchMode=no
 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=20
 -o UserKnownHostsFile=<see Host keys>
 -s [-p port] [-l user] -- host sftp
 ```
 
 `BatchMode` stays off because it disables askpass. Keyboard-interactive is off so a server's
-own prompts never reach askpass. `LogLevel=DEBUG1` is there only so ssh names the host key it
-verified (`debug1: Server host key: …`); the worker reads that one line and keeps no other
-debug output. `ssh -G` with the same destination arguments gives the resolved host, port,
+own prompts never reach askpass. A check of a recorded upload adds
+`GlobalKnownHostsFile=/dev/null` (see Receipts). `ssh -G` with the same destination arguments gives the resolved host, port,
 user, `HostKeyAlias`, the key files that exist (tilde-expanded), `IdentityAgent`, whether a
 ProxyJump or ProxyCommand is set (never its value), and the user's `UserKnownHostsFile` and
 `GlobalKnownHostsFile`, which are split on spaces, so a path with a space in it isn't
-supported. The agent is `SSH_AUTH_SOCK`, else the first socket of
+supported. A known_hosts path that still holds a `%` token or a `~user` after put.gd's own
+`~/` expansion can't be read the way ssh reads it: put.gd fails closed with
+`ssh_known_hosts_unreadable` and nothing connects. The agent is `SSH_AUTH_SOCK`, else the first socket of
 `$XDG_RUNTIME_DIR/{gcr/ssh, keyring/ssh, ssh-agent.socket, openssh_agent,
 gnupg/S.gpg-agent.ssh}`. Only stable startup failures in ssh's stderr map to codes (unknown or
 changed host key and in which file, permission denied, refused, timed out, host not found,
@@ -141,7 +142,7 @@ askpass doesn't answer, is `ssh_needs_one_time_code`; a stream that starts with 
 than an SFTP packet (shell startup output) is `ssh_no_sftp`; anything else is `ssh_failed` with
 ssh's exit status. No error, test journal or diagnostics package carries ssh's stderr or the
 server's SFTP status text: messages are put.gd's own words, the SFTP status named
-(`permission denied`, `failure`, …), and fields put.gd parsed (a known_hosts path and line).
+(`permission denied`, `failure`, …), and the known_hosts file put.gd itself chose to check.
 
 **Askpass.** ssh closes inherited descriptors, so a secret can't travel on a pipe. Before each
 connection the worker opens a Unix socket in a new 0700 directory under `$XDG_RUNTIME_DIR`
@@ -149,15 +150,20 @@ connection the worker opens a Unix socket in a new 0700 directory under `$XDG_RU
 `putgd-sftp-askpass`, `SSH_ASKPASS_REQUIRE=force` and the socket and token variables. The
 askpass sends the token, ssh's `SSH_ASKPASS_PROMPT` kind and the prompt, one line each; the
 worker checks the peer's UID, compares the token in constant time and answers `ok` and the
-secret, or nothing. Answers go only to OpenSSH's own local prompts, matched exactly
-(`sftp::matchPrompt`): the password to `<user>@<host>'s password: ` for the resolved user and
-host or `HostKeyAlias` (also in its older truncated `%.30s@%.128s` form), the passphrase to
+secret, or nothing. A secret goes only to the ssh process the worker started: the asking
+process's parent (`SO_PEERCRED`, then `/proc/<pid>/stat`) must be that ssh, so the askpass of a
+jump host's ssh or of a ProxyCommand's child gets nothing. Answers go only to OpenSSH's own
+local prompts, compared as whole strings, the trailing `: ` included, with no trimming,
+truncation or prefix match (`sftp::matchPrompt`): the password to `<user>@<host>'s password: `
+for the resolved user and host or `HostKeyAlias`, the passphrase to
 `Enter passphrase for key '<file>': ` for a key file the destination's settings name, each at
-most once per connection. A ProxyJump hop's password prompt, a server's keyboard-interactive
+most once per connection. ssh cuts a key path in that prompt at 100 characters, so the
+passphrase of a key whose path is longer is never sent. A ProxyJump hop's password prompt, a server's keyboard-interactive
 text or a PIN prompt gets nothing. A touch notice is recorded (`touched` in the error details)
 and sent to the resident as a `notice` event; during Test it becomes the setup job's event and
 Settings shows "Touch your security key". When sign-in ends, either way, the socket and its
-directory are removed and the worker wipes both secrets. Only requests that sign in carry the
+directory are removed and the worker wipes both secrets; the request's own credential fields are
+taken out of it as it arrives and dropped once read. Only requests that sign in carry the
 password and passphrase from the resident; Settings' address check (`inspect`) gets only
 whether a password is set. `putgd-sftp-askpass` is C and links only the C library, because ssh
 runs it under the host's library path even when put.gd runs from its AppImage.
@@ -187,9 +193,12 @@ chunks by its read, write and packet sizes (with the packet header), capped at 6
 **Host keys.** When the user's own files (`UserKnownHostsFile` and `GlobalKnownHostsFile`, each
 looked up with `ssh-keygen -F` for the host token: `HostKeyAlias`, the host, or `[host]:port`)
 have any key for the server, `UserKnownHostsFile` is only the user's files, and their entry
-decides alone. Otherwise put.gd's own file is added after them. `UserKnownHostsFile none` is
-passed on as `none`. put.gd's file is `<config root>/ssh/known_hosts`, in its own 0700 folder;
-put.gd never writes the user's. Keys never come from DNS or the server, localhost isn't exempt,
+decides alone. Otherwise put.gd's own file is added after them. A lookup that fails (ssh-keygen
+missing, a file that can't be read, an exit status other than found or not found) fails closed
+with `ssh_known_hosts_unreadable`. `UserKnownHostsFile none` is passed on as `none`. put.gd's
+file is `<config root>/ssh/known_hosts`, in its own 0700 folder; before it is handed to ssh an
+`lstat` must show a regular file of this user's with mode 0600 in a folder of this user's that
+isn't a symbolic link (a file not there yet is fine). put.gd never writes the user's. Keys never come from DNS or the server, localhost isn't exempt,
 and there is no second check by IP address. A ProxyJump hop's own host key follows the user's
 ssh settings, as in a terminal.
 
@@ -205,41 +214,51 @@ host (a `HostKeyAlias` pattern, list or negation: `ssh_host_alias_pattern`), and
 user's files already know the host (`ssh_host_key_known`). Otherwise it probes again and keeps
 the line only when it is recorded under that exact token with exactly the fingerprint given.
 Writing holds an exclusive lock (`known_hosts.lock` in the same folder) across workers,
-refuses a symbolic link or other non-regular file, replaces this host's earlier line only while
+refuses a folder or file that is a symbolic link or not a regular one (checked with `lstat`),
+reads the whole file and refuses one over 16 MB rather than drop lines, replaces this host's earlier line only while
 it still holds the fingerprint the destination recorded (else `ssh_host_key_mismatch`), writes
 through a temporary file and checks the result is a regular 0600 file of this user. The
 resident then records the fingerprint in the destination's `hostKeyFingerprint` itself,
 conditional on the configuration revision the trust began with; the record changes the
-destination's check fingerprint, so an earlier Test no longer vouches. ssh's "Offending key in
-FILE:LINE" says which file a changed key is in: put.gd's file is `ssh_trusted_key_changed` (old
-and new fingerprints, re-trust), the user's `ssh_host_key_changed` (`ssh-keygen -R`). A trusted
+destination's check fingerprint, so an earlier Test no longer vouches. A changed key is in the
+user's file when their files had an entry for the server, `ssh_host_key_changed`, which names
+that file and `ssh-keygen -R`; otherwise only put.gd's file can hold it, `ssh_trusted_key_changed`
+(old and new fingerprints, re-trust). Neither repeats ssh's own lines. A trusted
 key stays in put.gd's file after its last destination is removed, a harmless leftover.
 
 **Uploads.** The folder is resolved first (`realpath`, then `stat` must show a folder); a
+resolved path that isn't valid UTF-8, or doesn't come back byte for byte, is refused before
+anything is written (`sftp_path_unsupported`); a
 missing one is `sftp_folder_missing` with the path as the settings name it, resolved from the
 login folder for a relative path, and only `createFolder` (an explicit setup step for the saved
-folder, up to 4096 bytes) creates it, level by level. The canonical (realpath) folder plus the
+folder, up to 4096 bytes, given with the path its Test reported) creates it, level by level, and
+only while the folder still resolves to that path. The canonical (realpath) folder plus the
 name is the path every name check, receipt, lock key and deletion uses. The path and the
 verified server are checkpointed before the open. The file opens under its final name with
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
-its reply is awaited (within the two-minute reply deadline) whatever a cancel says, and a
-handle that comes back is closed and the file removed; a lost reply leaves the outcome
-unknown. A refused open followed by an `lstat` that finds the name is a collision, never
+its reply is awaited for up to 20 seconds whatever a cancel says (inside the 30 seconds the
+resident gives a cancelled request), and a handle that comes back is closed and the file
+removed; a lost reply leaves the outcome unknown. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never
 cut short by a cancel. The bytes sent are hashed and must match the artifact's SHA-256. Then
 `fsync@openssh.com` when offered, `fstat` of the handle (which must report size, owner, times
 and permissions), a checkpoint of those plus the SHA-256, close, and an `lstat` that must show
 the same regular file. Once every byte is acknowledged a cancel is ignored and the upload
-finishes. A cancel or failure before that closes and removes the file, counting it removed only
-when the server confirms; a dropped connection can't, and the upload is unknown. A write refused
+finishes. A cancel or failure before that closes and removes the file; its message says the
+partial file was removed only when the server confirmed it, and otherwise names the path to
+check. A dropped connection can't remove it, and the upload is unknown. A write refused
 with the generic `SSH_FX_FAILURE` is `sftp_disk_full` only when `statvfs@openssh.com` shows less
 free space than the file needs.
 
 **Receipts.** `objectReference` holds `path` (canonical, absolute), `location` (`host:/path`,
-the notice and Copy path), the verified server (`host`, `port`, `user` as `ssh -G` resolved them
-and `hostKeyFingerprint`, the key ssh verified), and `size`, `mtime`, `uid` and `sha256` from the
-upload's own handle; `concurrencyToken` is the SHA-256 and `directUrl` is Link address plus the
+the notice and Copy path), the server (`host`, `port`, `user` as `ssh -G` resolved them, and
+`knownHosts`: the known_hosts lines ssh would accept for it, found with `ssh-keygen -F` in the
+files that connection checked, the user's, global and put.gd's, hashed names, patterns and
+`@cert-authority` lines included), `hostKeyFingerprint` (shown only, computed from the recorded
+line), and `size`, `mtime`, `uid` and `sha256` from the upload's own handle. An upload whose
+lines can't be found fails closed before anything is sent. ssh's own output is never read for the
+server's identity: a ProxyCommand or jump host could forge or displace it; `concurrencyToken` is the SHA-256 and `directUrl` is Link address plus the
 percent-encoded name, or empty. The lock key and History's identity are the resolved host, port,
 user and canonical path. `reconcile` claims a file only with the attempt's own journaled
 evidence: the path checkpointed before the open, then the handle's size, mtime and uid and the
@@ -247,8 +266,12 @@ SHA-256 checkpointed before the close, an `lstat` that matches them and, up to 2
 with that SHA-256. Without it the result is unknown with the path (`sftp_reconcile_unknown`); with
 nothing journaled the attempt never opened a file, so the name is `missing` for this upload.
 
-**Deletion and capabilities.** `stat` and the check before removal first require the connection
-to reach the recorded server (host, port, user and host key), else `sftp_server_changed`. Then a
+**Deletion and capabilities.** `stat`, the check before removal and `reconcile` connect with
+`UserKnownHostsFile` set to a private temporary file holding only the recorded lines,
+`GlobalKnownHostsFile=/dev/null` and `StrictHostKeyChecking=yes`, so ssh itself proves the
+server still holds the recorded key; any host-key failure there is `sftp_server_changed`, as is a
+destination that now resolves to another host, port or user. A session connection verified by
+exactly those lines (a test checking its own upload) is reused. Then a
 regular file with the recorded size, mtime and uid and, up to 32 MB, the recorded SHA-256. The
 intent is checkpointed through the deletion's durable checkpoint before anything is removed, an
 `lstat` right before `REMOVE` must still match, and an unclear outcome keeps the intent as the
@@ -266,8 +289,11 @@ Link address, capture summaries say "Upload only", never "Shared link".
 **Test.** connect, hostKey, signIn, folder, upload, link and cleanup steps, each with what it
 proved. The test file `putgd-test-<uuid>.txt` is recorded in a checkpoint before it is created;
 `fsync`, `fstat`, close and the `lstat` after it are all checked, and the uploaded receipt is
-recorded only when that `lstat` confirmed it. Its link is fetched anonymously and compared byte
-for byte (skipped without a Link address); cleanup uses the deletion check above and is
-`removed` or `missing` only when the server confirms, else `unconfirmed` or `failed`, which fails
-the test with the file's path. The test writes its journal on its own path, as the custom
+recorded only when that `lstat` confirmed it. A name that holds another file by then gets no
+`REMOVE`, and a lost reply to the test file's open leaves the file unknown: both report cleanup
+`unconfirmed` with `cleanupPath`. Its link is fetched anonymously and compared byte for byte
+(skipped without a Link address); cleanup uses the deletion check above, issues no `REMOVE` for a
+file that isn't the test's, and is `removed` or `missing` only when the server confirms, else
+`unconfirmed` with `cleanupPath`, which fails the test with the file's path. The result's
+`summary` is given only when every step passed. The test writes its journal on its own path, as the custom
 uploader's does. Without a Link address the test passes without the link step.

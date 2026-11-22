@@ -231,7 +231,7 @@ The SFTP destination (#1871) is tested in three layers:
   (a password in the address, a leading hyphen, a bad port), the saved settings' rules,
   folders, links and `host:/path`, passwords left out of addresses and user parts out of
   links, the optional password and passphrase, askpass answering only ssh's exact local
-  password and passphrase prompts, literal host tokens, host-key fingerprints as
+  password and passphrase prompts as whole strings, literal host tokens, host-key fingerprints as
   `ssh-keygen -l` prints them, and the bounds of the SFTP reply parser.
 - `fuzz_sftpwire` ([fuzzing](fuzzing.md)): the same parser on arbitrary bytes.
 - `test_sftp_live`, opt-in and not a CTest entry: the production provider, `putgd-sftp-worker`,
@@ -247,9 +247,11 @@ The SFTP destination (#1871) is tested in three layers:
   `ssh/known_hosts` private, its folder closed to others), then a full
   Test with the link fetched over the lab's HTTPS location and compared; the password user
   with no, a wrong and a misplaced secret; an agent of its own; a cancelled 256 MB upload
-  whose partial file is removed; upload, collision, the verified server identity in the
-  receipt, an unknown upload not reconciled without its own evidence, deletion and a changed
-  file's refusal;
+  whose partial file is removed (and says so); upload, collision, the recorded `known_hosts`
+  line in the receipt, an unknown upload not reconciled without its own evidence, a deletion
+  from a new session proved against the recorded line alone, a record whose recorded key isn't
+  the server's refused as `sftp_server_changed` with the file left in place, deletion and a
+  changed file's refusal;
   the passphrase key with and without its passphrase (and a password refused at that
   prompt); the read-only and full folders, a missing folder and Create folder, and the server
   without the SFTP subsystem. The host-key rotation (`servers.py rotate-hostkey`, then

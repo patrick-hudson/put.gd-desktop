@@ -64,8 +64,9 @@ in the error's details is set only if that removal itself failed. Three edges:
 An SFTP destination (#1871) stores two named values, `password` and `passphrase`, in one
 entry, and either may be empty. `setup.storeCredentials` takes
 `{"values":{…}}` with one or both names; a name left out keeps its loaded value, or is stored
-empty when none is loaded, and an empty value clears that one (Settings' **Clear**). Settings
-sends only what was typed, so storing a passphrase keeps a stored password. A value holds no
+empty when none is loaded, and an empty value clears that one (Settings' **Clear**, which keeps
+whatever is typed into the other field). Settings sends only what was typed, so storing a
+passphrase keeps a stored password. A value holds no
 line break, since ssh reads its askpass answer up to one, and is at most 4096 characters.
 `setup.credentialHint` lists in `storedValues` only the values that aren't empty. The values
 reach `putgd-sftp-worker` only with requests that sign in (Settings' address check learns only
