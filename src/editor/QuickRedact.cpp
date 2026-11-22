@@ -27,7 +27,8 @@ QString normalized(const QString& word) {
 }
 bool hasDigit(const QString& text) {return std::any_of(text.cbegin(),text.cend(),[](QChar c){return c>='0'&&c<='9';});}
 // Inside a number the shape fixes the alphabet to digits: O, l, I, S and B
-// read as 0, 1, 1, 5 and 8 in a word that has a digit and no other letter.
+// read as 0, 1, 1, 5 and 8 in a word that has a digit and no other letter, and
+// @ as 0 between two digits or a digit and a dot (198.51.10@.223, #1913).
 QString digitView(const QString& original) {
  static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'S','5'},{'B','8'}};
  if(!hasDigit(original))return original;
@@ -36,11 +37,14 @@ QString digitView(const QString& original) {
  QString word=original;
  for(qsizetype i=1;i+1<word.size();++i){const auto c=word.at(i).unicode();if((c==0x2010||c==0x2011||c==0x2012||c==0x2013||c==0x2212)&&word.at(i-1).isDigit()&&word.at(i+1).isDigit())word[i]=QChar('-');}
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c))return word;
- QString out=word;for(auto& c:out)c=confused.value(c,c);return out;
+ QString out=word;for(auto& c:out)c=confused.value(c,c);
+ for(qsizetype i=1;i+1<out.size();++i)if(out.at(i)=='@'&&out.at(i-1).isDigit()&&(out.at(i+1).isDigit()||out.at(i+1)=='.'))out[i]='0';
+ return out;
 }
-// Inside an IPv6 address the alphabet is hex: O, l, I and S read as 0, 1, 1 and 5.
+// Inside an IPv6 address the alphabet is hex: O, l, I, i and S read as 0, 1, 1, 1 and 5, and @ as 0
+// (fe8@::…, fe80::4fic:…; #1913).
 QString hexView(const QString& word) {
- static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'S','5'}};
+ static const QHash<QChar,QChar> confused{{'O','0'},{'l','1'},{'I','1'},{'i','1'},{'S','5'},{'@','0'}};
  if(!word.contains(':'))return word;
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c)&&!QStringLiteral("abcdefABCDEF").contains(c))return word;
  QString out=word;for(auto& c:out)c=confused.value(c,c);
@@ -380,7 +384,9 @@ QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const
    // value; between token pieces six (Sol on #1901).
    const auto& left=plain.at(previous);
    // ...unless it is a key's own prefix, split from its body (AKIA, ghp; Sol on #1901).
-   const bool label=left.size()<=12&&std::all_of(left.cbegin(),left.cend(),[](QChar c){return c.isLetter()||c==':';})&&!prefixHead(left);
+   // A prefix head after a separator in the word counts too (ID:AKIA; #1914).
+   const auto tail=left.mid(qMax(left.lastIndexOf(':'),left.lastIndexOf('='))+1);
+   const bool label=left.size()<=12&&std::all_of(left.cbegin(),left.cend(),[](QChar c){return c.isLetter()||c==':';})&&!prefixHead(left)&&!(tail.size()<left.size()&&prefixHead(tail));
    if(gap>(label?3:6)*qMax(glyph(previous),glyph(index)))close();
   }
   current.starts.append(int(current.text.size()));current.words.append(index);current.text+=plain.at(index);
@@ -624,7 +630,9 @@ bool digestLine(const QList<int>& line,const QList<QString>& plain) {
  bool hash=false;
  // A camelCase label in label position, ending in ":" or "=" (gitSha:, commitHash=), names a digest too.
  // ...with a value after it on the line, so a token's tail "shaB7m2QaK8V=" is no label.
- for(int i=0;i+1<line.size();++i){const auto& t=plain.at(line.at(i));if(t.endsWith(':')||t.endsWith('='))for(const auto& part:t.split(camel,Qt::SkipEmptyParts))hash=hash||hashes.contains(part.toLower());}
+ // The value after it must look like a digest: hex of 7 or more, or sha…, not an inline comment (#1914).
+ static const QRegularExpression digestValue(QStringLiteral("^[\"']?(?:[0-9a-fA-F]{7,}|sha[0-9]*[-:])"));
+ for(int i=0;i+1<line.size();++i){const auto& t=plain.at(line.at(i));if((t.endsWith(':')||t.endsWith('='))&&digestValue.match(plain.at(line.at(i+1))).hasMatch())for(const auto& part:t.split(camel,Qt::SkipEmptyParts))hash=hash||hashes.contains(part.toLower());}
  for(const int w:line)for(auto part:plain.at(w).split(words,Qt::SkipEmptyParts)){
   part=part.toLower();
   if(secrets.contains(part))return false;
@@ -802,15 +810,18 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  // ({"…","TOKEN":"…"}, NAME,value,owner, ?api_key=…&): the piece is covered when the value there is a
  // secret's.
  // A quoted value is read to its closing quote, whatever it holds ({"password":"!&%?"}; Sol on #1903).
- static const QRegularExpression inner(QStringLiteral("(?:^|[,{;&?(\\[])\\s?[\"']?([A-Za-z_][A-Za-z0-9_.-]{1,63})[\"']?\\s?([=:,])\\s?(?:\"([^\"]{4,200})\"|'([^']{4,200})'|([^,\"'&;}\\s]{4,}))"));
+ static const QRegularExpression inner(QStringLiteral("(?:^|[,{;&?(\\[])\\s?[\"']?([A-Za-z_][A-Za-z0-9_.-]{1,63})[\"']?\\s?([=:,])\\s?(?:\"([^\"]{4,200})(?:\"|$)|'([^']{4,200})(?:'|$)|([^,\"'&;}\\s]{4,}))"));
  // ...and as read word by word, unquoted, so a value whose closing quote recognition put in the next
  // word, or a query assignment inside a quoted URL (…&password=…), is still found (Sol on #1903).
  static const QRegularExpression bare(QStringLiteral("(?:^|[,{;&?(\\[])\\s?[\"']?([A-Za-z_][A-Za-z0-9_.-]{1,63})[\"']?\\s?([=:,])\\s?[\"']?([^,\"'&;}\\s]{4,})"));
  for(int p=0;p<pieces;++p){
   const auto text=segment.text.mid(segment.starts.at(p),pieceEnd(p)-segment.starts.at(p));
   bool covered=false;
-  for(const auto* pattern:{&inner,&bare})for(auto it=pattern->globalMatch(text);it.hasNext()&&!covered;){
-   const auto m=it.next();
+  // Each pattern is tried again from inside the value it just read, so an assignment within that value
+  // (a query's ?password=… inside a quoted URL) is found too (#1915).
+  for(const auto* pattern:{&inner,&bare})for(qsizetype at=0;at<text.size()&&!covered;){
+   const auto m=pattern->match(text,at);if(!m.hasMatch())break;
+   at=qMax(at+1,m.capturedStart(2)+1);
    // After a comma (a CSV row) the value needs a digit and a letter, so "Password,please" stays visible.
    const auto value=pattern==&bare?m.captured(3):!m.captured(3).isEmpty()?m.captured(3):!m.captured(4).isEmpty()?m.captured(4):m.captured(5);
    if(m.captured(2)==QLatin1String(",")&&!(hasDigit(value)&&std::any_of(value.cbegin(),value.cend(),[](QChar c){return c.isLetter();})))continue;
@@ -884,7 +895,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    const auto& firstWord=plain.at(line.at(lead));
    // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0", Sol on #1901).
    static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
-   const bool separated=lead+2<line.size()&&name.match(firstWord).hasMatch()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
+   // ...with a value after it, not an inline comment ("…Ui5" "=" "#" "dev" is padding); an empty
+   // snake-case name with its "=" alone ("DATABASE_URL" "=") is a new statement too (#1914).
+   const bool operatorWord=lead+1<line.size()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
+   const bool commentAfter=lead+2<line.size()&&(plain.at(line.at(lead+2)).startsWith('#')||plain.at(line.at(lead+2)).startsWith(QLatin1String("//")));
+   static const QRegularExpression snake(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)$"));
+   const bool separated=operatorWord&&name.match(firstWord).hasMatch()&&(lead+2<line.size()?!commentAfter:snake.match(firstWord).hasMatch());
    f.statement=assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch()||separated||digestLine(line,plain);
    it=facts.insert(key,std::move(f));
   }
