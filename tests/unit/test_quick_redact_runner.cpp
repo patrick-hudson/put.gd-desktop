@@ -209,13 +209,15 @@ private slots:
  // is reported unchecked, and a second run while the lookup is still stalled
  // waits for that same lookup rather than starting another.
  void aSlowAccountLookupNeverHoldsTheRest() {
-  Restore restore;std::atomic_int calls{0};
+  Restore restore;
   // #1662: the lookup stalls until the test lets it go, not for a fixed time a
   // loaded runner could outlast across both runs. Shared, since the lookup
-  // thread is detached and may outlive this test if an assertion fails.
-  auto release=std::make_shared<std::atomic_bool>(false);
-  struct Release {std::shared_ptr<std::atomic_bool> flag;~Release(){flag->store(true);}} releaseAtEnd{release};
-  ui::setQuickRedactAccountLookup([&calls,release](const std::function<bool()>&){++calls;while(!release->load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
+  // thread is detached; however the test ends, the lookup is let go and has
+  // ended before the next test starts.
+  struct Stall {std::atomic_int calls{0};std::atomic_bool release{false};};
+  const auto stall=std::make_shared<Stall>();
+  struct Release {std::shared_ptr<Stall> stall;~Release(){stall->release=true;(void)test::waitFor([]{return !ui::quickRedactAccountLookupRunning();});}} releaseAtEnd{stall};
+  ui::setQuickRedactAccountLookup([stall](const std::function<bool()>&){++stall->calls;while(!stall->release.load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
   const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
   quickRedact::Sources sources;sources.terms={"Hammond"};sources.patterns={R"(JIRA-\d)"};
   for(int run=0;run<2;++run){
@@ -226,10 +228,10 @@ private slots:
    QVERIFY(result->nameUnchecked);
    QCOMPARE(found(candidates,*result),(QStringList{"email: jane@example.com","list: Hammond","list: JIRA-9"}));
   }
-  QCOMPARE(calls.load(),1);
+  QCOMPARE(stall->calls.load(),1);
   QVERIFY(ui::quickRedactAccountLookupRunning());
   // The stalled lookup ends on its own; the next run asks again.
-  release->store(true);
+  stall->release=true;
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!ui::quickRedactAccountLookupRunning(),5000);
  }
  // M2, U6: a worker waiting on a stalled lookup stops at once when the editor
