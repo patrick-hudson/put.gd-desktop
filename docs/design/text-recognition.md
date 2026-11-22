@@ -42,10 +42,10 @@ What it does not do:
    one that every action gets, so it does not say that the capture copies text. The capture delay, the "Also delay captures started by a
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
-3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first, names the emoji it finds
-   in the colour plane, leaving out any inside a decoded code (see [emoji](#emoji)), then
-   recognizes the text in grey copies with the codes' areas filled with the background, and puts
-   each emoji in place of what it read there.
+3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first. Then, at the same time, it
+   names the emoji it finds in the colour plane, leaving out any inside a decoded code (see
+   [emoji](#emoji)), and recognizes the text in grey copies with the codes' areas filled with the
+   background. Last, it puts each emoji in place of what it read there.
 4. **Copy.** One plain-text clipboard write, then one desktop notification:
 
    | Found | Clipboard | Notification |
@@ -184,7 +184,7 @@ banded, parallel recognition, and all of them fail.
 | Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey and 8-bit RGB that is a memfd of at most 96,000,032 bytes: the 32-byte header, 24,000,000 bytes of grey and 72,000,000 of colour. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
-| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
+| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition. That clock starts before the codes are read, and the scan itself starts after them. The limit is checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
@@ -471,11 +471,28 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   word with its glyph's box, the editor shows and selects it as a word, and Quick redact sees
   it. The editor's Copy selection joins words with spaces, so a glued emoji gets one there;
   Copy all text keeps the join.
-- **When it runs.** After the codes and before any engine starts. The colour rows the scan
-  has passed, the rows read again around each glyph once it is done, and the template pages it
-  read are given back before recognition reaches its peak, and its large working buffers come
-  straight from the kernel, so a freed one does not raise glibc's mmap threshold for
-  Tesseract's buffers after it.
+- **When it runs.** On its own thread, from just after the codes are read, alongside page
+  analysis, the engines' start and recognition (#1815). The job joins it before the emoji are
+  placed.
+  - Before #1815 it ran first, on one core. Overlapping it made the 176-capture corpus 11% faster
+    and 4 MP+ screens 15% faster on aurora-amd (6 cores), and the corpus 8% faster on k72 (4
+    cores). The text was identical on all 176 captures and on the 26 #1748 emoji crops. The
+    record is [put.gd-evidence `records/2026-11-22-issue-1815-emoji-scan-overlap`](https://github.com/patrick-hudson/put.gd-evidence/tree/1d1dc859d798c1a16789475e4fc1f7cec9a4e659/records/2026-11-22-issue-1815-emoji-scan-overlap).
+  - The colour rows the scan has passed, and the rows read again around each glyph once it is
+    done, are given back as it goes. The template pages it read are given back when the scan
+    ends. Its large working buffers come
+    straight from the kernel, so a freed one does not raise glibc's mmap threshold for
+    Tesseract's buffers.
+  - No growth sample is taken from a task that overlaps the scan, so the scan's pages never count
+    as a task's growth. The gate still checks the helper's whole resident set, scan included,
+    before it starts extra engines and before an extra worker takes a task that needs more
+    memory. The first engine and its worker are never gated.
+  - If the system refuses the thread, the scan runs first, inline, as before.
+  - The scan's 3-second limit is unchanged and still counts from the start of recognition. The
+    scan now shares the CPU with the engines, so on a very busy screen it may get through less
+    of the page before that limit. A cut scan keeps what it found and never cuts the text.
+  - `recognizeMs` is code reading plus text recognition, plus the time the job waited for the
+    scan at the join (or the whole scan, when it ran inline).
 - **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them)
   has no colour core, so it is not found and Tesseract's reading of it
   stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
@@ -899,6 +916,134 @@ other tool active it does not. The user's side is in the
     two clean pages got no mark, and a held-out set (12, 13, 16 and 24 px, 16 pages) covered 303 of 304
     items with 2 extra marks. Quick redact still suggests only. The key and token shapes rest on
     measured thresholds with real but not wide margins, and should stay behind that line.
+
+## Checking captures before uploading
+
+[#1804](https://github.com/patrick-hudson/put.gd-desktop/issues/1804) adds **Check captures for
+sensitive text before uploading** to Settings → Capture → Text recognition, with the kinds it looks
+for. It is off by default. With it on, put.gd recognizes the text of an image that is about to upload.
+It asks when that text includes one of the chosen kinds, or when the check couldn't finish. An image
+with nothing found uploads as it does with the option off, with the check's time added.
+
+The feature adds no confirmation step before an ordinary upload. An explicit upload is consent. The
+panel is a targeted warning that the user turns on, and it opens only for a finding or a check that
+couldn't finish. Don't extend it into a general "are you sure?".
+
+| Part | Rule |
+| --- | --- |
+| Setting | `preferences.sensitiveTextCheck` `{enabled, categories}`, see [configuration](configuration.md). The categories are Quick redact's: `card`, `key`, `list`, `email`, `phone`, `ip`, `name`. The default is `card`, `key` and `list`. Email addresses, phone numbers, IP addresses and the user's own name appear on most ordinary chat and terminal screenshots, so they are offered but off by default. `list` matches nothing until the user saves words or patterns. Settings won't turn the option on while text recognition is unavailable, and won't clear the last chosen kind |
+| What is checked | Only uploads: an action whose output is a destination. Region, window, monitor, desktop, Repeat last region and scrolling captures; the clipboard action with an image, or with copied files; and the file manager's **Upload with put.gd**. Among files, those whose signature is PNG or JPEG are checked, one after another, including files expanded from a folder when folders upload file by file. The contents of a folder uploaded as a .zip are not checked |
+| Not checked | Capture region & edit (the user reviews that image before Upload), recordings, files that are not PNG or JPEG, a folder's .zip, clipboard text, diagnostics packages, captures going only to the local archive, and retries. A retry, including one after a failed upload, sends the stored artifact without checking it again. A new capture or file selection is checked |
+| Where it runs | In the editor helper, `putgd-ui --edit-image`, in check mode. The resident stages the image as it does for Edit & upload, and keeps its own copy for the upload. The helper runs the editor's recognition (`putgd-ocr`) and Quick redact, including the account name lookup and the pattern child, on a document it does not show. No editor or matching code is in the resident. Recognition, its deadline, its limits and its confinement are exactly the editor's |
+| One at a time | Checks run one after another. A capture that needs a check, taken while a prompt is open, waits in the `checking` phase. So does every file-manager or clipboard file selection, because which of its files are PNG or JPEG is read only when its turn comes; a selection with none then goes on unchecked. Other captures go on as usual |
+| Nothing found | The helper ends at once, and the capture goes to the upload queue unchanged: same format, name, copy and history |
+| Found | The operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {card: 1, key: 1}, complete: true, prompt: 1}`, kinds and counts only. A person sees the panel. An agent decides with `operation.decide` |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found |
+| No decision possible | A check that fails before it can find anything or ask uploads nothing. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, put.gd then tries to save the capture locally, as Cancel does, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text."; if that save fails too (a full disk), the operation fails. Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. If the helper fails after **Redact and upload** opened the editor, the operation also fails with `sensitive_check_failed`, `details.cause` holding the editor's error, and there is no local-copy fallback |
+| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. If any differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
+
+### The prompt
+
+The prompt is put.gd's own frameless panel, drawn by the helper from the theme tokens: the raised
+surface, a strong border, a gold accent edge, the `alert` glyph and the `putgd::Ui` roles. It has no
+desktop title bar or frame, and it moves by dragging its body, through the desktop's own move. It is an
+ordinary window: it opens raised and focused, and another window can cover it. On Wayland a window
+can't ask to stay on top, and put.gd keeps it an ordinary window everywhere rather than an overlay that
+can't be moved. While a capture waits, the tray and History say "Waiting for your decision", and a click
+on the tray icon brings the panel back instead of opening History, where the tray host sends put.gd the
+click. Ubuntu's AppIndicator tray opens put.gd's menu on a click instead. The tray menu's **Open
+put.gd** still opens History. On every desktop put.gd also sends one notification for each prompt a
+person is shown, "A capture is waiting for your decision", while notifications are on ([#1829](https://github.com/patrick-hudson/put.gd-desktop/issues/1829)).
+It has **Show**, which brings the panel back, where the desktop's notifications support buttons. Where Qt
+shows a tray balloon instead (no notification server, on the Qt tray), clicking it does the same. During a scrolling capture the
+notification waits until the capture ends, and goes out then only if the prompt still waits. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
+float it. Where the desktop lets a window choose (X11), it opens centred on the screen with the pointer.
+Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offered.
+
+- The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
+  names what was found by kind and count: "This capture shows a card number and a key or token. It
+  hasn't been uploaded." It never shows the text, except as pixels in the preview.
+- A preview shows the image with every suggested Redact applied, when the helper could decode it.
+  Then come "Suggestions only. Recognition can miss text." and the destination.
+- **Redact and upload** (the default button) opens the editor on the same document, with the
+  suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
+  From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
+  nothing. It is offered for one decodable image within the editor's 24 megapixels. It is not offered
+  for an image too large to edit, one the helper couldn't decode, or a selection of several files.
+- **Upload anyway** uploads the original.
+- **Cancel**, Escape or closing the panel uploads nothing. With **Keep a local copy** on, the capture is
+  saved to the archive and History as a local item. Otherwise nothing is kept.
+- For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png", counted among
+  the PNG and JPEG files of the selection) and offers only **Upload anyway** and **Cancel**. Upload
+  anyway keeps that file and goes on checking the rest, which can ask again. Cancel uploads none of the
+  files. A selection of one decodable image within 24 megapixels offers all three; one that is too
+  large or couldn't be read offers only Upload anyway and Cancel.
+
+### Agents
+
+`action.invoke` and `upload.files` take `sensitiveText`: `prompt` or `report`. The tray, hotkeys,
+the main window and the file manager's menu entry (which names its installation) ask a person, with
+`prompt`. Any other request defaults to `report`, which covers `putgd-cli`, MCP and scripts. In report
+mode no panel opens: the operation waits in `sensitive_text_found` for `operation.decide {id, choice,
+prompt?}`, where `choice` is `redact`, `upload` or `cancel` (MCP `decide_upload`). The same method also
+settles a panel that a person is looking at.
+
+- **Waiting.** Each prompt waits up to 5 minutes in report mode, then is taken as Cancel. With **Keep a
+  local copy** on, put.gd saves the capture locally: the operation ends `completed` with `local_only`
+  items, or `failed` if that save fails. Otherwise it ends `cancelled`. `cancel` from `operation.decide`
+  does the same. `operation.cancel` on a waiting capture is different: it cancels the operation and
+  saves nothing.
+- **The reply.** `operation.decide` acknowledges the choice (`{decided: choice}`); poll
+  `operation.inspect` for what follows. After `upload` or `cancel` the phase leaves
+  `sensitive_text_found`, to `checking` while more files are checked (its `sensitive` can still show
+  the last prompt's findings for a moment) and then on to the upload or the end. After `redact` the
+  phase becomes `editing`, the `editor.*` methods drive the editor by the same ID, and `editor.submit`
+  (MCP `submit_editor`) sends the edited image.
+- **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
+  it as `prompt` when answering, so a decision never reaches a later file's prompt.
+- **Refusals.**
+  - `sensitive_check_running` (`details.operationId`) while the check runs.
+  - `sensitive_decision_unavailable` when nothing waits. It has `details.operationId` when the resident
+    answers, and no details when the decision named another prompt.
+  - `editor_finalizing` for a second decision that reached the panel after the first.
+  - `sensitive_choice_unavailable` for `redact` where Redact isn't offered.
+
+No method waits on the decision, so nothing hangs.
+
+### Privacy
+
+The automatic check keeps recognized text inside its helper processes: the editor helper, and the
+pattern child, which gets the text over a private pipe when there are patterns. It doesn't store, log
+or upload the text as text. The image itself is what uploads or is saved locally, depending on the
+choice. The resident gets findings only: kinds with counts, whether the check finished and why not, and
+the prompt number. It logs the check's start, outcome, findings and duration. The journal,
+observations, `operation.inspect` and diagnostics carry the same findings and nothing more, up to
+the decision; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Redact and upload** the
+check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
+found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
+those words to the same-user caller that asks, without another recognition run. Placing any suggested
+mark starts a new recognition revision, which clears the result. The notification says only that a capture is waiting.
+Tests and evidence use only test values.
+
+### Cost
+
+Each checked capture adds the time to stage it, start the helper, recognize it and match it,
+before its upload starts. The table gives the time this added to an uploaded link with today's
+engine, measured on the five lab desktops on 2026-11-21 with #1806's final candidate builds. Region
+times are medians of five warm runs; full screen is one run each.
+
+| Desktop | Region | Extra time | Full screen | Extra time |
+| --- | --- | --- | --- | --- |
+| Mint 22.3 Cinnamon, X11 (m74) | 676 × 138 | +0.38 s | 1920 × 1080 | +0.50 s |
+| Kubuntu 26.04 Plasma, Wayland (k72) | 676 × 138 | +0.34 s | 1920 × 1080 | +0.42 s |
+| Fedora 44 GNOME, Wayland (f44) | 676 × 178 | +0.23 s | 1920 × 1080 | +0.46 s |
+| Omarchy Hyprland guest (d69) | 676 × 178 | +0.29 s | 1280 × 800 | +0.31 s |
+| Fedora 45 Budgie labwc guest (d69) | 676 × 178 | +0.25 s | 1280 × 800 | +0.33 s |
+
+A screen full of dense text takes longer, as recognition does ([time budget](#time-budget)). The work on
+a faster recognizer, [#1808](https://github.com/patrick-hudson/put.gd-desktop/issues/1808) and
+[#1812](https://github.com/patrick-hudson/put.gd-desktop/issues/1812), will shorten it. A capture that is
+not checked (the option off, Edit & upload, a local-only capture) costs nothing.
 
 ## History
 

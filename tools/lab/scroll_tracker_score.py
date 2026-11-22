@@ -28,6 +28,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not put the script's folder on the path
+import desktop_lock  # noqa: E402
+
 BAND = 64
 # A band is equal when at most this share of its compared pixels differs by
 # more than PIXEL_TOLERANCE (sum of the three channels' differences).
@@ -329,6 +332,7 @@ def main():
     parser.add_argument('--exclude', help='X,Y,W,H: put.gd\'s own bar, drawn into every frame with a pattern that '
                         'changes from frame to frame and excluded (tracker only)')
     args = parser.parse_args()
+    desktop_lock.refuse_while_quiet('scroll_tracker_score')  # --reuse still replays what is missing
     rows = []
     pages = []
     for browser in args.browsers.split(','):

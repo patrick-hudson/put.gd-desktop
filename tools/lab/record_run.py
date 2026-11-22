@@ -144,6 +144,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import desktop_lock  # noqa: E402
 import lab_resident  # noqa: E402
 
 RunError = lab_resident.RunError
@@ -1225,6 +1226,7 @@ def main(argv=None):
     if args.output_gone_at is not None and args.rounds * len(args.format) * len(args.build) != 1:
         # The private output is not made again, so a second recording would have nothing to record from.
         parser.error('--output-gone-at removes the run\'s private output for good: one --build, one --format and --rounds 1 per run')
+    desktop_lock.refuse_while_quiet('record_run')
     return Driver(args).main()
 
 

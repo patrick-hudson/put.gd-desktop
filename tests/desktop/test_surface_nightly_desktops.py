@@ -1584,7 +1584,8 @@ with n.controller_shutdown(workers):
         # The check after the Shell restart enables it and waits for a registered StatusNotifier host.
         self.assertIn("'gnome-extensions','enable',uuid", guest.TRAY_HOST_READY)
         self.assertIn('IsStatusNotifierHostRegistered', guest.TRAY_HOST_READY)
-        self.assertIn(guest.TRAY_HOST_EXTENSION, guest.TRAY_HOST_READY)
+        from tools.lab.gnome_tray_host import TRAY_HOST_EXTENSION
+        self.assertIn(TRAY_HOST_EXTENSION, guest.TRAY_HOST_READY)
 
     def test_guest_package_updaters_are_held_or_the_row_stops(self):
         from tools.lab import nightly_desktop_guest as guest

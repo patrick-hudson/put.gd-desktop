@@ -814,6 +814,12 @@ void OperationService::discardCovered(const QHash<QString,QString>& replaced) {
  // Each covered copy sits alone in covered/<operation>/<index>/: the file, then its two folders if empty.
  for(const auto& path:replaced){QFile::remove(path);const QFileInfo file(path);QDir().rmdir(file.absolutePath());QDir().rmdir(QFileInfo(file.absolutePath()).absolutePath());}
 }
+bool OperationService::sensitivePromptWaiting(const QString& id) const {return sensitivePromptNumber(id)>0;}
+int OperationService::sensitivePromptNumber(const QString& id) const {
+ const auto session=checkSessions_.value(id);
+ if(!session||sensitiveModes_.value(id)!="prompt")return -1;
+ return session->waitingPrompt();
+}
 bool OperationService::raiseSensitivePrompt(const QString& activationToken) {
  for(auto it=checkOperations_.cbegin();it!=checkOperations_.cend();++it)if(it->phase=="sensitive_text_found"&&raiseSensitivePrompt(it.key(),activationToken))return true;
  return false;

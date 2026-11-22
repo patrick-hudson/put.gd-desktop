@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import types
 import unittest
 from unittest import mock
 
@@ -366,6 +367,75 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['state'], 'free')
 
 
+class QuietLease(LockTest):
+    def quiet(self):
+        return lock.Desktop(self.directory, 'aurora-amd', self.clock, resource='quiet')
+
+    def holder(self, session=None):
+        return lock.quiet_holder(self.directory, session, self.clock)
+
+    def test_records_the_load_refuses_a_second_session_and_releases_without_a_check(self):
+        self.acquire()  # the desktop lock is independent
+        with mock.patch.object(lock.os, 'getloadavg', return_value=(20.5, 3.0, 1.0)), \
+                mock.patch.object(lock.os, 'cpu_count', return_value=16):
+            reply = self.quiet().acquire('timer', 'local_timing', 'fluidity pair #1808', 30)
+        self.assertEqual((reply['lock']['resource'], reply['lock']['load']), ('quiet', '20.50 3.00 1.00 (16 CPUs)'))
+        self.assertIn('above the 16 CPUs', reply['notes'][0])
+        self.assertIn('load: 20.50 3.00 1.00 (16 CPUs)\n', (self.directory / 'quiet.lock').read_text())
+        with self.assertRaisesRegex(lock.LockError, 'Do other work and retry acquire later; never sleep holding nothing'):
+            self.quiet().acquire('other', 'local_other', 'second timing', 10)
+        self.clock.advance(minutes=10)
+        self.assertEqual(self.quiet().heartbeat('local_timing')['state'], 'held')
+        self.assertEqual(self.quiet().extend('local_timing', 20)['lock']['expires'], '2026-10-19T03:30:00Z')
+        receipt = self.quiet().release('local_timing')['receipt']
+        self.assertTrue(receipt.endswith('-quiet-release.json'))
+        self.assertEqual(self.quiet().status()['state'], 'free')
+        self.assertEqual(self.desktop.status()['state'], 'held')
+
+    def test_heavy_work_waits_only_for_another_sessions_live_lease(self):
+        self.assertIsNone(self.holder(''))
+        self.quiet().acquire('timer', 'local_timing', 'fluidity pair', 30)
+        self.assertIn('timer (local_timing) holds this host\'s quiet lease for "fluidity pair"', self.holder(''))
+        self.assertIn('never sleep waiting', self.holder('local_other'))
+        self.assertIsNone(self.holder('local_timing'))
+        with mock.patch.dict(os.environ, {lock.SESSION_VARIABLE: 'local_timing'}):
+            self.assertIsNone(self.holder())
+        self.clock.advance(minutes=16)  # stale: breakable, but its timing may still be running
+        self.assertIn('(stale,', self.holder(''))
+        self.quiet().break_lock('local_other', 'timer stopped heartbeating')
+        self.assertIsNone(self.holder(''))
+        self.quiet().acquire('timer', 'local_timing', 'short', 5)
+        self.clock.advance(minutes=5)
+        self.assertIsNone(self.holder(''))  # expired
+
+    def test_a_guarded_helper_refuses_to_start(self):
+        sys.path.insert(0, str(Path(lock.__file__).parent))
+        import rr_loop
+        self.assertIs(rr_loop.desktop_lock, lock)
+        self.quiet().acquire('timer', 'local_timing', 'fluidity pair', 30)
+        argv = ['rr_loop.py', '--build', 'build/rrb', '--test', 'any', '--run-dir', str(self.directory / 'rr')]
+        with mock.patch.object(lock, 'LOCK_DIR', str(self.directory)), mock.patch.object(lock, 'now_utc', self.clock), \
+                mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {lock.SESSION_VARIABLE: 'local_b'}), \
+                mock.patch.object(rr_loop.run_scope, 'available', side_effect=AssertionError('started')):
+            with self.assertRaisesRegex(SystemExit, 'rr_loop not started: timer .local_timing. holds'):
+                rr_loop.main()
+            os.environ[lock.SESSION_VARIABLE] = 'local_timing'  # the holder's own run passes the guard
+            with self.assertRaisesRegex(AssertionError, 'started'):
+                rr_loop.main()
+
+    def test_guard_command_checks_the_host_over_the_script_channel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def call(**payload):
+                return lock.call('aurora-amd', dict(payload, directory=folder), command=[sys.executable, '-'])
+            self.assertTrue(call(action='guard', resource='quiet', session='')['ok'])
+            self.assertTrue(call(action='acquire', owner='o', session='local_a', purpose='timing', minutes=5,
+                                 resource='quiet')['ok'])
+            refused = call(action='guard', resource='quiet', session='local_b')
+            self.assertFalse(refused['ok'])
+            self.assertIn('Do other work and retry later', '\n'.join(lock.describe(refused)))
+            self.assertTrue(call(action='guard', resource='quiet', session='local_a')['ok'])
+            self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['quiet.lock'])
+
 class RemoteProtocol(unittest.TestCase):
     def test_ssh_uses_the_pinned_host_key_and_never_trusts_on_first_use(self):
         command = lock.ssh_command('k72', '/keys/id', '/pins')
@@ -391,6 +461,106 @@ class RemoteProtocol(unittest.TestCase):
             self.assertEqual(call(action='status', resource='proton')['state'], 'held')
             self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['proton.lock'])
             self.assertIn('k72 Proton session (Kubuntu', '\n'.join(lock.describe(reply)))
+
+
+class GnomeTrayHost(LockTest):
+    """A GNOME desktop is locked only while its tray host serves, unless a test skips it on purpose."""
+
+    NOT_ENABLED = {'ready': False, 'extension': 'appindicatorsupport@rgcjonas.gmail.com', 'installed': True,
+                   'enabled': False, 'state': 'INACTIVE', 'hostRegistered': False}
+
+    def test_refuses_without_the_tray_host_and_names_the_one_line_fix(self):
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: dict(self.NOT_ENABLED))
+        with self.assertRaises(lock.LockError) as refused:
+            desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(desktop.status()['state'], 'free')
+        reply = lock.explain_tray_host(dict(refused.exception.details, ok=False, message=str(refused.exception),
+                                            host='f44', action='acquire'))
+        text = '\n'.join(lock.describe(reply))
+        self.assertEqual(text.count('\n'), 0, text)
+        self.assertIn('f44 has no tray host: appindicatorsupport@rgcjonas.gmail.com is not enabled', text)
+        self.assertIn('gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com', text)
+        self.assertIn('--no-tray-host', text)
+
+    def test_locks_once_the_tray_host_serves(self):
+        ready = dict(self.NOT_ENABLED, ready=True, enabled=True, state='ACTIVE', hostRegistered=True)
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: self.clock.advance(seconds=7) or ready)
+        reply = dict(desktop.acquire('holder', 'local_a', 'GNOME tray row', 30), ok=True, host='f44', action='acquire')
+        self.assertEqual(desktop.status()['state'], 'held')
+        self.assertEqual(reply['lock']['acquired'], '2026-10-19T03:00:07Z')  # the probe's time is not the lease's
+        self.assertIn('StatusNotifierWatcher host registered', '\n'.join(lock.describe(reply)))
+
+    def test_the_probe_runs_only_once_the_desktop_is_free_under_the_mutex(self):
+        calls = []
+        self.acquire(session='other')
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: calls.append('probe') or {'ready': True})
+        with self.assertRaises(lock.LockError):
+            desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(calls, [])  # a sample taken before the holder released would be stale
+        self.desktop.release('other', verified_clean=True)
+        desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(calls, ['probe'])
+
+    def test_a_missing_shell_is_not_reported_as_a_missing_extension(self):
+        problem, fix = lock.tray_host_module().missing({'shell': False, 'installed': False})
+        self.assertIn('GNOME Shell is not running', problem)
+        self.assertNotIn('dnf', fix)
+        self.assertIn('--no-tray-host', fix)  # a re-login needs the desktop lock first
+
+    def acquire_through_main(self, *extra, host='f44'):
+        """Run the CLI against a local lock directory; the probe is a stand-in for f44 before the fix."""
+        sent = []
+        real = lock.tray_host_module()
+        tray = types.SimpleNamespace(probe_source=lambda: STAND_IN_PROBE, missing=real.missing)
+
+        def run(command, input, **kwargs):
+            sent.append(input)
+            return lock.subprocess.run([sys.executable, '-'], input=input, **kwargs)
+
+        with tempfile.TemporaryDirectory() as pins:
+            (Path(pins) / host).mkdir()
+            (Path(pins) / host / 'known_hosts').write_text('')
+            with mock.patch.object(lock, 'tray_host_module', lambda: tray), \
+                    mock.patch.object(lock, 'remote_script',
+                                      lambda payload: real_script(dict(payload, directory=str(self.directory)))), \
+                    mock.patch('sys.stdout'):
+                code = lock.main(['acquire', host, '--owner', 'o', '--session', 'local_a', '--purpose', 'row',
+                                  '--minutes', '5', '--json', '--pins', pins, *extra], run=run)
+        return code, sent
+
+    def test_the_cli_probes_a_gnome_desktop_and_refuses_when_the_check_fails(self):
+        code, sent = self.acquire_through_main()
+        self.assertEqual(code, 1)
+        self.assertIn('STAND_IN_PROBE', sent[0])
+        self.assertEqual(self.desktop.status()['state'], 'free')
+
+    def test_no_tray_host_skips_the_probe_and_records_the_reason_in_the_purpose(self):
+        code, sent = self.acquire_through_main('--no-tray-host', 'no-tray prompt fallback')
+        self.assertEqual(code, 0)
+        self.assertNotIn('STAND_IN_PROBE', sent[0])
+        self.assertEqual(self.desktop.status()['lock']['purpose'], 'row [no tray host: no-tray prompt fallback]')
+
+    def test_other_desktops_are_not_probed_and_reject_the_flag(self):
+        code, sent = self.acquire_through_main(host='k72')
+        self.assertEqual(code, 0)
+        self.assertNotIn('STAND_IN_PROBE', sent[0])
+        with mock.patch('sys.stderr'), self.assertRaises(SystemExit):
+            lock.main(['acquire', 'k72', '--owner', 'o', '--session', 's', '--purpose', 'p', '--minutes', '5',
+                       '--no-tray-host', 'why'], run=None)
+
+    def test_the_probe_reports_its_own_failure_as_not_ready(self):
+        report = lock.probe_tray_host('raise SystemExit(3)')
+        self.assertFalse(report['ready'])
+        self.assertIn('no output', report['error'])
+
+
+# Prints what the real probe printed on f44 before the fix: installed, not enabled.
+STAND_IN_PROBE = ("import json;STAND_IN_PROBE=1;print(json.dumps(dict(extension='appindicatorsupport@rgcjonas.gmail.com',"
+                  "installed=True,enabled=False,state='INACTIVE',hostRegistered=False)));raise SystemExit(1)")
+real_script = lock.remote_script
 
 
 if __name__ == '__main__':
