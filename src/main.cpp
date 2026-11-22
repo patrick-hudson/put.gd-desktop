@@ -526,10 +526,21 @@ int main(int argc,char* argv[]) {
    if(!error&&job["kind"]=="testDestination"&&job["state"]=="completed")bundles.destinationTested(job["profileId"].toString());
   });
  });
- bundles.setDestinationTest([&settings,providerSetup](const QString& profileId,std::function<void(putgd::Error)> done){
-  const auto profile=settings.snapshot().profiles.value(profileId);
-  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
-  providerSetup("testDestination",destination,{},[done](putgd::Error error,QJsonObject){done(error);},[](QJsonObject){});
+ // Through SetupService, so it takes the destination's one setup slot like any other Test (#1872).
+ bundles.setDestinationTest([&settings,&setup](const QString& profileId,std::function<void(putgd::Error)> done){
+  setup.start("testDestination",profileId,settings.revision(),{},[&setup,done](putgd::Error error,QJsonObject started){
+   if(error){done(error);return;}
+   const auto id=started["setupId"].toString();auto connection=std::make_shared<QMetaObject::Connection>();
+   *connection=QObject::connect(&setup,&putgd::SetupService::changed,&setup,[&setup,id,done,connection](const QString& changed){
+    if(changed!=id)return;
+    setup.inspect(id,[done,connection](putgd::Error e,QJsonObject job){
+     if(!e&&job["state"]=="running")return;
+     QObject::disconnect(*connection);
+     const auto failed=job["error"].toObject();
+     done(e?e:putgd::Error{failed["code"].toString(),failed["message"].toString(),failed["details"].toObject()});
+    });
+   });
+  });
  });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.

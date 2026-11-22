@@ -7,12 +7,29 @@
 #include <unistd.h>
 #include <cerrno>
 #include <QCryptographicHash>
+#include <QRegularExpression>
+#include <QUrl>
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QSet>
 #include <QPointer>
 #include <QUuid>
 namespace putgd {
+namespace {
+// What a sharing step records only for its provider (#1872) stays out of what clients see.
+QJsonObject publicProgress(QJsonObject progress){progress.remove("shareId");progress.remove("tokenDigest");return progress;}
+QJsonObject publicSharing(QJsonObject doc){if(doc.contains("progress"))doc["progress"]=publicProgress(doc["progress"].toObject());return doc;}
+}
+QJsonObject HistoryService::recordedShare(const StorageReceipt& receipt,const QJsonObject& previous,const QString& action){
+ QJsonObject recorded;
+ // Only Nextcloud reads these; every other provider's request progress stays as it was.
+ if(receipt.destination.providerId!=QLatin1String("nextcloud"))return recorded;
+ if(const auto shareId=previous.value("shareId");shareId.isString())recorded["shareId"]=shareId;
+ static const QRegularExpression token(QStringLiteral("/s/([^/?#]+)/?$"));
+ if(action=="revoke")if(const auto match=token.match(QUrl(receipt.directUrl).path());match.hasMatch())
+  recorded["tokenDigest"]=QString::fromLatin1(QCryptographicHash::hash(match.captured(1).toUtf8(),QCryptographicHash::Sha256).toHex());
+ return recorded;
+}
 HistoryService::HistoryService(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
  // Workers read the destinations through currentProfiles(); the accepted settings change here (#1759).
  const auto keepProfiles=[this]{std::lock_guard lock(profilesMutex_);profiles_=operations_.settingsSnapshot().document["profiles"].toArray();};
@@ -32,7 +49,7 @@ void HistoryService::expireConfigured() {
 }
 void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();operations_.background([path,query,profiles](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;auto result=page.toJson();auto records=result["records"].toArray();for(qsizetype i=0;i<records.size();++i){auto record=records[i].toObject();markRemovedDestinations(record,profiles);records[i]=record;}result["records"]=records;return result;},std::move(reply));}
 void HistoryService::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();operations_.background([path,query,days](Error& e) {HistoryStore store(path);return store.counts(query,days,&e);},std::move(reply));}
-void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();operations_.background([this,path,id,profiles](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){markRemovedDestinations(data,profiles);auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
+void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();const auto profiles=operations_.settingsSnapshot().document["profiles"].toArray();operations_.background([this,path,id,profiles](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){data["shareProgress"]=publicProgress(data["shareProgress"].toObject());markRemovedDestinations(data,profiles);auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
   // No receipt yet (a failed upload, or one whose outcome is unknown): the operation's destination says what its provider can do.
   else{Error ignored;const auto operation=store.operation(data["operationId"].toString(),&ignored);if(!ignored)if(auto planned=operations_.providers().find(operation.destination.providerId))data["capabilities"]=planned->capabilities(operation.destination).toJson();}}return data;},reply);}
 void HistoryService::preview(const QString& id,JsonReply reply,bool retry) {operations_.makePreview(id,std::move(reply),retry);}
@@ -242,7 +259,7 @@ void HistoryService::deleteConfirmed(const QStringList& ids,const QString& ackno
   if(quitting_->load()) {reply(quittingError(),{});return;}
   const auto id=doc["id"].toString();auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"deletion",doc}});runDelete(doc,flag);});
 }
-void HistoryService::inspectSharing(const QString& id,JsonReply reply){if(stoppedSharing_.contains(id)){reply({},stoppedSharing_.value(id));return;}const auto path=operations_.databasePath();operations_.background([path,id](Error& e){HistoryStore store(path);return store.sharing(id,&e);},std::move(reply));}
+void HistoryService::inspectSharing(const QString& id,JsonReply reply){if(stoppedSharing_.contains(id)){reply({},publicSharing(stoppedSharing_.value(id)));return;}const auto path=operations_.databasePath();operations_.background([path,id](Error& e){HistoryStore store(path);return publicSharing(store.sharing(id,&e));},std::move(reply));}
 void HistoryService::changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply reply){
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  if(!QStringList{"create","revoke","inspect"}.contains(action)){reply({"invalid_request","Invalid sharing action",{}},{});return;}
@@ -269,18 +286,18 @@ void HistoryService::changeSharing(const QString& historyId,const QString& actio
   if(item["uploadStatus"]!="uploaded"||QStringList{"pending","deleting","unknown","removed","already_missing","changed"}.contains(item["remoteStatus"].toString())||(action=="create"&&!OperationItem::shareableRemote(item["remoteStatus"].toString()))){e={"share_unavailable","This item has no available confirmed upload",{}};return QJsonObject{};}
   if(item["shareStatus"]=="pending"||(action!="inspect"&&item["shareStatus"]=="unknown")){e={"share_result_unknown","Wait for or inspect the previous sharing result before another mutation",{}};return QJsonObject{};}
   receipt=StorageReceipt::fromJson(item["receipt"].toObject());
-  // What identifies the link already made goes with the request (#1872): the share ID its step
-  // recorded and, for a revoke, the recorded link, which the receipt itself doesn't keep while
-  // the outcome is pending.
-  QJsonObject recorded;if(const auto previous=item["shareProgress"].toObject()["shareId"];previous.isString())recorded["shareId"]=previous;
-  if(action=="revoke"){if(!receipt.directUrl.isEmpty())recorded["recordedLink"]=receipt.directUrl;receipt.directUrl.clear();}
+  // Nextcloud (#1872): what identifies the link already made goes with the request: the share ID
+  // its step recorded and, for a revoke, a digest of the recorded link's token (never the link,
+  // which the receipt itself doesn't keep while the outcome is pending).
+  const auto recorded=recordedShare(receipt,item.value("shareProgress").toObject(),action);
+  if(action=="revoke")receipt.directUrl.clear();
   // A create without options keeps the ones the upload asked for, such as a diagnostics link's expiry (#1496).
   const auto chosen=action=="create"&&options.isEmpty()&&item["shareIntent"]=="create"?item["shareIntentOptions"].toObject():options;
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"historyId",historyId},{"action",action},{"options",chosen},{"state","accepted"},{"status","pending"},{"receipt",receipt.toJson()},{"progress",recorded}};
   e=store.saveSharing(doc,true);return doc;
  },[this,reply,stopped](Error e,QJsonObject doc){
   if(e){reply(e,{});return;}for(auto it=stopped.begin();it!=stopped.end();++it)stoppedSharing_.remove(it.key());const auto id=doc["id"].toString();auto cancelled=std::make_shared<std::atomic_bool>(false);active_.insert(id,cancelled);notifyChanged();
-  reply({},{{"shareOperationId",id},{"sharing",doc}});runSharing(doc,cancelled);
+  reply({},{{"shareOperationId",id},{"sharing",publicSharing(doc)}});runSharing(doc,cancelled);
  });
 }
 void HistoryService::recordStoppedSharing(QJsonObject doc,const Error& error){
@@ -296,7 +313,7 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
   auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
   doc["state"]="running";if((e=store.saveSharing(doc)))return doc;
   auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto error=durable.saveSharing(proposed);if(!error)doc=std::move(proposed);ack(error);};
-  ShareRequest request{doc["id"].toString(),doc["action"].toString(),receipt,doc["options"].toObject(),{},cancelled};
+  ShareRequest request{doc["id"].toString(),doc["action"].toString(),receipt,doc["options"].toObject(),doc["progress"].toObject(),cancelled};
   auto result=awaitProvider<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
   if(!shareResultMatchesReceipt(result,receipt)){
    result.status="unknown";result.receipt=receipt;result.expiresAt.clear();result.error={"share_identity_changed","Sharing did not confirm the recorded publication identity",{}};

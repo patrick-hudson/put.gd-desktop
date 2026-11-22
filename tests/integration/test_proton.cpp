@@ -1,3 +1,4 @@
+#include <QJsonDocument>
 #include <QDateTime>
 #include <QFile>
 #include <memory>
@@ -21,6 +22,9 @@ public:
  putgd::test::OpaqueProvider storage;std::atomic_int shares{0},inspections{0};bool privateDefault=false,loseShareReply=false,inspectPrivate=false,changedShareIdentity=false,protonSettings=false,draftConflict=false,explicitDraft=true,reconciliationFails=false;QString reservedCandidate;std::atomic_int draftCollisions{0};
  std::function<void(const UploadRequest&,std::function<void(StatResult)>)> reconciliationHook;QMutex captureMutex;QList<UploadRequest> capturedUploads,capturedReconciliations;
  std::function<void(const ShareRequest&)> beforeCompletion;QList<QJsonObject> createOptions;QString expiresAt;
+ // #1872: a provider that records its share's ID in the step's progress, as Nextcloud's does, and
+ // every request's progress as it arrived.
+ QString recordShareId,sharedLink="https://example.invalid/recorded#secret";QList<QJsonObject> requestProgress;
  ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
  QString defaultPublicationMode(const Destination&)const override{return privateDefault?"private":"share";}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n)const override{return storage.serializationKey(d,o,n);}
@@ -32,7 +36,9 @@ public:
  void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb)override{{QMutexLocker lock(&captureMutex);capturedReconciliations.append(r);}if(reconciliationHook){reconciliationHook(r,cb);return;}if(reconciliationFails&&draftCollisions.load()>0){cb({"unknown",{}, {"proton_request_timeout","Synthetic reconciliation deadline",{{"reason","deadline"},{"timeoutMs",2000},{"method","reconcile"}}}});return;}storage.reconcile(r,cb);}
  void remove(const DeleteRequest& r,DurableCheckpoint d,std::function<void(DeleteResult)> cb)override{storage.remove(r,d,cb);}
  void share(const ShareRequest& r,DurableCheckpoint durable,std::function<void(ShareResult)> cb)override{
-  const auto complete=[this,r,cb](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {},expiresAt});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl="https://example.invalid/recorded#secret";else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,{}, {},r.action=="create"?expiresAt:QString{}});};
+  requestProgress.append(r.progress);
+  const QJsonObject recorded=recordShareId.isEmpty()||r.action!="create"?QJsonObject{}:QJsonObject{{"schemaVersion",1},{"phase","created"},{"shareId",recordShareId}};
+  const auto complete=[this,r,cb,recorded](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {},expiresAt});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl=sharedLink;else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,recorded, {},r.action=="create"?expiresAt:QString{}});};
   if(r.action=="inspect")complete({});else durable({{"schemaVersion",1},{"phase","intent"}},complete);
  }
 };
@@ -103,6 +109,27 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const int uploads=provider->storage.uploads.load();
   provider->storage.failUpload=false;Error refused;bool answered=false;operations.retry(id,[&](Error e,QJsonObject){refused=e;answered=true;},true);PUTGD_TRY_VERIFY(answered);QCOMPARE(refused.code,QString("retry_would_upload"));
   PUTGD_COMPARE_STEADY(provider->storage.uploads.load(),uploads,50);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+ }
+ // #1872: a Nextcloud revoke from History carries the share ID the create recorded and a digest of
+ // the link's token, never the link, and clients see neither. Other providers' progress is untouched.
+ void nextcloudRevokeCarriesTheRecordedShare() {
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->recordShareId="7";provider->sharedLink="https://cloud.example.invalid/s/SyntheticShareToken1";registry.add("nextcloud",provider);
+  auto doc=putgd::test::configuration(tmp.path());auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["provider"]="nextcloud";profiles[0]=profile;doc["profiles"]=profiles;
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(doc,{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);HistoryService history(operations);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto item=store.operation(id).items.first();
+  QCOMPARE(item.shareStatus,QString("shared"));
+  QJsonObject reply;QString revokeId;history.changeSharing(item.artifact.id,"revoke",{},[&](Error e,QJsonObject d){QVERIFY(!e);reply=d;revokeId=d["shareOperationId"].toString();});PUTGD_TRY_COMPARE(store.sharing(revokeId)["status"].toString(),QString("revoked"));
+  const auto sent=provider->requestProgress.last();
+  QCOMPARE(sent["shareId"].toString(),QString("7"));
+  QCOMPARE(sent["tokenDigest"].toString(),QString::fromLatin1(QCryptographicHash::hash("SyntheticShareToken1",QCryptographicHash::Sha256).toHex()));
+  QVERIFY(!QJsonDocument(sent).toJson().contains("SyntheticShareToken1"));
+  QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("tokenDigest"));QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("shareId"));
+  QJsonObject detail;history.detail(item.artifact.id,[&](Error e,QJsonObject d){QVERIFY(!e);detail=d;});PUTGD_TRY_VERIFY(!detail.isEmpty());
+  QVERIFY(!detail["shareProgress"].toObject().contains("shareId"));QVERIFY(!detail["shareProgress"].toObject().contains("tokenDigest"));
+  QJsonObject inspected;history.inspectSharing(revokeId,[&](Error e,QJsonObject d){QVERIFY(!e);inspected=d;});PUTGD_TRY_VERIFY(!inspected.isEmpty());QVERIFY(!inspected["progress"].toObject().contains("tokenDigest"));
+  // A provider other than Nextcloud gets the request progress it always had.
+  QVERIFY(HistoryService::recordedShare(item.receipt,QJsonObject{{"shareId","7"}},"revoke").contains("shareId"));
+  auto other=item.receipt;other.destination.providerId="proton-drive";QVERIFY(HistoryService::recordedShare(other,QJsonObject{{"shareId","7"}},"revoke").isEmpty());
  }
  // Create share link without options keeps the options the upload asked for (#1496).
  void historyCreateKeepsTheRequestedLinkOptions() {

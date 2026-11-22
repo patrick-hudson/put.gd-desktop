@@ -406,6 +406,7 @@ private:
     Client client_, anonymous_;
     QString userId_;
     QJsonObject account_, capabilities_;
+    bool shareIdGone_ = false; // the recorded share ID was confirmed gone in this request
     QJsonObject settings() const { return destination_.settings; }
     bool nextcloud() const { return provider_ == nextcloudId; }
     QString server() const { return settings()["server"].toString(); }
@@ -942,28 +943,36 @@ private:
         const auto recordedId = progress["shareId"].toString();
         if (!recordedId.isEmpty()) {
             const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares/" + QString::fromLatin1(QUrl::toPercentEncoding(recordedId)));
-            if (r.status == 404) return QJsonObject{};
+            // Gone (404, or not among the shares named): forgotten, and none is put.gd's.
+            if (r.status == 404) { shareIdGone_ = true; return QJsonObject{}; }
             if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
-            // Exactly one share, with exactly that ID; anything else can't be told apart.
             const auto data = r.data();
             const auto list = data.isArray() ? data.toArray() : QJsonArray{data};
-            if (list.size() != 1 || list.first().toObject()["id"].toVariant().toString() != recordedId || list.first().toObject()["share_type"].toInt(-1) != 3) {
+            QList<QJsonObject> named;
+            for (const auto& value : list) if (value.toObject()["id"].toVariant().toString() == recordedId) named.append(value.toObject());
+            if (named.isEmpty()) { shareIdGone_ = true; return QJsonObject{}; }
+            // Exactly one share with exactly that ID; anything else can't be told apart.
+            if (named.size() != 1 || named.first()["share_type"].toInt(-1) != 3) {
                 error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share didn't name exactly that share.", {{"requestStage", "share_inspect"}}};
                 return std::nullopt;
             }
-            return list.first().toObject();
+            return named.first();
         }
         const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares?path=" + QString::fromLatin1(QUrl::toPercentEncoding(path)) + "&reshares=false");
         if (r.status == 404) return QJsonObject{};
         if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
-        // The recorded link: the receipt's, or the one History passed with a revoke.
-        auto token = shareToken(receipt.directUrl);
-        if (token.isEmpty()) token = shareToken(progress["recordedLink"].toString());
+        // The recorded link: the receipt's token, or the digest of it History passed with a revoke.
+        // The label is the fallback only when neither was recorded.
+        const auto token = shareToken(receipt.directUrl);
+        const auto digest = progress["tokenDigest"].toString();
+        const auto digestOf = [](const QString& value) { return QString::fromLatin1(QCryptographicHash::hash(value.toUtf8(), QCryptographicHash::Sha256).toHex()); };
         QList<QJsonObject> found;
         for (const auto& value : r.data().toArray()) {
             const auto share = value.toObject();
             if (share["share_type"].toInt(-1) != 3) continue;
-            if (!token.isEmpty() ? share["token"].toString() == token : share["label"].toString() == shareLabel(receipt)) found.append(share);
+            const auto listed = share["token"].toString();
+            const bool match = !token.isEmpty() ? listed == token : !digest.isEmpty() ? (!listed.isEmpty() && digestOf(listed) == digest) : share["label"].toString() == shareLabel(receipt);
+            if (match) found.append(share);
         }
         if (found.size() > 1) {
             error = {"webdav_protocol", "Nextcloud has more than one link labelled as this upload's, so put.gd can't tell which is its own.", {{"requestStage", "share_inspect"}}};
@@ -974,6 +983,7 @@ private:
     QJsonObject shareResult(const QString& status, StorageReceipt receipt, const QJsonObject& share = {}) {
         receipt.directUrl = status == "shared" ? sharePage(server(), share["token"].toString()) : QString();
         QJsonObject out{{"status", status}, {"receipt", receipt.toJson()}};
+        if (shareIdGone_) out["forgetShareId"] = true;
         if (status == "shared") {
             const auto expires = isoDate(share["expiration"].toString());
             if (!expires.isEmpty()) out["expiresAt"] = expires;
