@@ -102,7 +102,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // what was found replaces Tesseract's reading at the end. The scan touches
  // only the colour plane, the templates, the code areas and its own result
  // here, and every way out of this function joins it first.
- EmojiScan emoji;qint64 emojiMs=0;
+ EmojiScan emoji;qint64 emojiMs=0;bool emojiInline=false;
  // Read by the workers, which may outlive this function: on the heap.
  const auto scanning=std::make_shared<std::atomic<bool>>(false);
  const auto scanEmoji=[&]{
@@ -123,7 +123,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
   scanning->store(true);
   // A thread the system refuses: the scan runs here, as before.
-  try{emojiThread=std::thread(scanEmoji);}catch(const std::system_error&){scanEmoji();}
+  try{emojiThread=std::thread(scanEmoji);}catch(const std::system_error&){scanEmoji();emojiInline=true;}
  }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
@@ -431,7 +431,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
- if(emojiThread.joinable())emojiThread.join();
+ {QElapsedTimer wait;wait.start();if(emojiThread.joinable())emojiThread.join();result.timings.emojiWaitMs=emojiInline?emojiMs:wait.elapsed();}
  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
  result.timings.emojiMs=emojiMs;
  // Emoji take the place of what Tesseract made of them.
@@ -445,7 +445,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
 TextResult toTextResult(const JobResult& job,const JobOptions& options){
  TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
- out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiMs;
+ out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiWaitMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence))};};
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));
