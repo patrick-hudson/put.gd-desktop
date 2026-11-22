@@ -80,6 +80,10 @@ private slots:
   QTest::newRow("two phones joined by an em dash")<<QString("Call 202-555-0143\u2014415-555-0100")<<all<<QStringList{QString("phone: 202-555-0143\u2014415-555-0100")};
   QTest::newRow("a dialling prefix is not a card")<<"Call 0044 207946 0958 now"<<all<<QStringList{"phone: 0044 207946 0958"};
   QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
+  // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
+  // m74 xed: a string literal read with a straight and a curly quote before the key.
+  QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
+  QTest::newRow("card after an IPv4 address")<<"Ada 555.010.0123 198.51.100.7 5555-5555-5555-4444 renewal | Ben 203.0.113.9 3782-822463-10005 VIP"<<QStringList{"card"}<<QStringList{"card: 5555-5555-5555-4444","card: 3782-822463-10005"};
   QTest::newRow("IPv6 with a prefix length")<<"addr 2001:db8::8a2e:370:7334/64 up"<<all<<QStringList{"ip: 2001:db8::8a2e:370:7334/64"};
   QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};
   QTest::newRow("a Luhn-failing Amex is not a phone")<<"Test 3782 822463 10006 rejected"<<all<<QStringList{};
