@@ -1,7 +1,7 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips cut between lines and joined in page order, faint lines read again (#1894) in every
-// window of a screen (#1912), uncertain tokens' lines read again (#1911), the input limit, and
+// strips cut between lines and joined in page order, faint lines read again (#1894) in each
+// window of a screen grown past its trimmed text (#1912), uncertain tokens' lines read again (#1911), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
 // confident letters. The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
@@ -100,6 +100,25 @@ private slots:
   stretchContrast(band,220);
   QCOMPARE(uchar(band.pixels.at(0)),uchar(0));QCOMPARE(uchar(band.pixels.at(3)),uchar(255));
   QVERIFY(uchar(band.pixels.at(1))>0&&uchar(band.pixels.at(1))<255);
+ }
+ // #1912: a trimmed panel grows through its window's plain background to a
+ // faint line below and beside its text, and stops at the window's edge on a
+ // desktop of another shade; then that line is found as faint.
+ void panelsGrowThroughTheirWindow(){
+  const int width=900,height=500;
+  QByteArray grey(width*height,char(21));                       // desktop
+  for(int y=40;y<400;++y)for(int x=60;x<760;++x)grey[y*width+x]=char(44);   // window
+  for(int line=0;line<5;++line)for(int y=80+line*30;y<92+line*30;++y)for(int x=100;x<300;++x)if((x/3)%2==0)grey[y*width+x]=char(190);
+  for(int y=260;y<272;++y)for(int x=100;x<700;++x)if((x/3)%2==0)grey[y*width+x]=char(70);   // faint, longer
+  const GreyView view{reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width};
+  const QRect trimmed(92,72,216,160);
+  const auto grown=plainAround(view,trimmed,{},44);
+  QCOMPARE(grown,QRect(QPoint(60,40),QPoint(759,399)));
+  const GreyView window{view.row(grown.y())+grown.x(),grown.width(),grown.height(),width};
+  const auto found=faintLines(measure(window,{}),grown.width(),grown.height());
+  QCOMPARE(found.size(),qsizetype(1));QVERIFY(found.first().top<=260-40&&found.first().bottom>=272-40);
+  // Never into another panel: one beside it on the same plain background.
+  QCOMPARE(plainAround(view,trimmed,{QRect(500,40,100,360)},44).right(),499);
  }
  // #1911: only an uncertain word shaped like a key or token is read again;
  // its line's rows, joined with a neighbour's, and the least confident first
@@ -229,17 +248,8 @@ private slots:
   QCOMPARE(found.size(),2);
   QVERIFY(found[0].contains(left.adjusted(0,0,-6,-6)));QVERIFY(found[1].contains(right.adjusted(0,0,-6,-6)));
   QVERIFY(found[0].right()<found[1].left());
-  // #1912: the windows before trimming cover the whole screen, so a faint line
-  // below a window's last bright line is still inside one of them.
-  {QList<QRect> cells;panels({reinterpret_cast<const uint8_t*>(two.constData()),width,height,width},{},12,&cells);
-   for(int y=0;y<height;y+=7)for(int x=0;x<width;x+=7)
-    QVERIFY(std::any_of(cells.cbegin(),cells.cend(),[&](const QRect& c){return c.contains(QPoint(x,y));}));
-   QVERIFY(!found[0].contains(QPoint(100,height-6)));
-   QVERIFY(std::any_of(cells.cbegin(),cells.cend(),[&](const QRect& c){return c.contains(found[0])&&c.contains(QPoint(100,height-6));}));}
   const auto one=page({QRect(20,20,1160,360)});
-  {QList<QRect> cells;
-   QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12,&cells),QList<QRect>{QRect(0,0,width,height)});
-   QCOMPARE(cells,QList<QRect>{QRect(0,0,width,height)});}
+  QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12),QList<QRect>{QRect(0,0,width,height)});
   // On a tall page, one long line (a token) past the others of its column
   // is not cut off into panels of its own.
   const int tallWidth=2400,tall=1500;

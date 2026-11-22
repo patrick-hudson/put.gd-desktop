@@ -139,9 +139,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const bool screen=qint64(image.width)*image.height>=options.limits.largeInputPixels;
  struct Panel { QRect rect;GreyView view;QList<Quad> codes;Profile profile;Plan plan;bool invert=false;QList<Band> tasks;bool split=false; };
  QList<Panel> panelList;
- // The untrimmed windows and columns, for the faint lines' second read (#1912).
- QList<QRect> cells{QRect(0,0,image.width,image.height)};
- for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight,&cells):QList<QRect>{QRect(0,0,image.width,image.height)}){
+ for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
   Panel p;p.rect=rect;
   p.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
   for(const auto& q:std::as_const(areas)){
@@ -379,29 +377,30 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // Tesseract's Otsu binarization turns to background, are read once more by the
  // first engine, each with its contrast stretched, for Quick redact's
  // candidates only (a job that asks for them). Pages with none cost nothing.
- // A whole screen of panels is searched window by window before trimming
- // (#1912): a faint line has no grey step of 32 levels, so it can sit outside
- // the trimmed panel, below a window's last bright line. Anything smaller is
- // one panel, the whole image, as before.
+ // A whole screen of panels is searched window by window (#1912): a faint
+ // line has no grey step of 32 levels, so it can sit outside the trimmed
+ // panel, below a window's last bright line. Each panel grows through its
+ // window's plain background, never into another panel, and stops at the
+ // window's edge: a desktop of another shade in the region would be taken for
+ // ink, and no row would look blank. Anything smaller is one panel, the whole
+ // image, as before.
  struct FaintRegion { QRect rect;GreyView view;QList<Quad> codes;Profile profile;double scale=1;bool invert=false; };
  QList<FaintRegion> faintRegions;
  if(options.candidates){
-  if(panelList.size()==1&&panelList.first().rect==cells.value(0)){
+  if(panelList.size()==1&&panelList.first().rect==QRect(0,0,image.width,image.height)){
    const auto& p=panelList.first();
    faintRegions.append({p.rect,p.view,p.codes,p.profile,p.plan.scale,p.invert});
   }else{
-   double widest=1;for(const auto& p:std::as_const(panelList))widest=std::max(widest,p.plan.scale);
-   for(const auto& rect:std::as_const(cells)){
+   for(const auto& p:std::as_const(panelList)){
+    QList<QRect> others;for(const auto& o:std::as_const(panelList))if(&o!=&p)others.append(o.rect);
+    const QRect rect=plainAround(image,p.rect,others,p.profile.background);
     FaintRegion r;r.rect=rect;r.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
     for(const auto& q:std::as_const(areas)){
      Quad moved;bool inside=false;
      for(int i=0;i<4;++i){moved[i]=q[i]-rect.topLeft();inside|=rect.contains(q[i]);}
      if(inside)r.codes.append(moved);
     }
-    r.profile=measure(r.view,r.codes);r.invert=options.invertDark&&r.profile.dark;
-    // The scale of the panel read inside this window, or the largest any panel was read at.
-    r.scale=widest;
-    for(const auto& p:std::as_const(panelList))if(rect.contains(p.rect.center())){r.scale=p.plan.scale;break;}
+    r.profile=measure(r.view,r.codes);r.invert=options.invertDark&&r.profile.dark;r.scale=p.plan.scale;
     faintRegions.append(std::move(r));
    }
   }

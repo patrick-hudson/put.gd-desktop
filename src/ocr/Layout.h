@@ -87,11 +87,7 @@ QList<Band> strips(const Profile& profile,int width,int height,int parts);
 // it is kept only when one of its parts is then cut down. A single-window or
 // single-column image is exactly one panel, the whole image. With several,
 // each is trimmed to its activity plus a margin, and an empty one is dropped.
-// With cells, also every window or column before trimming, the empty ones too,
-// in reading order: the faint lines' second read looks there (#1912), since a
-// faint line has no grey step of 32 levels and can sit outside a trimmed panel.
-// For a single panel, cells is the whole image.
-QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight,QList<QRect>* cells=nullptr);
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight);
 
 // #1894: the rows that hold only faint ink, as bands to read again with their
 // contrast stretched: runs of rows with faint ink and no ink at the threshold,
@@ -99,6 +95,13 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
 // tall, padded by up to two rows that hold no ink at the threshold, at most
 // `limit` of them, top to bottom.
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
+// #1912: a trimmed panel grown through its window's plain background: each
+// side moves out while the next row or column, across the area so far, has a
+// median within `tolerance` of `background` and meets none of `others` (the
+// other panels). A faint line has no grey step of 32 levels, so trimming
+// leaves it out; the growth takes it back in, and stops at a window's edge,
+// where a desktop or frame of another shade would be counted as ink.
+QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance=6);
 // Stretches a band copy's contrast so its darkest pixel is black and the
 // background white: faint ink becomes ink Otsu keeps.
 void stretchContrast(GreyImage& band,int background);

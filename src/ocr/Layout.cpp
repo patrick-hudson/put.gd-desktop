@@ -329,9 +329,8 @@ void cut(const Activity& a,const CellRect& r,int down,int across,int minimumSide
  out.append(r);
 }
 }
-QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight,QList<QRect>* cells){
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight){
  const QRect whole(0,0,image.width,image.height);
- if(cells)*cells={whole};
  if(!image.valid())return {whole};
  const int line=lineHeight>0?lineHeight:16;
  const auto a=activity(image,codes,std::max(48,4*line));
@@ -339,7 +338,7 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
  const int down=std::max(6,(3*line+cell-1)/cell),across=std::max(3,(3*line/2+cell-1)/cell),minimumSide=std::max(4,(4*line+cell-1)/cell);
  QList<CellRect> leaves;cut(a,{0,0,a.columns,a.rows},down,across,minimumSide,0,leaves);
  if(leaves.size()<2)return {whole};
- QList<QRect> out,untrimmed;const int margin=std::max(4,line/2);
+ QList<QRect> out;const int margin=std::max(4,line/2);
  for(const auto& r:std::as_const(leaves)){
   // Trimmed to its activity; a panel with less than one short line of it is empty.
   int x0=r.x1,y0=r.y1,x1=r.x0,y1=r.y0;qint64 total=0;
@@ -347,12 +346,10 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
    const qint64 n=qint64(a.down[size_t(y)*size_t(a.columns)+size_t(x)])+a.across[size_t(y)*size_t(a.columns)+size_t(x)];
    if(n>0){total+=n;x0=std::min(x0,x);y0=std::min(y0,y);x1=std::max(x1,x+1);y1=std::max(y1,y+1);}
   }
-  if(cells)untrimmed.append(QRect(r.x0*cell,r.y0*cell,r.width()*cell,r.height()*cell).intersected(whole));
   if(total<qint64(line)*4)continue;
   out.append(QRect(QPoint(std::max(0,x0*cell-margin),std::max(0,y0*cell-margin)),QPoint(std::min(image.width-1,x1*cell+margin-1),std::min(image.height-1,y1*cell+margin-1))));
  }
  if(out.size()<2)return {whole};
- if(cells)*cells=untrimmed;
  return out;
 }
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit){
@@ -504,5 +501,27 @@ GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int 
  QList<Quad> moved;
  for(const auto& q:codes){Quad m=q;for(auto& p:m)p.ry()-=top;moved.append(m);}
  return bandImage(distance.view(),{band.top-top,band.bottom-top,false},scale,border,moved,255,false);
+}
+QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& others,int background,int tolerance){
+ const QRect bounds(0,0,image.width,image.height);
+ QRect r=from.intersected(bounds);
+ if(r.isEmpty())return r;
+ std::array<int,256> histogram{};
+ const auto plain=[&](int x0,int y0,int x1,int y1){  // inclusive span
+  const QRect line(QPoint(x0,y0),QPoint(x1,y1));
+  if(std::any_of(others.cbegin(),others.cend(),[&](const QRect& o){return o.intersects(line);}))return false;
+  histogram.fill(0);int n=0;
+  for(int y=y0;y<=y1;++y){const auto* row=image.row(y);for(int x=x0;x<=x1;++x){++histogram[row[x]];++n;}}
+  int seen=0,median=0;for(;median<255;++median){seen+=histogram[size_t(median)];if(2*seen>=n)break;}
+  return std::abs(median-background)<=tolerance;
+ };
+ for(bool grew=true;grew;){
+  grew=false;
+  if(r.top()>bounds.top()&&plain(r.left(),r.top()-1,r.right(),r.top()-1)){r.setTop(r.top()-1);grew=true;}
+  if(r.bottom()<bounds.bottom()&&plain(r.left(),r.bottom()+1,r.right(),r.bottom()+1)){r.setBottom(r.bottom()+1);grew=true;}
+  if(r.left()>bounds.left()&&plain(r.left()-1,r.top(),r.left()-1,r.bottom())){r.setLeft(r.left()-1);grew=true;}
+  if(r.right()<bounds.right()&&plain(r.right()+1,r.top(),r.right()+1,r.bottom())){r.setRight(r.right()+1);grew=true;}
+ }
+ return r;
 }
 }
