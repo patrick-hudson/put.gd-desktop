@@ -138,6 +138,10 @@ private slots:
   QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Covered 1 card number and 2 keys or tokens. Link copied to the clipboard."));
   sensitive["complete"]=false;sensitive["reason"]="truncated";operation["sensitive"]=sensitive;
   QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Link copied to the clipboard."));
+  // A failed upload still says the original wasn't kept.
+  QJsonObject original;original["status"]="failed";sensitive["original"]=original;operation["sensitive"]=sensitive;operation["state"]="failed";
+  item["uploadStatus"]="failed";operation["items"]=QJsonArray{item};
+  QVERIFY(TrayController::completionMessage(operation,false).contains("The original before covering couldn't be saved locally."));
  }
 };
 

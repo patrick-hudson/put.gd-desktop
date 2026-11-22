@@ -1275,7 +1275,11 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   ui::runQuickRedact(g,candidates,head,sources,[g=QPointer<EditorWindow>(g),candidates,rest,sources,applyFound](editor::quickRedact::Result before){
    if(!g)return;
    ui::runQuickRedact(g,candidates,rest,sources,[before,applyFound](editor::quickRedact::Result after){
-    auto merged=before;merged.matches+=after.matches;
+    // A later match whose words the first kinds already took all of is covered already: it is not added.
+    // One they took only part of stays, overlap and all.
+    QSet<int> taken;for(const auto& match:std::as_const(before.matches))for(const int word:match.words)taken.insert(word);
+    auto merged=before;
+    for(const auto& match:std::as_const(after.matches))if(!std::all_of(match.words.cbegin(),match.words.cend(),[&](int word){return taken.contains(word);}))merged.matches.append(match);
     for(const int index:std::as_const(after.skippedPatterns))if(!merged.skippedPatterns.contains(index))merged.skippedPatterns.append(index);
     merged.nameUnchecked=before.nameUnchecked||after.nameUnchecked;merged.unfinished=before.unfinished||after.unfinished;
     applyFound(merged);

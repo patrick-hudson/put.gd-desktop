@@ -195,6 +195,15 @@ private slots:
   const auto sensitive=f.inspect(id)["sensitive"].toObject();
   QCOMPARE(sensitive["found"].toObject()["card"].toInt(),1);QCOMPARE(sensitive["covered"].toObject()["list"].toInt(),1);
  }
+ // #1820: a Warn match inside text already covered automatically leaves nothing to ask about.
+ void aWarnMatchInsideACoverDoesNotAsk(){
+  Fixture f(page(card),true,false,kinds({{"card","redact"},{"list","warn"}}),QJsonArray{"eng"},QJsonArray{"4111"});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();
+  bool asked=false;
+  const auto settled=[&]{const auto op=f.inspect(id);asked=asked||op["phase"]=="sensitive_text_found";return !Operation::activeState(op["state"].toString());};
+  QVERIFY(putgd::test::waitFor(settled,40000));QVERIFY(!asked);QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));
+  QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject()["card"].toInt(),1);
+ }
  // #1820: a check that can't finish asks, even with every kind on Redact automatically; what was found is covered first.
  void anUnfinishedCheckAsksEvenWithEveryKindOnRedact(){
   // A second language with no data installed: the check can't read everything.

@@ -795,7 +795,9 @@ void OperationService::keepOriginals(Job& job,Operation& op) {
   if(job.original.kind=="image"){QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!job.original.image.save(&buffer,"PNG"))png.clear();}
   job.original={};
   const auto folder=root_+"/covered";QFile temp(folder+"/"+op.id+"-original.png");
-  if(!png.isEmpty()&&QDir().mkpath(folder)&&temp.open(QIODevice::WriteOnly|QIODevice::Truncate)&&temp.setPermissions(QFile::ReadOwner|QFile::WriteOwner)&&temp.write(png)==png.size()&&temp.flush()){temp.close();keep(op.items.first().artifact,temp.fileName(),op.items.first().artifact.name);}
+  // The same reserve of free disk as any import: the PNG is written only where it fits.
+  const auto reserved=png.isEmpty()?nullptr:ArtifactStore::reserveDisk(root_,png.size());
+  if(reserved&&QDir().mkpath(folder)&&temp.open(QIODevice::WriteOnly|QIODevice::Truncate)&&temp.setPermissions(QFile::ReadOwner|QFile::WriteOwner)&&temp.write(png)==png.size()&&temp.flush()){temp.close();keep(op.items.first().artifact,temp.fileName(),op.items.first().artifact.name);}
   else ++failed;
   temp.close();QFile::remove(temp.fileName());
  }

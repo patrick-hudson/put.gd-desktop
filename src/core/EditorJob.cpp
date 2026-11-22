@@ -311,7 +311,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
     // A covered handoff (#1820) names what it covered: one field more.
     if(covering!=payload.contains("covered")||(covering&&(!coveredCounts(payload["covered"],check_->cover)||payload["covered"].toObject().isEmpty()))){protocolFailed=true;return;}
     // A covered handoff after a prompt covers exactly what the prompt said was covered.
-    if(covering&&result.findings.contains("covered")&&payload["covered"].toObject()!=result.findings["covered"].toObject()){protocolFailed=true;return;}
+    if(covering&&result.findings.contains("found")&&payload["covered"].toObject()!=result.findings["covered"].toObject()){protocolFailed=true;return;}
     if(covering)result.covered=payload["covered"].toObject();
     if(!finalizing||payload.size()!=(covering?10:9)||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
     const auto width=payload["width"].toInteger(),height=payload["height"].toInteger();

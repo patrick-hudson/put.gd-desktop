@@ -471,12 +471,14 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // the link still is.
  const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from History.":"Link not copied: the clipboard changed during the upload. Copy it from History."):QString{};
+ // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
+ const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("The original before covering couldn't be saved locally."):QString();
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
   if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
   // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
-  if(operation["sensitive"].toObject()["original"].toObject()["status"]=="failed")parts.append("The original before covering couldn't be saved locally.");
+  if(!originalNote.isEmpty())parts.append(originalNote);
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');
@@ -518,6 +520,7 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  else if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".")+(link.isEmpty()?QString{}:" "+link);
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
+ if(!originalNote.isEmpty())text+=" "+originalNote;
  if(!copied.isEmpty())text+=" "+copied;
  if(hasLink)text+=" Click to open in browser.";
  return text;
