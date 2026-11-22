@@ -512,13 +512,15 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
 - **Frames that come far apart over a page that repeats** (a stream that stalls to about 4-8 frames a second on a
   pull request's tables) can land a table period short, or more, after the tracker loses the page. It happens in two
   ways ([#1823](https://github.com/patrick-hudson/put.gd-desktop/issues/1823)):
-  - After a lost stretch, the frame pair takes a look-alike place while the page has gone past the image's end, where
-    the image holds no rival place.
-  - A distant frame is judged "no movement" after ambiguous skips, and a later frame becomes the reference at the
-    wrong place.
+  - After a lost stretch, the tracker matches two frames at a look-alike place while the page has already scrolled
+    past the end of the captured image, where the image holds no rival place.
+  - After ambiguous skips, a distant frame is judged "no movement" and keeps the pending hints. The still frame after
+    it becomes the reference at the wrong place.
 
-  Both count as finding the page again, so the capture carries the "lost the page … found it again. Rows may be
-  missing there: check the image" notice. One guard that rejected the first look-alike only led to the next one.
+  In a capture you scroll yourself, including after auto-scroll has handed control back, the look-alike place or that
+  still frame counts as finding the page again. So the capture carries the "lost the page … found it again. Rows may
+  be missing there: check the image" notice, appended to any warning already there. A recovery while auto-scroll is
+  still driving is not counted. One guard that rejected the first look-alike only led to the next one.
   Requiring a second agreeing frame before a place found again is taken is the design change for it
   ([#1847](https://github.com/patrick-hudson/put.gd-desktop/issues/1847)). A look-alike ahead in the same direction
   after a jump of more than a screen did not show on recorded frames and stays a limit
