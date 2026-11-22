@@ -287,25 +287,30 @@ each panel first grows outward one row or column at a time. A side moves out whi
 quarter of the new row or column, across the current span, is within 6 grey levels of the panel's
 background. On a span of 8 px or more, each quarter of it must also hold such pixels, at least
 1/32 of the span. The new row or column must also meet no other panel and no area already grown.
-A darker desktop around a dark editor fails the test, so growth usually stops at the window's
-edge, but it is judged from pixel values: a neighbouring area of the same shade can be taken in.
+A desktop clearly darker than a dark editor fails the test, so growth usually stops at the
+window's edge, but it is judged from pixel values: it crosses a window boundary wherever the new
+row or column passes the same checks, as a neighbouring area within 6 levels of the shade does.
 A faint line below a window's last bright line, or running past its text, can then fall inside
-the grown area and go through the faint-row test above (at most eight runs an area). A window
-that holds only faint text has no panel to grow from. A large image whose layout gives no split
+the grown area and go through the faint-row test above (at most eight runs an area). When the image is
+split, a window that holds only faint text may have no panel of its own to grow from: panels come
+from grey steps of 32 levels, which other content in the window can supply. A large image whose layout gives no split
 is one panel, the whole image, as is anything under 4 MP. Limit (#1912, still open): a long faint
 line beside short bright text can still be missed at 4K, because over the whole window Otsu's
 threshold counts it as ink, not as faint.
 
 One misread character breaks a key or token for Quick redact. A job that asks for candidates
 also reads a second time the lines holding an **uncertain token** (#1911): a word that Tesseract
-scored below 70, with letters and digits both, of at least 12 characters once quotes, brackets
-and `, ; : .` are trimmed from both ends. Each such line is read from a contrast copy built on
-16 px tiles: every pixel's distance from the median of the tiles around it (up to 5 by 5, fewer at
-an edge), stretched so the 98th percentile of those distances (at least 32 levels) is black, on
-white. One copy reads dark and light pages, low contrast and coloured backgrounds alike. Bands
+scored below 70, with letters and digits both, of at least 12 characters once quotes (including the
+backtick), brackets and `, ; : .` are trimmed from both ends. Each such line is read from a
+contrast copy built on 16 px tiles: each tile's background is the median grey level of all pixels
+in the window of tiles around it (up to 5 by 5, fewer at an edge), every pixel is replaced by its
+distance from that background, and the distances are stretched so the local 98th percentile (at
+least 32 levels) is black, on white. One copy reads dark and light pages, low contrast and coloured backgrounds alike. Bands
 are at most four times the height of their tallest uncertain word and are read least confident
 first across all panels. The second read may take as long as the recognition before it took,
-faint-line reads included, or 750 ms when that was quicker, and never past the job's budget. A
+faint-line reads included, or 750 ms when that was quicker: each band's recognition gets the
+earlier of that allowance and the job's budget as its deadline, and is skipped when building its
+copy used up the time left. A
 main read cut short skips it. Its words join the candidates after the copied text is made; Copy
 text is unchanged, and a page with no uncertain token does no extra work.
 
