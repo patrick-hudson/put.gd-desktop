@@ -207,7 +207,9 @@ private slots:
  // #1820: Warn kinds are matched one by one, so an IP match the covers take entirely can't hide the phone
  // number beside it, which the IP match would otherwise have claimed a word of first.
  void aCoveredWarnMatchHidesNoOtherWarnMatch(){
-  Fixture f(page({"Host 192.0.2.1:202 555 0123"}),true,false,kinds({{"ip","warn"},{"phone","warn"},{"list","redact"}}),QJsonArray{"eng"},QJsonArray{"192.0.2.1:202"});PUTGD_TRY_VERIFY(f.operations->ready());
+  // No zero in the shared word "…:212": where DejaVu Sans Mono is missing (Fedora's toolbox), the fallback
+  // Noto Sans Mono draws a zero recognition can read as "@", and "202" came back "2@2".
+  Fixture f(page({"Host 192.0.2.1:212 555 1234"}),true,false,kinds({{"ip","warn"},{"phone","warn"},{"list","redact"}}),QJsonArray{"eng"},QJsonArray{"192.0.2.1:212"});PUTGD_TRY_VERIFY(f.operations->ready());
   const auto id=f.start();
   QVERIFY(f.reaches(id,"sensitive_text_found"));
   const auto sensitive=f.inspect(id)["sensitive"].toObject();
