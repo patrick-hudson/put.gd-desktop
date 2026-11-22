@@ -378,6 +378,94 @@ private slots:
   QCOMPARE(row.size(),1);QCOMPARE(row.first().words,QRect(0,0,80,21));
   QCOMPARE(quickRedact::marks(two,{"list",{0,1}},QRect(0,0,400,200)).size(),2);
  }
+ // #1838: the side margin is one and a half of the edge word's own glyphs, not of
+ // the row's span with its gaps counted as characters, and it stops short of an
+ // unmatched word on the row. The geometry is #1806's capture: before, the cover
+ // reached 10 px into "Card".
+ void marksLeaveNeighboursReadable() {
+  const QList<RecognizedWord> row{{"Card",QRect(24,100,88,30),90,0},{"4111",QRect(140,100,88,30),90,0},{"1111",QRect(250,100,88,30),90,0},
+                                  {"1111",QRect(360,100,88,30),90,0},{"1111",QRect(470,100,88,30),90,0},{"exp",QRect(600,100,66,30),90,0}};
+  const QRect digits(140,100,418,30);
+  const auto boxes=quickRedact::markBoxes(row,{"card",{1,2,3,4}},QRect(0,0,800,300));
+  QCOMPARE(boxes.size(),1);QCOMPARE(boxes.first().words,digits);
+  const auto mark=boxes.first().mark;
+  QVERIFY2(mark.left()>row.at(0).rect.right()+1,qPrintable(QString::number(mark.left())));
+  QVERIFY2(mark.right()<row.at(5).rect.left()-1,qPrintable(QString::number(mark.right())));
+  QVERIFY(mark.contains(digits));
+  // With room, the margin is still a glyph and a half (22 px glyphs) on each side.
+  const QList<RecognizedWord> alone{row.at(1),row.at(2),row.at(3),row.at(4)};
+  const auto free=quickRedact::markBoxes(alone,{"card",{0,1,2,3}},QRect(0,0,800,300)).first().mark;
+  QCOMPARE(free.left(),digits.left()-33);QCOMPARE(free.right(),digits.right()+33);
+  // A neighbour touching the match never shrinks the cover below the matched box,
+  // and a word on another row does not limit it.
+  const QList<RecognizedWord> tight{{"x",QRect(130,100,9,30),90,0},row.at(1),{"y",QRect(229,100,9,30),90,0},{"below",QRect(0,160,800,30),90,1}};
+  const auto close=quickRedact::markBoxes(tight,{"card",{1}},QRect(0,0,800,300)).first().mark;
+  QCOMPARE(close.left(),140);QCOMPARE(close.right(),227);QVERIFY(close.top()<100&&close.bottom()>129);
+ }
+ // #1838, measured on Liberation Sans at 13 px: the last "1111" box ends 4 px
+ // before its ink and the box of "is" begins 6 px before its own, so a cover
+ // that stops at the neighbour's box leaves a sliver of the digit. With the
+ // picture, the cover runs across the space and stops before the "i". The
+ // background is noisy and the glyphs are solid, so the ink is the commonest
+ // exact colour: the paper must still be found.
+ void marksCrossTheSpaceInThePicture() {
+  QImage picture(200,120,QImage::Format_RGB32);
+  quint32 seed=1838;
+  for(int y=0;y<picture.height();++y)for(int x=0;x<picture.width();++x){seed=seed*1664525u+1013904223u;const int d=int((seed>>24)%13)-6;picture.setPixel(x,y,qRgb(236+d,236+d,236+d));}
+  const auto bars=[&](QImage& image,std::initializer_list<QPair<int,int>> columns){for(const auto& [from,to]:columns)for(int x=from;x<=to;++x)for(int y=81;y<=89;++y)image.setPixel(x,y,qRgb(40,40,40));};
+  bars(picture,{{96,98},{103,105},{110,112},{117,120},{126,127},{129,133}});
+  const QList<RecognizedWord> row{{"1111",QRect(94,79,23,17),90,0},{"is",QRect(120,79,12,17),90,0}};
+  const auto mark=quickRedact::markBoxes(row,{"card",{0}},picture.rect(),picture).first().mark;
+  QVERIFY2(mark.right()>=120&&mark.right()<126,qPrintable(QString::number(mark.right())));
+  QVERIFY(mark.left()<=96);
+  // No blank column between the words (a textured background): the whole
+  // margin, a glyph and a half, stays.
+  QImage checks(200,120,QImage::Format_RGB32);
+  for(int y=0;y<checks.height();++y)for(int x=0;x<checks.width();++x)checks.setPixel(x,y,(x+y)%2?qRgb(255,255,255):qRgb(0,0,0));
+  QCOMPARE(quickRedact::markBoxes(row,{"card",{0}},checks.rect(),checks).first().mark.right(),116+9);
+ }
+ // Sol review of #1842: the cover never stops at a gap inside the match, and
+ // a neighbour's box is trusted only where the picture agrees with it.
+ void marksNeverStopInsideTheMatch() {
+  const auto page=[](QImage::Format format,QRgb paper){QImage image(200,60,format);image.fill(paper);return image;};
+  const auto ink=[](QImage& image,int x0,int x1,int y0,int y1){for(int x=x0;x<=x1;++x)for(int y=y0;y<=y1;++y)image.setPixel(x,y,qRgba(0,0,0,255));};
+  const auto right=[](const QList<RecognizedWord>& row,const QImage& image){return quickRedact::markBoxes(row,{"list",{0}},image.rect(),image).first().mark.right();};
+  // "abcd" with its box ending at 99 (10 px glyphs, a 15 px margin); its last
+  // glyph's ink is at 103-105 after a 3 px gap; the neighbour's ink starts at 107.
+  QImage wide=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(wide,62,99,12,27);ink(wide,103,105,12,27);ink(wide,107,120,12,27);
+  // S1: the neighbour's box where its ink starts, then 6 px early, in the gap
+  // inside the match: both times the glyph at 103-105 is covered and 107 is not.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide),105);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(101,10,20,20),90,0}},wide),105);
+  // Round 3: a narrow last glyph (102-103) within a pixel of the neighbour's
+  // box edge (103), after a narrower blank than the space behind it (104-108),
+  // is the match's; the neighbour's ink at 109 stays.
+  QImage narrow=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(narrow,62,99,12,27);ink(narrow,102,103,12,27);ink(narrow,109,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(103,10,20,20),90,0}},narrow),107);
+  // S8: a picture cut off just past the neighbour's first ink still shows the space.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide.copy(0,0,115,60)),105);
+  // S6: a box that agrees with the picture is not crossed for an equally near
+  // gap after the neighbour's first stroke (space 102-103, stroke 104, gap 105).
+  QImage stroke=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(stroke,62,101,12,27);ink(stroke,104,104,12,27);ink(stroke,106,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,20,20),90,0}},stroke),102);
+  // S2: matched ink below the neighbour's rows runs to 106, right up to the
+  // neighbour's box; no blank column is left, so the whole margin stays.
+  QImage low=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(low,62,99,12,17);ink(low,100,106,22,27);ink(low,107,126,10,17);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"up",QRect(107,10,20,8),90,0}},low)>=106);
+  // S5: ink filling most of the mark's rows is not taken for paper.
+  QImage heavy=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(heavy,62,99,10,29);ink(heavy,99,101,5,34);ink(heavy,102,102,8,31);ink(heavy,104,114,8,31);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,11,20),90,0}},heavy)>=102);
+  // S3: opaque ink on a half-transparent white picture: what shows between the
+  // words depends on the viewer, so the whole margin stays.
+  QImage clear=page(QImage::Format_ARGB32,qRgba(255,255,255,128));
+  ink(clear,62,99,12,27);ink(clear,107,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},clear),99+15);
+ }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
   const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));

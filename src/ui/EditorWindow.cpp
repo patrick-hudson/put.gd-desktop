@@ -64,9 +64,9 @@ QString quickRedactLabel(const QString& category){
 }
 // Each mark with the union of the recognized words' boxes it was padded from (unpadded), one per visual row of the match
 // (quickRedact::markBoxes): a match across two rows is two marks, never one box over the pixels between them.
-QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds){
+QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds,const QImage& image){
  QList<QPair<QRect,QRect>> out;
- for(const auto& box:editor::quickRedact::markBoxes(candidates,match,bounds))out.append({box.mark,box.words});
+ for(const auto& box:editor::quickRedact::markBoxes(candidates,match,bounds,image))out.append({box.mark,box.words});
  return out;
 }
 QFrame* separator(QWidget* parent){auto* line=Ui::rule(parent,Qt::Vertical);line->setFixedHeight(Ui::scaled(22));return line;}
@@ -1249,7 +1249,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
      bool any=false;
      // Each padded mark comes with the recognized words' own box it was built from: that, never the padded mark, is what a
     // deleted suggestion is remembered by (padding makes two neighbouring one-character words look like one suggestion).
-    for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect())){
+    for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect(),g->doc_.base())){
       if(g->doc_.dismissed(words,match.category))continue;
       editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;
      }
