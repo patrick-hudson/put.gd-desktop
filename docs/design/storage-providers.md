@@ -242,9 +242,11 @@ is closed and the file removed; a lost reply leaves the outcome unknown. Right a
 records the new file's owner. After a cancel or failure the CLOSE and REMOVE get 3 seconds on the
 upload's own connection; on a slow link they wait behind the writes already in ssh's buffers
 (#1888), so ssh is then ended and a new connection removes the file, only while it is still a
-regular file of that owner and no larger than the upload. An upload keeps its password and
+regular file of that owner and no larger than the upload. That connection is pinned as History's
+checks are: only the known_hosts lines the attempt was verified by, and the same host, port and
+user; otherwise nothing is removed. An upload keeps its password and
 passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
-before it stops the helper; cleanup that can't be confirmed is reported as unconfirmed, with the
+before it stops the helper, and Quit at most 30, even with a cancel under way; cleanup that can't be confirmed is reported as unconfirmed, with the
 path. Without the `fstat` answer, CLOSE and REMOVE share one 8-second budget on the upload's own connection. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never

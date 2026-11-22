@@ -264,7 +264,9 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
   separated by spaces.
 - A file someone else writes with exactly the bytes, size, time and owner of an upload, and a
   file swapped in at the path while put.gd's own upload still holds it open, aren't told apart
-  from put.gd's own.
+  from put.gd's own. Neither is a file another program creates under put.gd's own upload name
+  while a cancelled upload is being cleaned up (say, after a removal whose answer was lost): if it
+  has the same owner and isn't larger, the cleanup removes it.
 - Only files up to 32 MB are read back to check their bytes before a deletion; a larger one is
   checked by its size, time, owner and the server's recorded key.
 - ssh shows only the first 100 bytes of a key's path in its passphrase prompt. When two of
