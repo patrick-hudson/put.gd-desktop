@@ -4130,9 +4130,10 @@ void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& bl
     if (!moved || (y >= R && y < (blockRowCount_ - 1) * R)) continue;
     // And the next frame must show something else where the page row moved
     // to: page content that repeats at the step (a rule every step rows)
-    // agrees there too. The row is judged on its cells in sight and not held
-    // back there, and a row the next frame cannot show is not judged; once it
-    // is a line, its cells held back there (a scroll bar's column) go with it.
+    // agrees there too. Only cells in sight and not held back there are
+    // judged, and a row the next frame cannot show is not judged at all: what
+    // the next frame hides there may be the page's (a scroll bar's column
+    // keeps its piece of the line).
     const long long ya = y - (pos - pend.pos);
     if (ya < 0 || ya >= height_) continue;
     const int browA = std::min(int(ya) / R, blockRowCount_ - 1);
@@ -4148,13 +4149,9 @@ void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& bl
     for (int w = 0; w < words; ++w)
       for (uint64_t bits = open[w] & ~plain[w]; bits; bits &= bits - 1) {
         const int c = w * 64 + std::countr_zero(bits);
-        const bool stays = absDiff(was[c], now[c]) <= tol && absDiff(was[c], there[c]) > tol;
-        if ((blkA[w] >> (c & 63)) & 1) {
-          if (stays) same[size_t(w)] |= 1ull << (c & 63);
-          continue;
-        }
+        if ((blkA[w] >> (c & 63)) & 1) continue;
         ++judged;
-        if (stays) {
+        if (absDiff(was[c], now[c]) <= tol && absDiff(was[c], there[c]) > tol) {
           ++kept;
           same[size_t(w)] |= 1ull << (c & 63);
         }
