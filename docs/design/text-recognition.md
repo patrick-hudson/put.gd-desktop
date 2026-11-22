@@ -885,9 +885,8 @@ other tool active it does not. The user's side is in the
     own box, as tall as the line's, with the usual margins. The shortening towards a neighbouring
     word described below applies only on a side that doesn't face another run: a box there can
     stop short of a matched glyph, so that margin stays whole and can reach into a label beside
-    the column, or into the gap when a recognized box runs wide. No single box spans the space
-    between the columns any more, though across a narrow gap the two facing margins can still
-    meet (#1846). Matching is unchanged: when a line already forms one key
+    the column, or into the gap when a recognized box runs wide. The runs get separate boxes, though
+    their margins, sized from the edge words, can still cover a narrow gap (#1846). Matching is unchanged: when a line already forms one key
     match, as `Card 4111 1111 1111 1111 Card 5555 5555 5555 4444` does (test card numbers of
     repeated digits), its box covers the labels between the numbers, such as "Card", and a
     misread number stays covered as long as it is part of that key match. A character's width comes from the edge word's own box, not from the line's span with
