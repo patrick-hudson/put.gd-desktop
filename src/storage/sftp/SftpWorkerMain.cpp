@@ -24,6 +24,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QRandomGenerator>
+#include <QStringDecoder>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUuid>
