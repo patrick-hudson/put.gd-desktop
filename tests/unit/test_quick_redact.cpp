@@ -110,7 +110,17 @@ private slots:
    // Card lines read as one key still take the next line: its misread card (Luhn fails) stays covered.
    QTest::newRow("card lines read as a key keep a misread card below")<<"Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 | Visa 4111 1171 1171 1171 MC 5555 5555 5555 4444"<<QStringList{"card","key"}
     <<QStringList{"key: Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 Visa 4111 1171 1171 1171 MC 5555 5555 5555 4444"};
-   QTest::newRow("JWT wrapped just after a dot")<<"id_token: "+a+" | "+b+" | "+c<<QStringList{"key"}<<QStringList{"key: "+a+" "+b+" "+c};}
+   QTest::newRow("JWT wrapped just after a dot")<<"id_token: "+a+" | "+b+" | "+c<<QStringList{"key"}<<QStringList{"key: "+a+" "+b+" "+c};
+   // Sol on #1863: the dot lets a JWT's own next part through, not another key...
+   QTest::newRow("a JWT part ending in a dot takes no key line")<<"id_token: "+a+" | "+aws<<QStringList{"key"}<<QStringList{"key: "+a,"key: "+aws};
+   // ...a card earlier on the line leaves a wrapped JWT whole...
+   QTest::newRow("a card before a wrapped JWT")<<"Card 4111 1111 1111 1111 id_token: "+a+" | "+b+" | "+c<<QStringList{"card","key"}<<QStringList{"key: 4111 1111 1111 1111 id_token: "+a+" "+b+" "+c};
+   // ...a JWT has no length bound...
+   QString payload;for(int i=0;i<12;++i)payload+=QString("e")+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ";
+   const QString big=jwt.left(37)+payload+"."+jwt.mid(88);
+   QTest::newRow("a long JWT wrapped over four lines")<<"id_token: "+big.left(200)+" | "+big.mid(200,205)+" | "+big.mid(405,205)+" | "+big.mid(610)<<QStringList{"key"}<<QStringList{"key: "+big.left(200)+" "+big.mid(200,205)+" "+big.mid(405,205)+" "+big.mid(610)};
+   // ...and an address whose dot recognition lost is still an address.
+   QTest::newRow("a token ending its line takes no address that lost its dot")<<"Bearer "+token+" | ops@EXAMPLE COM"<<all<<QStringList{"key: "+token,"email: ops@EXAMPLE COM"};}
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
   // m74 xed: a string literal read with a straight and a curly quote before the key.
   QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
@@ -230,6 +240,11 @@ private slots:
   QCOMPARE(found(page(0,0),QStringList{"key"}),QStringList{"key: "+token+" 1xY3zA5bC7"});
   QCOMPARE(found(page(0,350),QStringList{"key"}),QStringList{"key: "+token});
   QCOMPARE(found(page(600,0),QStringList{"key"}),QStringList{"key: "+token});
+  // Sol on #1863: word boxes are shorter than the line pitch (rows 50 px apart, boxes 20 px high)...
+  QCOMPARE(found(page(0,20),QStringList{"key"}),QStringList{"key: "+token+" 1xY3zA5bC7"});
+  // ...and a wide gap between words above is no character width.
+  auto spread=page(0,0);for(int i=0;i<2;++i)spread[i].rect.translate(-400,0);spread.last().rect.translate(60,0);
+  QCOMPARE(found(spread,QStringList{"key"}),QStringList{"key: "+token});
  }
  void namesAndListsMatchTheirSpellings_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
