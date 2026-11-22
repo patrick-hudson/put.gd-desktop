@@ -421,6 +421,23 @@ class GnomeTrayHost(LockTest):
         self.assertEqual(desktop.status()['state'], 'held')
         self.assertIn('StatusNotifierWatcher host registered', '\n'.join(lock.describe(reply)))
 
+    def test_the_probe_runs_only_once_the_desktop_is_free_under_the_mutex(self):
+        calls = []
+        self.acquire(session='other')
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: calls.append('probe') or {'ready': True})
+        with self.assertRaises(lock.LockError):
+            desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(calls, [])  # a sample taken before the holder released would be stale
+        self.desktop.release('other', verified_clean=True)
+        desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(calls, ['probe'])
+
+    def test_a_missing_shell_is_not_reported_as_a_missing_extension(self):
+        problem, fix = lock.tray_host_module().missing({'shell': False, 'installed': False})
+        self.assertIn('GNOME Shell is not running', problem)
+        self.assertNotIn('dnf', fix)
+
     def acquire_through_main(self, *extra, host='f44'):
         """Run the CLI against a local lock directory; the probe is a stand-in for f44 before the fix."""
         sent = []

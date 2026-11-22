@@ -8,7 +8,7 @@ import shutil
 import sys
 
 from tools.lab import gnome_tray_host, lab
-from tools.lab.gnome_tray_host import TRAY_HOST_EXTENSION, TRAY_HOST_PACKAGE  # noqa: F401
+from tools.lab.gnome_tray_host import TRAY_HOST_PACKAGE
 
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '

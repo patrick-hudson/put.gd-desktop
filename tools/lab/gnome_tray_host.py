@@ -18,8 +18,9 @@ def probe_source(enable=False, wait=0):
     With `enable`, it first enables the extension (persistently, in org.gnome.shell
     enabled-extensions); it waits up to `wait` seconds for the host to appear."""
     enabling = "subprocess.run(['gnome-extensions','enable',uuid],check=True,capture_output=True)\n" if enable else ''
-    return (f'''import dbus,json,subprocess,time
+    return (f'''import dbus,json,os,subprocess,time
 uuid={TRAY_HOST_EXTENSION!r}
+plain=dict(os.environ,LC_ALL='C')  # gnome-extensions translates its Enabled/State labels
 {enabling}bus=dbus.SessionBus()
 deadline=time.monotonic()+{float(wait)!r}
 while True:
@@ -29,13 +30,14 @@ while True:
   registered=bool(dbus.Interface(watcher,'org.freedesktop.DBus.Properties').Get(
    'org.kde.StatusNotifierWatcher','IsStatusNotifierHostRegistered'))
  except dbus.DBusException:pass
- info=subprocess.run(['gnome-extensions','info',uuid],capture_output=True,text=True)
+ shell=bool(bus.name_has_owner('org.gnome.Shell'))
+ info=subprocess.run(['gnome-extensions','info',uuid],capture_output=True,text=True,env=plain)
  fields=dict(line.strip().partition(': ')[::2] for line in info.stdout.splitlines() if ': ' in line)
- installed,enabled,state=info.returncode==0,fields.get('Enabled')=='Yes',fields.get('State')
+ installed,enabled,state=shell and info.returncode==0,fields.get('Enabled')=='Yes',fields.get('State')
  ready=registered and enabled and state=='ACTIVE'
  if ready or time.monotonic()>=deadline:break
  time.sleep(.25)
-print(json.dumps(dict(extension=uuid,installed=installed,enabled=enabled,state=state,hostRegistered=registered,
+print(json.dumps(dict(extension=uuid,shell=shell,installed=installed,enabled=enabled,state=state,hostRegistered=registered,
  info=[line.strip() for line in info.stdout.splitlines() if line.strip()])))
 raise SystemExit(0 if ready else 1)
 ''')
@@ -46,6 +48,9 @@ def missing(report):
     if report.get('error'):
         return (f'the tray host check could not run ({report["error"]})',
                 'install python3-dbus and check that the desktop session is logged in')
+    if not report.get('shell', True):
+        return ('GNOME Shell is not running on the desktop session bus',
+                'log in to the GNOME desktop (sudo -n systemctl restart gdm for the automatic login)')
     if not report.get('installed'):
         return (f'{TRAY_HOST_EXTENSION} is not installed',
                 f'sudo dnf install {TRAY_HOST_PACKAGE}, then {TRAY_HOST_ENABLE} and re-login (systemctl restart gdm)')

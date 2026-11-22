@@ -219,7 +219,7 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     return items, notes
 
 
-def probe_tray_host(source, timeout=30):
+def probe_tray_host(source, timeout=8):
     """Run the tray host probe (gnome_tray_host.probe_source) on the desktop session bus."""
     environment = dict(os.environ)
     environment.setdefault('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
@@ -355,12 +355,13 @@ class Desktop:
         owner, session, purpose = one_line('owner', owner), one_line('session', session), one_line('purpose', purpose)
         minutes = checked_minutes(minutes)
         items, notes = self.inventory()
-        tray = self.tray_host() if self.tray_host else None
         with self.mutex():
             now = self.clock()
             current = self.state(now)
             if current['state'] != 'free':
                 raise LockError(f'{self.name} is already locked', **current)
+            # Under the mutex, so a holder releasing just now can't leave the tray down unseen.
+            tray = self.tray_host() if self.tray_host else None
             if tray is not None and not tray.get('ready'):
                 raise LockError(f'{self.name} has no tray host', trayHost=tray)
             record = {'owner': owner, 'session': session, 'host': self.host, 'purpose': purpose,
