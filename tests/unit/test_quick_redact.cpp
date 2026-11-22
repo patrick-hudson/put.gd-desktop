@@ -75,6 +75,9 @@ private slots:
    wrapped.append({QStringLiteral("222222"),QRect(116,0,48,20),70,0,true});
    const auto result=quickRedact::find(wrapped,{"list"},patterns({R"(\d{6}\s\d{6})"}));
    QCOMPARE(found(wrapped,result),(QStringList{"list: 123456 654321","list: 111111 222222"}));}
+  // A second read longer than a clipped first read reaches past its cover: both stay.
+  {QList<RecognizedWord> clipped{{QStringLiteral("JIRA-123456789012"),QRect(0,0,136,20),40,0},{QStringLiteral("JIRA-123456789012345"),QRect(0,0,160,20),70,0,true}};
+   QCOMPARE(found(clipped,quickRedact::find(clipped,{"list"},patterns({R"(JIRA-\d+)"}))),(QStringList{"list: JIRA-123456789012","list: JIRA-123456789012345"}));}
   // The first read's overlapping word is no neighbour of the second read's match.
   QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
   const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);

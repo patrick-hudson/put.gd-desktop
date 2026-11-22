@@ -1658,11 +1658,11 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
  if(cancel&&cancel->load(std::memory_order_relaxed))return one;
  // A second-read match the first read already covers, same kind over the same
  // place, is one finding, not two.
- // Each of its words must be mostly (four fifths) under one word of that match:
- // a match's bounding box would take in a gap between its rows (Sol on #1920).
+ // Each of its words must lie inside one word of that match, give or take 2 px:
+ // a match's bounding box would take in a gap between its rows, and a longer
+ // reading reaches past the first one's cover (Sol on #1920).
  const auto under=[&](const QRect& word,const Match& f){
-  const qint64 area=qint64(word.width())*word.height();
-  return std::any_of(f.words.cbegin(),f.words.cend(),[&](int w){const auto both=word.intersected(candidates.at(w).rect);return 5*qint64(both.width())*both.height()>=4*area;});
+  return std::any_of(f.words.cbegin(),f.words.cend(),[&](int w){return candidates.at(w).rect.adjusted(-2,-2,2,2).contains(word);});
  };
  const auto fresh=[&](Result second){
   second.matches.removeIf([&](const Match& m){
