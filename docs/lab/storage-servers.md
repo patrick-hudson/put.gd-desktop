@@ -81,8 +81,8 @@ prints one line per check, never a secret. It exits 0 when all pass; its screens
 `~/putgd-lab/storage-servers/checks/`.
 
 Run one verifier at a time per builder. Every file it makes on the servers has a name unique to the
-run, and only those are removed. Its screenshots in `checks/` have fixed names, so each run replaces
-the last run's. It does not rotate the host keys unless given `--rotate-hostkey`; with that flag,
+run, and only those are removed. Its screenshots in `checks/` have fixed names: a run overwrites the
+screenshots of the checks it runs, and a skipped check leaves the older one in place. It does not rotate the host keys unless given `--rotate-hostkey`; with that flag,
 reserve both SSH listeners for the run and tell clients to refresh any copied pin afterwards. The
 default settings checks change the Nextcloud quota, sharing and share-password for a few seconds
 and put back the values read first, so they need the Nextcloud instance to yourself.
@@ -95,7 +95,7 @@ without `--cacert` must fail), so do not install it on the builder that runs `ch
 
 - SFTP: sign in with the plain key, with the passphrase key through an `ssh-agent`, and with the
   password; each user refuses the other's method; `/ro` write is `Permission denied`; `/full`
-  write fails; the chroot lists `upload`, `ro` and `full` and no `etc`; port 18372 refuses the subsystem but
+  write fails; the chroot's listing mentions `upload`, `ro` and `full` and has no `etc` entry (a loose check); port 18372 refuses the subsystem but
   still gives a shell and that shell cannot read the password user's password or the web services'
   secrets; with `--rotate-hostkey`, after `rotate-hostkey` the old pin is refused and the new one works.
 - WebDAV: a PUT without login is 401; PUT 201, then 204 over it; `If-None-Match: *` is 201 on a
