@@ -49,6 +49,16 @@ private slots:
   PUTGD_TRY_COMPARE(Settings::fromValidated(service.document()).sensitiveTextCover,Settings::sensitiveTextCategoryNames());
   PUTGD_TRY_VERIFY((state=window.settings()->saveViewState(),!state.contains("stateError")));
  }
+ // #1820: #1804's {enabled, categories} stays as saved while its controls are untouched, so the window is not left dirty.
+ void anOlderSensitiveTextCheckStaysAsSaved(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto document=threeDestinations();auto preferences=document["preferences"].toObject();
+  const QJsonObject older{{"enabled",true},{"categories",QJsonArray{"card"}}};preferences["sensitiveTextCheck"]=older;document["preferences"]=preferences;QVERIFY(service.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
+  auto* card=window.findChild<QComboBox*>("sensitiveTextKind_card");QVERIFY(card);PUTGD_TRY_COMPARE(card->currentData().toString(),QString("warn"));
+  QJsonObject state;PUTGD_TRY_VERIFY((state=window.settings()->saveViewState(),!state.contains("stateError")));
+  QCOMPARE(state["draft"].toObject()["preferences"].toObject()["sensitiveTextCheck"].toObject(),older);QVERIFY(!state["dirty"].toBool());
+ }
  // Global hotkeys are suspended while one is recorded; every way a recording
  // ends or fails gives them back.
  void shortcutRecordingCancellationAndFailuresReleaseSuspension(){

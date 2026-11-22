@@ -268,7 +268,9 @@ private:
   // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
   // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
   // originalFiles: a covered selected file's item index, its path and its identity when checked.
-  ClipboardPayload original={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
+  // originalPath: a covered capture's original, written as a private PNG at once so no raster waits in memory;
+  // empty when none was kept, "-" when writing it failed.
+  QString originalPath={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
   QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};};
  // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
  void keepOriginals(Job&,Operation&);

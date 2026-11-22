@@ -1821,7 +1821,11 @@ QJsonObject SettingsWindow::candidate() const {
  // #1820: the window writes every kind's choice; #1804's categories list goes, its kinds carried forward as Warn.
  {QJsonObject kinds;bool standard=true;
   for(const auto& category:Settings::sensitiveTextCategoryNames()){const auto value=sensitiveKinds_.value(category)->currentData().toString();kinds[category]=value;standard=standard&&value==(Settings::defaultSensitiveTextCategories().contains(category)?QStringLiteral("warn"):QStringLiteral("off"));}
-  if(preferences.contains("sensitiveTextCheck")||sensitiveCheck_->isChecked()||!standard)preferences["sensitiveTextCheck"]=QJsonObject{{"enabled",sensitiveCheck_->isChecked()},{"kinds",kinds}};}
+  // A stored object the controls still show (#1804's categories form, or a partial kinds) stays exactly as it is:
+  // rewriting it would make every draft differ from the saved file.
+  const auto stored=preferences.value("sensitiveTextCheck").toObject();bool same=preferences.contains("sensitiveTextCheck")&&stored["enabled"].toBool(false)==sensitiveCheck_->isChecked();
+  for(const auto& category:Settings::sensitiveTextCategoryNames())same=same&&Settings::sensitiveTextKind(stored,category)==kinds[category].toString();
+  if(!same&&(preferences.contains("sensitiveTextCheck")||sensitiveCheck_->isChecked()||!standard))preferences["sensitiveTextCheck"]=QJsonObject{{"enabled",sensitiveCheck_->isChecked()},{"kinds",kinds}};}
  // #1364: both are absent from an untouched config (the system default input, no rings).
  if(preferences.contains("recordingMicrophoneDevice")||!recordingMicrophone_->currentData().toString().isEmpty())preferences["recordingMicrophoneDevice"]=recordingMicrophone_->currentData().toString();
  if(preferences.contains("recordingClickHighlights")||recordingClicks_->isChecked())preferences["recordingClickHighlights"]=recordingClicks_->isChecked();
