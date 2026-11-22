@@ -342,6 +342,18 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // the line and is token-shaped, belongs to it.
     // #1820: a token soft-wrapped over several lines (a JWT in an editor) takes each following line
     // while that line is all token and the token runs on; a short remainder ("08edc") counts too.
+    // #1850: the quote the token's line opens and leaves open ("SIGNING_HEX =" then "\"6311…343"),
+    // which a short remainder of the token closes on the next line ("edc\"", "edc\")," ).
+    // Recognition reads the closing quote straight or curly ("edc\u201D" in 82 of the 101 misses
+    // measured with a straight one only), so each opening quote closes with any of its forms.
+    QString closing;
+    {
+     QString first;for(const int w:words)first+=plain.at(w);
+     const QString doubles=QStringLiteral("\"\u201C\u201D\u2033"),singles=QStringLiteral("'\u2018\u2019\u2032");
+     if(first.count('"')%2||first.count(QChar(0x201C))>first.count(QChar(0x201D)))closing=doubles;
+     else if(first.count('\'')%2)closing=singles;
+     else if(first.count('`')%2)closing=QStringLiteral("`");
+    }
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
      const auto next=segments(nextLine,plain);
@@ -356,6 +368,16 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      static const QString terminators=QStringLiteral("\"'`)]};,\u201D\u2019\u00BB");
      const auto& lastWord=plain.at(next.first().words.last());
      const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
+     // A remainder of letters alone that closes the quote the token opened: one word, at most seven
+     // token characters, then the closing quote and only closing brackets or separators after it.
+     bool closes=false;
+     if(!closing.isEmpty()&&follow==k+1&&next.first().words.size()==1){
+      qsizetype at=-1;for(qsizetype i=0;i<tail.size()&&at<0;++i)if(closing.contains(tail.at(i)))at=i;
+      const auto body=tail.left(at);
+      static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/=_-]{1,7}$")),after(QStringLiteral("^[)\\]};,]*$"));
+      closes=at>0&&alphabet.match(body).hasMatch()&&after.match(tail.mid(at+1)).hasMatch();
+     }
+     if(closes){words+=next.first().words;break;}
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;

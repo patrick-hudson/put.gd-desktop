@@ -80,6 +80,14 @@ private slots:
   QTest::newRow("two phones joined by an em dash")<<QString("Call 202-555-0143\u2014415-555-0100")<<all<<QStringList{QString("phone: 202-555-0143\u2014415-555-0100")};
   QTest::newRow("a dialling prefix is not a card")<<"Call 0044 207946 0958 now"<<all<<QStringList{"phone: 0044 207946 0958"};
   QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
+  // #1850, Kate on k72: a 64-character hex secret soft-wrapped so its last three letters and the
+  // closing quote start the next line. The quote the first line left open closes there.
+  const auto signing=QString("\"6311d6de7be2f57b64c74d411a0b3")+"7935201bc28fc32d62a927d6cfb5d343";
+  QTest::newRow("hex secret wrapped with a letter-only tail")<<"SIGNING_HEX = | "+signing+" | edc\" | OWNER = \"ops\""<<QStringList{"key"}<<QStringList{"key: "+signing+" edc\""};
+  QTest::newRow("hex secret wrapped with a letter-only tail and a comma")<<"KEYS = [ | "+signing+" | edc\", | ]"<<QStringList{"key"}<<QStringList{"key: "+signing+" edc\","};
+  QTest::newRow("hex secret wrapped, its closing quote read curly")<<"SIGNING_HEX = | "+signing+" | edc\u201D | OWNER"<<QStringList{"key"}<<QStringList{"key: "+signing+" edc\u201D"};
+  QTest::newRow("a word under a token with no open quote stays out")<<"SECRET "+signing.mid(1)+" | add more"<<QStringList{"key"}<<QStringList{"key: SECRET "+signing.mid(1)};
+  QTest::newRow("a word under a closed quote stays out")<<"SECRET "+signing+"\" | edc\" later"<<QStringList{"key"}<<QStringList{"key: SECRET "+signing+"\""};
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
   // m74 xed: a string literal read with a straight and a curly quote before the key.
   QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
