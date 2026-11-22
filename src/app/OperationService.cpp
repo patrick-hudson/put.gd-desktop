@@ -862,7 +862,8 @@ void OperationService::enqueue(Job job) {
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
 #endif
- if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);return;}
+ // #1820: a job dropped here never reaches run(), so its staged covered copies and original go with it.
+ if(job.cancelled->load()){discardCovered(job.replacedFiles);if(!job.originalPath.isEmpty()&&job.originalPath!="-")QFile::remove(job.originalPath);job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);return;}
  if(job.payload.kind=="image"){
   const auto bytes=job.payload.image.sizeInBytes();
   const auto used=payloadBytes_->load();
