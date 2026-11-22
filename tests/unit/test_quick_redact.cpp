@@ -829,6 +829,43 @@ private slots:
   QVERIFY2(clock.elapsed()<putgd::test::scaled(200),qPrintable(QString::number(clock.elapsed())));
   QVERIFY(result.matches.isEmpty());
  }
+ // #1897: lines built to make the key rules work hard stay fast with every kind asked for: long runs of
+ // token heads, assignments, URL schemes and token-shaped pieces, as one word and as many.
+ void pathologicalLinesStayFast_data() {
+  QTest::addColumn<QString>("page");
+  const auto repeat=[](const QString& unit,int count){QString out;for(int i=0;i<count;++i)out+=unit;return out;};
+  QTest::newRow("JWT heads in one word")<<repeat("eyJ.",4000);
+  QTest::newRow("token heads in one word")<<repeat(QString("gh")+"p_",3000)+repeat("sk-",3000)+repeat("AK"+QString("IA"),3000);
+  QTest::newRow("token heads as words")<<repeat(QString("gh")+"p_a1B2 ",3000);
+  QTest::newRow("assignments in one word")<<repeat(",TOKEN=a1B2c3D4",2000);
+  QTest::newRow("URL schemes in one word")<<repeat("postgres://u:",2000);
+  QTest::newRow("a long base64 word")<<repeat("aB3dE5fG7hJ9kL1mN3pQ+/",1000);
+  QTest::newRow("many token-shaped words")<<repeat("aB3dE5fG7h ",4000);
+  QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",300);
+  QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
+ }
+ // Sol on #1902: the faster search finds what the plain one did.
+ void theFastSearchFindsWhatThePlainOneDid() {
+  // A hex run whose digits are partly recognition's confusions (| and O read for 1 and 0).
+  const auto confused=QString("abcdef||Olabcdef")+"abcdef||Olabcdef";
+  QCOMPARE(found(words("value "+confused),QStringList{"key"}),QStringList{"key: value "+confused});
+  // A token wrapped over three lines: the third line is covered, though the first token's wrap budget ends before it.
+  const auto stripe=QString("sk")+"_li"+"ve_"+"4eC39HqLyjWDarjtT1zdp7dcQ2",hex=QString("9f86d081884c7d659a2feaa0c55ad015");
+  QStringList covered;for(const auto& m:found(words(stripe+" | "+hex+" | x7Kq2Lm9Vb4N"),QStringList{"key"}))covered.append(m);
+  QVERIFY2(covered.join(' ').contains("x7Kq2Lm9Vb4N"),qPrintable(covered.join(" / ")));
+  // Every line starts its own chain: the second line's run reaches a tail the first line's could not (Sol on #1902).
+  {const auto page=QString("9f86d081884c7d659a2feaa0c55ad015 | 6311d6de7be2f57b64c74d411a0b379352 | x7Kq2Lm9Vb4N | ")+"z7Kq2Lm9Vb4Nqr7mvs1fg2py6nwj3zr4t51";
+   QStringList all;for(const auto& m:found(words(page),QStringList{"key"}))all.append(m);
+   QVERIFY2(all.join(' ').contains("z7Kq2Lm9Vb4Nqr7mvs1fg2py6nwj3zr4t51"),qPrintable(all.join(" / ")));}
+ }
+ void pathologicalLinesStayFast() {
+  QFETCH(QString,page);
+  const auto candidates=words(page);
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"email","phone","ip","card","key"});
+  qInfo("%s: %lld ms, %lld words, %lld matches",QTest::currentDataTag(),clock.elapsed(),qint64(candidates.size()),qint64(result.size()));
+  QVERIFY2(clock.elapsed()<putgd::test::scaled(1000),qPrintable(QString::number(clock.elapsed())));
+ }
  // M2: progress after the terms and after the patterns, the rest skipped, so a
  // caller that stops waiting keeps what was found.
  void progressCarriesFinishedPatterns() {

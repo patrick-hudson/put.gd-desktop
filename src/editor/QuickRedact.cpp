@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <cmath>
 #include <iterator>
@@ -213,9 +214,11 @@ bool hexRun(const QString& run) {
 // commonest alone half; prose never repeats so few letters for so long, and
 // rules of dashes or dots are not letters.
 bool repeatedRun(const QString& run) {
- QHash<QChar,int> counts;int characters=0;
- for(const auto c:run)if(c.isLetterOrNumber()){++counts[c.toLower()];++characters;}
+ // #1897: counted in an array (ASCII) and a hash for the rest: the fallback tries many windows.
+ std::array<int,128> ascii{};QHash<QChar,int> other;int characters=0;
+ for(const auto raw:run)if(raw.isLetterOrNumber()){const auto c=raw.toLower();if(c.unicode()<128)++ascii[c.unicode()];else ++other[c];++characters;}
  if(characters<24||characters*10<int(run.size())*9)return false;
+ QHash<QChar,int> counts=other;for(int i=0;i<128;++i)if(ascii[size_t(i)])counts.insert(QChar(i),ascii[size_t(i)]);
  // #1895: but a run almost all of mask characters (x or 0, nine in ten) is a placeholder, not a token: see placeholder().
  for(const QChar mask:{QChar('x'),QChar('0')})if(counts.value(mask)*10>=characters*9)return false;
  // ...or one that holds twenty x in a row, which no key does (a placeholder before prose)...
@@ -247,8 +250,9 @@ bool base64Run(const QString& run) {
  // hardware line ("2.6GHz 6-Core 32GB") 44 % digits and dots, prose 35 % and
  // more of its letters in long lowercase runs. A dot is allowed once in 80
  // characters, a dash once in 24.
- static const QRegularExpression words(QStringLiteral("[a-z]{5,}"));
- qsizetype lowercase=0;for(auto it=words.globalMatch(run);it.hasNext();)lowercase+=it.next().capturedLength();
+ // Letters in lowercase runs of five or more ([a-z]{5,}), counted in one pass.
+ qsizetype lowercase=0,current=0;
+ for(qsizetype i=0;i<=run.size();++i){const bool lower=i<run.size()&&run.at(i)>='a'&&run.at(i)<='z';if(lower)++current;else{if(current>=5)lowercase+=current;current=0;}}
  const auto count=[&](auto test){return qsizetype(std::count_if(run.cbegin(),run.cend(),test));};
  const auto capitals=count([](QChar c){return c.isUpper();}),numerals=count([](QChar c){return c.isDigit();});
  const auto stops=count([](QChar c){return c=='.'||c==':'||c==',';}),dashes=count([](QChar c){return c=='-';});
@@ -301,7 +305,14 @@ bool prefixHead(const QString& word) {
  }
  return false;
 }
-struct Segment {QList<int> words;QString text;QList<int> starts;};
+// heads (#1897): for each prefix, where its head (the pattern's first group) occurs in the segment's
+// text or its bodies view, sorted; filled once per segment, so a prefix whose head is absent costs nothing.
+// counts (#1897): running totals over the text of capitals, lowercase, digits, letters and digits, and
+// characters that are not hex once recognition's confusions are mapped, so a window can be ruled out
+// for the run tests in constant time before they read it.
+struct Counts {QList<int> upper,lower,digit,alnum,nonHex,hexDigit;};
+struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;};
+void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
 // payload: a JSON web token found by its payload, its header misread or on the line above.
@@ -333,7 +344,70 @@ QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const
  close();return out;
 }
 int pieceAt(const Segment& segment,qsizetype offset) {
- int piece=0;for(int i=0;i<segment.starts.size();++i)if(segment.starts.at(i)<=offset)piece=i;return piece;
+ const auto it=std::upper_bound(segment.starts.cbegin(),segment.starts.cend(),int(offset));
+ return qMax(0,int(it-segment.starts.cbegin())-1);
+}
+bool pieceStart(const Segment& segment,int offset) {return std::binary_search(segment.starts.cbegin(),segment.starts.cend(),offset);}
+// #1897: one combined pattern of every prefix's head, built once: its first group, read from the
+// pattern (escapes and character classes skipped while counting brackets).
+QString headOf(const QString& pattern) {
+ int depth=0;bool inClass=false;
+ for(qsizetype i=0;i<pattern.size();++i){
+  const auto c=pattern.at(i);
+  if(c=='\\'){++i;continue;}
+  if(inClass){if(c==']')inClass=false;continue;}
+  if(c=='[')inClass=true;
+  else if(c=='(')++depth;
+  else if(c==')'&&--depth==0)return pattern.mid(1,i-1);
+ }
+ return pattern;
+}
+// A subject made valid UTF-16 once (a lone surrogate becomes U+FFFD, the same length), so the many
+// searches over it skip Qt's check of the whole string each time (Sol on #1902).
+QString wholeText(QString text) {
+ for(qsizetype k=0;k<text.size();++k){
+  const bool paired=(text.at(k).isHighSurrogate()&&k+1<text.size()&&text.at(k+1).isLowSurrogate())||(text.at(k).isLowSurrogate()&&k>0&&text.at(k-1).isHighSurrogate());
+  if(text.at(k).isSurrogate()&&!paired)text[k]=QChar(QChar::ReplacementCharacter);
+ }
+ return text;
+}
+constexpr auto unchecked=QRegularExpression::DontCheckSubjectStringMatchOption;
+// The segment's text as the prefix bodies read it: a misread character as x, and a slash between two
+// letters or digits (#1839).
+QString bodiesOf(const QString& text) {
+ QString bodies=text;
+ for(qsizetype i=0;i<bodies.size();++i){
+  auto& c=bodies[i];
+  if(!tokenCharacter(c))c='x';
+  else if(c=='/'&&i>0&&i+1<text.size()&&text.at(i-1).isLetterOrNumber()&&text.at(i+1).isLetterOrNumber())c='x';
+ }
+ return bodies;
+}
+void findHeads(const Segment& segment) {
+ if(segment.headsFound)return;
+ segment.headsFound=true;
+ const auto& list=prefixes();
+ static const QRegularExpression combined=[&]{
+  QStringList parts;for(const auto& prefix:list)parts.append(QLatin1Char('(')+headOf(prefix.pattern.pattern())+QLatin1Char(')'));
+  return QRegularExpression(parts.join('|'));
+ }();
+ // A combined pattern that does not compile filters nothing: every prefix is then searched.
+ if(!combined.isValid()||combined.captureCount()!=list.size())return;
+ segment.heads=QList<QList<int>>(list.size());
+ // Each prefix's head alone, to test every head at a place the combined pattern found one: where
+ // two heads start together (glcbt and glc), the first alternative must not hide the other.
+ static const QList<QRegularExpression> each=[&]{QList<QRegularExpression> out;for(const auto& prefix:list)out.append(QRegularExpression(headOf(prefix.pattern.pattern())));return out;}();
+ const auto text=wholeText(segment.text);const auto bodies=wholeText(bodiesOf(segment.text));
+ for(const QString* subject:{&text,&bodies}){
+  // Every start, overlapping heads too: a match moves the search on by one character.
+  for(qsizetype at=0;at<subject->size();){
+   const auto m=combined.match(*subject,at,QRegularExpression::NormalMatch,unchecked);if(!m.hasMatch())break;
+   const auto start=m.capturedStart();
+   for(int i=0;i<list.size();++i)if(each.at(i).match(*subject,start,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption|unchecked).hasMatch())segment.heads[i].append(int(start));
+   at=start+1;
+  }
+ }
+ for(auto& positions:segment.heads){std::sort(positions.begin(),positions.end());positions.erase(std::unique(positions.begin(),positions.end()),positions.end());}
 }
 // Marks found in one segment: prefixed tokens first, then the longest hex or
 // base64 run of whole pieces, then whatever is left either side of it.
@@ -343,27 +417,32 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // A misread character inside a body reads as a letter for the body's sake,
  // and so does a slash between two letters or digits (#1839: putgd-ocr read
  // the J of "h J9kL" as "/" in Noto Sans and Liberation Serif at 9 and 10 px).
- QString bodies=text;
- for(qsizetype i=0;i<bodies.size();++i){
-  auto& c=bodies[i];
-  if(!tokenCharacter(c))c='x';
-  else if(c=='/'&&i>0&&i+1<text.size()&&text.at(i-1).isLetterOrNumber()&&text.at(i+1).isLetterOrNumber())c='x';
- }
  const int base=segment.starts.at(first);
- for(const auto& prefix:prefixes()){
+ findHeads(segment);
+ // Built only once a prefix's head is in range: most parts of a long line have none.
+ QString checkedText,bodies;bool views=false;
+ for(int index=0;index<prefixes().size();++index){
+  const auto& prefix=prefixes().at(index);
+  // #1897: only a prefix whose head occurs in this part of the segment is searched for.
+  if(!segment.heads.isEmpty()){
+   const auto& at=segment.heads.at(index);
+   const auto it=std::lower_bound(at.cbegin(),at.cend(),base);
+   if(it==at.cend()||*it>=base+text.size())continue;
+  }
+  if(!views){checkedText=wholeText(text);bodies=wholeText(bodiesOf(text));views=true;}
   QRegularExpressionMatch match;
   // Each start is tried in turn: a rejected candidate ("gho" in "ghost…") must not swallow a real
   // prefix inside its body, so the search resumes one character after it.
-  const auto& subject=prefix.dotted?text:bodies;
+  const auto& subject=prefix.dotted?checkedText:bodies;
   for(qsizetype next=0;next<subject.size();){
-   const auto candidate=prefix.pattern.match(subject,next);
+   const auto candidate=prefix.pattern.match(subject,next,QRegularExpression::NormalMatch,unchecked);
    if(!candidate.hasMatch())break;
    next=candidate.capturedStart()+1;
    // A prefix starts a piece, or follows a separator inside one (#1820: KEY_ID=AKIA…, "AKIA…", https://ghp_…@host).
    const int at=base+int(candidate.capturedStart());
    // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
    static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
-   const bool afterSeparator=!segment.starts.contains(at);
+   const bool afterSeparator=!pieceStart(segment,at);
    // #1875: a JSON web token's payload starts with eyJ after the header's dot, so a token whose
    // header recognition misread past the prefix ("|eyfhbGci….eyJzdWIi…") is found by its payload.
    const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
@@ -383,7 +462,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
     qsizetype lowercase=0;for(auto it=words.globalMatch(part);it.hasNext();)lowercase+=it.next().capturedLength();
     if(part.size()<12||std::count_if(part.cbegin(),part.cend(),[](QChar c){return c.isUpper();})*5<part.size()||lowercase*10>part.size()*3)continue;
    }
-   if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
+   if(prefix.boundary&&candidate.capturedLength(2)==0&&!pieceStart(segment,base+int(candidate.capturedStart(3))))continue;
    // #1895: a placeholder ("sk_live_XXXXXXXX…", "AKIAXXXXXXXXXXXXXXXX") is no secret: a body, up to the
    // kind's length, of mask characters alone.
    // A kind of one length is judged on its body up to that length (a word can run on past it); any
@@ -425,13 +504,45 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the
  // interface thread; a longer blob passes on a part of it and is marked whole.
+ // Necessary conditions of hexRun, base64Run and repeatedRun from the running totals: a window that
+ // fails all three is not read.
+ if(segment.counts.upper.isEmpty()){
+  auto& c=segment.counts;const auto n=segment.text.size();
+  for(auto* list:{&c.upper,&c.lower,&c.digit,&c.alnum,&c.nonHex,&c.hexDigit})list->fill(0,n+1);
+  for(qsizetype i=0;i<n;++i){
+   const auto ch=segment.text.at(i);const auto mapped=hexConfusions().value(ch,ch);
+   const bool hex=(mapped>='0'&&mapped<='9')||(mapped>='a'&&mapped<='f')||(mapped>='A'&&mapped<='F');
+   c.upper[i+1]=c.upper[i]+(ch.isUpper()?1:0);c.lower[i+1]=c.lower[i]+(ch.isLower()?1:0);c.digit[i+1]=c.digit[i]+(ch.isDigit()?1:0);
+   c.alnum[i+1]=c.alnum[i]+(ch.isLetterOrNumber()?1:0);c.nonHex[i+1]=c.nonHex[i]+(hex?0:1);
+   // hexRun counts digits after recognition's confusions (l, |, O… read as digits; Sol on #1902).
+   c.hexDigit[i+1]=c.hexDigit[i]+(mapped>='0'&&mapped<='9'?1:0);
+  }
+ }
+ const auto possible=[&](int from,int to){
+  const auto& c=segment.counts;const int size=to-from;
+  const int upper=c.upper[to]-c.upper[from],lower=c.lower[to]-c.lower[from],digits=c.digit[to]-c.digit[from];
+  const bool hex=size>=32&&(c.nonHex[to]-c.nonHex[from])*12<=size&&(c.hexDigit[to]-c.hexDigit[from])*5>=size;
+  const bool base64=size>=32&&upper>0&&lower>0&&digits>0&&upper*5>=size&&digits*5<=size*2;
+  const bool repeated=(c.alnum[to]-c.alnum[from])>=24&&(c.alnum[to]-c.alnum[from])*10>=size*9;
+  return hex||base64||repeated;
+ };
+ // #1897: each piece looks only as far as 256 characters reach (the window's end moves on with it), so
+ // a line of thousands of pieces costs about its length, not its square.
  int bestFirst=-1,bestLast=-1,bestLength=0;
- for(int i=first;i<=last;++i)for(int j=last;j>=i;--j){
-  const int from=segment.starts.at(i),to=j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());
+ const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
+ int reach=first;
+ for(int i=first;i<=last;++i){
+  reach=qMax(reach,i);
+  while(reach<last&&endOf(reach+1)-segment.starts.at(i)<=256)++reach;
+  for(int j=reach;j>=i;--j){
+  const int from=segment.starts.at(i),to=endOf(j);
   if(to-from>256&&j>i)continue;
-  if(to-from<=bestLength)break;
+  // No run test passes under 24 characters (a repeated run's least), and none beats the best so far.
+  if(to-from<=bestLength||to-from<24)break;
+  if(!possible(from,to))continue;
   const auto run=segment.text.mid(from,to-from);
   if(hexRun(run)||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  }
  }
  if(bestFirst<0)return;
  segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast,-1,0});segmentMatches(segment,bestLast+1,last,found);
@@ -462,6 +573,45 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
  static const QRegularExpression begin(QStringLiteral("[-—–~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*PRIVATE ?KEY")),end(QStringLiteral("[-—–~_=.]{2,} ?END\\b[A-Z0-9 ]*PRIVATE ?KEY"));
  QList<QList<int>> out;
+ // #1897: what a line gives the wrap checks is the same whichever token above reaches it, so it is
+ // worked out once: its segments, whether its first holds a card or an address, and that segment's
+ // own matches. Every line still starts its own chain (Sol on #1902), at the cost of these lookups.
+ struct LineFacts {QList<Segment> segments;bool otherDone=false,other=false,ownDone=false;QList<Found> own;bool pem=false,statement=false,numbered=false,digit=false,upper=false,longWord=false;qsizetype lowercase=0;};
+ QHash<int,LineFacts> facts;
+ // The two costly facts are worked out only when a chain asks for them (Sol on #1902).
+ const auto otherOf=[&](LineFacts& f){if(!f.otherDone){f.otherDone=true;f.other=!f.segments.isEmpty()&&otherMatch(f.segments.first().words,plain,candidates);}return f.other;};
+ const auto ownOf=[&](LineFacts& f)->const QList<Found>&{if(!f.ownDone){f.ownDone=true;if(!f.segments.isEmpty())segmentMatches(f.segments.first(),0,int(f.segments.first().words.size())-1,f.own);}return f.own;};
+ const auto factsOf=[&](int key)->LineFacts&{
+  auto it=facts.find(key);
+  if(it==facts.end()){
+   LineFacts f;f.segments=segments(lines[key],plain,candidates);
+   const auto& line=lines[key];
+   if(!f.segments.isEmpty()){
+    const auto& tail=f.segments.first().text;for(const auto c:tail){f.digit=f.digit||c.isDigit();f.upper=f.upper||c.isUpper();}
+    static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));
+    for(auto it=prose.globalMatch(tail);it.hasNext();)f.lowercase+=it.next().capturedLength();
+    f.longWord=word.match(tail).hasMatch();
+   }
+   const auto text=lineText(line);f.pem=begin.match(text).hasMatch()||end.match(text).hasMatch();
+   // #1894: a line that starts a new statement is no token's remainder: an assignment ("PORT=8080",
+   // "host:" after an editor's line number) or a line with a hash word. A wrapped remainder is base64,
+   // hex or a JWT's part, with an "=" only as padding at its end. Base64 padding before closing
+   // punctuation ("…L=\",") is a remainder's end; an empty snake-case assignment ("DATABASE_URL=") is
+   // a new statement. Judged on the line's first recognized word after a line number, not on the
+   // words joined (Sol on #1901: "…==”" "// note").
+   static const QRegularExpression assignment(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
+   static const QRegularExpression empty(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:][\"'`\u201C\u201D]*[;,]?$"));
+   f.numbered=line.size()>1&&number.match(plain.at(line.first())).hasMatch();
+   const int lead=f.numbered||(line.size()>1&&plain.at(line.first()).size()==1&&!plain.at(line.first()).front().isLetterOrNumber())?1:0;
+   const auto& firstWord=plain.at(line.at(lead));
+   // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0", Sol on #1901).
+   static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
+   const bool separated=lead+2<line.size()&&name.match(firstWord).hasMatch()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
+   f.statement=assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch()||separated||digestLine(line,plain);
+   it=facts.insert(key,std::move(f));
+  }
+  return it.value();
+ };
  const auto keys=lines.keys();
  for(int k=0;k<keys.size();++k){
   const auto& line=lines[keys.at(k)];
@@ -570,8 +720,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
       if(below.top()<=above.top()||below.top()-above.top()>3*qMax(above.height(),below.height())||below.left()>above.left()+4.5*character)break;}
-     const auto next=segments(nextLine,plain,candidates);
-     const auto nextText=lineText(nextLine);
+     auto& nextFacts=factsOf(keys.at(follow));const auto& next=nextFacts.segments;
      // A remainder of letters alone that closes the quote the token opened: the next line's first
      // word, at most seven token characters, then the closing quote and only closing brackets or
      // separators ("edc\");"). Checked first, since its punctuation can keep it from being a token piece.
@@ -581,37 +730,18 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/=_-]{1,7}$")),after(QStringLiteral("^[)\\]};,]*$"));
       if(at>0&&alphabet.match(tailWord.left(at)).hasMatch()&&after.match(tailWord.mid(at+1)).hasMatch()){words.append(nextLine.first());break;}
      }
-     if(next.isEmpty()||next.first().words.first()!=nextLine.first()||begin.match(nextText).hasMatch()||end.match(nextText).hasMatch())break;
-     // #1894: a line that starts a new statement is no token's remainder: an assignment ("PORT=8080",
-     // "host:" after an editor's line number) or, beside a line number on the token's own line,
-     // another numbered line. A wrapped remainder is base64, hex or a JWT's part, with an "=" only as
-     // padding at its end.
-     // Base64 padding before closing punctuation ("…L=\",") is a remainder's end, not an assignment;
-     // an empty snake-case assignment ("DATABASE_URL=") is a new statement (Sol on #1901).
-     // Judged on the line's first recognized word (after a line number), not on the words joined
-     // (Sol on #1901: "…==”" "// note").
-     {static const QRegularExpression assignment(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
-      static const QRegularExpression empty(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:][\"'`\u201C\u201D]*[;,]?$"));
-      int lead=0;
-      if(nextLine.size()>1&&(number.match(plain.at(nextLine.first())).hasMatch()||(plain.at(nextLine.first()).size()==1&&!plain.at(nextLine.first()).front().isLetterOrNumber())))lead=1;
-      const auto& firstWord=plain.at(nextLine.at(lead));
-      if(assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch())break;
-      // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0").
-      static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
-      // ...with a value after it: a lone "=" ending the line is a remainder's padding.
-      if(lead+2<nextLine.size()&&name.match(firstWord).hasMatch()&&(plain.at(nextLine.at(lead+1))==QLatin1String("=")||plain.at(nextLine.at(lead+1))==QLatin1String(":")))break;
-      // A line with a hash word is a digest of its own, not a wrapped remainder (Sol on #1901).
-      if(digestLine(nextLine,plain))break;
-      if(nextLine.size()>1&&number.match(plain.at(nextLine.first())).hasMatch()&&number.match(plain.at(line.first())).hasMatch())break;}
+     if(next.isEmpty()||next.first().words.first()!=nextLine.first()||nextFacts.pem)break;
+     // A new statement, or beside a line number on the token's own line another numbered line.
+     {static const QRegularExpression number(QStringLiteral("^\\d{1,5}$"));
+      if(nextFacts.statement||(nextFacts.numbered&&number.match(plain.at(line.first())).hasMatch()))break;}
      // The remainder of a token, not a line of words: a digit or a capital,
      // and few letters in lowercase runs of five or more.
-     const auto& tail=next.first().text;bool digit=false,upper=false;for(const auto c:tail){digit=digit||c.isDigit();upper=upper||c.isUpper();}
-     static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));qsizetype lowercase=0;for(auto it=prose.globalMatch(tail);it.hasNext();)lowercase+=it.next().capturedLength();
+     const auto& tail=next.first().text;const bool digit=nextFacts.digit,upper=nextFacts.upper;const qsizetype lowercase=nextFacts.lowercase;
      // A short remainder is one recognized word on its own, as a wrap leaves it, never words run together ("id42 ok").
      // ...and it ends the token where a wrap would: a closing quote, bracket or separator ("08edc\"").
      static const QString terminators=QStringLiteral("\"'`)]};,\u201D\u2019\u00BB");
      const auto& lastWord=plain.at(next.first().words.last());
-     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
+     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!nextFacts.longWord&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
      if(last.length>0&&!last.dotted&&used+tail.size()>last.length*3/2)break;
      if(ownLine){
@@ -620,8 +750,8 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
       if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
      }
-     else if(otherMatch(next.first().words,plain,candidates))break;
-     {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
+     else if(otherOf(nextFacts))break;
+     {const auto& own=ownOf(nextFacts);
       // A JSON web token wrapped just after one of its dots starts its next line with "eyJ"; one
       // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
       // the next line (#1875).
