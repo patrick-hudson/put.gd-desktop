@@ -572,7 +572,46 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  QMap<int,QList<int>> lines;for(int i=0;i<candidates.size();++i)lines[candidates.at(i).line].append(i);
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
  static const QRegularExpression begin(QStringLiteral("[-—–~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*PRIVATE ?KEY")),end(QStringLiteral("[-—–~_=.]{2,} ?END\\b[A-Z0-9 ]*PRIVATE ?KEY"));
- QList<QList<int>> out;QSet<int> absorbed;
+ QList<QList<int>> out;
+ // #1897: what a line gives the wrap checks is the same whichever token above reaches it, so it is
+ // worked out once: its segments, whether its first holds a card or an address, and that segment's
+ // own matches. Every line still starts its own chain (Sol on #1902), at the cost of these lookups.
+ struct LineFacts {QList<Segment> segments;bool otherDone=false,other=false,ownDone=false;QList<Found> own;bool pem=false,statement=false,numbered=false,digit=false,upper=false,longWord=false;qsizetype lowercase=0;};
+ QHash<int,LineFacts> facts;
+ // The two costly facts are worked out only when a chain asks for them (Sol on #1902).
+ const auto otherOf=[&](int key){auto& f=facts[key];if(!f.otherDone){f.otherDone=true;f.other=!f.segments.isEmpty()&&otherMatch(f.segments.first().words,plain,candidates);}return f.other;};
+ const auto ownOf=[&](int key)->const QList<Found>&{auto& f=facts[key];if(!f.ownDone){f.ownDone=true;if(!f.segments.isEmpty())segmentMatches(f.segments.first(),0,int(f.segments.first().words.size())-1,f.own);}return f.own;};
+ const auto factsOf=[&](int key)->const LineFacts&{
+  auto it=facts.find(key);
+  if(it==facts.end()){
+   LineFacts f;f.segments=segments(lines[key],plain,candidates);
+   const auto& line=lines[key];
+   if(!f.segments.isEmpty()){
+    const auto& tail=f.segments.first().text;for(const auto c:tail){f.digit=f.digit||c.isDigit();f.upper=f.upper||c.isUpper();}
+    static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));
+    for(auto it=prose.globalMatch(tail);it.hasNext();)f.lowercase+=it.next().capturedLength();
+    f.longWord=word.match(tail).hasMatch();
+   }
+   const auto text=lineText(line);f.pem=begin.match(text).hasMatch()||end.match(text).hasMatch();
+   // #1894: a line that starts a new statement is no token's remainder: an assignment ("PORT=8080",
+   // "host:" after an editor's line number) or a line with a hash word. A wrapped remainder is base64,
+   // hex or a JWT's part, with an "=" only as padding at its end. Base64 padding before closing
+   // punctuation ("…L=\",") is a remainder's end; an empty snake-case assignment ("DATABASE_URL=") is
+   // a new statement. Judged on the line's first recognized word after a line number, not on the
+   // words joined (Sol on #1901: "…==”" "// note").
+   static const QRegularExpression assignment(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
+   static const QRegularExpression empty(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:][\"'`\u201C\u201D]*[;,]?$"));
+   f.numbered=line.size()>1&&number.match(plain.at(line.first())).hasMatch();
+   const int lead=f.numbered||(line.size()>1&&plain.at(line.first()).size()==1&&!plain.at(line.first()).front().isLetterOrNumber())?1:0;
+   const auto& firstWord=plain.at(line.at(lead));
+   // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0", Sol on #1901).
+   static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
+   const bool separated=lead+1<line.size()&&name.match(firstWord).hasMatch()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
+   f.statement=assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch()||separated||digestLine(line,plain);
+   it=facts.insert(key,std::move(f));
+  }
+  return it.value();
+ };
  const auto keys=lines.keys();
  for(int k=0;k<keys.size();++k){
   const auto& line=lines[keys.at(k)];
@@ -591,7 +630,6 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   }
   if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
   for(const auto& segment:segments(line,plain,candidates)){
-   if(std::all_of(segment.words.cbegin(),segment.words.cend(),[&](int w){return absorbed.contains(w);}))continue;
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
    // "sha256:") is a digest, not a key, unless a secret word is on the line too. With no word either
@@ -682,8 +720,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
       if(below.top()<=above.top()||below.top()-above.top()>3*qMax(above.height(),below.height())||below.left()>above.left()+4.5*character)break;}
-     const auto next=segments(nextLine,plain,candidates);
-     const auto nextText=lineText(nextLine);
+     const auto& nextFacts=factsOf(keys.at(follow));const auto& next=nextFacts.segments;
      // A remainder of letters alone that closes the quote the token opened: the next line's first
      // word, at most seven token characters, then the closing quote and only closing brackets or
      // separators ("edc\");"). Checked first, since its punctuation can keep it from being a token piece.
@@ -693,37 +730,18 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/=_-]{1,7}$")),after(QStringLiteral("^[)\\]};,]*$"));
       if(at>0&&alphabet.match(tailWord.left(at)).hasMatch()&&after.match(tailWord.mid(at+1)).hasMatch()){words.append(nextLine.first());break;}
      }
-     if(next.isEmpty()||next.first().words.first()!=nextLine.first()||begin.match(nextText).hasMatch()||end.match(nextText).hasMatch())break;
-     // #1894: a line that starts a new statement is no token's remainder: an assignment ("PORT=8080",
-     // "host:" after an editor's line number) or, beside a line number on the token's own line,
-     // another numbered line. A wrapped remainder is base64, hex or a JWT's part, with an "=" only as
-     // padding at its end.
-     // Base64 padding before closing punctuation ("…L=\",") is a remainder's end, not an assignment;
-     // an empty snake-case assignment ("DATABASE_URL=") is a new statement (Sol on #1901).
-     // Judged on the line's first recognized word (after a line number), not on the words joined
-     // (Sol on #1901: "…==”" "// note").
-     {static const QRegularExpression assignment(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
-      static const QRegularExpression empty(QStringLiteral("^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:][\"'`\u201C\u201D]*[;,]?$"));
-      int lead=0;
-      if(nextLine.size()>1&&(number.match(plain.at(nextLine.first())).hasMatch()||(plain.at(nextLine.first()).size()==1&&!plain.at(nextLine.first()).front().isLetterOrNumber())))lead=1;
-      const auto& firstWord=plain.at(nextLine.at(lead));
-      if(assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch())break;
-      // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0").
-      static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
-      // ...with a value after it: a lone "=" ending the line is a remainder's padding.
-      if(lead+2<nextLine.size()&&name.match(firstWord).hasMatch()&&(plain.at(nextLine.at(lead+1))==QLatin1String("=")||plain.at(nextLine.at(lead+1))==QLatin1String(":")))break;
-      // A line with a hash word is a digest of its own, not a wrapped remainder (Sol on #1901).
-      if(digestLine(nextLine,plain))break;
-      if(nextLine.size()>1&&number.match(plain.at(nextLine.first())).hasMatch()&&number.match(plain.at(line.first())).hasMatch())break;}
+     if(next.isEmpty()||next.first().words.first()!=nextLine.first()||nextFacts.pem)break;
+     // A new statement, or beside a line number on the token's own line another numbered line.
+     {static const QRegularExpression number(QStringLiteral("^\\d{1,5}$"));
+      if(nextFacts.statement||(nextFacts.numbered&&number.match(plain.at(line.first())).hasMatch()))break;}
      // The remainder of a token, not a line of words: a digit or a capital,
      // and few letters in lowercase runs of five or more.
-     const auto& tail=next.first().text;bool digit=false,upper=false;for(const auto c:tail){digit=digit||c.isDigit();upper=upper||c.isUpper();}
-     static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));qsizetype lowercase=0;for(auto it=prose.globalMatch(tail);it.hasNext();)lowercase+=it.next().capturedLength();
+     const auto& tail=next.first().text;const bool digit=nextFacts.digit,upper=nextFacts.upper;const qsizetype lowercase=nextFacts.lowercase;
      // A short remainder is one recognized word on its own, as a wrap leaves it, never words run together ("id42 ok").
      // ...and it ends the token where a wrap would: a closing quote, bracket or separator ("08edc\"").
      static const QString terminators=QStringLiteral("\"'`)]};,\u201D\u2019\u00BB");
      const auto& lastWord=plain.at(next.first().words.last());
-     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
+     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!nextFacts.longWord&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
      if(last.length>0&&!last.dotted&&used+tail.size()>last.length*3/2)break;
      if(ownLine){
@@ -732,8 +750,8 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
       if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
      }
-     else if(otherMatch(next.first().words,plain,candidates))break;
-     {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
+     else if(otherOf(keys.at(follow)))break;
+     {const auto& own=ownOf(keys.at(follow));
       // A JSON web token wrapped just after one of its dots starts its next line with "eyJ"; one
       // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
       // the next line (#1875).
@@ -746,12 +764,6 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       if(closed)break;}
      if(next.first().words.last()!=nextLine.last())break;
     }
-    // #1897: the lines this chain took in and went on past start no chain of their own (theirs
-    // would cover what this one did); the last line it took starts one, since its own token can
-    // reach further than this token's wrap budget allowed (Sol on #1902).
-    {QList<int> taken;for(const int w:words){const int l=candidates.at(w).line;if(l!=candidates.at(words.first()).line&&!taken.contains(l))taken.append(l);}
-     if(!taken.isEmpty())taken.removeLast();
-     for(const int w:words)if(taken.contains(candidates.at(w).line))absorbed.insert(w);}
     out.append(words);
    }
   }

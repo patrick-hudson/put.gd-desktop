@@ -853,6 +853,10 @@ private slots:
   const auto stripe=QString("sk")+"_li"+"ve_"+"4eC39HqLyjWDarjtT1zdp7dcQ2",hex=QString("9f86d081884c7d659a2feaa0c55ad015");
   QStringList covered;for(const auto& m:found(words(stripe+" | "+hex+" | x7Kq2Lm9Vb4N"),QStringList{"key"}))covered.append(m);
   QVERIFY2(covered.join(' ').contains("x7Kq2Lm9Vb4N"),qPrintable(covered.join(" / ")));
+  // Every line starts its own chain: the second line's run reaches a tail the first line's could not (Sol on #1902).
+  {const auto page=QString("9f86d081884c7d659a2feaa0c55ad015 | 6311d6de7be2f57b64c74d411a0b379352 | x7Kq2Lm9Vb4N | ")+"z7Kq2Lm9Vb4Nqr7mvs1fg2py6nwj3zr4t51";
+   QStringList all;for(const auto& m:found(words(page),QStringList{"key"}))all.append(m);
+   QVERIFY2(all.join(' ').contains("z7Kq2Lm9Vb4Nqr7mvs1fg2py6nwj3zr4t51"),qPrintable(all.join(" / ")));}
  }
  void pathologicalLinesStayFast() {
   QFETCH(QString,page);
