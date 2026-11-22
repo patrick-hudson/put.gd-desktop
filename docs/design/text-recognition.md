@@ -42,10 +42,10 @@ What it does not do:
    one that every action gets, so it does not say that the capture copies text. The capture delay, the "Also delay captures started by a
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
-3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first, names the emoji it finds
-   in the colour plane, leaving out any inside a decoded code (see [emoji](#emoji)), then
-   recognizes the text in grey copies with the codes' areas filled with the background, and puts
-   each emoji in place of what it read there.
+3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first. Then, at the same time, it
+   names the emoji it finds in the colour plane, leaving out any inside a decoded code (see
+   [emoji](#emoji)), and recognizes the text in grey copies with the codes' areas filled with the
+   background. Last, it puts each emoji in place of what it read there.
 4. **Copy.** One plain-text clipboard write, then one desktop notification:
 
    | Found | Clipboard | Notification |
@@ -471,11 +471,24 @@ helper finds emoji in the colour plane and names them itself, from templates bui
   word with its glyph's box, the editor shows and selects it as a word, and Quick redact sees
   it. The editor's Copy selection joins words with spaces, so a glued emoji gets one there;
   Copy all text keeps the join.
-- **When it runs.** After the codes and before any engine starts. The colour rows the scan
-  has passed, the rows read again around each glyph once it is done, and the template pages it
-  read are given back before recognition reaches its peak, and its large working buffers come
-  straight from the kernel, so a freed one does not raise glibc's mmap threshold for
-  Tesseract's buffers after it.
+- **When it runs.** On its own thread, from just after the codes are read, alongside page
+  analysis, the engines' start and recognition (#1815). The job joins it before the emoji are
+  placed.
+  - Before #1815 it ran first, on one core. Overlapping it made the 176-capture corpus 11% faster
+    and 4 MP+ screens 15% faster on aurora-amd (6 cores), and the corpus 8% faster on k72 (4
+    cores). The text was identical on all 176 captures and on the 26 #1748 emoji crops. The
+    record is [put.gd-evidence `records/2026-11-22-issue-1815-emoji-scan-overlap`](https://github.com/patrick-hudson/put.gd-evidence/tree/1d1dc859d798c1a16789475e4fc1f7cec9a4e659/records/2026-11-22-issue-1815-emoji-scan-overlap).
+  - The colour rows the scan has passed, the rows read again around each glyph once it is done,
+    and the template pages it read are given back as it goes. Its large working buffers come
+    straight from the kernel, so a freed one does not raise glibc's mmap threshold for
+    Tesseract's buffers.
+  - While the scan runs, no task's memory growth is measured, so the memory gate does not count
+    the scan's pages as a task's.
+  - If the system refuses the thread, the scan runs first, inline, as before.
+  - The scan's 3-second limit still counts from the start of recognition. Because the scan now
+    shares the CPU with the engines, a very busy screen can reach the limit sooner. A cut scan
+    keeps what it found and never cuts the text.
+  - `recognizeMs` counts only the time the job waited for the scan at the join.
 - **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them)
   has no colour core, so it is not found and Tesseract's reading of it
   stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
