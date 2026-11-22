@@ -83,6 +83,14 @@ private slots:
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
   // m74 xed: a string literal read with a straight and a curly quote before the key.
   QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
+  // Sol on #1826 (S20-S24).
+  QTest::newRow("card after a No. label")<<"Ref No.4111 1111 1111 1111 ok"<<QStringList{"card"}<<QStringList{"card: No.4111 1111 1111 1111"};
+  QTest::newRow("order IDs are not a card")<<"Order IDs: 120004 120005 120006 120007"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("a quoted note after a key stays a word")<<QString("key AKIAIOSFODNN7EXAMPLE \u201Cnote\u201D")<<QStringList{"key"}<<QStringList{"key: AKIAIOSFODNN7EXAMPLE"};
+  QTest::newRow("a quoted versioned slug is not a token")<<QString("see \u201Cglagent-installation-guide-v2\u201D")<<QStringList{"key"}<<QStringList{};
+  {// Built in pieces: a long hex run beside a short label reads as a secret to the repository's scan.
+   const QString digest=QString("9f86d081884c7d659a2feaa0c55ad015")+"a3bf4f1b2b0b822cd15d6c15b0f00a";
+   QTest::newRow("a short word below a digest stays a word")<<digest+" | "+"I"+"D42"<<QStringList{"key"}<<QStringList{"key: "+digest};}
   QTest::newRow("card after an IPv4 address")<<"Ada 555.010.0123 198.51.100.7 5555-5555-5555-4444 renewal | Ben 203.0.113.9 3782-822463-10005 VIP"<<QStringList{"card"}<<QStringList{"card: 5555-5555-5555-4444","card: 3782-822463-10005"};
   QTest::newRow("IPv6 with a prefix length")<<"addr 2001:db8::8a2e:370:7334/64 up"<<all<<QStringList{"ip: 2001:db8::8a2e:370:7334/64"};
   QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};

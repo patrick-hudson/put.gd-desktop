@@ -154,6 +154,8 @@ bool tokenPiece(const QString& word) {
  while(from<to&&quotes.contains(word.at(from)))++from;
  while(to>from&&quotes.contains(word.at(to-1)))--to;
  if(from==to)return false;
+ // Only around a token-like inside: 8 characters or more with a digit or a capital ("“note”" stays a word).
+ {bool marked=false;for(qsizetype i=from;i<to;++i)marked=marked||word.at(i).isDigit()||word.at(i).isUpper();if(to-from<8||!marked){from=0;to=word.size();}}
  int noise=0;
  for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
  return noise<=qMax(1,int(to-from)/8);
@@ -266,8 +268,9 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
    static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
    const bool afterSeparator=!segment.starts.contains(at);
    if(afterSeparator&&!(at>0&&separators.contains(segment.text.at(at-1))))continue;
-   // Inside a word, a token's body has a digit, as real keys do; a URL slug (/glagent-installation-guide) has none.
-   if(afterSeparator&&!hasDigit(candidate.captured(3)))continue;
+   // Inside a word, a token's body has a digit and a capital, as real keys do; a URL slug
+   // (/glagent-installation-guide, “glagent-installation-guide-v2”) has neither or only a digit.
+   if(afterSeparator){const auto body=candidate.captured(3);if(!hasDigit(body)||std::none_of(body.cbegin(),body.cend(),[](QChar c){return c.isUpper();}))continue;}
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
@@ -348,7 +351,10 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto& tail=next.first().text;bool digit=false,upper=false;for(const auto c:tail){digit=digit||c.isDigit();upper=upper||c.isUpper();}
      static const QRegularExpression prose(QStringLiteral("[a-z]{5,}")),word(QStringLiteral("[a-z]{4,}"));qsizetype lowercase=0;for(auto it=prose.globalMatch(tail);it.hasNext();)lowercase+=it.next().capturedLength();
      // A short remainder is one recognized word on its own, as a wrap leaves it, never words run together ("id42 ok").
-     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1;
+     // ...and it ends the token where a wrap would: a closing quote, bracket or separator ("08edc\"").
+     static const QString terminators=QStringLiteral("\"'`)]};,\u201D\u2019\u00BB");
+     const auto& lastWord=plain.at(next.first().words.last());
+     const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;
@@ -371,7 +377,7 @@ bool cardShaped(const QString& text){
 const QList<Rule>& rules() {
  static const QList<Rule> list{
   {"email",QRegularExpression(R"((?<![\w.%+-])[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,}(?![\w-]))"),{},3},
-  {"card",QRegularExpression(R"((?<![\d.-])\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d);},1},
+  {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d);},1},
   {"ip",QRegularExpression(R"((?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
   {"phone",QRegularExpression(R"((?<![\w+.-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d))"),[](const QString& m){
@@ -830,9 +836,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      }
     }
     offset=found.capturedStart()+length;
-    // #1820: a card candidate that fails (a table's IPv4 cell run into the card beside it, "…100.7 5555-…")
-    // must not hide a card later in its span: the search goes on from the next character.
-    if(rule.valid&&!rule.valid(joined.text.mid(found.capturedStart(),length))){if(rule.category=="card")offset=found.capturedStart()+1;continue;}
+    if(rule.valid&&!rule.valid(joined.text.mid(found.capturedStart(),length)))continue;
     auto words=owners(joined,found.capturedStart(),length);
     if(words.isEmpty())continue;
     // Merge both views before reserving any word, so a wrapped continuation
