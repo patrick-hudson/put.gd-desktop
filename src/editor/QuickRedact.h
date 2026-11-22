@@ -99,8 +99,10 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& categorie
 // recognized word on the row the side margin ends at the far side of the blank
 // space between them in `image` (the recognized picture), so that word stays
 // readable; with no such space, or where `image` is transparent, it is kept whole,
-// and without `image` it stops short of that word's box. It never cuts into the
-// match's own boxes.
+// and without `image` it stops short of that word's box. A word joined to the
+// match by ink between their boxes that neither holds, such as the dot of an
+// address recognition dropped, is covered with the match. It never cuts into
+// the match's own boxes.
 QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds,const QImage& image={});
 // The same marks, each with the recognized words' own box it was padded from
 // (what a deleted suggestion is remembered by). One per visual row of the
