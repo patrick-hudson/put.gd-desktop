@@ -844,6 +844,16 @@ private slots:
   QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",600);
   QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
  }
+ // Sol on #1902: the faster search finds what the plain one did.
+ void theFastSearchFindsWhatThePlainOneDid() {
+  // A hex run whose digits are partly recognition's confusions (| and O read for 1 and 0).
+  const auto confused=QString("abcdef||Olabcdef")+"abcdef||Olabcdef";
+  QCOMPARE(found(words("value "+confused),QStringList{"key"}),QStringList{"key: value "+confused});
+  // A token wrapped over three lines: the third line is covered, though the first token's wrap budget ends before it.
+  const auto stripe=QString("sk")+"_li"+"ve_"+"4eC39HqLyjWDarjtT1zdp7dcQ2",hex=QString("9f86d081884c7d659a2feaa0c55ad015");
+  QStringList covered;for(const auto& m:found(words(stripe+" | "+hex+" | x7Kq2Lm9Vb4N"),QStringList{"key"}))covered.append(m);
+  QVERIFY2(covered.join(' ').contains("x7Kq2Lm9Vb4N"),qPrintable(covered.join(" / ")));
+ }
  void pathologicalLinesStayFast() {
   QFETCH(QString,page);
   const auto candidates=words(page);

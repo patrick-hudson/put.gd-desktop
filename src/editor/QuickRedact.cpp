@@ -310,7 +310,7 @@ bool prefixHead(const QString& word) {
 // counts (#1897): running totals over the text of capitals, lowercase, digits, letters and digits, and
 // characters that are not hex once recognition's confusions are mapped, so a window can be ruled out
 // for the run tests in constant time before they read it.
-struct Counts {QList<int> upper,lower,digit,alnum,nonHex;};
+struct Counts {QList<int> upper,lower,digit,alnum,nonHex,hexDigit;};
 struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;};
 void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
@@ -362,6 +362,16 @@ QString headOf(const QString& pattern) {
  }
  return pattern;
 }
+// A subject made valid UTF-16 once (a lone surrogate becomes U+FFFD, the same length), so the many
+// searches over it skip Qt's check of the whole string each time (Sol on #1902).
+QString wholeText(QString text) {
+ for(qsizetype k=0;k<text.size();++k){
+  const bool paired=(text.at(k).isHighSurrogate()&&k+1<text.size()&&text.at(k+1).isLowSurrogate())||(text.at(k).isLowSurrogate()&&k>0&&text.at(k-1).isHighSurrogate());
+  if(text.at(k).isSurrogate()&&!paired)text[k]=QChar(QChar::ReplacementCharacter);
+ }
+ return text;
+}
+constexpr auto unchecked=QRegularExpression::DontCheckSubjectStringMatchOption;
 // The segment's text as the prefix bodies read it: a misread character as x, and a slash between two
 // letters or digits (#1839).
 QString bodiesOf(const QString& text) {
@@ -384,13 +394,17 @@ void findHeads(const Segment& segment) {
  // A combined pattern that does not compile filters nothing: every prefix is then searched.
  if(!combined.isValid()||combined.captureCount()!=list.size())return;
  segment.heads=QList<QList<int>>(list.size());
- const auto bodies=bodiesOf(segment.text);
- for(const QString* subject:{static_cast<const QString*>(&segment.text),&bodies}){
+ // Each prefix's head alone, to test every head at a place the combined pattern found one: where
+ // two heads start together (glcbt and glc), the first alternative must not hide the other.
+ static const QList<QRegularExpression> each=[&]{QList<QRegularExpression> out;for(const auto& prefix:list)out.append(QRegularExpression(headOf(prefix.pattern.pattern())));return out;}();
+ const auto text=wholeText(segment.text);const auto bodies=wholeText(bodiesOf(segment.text));
+ for(const QString* subject:{&text,&bodies}){
   // Every start, overlapping heads too: a match moves the search on by one character.
   for(qsizetype at=0;at<subject->size();){
-   const auto m=combined.match(*subject,at);if(!m.hasMatch())break;
-   for(int i=0;i<list.size();++i){const auto start=m.capturedStart(i+1);if(start>=0){segment.heads[i].append(int(start));break;}}
-   at=m.capturedStart()+1;
+   const auto m=combined.match(*subject,at,QRegularExpression::NormalMatch,unchecked);if(!m.hasMatch())break;
+   const auto start=m.capturedStart();
+   for(int i=0;i<list.size();++i)if(each.at(i).match(*subject,start,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption|unchecked).hasMatch())segment.heads[i].append(int(start));
+   at=start+1;
   }
  }
  for(auto& positions:segment.heads){std::sort(positions.begin(),positions.end());positions.erase(std::unique(positions.begin(),positions.end()),positions.end());}
@@ -403,9 +417,10 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // A misread character inside a body reads as a letter for the body's sake,
  // and so does a slash between two letters or digits (#1839: putgd-ocr read
  // the J of "h J9kL" as "/" in Noto Sans and Liberation Serif at 9 and 10 px).
- const QString bodies=bodiesOf(text);
  const int base=segment.starts.at(first);
  findHeads(segment);
+ // Built only once a prefix's head is in range: most parts of a long line have none.
+ QString checkedText,bodies;bool views=false;
  for(int index=0;index<prefixes().size();++index){
   const auto& prefix=prefixes().at(index);
   // #1897: only a prefix whose head occurs in this part of the segment is searched for.
@@ -414,12 +429,13 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    const auto it=std::lower_bound(at.cbegin(),at.cend(),base);
    if(it==at.cend()||*it>=base+text.size())continue;
   }
+  if(!views){checkedText=wholeText(text);bodies=wholeText(bodiesOf(text));views=true;}
   QRegularExpressionMatch match;
   // Each start is tried in turn: a rejected candidate ("gho" in "ghost…") must not swallow a real
   // prefix inside its body, so the search resumes one character after it.
-  const auto& subject=prefix.dotted?text:bodies;
+  const auto& subject=prefix.dotted?checkedText:bodies;
   for(qsizetype next=0;next<subject.size();){
-   const auto candidate=prefix.pattern.match(subject,next);
+   const auto candidate=prefix.pattern.match(subject,next,QRegularExpression::NormalMatch,unchecked);
    if(!candidate.hasMatch())break;
    next=candidate.capturedStart()+1;
    // A prefix starts a piece, or follows a separator inside one (#1820: KEY_ID=AKIA…, "AKIA…", https://ghp_…@host).
@@ -492,18 +508,20 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // fails all three is not read.
  if(segment.counts.upper.isEmpty()){
   auto& c=segment.counts;const auto n=segment.text.size();
-  for(auto* list:{&c.upper,&c.lower,&c.digit,&c.alnum,&c.nonHex})list->fill(0,n+1);
+  for(auto* list:{&c.upper,&c.lower,&c.digit,&c.alnum,&c.nonHex,&c.hexDigit})list->fill(0,n+1);
   for(qsizetype i=0;i<n;++i){
    const auto ch=segment.text.at(i);const auto mapped=hexConfusions().value(ch,ch);
    const bool hex=(mapped>='0'&&mapped<='9')||(mapped>='a'&&mapped<='f')||(mapped>='A'&&mapped<='F');
    c.upper[i+1]=c.upper[i]+(ch.isUpper()?1:0);c.lower[i+1]=c.lower[i]+(ch.isLower()?1:0);c.digit[i+1]=c.digit[i]+(ch.isDigit()?1:0);
    c.alnum[i+1]=c.alnum[i]+(ch.isLetterOrNumber()?1:0);c.nonHex[i+1]=c.nonHex[i]+(hex?0:1);
+   // hexRun counts digits after recognition's confusions (l, |, O… read as digits; Sol on #1902).
+   c.hexDigit[i+1]=c.hexDigit[i]+(mapped>='0'&&mapped<='9'?1:0);
   }
  }
  const auto possible=[&](int from,int to){
   const auto& c=segment.counts;const int size=to-from;
   const int upper=c.upper[to]-c.upper[from],lower=c.lower[to]-c.lower[from],digits=c.digit[to]-c.digit[from];
-  const bool hex=size>=32&&(c.nonHex[to]-c.nonHex[from])*12<=size&&digits*5>=size;
+  const bool hex=size>=32&&(c.nonHex[to]-c.nonHex[from])*12<=size&&(c.hexDigit[to]-c.hexDigit[from])*5>=size;
   const bool base64=size>=32&&upper>0&&lower>0&&digits>0&&upper*5>=size&&digits*5<=size*2;
   const bool repeated=(c.alnum[to]-c.alnum[from])>=24&&(c.alnum[to]-c.alnum[from])*10>=size*9;
   return hex||base64||repeated;
@@ -573,7 +591,6 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   }
   if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
   for(const auto& segment:segments(line,plain,candidates)){
-   // #1897: a segment a token above already took in as its wrapped remainder is done.
    if(std::all_of(segment.words.cbegin(),segment.words.cend(),[&](int w){return absorbed.contains(w);}))continue;
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
@@ -729,7 +746,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       if(closed)break;}
      if(next.first().words.last()!=nextLine.last())break;
     }
-    for(int follow=0;follow<words.size();++follow)if(candidates.at(words.at(follow)).line!=candidates.at(words.first()).line)absorbed.insert(words.at(follow));
+    // #1897: the lines this chain took in and went on past start no chain of their own (theirs
+    // would cover what this one did); the last line it took starts one, since its own token can
+    // reach further than this token's wrap budget allowed (Sol on #1902).
+    {QList<int> taken;for(const int w:words){const int l=candidates.at(w).line;if(l!=candidates.at(words.first()).line&&!taken.contains(l))taken.append(l);}
+     if(!taken.isEmpty())taken.removeLast();
+     for(const int w:words)if(taken.contains(candidates.at(w).line))absorbed.insert(w);}
     out.append(words);
    }
   }

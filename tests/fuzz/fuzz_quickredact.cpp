@@ -18,12 +18,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // fuzzer choosing each word's width per character and the gap after it.
     const auto text = QString::fromUtf8(in.rest());
     QList<RecognizedWord> words;
-    int line = 0, x = 0, seed = 0;
+    int line = 0, x = 0;
+    quint32 seed = 0;
     for (const auto& row : text.split(QLatin1Char('\n'))) {
         for (const auto& word : row.split(QLatin1Char(' '), Qt::SkipEmptyParts)) {
-            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-            const int glyph = 4 + seed % 9, gap = seed % 3 == 0 ? 0 : glyph;
-            words.append({word, QRect(x, line * 24 + seed % 3, int(word.size()) * glyph, 16), 90, line});
+            seed = (seed * 1103515245u + 12345u) & 0x7fffffffu;
+            const int glyph = 4 + int(seed % 9), gap = seed % 3 == 0 ? 0 : glyph;
+            words.append({word, QRect(x, line * 24 + int(seed % 3), int(word.size()) * glyph, 16), 90, line});
             x += int(word.size()) * glyph + gap;
             if (words.size() >= 4000) break;
         }
