@@ -12,8 +12,15 @@ at a time (the lab profile's app, a VM borrowing it through
 tools/lab/proton_lab.py lend, or a refresh), because every refresh rotates its
 token. It is independent of the desktop lock and has no cleanup inventory.
 
+A GNOME builder's desktop is locked only while its tray host is serving: the
+AppIndicator extension enabled and active, and a StatusNotifierWatcher with a
+registered host on the desktop session bus (tools/lab/gnome_tray_host.py, the
+check the nightly's Fedora GNOME guest runs). A test of the no-tray path on
+purpose passes `--no-tray-host REASON`, which the lock's purpose records.
+
   desktop_lock.py status [HOST ...] [--check] [--resource R]
   desktop_lock.py acquire HOST --owner NAME --session ID --purpose TEXT --minutes N [--resource R]
+                           [--no-tray-host REASON]
   desktop_lock.py heartbeat HOST --session ID [--blocked REASON] [--resource R]
   desktop_lock.py extend HOST --session ID --minutes N [--resource R]
   desktop_lock.py release HOST --session ID [--verified-clean] [--not-mine ID ...] [--resource R]
@@ -41,6 +48,7 @@ HOSTS = {
     'm74': ('192.168.68.74', 'Linux Mint 22.3 Cinnamon X11'),
     'aurora-amd': ('192.168.68.71', 'Aurora Fedora 45 Plasma Wayland'),
 }
+GNOME_HOSTS = frozenset(host for host, (_, desktop) in HOSTS.items() if 'GNOME' in desktop)
 USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
 PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
@@ -211,16 +219,36 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     return items, notes
 
 
+def probe_tray_host(source, timeout=30):
+    """Run the tray host probe (gnome_tray_host.probe_source) on the desktop session bus."""
+    environment = dict(os.environ)
+    environment.setdefault('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
+    environment.setdefault('DBUS_SESSION_BUS_ADDRESS', f'unix:path={environment["XDG_RUNTIME_DIR"]}/bus')
+    try:
+        result = subprocess.run(['python3', '-c', source], capture_output=True, text=True,
+                                timeout=timeout, env=environment)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return {'ready': False, 'error': type(error).__name__}
+    try:
+        report = json.loads(result.stdout.strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        detail = (result.stderr.strip().splitlines() or [f'exit {result.returncode}, no output'])[-1]
+        return {'ready': False, 'error': detail[:200]}
+    return dict(report, ready=result.returncode == 0)
+
+
 class Desktop:
     """One lock (the desktop, or the Proton session) in a builder's lock directory.
     Every change happens under an flock shared by all of the directory's locks."""
 
-    def __init__(self, directory, host, clock=now_utc, inventory=None, resource='desktop'):
+    def __init__(self, directory, host, clock=now_utc, inventory=None, resource='desktop', tray_host=None):
         if resource not in RESOURCES:
             raise LockError('Unknown resource ' + str(resource))
         self.directory, self.host, self.clock, self.resource = Path(directory), host, clock, resource
         # Only the desktop has a cleanup inventory; a Proton session leaves nothing on screen.
         self.inventory = inventory or (lambda: collect_inventory(Path.home()) if resource == 'desktop' else ([], []))
+        # A GNOME desktop's tray host probe: returns a report whose 'ready' must be true to lock.
+        self.tray_host = tray_host if resource == 'desktop' else None
         self.lock = self.directory / f'{resource}.lock'
         self.baseline = self.directory / 'desktop.baseline.json'
         self.history = self.directory / 'history'
@@ -327,11 +355,14 @@ class Desktop:
         owner, session, purpose = one_line('owner', owner), one_line('session', session), one_line('purpose', purpose)
         minutes = checked_minutes(minutes)
         items, notes = self.inventory()
+        tray = self.tray_host() if self.tray_host else None
         with self.mutex():
             now = self.clock()
             current = self.state(now)
             if current['state'] != 'free':
                 raise LockError(f'{self.name} is already locked', **current)
+            if tray is not None and not tray.get('ready'):
+                raise LockError(f'{self.name} has no tray host', trayHost=tray)
             record = {'owner': owner, 'session': session, 'host': self.host, 'purpose': purpose,
                       'acquired': stamp(now), 'expires': stamp(now + datetime.timedelta(minutes=minutes)),
                       'heartbeat': stamp(now)}
@@ -347,7 +378,8 @@ class Desktop:
                 temporary.unlink()
             if self.resource == 'desktop':
                 self.replace(self.baseline, json.dumps({'acquired': record['acquired'], 'items': items}) + '\n')
-        return {'lock': record, 'baseline': items, 'notes': notes}
+        reply = {'lock': record, 'baseline': items, 'notes': notes}
+        return dict(reply, trayHost=tray) if tray is not None else reply
 
     def heartbeat(self, session, blocked=None):
         blocked = one_line('blocked', blocked) if blocked is not None else None
@@ -423,8 +455,10 @@ class Desktop:
 
 def remote(payload):
     """Run one lock operation on this host and print its JSON reply."""
+    probe = payload.get('tray_probe')
     desktop = Desktop(Path(payload.get('directory') or LOCK_DIR).expanduser(), payload['host'],
-                      resource=payload.get('resource', 'desktop'))
+                      resource=payload.get('resource', 'desktop'),
+                      tray_host=(lambda: probe_tray_host(probe)) if probe else None)
     action = payload['action']
     try:
         if action == 'status':
@@ -556,9 +590,31 @@ def describe(reply):
         lines.append('  note: ' + note)
     if reply.get('receipt'):
         lines.append('  receipt on the host: ' + reply['receipt'])
+    tray = reply.get('trayHost')
+    if tray and tray.get('ready'):
+        lines.append(f'  tray host: {tray.get("extension")} {tray.get("state")}, StatusNotifierWatcher host registered')
     if action == 'release' and reply['ok']:
         lines.append('  Tell the next session in the queue and your coordinator')
     return lines
+
+
+def explain_tray_host(reply):
+    """Turn a refusal for a missing tray host into one line that says what is wrong and the fix."""
+    tray = reply.get('trayHost')
+    if reply.get('ok') or not tray or tray.get('ready'):
+        return reply
+    problem, fix = tray_host_module().missing(tray)
+    return dict(reply, message=f'{reply["host"]} has no tray host: {problem}. Fix: {fix}. '
+                               'To test the no-tray path on purpose, pass --no-tray-host "<reason>"')
+
+
+def tray_host_module():
+    """tools/lab/gnome_tray_host.py, loaded beside this file (only on the workstation side)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('gnome_tray_host', Path(__file__).with_name('gnome_tray_host.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def main(argv=None, run=subprocess.run):
@@ -586,6 +642,8 @@ def main(argv=None, run=subprocess.run):
     for command in (acquire, extend):
         command.add_argument('--minutes', type=int, required=True, help=f'1-{MAX_MINUTES}')
     heartbeat.add_argument('--blocked', metavar='REASON', help='say you are blocked (cleared by the next heartbeat)')
+    acquire.add_argument('--no-tray-host', metavar='REASON',
+                         help='lock a GNOME desktop without its tray host, to test the no-tray path on purpose')
     release.add_argument('--verified-clean', action='store_true',
                          help='you stopped and removed everything you started there')
     release.add_argument('--not-mine', action='append', default=[], metavar='ID',
@@ -594,13 +652,23 @@ def main(argv=None, run=subprocess.run):
     args = parser.parse_args(argv)
 
     payload = {key: value for key, value in vars(args).items()
-               if key not in ('json', 'identity', 'pins', 'host', 'hosts') and value is not None}
+               if key not in ('json', 'identity', 'pins', 'host', 'hosts', 'no_tray_host') and value is not None}
     hosts = (args.hosts or sorted(HOSTS)) if args.action == 'status' else [args.host]
+    if args.action == 'acquire' and args.resource == 'desktop' and args.host in GNOME_HOSTS:
+        if args.no_tray_host is None:
+            payload['tray_probe'] = tray_host_module().probe_source()
+        elif not args.no_tray_host.strip():
+            parser.error('--no-tray-host needs a reason')
+        else:
+            payload['purpose'] = f'{args.purpose} [no tray host: {args.no_tray_host.strip()}]'
+    elif getattr(args, 'no_tray_host', None) is not None:
+        parser.error('--no-tray-host applies only to the desktop of a GNOME host: ' + ', '.join(sorted(GNOME_HOSTS)))
     unknown = sorted(set(hosts) - set(HOSTS))
     if unknown:
         parser.error('unknown host ' + ', '.join(unknown) + '; choose from ' + ', '.join(sorted(HOSTS)))
     with concurrent.futures.ThreadPoolExecutor(len(hosts)) as pool:
-        replies = list(pool.map(lambda host: call(host, payload, args.identity, args.pins, run), hosts))
+        replies = [explain_tray_host(reply) for reply in
+                   pool.map(lambda host: call(host, payload, args.identity, args.pins, run), hosts)]
     if args.json:
         print(json.dumps(replies if args.action == 'status' else replies[0], indent=2))
     else:

@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import types
 import unittest
 from unittest import mock
 
@@ -391,6 +392,86 @@ class RemoteProtocol(unittest.TestCase):
             self.assertEqual(call(action='status', resource='proton')['state'], 'held')
             self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['proton.lock'])
             self.assertIn('k72 Proton session (Kubuntu', '\n'.join(lock.describe(reply)))
+
+
+class GnomeTrayHost(LockTest):
+    """A GNOME desktop is locked only while its tray host serves, unless a test skips it on purpose."""
+
+    NOT_ENABLED = {'ready': False, 'extension': 'appindicatorsupport@rgcjonas.gmail.com', 'installed': True,
+                   'enabled': False, 'state': 'INACTIVE', 'hostRegistered': False}
+
+    def test_refuses_without_the_tray_host_and_names_the_one_line_fix(self):
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: dict(self.NOT_ENABLED))
+        with self.assertRaises(lock.LockError) as refused:
+            desktop.acquire('holder', 'local_a', 'GNOME tray row', 30)
+        self.assertEqual(desktop.status()['state'], 'free')
+        reply = lock.explain_tray_host(dict(refused.exception.details, ok=False, message=str(refused.exception),
+                                            host='f44', action='acquire'))
+        text = '\n'.join(lock.describe(reply))
+        self.assertEqual(text.count('\n'), 0, text)
+        self.assertIn('f44 has no tray host: appindicatorsupport@rgcjonas.gmail.com is not enabled', text)
+        self.assertIn('gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com', text)
+        self.assertIn('--no-tray-host', text)
+
+    def test_locks_once_the_tray_host_serves(self):
+        ready = dict(self.NOT_ENABLED, ready=True, enabled=True, state='ACTIVE', hostRegistered=True)
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []), tray_host=lambda: ready)
+        reply = dict(desktop.acquire('holder', 'local_a', 'GNOME tray row', 30), ok=True, host='f44', action='acquire')
+        self.assertEqual(desktop.status()['state'], 'held')
+        self.assertIn('StatusNotifierWatcher host registered', '\n'.join(lock.describe(reply)))
+
+    def acquire_through_main(self, *extra, host='f44'):
+        """Run the CLI against a local lock directory; the probe is a stand-in for f44 before the fix."""
+        sent = []
+        real = lock.tray_host_module()
+        tray = types.SimpleNamespace(probe_source=lambda: STAND_IN_PROBE, missing=real.missing)
+
+        def run(command, input, **kwargs):
+            sent.append(input)
+            return lock.subprocess.run([sys.executable, '-'], input=input, **kwargs)
+
+        with tempfile.TemporaryDirectory() as pins:
+            (Path(pins) / host).mkdir()
+            (Path(pins) / host / 'known_hosts').write_text('')
+            with mock.patch.object(lock, 'tray_host_module', lambda: tray), \
+                    mock.patch.object(lock, 'remote_script',
+                                      lambda payload: real_script(dict(payload, directory=str(self.directory)))), \
+                    mock.patch('sys.stdout'):
+                code = lock.main(['acquire', host, '--owner', 'o', '--session', 'local_a', '--purpose', 'row',
+                                  '--minutes', '5', '--json', '--pins', pins, *extra], run=run)
+        return code, sent
+
+    def test_the_cli_probes_a_gnome_desktop_and_refuses_when_the_check_fails(self):
+        code, sent = self.acquire_through_main()
+        self.assertEqual(code, 1)
+        self.assertIn('STAND_IN_PROBE', sent[0])
+        self.assertEqual(self.desktop.status()['state'], 'free')
+
+    def test_no_tray_host_skips_the_probe_and_records_the_reason_in_the_purpose(self):
+        code, sent = self.acquire_through_main('--no-tray-host', 'no-tray prompt fallback')
+        self.assertEqual(code, 0)
+        self.assertNotIn('STAND_IN_PROBE', sent[0])
+        self.assertEqual(self.desktop.status()['lock']['purpose'], 'row [no tray host: no-tray prompt fallback]')
+
+    def test_other_desktops_are_not_probed_and_reject_the_flag(self):
+        code, sent = self.acquire_through_main(host='k72')
+        self.assertEqual(code, 0)
+        self.assertNotIn('STAND_IN_PROBE', sent[0])
+        with mock.patch('sys.stderr'), self.assertRaises(SystemExit):
+            lock.main(['acquire', 'k72', '--owner', 'o', '--session', 's', '--purpose', 'p', '--minutes', '5',
+                       '--no-tray-host', 'why'], run=None)
+
+    def test_the_probe_reports_its_own_failure_as_not_ready(self):
+        report = lock.probe_tray_host('raise SystemExit(3)')
+        self.assertFalse(report['ready'])
+        self.assertIn('no output', report['error'])
+
+
+# Prints what the real probe printed on f44 before the fix: installed, not enabled.
+STAND_IN_PROBE = ("import json;STAND_IN_PROBE=1;print(json.dumps(dict(extension='appindicatorsupport@rgcjonas.gmail.com',"
+                  "installed=True,enabled=False,state='INACTIVE',hostRegistered=False)));raise SystemExit(1)")
+real_script = lock.remote_script
 
 
 if __name__ == '__main__':

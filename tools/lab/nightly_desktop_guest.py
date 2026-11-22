@@ -7,7 +7,8 @@ import shlex
 import shutil
 import sys
 
-from tools.lab import lab
+from tools.lab import gnome_tray_host, lab
+from tools.lab.gnome_tray_host import TRAY_HOST_EXTENSION, TRAY_HOST_PACKAGE  # noqa: F401
 
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
@@ -153,11 +154,7 @@ def protected_packages(packages, desktop):
             if any(fnmatch.fnmatchcase(name, pattern) for pattern in desktop)}
 
 
-# Stock Fedora GNOME has no tray host. A Fedora user who wants put.gd's tray installs and enables
-# Fedora's AppIndicator extension, which serves org.kde.StatusNotifierWatcher (docs/desktops/gnome.md).
-TRAY_HOST_PACKAGE = 'gnome-shell-extension-appindicator'
-TRAY_HOST_EXTENSION = 'appindicatorsupport@rgcjonas.gmail.com'
-# The tray host joins the desktop; nothing it brings may move the Shell, Mutter, GDM or the portals.
+# The tray host (gnome_tray_host.py) joins the desktop; nothing it brings may move the Shell, Mutter, GDM or the portals.
 TRAY_HOST_PROTECTED = ('gnome-shell.*', 'gnome-shell-common.*', 'gnome-shell-extension-common.*', 'mutter*',
                        'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
 
@@ -188,26 +185,8 @@ def install_tray_host(run, out):
     return report
 
 
-TRAY_HOST_READY = r'''python3 - <<'NIGHTLY_TRAY_HOST'
-import dbus,json,subprocess,time
-uuid='EXTENSION'
-subprocess.run(['gnome-extensions','enable',uuid],check=True,capture_output=True)
-bus=dbus.SessionBus()
-deadline=time.monotonic()+20
-while True:
- state=None
- try:
-  watcher=bus.get_object('org.kde.StatusNotifierWatcher','/StatusNotifierWatcher')
-  state=bool(dbus.Interface(watcher,'org.freedesktop.DBus.Properties').Get(
-   'org.kde.StatusNotifierWatcher','IsStatusNotifierHostRegistered'))
- except dbus.DBusException:pass
- if state:break
- assert time.monotonic()<deadline, 'no StatusNotifierWatcher with a registered host after enabling '+uuid
- time.sleep(.25)
-info=subprocess.run(['gnome-extensions','info',uuid],capture_output=True,text=True).stdout
-print(json.dumps(dict(extension=uuid,hostRegistered=True,info=[l.strip() for l in info.splitlines() if l.strip()])))
-NIGHTLY_TRAY_HOST
-'''.replace('EXTENSION', TRAY_HOST_EXTENSION)
+TRAY_HOST_READY = ("python3 - <<'NIGHTLY_TRAY_HOST'\n" + gnome_tray_host.probe_source(enable=True, wait=20)
+                   + 'NIGHTLY_TRAY_HOST\n')
 
 
 def install_rpm(run, package, out):
