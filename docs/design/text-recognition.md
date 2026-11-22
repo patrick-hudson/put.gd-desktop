@@ -882,7 +882,10 @@ other tool active it does not. The user's side is in the
     image. A line's matched words are taken left to right, and a new box starts where the gap from
     the right edge of the run so far is more than three times the median height of the line's
     matched words, as between two windows side by side or the columns of a table. Each run gets its
-    own box with the usual margins, so no single box spans the whole gap (#1846). Matching is
+    own box, as tall as the line's, with the usual margins; on a side that faces another run the
+    margin is not shortened for a neighbouring word, since a box there can stop short of a matched
+    glyph, so it can reach into a label beside the column. No single box spans the whole gap
+    (#1846). Matching is
     unchanged: two test card numbers of repeated digits on a single-spaced line form one key match,
     and its box still covers the labels between them, such as "Card". A misread number stays
     covered as long as it is part of that key match. A character's width comes from the edge word's own box, not from the line's span with
