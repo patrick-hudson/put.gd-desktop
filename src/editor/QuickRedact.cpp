@@ -283,8 +283,15 @@ int pieceAt(const Segment& segment,qsizetype offset) {
 void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,int>>& found) {
  if(first>last)return;
  const auto text=segment.text.mid(segment.starts.at(first),(last+1<segment.starts.size()?segment.starts.at(last+1):segment.text.size())-segment.starts.at(first));
- // A misread character inside a body reads as a letter for the body's sake.
- QString bodies=text;for(auto& c:bodies)if(!tokenCharacter(c))c='x';
+ // A misread character inside a body reads as a letter for the body's sake,
+ // and so does a slash between two letters or digits (#1839: putgd-ocr read
+ // the J of "h J9kL" as "/" in Noto Sans and Liberation Serif at 9 and 10 px).
+ QString bodies=text;
+ for(qsizetype i=0;i<bodies.size();++i){
+  auto& c=bodies[i];
+  if(!tokenCharacter(c))c='x';
+  else if(c=='/'&&i>0&&i+1<text.size()&&text.at(i-1).isLetterOrNumber()&&text.at(i+1).isLetterOrNumber())c='x';
+ }
  const int base=segment.starts.at(first);
  for(const auto& prefix:prefixes()){
   QRegularExpressionMatch match;
@@ -305,10 +312,15 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   }
   if(!match.hasMatch())continue;
   const int start=pieceAt(segment,base+match.capturedStart());
-  // The token's pieces, up to half again its nominal length.
+  // The token's pieces: each that starts before the token, counted from its
+  // prefix (which can follow a label in its word, "KEY_ID=AKIA…"), has its
+  // nominal length. The body pattern runs on through words joined after a
+  // complete token ("ghp_…" "was" "leaked"), so its end is not the token's
+  // (#1839); pieces after the core are kept or left out as words at a
+  // segment's end.
+  const int from=base+int(match.capturedStart());
   int end=start;
-  while(end<last&&segment.starts.at(end+1)-segment.starts.at(start)<prefix.length*3/2)++end;
-  end=qMax(end,pieceAt(segment,base+match.capturedEnd()-1));
+  while(end<last&&segment.starts.at(end+1)-from<prefix.length)++end;
   segmentMatches(segment,first,start-1,found);found.append({start,end});segmentMatches(segment,end+1,last,found);return;
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the

@@ -144,6 +144,23 @@ private slots:
   QTest::newRow("capitalized words with numbers are no token")<<"Scores: Team Alpha 3, Team Bravo 2, Team Charlie 0 after 90 minutes"<<all<<QStringList{};
   QTest::newRow("a hardware line is no token")<<"MacBookPro16,1 Intel Core i7-9750H 2.6GHz 6-Core 32GB DDR4 2666MHz"<<all<<QStringList{};
   QTest::newRow("a prefix inside a word is no token")<<"ghosts haunt the lighthouse and they Included 24 photos of 2026 for everyone"<<all<<QStringList{};
+  // #1839: a token at its usual length ends there; the ordinary words after
+  // it are left out, read whole, split or with a letter doubled, as putgd-ocr
+  // read the line in Liberation Serif 14 px, Adwaita Sans 32 px and Liberation
+  // Sans 32 px. A token read short keeps a word after it in its usual length.
+  QTest::newRow("words after a whole token")<<"Your token "+github+" was leaked today"<<QStringList{"key"}<<QStringList{"key: "+github};
+  const auto githubThree=QString("gh")+"p_aB3dESfG7hJ9kL"+" 1mN3pQ5rS7tU9vW"+" 1xY3zA5";
+  QTest::newRow("words after a token read in three pieces")<<"Your token "+githubThree+" leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubThree};
+  const auto githubTail=QString("gh")+"p_aB3dE5fG7hJ9kLIMN3pQ5rS7tU9VW1xY"+" 3ZA5";
+  QTest::newRow("words after a token whose tail is a word")<<"Your token "+githubTail+" leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubTail};
+  const auto githubLong=QString("gh")+"p_aB3dE5fG"+" 7hJ9kLImMN3pQ5rS7tU9VW1xY3ZA5";
+  QTest::newRow("words after a token read a letter long")<<"Your token "+githubLong+" leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubLong};
+  const auto githubShort=QString("gh")+"p_aB3dESfG7h9kLImN3pQ5rS7tUSwW"+" 1xY3zA5";
+  const auto githubLabel=QString("GITHUB_TOKEN=gh")+"p_aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW";
+  QTest::newRow("a token after a label in its word, its tail split off")<<githubLabel+" xyzabcd was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubLabel+" xyzabcd"};
+  QTest::newRow("a token read short keeps the next word")<<"Your token "+githubShort+" was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubShort+" was"};
+  const auto githubSlash=QString("gh")+"p_aB3dESfG7h/9kLImN3pQ5rS7tU9vW1x"+"\u00a53zA5";
+  QTest::newRow("words after a token with J read as a slash")<<"Your token "+githubSlash+" was leaked today"<<QStringList{"key"}<<QStringList{"key: "+githubSlash};
   QTest::newRow("Slack token")<<"chat "+slack+" here"<<all<<QStringList{"key: "+slack+" here"};
   QTest::newRow("Stripe key")<<stripe+" set"<<all<<QStringList{"key: "+stripe+" set"};
   QTest::newRow("JWT")<<"Bearer "+jwt<<all<<QStringList{"key: "+jwt};
