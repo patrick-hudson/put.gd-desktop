@@ -807,60 +807,74 @@ namespace {
 // nullopt to keep the whole margin. Recognized boxes can each be off by about
 // a glyph (#1838: at 13 px a box ended 4 px short of its digit and the next
 // word's box began 6 px before its "i"), so with the image the cover runs to
-// the far side of the space between the words: the blank column run nearest
-// the neighbour's box edge, over every row the mark covers. One blank column
-// before the neighbour stays uncovered. With no blank run, or with any
-// transparency (what shows there depends on the viewer), nothing is clipped:
-// a covered neighbour is better than a matched glyph showing. Without the
-// image, the neighbour's box is the limit.
+// the far side of the blank space before the neighbour, checked over every row
+// the mark covers, and leaves that space's last column uncovered.
+// - The neighbour's box edge is trusted only where the picture agrees: within
+//   a pixel of it, ink starts right after a blank column. The space is the
+//   blank run just before that ink.
+// - Otherwise the edge may sit in the space, in a gap inside the match, or on
+//   a matched glyph: the cover goes past the blank or ink there and the ink
+//   after it, to the next blank run. A misplaced box can then cost the
+//   neighbour a glyph, never show a matched one.
+// The paper is the median of the line spacing outside the mark. With no clean
+// spacing, no blank run in reach, or any transparency (what shows there
+// depends on the viewer), nothing is clipped. Without the image, the
+// neighbour's box is the limit.
 std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other,int dir,double glyph,int pad){
  const int edge=dir>0?box.right():box.left(),neighbour=dir>0?other.left():other.right();
- const int gap=qMax(1,box.height()/10);
- if(image.isNull())return dir>0?qMax(edge,neighbour-1-gap):qMin(edge,neighbour+1+gap);
+ if(image.isNull()){const int gap=qMax(1,box.height()/10);return dir>0?qMax(edge,neighbour-1-gap):qMin(edge,neighbour+1+gap);}
  const int slack=int(std::ceil(glyph));
  // From the matched box's own edge column, which a box can overshoot onto the space.
- const QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),box.top()-pad),QPoint(qMax(edge,neighbour+dir*slack),box.bottom()+pad)).intersected(image.rect());
+ QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),box.top()-pad),QPoint(qMax(edge,neighbour+dir*slack),box.bottom()+pad));
+ if(window.left()<0||window.right()>=image.width())return std::nullopt;
+ window=window.intersected(image.rect());
  if(window.isEmpty())return std::nullopt;
- // The paper is the median colour of the band and the line spacing beyond it:
- // exact colours will not do, since on a noisy background the solid ink can be
- // the commonest.
  const QRect around=window.adjusted(0,-pad,0,pad).intersected(image.rect());
  const auto band=image.copy(around).convertToFormat(QImage::Format_ARGB32);
+ const int first=window.top()-around.top(),last=window.bottom()-around.top();
  QList<int> channels[3];
  for(int y=0;y<band.height();++y){
   const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
-  for(int x=0;x<band.width();++x){if(qAlpha(line[x])!=255)return std::nullopt;channels[0].append(qRed(line[x]));channels[1].append(qGreen(line[x]));channels[2].append(qBlue(line[x]));}
+  for(int x=0;x<band.width();++x){
+   if(qAlpha(line[x])!=255)return std::nullopt;
+   if(y>=first&&y<=last)continue;
+   channels[0].append(qRed(line[x]));channels[1].append(qGreen(line[x]));channels[2].append(qBlue(line[x]));
+  }
  }
+ if(channels[0].isEmpty())return std::nullopt;
  int paper[3];
- for(int k=0;k<3;++k){auto& c=channels[k];std::nth_element(c.begin(),c.begin()+c.size()/2,c.end());paper[k]=c.at(c.size()/2);}
- const auto distance=[&](QRgb c){return qMax(std::abs(qRed(c)-paper[0]),qMax(std::abs(qGreen(c)-paper[1]),std::abs(qBlue(c)-paper[2])));};
+ for(int k=0;k<3;++k){auto c=channels[k];std::nth_element(c.begin(),c.begin()+c.size()/2,c.end());paper[k]=c.at(c.size()/2);}
+ const auto distance=[&](int r,int g,int b){return qMax(std::abs(r-paper[0]),qMax(std::abs(g-paper[1]),std::abs(b-paper[2])));};
+ // Spacing with much else in it (a neighbouring line's ink, a pattern) is no
+ // measure of the paper.
+ qsizetype stray=0;for(qsizetype i=0;i<channels[0].size();++i)if(distance(channels[0].at(i),channels[1].at(i),channels[2].at(i))>24)++stray;
+ if(stray*4>channels[0].size())return std::nullopt;
  // A column is blank when no pixel the mark would cover is further from the
  // paper than a faint anti-aliased edge: 8% of the ink's contrast, within 4 to 24.
- const int first=window.top()-around.top(),last=window.bottom()-around.top();
  int contrast=0;
- for(int y=first;y<=last;++y){const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));for(int x=0;x<band.width();++x)contrast=qMax(contrast,distance(line[x]));}
+ for(int y=first;y<=last;++y){const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));for(int x=0;x<band.width();++x)contrast=qMax(contrast,distance(qRed(line[x]),qGreen(line[x]),qBlue(line[x])));}
  const int faint=std::clamp(contrast*8/100,4,24);
- QList<bool> blank(band.width(),true);
+ // Columns counted from the matched box's edge (0) towards the neighbour.
+ const int count=band.width();
+ QList<bool> blank(count,true);
  for(int y=first;y<=last;++y){
   const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
-  for(int x=0;x<band.width();++x)if(blank[x]&&distance(line[x])>faint)blank[x]=false;
+  for(int i=0;i<count;++i){const QRgb c=line[dir>0?i:count-1-i];if(blank[i]&&distance(qRed(c),qGreen(c),qBlue(c))>faint)blank[i]=false;}
  }
- // The space is the run nearest the neighbour's box edge, not the widest: a gap
- // inside the matched word can be wider than the space. Between equals, the
- // one on the neighbour's side.
- const int at=neighbour-window.left();
- int best=-1,bestStart=0,bestWidth=0;
- for(int x=0;x<band.width();){
-  if(!blank[x]){++x;continue;}
-  int y=x;while(y<band.width()&&blank[y])++y;
-  const int away=at<x?x-at:at>=y?at-(y-1):0;
-  if(best<0||away<best||(away==best&&dir>0)){best=away;bestStart=x;bestWidth=y-x;}
-  x=y;
+ const int at=dir*(neighbour-edge);
+ int end=-1; // the last blank column of the space
+ // The box edge agrees with the picture when an ink start (ink right after a
+ // blank column) is within a pixel of it: boxes are often a pixel off.
+ for(int d=0;d<=1&&end<0;++d)for(const int i:{at-d,at+d})if(end<0&&i>=1&&i<count&&!blank[i]&&blank[i-1])end=i-1;
+ if(end<0){
+  int i=at;
+  while(i<count&&blank[i])++i;
+  while(i<count&&!blank[i])++i;
+  if(i>=count)return std::nullopt;
+  while(i+1<count&&blank[i+1])++i;
+  end=i;
  }
- if(best<0)return std::nullopt;
- // The run's column next to the neighbour stays uncovered.
- const int far=dir>0?window.left()+bestStart+bestWidth-1:window.left()+bestStart;
- return dir>0?qMax(edge,far-1):qMin(edge,far+1);
+ return edge+dir*qMax(0,end-1);
 }
 }
 // One box per visual row of the match, as find groups rows (centres within

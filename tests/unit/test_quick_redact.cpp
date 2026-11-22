@@ -378,28 +378,39 @@ private slots:
   for(int y=0;y<checks.height();++y)for(int x=0;x<checks.width();++x)checks.setPixel(x,y,(x+y)%2?qRgb(255,255,255):qRgb(0,0,0));
   QCOMPARE(quickRedact::markBoxes(row,{"card",{0}},checks.rect(),checks).first().mark.right(),116+9);
  }
- // Sol review of #1842: the cover never stops at a gap inside the match. A gap
- // between the match's glyphs wider than the space (S1), matched ink below the
- // neighbour's rows (S2), and a transparent picture (S3) keep the glyph covered.
+ // Sol review of #1842: the cover never stops at a gap inside the match, and
+ // a neighbour's box is trusted only where the picture agrees with it.
  void marksNeverStopInsideTheMatch() {
   const auto page=[](QImage::Format format,QRgb paper){QImage image(200,60,format);image.fill(paper);return image;};
   const auto ink=[](QImage& image,int x0,int x1,int y0,int y1){for(int x=x0;x<=x1;++x)for(int y=y0;y<=y1;++y)image.setPixel(x,y,qRgba(0,0,0,255));};
+  const auto right=[](const QList<RecognizedWord>& row,const QImage& image){return quickRedact::markBoxes(row,{"list",{0}},image.rect(),image).first().mark.right();};
   // "abcd" with its box ending at 99 (10 px glyphs, a 15 px margin); its last
-  // glyph's ink is at 103-105, after a 3 px gap; the neighbour's ink starts at 107.
+  // glyph's ink is at 103-105 after a 3 px gap; the neighbour's ink starts at 107.
   QImage wide=page(QImage::Format_RGB32,qRgb(255,255,255));
   ink(wide,62,99,12,27);ink(wide,103,105,12,27);ink(wide,107,120,12,27);
-  const QList<RecognizedWord> row{{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}};
-  QCOMPARE(quickRedact::markBoxes(row,{"list",{0}},wide.rect(),wide).first().mark.right(),105);
-  // Matched ink below the neighbour's rows runs to 104; the cover reaches it.
+  // S1: the neighbour's box where its ink starts, then 6 px early, in the gap
+  // inside the match: both times the glyph at 103-105 is covered and 107 is not.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide),105);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(101,10,20,20),90,0}},wide),105);
+  // S6: a box that agrees with the picture is not crossed for an equally near
+  // gap after the neighbour's first stroke (space 102-103, stroke 104, gap 105).
+  QImage stroke=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(stroke,62,101,12,27);ink(stroke,104,104,12,27);ink(stroke,106,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,20,20),90,0}},stroke),102);
+  // S2: matched ink below the neighbour's rows runs to 106, right up to the
+  // neighbour's box; no blank column is left, so the whole margin stays.
   QImage low=page(QImage::Format_RGB32,qRgb(255,255,255));
-  ink(low,62,99,12,17);ink(low,100,104,22,27);ink(low,107,126,10,17);
-  const QList<RecognizedWord> short_{{"abcd",QRect(60,10,40,20),90,0},{"up",QRect(107,10,20,8),90,0}};
-  QVERIFY(quickRedact::markBoxes(short_,{"list",{0}},low.rect(),low).first().mark.right()>=104);
-  // Opaque ink on a transparent picture: what shows between the words depends
-  // on the viewer, so the whole margin stays.
-  QImage clear=page(QImage::Format_ARGB32,qRgba(0,0,0,0));
+  ink(low,62,99,12,17);ink(low,100,106,22,27);ink(low,107,126,10,17);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"up",QRect(107,10,20,8),90,0}},low)>=106);
+  // S5: ink filling most of the mark's rows is not taken for paper.
+  QImage heavy=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(heavy,62,99,10,29);ink(heavy,99,101,5,34);ink(heavy,102,102,8,31);ink(heavy,104,114,8,31);
+  QVERIFY(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(104,10,11,20),90,0}},heavy)>=102);
+  // S3: opaque ink on a half-transparent white picture: what shows between the
+  // words depends on the viewer, so the whole margin stays.
+  QImage clear=page(QImage::Format_ARGB32,qRgba(255,255,255,128));
   ink(clear,62,99,12,27);ink(clear,107,120,12,27);
-  QCOMPARE(quickRedact::markBoxes(row,{"list",{0}},clear.rect(),clear).first().mark.right(),99+15);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},clear),99+15);
  }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
