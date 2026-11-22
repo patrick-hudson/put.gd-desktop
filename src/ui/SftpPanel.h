@@ -5,9 +5,10 @@
 #include <functional>
 class QFormLayout;class QLabel;class QLineEdit;class QPushButton;
 namespace putgd {
+class FileDialog;
 namespace Ui { class Banner; }
 // Settings → Destinations → SFTP (#1871): Server, User, Folder on server, Link address,
-// and the optional Password and Key passphrase. A pasted sftp:// or user@host:/path
+// and the optional SSH key (#1892), Password and Key passphrase. A pasted sftp:// or user@host:/path
 // address fills User and Folder too. The line under Folder says what ssh resolves the
 // address to; a test that met an unknown or changed host key offers Trust key, and one
 // that met a missing folder offers Create folder. Settings stores the fields; typed
@@ -19,7 +20,14 @@ public:
     static QString provider();
     static QJsonObject defaultSettings();
     explicit SftpPanel(QWidget* parent = nullptr);
-    void build(const RowBuilder&);
+    // `signIn` adds the SSH key, Password and Key passphrase rows where Settings keeps the
+    // destination's sign-in (#1892).
+    void build(const RowBuilder&, const RowBuilder& signIn);
+    // The rows `signIn` made, so Settings shows them only for an SFTP destination.
+    const QList<QWidget*>& signInRows() const { return signInRows_; }
+    // Choose… beside SSH key: the desktop's file chooser, starting in ~/.ssh (ui.fileDialog sftpKey).
+    FileDialog& keyChooser() const { return *keyChooser_; }
+    bool chooseKey();
     void setSettings(const QJsonObject&);
     QJsonObject settings() const;
     // Fills Server, User and Folder from an address, as a paste does; false when it isn't one.
@@ -40,8 +48,10 @@ public:
     void clearOffers();
     // The fingerprint Trust key would trust, or empty when none is offered.
     QString offeredFingerprint() const { return offeredFingerprint_; }
-    // A refused save or test: the message beside the field it names.
+    // A refused save or test: the message beside the field it names. keyFile's has its own place.
     void showProblem(const QString& field, const QString& message);
+    // What a chosen SSH key file needs fixed (#1892), from the file itself or from ssh -G's check.
+    void setKeyProblem(const QString& message);
     // The test button's words: Test upload, or Test upload and link with a Link address.
     QString testLabel() const;
     QJsonObject state() const;
@@ -60,9 +70,18 @@ private:
     // An edited Folder or Server is another folder than the one a test found missing.
     void hideCreateFolder();
     void finished(QLineEdit*);
+    // SSH key as typed or chosen: ~/ expanded, a .pub swapped for the private key next to it.
+    void takeKeyFile(const QString& path);
+    void showKeyProblem();
     bool loading_ = false, built_ = false;
-    QLineEdit *server_ = nullptr, *user_ = nullptr, *folder_ = nullptr, *link_ = nullptr, *password_ = nullptr, *passphrase_ = nullptr;
-    QPushButton *clearPassword_ = nullptr, *clearPassphrase_ = nullptr;
+    QLineEdit *server_ = nullptr, *user_ = nullptr, *folder_ = nullptr, *link_ = nullptr, *password_ = nullptr, *passphrase_ = nullptr, *keyFile_ = nullptr;
+    QPushButton *clearPassword_ = nullptr, *clearPassphrase_ = nullptr, *chooseKey_ = nullptr;
+    QLabel* keyError_ = nullptr;
+    FileDialog* keyChooser_ = nullptr;
+    QList<QWidget*> signInRows_;
+    // The chosen key's own problem (the file, or what ssh found), and the last pure rule's.
+    QString keyFileProblem_;
+    bool keyFileNull_ = false;  // saved as an explicit null
     // The Folder on server a test found missing: Create folder makes only that one.
     QString offeredFolderSetting_, offeredServerSetting_;
     // A problem the panel found itself (a password left out of a paste), kept past refreshProblems.

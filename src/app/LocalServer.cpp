@@ -152,14 +152,16 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("customUploader",p,std::move(reply));return;
  }
  // #1871: the SFTP form in the open Destinations page, edited, pasted into, tested, trusted and
- // its folder created as a user does. Settings values only, never a password or passphrase.
+ // its folder created as a user does. Settings values only (the SSH key file's path among them,
+ // #1892), never a password or passphrase.
  if(method=="ui.sftpDestination") {
   static const QHash<QString,QStringList> allowed{{"inspect",{"profileId"}},{"set",{"field","value","profileId"}},{"paste",{"text","profileId"}},{"add",{"label"}},
    {"test",{"profileId"}},{"trust",{"fingerprint","profileId"}},{"createFolder",{"profileId"}},{"store",{"profileId"}},{"clear",{"field","profileId"}}};
   const auto action=p["action"].toString();
   bool valid=allowed.contains(action)&&p["action"].isString();
   for(auto it=p.begin();valid&&it!=p.end();++it)valid=it.key()=="action"||allowed.value(action).contains(it.key());
-  if(valid&&action=="set")valid=QStringList{"server","user","folder","publicUrlBase"}.contains(p["field"].toString())&&p["value"].isString()&&p["value"].toString().size()<=4096;
+  // keyFile (#1892): the SSH key file's path, a setting like the others; empty clears it.
+  if(valid&&action=="set")valid=QStringList{"server","user","folder","publicUrlBase","keyFile"}.contains(p["field"].toString())&&p["value"].isString()&&p["value"].toString().size()<=4096;
   if(valid&&action=="paste")valid=string(p,"text",4096);
   if(valid&&action=="trust")valid=string(p,"fingerprint",128);
   if(valid&&action=="clear")valid=p["field"]=="password"||p["field"]=="passphrase";
@@ -544,7 +546,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // #259: open, inspect or cancel a file chooser in the open put.gd window, as its
  // button opens it: the desktop's own through the XDG portal, or the fallback.
  if(method=="ui.fileDialog") {
-  static const QStringList dialogs{"editImage","historySaveAs","outputFolder","diagnosticsFolder"};
+  static const QStringList dialogs{"editImage","historySaveAs","outputFolder","diagnosticsFolder","sftpKey"};
   static const QStringList actions{"open","inspect","cancel"};
   static const QStringList folderFields{"root","images","videos","text","other"};
   const auto dialog=p["dialog"].toString();

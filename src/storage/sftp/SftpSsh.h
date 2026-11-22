@@ -36,13 +36,19 @@ struct Resolved {
     QString identityAgent;
     QString proxyKind;             // "ProxyJump", "ProxyCommand" or empty; never the command itself
     bool agent = false;            // an agent socket is there to use
+    QString chosenKey;             // the destination's own SSH key file (#1892), passed with -i; empty: none
     // The known_hosts name of this server: the HostKeyAlias, the host, or [host]:port.
     QString token() const;
 };
 // The ssh arguments that name the destination: [-p port] [-l user] -- host.
 QStringList destinationArguments(const QJsonObject& settings);
+// The destination's own key file (#1892): -i <file> -o IdentitiesOnly=yes, so ssh offers that
+// key (and the files ~/.ssh/config names) rather than every key in the agent first. Empty
+// when the destination names none.
+QStringList identityArguments(const QJsonObject& settings);
 Resolved resolve(const QString& ssh, const QProcessEnvironment&, const QJsonObject& settings, Error&);
-// "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)".
+// "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)"; a key file chosen
+// in Settings (#1892) is the one named.
 QString resolvedLine(const Resolved&, bool password);
 QJsonObject toJson(const Resolved&);
 // The known_hosts lines that hold a key for `token` in `files`, by ssh-keygen -F (hashed names,

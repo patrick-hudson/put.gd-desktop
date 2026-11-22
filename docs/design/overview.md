@@ -37,6 +37,8 @@ packages use dynamically linked distribution Qt. See
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |
 | `putgd-http-worker` | The one request of a custom HTTP uploader: upload, deletion or Test connection | Private newline JSON input carrying the stored values, progress, a deletion checkpoint and result; HTTPS, or HTTP where the destination allows it | New process per request |
 | `putgd-webdav-worker` | One Nextcloud or WebDAV request: sign-in (Login Flow v2) and sign-out, upload, share link, stat, deletion or Test connection (#1872) | Private newline JSON input carrying the login and app password or password, progress, checkpoints, a sign-in page event and result; HTTPS, or HTTP where the destination allows it | New process per request |
+| `putgd-sftp-worker` | SFTP v3 over the user's own `ssh`: name checks, uploads, identity checks, deletion, host-key trust, folder creation and Test | Private newline JSON request lines with ids, progress, checkpoints and results; runs `ssh` | One per destination session, reused within 50 s, exits after 60 s idle |
+| `putgd-sftp-askpass` | ssh's `SSH_ASKPASS` program for one SFTP connection | A single-use Unix socket of the worker; C library only | Started by `ssh`, one answer then exit |
 | `putgd-proton-runtime` | Packaged official-SDK integration for Proton account, file and sharing work | Private helper protocol, secret service and Proton APIs | On demand from the Proton provider; separately provisioned package input |
 | `putgd-ui-catalog` | Synthetic UI catalog renderer | Test fixtures to rendered catalog images | Test build/CI, outside the resident |
 | `putgd-desktop-fixture` | Independent synthetic capture/paste witness | Lab commands, synthetic windows and artifacts | Opt-in development lab package |
@@ -103,6 +105,7 @@ X11/Wayland combinations specified by the [acceptance matrix](../testing/accepta
 | S3 (`s3`) | Official AWS C++ SDK; AWS and compatible services with the required conditional-write semantics. Destination settings select bucket, endpoint, naming and URL behavior. Exact receipts and guarded version-aware removal preserve object identity. | [S3](../user/s3.md) |
 | Backblaze B2 (`backblaze-b2`) | Native b2api v3, public or expiring authorized links, version-ID receipts and removal. Collision handling includes a documented concurrent-name exposure window; explicit overwrite is refused. | [B2](../user/b2.md) |
 | Custom uploader (`custom-http`) | One HTTP request described in Settings or imported from a ShareX `.sxcu` file, with placeholders that read the reply. Row values are secrets kept in the credential store. The server names each upload: no name check, an unknown outcome when a reply is lost, a resend only on explicit Retry, and deletion through the returned deletion URL, verified against the link. | [Custom uploader](../user/custom-uploader.md) |
+| SFTP (`sftp`) | The user's own OpenSSH client (`ssh -s sftp`) carries put.gd's own SFTP v3 client in `putgd-sftp-worker`; `~/.ssh/config`, the agent and `known_hosts` apply. Exclusive create, an identity-checked deletion, optional Link address, host keys trusted by exact fingerprint into put.gd's own `known_hosts`. | [SFTP](../user/sftp.md) |
 | Proton Drive (`proton-drive`) | Privately packaged official-SDK helper; browser account connection, selected My files folder, private uploads or explicit share links, optional link expiry/password. Third-party integration maintained by put.gd. | [Proton Drive](../user/proton-drive.md) |
 
 `StorageProvider` and `ProviderRegistry` keep core, UI, history and desktop code
@@ -221,6 +224,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [CLI](../automation/cli.md) | Session JSON methods and client behavior. |
 | [Configuration](configuration.md) | Schema, roots, migration, routing and retention. |
 | [Credentials](credentials.md) | Secret-store references, setup and cache lifecycle. |
+| [SFTP](../user/sftp.md) | Own server over SFTP: setup, host keys, uploads without links, deletion. |
 | [Custom uploader](../user/custom-uploader.md) | One described HTTP request, `.sxcu` import, placeholders, secrets and deletion. |
 | [Cinnamon/X11](../desktops/cinnamon.md) | X11 capture, clipboard and hotkey behavior. |
 | [GNOME](../desktops/gnome.md) | Shell extension setup and authenticated bridge. |

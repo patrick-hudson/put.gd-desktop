@@ -74,6 +74,7 @@ private:
  QHash<QString,QJsonObject> jobs_;
  QQueue<QString> completed_;
  QSet<QString> active_;
+ QHash<QString,QString> entrySlots_;  // setup ID → the keychain entry its store holds
  QHash<QString,std::shared_ptr<std::atomic_bool>> cancellations_; // by job ID
  std::shared_ptr<CompletionContext> completion_;
 };

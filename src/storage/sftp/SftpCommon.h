@@ -10,7 +10,8 @@ namespace putgd::sftp {
 // client to their server. These rules are shared by the resident, the Settings form and
 // putgd-sftp-worker. Qt Core only: no network or process code, so the resident links none.
 inline const QString providerId = QStringLiteral("sftp");
-// The setting keys, in the order Settings shows them.
+// The setting keys, in the order Settings shows them. keyFile (#1892) is optional: a
+// destination saved without it, or with null, has no chosen key.
 const QStringList& settingKeys();
 QJsonObject defaults();
 // What the Server field says, read the way ssh reads a destination: host, host:port,
@@ -30,7 +31,7 @@ QString withoutPassword(const QString& text, bool* had = nullptr);
 QString withoutUserInfo(const QString& link, bool* had = nullptr);
 // host, host:port or [v6]:port: how the Server field stores an address.
 QString serverText(const QString& host, int port);
-// What is wrong with one field (server, user, folder, publicUrlBase, hostKeyFingerprint)
+// What is wrong with one field (server, user, folder, publicUrlBase, hostKeyFingerprint, keyFile)
 // of these settings, or an empty string. An empty Server is a destination still being
 // set up: `forUse` asks whether it can be used now, and then empty is a problem too.
 QString problem(const QJsonObject& settings, const QString& field, bool forUse = false);
@@ -44,6 +45,14 @@ QString remoteFolder(const QString& folder);
 QString linkFor(const QJsonObject& settings, const QString& name);
 // "host:/absolute/path", as the upload notice and History's Copy path give it.
 QString location(const QJsonObject& settings, const QString& absolutePath);
+// The SSH key file a destination names (#1892), or empty: an absolute path ssh gets with -i.
+QString keyFile(const QJsonObject& settings);
+// Why ssh can't use the private key file at `path`, in words saying how to fix it, or no error.
+// Messages name the file, never its folder: they reach logs and diagnostics.
+// Reads the file's first bytes and its mode the way ssh does: a public key (.pub or its text),
+// a PuTTY key, a file other users can read (ssh refuses those), a file that isn't there.
+// `privateKey`, when given, gets the private key next to a picked .pub file, if there is one.
+Error keyFileProblem(const QString& path, QString* privateKey = nullptr);
 // The credential-store names of the two optional secrets.
 inline QString passwordKey() { return QStringLiteral("password"); }
 inline QString passphraseKey() { return QStringLiteral("passphrase"); }

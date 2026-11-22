@@ -1870,6 +1870,14 @@
           ],
           "pattern": "^[A-Z0-9-]{1,32} SHA256:[A-Za-z0-9+/]{43}$",
           "description": "The host key trusted in put.gd's own known_hosts, as TYPE SHA256:…"
+        },
+        "keyFile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 4096,
+          "description": "Optional (#1892): the private SSH key file passed to ssh with -i and IdentitiesOnly=yes, as an absolute path; absent or null uses the agent and ~/.ssh/config"
         }
       }
     },
