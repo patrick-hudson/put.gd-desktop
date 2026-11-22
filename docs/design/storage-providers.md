@@ -238,10 +238,14 @@ name is the path every name check, receipt, lock key and deletion uses. The path
 verified server are checkpointed before the open. The file opens under its final name with
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
 its reply is awaited for up to 20 seconds whatever a cancel says, and a handle that comes back
-is closed and the file removed; a lost reply leaves the outcome unknown. After a cancel the CLOSE and
-REMOVE share an 8-second budget, so the request ends inside the 30 seconds the resident gives a
-cancelled request before it stops the helper; cleanup that doesn't finish in that budget is
-reported as unconfirmed, with the path. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
+is closed and the file removed; a lost reply leaves the outcome unknown. Right after the open an `fstat`
+records the new file's owner. After a cancel or failure the CLOSE and REMOVE get 3 seconds on the
+upload's own connection; on a slow link they wait behind the writes already in ssh's buffers
+(#1888), so ssh is then ended and a new connection removes the file, only while it is still a
+regular file of that owner and no larger than the upload. An upload keeps its password and
+passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
+before it stops the helper; cleanup that can't be confirmed is reported as unconfirmed, with the
+path. Without the `fstat` answer, CLOSE and REMOVE share one 8-second budget on the upload's own connection. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never
 cut short by a cancel. The bytes sent are hashed and must match the artifact's SHA-256. Then

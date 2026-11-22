@@ -206,7 +206,8 @@ deleted file for a while.
   prompt, and only when the ssh put.gd started asks. Any other prompt gets no answer: a jump
   host's password prompt, a server's own keyboard-interactive text, a PIN. Only
   requests that sign in get the password and passphrase; checking the address learns only
-  whether a password is set, and put.gd's helper forgets both once it has signed in.
+  whether a password is set, and put.gd's helper forgets both once it has signed in (an upload keeps them until it ends, in
+  case removing a cancelled upload's partial file needs a new connection).
 - **Security keys** (FIDO, `-sk` keys) work as they do in a terminal: touch the key when it
   blinks. During **Test**, Settings' status line says "Touch your security key" while ssh waits
   for the touch. During an upload put.gd shows no such notice; a failed sign-in that waited for
