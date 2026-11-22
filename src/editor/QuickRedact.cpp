@@ -420,8 +420,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // another token of its own: a token ending its line took the two card lines
     // below it as one key. A hex or base64 run that holds a card itself is card
     // lines read as a key (#1846): it takes only more lines of card digits,
-    // which hold the misread cards (Luhn fails) it covers. A hex or base64 run
-    // after the card on its line is a token of its own, followed as any is.
+    // which hold the misread cards (Luhn fails) it covers, or a tail of hex
+    // digits. A hex or base64 run after the card on its line is a token of its
+    // own, followed as any is.
     // #1859: and only a line that a wrap would leave: right below, within about
     // a line's pitch (word boxes are shorter than the pitch), starting no
     // further right than the line above (an editor's wrap indent is up to four
@@ -465,7 +466,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
      if(last.length>0&&!last.dotted&&used+tail.size()>last.length*3/2)break;
-     if(ownLine){int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));if(count<13)break;}
+     if(ownLine){
+      // More card digits, or the hex run's own wrapped tail ("5ad015a3"), never words such as "SIGNING_HEX =".
+      static const QRegularExpression hexTail(QStringLiteral("^[0-9A-Fa-f]+[\"'`)\\]};,\u201D\u2019]*$"));
+      int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
+      if(count<13&&!(digit&&hexTail.match(tail).hasMatch()))break;
+     }
      else if(otherMatch(next.first().words,plain,candidates))break;
      {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
       // A JSON web token wrapped just after one of its dots starts its next line with "eyJ".

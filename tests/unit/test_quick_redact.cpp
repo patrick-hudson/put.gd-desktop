@@ -122,6 +122,8 @@ private slots:
    // ...a hex run after a card on its line keeps its wrapped tail...
    QTest::newRow("a hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 | 5ad015a3"<<QStringList{"card","key"}
     <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 5ad015a3"};
+   QTest::newRow("a short hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 | 0a9f86d08188"<<QStringList{"card","key"}
+    <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 0a9f86d08188"};
    // ...and an address whose dot recognition lost is still an address.
    QTest::newRow("a token ending its line takes no address that lost its dot")<<"Bearer "+token+" | ops@EXAMPLE COM"<<all<<QStringList{"key: "+token,"email: ops@EXAMPLE COM"};}
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
