@@ -163,6 +163,8 @@ private slots:
   QTest::newRow("AWS access key ID")<<"id = "+aws<<all<<QStringList{"key: "+aws};
   QTest::newRow("GitHub token")<<"value "+github<<all<<QStringList{"key: "+github};
   QTest::newRow("GitLab token")<<"use "+gitlab<<all<<QStringList{"key: "+gitlab};
+  {const auto split=QString("g")+" Lpat-"+"sFemwPgF-3ZHngBqpURT";
+   QTest::newRow("GitLab token read with its l as L, split after g")<<"4 GITLAB_TOKEN="+split<<all<<QStringList{"key: 4 GITLAB_TOKEN="+split};}
   // As recognition really returns them (#1428, the candidate pages measured on
   // fe838a950 and the realistic-token pages): long runs split into pieces with
   // misread characters, a separator lost or doubled, dashes read as other signs.
@@ -268,7 +270,26 @@ private slots:
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
-  QTest::newRow("hex digest run")<<"sha256 "+hexRun<<all<<QStringList{"key: sha256 "+hexRun};
+  QTest::newRow("hex run with no word about it")<<"value "+hexRun<<all<<QStringList{"key: value "+hexRun};
+  // #1895: Patrick's decoy page. A hex run beside a hash word is a digest; a secret word beside it wins.
+  {const auto sha1=QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab",sha256=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
+   QTest::newRow("a hex digest after its hash word stays visible")<<"sha256 "+hexRun<<all<<QStringList{};
+   QTest::newRow("a Git SHA cell stays visible")<<"Git SHA "+sha1<<all<<QStringList{};
+   QTest::newRow("a SHA-256 cell stays visible")<<"SHA-256 "+sha256<<all<<QStringList{};
+   QTest::newRow("a commit line stays visible")<<"commit "+sha1+" (HEAD -> nightly)"<<all<<QStringList{};
+   QTest::newRow("a digest with its algorithm in the word stays visible")<<"image@sha256:"+sha256<<all<<QStringList{};
+   QTest::newRow("a secret word beats a hash word")<<"SECRET_SHA256="+sha256<<all<<QStringList{"key: SECRET_SHA256="+sha256};
+   QTest::newRow("a signing key beside a digest stays covered")<<"signing key "+sha256+" sha256"<<all<<QStringList{"key: key "+sha256+" sha256"};}
+  QTest::newRow("a version is not an IP address")<<"Version string v5.8.4.103"<<all<<QStringList{};
+  QTest::newRow("a date and time is not a phone")<<"Date/time 2026-11-22 14:03:59.123"<<all<<QStringList{};
+  QTest::newRow("a ZIP+4 code is not a phone")<<"Room 555-B, Qty 1,234,567, ZIP 71674-4468"<<all<<QStringList{};
+  QTest::newRow("an ISBN-13 is not a phone or card")<<"ISBN-13 978-4-579-64374-5 and 9784579643745"<<all<<QStringList{};
+  QTest::newRow("a phone after a label's colon is still a phone")<<"Tel:+1 202 555 0143"<<all<<QStringList{"phone: Tel:+1 202 555 0143"};
+  {const auto stripeMask=QString("sk")+"_li"+"ve_"+QString(24,'X'),awsMask=QString("AK")+"IA"+QString(16,'X'),partly=QString("sk")+"_li"+"ve_"+"51HqZK"+QString(18,'X');
+   QTest::newRow("a placeholder Stripe key stays visible")<<"Placeholder key "+stripeMask<<all<<QStringList{};
+   QTest::newRow("a placeholder AWS key stays visible")<<"Placeholder AWS "+awsMask<<all<<QStringList{};
+   QTest::newRow("asterisks and zeros are placeholders too")<<"token "+QString(32,'*')+" id "+QString(32,'0')<<all<<QStringList{};
+   QTest::newRow("a partly masked key stays covered")<<"key "+partly<<all<<QStringList{"key: "+partly};}
   QTest::newRow("base64 run")<<"value "+base64Run<<all<<QStringList{"key: value "+base64Run};
   QTest::newRow("a long path is not a run")<<"cd /usr/share/tesseract-ocr/5/tessdata/configs"<<all<<QStringList{};
   QTest::newRow("only the categories asked for")<<"mail a@example.com or call +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
@@ -301,6 +322,25 @@ private slots:
   // ...and a wide gap between words above is no character width.
   auto spread=page(0,0);spread[2].rect.translate(400,0);spread.last().rect.translate(60,0);
   QCOMPARE(found(spread,QStringList{"key"}),QStringList{"key: "+token});
+ }
+ // #1895: a table's label cell a column away from its value is not part of the token.
+ void aLabelCellStaysOutOfTheToken() {
+  const auto aws=QString("AK")+"IA"+"IOSFODNN7"+"EXAMPLE";
+  auto page=words("AWS "+aws);
+  QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: AWS "+aws});
+  page.last().rect.translate(150,0);
+  QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+aws});
+ }
+ // #1894: in an editor's .env file the lines after a token are new assignments, numbered or not, never
+ // the token's wrapped remainder; a remainder with no "=" inside still is.
+ void aNewAssignmentIsNoWrappedRemainder() {
+  const auto secret=QString("wJalrXUtnFEMI/K7MDENG/")+"bPxRfiCYzK9q2Lm4ab";
+  const auto session=QString("SESSION_SECRET=")+"q9Lm2Vx7Tz4Rb8Nc1Kp6";
+  QCOMPARE(found(words("3 AWS_SECRET_ACCESS_KEY="+secret+" | 4 "+session+" | 5 PORT=8080"),QStringList{"key"}).first(),"key: 3 AWS_SECRET_ACCESS_KEY="+secret);
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | "+session),QStringList{"key"}).first(),"key: AWS_SECRET_ACCESS_KEY="+secret);
+  // A line number recognition misread as a sign ("&" for 8) still starts a new line.
+  QCOMPARE(found(words("7 AWS_SECRET_ACCESS_KEY="+secret+" | & "+session),QStringList{"key"}).first(),"key: 7 AWS_SECRET_ACCESS_KEY="+secret);
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5=="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5=="});
  }
  void namesAndListsMatchTheirSpellings_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
