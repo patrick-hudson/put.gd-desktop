@@ -87,7 +87,7 @@ nothing on the server.
 | `ssh_key_missing`, `ssh_key_unreadable` | `field` (`keyFile`) | The file chosen in **SSH key** isn't there, or isn't a file put.gd can read. Choose the private key again, or leave SSH key empty |
 | `ssh_key_public` | `field` (`keyFile`) | **SSH key** names a public key. Choose the private key, usually the same name without `.pub`; picking a `.pub` in Settings takes the private key next to it when there is one |
 | `ssh_key_putty` | `field` (`keyFile`) | **SSH key** names a PuTTY key, which OpenSSH can't read. Convert it with `puttygen key.ppk -O private-openssh -o key` and choose the converted file |
-| `ssh_key_permissions` | `field` (`keyFile`) for the chosen key | Other users can read the key file, so ssh refuses it. Run `chmod 600` on the key file's full path; the message names only the file. Also given when ssh skipped a key from `~/.ssh/config` for the same reason |
+| `ssh_key_permissions` | `field` (`keyFile`) for the chosen key | The key is yours and other users have some access to it (any group or other permission bit), so ssh refuses it. Run `chmod 600` on the key file's full path; the message names only the file. Also given when ssh skipped a key from `~/.ssh/config` for the same reason |
 | `ssh_needs_one_time_code` | none | The server asks for keyboard-interactive sign-in (a one-time code, or a password typed into its own prompt), or something else put.gd can't answer. Sign in with a key or your SSH agent, or ask the admin to allow password authentication |
 | `ssh_host_not_found` | none | ssh couldn't find the server; check its name or the Host alias |
 | `ssh_connection_refused` | none | The server refused the connection on its port; check the port and that its SSH service runs |

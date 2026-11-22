@@ -193,14 +193,16 @@ overrides undone (`host::environment()`), and these options:
 `BatchMode` stays off because it disables askpass. Keyboard-interactive is off so a server's
 own prompts never reach askpass. A check of a recorded upload adds
 `GlobalKnownHostsFile=/dev/null` (see Receipts). The `-i` pair is there only when the destination names a key file (#1892): ssh then uses only
-the identities the settings name (this key, `IdentityFile` keys and configured certificates),
+the identities the settings name (this key, `IdentityFile` keys, configured certificates and
+certificates loaded from a `-cert.pub` next to a key),
 in ssh's own order, and no other agent key. Before a new connection starts ssh, and in
 `setup.inspectAccount` before it runs `ssh -G`, the worker checks the file
 (`sftp::keyFileProblem`: missing, not a readable regular file, a public or PuTTY key, or a key
 owned by the user with any group or other permission bit, which ssh's `sshkey_perm_ok` refuses)
 and fails with an `ssh_key_*` code and `details.field` `keyFile`; Test reports that as a failed
-sign-in step without connecting. Trust runs only the host-key probe, which offers no key, so it
-doesn't check the file. These
+sign-in step without connecting. Trust resolves the address and runs the host-key probe, which
+offers no key, so it doesn't check the file. The check reads only the file's type, first bytes
+and mode: a private key with corrupt contents passes it and fails in ssh. These
 messages name the key file, never its folder. `ssh -G` with the same destination and `-i` arguments gives the resolved host, port,
 user, `HostKeyAlias`, the key files that exist (tilde-expanded), `IdentityAgent`, whether a
 ProxyJump or ProxyCommand is set (never its value), and the user's `UserKnownHostsFile` and

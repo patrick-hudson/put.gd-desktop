@@ -55,9 +55,9 @@ progress and cancel cleanly. It links no SSH library.
    to ssh as `-i <file>` with `IdentitiesOnly=yes`, so ssh uses only the keys your settings name,
    this one included, and not every other key in your agent. If you pick or type a `.pub` file and
    the private key without `.pub` is next to it, put.gd takes that; otherwise the field says it
-   is a public key. The field says what to fix when ssh couldn't use the
+   is a public key (or that it isn't there or can't be read). The field says what to fix when ssh couldn't use the
    file: it isn't there, it is a public key, it is a PuTTY key (convert it with
-   `puttygen key.ppk -O private-openssh -o key`), or other users can read it (ssh
+   `puttygen key.ppk -O private-openssh -o key`), or other users have any access to it (ssh
    refuses such a key: run `chmod 600` on the key file's full path, the one in SSH key). A path with `%` or `${` in it isn't taken,
    because ssh would read those as its own placeholders.
 
@@ -238,8 +238,8 @@ deleted file for a while.
   `openssh_agent` and `gnupg/S.gpg-agent.ssh`. An `IdentityAgent` in `~/.ssh/config` wins.
 - **Key files** are the one chosen in **SSH key**, else the ones ssh tries on its own or that
   `IdentityFile` names. With a chosen key, ssh uses only the identities your settings name,
-  this one included (`IdentitiesOnly=yes`): `IdentityFile` lines and a configured certificate
-  still count, and ssh may try those first; other agent keys are not offered. An encrypted key needs its passphrase
+  this one included (`IdentitiesOnly=yes`): `IdentityFile` lines, configured certificates and
+  certificates ssh loads from a `-cert.pub` next to a key still count, and ssh may try those first; other agent keys are not offered. An encrypted key needs its passphrase
   in **Key passphrase**, unless it is already in your agent.
 - **Password.** put.gd answers ssh's own password prompt for this server
   (`alice@files.example.com's password:`) once, through a private socket only that connection
@@ -268,7 +268,7 @@ nothing asks again.
 | `ssh_host_unknown_key`, `ssh_trusted_key_changed`, `ssh_host_key_changed`, `ssh_host_key_mismatch`, `ssh_host_key_known`, `ssh_known_hosts_off`, `ssh_host_alias_pattern` | See [Host keys](#host-keys) |
 | `ssh_auth_failed` | The message says which: a key that needs its passphrase, a server that asks for a password, no agent and no key or password at all, or credentials it refused. With a chosen **SSH key**, check User and that the key's public half is in that user's `~/.ssh/authorized_keys` on the server (and Key passphrase, when ssh asked for one) |
 | `ssh_key_missing`, `ssh_key_unreadable`, `ssh_key_public`, `ssh_key_putty` | The file in **SSH key** isn't a private key ssh can read; the message says which and what to choose instead |
-| `ssh_key_permissions` | Other users can read the key, so ssh refuses it. Run `chmod 600` on the key file's full path (the one in SSH key, or in `~/.ssh/config`) |
+| `ssh_key_permissions` | The key is yours and other users have some access to it (any group or other permission bit), so ssh refuses it. Run `chmod 600` on the key file's full path (the one in SSH key, or in `~/.ssh/config`) |
 | `ssh_needs_one_time_code` | The server wants keyboard-interactive sign-in. Sign in with a key or your agent, or ask the admin to allow password authentication |
 | `ssh_failed` | ssh stopped for another reason; the message gives its exit status. Run `ssh -v <server>` in a terminal to see why |
 | `ssh_host_not_found`, `ssh_connection_refused`, `ssh_connection_timeout` | Check the server name, port and network |
@@ -293,7 +293,7 @@ the form offers), **Create folder**, Store (for what a person typed into Passwor
 passphrase) and **Clear**, and add an SFTP destination, as a person does. They carry no password
 or passphrase. `setup.inspectAccount`, `setup.trustHostKey` and `setup.createFolder` (the MCP
 tool `sftp_destination_setup`) answer a `setupId` at once, whose result `setup.inspect` gives;
-they resolve the address (or answer the chosen key file's problem, with `details.field` `keyFile`, before running `ssh -G`), trust a key by its exact fingerprint and
+they resolve the address (or, when the chosen key file fails put.gd's own file check, answer that error with `details.field` `keyFile` before running `ssh -G`), trust a key by its exact fingerprint and
 create the saved folder (up to 4096 bytes, with the path the test reported) for a saved
 destination. A trust records the
 fingerprint in the destination itself. A password or key passphrase is stored with
