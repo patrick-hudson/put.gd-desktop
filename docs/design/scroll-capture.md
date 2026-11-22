@@ -500,11 +500,12 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   and its border can be left in the image where it arrived. A line along the frame's top
   or bottom edge (Firefox's content edge on Cinnamon, one row inside the region) is mostly
   kept out ([#1796](https://github.com/patrick-hudson/put.gd-desktop/issues/1796)). After
-  the page moves, the tracker checks a waiting frame's textured cells in its first and last
-  8-row blocks, counting only cells whose page row is in sight and not held back where the
-  next frame shows it. When at least 90% of those cells, and at least 16, look the same at
-  the same place of the screen and different where their page row moved to, the matching
-  cells are not written. Cells held back there keep their piece of the line (the scroll
+  the page moves, the tracker checks each row of a waiting frame's first and last 8-row
+  blocks on its own: of the row's textured cells still waiting to be written, it counts
+  only those whose page row is in sight and not held back where the next frame shows it.
+  When at least 90% of those cells, and at least 16, look the same at the same place of the
+  screen and different where their page row moved to, that row's matching cells are not
+  written. Cells held back there keep their piece of the line (the scroll
   bar's column), and so does a pinned part drawn from the first screen (Firefox's link
   bubble at the bottom).
 - **A header that shows up while the steps are over half the frame** leaves page rows
