@@ -764,6 +764,11 @@ other tool active it does not. The user's side is in the
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
     documentation example keys are matched like real keys.
+  - Recognition confusions inside IP addresses (#1913): `@` reads as `0` between digits or dots, and
+    in IPv6 groups `@` and `i` read as `0` and `1`, only where every group stays four characters or
+    fewer. A wrapped token's next line ends at a bare `#` or `//` word (#1914), and a quoted value runs
+    across words to its closing quote (#1915). A hash whose label recognition reads too far from it can
+    still be covered.
   - Not secrets (#1894, #1895): a prefixed token whose body is mask characters; a hex run with a
     hash word on its line (`sha`, `sha1` to `sha512`, `md5`, `commit`, `digest`, `checksum`, `hash`,
     `etag`, `integrity`, `blake2b`, `blake3`, a label cell or `sha256:` included) and no secret word
