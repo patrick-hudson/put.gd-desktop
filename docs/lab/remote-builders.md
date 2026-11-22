@@ -789,7 +789,7 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   waiting for it, and never hold nothing while you wait. The tool's refusal says
   so too.
 - Heavy work checks the lease mechanically. `rr_loop.py`, `race_loop.py`,
-  `scroll_tracker_score.py` (except `--reuse`), `fluidity_run.py`,
+  `scroll_tracker_score.py`, `fluidity_run.py`,
   `record_run.py` and the [weekly stress lane](#weekly-stress-lane-on-k72) call
   `desktop_lock.refuse_while_quiet()` and exit without starting while another
   session holds the host's lease. Held, blocked and stale leases count; a free or
