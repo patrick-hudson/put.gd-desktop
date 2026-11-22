@@ -436,13 +436,15 @@ playhead.
   reference that sideways travel carries along, and only while the last 40 ms of motion are
   mostly vertical); passing over a grip while moving horizontally does not end it. There is
   no skimming while playing or during any drag.
-- **What the viewer shows.** The viewer keeps its picture until an exact decoded frame
-  with its covers applied arrives; it never shows a thumbnail, so a skim frame is never
-  uncovered. The skim line and its flag move at once, and the flag reads "≈0:05.3"
+- **What the viewer shows.** The viewer never shows a thumbnail, and every skim frame it
+  shows has its covers applied. While the pointer moves it can show a nearby decoded frame
+  (one within 2 strip px or 250 ms of the skim time, with no cover starting or ending in
+  between); otherwise it keeps its picture until such a frame or the exact one arrives. The skim line and its flag move at once, and the flag reads "≈0:05.3"
   until the exact frame for that time is shown. Every change of the skim time
   to a time that is not cached can queue a decode in the window's skim worker, which keeps one
-  decode in flight and one queued request: a newer time replaces the queued one without
-  stopping the decode in progress, and that decode hands over the frame it has reached.
+  decode in flight and one queued request: a newer time replaces the queued one, and the decode in
+  progress can stop early and hand over the frame it has reached, which the viewer shows if
+  it passes the nearby-frame and cover checks above.
   Separately, the timeline's `skimRested` notifications, which also ask for an exact frame, are
   throttled to one every 50 ms while the pointer moves and one more 40 ms after it rests; a
   repeated time is skipped. An answer
@@ -661,7 +663,8 @@ These were weighed and left as they are:
   snapshots the proposals and opens the chooser or uploads. A refusal between the press and the release opens no chooser and
   saves nothing, and the status line says "No copy was saved: … Check the edits, then save
   again." Once a file is chosen the copy is saved only after the resident has answered every
-  proposal made before the press; the 2 s wait starts then, and if any of them is refused or
+  proposal made up to the click (the field committed at the press and any nudge or strength
+  change the click flushed); the 2 s wait starts then, and if any of them is refused or
   2 s pass without an answer, nothing is saved. A typed time that **Upload** commits is
   treated the same way: if its change is refused before you release the button, nothing is
   uploaded. `saveCopyDialog` answers `recording_state` when it detects a refusal, or when a
