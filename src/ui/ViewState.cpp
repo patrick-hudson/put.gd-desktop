@@ -11,7 +11,9 @@ const QStringList& s3Keys() {static const QStringList value{"linkMode","linkVali
 const QStringList& protonKeys() {static const QStringList value{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};return value;}
 const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};return value;}
 const QStringList& r2Keys() {static const QStringList value{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
-const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():protonKeys();}
+// Nextcloud and WebDAV (#1872): addresses, the folder, the plain HTTP switch and the account's name.
+const QStringList& davKeys() {static const QStringList value{"server","folder","allowInsecureHttp","accountName","address","linkBase"};return value;}
+const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():provider=="nextcloud"||provider=="webdav"?davKeys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
 const QStringList& uploaderScalars() {static const QStringList value{"allowInsecureHttp","body","connectTimeoutMs","data","dataSecret","deletionUrl","errorMessage","fileFormName","requestMethod","requestTimeoutMs","requestUrl","responseUrl","thumbnailUrl"};return value;}
@@ -89,7 +91,7 @@ bool providerSettings(const QString& provider,const QJsonValue& settings){return
 bool safeProfile(const QJsonValue& value){
  if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
  const auto profile=value.toObject();const auto provider=profile["provider"].toString();
- return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http"}.contains(provider)
+ return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http","nextcloud","webdav"}.contains(provider)
   &&providerSettings(provider,profile["settings"])&&scalars(profile["credentials"],{"mode","reference"});
 }
 bool safeDocument(const QJsonValue& value){
@@ -124,7 +126,7 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
  if(editor.contains("r2")&&!scalars(editor["r2"],{"accountId","jurisdiction"},true))return false;
  if(!editor.contains("providers"))return true;
- if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http"}))return false;
+ if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http","nextcloud","webdav"}))return false;
  const auto providers=editor["providers"].toObject();
  for(auto it=providers.begin();it!=providers.end();++it){
   if(!fields(it.value(),{"settings","credentials","editor"}))return false;
@@ -171,7 +173,7 @@ bool settingsState(const QJsonObject& s){
  if(!s["setupJobs"].isArray())return false;
  for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint"},true))return false;auto job=v.toObject();
   // The connection a Test started with (#1692): a SHA-256 in lowercase hex, never settings.
-  if(job.contains("fingerprint")&&!QRegularExpression(QRegularExpression::anchoredPattern("[0-9a-f]{64}")).match(job["fingerprint"].toString()).hasMatch())return false;if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
+  if(job.contains("fingerprint")&&!QRegularExpression(QRegularExpression::anchoredPattern("[0-9a-f]{64}")).match(job["fingerprint"].toString()).hasMatch())return false;if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut"}.contains(job["kind"].toString()))return false;}
  return true;
 }
 bool historyState(const QJsonObject& s){if(s.contains("savedPath")&&(!s["savedPath"].isString()||s["savedPath"].toString().contains(QChar(0))||(!s["savedPath"].toString().isEmpty()&&!QDir::isAbsolutePath(s["savedPath"].toString()))))return false;for(const auto& key:QStringList{"gridMode","showCancelled","detailsOpen","detailsFromGallery","detailsWanted"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId","detailsOpen","detailsFromGallery","detailsWanted","galleryScroll","listScroll","savedPath"})||!fields(s["query"],filterKeys()+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys(),true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;for(const auto& key:QStringList{"galleryScroll","listScroll"})if(s.contains(key)&&(!s[key].isDouble()||s[key].toDouble()<0||s[key].toDouble()>2147483647||std::floor(s[key].toDouble())!=s[key].toDouble()))return false;return true;}

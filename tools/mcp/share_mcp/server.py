@@ -1201,6 +1201,52 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                 params[key] = item
         return await adapter.call('ui.r2Destination', params)
 
+    @server.tool(annotations=effect)
+    async def drive_dav_destination(action: str, field: str = OMITTED, value: str = OMITTED, label: str = OMITTED, provider: str = OMITTED, profile_id: str = OMITTED) -> Json:
+        """Drive the Nextcloud or WebDAV destination form in the open Destinations page as a user does (#1872). Each action takes only its own fields; omit the others. inspect (optional profile_id) reads the form: provider, server, folder and accountName (Nextcloud), address and linkBase (WebDAV), allowInsecureHttp and plainHttpShown, signIn (idle, starting, waiting, browserFailed), signInUrl (the Nextcloud page put.gd opened for Login Flow v2 while signIn is waiting: open it in a browser, log in and choose Grant access to finish), account (the Signed in as line), appPasswordShown, createFolderOffered, notice (a Test's warnings), actions (which buttons are usable), storedHint, saved, status, testEnabled and setupRunning. set (field, value, optional profile_id) types into server, folder, address or linkBase and leaves the field (a pasted Nextcloud Files or share link becomes the server's base address), or sets allowInsecureHttp to true or false. add (label, provider nextcloud or webdav) adds a destination as Add destination does. signIn presses Sign in…; cancelSignIn, openBrowser and signOut press theirs (signing out revokes put.gd's app password on the server). appPassword (value show or hide) shows the Login name and App password fields under Credentials, where a person types an app password; the CLI and this helper never carry raw credentials, so agents sign in with signIn (Login Flow v2) instead. createFolder presses Create folder after a WebDAV Test found the folder missing; test presses Test upload and link; unlock presses Unlock saved credentials. A control that isn't shown or usable answers control_unavailable. Carries no credentials. Open Destinations first (ui.show destinations)."""
+        allowed = {'inspect': {'profile_id'}, 'set': {'field', 'value', 'profile_id'}, 'add': {'label', 'provider'}, 'appPassword': {'value', 'profile_id'},
+                   'signIn': {'profile_id'}, 'cancelSignIn': {'profile_id'}, 'openBrowser': {'profile_id'}, 'signOut': {'profile_id'},
+                   'createFolder': {'profile_id'}, 'test': {'profile_id'}, 'unlock': {'profile_id'}}
+        given = {name for name, item in (('field', field), ('value', value), ('label', label), ('provider', provider), ('profile_id', profile_id)) if item is not OMITTED}
+        field, value, label, provider, profile_id = (None if item is OMITTED else item for item in (field, value, label, provider, profile_id))
+        if (action not in allowed or not given <= allowed[action] or
+                (action == 'set' and (field not in {'server', 'folder', 'address', 'linkBase', 'allowInsecureHttp'} or not isinstance(value, str) or len(value) > 2048)) or
+                (action == 'add' and (label is None or not identifier(label, 128) or provider not in {'nextcloud', 'webdav'})) or
+                (action == 'appPassword' and value not in {'show', 'hide'}) or
+                (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'action': action}
+        for key, item in (('field', field), ('value', value), ('label', label), ('provider', provider), ('profileId', profile_id)):
+            if item is not None:
+                params[key] = item
+        return await adapter.call('ui.davDestination', params)
+
+    @server.tool(annotations=effect)
+    async def sign_in_destination(profile_id: str, expected_revision: str) -> Json:
+        """Start signing a saved Nextcloud destination in through Nextcloud Login Flow v2 (#1872) and return its setupId. Poll get_setup_job: while it runs, its event is {"event": "signIn", "url": ...}, the Nextcloud page to open in a browser, log in at and Grant access on. The job then completes with the account (userId, accountName, sharing, sharePasswordEnforced, shareExpiryDays); the app password goes only to the destination's credential storage (keychain or session). Settings shows Signed in as accountName once the settings carry it: patch_configuration settings.accountName, or use drive_dav_destination signIn, which applies it. Stop a waiting sign-in with cancel_setup_job. The sign-in times out after 20 minutes."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.connectAccount', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=effect)
+    async def sign_out_destination(profile_id: str, expected_revision: str) -> Json:
+        """Sign a Nextcloud destination out (#1872): revoke put.gd's app password on the server, then forget it in the keychain or session. Returns a setupId; the job's result says revoked, and revokeError when the server could not be reached (the password then stays valid on the server until revoked there). For WebDAV it forgets the stored password."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.signOut', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=effect)
+    async def create_destination_folder(profile_id: str, expected_revision: str) -> Json:
+        """Create a Nextcloud or WebDAV destination's folder on the server (#1872), as Create folder does after a Test found it missing. Returns a setupId; the result says created (false when it already existed)."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.createFolder', {'profileId': profile_id, 'expectedRevision': expected_revision, 'input': {'name': 'folder'}})
+
+    @server.tool(annotations=effect)
+    async def cancel_setup_job(id: str) -> Json:
+        """Ask a running setup job to stop, such as a Nextcloud sign-in waiting for the browser (#1872). Answers cancelRequested; the job then ends on its own (a cancelled sign-in fails with nextcloud_signin_cancelled)."""
+        return await adapter.call('setup.cancel', {'id': id}) if identifier(id) else invalid()
+
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,
                                    folder: str | None = None, operation_id: str | None = None,

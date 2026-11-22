@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "HistoryService.h"
 #include "StorageLocations.h"
 #include "DestinationTestJournal.h"
 #include "core/ImagePages.h"
@@ -1541,12 +1542,14 @@ Operation OperationService::run(Job job) {
   // (#1399). A found link is reported, never made twice; a changed or missing file
   // ends the step. A revoke clears the intent, so it is never repeated here, and a
   // new operation (`job.acquire`) never inspects.
+  // Nextcloud (#1872): the share ID an earlier step recorded goes with each request, as the last step left it.
+  auto carried=HistoryService::recordedShare(item.receipt,current.value("shareProgress").toObject(),QString());
   for(QString action=item.shareStatus=="unknown"?"inspect":"create";!action.isEmpty();) {
    op.phase="sharing";item.phase="sharing";if(!saveItem(item))return op;
    const auto shareId=uuid();
    // A diagnostics package's share link expires (#123).
    const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
-   QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
+   QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",carried},{"options",options}};
    if(auto e=refused(store.saveSharing(doc))){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
    const auto path=root_+"/history.sqlite";
    auto checkpoint=[path,&doc,refused](const QJsonObject& progress,std::function<void(Error)> ack){
@@ -1560,6 +1563,8 @@ Operation OperationService::run(Job job) {
    {auto fields=itemFields(op,item);fields["action"]=request.action;fields["status"]=result.status;if(result.error)fields["error"]=logging::errorFields(result.error);logging::write(providerLog(op.destination.providerId),result.status=="shared"||result.status=="private"?QtInfoMsg:QtWarningMsg,"Sharing finished",fields);}
    doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
    if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
+   // What this step left is what the next one starts from: a share ID it found gone is gone.
+   carried=HistoryService::recordedShare(item.receipt,result.progress,QString());
    if(auto e=refused(store.saveSharing(doc))){
     item.error=e;op.advance(OperationState::Partial);
     QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);

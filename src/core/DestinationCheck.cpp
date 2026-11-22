@@ -14,6 +14,9 @@ QStringList connectionKeys(const QString& provider) {
  // A custom uploader: its request, and how the reply gives the link and the deletion URL
  // the test followed, and the file types it accepts, which decide what the test sends. A
  // thumbnail and the error message text are not.
+ // Nextcloud and WebDAV (#1872): where files go and the account. The account name is only shown.
+ if(provider=="nextcloud")return {"server","folder","allowInsecureHttp"};
+ if(provider=="webdav")return {"address","linkBase","allowInsecureHttp"};
  if(provider=="custom-http")return {"requestMethod","requestUrl","allowInsecureHttp","body","fileFormName","headers","parameters","arguments","secrets","data","dataSecret","responseUrl","deletionUrl","accepts"};
  return {};
 }

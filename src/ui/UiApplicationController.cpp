@@ -175,7 +175,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","historyQr","fileDialog","customUploader","r2Destination","errorLog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","historyQr","fileDialog","customUploader","r2Destination","davDestination","errorLog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
   else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"||name=="historyQr"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
   // #259: the open, save and folder choosers, as their buttons open them.
   else if(name=="fileDialog"){
@@ -204,6 +204,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   // #1678: the Cloudflare R2 form in Destinations and Move to Cloudflare R2; it carries no credentials.
   // It acts on Destinations as shown, never opening it: inspect changes nothing on screen.
   else if(name=="r2Destination"){main_->settings()->r2Command(params,answer);return;}
+  else if(name=="davDestination"){main_->settings()->davCommand(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }

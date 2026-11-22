@@ -170,6 +170,23 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("r2Destination",p,std::move(reply));return;
  }
+ // #1872: the Nextcloud and WebDAV forms in the open Destinations page, edited and signed in as a
+ // user does. Settings values and button presses only, never a credential.
+ if(method=="ui.davDestination") {
+  static const QHash<QString,QStringList> allowed{{"inspect",{"profileId"}},{"set",{"field","value","profileId"}},{"add",{"label","provider"}},{"appPassword",{"value","profileId"}},
+   {"signIn",{"profileId"}},{"cancelSignIn",{"profileId"}},{"openBrowser",{"profileId"}},{"signOut",{"profileId"}},{"createFolder",{"profileId"}},{"test",{"profileId"}},{"unlock",{"profileId"}}};
+  static const QStringList fieldNames{"server","folder","address","linkBase","allowInsecureHttp"};
+  const auto action=p["action"].toString();
+  bool valid=p["action"].isString()&&allowed.contains(action);
+  for(auto it=p.begin();valid&&it!=p.end();++it)valid=it.key()=="action"||allowed.value(action).contains(it.key());
+  if(valid&&action=="set")valid=fieldNames.contains(p["field"].toString())&&p["value"].isString()&&p["value"].toString().size()<=2048;
+  if(valid&&action=="add")valid=string(p,"label",128)&&(p["provider"]=="nextcloud"||p["provider"]=="webdav");
+  if(valid&&action=="appPassword")valid=p["value"]=="show"||p["value"]=="hide";
+  if(valid&&p.contains("profileId"))valid=string(p,"profileId",64);
+  if(!valid){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("davDestination",p,std::move(reply));return;
+ }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
@@ -356,7 +373,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
   if(method=="delete.prepare")history_.prepareDelete(ids,reply);else history_.deleteConfirmed(ids,p["acknowledgement"].toString(),reply);return;
  }
- if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword"}.contains(method)) {
+ if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword","setup.signOut"}.contains(method)) {
   const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword";
   if(!fields(p,hasInput?QStringList{"profileId","expectedRevision","input"}:QStringList{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()||(hasInput&&!p["input"].isObject())){reply(invalid(),{});return;}
   if(!setup_){reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
@@ -375,10 +392,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   else setup_->revealCredentialSecret(p["profileId"].toString(),p["expectedRevision"].toString(),std::move(reply));
   return;
  }
- if(method=="setup.inspect") {
+ if(method=="setup.inspect"||method=="setup.cancel") {
   if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}
   if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
-  setup_->inspect(p["id"].toString(),std::move(reply));return;
+  if(method=="setup.cancel")setup_->cancel(p["id"].toString(),std::move(reply));else setup_->inspect(p["id"].toString(),std::move(reply));return;
  }
  // A diagnostics package, always saved locally first, then optionally
  // uploaded to a working destination (#74 §3, #123, docs/design/diagnostics.md).
@@ -597,7 +614,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
   {"history.copyText","text_recognition"},{"text.recognize","text_recognition"},
   {"history.share","share_link"},{"history.revokeLink","share_link"},{"history.openLink","share_link"},
   {"history.unlockLinkCredentials","credentials"},{"history.unlockCredentials","credentials"},{"setup.unlockCredentials","credentials"},{"setup.storeCredentials","credentials"},{"setup.storeSharePassword","credentials"},
-  {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},
+  {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},{"setup.signOut","destination_setup"},
   {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
   {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
