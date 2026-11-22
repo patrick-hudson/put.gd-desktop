@@ -11,7 +11,8 @@ const QStringList& s3Keys() {static const QStringList value{"linkMode","linkVali
 const QStringList& protonKeys() {static const QStringList value{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};return value;}
 const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};return value;}
 const QStringList& r2Keys() {static const QStringList value{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
-const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():protonKeys();}
+const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint"};return value;}
+const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():provider=="sftp"?sftpKeys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
 const QStringList& uploaderScalars() {static const QStringList value{"allowInsecureHttp","body","connectTimeoutMs","data","dataSecret","deletionUrl","errorMessage","fileFormName","requestMethod","requestTimeoutMs","requestUrl","responseUrl","thumbnailUrl"};return value;}
@@ -89,7 +90,7 @@ bool providerSettings(const QString& provider,const QJsonValue& settings){return
 bool safeProfile(const QJsonValue& value){
  if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
  const auto profile=value.toObject();const auto provider=profile["provider"].toString();
- return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http"}.contains(provider)
+ return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http","sftp"}.contains(provider)
   &&providerSettings(provider,profile["settings"])&&scalars(profile["credentials"],{"mode","reference"});
 }
 bool safeDocument(const QJsonValue& value){
@@ -124,7 +125,7 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
  if(editor.contains("r2")&&!scalars(editor["r2"],{"accountId","jurisdiction"},true))return false;
  if(!editor.contains("providers"))return true;
- if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http"}))return false;
+ if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http","sftp"}))return false;
  const auto providers=editor["providers"].toObject();
  for(auto it=providers.begin();it!=providers.end();++it){
   if(!fields(it.value(),{"settings","credentials","editor"}))return false;

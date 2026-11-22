@@ -8,7 +8,7 @@ import time
 
 # Every executable put.gd ships (cmake/Executables.cmake and the launcher): a dump or a window of any of them is put.gd's.
 PUTGD_COMMS = ('putgd', 'putgd-launcher', 'putgd-cli', 'putgd-ui', 'putgd-record', 'putgd-region', 'putgd-capture', 'putgd-ocr',
-               'putgd-clipboard-keeper', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker')
+               'putgd-clipboard-keeper', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'putgd-sftp-worker', 'putgd-sftp-askpass')
 
 
 def putgd_processes():

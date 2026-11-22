@@ -637,7 +637,7 @@ QJsonObject Settings::profileForDestination(const QJsonObject& destination, cons
     // put.gd can't check, so those never move to another destination.
     // S3's addressing (path or virtual-hosted) decides the host a request goes to, so it is part of the place (#1778).
     static const QHash<QString, QStringList> place{{"s3", {"endpoint", "addressing", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
-                                                    {"backblaze-b2", {"apiUrl", "bucket"}}};
+                                                    {"backblaze-b2", {"apiUrl", "bucket"}}, {"sftp", {"server", "user", "folder"}}};
     const auto value = [](const QJsonObject& settings, const QString& key) {
         auto text = settings[key].toString().trimmed();
         if (key == "addressing") {

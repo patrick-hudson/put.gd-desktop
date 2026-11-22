@@ -47,6 +47,8 @@ include(cmake/WorkerExchange.cmake)
 include(cmake/B2.cmake)
 # The custom HTTP uploader destination.
 include(cmake/Http.cmake)
+# SFTP destination (#1871)
+include(cmake/Sftp.cmake)
 # The crash handler and debug splitting for every product binary.
 include(cmake/ProductBinaries.cmake)
 # The file-manager menu plugins.
@@ -88,6 +90,8 @@ include(cmake/Proton.cmake)
 include(cmake/B2Tests.cmake)
 # The custom HTTP uploader tests.
 include(cmake/HttpTests.cmake)
+# SFTP destination tests (#1871)
+include(cmake/SftpTests.cmake)
 # The scroll-capture stitcher, control loop and helper session tests.
 include(cmake/TestsScroll.cmake)
 # Package metadata.

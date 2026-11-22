@@ -40,8 +40,9 @@ ALLOWED = {
     'storage/worker': {'core'},
     'storage/b2': {'core', 'secrets', 'storage/worker'},
     'storage/http': {'core', 'secrets', 'storage/worker'},
-    'storage/proton': {'core'},
+    'storage/proton': {'core', 'storage/worker'},
     'storage/s3': {'core', 'ipc', 'secrets', 'storage/worker'},
+    'storage/sftp': {'core', 'secrets', 'storage/worker'},
     'app': {'client', 'core', 'ipc', 'secrets'},
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
@@ -49,7 +50,7 @@ ALLOWED = {
     'ocr': {'core', 'ipc'},
     'cli': {'core'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
-             'storage/b2', 'storage/http', 'storage/proton', 'storage/s3', 'ui'},
+             'storage/b2', 'storage/http', 'storage/proton', 'storage/s3', 'storage/sftp', 'ui'},
 }
 
 # (including file, included module): why that file may still do it.
@@ -69,6 +70,7 @@ TOLERATED = {
     ('src/platform/x11/X11SourceAdapter.cpp', 'ui'): 'the X11 adapter opens the shared region overlay',
     ('src/platform/x11/X11SourceAdapter.h', 'ui'): 'the X11 adapter opens the shared region overlay',
     ('src/ui/CustomUploaderPanel.cpp', 'storage/http'): 'the custom uploader form reads .sxcu files and names secret values with the provider\'s rules',
+    ('src/ui/SftpPanel.cpp', 'storage/sftp'): 'the SFTP form reads a pasted address and checks its fields with the provider\'s rules',
     ('src/ui/EditorWindow.h', 'editor'): 'the editor window hosts the canvas; editor and ui are not yet split',
     ('src/ui/ImageEditor.cpp', 'editor'): 'the image editor drives the edit document; editor and ui are not yet split',
     ('src/ui/QuickRedactRunner.h', 'editor'): 'the editor window runs Quick redact matching off its thread; editor and ui are not yet split',

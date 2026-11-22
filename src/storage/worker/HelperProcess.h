@@ -15,9 +15,10 @@
 #include <unistd.h>
 #include <vector>
 namespace putgd {
-// The Proton helper process and its request and answer pipes. Unlike a QProcess it belongs
-// to no thread: a helper started when an action is invoked is handed to the operation
-// that then uses it. One thread uses it at a time. Its error output is discarded.
+// A long-lived helper process (Proton's, and the SFTP worker's, #1871) and its request and
+// answer pipes. Unlike a QProcess it belongs to no thread: a helper started when an action is
+// invoked is handed to the operation that then uses it. One thread uses it at a time. Its
+// error output is discarded.
 class HelperProcess {
 public:
  HelperProcess()=default;

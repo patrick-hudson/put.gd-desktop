@@ -394,6 +394,9 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("url",settings["requestUrl"].toString());
   // Cloudflare R2's account ID also names its endpoint host in logs and errors (#1699).
   for(const auto* key:{"accountRootUid","folderUid","accountId"})redactor.literal("id",settings[key].toString());
+  // An SFTP destination's server, user and folder name private machines and people (#1871); ssh's
+  // last error line, which an error message may carry, names them too.
+  if(profile["provider"]=="sftp"){const auto server=settings["server"].toString();redactor.literal("host",server);redactor.literal("host",server.startsWith('[')?server.section(']',0,0).mid(1):server.section(':',0,0));redactor.literal("name",settings["user"].toString());redactor.literal("name",settings["folder"].toString());}
  }
  HistoryStore store(context.databasePath);if(store.error()){error=store.error();return {};}
  QList<Operation> operations;

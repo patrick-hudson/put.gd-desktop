@@ -42,6 +42,8 @@ class NativeInventoryTests(unittest.TestCase):
             self.write("usr/" + asset, "asset")
         for name in audit.PROGRAMS:
             self.write("usr/bin/" + name, "binary", 0o755)
+        # ssh's askpass for the SFTP destination (#1871): shipped, C library only, not a Qt program.
+        self.write("usr/bin/putgd-sftp-askpass", "binary", 0o755)
         self.write("usr/lib64/putgd/libaws-c-common.so", "SDK")
         self.write("usr/lib64/putgd/libputgd-s3.so", "module")
         runtime = {"libraries": [{"file": "libaws-c-common.so", "sha256": audit.sha256(self.root / "usr/lib64/putgd/libaws-c-common.so")}],
@@ -295,8 +297,8 @@ class RuntimePackageTests(unittest.TestCase):
     """Qt image plugins the distros package apart from Qt GUI (#189)."""
     def test_deb_and_rpm_require_the_webp_plugin_package(self):
         native.require_runtime_packages({"format": "DEB", "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, "
-                                         "qt6-image-formats-plugins, tesseract-ocr-eng, libc6 (>= 2.38) | libc6-alt"})
-        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "tesseract-langpack-eng", "libc.so.6()(64bit)"]})
+                                         "qt6-image-formats-plugins, tesseract-ocr-eng, openssh-client, libc6 (>= 2.38) | libc6-alt"})
+        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "tesseract-langpack-eng", "openssh-clients", "libc.so.6()(64bit)"]})
 
     def test_missing_plugin_package_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "DEB does not require qt6-image-formats-plugins"):

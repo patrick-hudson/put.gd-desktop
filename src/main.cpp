@@ -10,6 +10,7 @@
 #include "storage/b2/B2Provider.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
+#include "storage/sftp/SftpProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -268,6 +269,7 @@ int main(int argc,char* argv[]) {
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
+ auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/known_hosts");providers.add(putgd::sftp::providerId,sftp);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -477,12 +479,30 @@ int main(int argc,char* argv[]) {
    });
    return;
   }
+  // SFTP (#1871): its test writes its own journal, as the custom uploader's does; Settings and
+  // agents also resolve the connection, trust a host key and create the folder. Each blocks on a worker.
+  if(destination.providerId==putgd::sftp::providerId){
+   if(kind=="testDestination"){
+    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+    auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+    operations.background([sftp,destination,checkpoint,event](putgd::Error& error){
+     QJsonObject out;sftp->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;},[event](const QString& message){event({{"event","notice"},{"message",message}});});return out;
+    },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+     auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+     if(!error&&journalError)error=journalError;
+     reply(error,result);
+    });
+    return;
+   }
+   operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},std::move(reply));
+   return;
+  }
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
- setup.setNamedCredentials(putgd::http::namedCredentials);
+ setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
  server.setSetupService(&setup);
  server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
  // A diagnostics package uploads only to a destination whose Test connection

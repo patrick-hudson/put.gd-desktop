@@ -15,7 +15,7 @@ depends=('tesseract-data-eng' 'tesseract' 'zxing-cpp' 'gcc-libs' 'glibc' 'qt6-ba
          'libxkbcommon-x11' 'curl' 'openssl' 'zlib' 'glib2' 'gtk3'
          'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-base' 'gst-plugins-good'
          'gst-plugins-bad' 'gst-plugins-ugly' 'gst-libav' 'gst-plugin-pipewire'
-         'ffmpeg' 'libsecret' 'xdg-utils' 'hicolor-icon-theme')
+         'ffmpeg' 'libsecret' 'xdg-utils' 'openssh' 'hicolor-icon-theme')
 optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal services'
             'nautilus: Files upload menu' 'caja: Caja upload menu'
             'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'

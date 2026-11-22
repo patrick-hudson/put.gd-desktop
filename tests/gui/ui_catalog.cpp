@@ -20,6 +20,7 @@
 #include "storage/proton/ProtonProvider.h"
 #include "storage/http/HttpImport.h"
 #include "ui/CustomUploaderPanel.h"
+#include "ui/SftpPanel.h"
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
 #include "ui/QrCodeWindow.h"
@@ -427,7 +428,7 @@ int main(int argc,char** argv){
  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
  // Diagnostics packages save into the catalog's temporary state; the upload
  // destination's check is answered here, so nothing reaches the network.
- DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);ErrorLog errorLog(operations);fixture.server.setErrorLog(&errorLog);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+ DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);ErrorLog errorLog(operations);fixture.server.setErrorLog(&errorLog);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject&,JsonReply reply,auto){if(destination.providerId=="sftp"&&kind=="inspectAccount"){reply({},{{"line","Connects to files.example.com:2222 as alice with key id_ed25519 (agent)"}});return;}loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
  // The compact tier is shared API; show it before individual surfaces adopt it.
  {
   Ui::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl));rows->setSpacing(Ui::space(Ui::Space::l));
@@ -686,6 +687,23 @@ int main(int argc,char** argv){
   auto* move=window.findChild<QWidget*>("moveToCloudflareR2Row");if(!move||!waitUntil([&]{return window.settings()->flushAutosave()&&move->isVisible();}))return 2;
   destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-move-to-r2"))return 2;
   endpoint->setText(original);emit endpoint->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
+ // #1871: the SFTP form: a pasted sftp:// address filled into Server, User and Folder on server,
+ // with a Link address and the line saying what ssh resolves; then a test that met an unknown
+ // host key offering Trust key. The server and its key are synthetic.
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("sftp"));
+  auto* panel=window.findChild<SftpPanel*>("sftpDestinationEditor");if(!panel||!waitUntil([&]{return window.settings()->flushAutosave()&&panel->isVisible();}))return 2;
+  panel->applyAddress("sftp://alice@files.example.com:2222/srv/www/shots");
+  auto* link=window.findChild<QLineEdit*>("sftpPublicUrlBase");link->setText("https://files.example.com/shots/");emit link->editingFinished();
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // What ssh -G resolves, read by Settings once the address is saved (the fixture answers for ssh).
+  auto* resolved=window.findChild<QLabel*>("sftpResolved");if(!resolved||!waitUntil([&]{return resolved->isVisible()&&!resolved->text().isEmpty();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-sftp"))return 2;
+  const QString fingerprint="ED25519 SHA256:lKD1cde7y8vs6nPz/4s3tCa5I1qSUf7Et8Vb93KG/90";
+  panel->showTestError("ssh_host_unknown_key","The server's host key is "+fingerprint+". Trust it only if it matches the key your server's admin gave you.",{{"fingerprint",fingerprint}});
+  if(!save("settings-sftp-trust-key",scrollPose(destinationScroll,window.findChild<QWidget*>("sftpHostKeyBanner"),40)))return 2;
+  panel->clearOffers();provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
  }
  // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
  // masked, and with its values stored for the session. The token is synthetic.

@@ -82,7 +82,9 @@ QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& prov
  auto mode=route.publicationMode;
  if(mode=="default")if(auto provider=providers.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
  const auto label=profile["label"].toString(op.destination.profileId);
- const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
+ // A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
+ const auto provider=providers.find(op.destination.providerId);const bool links=!provider||provider->capabilities(op.destination).urls||provider->capabilities(op.destination).sharing;
+ const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):links?QStringLiteral("Upload to %1 · Shared link").arg(label):QStringLiteral("Upload to %1").arg(label);
  return {{"destination",label},{"sharingMode",mode},{"summary",summary}};
 }
 // On-demand previews (#190) answer within historyPreviewReplyMs: at most this

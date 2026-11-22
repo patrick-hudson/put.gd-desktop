@@ -1,6 +1,7 @@
 #include "SettingsGuiFixture.h"
 #include "storage/s3/R2Provider.h"
 #include "storage/s3/R2Settings.h"
+#include "storage/sftp/SftpProvider.h"
 #include <QClipboard>
 #include <QThread>
 #include <QRandomGenerator>
@@ -71,6 +72,28 @@ private slots:
   bucket->setText("new-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
   region->setText("eu-west-1");QMetaObject::invokeMethod(region,"editingFinished");
   PUTGD_TRY_VERIFY(service.document()["profiles"].toArray().size()==2&&service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["bucket"]=="new-bucket"&&service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["region"]=="eu-west-1");
+ }
+ // #1871: a pasted sftp:// address saves as Server, User and Folder on server, never as one Server
+ // that would send the user's key to a host named "alice@…"; Store keeps the password under its
+ // own name and the untyped passphrase empty, so neither answers the other's prompt.
+ void sftpPasteFillsItsFieldsAndStoresTheSecretsByName(){
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("sftp",std::make_shared<SftpProvider>(secrets,dir.filePath("known_hosts")));
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.setup.setNamedCredentials(sftp::namedCredentials);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("sftp"));
+  PUTGD_TRY_COMPARE(saved()["provider"].toString(),QString("sftp"));
+  auto* server=window.findChild<QLineEdit*>("sftpServer");QVERIFY(server);
+  server->setFocus();server->setText("sftp://alice@files.example.com:2222/srv/www/shots");emit server->textEdited(server->text());
+  PUTGD_TRY_VERIFY(saved()["settings"].toObject()["server"]=="files.example.com:2222"&&saved()["settings"].toObject()["user"]=="alice"&&saved()["settings"].toObject()["folder"]=="/srv/www/shots");
+  QCOMPARE(server->text(),QString("files.example.com:2222"));
+  auto* password=window.findChild<QLineEdit*>("sftpPassword");QVERIFY(password);password->setText("synthetic-catalog-password");
+  auto* store=window.findChild<QPushButton*>("storeCredentials");PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&store->isVisible()&&store->isEnabled());store->click();
+  const auto stored=[&]{return secrets.cached(saved()["id"].toString(),saved()["credentials"].toObject());};
+  PUTGD_TRY_VERIFY(stored().has_value());
+  QCOMPARE(stored()->values.value("password"),QString("synthetic-catalog-password"));
+  QVERIFY(stored()->values.contains("passphrase")&&stored()->values.value("passphrase").isEmpty());
+  PUTGD_TRY_VERIFY(password->text().isEmpty());
  }
  // #1676: a Region edit right after a provider change saves with the whole changed destination.
  void providerChangeThenRegionSavesBoth(){
