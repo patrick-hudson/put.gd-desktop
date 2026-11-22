@@ -858,7 +858,16 @@ other tool active it does not. The user's side is in the
       recognition." With other categories chosen, recognition runs as usual.
   - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
     line height above and below and by one and a half characters on each side, clamped to the
-    image. Recognition boxes can stop a whole glyph short, which the side padding covers. A mark can
+    image. A character's width comes from the edge word's own box, not from the line's span with
+    its spaces. Recognition boxes can stop a whole glyph short, which the side padding covers.
+    Towards another recognized word on the same line, the padding ends at the far side of the
+    blank space between the two words in the picture, one column before that word, so it stays
+    readable (#1838). Boxes can be off by about a glyph either way, so the space is found in the
+    pixels: the widest run of columns, on the rows both words share, that keep within 8% of the
+    text's contrast from the background. The background is the median colour of the line spacing.
+    With no blank column there, on a textured background for example, the whole padding stays:
+    a covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
+    matched words' own boxes. A mark can
     also take in an ordinary word joined to a token, such as a label with digits ("sha256"), the
     words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line.
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
