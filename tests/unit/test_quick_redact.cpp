@@ -57,6 +57,44 @@ private slots:
   QTest::newRow("IPv6 with O confused")<<"Peer fe80::1ff:fe23:4567:89Oa up"<<all<<QStringList{"ip: fe80::1ff:fe23:4567:89Oa"};
   QTest::newRow("code scope and time are not IPv6")<<"std::vector at 12:30:45 a::b"<<all<<QStringList{};
   QTest::newRow("card in groups, Luhn valid")<<"Card 4111 1111 1111 1111 expires"<<all<<QStringList{"card: 4111 1111 1111 1111"};
+  // #1820 acceptance: shapes found on real screens.
+  QTest::newRow("AWS key after an equals sign")<<"export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"<<all<<QStringList{"key: AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"};
+  // The token's whole segment is covered, its identifier-like name too, as for any token (#1618).
+  QTest::newRow("AWS key in quotes")<<"AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""<<all<<QStringList{"key: AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\""};
+  {const auto token=QString("gh")+"p_"+QString("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A");
+   QTest::newRow("GitHub token inside a URL")<<"git clone https://"+token+"@github.com/example/acme-build-7.git"<<QStringList{"key"}<<QStringList{"key: https://"+token+"@github.com/example/acme-build-7.git"};}
+  QTest::newRow("dashed cards in a table")<<"Visa 4111-1111-1111-1111 | MC 5555-5555-5555-4444"<<QStringList{"card"}<<QStringList{"card: 4111-1111-1111-1111","card: 5555-5555-5555-4444"};
+  QTest::newRow("card with en dashes and a minus sign")<<QString("Visa 4111\u20131111\u20131111\u20131111 MC 5555\u22125555\u22125555\u22124444")<<QStringList{"card"}<<QStringList{QString("card: 4111\u20131111\u20131111\u20131111"),QString("card: 5555\u22125555\u22125555\u22124444")};
+  QTest::newRow("card inside a CSV row")<<"2,5555-5555-5555-4444,5.00,21/11/2026"<<all<<QStringList{"card: 2,5555-5555-5555-4444,5.00,21/11/2026"};
+  QTest::newRow("email in quotes")<<"OWNER = \"ops-alerts@example.com\""<<all<<QStringList{"email: \"ops-alerts@example.com\""};
+  {// An editor's soft wrap: equal-width lines, the first after "token:".
+   // Built in pieces so no JWT-shaped literal sits in the source (the repository's secret scan).
+   const QString jwt=QString("e")+"yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+"e"+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ."+"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+   const auto a=jwt.left(44),b=jwt.mid(44,44),c=jwt.mid(88);
+   QTest::newRow("JWT wrapped over three lines")<<"token: "+a+" | "+b+" | "+c<<QStringList{"key"}<<QStringList{"key: "+a+" "+b+" "+c};}
+  // Sol on #1826 (S19): a token ending its line takes no ordinary words from the next line.
+  QTest::newRow("a token takes no short next line")<<"SECRET 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | id42 ok | INFO 200"<<QStringList{"key"}<<QStringList{"key: SECRET 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a"};
+  // Sol on #1826: a prefix inside a URL path needs a digit in its body.
+  QTest::newRow("a URL slug is not a token")<<"see https://docs.example.test/glagent-installation-guide"<<QStringList{"key"}<<QStringList{};
+  QTest::newRow("an email after an em dash")<<QString("Write \u2014alice@example.com now")<<all<<QStringList{QString("email: \u2014alice@example.com")};
+  QTest::newRow("two phones joined by an em dash")<<QString("Call 202-555-0143\u2014415-555-0100")<<all<<QStringList{QString("phone: 202-555-0143\u2014415-555-0100")};
+  QTest::newRow("a dialling prefix is not a card")<<"Call 0044 207946 0958 now"<<all<<QStringList{"phone: 0044 207946 0958"};
+  QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
+  // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
+  // m74 xed: a string literal read with a straight and a curly quote before the key.
+  QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
+  // Sol on #1826 (S20-S24).
+  QTest::newRow("card after a No. label")<<"Ref No.4111 1111 1111 1111 ok"<<QStringList{"card"}<<QStringList{"card: No.4111 1111 1111 1111"};
+  QTest::newRow("order IDs are not a card")<<"Order IDs: 120004 120005 120006 120007"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("a quoted note after a key stays a word")<<QString("key AKIAIOSFODNN7EXAMPLE \u201Cnote\u201D")<<QStringList{"key"}<<QStringList{"key: AKIAIOSFODNN7EXAMPLE"};
+  QTest::newRow("a quoted versioned slug is not a token")<<QString("see \u201Cglagent-installation-guide-v2\u201D")<<QStringList{"key"}<<QStringList{};
+  {// Built in pieces: a long hex run beside a short label reads as a secret to the repository's scan.
+   const QString digest=QString("9f86d081884c7d659a2feaa0c55ad015")+"a3bf4f1b2b0b822cd15d6c15b0f00a";
+   QTest::newRow("a short word below a digest stays a word")<<digest+" | "+"I"+"D42"<<QStringList{"key"}<<QStringList{"key: "+digest};}
+  QTest::newRow("card after an IPv4 address")<<"Ada 555.010.0123 198.51.100.7 5555-5555-5555-4444 renewal | Ben 203.0.113.9 3782-822463-10005 VIP"<<QStringList{"card"}<<QStringList{"card: 5555-5555-5555-4444","card: 3782-822463-10005"};
+  QTest::newRow("IPv6 with a prefix length")<<"addr 2001:db8::8a2e:370:7334/64 up"<<all<<QStringList{"ip: 2001:db8::8a2e:370:7334/64"};
+  QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};
+  QTest::newRow("a Luhn-failing Amex is not a phone")<<"Test 3782 822463 10006 rejected"<<all<<QStringList{};
   QTest::newRow("card with dashes and O confused")<<"Paid 5500-0000-0000-0OO4 ok"<<all<<QStringList{"card: 5500-0000-0000-0OO4"};
   QTest::newRow("Luhn invalid is no card")<<"Ref 4111 1111 1111 1112 x"<<QStringList{"card"}<<QStringList{};
   // Token shapes are put together here, so that no literal in the source looks
@@ -121,6 +159,13 @@ private slots:
  }
  // #1618, decision 3: the account's names and the user's own list. Words
  // are literal, never a regex, compared ignoring case and accents.
+ // Sol on #1826 (S17): two 8-digit phone numbers in table columns read as 4-4-4-4; the wide gap between the
+ // columns keeps them two numbers, both found. The same groups evenly spaced are one card-shaped number.
+ void columnsOfPhoneNumbersAreNotOneCard() {
+  const auto row=[](int gap){QList<RecognizedWord> out;int x=0;for(const auto* text:{"7946","0958","7946","0959"}){out.append({QString::fromLatin1(text),QRect(x,0,32,20),90,0});x+=32+(out.size()==2?gap:8);}return out;};
+  QCOMPARE(found(row(120),QStringList{"phone"}),(QStringList{"phone: 7946 0958","phone: 7946 0959"}));
+  QCOMPARE(found(row(8),QStringList{"phone"}),QStringList{});
+ }
  void namesAndListsMatchTheirSpellings_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
   const QStringList name{"name"},list{"list"};
@@ -156,6 +201,7 @@ private slots:
   QTest::newRow("accents in the text")<<"José wrote"<<list<<terms({"Jose"})<<QStringList{"list: José"};
   QTest::newRow("regex characters are literal")<<"x+y? xxy [ACME]* ACME srvdata srv_data srvXdata"<<list<<terms({"x+y?","[ACME]*","srv.data"})
    <<QStringList{"list: x+y?","list: [ACME]*","list: srvdata","list: srv_data"};
+  QTest::newRow("a term and a pattern in a code comment")<<"# settings for the acme-build-7 pipeline (JIRA-2210)"<<list<<[]{auto s=terms({"acme-build-7"});s.patterns={"\\bJIRA-\\d+\\b"};return s;}()<<QStringList{"list: acme-build-7","list: (JIRA-2210)"};
   QTest::newRow("a short term is matched exactly")<<"B0b and Bob"<<list<<terms({"Bob"})<<QStringList{"list: Bob"};
   QTest::newRow("a long term reads rn for m")<<"Harnmond and Hammond"<<list<<terms({"Hammond"})<<QStringList{"list: Harnmond","list: Hammond"};
   QTest::newRow("an empty list")<<"Patrick Hudson and anything"<<list<<quickRedact::Sources{}<<QStringList{};

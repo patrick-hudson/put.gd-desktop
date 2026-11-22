@@ -218,6 +218,24 @@ private slots:
                                   QJsonValue(QJsonObject{{"enabled", "yes"}, {"categories", QJsonArray{"card"}}})})
             QVERIFY(bool(putgd::Settings::validate(with(wrong))));
     }
+    // #1820: each kind is off, warn or redact; #1804's categories list carries forward with its kinds on warn.
+    void sensitiveTextKindsAreOffWarnOrRedactAndTheOldListMeansWarn() {
+        const auto with = [](const QJsonValue& check) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["sensitiveTextCheck"] = check;doc["preferences"] = preferences;return doc;};
+        const auto legacy = putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "email"}}}));
+        QCOMPARE(legacy.sensitiveTextCategories, (QStringList{"email", "key"}));QVERIFY(legacy.sensitiveTextCover.isEmpty());
+        const auto kinds = with(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "redact"}, {"key", "warn"}, {"list", "off"}, {"email", "redact"}}}});
+        const auto refused = putgd::Settings::validate(kinds);QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(kinds);
+        QCOMPARE(chosen.sensitiveTextCategories, (QStringList{"email", "card", "key"}));QCOMPARE(chosen.sensitiveTextCover, (QStringList{"email", "card"}));
+        // A kind kinds doesn't name follows the older list beside it (a patch of one kind keeps the rest).
+        const auto patched = putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "phone"}}, {"kinds", QJsonObject{{"card", "redact"}}}}));
+        QCOMPARE(patched.sensitiveTextCategories, (QStringList{"phone", "card", "key"}));QCOMPARE(patched.sensitiveTextCover, (QStringList{"card"}));
+        // Every kind off is allowed: nothing is checked.
+        QVERIFY(!putgd::Settings::validate(with(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "off"}, {"key", "off"}, {"list", "off"}}}})));
+        for (const auto& wrong : {QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "hide"}}}}), QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"password", "warn"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonArray{"card"}}}), QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{}}, {"extra", 1}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+    }
     void quickRedactListsAreStoredTrimmedAndOnceWhoeverSendsThem() {
         QTemporaryDir dir;
         const auto path = dir.filePath("config.json");

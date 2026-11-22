@@ -23,22 +23,6 @@ QJsonObject SensitiveFindings::json() const {
  QJsonObject counts;for(const auto& [category,count]:found)if(count>0)counts[category]=count;
  QJsonObject out{{"found",counts},{"complete",complete}};if(!complete)out["reason"]=reason;return out;
 }
-QString describeSensitive(const QList<QPair<QString,int>>& found){
- QStringList parts;
- for(const auto& [category,count]:found){
-  if(count<1)continue;
-  const bool one=count==1;const auto n=QString::number(count);
-  if(category=="card")parts<<(one?QStringLiteral("a card number"):n+" card numbers");
-  else if(category=="key")parts<<(one?QStringLiteral("a key or token"):n+" keys or tokens");
-  else if(category=="email")parts<<(one?QStringLiteral("an email address"):n+" email addresses");
-  else if(category=="phone")parts<<(one?QStringLiteral("a phone number"):n+" phone numbers");
-  else if(category=="ip")parts<<(one?QStringLiteral("an IP address"):n+" IP addresses");
-  else if(category=="name")parts<<QStringLiteral("your username or name");
-  else if(category=="list")parts<<(one?QStringLiteral("an entry from your redaction list"):n+" entries from your redaction list");
- }
- if(parts.size()<2)return parts.join(QString());
- const auto last=parts.takeLast();return parts.join(", ")+" and "+last;
-}
 QString sensitiveReasonText(const QString& reason){
  if(reason=="truncated")return QStringLiteral("Recognition stopped at its time or size limit, so part of the image was not read.");
  if(reason=="too_large")return QStringLiteral("The image is over 24 megapixels, too large to read.");
@@ -66,6 +50,9 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  QString body;
  const auto subject=model_.file.isEmpty()?QStringLiteral("This capture"):QStringLiteral("This image");
  if(any)body=QStringLiteral("%1 shows %2.").arg(subject,describeSensitive(model_.findings.found));
+ // #1820: what was covered on its own stays covered, whichever choice is made but Cancel.
+ const auto covers=describeSensitive(model_.covered);
+ if(!covers.isEmpty())body=(body.isEmpty()?QString():body+" ")+QStringLiteral("put.gd already covered %1.").arg(covers);
  if(!complete)body=(body.isEmpty()?QString():body+" ")+sensitiveReasonText(model_.findings.reason);
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
  auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
@@ -81,7 +68,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  if(!model_.destination.isEmpty()){auto* where=Ui::label(model_.destination,"meta",this);where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  auto* buttons=new QHBoxLayout;buttons->setSpacing(space(Space::s));
  cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
- upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(QStringLiteral("Upload the capture as it is"));
+ upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(covers.isEmpty()?QStringLiteral("Upload the capture as it is"):QStringLiteral("Upload the capture with what put.gd already covered, and nothing else covered"));
  buttons->addWidget(cancel_);buttons->addStretch();buttons->addWidget(upload_);
  if(model_.redactAllowed){
   redact_=new QPushButton(Ui::icon("redact"),QStringLiteral("Redact and upload"),this);redact_->setObjectName("sensitiveRedact");
@@ -118,7 +105,8 @@ void SensitivePrompt::showEvent(QShowEvent* event){
 }
 QJsonObject SensitivePrompt::state() const {
  QJsonArray choices{"upload","cancel"};if(model_.redactAllowed)choices.prepend("redact");
- auto out=model_.findings.json();out["shown"]=isVisible();out["choices"]=choices;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
+ auto out=model_.findings.json();out["shown"]=isVisible();
+ {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
 }
 bool SensitivePrompt::choose(const QString& choice){
  if(decided_||!(choice=="upload"||choice=="cancel"||(choice=="redact"&&model_.redactAllowed)))return false;

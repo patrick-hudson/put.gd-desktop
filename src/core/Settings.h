@@ -127,8 +127,12 @@ struct Settings {
     // preferences.sensitiveTextCheck (#1804): before an image capture uploads,
     // recognize its text and ask first when it shows text of these Quick redact
     // categories. Off by default; the categories default to card, key and list.
+    // #1820: each kind is off, warn (the prompt) or redact (covered automatically).
+    // sensitiveTextCategories holds every kind not off, sensitiveTextCover the redact ones.
     bool sensitiveTextCheck = false;
-    QStringList sensitiveTextCategories;
+    QStringList sensitiveTextCategories, sensitiveTextCover;
+    // One kind's choice in a validated sensitiveTextCheck object: off, warn or redact.
+    static QString sensitiveTextKind(const QJsonObject& check, const QString& category);
     static QStringList sensitiveTextCategoryNames(); // email, phone, ip, card, key, name, list
     static QStringList defaultSensitiveTextCategories(); // card, key, list
     // Most recent first; custom colors picked in the editor.
