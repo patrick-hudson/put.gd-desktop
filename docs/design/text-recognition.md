@@ -283,9 +283,9 @@ extra work.
 
 On a whole screen of 4 MP or more, read in panels, a panel is trimmed to its text, and a faint
 line has no grey step of 32 levels, so it can sit outside its panel (#1912). For the faint lines,
-each panel first grows through its window's plain background: a side moves out while the next row
-or column has a median within 6 levels of the panel's background and meets no other panel. It
-stops at the window's edge, so a darker desktop around a dark editor is not taken for ink. A faint
+each panel first grows through its window's plain background: a side moves out while at least a
+quarter of the next row or column is within 6 levels of the panel's background and it meets no
+other panel or area already grown (so no faint line is read twice). It stops at the window's edge, so a darker desktop around a dark editor is not taken for ink. A faint
 line below a window's last bright line, or running past its text, is then read again; a window
 holding only faint text, with no panel of its own, is not. Anything smaller is one panel, the
 whole image.
