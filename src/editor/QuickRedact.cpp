@@ -216,8 +216,13 @@ bool repeatedRun(const QString& run) {
  QHash<QChar,int> counts;int characters=0;
  for(const auto c:run)if(c.isLetterOrNumber()){++counts[c.toLower()];++characters;}
  if(characters<24||characters*10<int(run.size())*9)return false;
- // #1895: but a run of mask characters (x or 0) is a placeholder, not a token: see placeholder().
- for(const QChar mask:{QChar('x'),QChar('0')})if(counts.value(mask)*2>=characters)return false;
+ // #1895: but a run almost all of mask characters (x or 0, nine in ten) is a placeholder, not a token: see placeholder().
+ for(const QChar mask:{QChar('x'),QChar('0')})if(counts.value(mask)*10>=characters*9)return false;
+ // ...or one after a prefix: the part after the last separator (sk_live_XXXX…) at least 16
+ // characters, nine in ten of one mask character.
+ {const auto cut=qMax(run.lastIndexOf('_'),qMax(run.lastIndexOf('-'),run.lastIndexOf('.')));
+  const auto tail=run.mid(cut+1);
+  if(cut>=0&&tail.size()>=16)for(const QChar mask:{QChar('x'),QChar('0')})if(tail.count(mask,Qt::CaseInsensitive)*10>=tail.size()*9)return false;}
  QList<int> sizes=counts.values();std::sort(sizes.begin(),sizes.end(),std::greater<int>());
  int top=0;for(int i=0;i<qMin(3,int(sizes.size()));++i)top+=sizes.at(i);
  return top*100>=characters*85&&sizes.first()*2>=characters;
@@ -363,7 +368,10 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    if(prefix.boundary&&candidate.capturedLength(2)==0&&!segment.starts.contains(base+int(candidate.capturedStart(3))))continue;
    // #1895: a placeholder ("sk_live_XXXXXXXX…", "AKIAXXXXXXXXXXXXXXXX") is no secret: a body, up to the
    // kind's length, of mask characters alone.
-   if(placeholder(candidate.captured(3).left(qMax(8,prefix.length-int(candidate.capturedLength(1)+candidate.capturedLength(2))))))continue;
+   // A kind of one length is judged on its body up to that length (a word can run on past it); any
+   // other on its whole body, so an unmasked tail keeps it a key (Sol on #1901).
+   {const auto body=candidate.captured(3);
+    if(placeholder(prefix.exact?body.left(qMax(8,prefix.length-int(candidate.capturedLength(1)+candidate.capturedLength(2)))):body))continue;}
    if(prefix.dotted&&!candidate.captured(3).contains('.')&&!candidate.captured(3).contains(','))continue;
    match=candidate;break;
   }
@@ -406,14 +414,16 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast,-1,0});segmentMatches(segment,bestLast+1,last,found);
 }
 bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards=nullptr);
-// Whether a line names a digest (a part of one of its words, split at anything but a letter or digit,
-// is a hash word) and no secret.
+// Whether a line names a digest (a part of one of its words, split at anything but a letter or digit
+// and at a lowercase-to-capital change, is a hash word) and no secret.
 bool digestLine(const QList<int>& line,const QList<QString>& plain) {
  static const QSet<QString> hashes{"sha","sha1","sha224","sha256","sha384","sha512","md5","commit","digest","checksum","hash","etag","integrity","blake2b","blake3"};
  static const QSet<QString> secrets{"secret","key","token","password","passwd","pwd","signing","private","hmac","auth","credential","credentials","apikey","api"};
- static const QRegularExpression split(QStringLiteral("[^A-Za-z0-9]+"));
+ // clientSecret is client and secret (Sol on #1901).
+ static const QRegularExpression split(QStringLiteral("[^A-Za-z0-9]+|(?<=[a-z])(?=[A-Z])"));
  bool hash=false;
- for(const int w:line)for(const auto& part:plain.at(w).toLower().split(split,Qt::SkipEmptyParts)){
+ for(const int w:line)for(auto part:plain.at(w).split(split,Qt::SkipEmptyParts)){
+  part=part.toLower();
   if(secrets.contains(part))return false;
   hash=hash||hashes.contains(part);
  }
@@ -548,8 +558,13 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      // "host:" after an editor's line number) or, beside a line number on the token's own line,
      // another numbered line. A wrapped remainder is base64, hex or a JWT's part, with an "=" only as
      // padding at its end.
-     {static const QRegularExpression assignment(QStringLiteral("^(?:\\d{1,5}|[^A-Za-z0-9])?[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:]|$)")),number(QStringLiteral("^\\d{1,5}$"));
-      if(assignment.match(next.first().text).hasMatch())break;
+     // Base64 padding before closing punctuation ("…L=\",") is a remainder's end, not an assignment;
+     // an empty snake-case assignment ("DATABASE_URL=") is a new statement (Sol on #1901).
+     {static const QRegularExpression assignment(QStringLiteral("^(?:\\d{1,5}|[^A-Za-z0-9])?[A-Za-z_][A-Za-z0-9_.-]*[=:](?![=:\"'`)\\]};,\u201D\u2019]*$)")),number(QStringLiteral("^\\d{1,5}$"));
+      static const QRegularExpression empty(QStringLiteral("^(?:\\d{1,5}|[^A-Za-z0-9])?(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)[=:]$"));
+      if(assignment.match(next.first().text).hasMatch()||empty.match(next.first().text).hasMatch())break;
+      // A line with a hash word is a digest of its own, not a wrapped remainder (Sol on #1901).
+      if(digestLine(nextLine,plain))break;
       if(nextLine.size()>1&&number.match(plain.at(nextLine.first())).hasMatch()&&number.match(plain.at(line.first())).hasMatch())break;}
      // The remainder of a token, not a line of words: a digit or a capital,
      // and few letters in lowercase runs of five or more.
@@ -607,7 +622,7 @@ const QList<Rule>& rules() {
   {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d)&&!isbn13(d);},1},
   {"ip",QRegularExpression(R"((?<![\d.vV])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
-  {"phone",QRegularExpression(R"((?<![\w+.-])(?<!\d:)(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d))"),[](const QString& m){
+  {"phone",QRegularExpression(R"((?<![\w+.-])(?<!\d\d:)(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
     // At least 7 digits and at most 15 (E.164); a date or an IPv4 address is not a number to call.
     static const QRegularExpression date(R"(^(?:\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4})$)"),dotted(R"(^\d{1,3}(?:\.\d{1,3}){3}$)");
     // Separated by dots alone, a number is a phone in the 3-3-4 grouping or in
@@ -618,10 +633,10 @@ const QList<Rule>& rules() {
     static const QRegularExpression longGroup(R"(\d{11,})");
     if(!m.startsWith('+')&&longGroup.match(m).hasMatch())return false;
     if(cardShaped(m))return false;
-    // #1895: a ZIP+4 code (71674-4468) and an ISBN-13 are not numbers to call, nor is a date with the
-    // hour after it (2026-11-22 14, cut at the time's colon).
-    static const QRegularExpression zip(R"(^\d{5}-\d{4}$)"),dated(R"(^\d{4}-\d{1,2}-\d{1,2}(?:[ T]\d{1,2})?$)");
-    if(zip.match(m).hasMatch()||isbn13(m)||dated.match(m).hasMatch())return false;
+    // #1895: an ISBN-13 is no number to call, nor is a date with the hour after it (2026-11-22 14,
+    // cut at the time's colon). A ZIP+4 code is left out where its line says so (findOrdered).
+    static const QRegularExpression dated(R"(^\d{4}-\d{1,2}-\d{1,2}(?:[ T]\d{1,2})?$)");
+    if(isbn13(m)||dated.match(m).hasMatch())return false;
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
@@ -1094,6 +1109,15 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     if(rule.valid&&!rule.valid(joined.text.mid(found.capturedStart(),length)))continue;
     auto words=owners(joined,found.capturedStart(),length);
     if(words.isEmpty())continue;
+    // #1895: a ZIP+4-shaped number after a ZIP word or a state code, and any number on a line that
+    // names an ISBN, are no phone numbers; 9XXXX-XXXX alone stays one (a Brazilian mobile).
+    if(rule.category=="phone"){
+     static const QRegularExpression zip(R"(^\d{5}-\d{4}$)"),zipWord(QStringLiteral("^(?:zip|zip:|zipcode|zip-code|postal|postcode|[A-Z]{2},?)$"),QRegularExpression::CaseInsensitiveOption);
+     const int first=words.first();const int line=candidates.at(first).line;
+     if(zip.match(joined.text.mid(found.capturedStart(),length)).hasMatch()&&first>0&&candidates.at(first-1).line==line&&zipWord.match(candidates.at(first-1).text).hasMatch()&&(candidates.at(first-1).text.size()!=2||(candidates.at(first-1).text.at(0).isUpper()&&candidates.at(first-1).text.at(1).isUpper())))continue;
+     bool isbn=false;for(int w=first-1;w>=0&&candidates.at(w).line==line;--w)isbn=isbn||candidates.at(w).text.startsWith(QLatin1String("ISBN"),Qt::CaseInsensitive);
+     if(isbn)continue;
+    }
     // Merge both views before reserving any word, so a wrapped continuation
     // cannot be discarded merely because its prefix matched the plain view.
     for(qsizetype i=0;i<pending.size();){
