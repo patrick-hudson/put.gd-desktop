@@ -181,6 +181,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["limits"]=QJsonObject{{"imagePixels",QString::number(admissionPixels)},{"outputBytes",QString::number(outputBytes)}};
  if(submissionError_)request["submissionError"]=QJsonObject{{"code",submissionError_.code},{"message",submissionError_.message}};
  request["destination"]=destination.left(200).isEmpty()?QStringLiteral("Upload"):destination.left(200);
+ if(links_)request["links"]=*links_;
  request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  request["textLanguages"]=QJsonArray::fromStringList(textjob::validLanguages(textLanguages_)?textLanguages_:QStringList{});

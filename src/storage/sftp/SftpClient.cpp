@@ -59,10 +59,11 @@ Error Client::pump(int milliseconds) {
     if (!error.isEmpty()) { protocolError_ = error; return lost(); }
     return {};
 }
-Error Client::send(const QByteArray& packet) {
+Error Client::send(const QByteArray& packet, int deadlineMs) {
     qsizetype written = 0;
-    QElapsedTimer waited;
+    QElapsedTimer waited, started;
     waited.start();
+    started.start();
     while (written < packet.size()) {
         // A packet is sent whole: cutting one short would garble the stream for every later request.
         if (written == 0 && cancelled_ && cancelled_->load()) return cancelledError();
@@ -71,7 +72,7 @@ Error Client::send(const QByteArray& packet) {
         if (count > 0) { written += count; waited.restart(); continue; }
         if (count < 0 && errno == EINTR) continue;
         if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-            if (waited.elapsed() > replyDeadlineMs) return lost();
+            if (waited.elapsed() > replyDeadlineMs || started.elapsed() > deadlineMs) return lost();
             // While ssh can't take more, read its replies and its stderr so it never waits on us.
             pollfd fds[3]{{ssh_.input(), POLLOUT, 0}, {ssh_.output(), POLLIN, 0}, {ssh_.errors(), POLLIN, 0}};
             ::poll(fds, ssh_.errors() >= 0 ? 3 : 2, 100);
@@ -85,10 +86,10 @@ Error Client::send(const QByteArray& packet) {
     }
     return {};
 }
-Error Client::request(quint32 id, const QByteArray& packet) {
+Error Client::request(quint32 id, const QByteArray& packet, int deadlineMs) {
     // Outstanding before the first byte goes: a reply can come back before send() returns.
     outstanding_.insert(id);
-    if (auto e = send(packet)) {
+    if (auto e = send(packet, deadlineMs)) {
         if (e.code == QLatin1String("cancelled")) outstanding_.erase(id);  // nothing of it was sent
         return e;
     }
@@ -172,9 +173,12 @@ Error Client::statusOnly(const wire::Reply& reply, Status& status) {
     return {};
 }
 Error Client::simple(const QByteArray& packet, quint32 id, Status& status, int deadlineMs) {
-    if (auto e = request(id, packet)) return e;
+    // One budget for the send and the reply: on a slow link the send alone can take long.
+    QElapsedTimer budget;
+    budget.start();
+    if (auto e = request(id, packet, deadlineMs)) return e;
     wire::Reply reply;
-    if (auto e = await(id, reply, deadlineMs)) return e;
+    if (auto e = await(id, reply, int(qMax<qint64>(0, deadlineMs - budget.elapsed())))) return e;
     return statusOnly(reply, status);
 }
 Error Client::realpath(const QByteArray& path, QByteArray& absolute, Status& status) {
@@ -201,11 +205,13 @@ Error Client::lstat(const QByteArray& path, wire::Attributes& attributes, Status
     status = {};
     return {};
 }
-Error Client::fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status) {
+Error Client::fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status, int deadlineMs) {
     const auto id = nextId();
-    if (auto e = request(id, wire::path(wire::Fstat, id, handle))) return e;
+    QElapsedTimer budget;
+    budget.start();
+    if (auto e = request(id, wire::path(wire::Fstat, id, handle), deadlineMs)) return e;
     wire::Reply reply;
-    if (auto e = await(id, reply)) return e;
+    if (auto e = await(id, reply, int(qMax<qint64>(0, deadlineMs - budget.elapsed())))) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
     if (reply.type != wire::Attrs) { protocolError_ = QStringLiteral("The server answered a file check with something else"); return lost(); }
     attributes = reply.attributes;

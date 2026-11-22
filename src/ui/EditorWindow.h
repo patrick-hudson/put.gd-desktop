@@ -127,7 +127,8 @@ public:
  void setRecentColors(const QStringList&);
  QStringList recentColors() const {return recentColors_;}
  // The output Upload uses, as the resident phrases it, shown in the footer.
- void setDestination(const QString&);
+ // `links`: whether the destination gives a link (commandtext::givesLinks); the mode comes from it.
+ void setDestination(const QString&,bool links=true);
  // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();

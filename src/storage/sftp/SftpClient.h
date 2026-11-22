@@ -26,7 +26,7 @@ public:
     // An SFTP request that got a status other than OK: the code in `status`, no Error.
     Error realpath(const QByteArray& path, QByteArray& absolute, Status& status);
     Error lstat(const QByteArray& path, wire::Attributes& attributes, Status& status, bool follow = false);
-    Error fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status);
+    Error fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status, int deadlineMs = 120000);
     // `deadlineMs` bounds the wait for the reply; a reply that doesn't come leaves the outcome unknown.
     Error openExclusive(const QByteArray& path, QByteArray& handle, Status& status, int deadlineMs = 120000);
     Error openRead(const QByteArray& path, QByteArray& handle, Status& status);
@@ -45,8 +45,9 @@ public:
 private:
     quint32 nextId() { return ++id_; }
     // Sends one request and records its id as outstanding.
-    Error request(quint32 id, const QByteArray& packet);
-    Error send(const QByteArray& packet);
+    // `deadlineMs` bounds the whole send: a packet ssh can't take in time leaves the stream unusable.
+    Error request(quint32 id, const QByteArray& packet, int deadlineMs = 120000);
+    Error send(const QByteArray& packet, int deadlineMs = 120000);
     // Reads what has arrived (at most a fixed budget), waiting up to `milliseconds`; replies to
     // outstanding requests go into replies_.
     Error pump(int milliseconds);

@@ -549,12 +549,22 @@ private:
             client().setCancellation(&never);
             const auto failed = client().openExclusive(bytesOf(path), handle, status, 20000);
             // The new file's owner, which a cleanup over a new connection checks (#1888).
+            // Awaited for at most 5 seconds, so a cancel's cleanup still starts inside the resident's
+            // grace. No answer: the connection is unusable and the owner unknown, so nothing can
+            // be removed safely and the outcome is unknown, with the path.
+            Error unanswered;
             if (!failed && status.code == wire::Ok) {
                 Client::Status seen;
-                openedKnown = !client().fstat(handle, opened, seen) && seen.code == wire::Ok && complete(opened) && opened.regularFile();
+                unanswered = client().fstat(handle, opened, seen, 5000);
+                openedKnown = !unanswered && seen.code == wire::Ok && complete(opened) && opened.regularFile();
             }
             client().setCancellation(&io.cancelled);
             if (failed) { error = failed; error.details["path"] = path; uncertain = true; return {}; }
+            if (unanswered) {
+                error = {unanswered.code, "put.gd created " + path + " but the server stopped answering; check it on the server.", {{"path", path}}};
+                uncertain = true;
+                return {};
+            }
         }
         if (status.code != wire::Ok) {
             wire::Attributes there;

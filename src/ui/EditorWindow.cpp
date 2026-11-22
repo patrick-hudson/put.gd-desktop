@@ -486,10 +486,10 @@ void EditorWindow::rebuildRecentColors(){
  recentLayout_->parentWidget()->setVisible(!recentColors_.isEmpty());
 }
 
-void EditorWindow::setDestination(const QString& destination){
+void EditorWindow::setDestination(const QString& destination,bool links){
  auto summary=destination;QString mode;
  if(summary.startsWith("Private upload to ")){summary=summary.mid(18);mode="Private upload";}
- else if(summary.startsWith("Upload to ")){summary=summary.mid(10);if(summary.endsWith(" · Shared link")){summary.chop(14);mode="Shared link";}else mode="Upload only";}
+ else if(summary.startsWith("Upload to ")){summary=summary.mid(10);if(!links)mode="Upload only";else{if(summary.endsWith(" · Shared link"))summary.chop(14);mode="Shared link";}}
  sharingMode_->setText(mode);sharingMode_->setAccessibleName(mode);
  destination_->setText(summary);destination_->setAccessibleName(summary);const auto description="Upload to "+summary+(mode.isEmpty()?QString{}:mode=="Private upload"?QString(" as a private upload"):mode=="Upload only"?QString(" without a link"):QString(" with a shared link"))+" (Ctrl+Enter)";upload_->setToolTip(description);upload_->setAccessibleDescription(description);placeDestination();}
 
