@@ -46,8 +46,9 @@ It is independent of the desktop lock: a timing run may need both.
 is ours. CMD runs on the builder over the same pinned BatchMode SSH, its words
 quoted as given (a shell expression goes in `sh -c '...'`), with
 $PUTGD_LAB_SESSION set to ID, so lab helpers' held and quiet checks know it.
-The lock is renewed three times per lease; two renewals in a row that can't
-reach the host, or one that is refused, stop CMD's SSH.
+The lock is renewed every 5 minutes, or every third of the lease if that is
+shorter. A refused renewal stops CMD's SSH, and so does one that can't reach
+the host when the lease would lapse before the next try.
 The lock stays held after CMD unless --release is given (which releases it as
 `release --verified-clean` would, still refusing if CMD left something new).
 Lab helpers that install packages or drive a desktop call refuse_unless_held()
@@ -84,7 +85,8 @@ PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
 RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session', 'quiet': 'quiet lease'}  # lock file <name>.lock
 SESSION_VARIABLE = 'PUTGD_LAB_SESSION'  # the session a lab helper runs for; its own quiet lease doesn't stop it
-RENEW_SECONDS = 300  # how often `run` renews its lock while CMD runs; well inside STALE_AFTER
+RENEW_SECONDS = 300  # how often `run` renews its lock while CMD runs (at most); well inside STALE_AFTER
+monotonic = time.monotonic  # `run`'s clock for its own lease deadline
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
@@ -625,7 +627,7 @@ def remote_script(payload):
     return Path(__file__).read_text() + '\nraise SystemExit(remote(json.loads(%r)))\n' % json.dumps(payload)
 
 
-def call(host, payload, identity=IDENTITY, pins=PINS, run=subprocess.run, command=None):
+def call(host, payload, identity=IDENTITY, pins=PINS, run=subprocess.run, command=None, timeout=90):
     """Send this script to HOST over pinned SSH and return its reply."""
     failed = {'ok': False, 'unreachable': True, 'host': host, 'action': payload['action']}
     known_hosts = Path(pins) / host / 'known_hosts'
@@ -634,7 +636,7 @@ def call(host, payload, identity=IDENTITY, pins=PINS, run=subprocess.run, comman
                                     '(docs/lab/remote-builders.md); never trust on first use')
     try:
         result = run(command or ssh_command(host, identity, pins), input=remote_script(dict(payload, host=host)),
-                     capture_output=True, text=True, timeout=90)
+                     capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         return dict(failed, message=f'SSH to {host} timed out')
     try:
@@ -805,9 +807,9 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
         parser.error('run prints its lock replies as text on stderr; --json does not apply')
     every = min(every, args.minutes * 60 / 3)  # three renewals per lease, so one missed renewal never lapses it
 
-    def lock_call(action, **fields):
+    def lock_call(action, timeout=90, **fields):
         reply = call(args.host, dict(fields, action=action, resource=args.resource, session=args.session),
-                     args.identity, args.pins, run)
+                     args.identity, args.pins, run, timeout=timeout)
         print('\n'.join(describe(reply)), file=sys.stderr)
         return reply
 
@@ -815,6 +817,7 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
     add_tray_host(acquire, args, parser)
     reply = explain_tray_host(call(args.host, dict(acquire, resource=args.resource, session=args.session),
                                    args.identity, args.pins, run))
+    deadline = monotonic() + args.minutes * 60  # no later than the lease's expiry on the host
     if not reply['ok'] and (reply.get('lock') or {}).get('session') == args.session:
         reply = lock_call('extend', minutes=args.minutes)  # already ours: confirm it under the mutex and renew it
     else:
@@ -825,15 +828,18 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
     # CMD's words reach the remote shell as they were given; a shell expression goes in `sh -c '...'`.
     remote = [f'export {SESSION_VARIABLE}={shlex.quote(args.session)};', shlex.join(command)]
     process = popen(ssh_command(args.host, args.identity, args.pins, remote))
-    missed = 0
     while True:
         try:
             code = process.wait(timeout=every)
             break
         except subprocess.TimeoutExpired:
-            renewed = lock_call('extend', minutes=args.minutes)
-            missed = missed + 1 if renewed.get('unreachable') else 0
-            if (not renewed['ok'] and not renewed.get('unreachable')) or missed >= 2:
+            asked = monotonic()
+            # A renewal that hangs must not outlast the lease: it gives up 5 s before the expiry.
+            renewed = lock_call('extend', timeout=max(1, min(90, deadline - asked - 5)), minutes=args.minutes)
+            if renewed['ok']:
+                deadline = asked + args.minutes * 60
+            # Unconfirmed and too close to the expiry to wait for the next try: stop before it lapses.
+            if not renewed['ok'] and (not renewed.get('unreachable') or deadline - monotonic() <= every):
                 print(f'{args.host}: the lock is no longer confirmed ours; stopping the command\'s SSH (anything '
                       'it started on the host may still be running)', file=sys.stderr)
                 process.terminate()

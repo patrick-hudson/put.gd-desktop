@@ -476,7 +476,7 @@ class HeldAndRun(LockTest):
             self.assertIn("not local_b", problem(home, "local_b"))
             self.assertIsNone(problem(home, 'local_a'))
 
-    def run_main(self, *argv, process=None):
+    def run_main(self, *argv, process=None, minutes='10'):
         """Run the CLI with a local lock directory standing in for k72; returns (code, commands started)."""
         started = []
 
@@ -495,7 +495,7 @@ class HeldAndRun(LockTest):
                                    lambda payload: real_script(dict(payload, directory=str(self.directory)))), \
                     mock.patch('sys.stderr'):
                 code = lock.main(['run', 'k72', '--owner', 'o', '--session', 'local_a', '--purpose', 'row',
-                                  '--minutes', '10', '--pins', pins, *argv], run=run, popen=popen)
+                                  '--minutes', minutes, '--pins', pins, *argv], run=run, popen=popen)
         return code, started
 
     def test_a_refused_acquire_never_runs_the_command(self):
@@ -531,11 +531,26 @@ class HeldAndRun(LockTest):
                              during=lambda: self.desktop.release('local_a', verified_clean=True))
         code, _ = self.run_main('--', 'sleep', '1200', process=broken)
         self.assertEqual((code, broken.terminated), (1, True))
-        timeout = lock.subprocess.TimeoutExpired('ssh', 1)
-        unreachable = FakeProcess([timeout, timeout, 0],
-                                  during=lambda: (self.pins / 'k72' / 'known_hosts').unlink(missing_ok=True))
-        code, _ = self.run_main('--', 'sleep', '1200', process=unreachable)
-        self.assertEqual((code, unreachable.terminated, len(unreachable.waits)), (1, True, 2))
+
+    def test_an_unconfirmed_renewal_stops_the_command_before_the_lease_lapses(self):
+        timeout, now = lock.subprocess.TimeoutExpired('ssh', 1), [0]
+        timeouts = []
+        real_call = lock.call
+
+        def during():  # each wait spends its full interval; renewals then find the host unreachable
+            now[0] += 20
+            (self.pins / 'k72' / 'known_hosts').unlink(missing_ok=True)
+
+        def call(*args, timeout=90, **kwargs):
+            timeouts.append(timeout)
+            return real_call(*args, timeout=timeout, **kwargs)
+
+        process = FakeProcess([timeout, timeout, timeout, 0], during=during)
+        with mock.patch.object(lock, 'monotonic', lambda: now[0]), mock.patch.object(lock, 'call', call):
+            code, _ = self.run_main('--', 'sleep', '1200', process=process, minutes='1')
+        self.assertEqual((code, process.terminated), (1, True))
+        self.assertEqual(process.waits, [20, 20])  # a third of the 1-minute lease; stopped at 40 s, before 60 s
+        self.assertEqual(timeouts[1:], [35, 15])  # each renewal gives up 5 s before the expiry
 
     def test_release_gives_the_lock_back_after_the_command(self):
         code, _ = self.run_main('--release', '--resource', 'quiet', '--', 'true')
