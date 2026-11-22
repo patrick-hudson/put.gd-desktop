@@ -283,44 +283,48 @@ extra work.
 
 On a whole screen of 4 MP or more, read in panels, a panel is trimmed to its text, and a faint
 line has no grey step of 32 levels, so it can sit outside its panel (#1912). For the faint lines,
-each panel first grows through its window's plain background: a side moves out while at least a
-quarter of the next row or column is within 6 levels of the panel's background and it meets no
-other panel or area already grown (so no faint line is read twice). It stops at the window's edge, so a darker desktop around a dark editor is not taken for ink. A faint
-line below a window's last bright line, or running past its text, is then read again; a window
-holding only faint text, with no panel of its own, is not. A long faint line beside short bright
-text can still be missed: over the whole window, Otsu's threshold then counts it as ink, not as
-faint (#1912, still open). Anything smaller is one panel, the whole image.
-
-Limit: ink within about 25 levels of the background is not found as faint ink (a gradient or
-noise looks the same).
+each panel first grows outward one row or column at a time. A side moves out while at least a
+quarter of the new row or column, across the current span, is within 6 grey levels of the panel's
+background. On a span of 8 px or more, each quarter of it must also hold such pixels, at least
+1/32 of the span. The new row or column must also meet no other panel and no area already grown.
+A darker desktop around a dark editor fails the test, so growth usually stops at the window's
+edge, but it is judged from pixel values: a neighbouring area of the same shade can be taken in.
+A faint line below a window's last bright line, or running past its text, can then fall inside
+the grown area and go through the faint-row test above (at most eight runs an area). A window
+that holds only faint text has no panel to grow from. A large image whose layout gives no split
+is one panel, the whole image, as is anything under 4 MP. Limit (#1912, still open): a long faint
+line beside short bright text can still be missed at 4K, because over the whole window Otsu's
+threshold counts it as ink, not as faint.
 
 One misread character breaks a key or token for Quick redact. A job that asks for candidates
-also reads a second time the lines holding an **uncertain token** (#1911): a word of at least 12
-characters once quotes and brackets are trimmed, with letters and digits both, that Tesseract
-scored below 70. Each such line is read from a copy that measures every pixel against its local
-background (the median of the 80 px around it) and stretches the strongest ink nearby to black on
-white, which reads dark and light pages, low contrast and coloured backgrounds alike. Lines are
-read least confident first, in bands of at most four word heights, and the second read stops when
-it has taken as long as the first pass (750 ms when the first was quicker) or the job's budget
-ends. Its words join the candidates after the copied text is made, marked `second`; Copy text is
-unchanged, and a page with no uncertain token does no extra work.
+also reads a second time the lines holding an **uncertain token** (#1911): a word that Tesseract
+scored below 70, with letters and digits both, of at least 12 characters once quotes, brackets
+and `, ; : .` are trimmed from both ends. Each such line is read from a contrast copy built on
+16 px tiles: every pixel's distance from the median of the tiles around it (up to 5 by 5, fewer at
+an edge), stretched so the 98th percentile of those distances (at least 32 levels) is black, on
+white. One copy reads dark and light pages, low contrast and coloured backgrounds alike. Bands
+are at most four times the height of their tallest uncertain word and are read least confident
+first across all panels. The second read may take as long as the recognition before it took,
+faint-line reads included, or 750 ms when that was quicker, and never past the job's budget. A
+main read cut short skips it. Its words join the candidates after the copied text is made; Copy
+text is unchanged, and a page with no uncertain token does no extra work.
 
 How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
 - Recognition misses were not specific to dark themes (27% of secrets on dark themes, 28% on
   light). No preprocessing beat the first pass when it replaced it: local inversion, the local
-  contrast copy above, colour-channel distance, 2x upscaling and Sauvola thresholds all covered
-  62 to 64% of secrets against 64%, and Sauvola 50%.
+  contrast copy above, colour-channel distance and 2x upscaling covered 62 to 64% of secrets,
+  against 64% for the first pass, and Sauvola thresholds 50%.
 - A second read **added** to the first is what helps: a second, different reading is a second
   chance at a long random string. Keeping only the more confident reading of a line gained
   nothing. Rereading only the token's own area, not its line, gave half the gain.
-- With the current matcher, secrets fully covered went from 64.9% to 69.8% and decoys covered
+- With the matcher as merged, secrets fully covered went from 64.9% to 69.7% and decoys covered
   from 34.7% to 39.6%; on the x3 PDF, 285 to 293 of 359 items at 96 dpi and 297 to 299 at
   144 dpi, with decoys unchanged. A filter dropping second-read matches unlike the first read
   removed secrets and decoys at about the same rate, so there is none: a missed secret is the
   worse failure.
 - Cost, one job at a time on aurora: none measurable on the 176 ordinary captures (the test held
-  on 9); on corpus images where it ran, 7 ms at p50 and 303 ms at p95; on a 4K dark terminal
-  whose every line held tokens, 2.06 s became 4.06 s, the cap at the first pass's time.
+  on 9); on a 98-image sample of the corpus, where it ran on 91, 7 ms at p50 and 303 ms at p95;
+  on a 4K dark terminal whose every line held tokens, 2.06 s became 4.06 s, held by the cap.
 
 - **Screen or region.** An input of at least 4,000,000 pixels is a screen. A screen is cut into
   panels, and its job has a cap of 16,000,000 scaled pixels. Anything smaller is one panel, the
@@ -416,7 +420,7 @@ different binarizer, an inverted pass nor a pass with the found codes masked rea
 
 ### What the copy keeps
 
-Two outputs come from one pass:
+One job can give two outputs:
 
 - **Text for copying.** Line breaks are kept and a blank line separates layout blocks.
   Words are dropped when a person would not want them or could not read them:
@@ -433,8 +437,9 @@ Two outputs come from one pass:
   shape, with the confidence floor only for short words.
 - **Candidates.** Every recognized word with its box and confidence, unfiltered. Only the
   editor asks for them, for Quick redact. The resident never holds them. The `words` an agent
-  reads are the filtered words of the copied text, not these. A word from the uncertain tokens'
-  second read carries `"second": true`.
+  reads are the filtered words of the copied text, not these. Only a candidate from the
+  uncertain tokens' second read carries `"second": true`; faint-line candidates and the copied
+  `words` never do.
 
 ### Emoji
 
@@ -722,11 +727,14 @@ other tool active it does not. The user's side is in the
   addresses, Card numbers, Keys and tokens, My username and name, My redaction list, All of
   these, and Remove suggestions) with "Suggestions only. Recognition can miss text." always
   beside it.
-  - The second read of uncertain tokens is matched apart from the first: Quick redact matches
-    the first read, then a page where the second read's words take the place of the first
-    read's words they overlap, and adds only the matches holding a second-read word. Side by side
-    on one row, the two readings of a line would be read as one; read alone, a PEM public key's
-    line loses its header and was taken for a key. A mark's margins look only at its own read.
+  - The second read of uncertain tokens is matched apart from the first. Quick redact matches
+    the first read, then a page where each second-read word replaces the first-read words whose
+    columns it overlaps and whose vertical centre lies within its height. Only matches holding a
+    second-read word are added, and one already covered by a same-kind first-read match, each of
+    its words inside one of that match's words within 2 px, counts once. Side by side on one row,
+    the two readings of a line would be read as one; read alone, a PEM public key's line loses its
+    header and was taken for a key. A mark's margins look only at the words its match was found
+    among.
   - Matching runs over the unfiltered candidates, on lines as they appear (words grouped by
     height and ordered left to right), after whitespace and Unicode digits are normalized. Emails,
     phone numbers, card numbers and addresses match across adjacent words and wrapped lines. A
