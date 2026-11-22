@@ -26,10 +26,21 @@
    "properties": {
     "text": {"type": "string", "minLength": 1},
     "rect": {"$ref": "#/$defs/rect"},
-    "confidence": {"type": "integer", "minimum": 0, "maximum": 100},
-    "second": {"const": true, "description": "A candidate from the second read of an uncertain token's line (#1911); Quick redact matches it apart from the first read. Absent otherwise."}
+    "confidence": {"type": "integer", "minimum": 0, "maximum": 100}
    },
    "description": "One recognized word. At most 256 bytes of UTF-8."
+  },
+  "candidate": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["text", "rect", "confidence"],
+   "properties": {
+    "text": {"type": "string", "minLength": 1},
+    "rect": {"$ref": "#/$defs/rect"},
+    "confidence": {"type": "integer", "minimum": 0, "maximum": 100},
+    "second": {"const": true, "description": "From the second read of an uncertain token's line (#1911); Quick redact matches it apart from the first read. Absent otherwise."}
+   },
+   "description": "One unfiltered candidate word for Quick redact. At most 256 bytes of UTF-8."
   },
   "code": {
    "type": "object",
@@ -183,7 +194,7 @@
        "items": {"$ref": "#/$defs/word"},
        "description": "The filtered words of text; empty unless options.words."
       },
-      "candidates": {"type": "array", "maxItems": 20000, "items": {"$ref": "#/$defs/word"}, "description": "Empty unless options.candidates."},
+      "candidates": {"type": "array", "maxItems": 20000, "items": {"$ref": "#/$defs/candidate"}, "description": "Empty unless options.candidates."},
       "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/code"}, "description": "Top to bottom, then left to right, by centre."},
       "truncated": {
        "type": "boolean",

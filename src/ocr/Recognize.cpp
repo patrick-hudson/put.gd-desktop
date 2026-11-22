@@ -500,33 +500,41 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // first read is copied, and a page with no such word costs nothing.
  struct Token { int panel=0;Band band;BandText text; };
  QList<Token> tokens;
- const qint64 firstPassMs=stage.elapsed();QElapsedTimer tokenClock;tokenClock.start();
- bool tokensDone=false;
- if(options.candidates&&!result.truncated&&!late){
-  for(int i=0;i<panelList.size()&&!tokensDone;++i){
+ // Every panel's bands, the least confident first across the page (Sol on #1920).
+ struct Pending { int panel=0;Band band;float confidence=0; };
+ QList<Pending> pending;
+ if(options.candidates&&!result.truncated){
+  for(int i=0;i<panelList.size();++i){
    const auto& p=panelList[i];
    QList<TokenWord> unsure;
    for(int w=i>0?panelWords[i-1]:0;w<panelWords[i];++w){
     const auto& word=result.recognition.words.at(w);
     if(uncertainToken(word.text,word.confidence))unsure.append({word.rect.translated(-p.rect.topLeft()),word.confidence});
    }
-   if(unsure.isEmpty())continue;
    for(const auto& band:tokenLines(unsure,p.rect.height())){
-    // At most as long as the first pass took (tokenTimeFloorMs when it was quicker).
-    if(tokenClock.elapsed()>=std::max<qint64>(tokenTimeFloorMs,firstPassMs)){tokensDone=true;break;}
-    const int deadline=options.budgetMs>0?shared->left():0;
-    if(options.budgetMs>0&&deadline<=0){tokensDone=true;break;}
-    const auto copy=contrastBand(p.view,band,p.plan.scale,options.limits.border,p.codes);
-    bool cutShort=false,failed=false;
-    Token t{i,band,shared->first.recognize(copy,p.plan.scale,deadline,&cutShort,&failed)};
-    // What the first read found stands; a failed or cut second read adds nothing.
-    if(failed){tokensDone=true;break;}
-    if(!cutShort)tokens.append(std::move(t));
+    float least=tokenConfidence;
+    for(const auto& u:std::as_const(unsure))if(u.rect.center().y()>=band.top&&u.rect.center().y()<band.bottom)least=std::min(least,u.confidence);
+    pending.append({i,band,least});
    }
   }
+  std::stable_sort(pending.begin(),pending.end(),[](const Pending& a,const Pending& b){return a.confidence<b.confidence;});
+ }
+ // At most as long as the first pass took (tokenTimeFloorMs when it was quicker),
+ // and never past the job's budget: each band's deadline is the nearer of the two.
+ const qint64 tokenAllowance=std::max<qint64>(tokenTimeFloorMs,stage.elapsed());QElapsedTimer tokenClock;tokenClock.start();
+ for(const auto& b:std::as_const(pending)){
+  const auto& p=panelList[b.panel];
+  const auto copy=contrastBand(p.view,b.band,p.plan.scale,options.limits.border,p.codes);
+  qint64 deadline=tokenAllowance-tokenClock.elapsed();
+  if(options.budgetMs>0)deadline=std::min<qint64>(deadline,shared->left());
+  if(deadline<=0)break;
+  bool cutShort=false,failed=false;
+  Token t{b.panel,b.band,shared->first.recognize(copy,p.plan.scale,int(deadline),&cutShort,&failed)};
+  // What the first read found stands; a failed or cut second read adds nothing.
+  if(failed)break;
+  if(!cutShort)tokens.append(std::move(t));
  }
  finish();
- result.recognition.tokenLines=int(tokens.size());
  result.timings.recognitionMs=stage.elapsed();
  {QElapsedTimer wait;wait.start();if(emojiThread.joinable())emojiThread.join();result.timings.emojiWaitMs=emojiInline?emojiMs:wait.elapsed();}
  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;

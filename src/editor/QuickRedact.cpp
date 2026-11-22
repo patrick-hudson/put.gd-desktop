@@ -1504,6 +1504,29 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
 QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& chosen) {return find(candidates,chosen,{},0).matches;}
 Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs) {return find(candidates,chosen,sources,budgetMs,{});}
 namespace {
+// #1911: the second read's word boxes, and whether one of them overlaps a
+// first-read word on its row (the second word's height holds its centre, and
+// their columns meet), which the second read then replaces.
+QList<QRect> secondBoxes(const QList<RecognizedWord>& candidates){
+ QList<QRect> out;for(const auto& w:candidates)if(w.second)out.append(w.rect);
+ return out;
+}
+bool overlappedBySecond(const QRect& own,const QList<QRect>& seconds){
+ const auto centre=own.center().y();
+ return std::any_of(seconds.cbegin(),seconds.cend(),[&](const QRect& r){return centre>=r.top()&&centre<=r.bottom()&&r.left()<=own.right()&&r.right()>=own.left();});
+}
+// The words a match was found among: the first read alone, or for a match
+// holding a second-read word, the page with the second read in place.
+QList<bool> matchView(const QList<RecognizedWord>& candidates,const Match& match){
+ const auto seconds=secondBoxes(candidates);
+ QList<bool> seen(candidates.size(),true);
+ if(seconds.isEmpty())return seen;
+ const bool second=std::any_of(match.words.cbegin(),match.words.cend(),[&](int w){return w>=0&&w<candidates.size()&&candidates.at(w).second;});
+ for(int i=0;i<candidates.size();++i)seen[i]=second?(candidates.at(i).second||!overlappedBySecond(candidates.at(i).rect,seconds)):!candidates.at(i).second;
+ return seen;
+}
+}
+namespace {
 // Recognition may give one visual line as two layout blocks, so the end of a
 // line arrives after the lines below it. Matching runs over lines as they
 // appear: words grouped by the height of their centres (within half the
@@ -1609,10 +1632,8 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
  // second-read word overlaps it on its row (centre within that word's height),
  // so a token's name beside it stays.
  QList<int> replaced;
- for(const int i:std::as_const(firstRead)){
-  const auto& own=candidates.at(i).rect;const auto centre=own.center().y();
-  if(std::none_of(secondRead.cbegin(),secondRead.cend(),[&](int j){const auto& r=candidates.at(j).rect;return centre>=r.top()&&centre<=r.bottom()&&r.left()<=own.right()&&r.right()>=own.left();}))replaced.append(i);
- }
+ const auto seconds=secondBoxes(candidates);
+ for(const int i:std::as_const(firstRead))if(!overlappedBySecond(candidates.at(i).rect,seconds))replaced.append(i);
  replaced+=secondRead;std::sort(replaced.begin(),replaced.end());
  const auto subset=[&](const QList<int>& indexes){QList<RecognizedWord> out;out.reserve(indexes.size());for(const int i:indexes)out.append(candidates.at(i));return out;};
  const auto back=[&](Result result,const QList<int>& indexes,bool onlySecond){
@@ -1630,10 +1651,20 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
  std::function<void(const Result&)> firstProgress,secondProgress;
  if(progress)firstProgress=[&](const Result& partial){progress(back(partial,firstRead,false));};
  const auto one=back(findRead(subset(firstRead),chosen,sources,budgetMs,firstProgress,cancel,matcher),firstRead,false);
+ // The first read's matches are published before the second is matched (Sol on #1920).
+ if(progress)progress(one);
  if(cancel&&cancel->load(std::memory_order_relaxed))return one;
- if(progress)secondProgress=[&](const Result& partial){progress(merged(one,back(partial,replaced,true)));};
+ // A second-read match the first read already covers, same kind over the same
+ // place, is one finding, not two.
+ const auto box=[&](const Match& m){QRect r;for(const int w:m.words)r=r.united(candidates.at(w).rect);return r;};
+ const auto fresh=[&](Result second){
+  second.matches.removeIf([&](const Match& m){const auto b=box(m).adjusted(2,2,-2,-2);
+   return std::any_of(one.matches.cbegin(),one.matches.cend(),[&](const Match& f){return f.category==m.category&&box(f).contains(b);});});
+  return second;
+ };
+ if(progress)secondProgress=[&](const Result& partial){progress(merged(one,fresh(back(partial,replaced,true))));};
  const int left=budgetMs>0?std::max(0,budgetMs-int(clock.elapsed())):budgetMs;
- return merged(one,back(findRead(subset(replaced),chosen,sources,left,secondProgress,cancel,matcher),replaced,true));
+ return merged(one,fresh(back(findRead(subset(replaced),chosen,sources,left,secondProgress,cancel,matcher),replaced,true)));
 }
 namespace {
 QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringList& chosen) {
@@ -1918,7 +1949,8 @@ bool joined(const QImage& image,const QRect& box,const QRect& other,int dir,doub
 // that spans two rows makes two marks, so nothing between them is covered.
 QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds,const QImage& image) {
  QList<int> words;for(const int index:match.words)if(index>=0&&index<candidates.size())words.append(index);
- const bool matchSecond=!words.isEmpty()&&candidates.at(words.first()).second;
+ // #1911: neighbours come from the words the match was found among.
+ const auto seen=matchView(candidates,match);
  std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
  QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
@@ -1974,7 +2006,7 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
   std::optional<QRect> leftNeighbour,rightNeighbour;
   for(qsizetype i=0;i<candidates.size();++i){
    // #1911: only words of the match's own read; the other reading of the line overlaps it.
-   if(match.words.contains(int(i))||candidates.at(i).second!=matchSecond)continue;
+   if(match.words.contains(int(i))||!seen.at(i))continue;
    const auto& other=candidates.at(i).rect;
    if(other.isEmpty()||std::abs(other.center().y()-row.centre)>tolerance)continue;
    // Only a word the margin, plus a glyph for the boxes' error, could reach.
@@ -1998,7 +2030,7 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
     const double g=glyph(edgeWord);const int margin=qMax(pad,int(std::ceil(g*1.5)));
     int nearest=-1;
     for(qsizetype i=0;i<candidates.size();++i){
-     if(match.words.contains(int(i))||taken.contains(int(i)))continue;
+     if(match.words.contains(int(i))||taken.contains(int(i))||!seen.at(i))continue;
      const auto& other=candidates.at(i).rect;
      if(other.isEmpty()||std::abs(other.center().y()-row.centre)>tolerance)continue;
      const QRect best=nearest<0?other:candidates.at(nearest).rect;

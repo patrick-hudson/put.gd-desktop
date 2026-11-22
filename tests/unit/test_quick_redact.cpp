@@ -64,6 +64,9 @@ private slots:
    QCOMPARE(found(pem,all),QStringList{});
    pem.append({body,QRect(1,31,520,20),80,0,true});
    QCOMPARE(found(pem,all),QStringList{});}
+  // Both reads right about the same token: one finding, not two (Sol on #1920).
+  {const auto same=twice(token,token,true);
+   QCOMPARE(found(same,all),QStringList{"key: "+token});}
   // The first read's overlapping word is no neighbour of the second read's match.
   QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
   const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);

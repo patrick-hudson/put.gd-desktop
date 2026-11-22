@@ -61,11 +61,12 @@ void boundWords(QList<TextWord>& words,bool& cut){
  for(auto& word:words)word.text=cutUtf8(word.text,maximumWordBytes,cut);
 }
 void trimLines(TextResult& result){const auto lines=result.text.isEmpty()?0:result.text.count('\n')+1;if(result.lineTops.size()>lines)result.lineTops.resize(lines);while(result.lineTops.size()<lines)result.lineTops.append(result.lineTops.isEmpty()?0:result.lineTops.last());}
-bool decodeWords(const QJsonValue& value,bool wanted,const InputHeader& input,QList<TextWord>& out){
+// `second` (#1911) belongs to candidates only.
+bool decodeWords(const QJsonValue& value,bool wanted,const InputHeader& input,QList<TextWord>& out,bool candidates=false){
  if(!value.isArray()||value.toArray().size()>maximumWords||(!wanted&&!value.toArray().isEmpty()))return false;
  for(const auto& entry:value.toArray()){
   const auto object=entry.toObject();const auto rect=object["rect"].toArray();qint64 x=0,y=0,w=0,h=0,confidence=0;
-  const bool second=object.contains("second");
+  const bool second=candidates&&object.contains("second");
   if(!entry.isObject()||!keys(object,second?QStringList{"text","rect","confidence","second"}:QStringList{"text","rect","confidence"})||(second&&object["second"]!=QJsonValue(true))||!object["text"].isString()||object["text"].toString().isEmpty()||object["text"].toString().toUtf8().size()>maximumWordBytes
      ||rect.size()!=4||!integer(rect[0],0,input.width-1,x)||!integer(rect[1],0,input.height-1,y)||!integer(rect[2],1,input.width-x,w)||!integer(rect[3],1,input.height-y,h)||!integer(object["confidence"],0,100,confidence))return false;
   const auto text=sanitizeText(object["text"].toString()).remove('\n');
@@ -264,7 +265,7 @@ bool decodeResult(const QByteArray& json,const InputHeader& input,const Options&
   for(const auto& line:sanitizeText(lines[i]).split('\n')){kept.append(line);result.lineTops.append(int(top));}
  }
  result.text=kept.join('\n');
- if(!decodeWords(object["words"],options.words,input,result.words)||!decodeWords(object["candidates"],options.candidates,input,result.candidates))return false;
+ if(!decodeWords(object["words"],options.words,input,result.words)||!decodeWords(object["candidates"],options.candidates,input,result.candidates,true))return false;
  if(!object["codes"].isArray()||object["codes"].toArray().size()>maximumCodes)return false;
  for(const auto& entry:object["codes"].toArray()){
   const auto code=entry.toObject();const bool binary=code["kind"]==QLatin1String("binary");const auto quad=code["quad"].toArray();TextCode decoded;
