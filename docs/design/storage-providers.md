@@ -12,7 +12,7 @@ plain WebDAV's under `src/storage/dav/` ([nextcloud.md](../user/nextcloud.md)).
 Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class and one helper,
 `putgd-webdav-worker`, which reuses the custom uploader's plain-HTTP rule
 (`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
-Nextcloud files above 50 MiB use chunked upload v2 (`MKCOL` an upload folder, `PUT` 16 MiB chunks,
+Nextcloud files above 50 MiB use chunked upload v2 (`MKCOL` an upload folder, `PUT` chunks of 16 MiB by default, larger to stay within 10,000,
 then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
 size and content read back at the target's strong ETag (a failed probe leaves it unknown; a 412
 stays a collision), and an abandoned upload folder is deleted through its journal, which keeps it
@@ -36,8 +36,8 @@ carries the label `put.gd <publication ID>`. Inspection, Finish share link and r
 share by the share ID a step journaled (it stays the sharing record's progress whatever the
 outcome, and History's link actions and retries pass it on), else by the recorded link's token (a
 revoke from History passes a SHA-256 of the token, never the link, and the helper compares it
-with each listed link's token locally; the share ID and digest go only
-to Nextcloud and never appear in History detail or share replies), else by the label, which must match exactly one share; a
+with each listed link's token locally and never sends it; only the share ID goes to Nextcloud,
+and neither appears in History detail or share replies), else by the label, which must match exactly one share; a
 lookup by ID must name exactly that share, and an ID it confirms gone is forgotten before the next
 step. A confirmed absence means no share; several matches, an unreadable entry, or a link
 listed without its token when put.gd's isn't found is unknown, never a guess, and revoke deletes
@@ -58,7 +58,8 @@ the whole `/s/<segment>` in link fields (DAV targets and identities stay), log r
 every `/s/<segment>`, diagnostics keep only the scheme and host of the server, folder and link
 addresses, and server reply text never reaches a message,
 journal or log (errors carry `httpStatus` and `ocsStatus`). TLS uses the system trust
-store only; a refused certificate is described by issuer, expiry or host name with its SHA-256.
+store only; a refused certificate is described by issuer, expiry or host name, with its SHA-256
+when one was received.
 Credentials are bound to the origin they were given for and, for Nextcloud, the account ID
 ([credentials.md](credentials.md)); the provider refuses before sending anything when the
 destination names another origin. Login Flow v2's page and poll endpoint must have the server's

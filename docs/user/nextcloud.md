@@ -40,9 +40,10 @@ Nextcloud destination does the same first. When the server can't be reached put.
 when the server refuses (for example, the password was already revoked) Settings shows only
 **Signed out**. Remove any put.gd entry left under **Devices & sessions**.
 
-The app password works only for the server address and account it was given for. **Sign out
-before you change the Server**: after the change put.gd asks you to sign in again, sends nothing
-to the new address until you do, and can't use the old app password to revoke it.
+The app password works only for the server address (scheme, host and port) and account it was
+given for; a new install path on the same address keeps it. **Sign out before you change the
+address**: after the change put.gd asks you to sign in again, sends nothing to the new address
+until you do, and can't use the old app password to revoke it.
 
 ### Use an app password instead
 
@@ -79,11 +80,12 @@ uses, finishes or revokes its own link: a link you made by hand for the same fil
 
 ### Large files
 
-Files above 50 MiB go up in 16 MiB chunks (Nextcloud's chunked upload v2), so a server's upload
+Files above 50 MiB go up in chunks of 16 MiB, larger when needed to stay within 10,000 chunks
+(Nextcloud's chunked upload v2), so a server's upload
 size limit applies to each chunk rather than the whole file. Nextcloud then assembles the file,
 which can take up to 30 minutes. The file appears at its name only once it is complete, and
-never replaces a file that appeared there meanwhile. A cancel or a lost reply during assembly
-can leave the complete file there with the outcome unknown; History checks it before anything
+never replaces a file that appeared there meanwhile. A cancel, a lost reply or a server error
+during assembly can leave the complete file there with the outcome unknown; History checks it before anything
 is sent again. Otherwise a cancelled or failed upload leaves nothing at the name. Its chunks are
 removed, or left for Nextcloud's own cleanup when that fails (`webdav_cleanup_failed`).
 
@@ -119,7 +121,8 @@ itself.
 
 ### What Test checks
 
-Besides the upload, the link and the cleanup, Test checks two things the server should do:
+Besides the upload, the link and the cleanup, Test checks two things the server should do, when
+the server gives uploads a usable ETag (without one it skips both and warns):
 
 - refuse a second upload to the same name (`If-None-Match: *`). put.gd checks names before each
   upload, but a server that ignores this could let two uploads of the same name at the same
@@ -148,7 +151,7 @@ Delete is unavailable for that upload, and Test leaves its test file on the serv
   on Fedora.
 - **Plain HTTP**: an `http://` address on another computer is refused unless **Allow plain HTTP
   for this destination** is on. That switch shows for an `http://` Server, Folder address or
-  Link address, and stays visible while it is on. Plain HTTP sends files and the password
+  Link address on another computer, and while it is on. Plain HTTP sends files and the password
   unencrypted.
 - **Slow connections**: requests that carry file data have no fixed time limit; they stop only
   when no data has moved for a minute.
