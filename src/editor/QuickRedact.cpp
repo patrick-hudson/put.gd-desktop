@@ -3,6 +3,8 @@
 #include <QElapsedTimer>
 #include <QChar>
 #include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMap>
 #include <QPair>
 #include <QRegularExpression>
@@ -179,7 +181,7 @@ bool tokenCharacter(QChar c) {return (c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'
 bool tokenPiece(const QString& word,bool loose=false) {
  if(word.isEmpty())return false;
  // An assignment is one, whatever its value's symbols (PASSWORD='R!$^&*()#', Sol on #1903).
- static const QRegularExpression assigned(QStringLiteral("^[\"'`]?[A-Za-z_][A-Za-z0-9_.-]{1,63}[\"'`]?[=:]\\S"));
+ static const QRegularExpression assigned(QStringLiteral("^(?:\\d{1,5}|[{\\[(,])?[\"'`\u201C\u2018]?[A-Za-z_][A-Za-z0-9_.-]{1,63}[\"'`\u201D\u2019]?[=:]\\S"));
  if(loose&&assigned.match(word).hasMatch())return true;
  // #1820: quotes around a word are punctuation, not misread characters ("“AKIA…" in an editor's string).
  static const QString quotes=QStringLiteral("\"'`\u201C\u201D\u2018\u2019\u00AB\u00BB");
@@ -600,12 +602,15 @@ bool publicRun(const QString& run) {
 }
 // A JSON web token that carries no signature: its header decodes to JSON with "alg":"none" and its
 // signature part is empty (Sol on #1903). Anything recognition garbled is no such token.
-bool unsignedJwt(const QString& token) {
- const auto parts=token.trimmed().split('.');
+bool unsignedJwt(const QString& text) {
+ // The token itself, out of its quotes and the punctuation or words after it (Sol on #1903).
+ static const QRegularExpression span(QStringLiteral("ey[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*\\.[A-Za-z0-9_-]*"));
+ const auto m=span.match(text);if(!m.hasMatch())return false;
+ const auto parts=m.captured().split('.');
  if(parts.size()!=3||!parts.at(2).isEmpty())return false;
- const auto header=QByteArray::fromBase64(parts.at(0).toLatin1(),QByteArray::Base64UrlEncoding);
- static const QRegularExpression none(QStringLiteral("\"alg\"\\s*:\\s*\"none\""),QRegularExpression::CaseInsensitiveOption);
- return none.match(QString::fromLatin1(header)).hasMatch();
+ // The header's own alg, top level, is "none".
+ const auto header=QJsonDocument::fromJson(QByteArray::fromBase64(parts.at(0).toLatin1(),QByteArray::Base64UrlEncoding));
+ return header.isObject()&&header.object().value(QLatin1String("alg")).toString().compare(QLatin1String("none"),Qt::CaseInsensitive)==0;
 }
 // Whether a line names a digest (a part of one of its words, split at anything but a letter or digit
 // and at a lowercase-to-capital change, is a hash word) and no secret.
@@ -653,7 +658,7 @@ bool secretName(const QString& name) {
  const bool privatePart=std::any_of(parts.cbegin(),parts.cend(),[](const QString& p){return privateParts.contains(p);});
  if(!privatePart&&(parts.contains(QLatin1String("public"))||parts.contains(QLatin1String("publishable"))))return false;
  if(parts.size()==1&&(parts.first()=="pwd"||parts.first()=="oldpwd"))return false;
- static const QSet<QString> alone{"token","tokens","secret","secrets","password","passwords","passwd","pwd","pass","passphrase","credential","credentials","dsn","apikey","privatekey","accesskey","secretkey","authtoken","authorization"};
+ static const QSet<QString> alone{"token","tokens","secret","secrets","password","passwords","passwd","pwd","pass","passphrase","pin","credential","credentials","dsn","apikey","privatekey","accesskey","secretkey","authtoken","authorization"};
  static const QSet<QString> beforeKey{"api","access","secret","private","signing","encryption","master","account","app"};
  for(int i=0;i<parts.size();++i){
   if(alone.contains(parts.at(i)))return true;
@@ -729,14 +734,14 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  const auto pieceEnd=[&](int piece){return piece+1<pieces?segment.starts.at(piece+1):int(segment.text.size());};
  // URLs with a password, webhooks and bot tokens.
  static const QList<QRegularExpression> urls{
-  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?![0-9]{1,5}(?:[/?#,;]|$))[^\\s/@]{3,}")),
+  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?![0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))[^\\s/@]{3,}")),
   // The credential-bearing path whole: team, hook and secret (Sol on #1903).
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}/[A-Za-z0-9]{6,}/(?:[0-9]{6,}/)?[A-Za-z0-9]{12,}")),
   QRegularExpression(QStringLiteral("(?i)discord(?:app)?[.,]?com/api/webhooks/[0-9]{6,}/[A-Za-z0-9_-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)webhook[.,]?office[.,]?com/webhookb2/[A-Za-z0-9@-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?zapier[.,]?com/hooks/catch/[A-Za-z0-9]{3,}/[A-Za-z0-9]{3,}")),
-  QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&)?(?:key|token)=[A-Za-z0-9_-]{8,}")),
-  QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,4}sig=[A-Za-z0-9_%-]{8,}")),
+  QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}(?:key|token)=[A-Za-z0-9_-]{8,}")),
+  QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}sig=[A-Za-z0-9_%-]{8,}")),
   // A Telegram bot token: the bot's id, a colon and 35 characters (core.telegram.org/bots/api).
   QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{6,12}:[A-Za-z0-9_-]{30,}")),
  };
@@ -756,12 +761,25 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
     const auto password=text.mid(colon+1,at2<0?-1:at2-colon-1);
     if(at2<0){
      qsizetype d=colon+1;while(d<text.size()&&text.at(d).isDigit()&&d-colon<=5)++d;
-     if(d>colon+1&&d-colon<=6&&pieceStart(segment,int(m.capturedStart()+d)))continue;
+     // ...unless the next word starts with the @ ("alice:1234" "@db"): then the digits are a password.
+     const int after=int(m.capturedStart()+d);
+     if(d>colon+1&&d-colon<=6&&pieceStart(segment,after)&&!(after<segment.text.size()&&segment.text.at(after)=='@'))continue;
     }
     if(!secretValue(password,true))continue;
    }
-   // A webhook whose credential is masked ("…/XXXXXXXX") stays visible.
-   if(&pattern!=&urls.first()&&masked(m.captured().mid(m.captured().lastIndexOf('/')+1)))continue;
+   // A webhook whose credentials are all masked stays visible: the last path part, read to the end
+   // of its recognized word ("…/B5bIUb" "************"), and every key, token or sig parameter in
+   // the URL; one unmasked credential keeps it covered (Sol on #1903).
+   if(&pattern!=&urls.first()){
+    const int endPiece=pieceAt(segment,int(m.capturedEnd()-1));
+    const int urlEnd=endPiece+1<segment.starts.size()?segment.starts.at(endPiece+1):int(segment.text.size());
+    const auto url=segment.text.mid(m.capturedStart(),urlEnd-m.capturedStart());
+    static const QRegularExpression param(QStringLiteral("[?&](?:key|token|sig)=([^&\\s]+)"),QRegularExpression::CaseInsensitiveOption);
+    QStringList credentials;for(auto p=param.globalMatch(url);p.hasNext();)credentials.append(p.next().captured(1));
+    if(credentials.isEmpty()){const auto path=url.left(url.indexOf('?')<0?url.size():url.indexOf('?'));credentials.append(path.mid(path.lastIndexOf('/')+1));}
+    static const QRegularExpression stars(QStringLiteral("[*\u2022]{4,}"));
+    if(std::all_of(credentials.cbegin(),credentials.cend(),[](const QString& c){return masked(c)||stars.match(c).hasMatch();}))continue;
+   }
    out.append(from(pieceAt(segment,m.capturedStart()),pieces-1));
   }
  }
@@ -874,18 +892,20 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   }
   if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
   // #1894: a certificate or a public key block is public: its lines stay visible up to its END line.
-  {static const QRegularExpression publicBegin(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)")),publicEnd(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?END\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)"));
+  {static const QRegularExpression publicBegin(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)[A-Z0-9 ]*")),publicEnd(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?END\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)[A-Z0-9 ]*"));
    // Its own END (CERTIFICATE with CERTIFICATE), and no BEGIN of any block between: otherwise it is
    // read line by line as any text (Sol on #1903).
    const auto opened=publicBegin.match(lineText(line));
    if(opened.hasMatch()){
-    const bool certificate=opened.captured().contains(QLatin1String("CERTIFICATE"));
+    // The whole label (TRUSTED CERTIFICATE is not CERTIFICATE).
+    const auto labelOf=[](const QString& marker,const QString& word){const auto at=marker.indexOf(word);return marker.mid(at+word.size()).simplified();};
+    const auto label=labelOf(opened.captured(),QStringLiteral("BEGIN"));
     int j=k+1;bool closed=false;
     for(;j<keys.size()&&j<=k+100;++j){
      const auto text=lineText(lines[keys.at(j)]);
      if(begin.match(text).hasMatch()||publicBegin.match(text).hasMatch())break;
      const auto shut=publicEnd.match(text);
-     if(shut.hasMatch()){closed=shut.captured().contains(QLatin1String("CERTIFICATE"))==certificate;break;}
+     if(shut.hasMatch()){closed=labelOf(shut.captured(),QStringLiteral("END"))==label;break;}
     }
     if(closed){k=j;continue;}
    }}
@@ -1047,13 +1067,17 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    }
   }
  }
- // #1894: matches that share a word are one secret (a token and the assignment it is the value of).
- for(int i=0;i<out.size();++i)for(int j=i+1;j<out.size();){
-  if(std::any_of(out.at(j).cbegin(),out.at(j).cend(),[&](int w){return out.at(i).contains(w);})){
-   for(const int w:out.at(j))if(!out[i].contains(w))out[i].append(w);
-   std::sort(out[i].begin(),out[i].end());out.removeAt(j);j=i+1;
-  }else ++j;
- }
+ // #1894: matches that share a word are one secret (a token and the assignment it is the value of),
+ // joined in one pass over their words (#1897: overlapping wrap chains make many such matches).
+ {QList<int> parent(out.size());std::iota(parent.begin(),parent.end(),0);
+  const auto root=[&](int i){while(parent[i]!=i){parent[i]=parent[parent[i]];i=parent[i];}return i;};
+  QHash<int,int> owner;
+  for(int i=0;i<out.size();++i)for(const int w:out.at(i)){const auto it=owner.constFind(w);if(it==owner.cend())owner.insert(w,i);else parent[root(i)]=root(it.value());}
+  QMap<int,QList<int>> merged;
+  for(int i=0;i<out.size();++i){auto& words=merged[root(i)];words+=out.at(i);}
+  QList<QList<int>> joined;
+  for(auto words:std::as_const(merged)){std::sort(words.begin(),words.end());words.erase(std::unique(words.begin(),words.end()),words.end());joined.append(words);}
+  out=joined;}
  return out;
 }
 struct Rule {QString category;QRegularExpression pattern;std::function<bool(const QString&)> valid;int view=0;};

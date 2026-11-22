@@ -358,6 +358,22 @@ private slots:
   QTest::newRow("a Slack webhook cut short or masked stays visible")<<"https://hooks.slack.com/services/T00000000 https://hooks.slack.com/services/T00000000/B00000000/"+QString(24,'X')<<QStringList{"key"}<<QStringList{};
   {const auto none=QString("eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.")+"eyJzdWIiOiIxIn0.";
    QTest::newRow("an unsigned JWT with typ first stays visible")<<"TOKEN="+none<<QStringList{"key"}<<QStringList{};}
+  // Sol on #1903, round 2.
+  QTest::newRow("a numeric password split before its @")<<"postgres://alice:12"+QString("34 @db/prod")<<QStringList{"key"}<<QStringList{"key: postgres://alice:12"+QString("34 @db/prod")};
+  QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
+  QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
+  for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})
+   QTest::newRow(qPrintable("a symbol password in "+form.left(4)))<<form<<QStringList{"key"}<<QStringList{"key: "+form};
+  {const auto gitlab=QString("gl")+"pat-"+"xY7zA9bC1dE3fG5hJ7kL";
+   QTest::newRow("a GitLab token before a masked word")<<"token "+gitlab+" XXXXXX"<<QStringList{"key"}<<QStringList{"key: "+gitlab+" XXXXXX"};}
+  {const auto trusted=QString("-----BEGIN TRUSTED CERTIFICATE-----"),priv=QString("-----BEGIN RSA PRIV")+"ATE KEY-----",privEnd=QString("-----END RSA PRIV")+"ATE KEY-----";
+   QTest::newRow("a trusted certificate does not close on another label")<<trusted+" | MIIDdzCCAl+gAwIBAgIEAgAAuTAN | -----END CERTIFICATE----- | "+priv+" | MIIEowIBAAKCAQEAHrLx06iBCd5VNAle01lpMw | "+privEnd<<QStringList{"key"}<<QStringList{"key: "+priv+" MIIEowIBAAKCAQEAHrLx06iBCd5VNAle01lpMw "+privEnd};}
+  {const auto none=QString("eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.")+"eyJzdWIiOiIxIn0.";
+   QTest::newRow("an unsigned JWT in quotes before words stays visible")<<"TOKEN=\""+none+"\", see docs"<<QStringList{"key"}<<QStringList{};}
+  {const auto azure=QString("https://prod-12.westus.logic.azure.com/workflows/abc/triggers/manual/paths/invoke?api-version=2016-06-01&a=1&b=2&c=3&sp=%2Ftriggers&sv=1.0&sig=")+"q9Lm2Vx7Tz4Rb8Nc1Kp6Wd3Hs5";
+   QTest::newRow("an Azure webhook with many parameters")<<azure<<QStringList{"key"}<<QStringList{"key: "+azure};}
+  {const auto chat=QString("https://chat.googleapis.com/v1/spaces/AAA/messages?key=")+"AIzaSyDdI0hCZtE6vySjMm"+"&token="+QString(16,'X');
+   QTest::newRow("a Google Chat webhook with one real credential")<<chat<<QStringList{"key"}<<QStringList{"key: "+chat};}
   QTest::newRow("hex run with no word about it")<<"value "+hexRun<<all<<QStringList{"key: value "+hexRun};
   // #1895: Patrick's decoy page. A hex run beside a hash word is a digest; a secret word beside it wins.
   {const auto sha1=QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab",sha256=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
