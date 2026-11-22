@@ -4513,6 +4513,51 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     }
   }
   if (stillish && !wholeMove && (pick < 0 || cands[size_t(pick)].cells < share + kStillMargin)) return noMovement(true);
+  // A page that repeats (a pull request's tables, one every 1,010 rows) fits
+  // the pair at its place and a period away. Turning back more than half a
+  // screen from one frame to the next, against the way the page was going,
+  // is the look-alike when the pair also fits, nearly as well, at a place
+  // that goes on the way the page went: GitHub's page, moved on 414 rows
+  // after a pause, was placed 596 rows back at 0.987 of its cells against
+  // 0.967 for the right place, and every later frame was a table short
+  // (#1797). Not on the driver's hint, which says where the page is.
+  if (pick >= 0 && !hinted && skipRun_ == 0 && lastMove_ != 0) {
+    const Candidate& p = cands[size_t(pick)];
+    // A turn back that the whole overlap agrees with is the page's: a person
+    // flicking back hard after a pause.
+    if ((p.d > 0) != (lastMove_ > 0) && 2 * std::abs(p.d) > height_ && !wholeAgrees(p.d)) {
+      const int B = int(bandLo_.size()) - 1;
+      // The columns a candidate moves in: a look-alike of the page moves in
+      // the page's columns, a side bar at its own pace in others.
+      const auto columns = [&](const Candidate& c) {
+        std::vector<uint8_t> col(static_cast<size_t>(B), 0);
+        for (size_t t = 0; t < c.moving.size(); ++t)
+          if (c.moving[t] == 1) col[t % size_t(B)] = 1;
+        return col;
+      };
+      const std::vector<uint8_t> pc = columns(p);
+      int ahead = -1;
+      for (size_t i = 0; i < cands.size(); ++i) {
+        const Candidate& c = cands[i];
+        if (!c.accepted || c.d == 0 || (c.d > 0) != (lastMove_ > 0) || c.cells < opts_.recoverCells ||
+            c.cells < p.cells - opts_.recoverTie)
+          continue;
+        // The page, not a part at a pace of its own: it moves at least as
+        // much of the frame as the turn back does, in mostly the same columns.
+        if (c.movingTiles < p.movingTiles) continue;
+        const std::vector<uint8_t> cc = columns(c);
+        int both = 0, inP = 0, inC = 0;
+        for (int k = 0; k < B; ++k) {
+          both += pc[size_t(k)] && cc[size_t(k)];
+          inP += pc[size_t(k)];
+          inC += cc[size_t(k)];
+        }
+        if (2 * both < std::min(inP, inC)) continue;
+        if (ahead < 0 || c.cells > cands[size_t(ahead)].cells) ahead = int(i);
+      }
+      if (ahead >= 0) pick = ahead;
+    }
+  }
 
   // Nothing to compare only when there is nothing: a frame and a reference
   // that both show enough are no blank stretch, whatever the search found

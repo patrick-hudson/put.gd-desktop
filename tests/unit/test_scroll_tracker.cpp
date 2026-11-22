@@ -1768,6 +1768,90 @@ void testEdgeLine() {
          counts(r) + fmt(", %d wrong%s, %lld stray line px (row %d)", r.wrong, r.firstWrong.c_str(), stray, firstRow));
 }
 
+// A turn back of more than half a screen from one frame to the next, against
+// the way the page was going, is a look-alike when the pair also fits, nearly
+// as well, at a place that goes on the way the page went (#1797): on GitHub's
+// pull request page, moved on 414 rows after a pause, the pair took a place
+// 596 rows back (one table of 1,010 rows away) and every later frame was a
+// table short. The scene came out of a randomized search over look-alike
+// tables under a late header (seed 3583), kept exactly; nightly placed 6 of
+// its frames a period off.
+void testTurnBackLookAlike() {
+  std::printf("\n[turn back] a look-alike half a screen back loses to the place that goes on\n");
+  const int W = 480, V = 400, P = 133, header = 40;
+  Image doc(W, 7000, kBg);
+  Rng prose(23 + 3583);
+  for (int y = 10; y + 12 < 1000; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  const std::vector<int> twoHeadings{8, 11, 13, 16, 17, 20, 25, 26, 28, 31, 50, 52};
+  for (int b = 1000 / P; b * P < doc.h; ++b) {
+    Rng head(500 + uint64_t(b) + 3583000ull);
+    if (b % 3 == 0) {  // every third block a paragraph
+      for (int y = b * P + 6; y + 12 < (b + 1) * P; y += 18) drawTextLine(doc, y, 40, W - 40, head);
+      continue;
+    }
+    drawTextLine(doc, b * P + 6, 40, W - 40, head);
+    if (std::find(twoHeadings.begin(), twoHeadings.end(), b) != twoHeadings.end()) drawTextLine(doc, b * P + 24, 40, W - 40, head);
+    for (int j = 0; j < 7 && b * P + 44 + j * 19 + 12 < (b + 1) * P; ++j) {
+      Rng words(77 + uint64_t(j));  // rows the same in every table
+      drawTextLine(doc, b * P + 44 + j * 19, 40, W - 40, words);
+    }
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  PinnedPart h;
+  h.w = W;
+  h.h = header;
+  h.background = 0xEDEFF2;
+  h.ink = 0x30303A;
+  h.inkRows = 15;
+  h.border = false;
+  h.fromPos = 785;  // a header that shows once the page is scrolled past its title
+  ss.pinned.push_back(h);
+  const Scene scene(doc, ss);
+  const std::vector<int> pos{0,    77,   154,  231,  308,  385,  462,  539,  616,  693,  770,  847,  924,  1001, 1078, 1155,
+                             1552, 1547, 1552, 1546, 1546, 1546, 1553, 1545, 1548, 1549, 1553, 1545, 1548, 1548, 1552, 1553,
+                             1552, 1550, 1545, 1553, 1547, 1546, 1551, 1549, 1546, 1552, 1546, 1553, 1548, 1551, 1549, 1549,
+                             1549, 1545, 1548, 1545, 1553, 1551, 1552, 1550, 1545, 1545, 1548, 1546, 1545, 1552, 1483, 1457,
+                             1434, 1398, 1364, 1311, 1234, 1190, 1170, 1117, 1059, 986,  945,  915,  871,  795,  733,  661,
+                             614,  591};
+  const Played r = play(scene, pos);
+  // Below the header's rows at the image's top, every row is the page's.
+  long long bad = 0;
+  int firstBad = -1;
+  for (long long y = std::max<long long>(r.totals.top, header + 2); y < r.totals.bottom; ++y)
+    for (int x = 1; x < W - 1; ++x) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[(size_t(y - r.totals.top) * W + x) * 4], 4);
+      const uint32_t e = y >= 0 && y < doc.h ? doc.at(x, int(y)) : kBg;
+      int worst = 0;
+      for (int sh = 0; sh < 24; sh += 8) worst = std::max(worst, std::abs(int((v >> sh) & 255) - int((e >> sh) & 255)));
+      if (worst > 40) {
+        ++bad;
+        if (firstBad < 0) firstBad = int(y);
+      }
+    }
+  report("a turn back half a screen to a look-alike: frames stay where the page is", r.wrong == 0 && bad == 0,
+         counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+
+  // A person who flicks back hard after a pause: the turn back is the page's,
+  // and the whole overlap agrees with it (#1821's review, round 1).
+  {
+    const Document page = plainPage(131, W, V);
+    SceneSpec sp;
+    sp.width = W;
+    sp.height = V;
+    const Scene plain(page.img, sp);
+    std::vector<int> at;
+    for (int p = 0; p <= 1200; p += 60) at.push_back(p);
+    for (int k = 0; k < 3; ++k) at.push_back(1200);  // the pause
+    for (int p = 1200 - 208; p >= 400; p -= 60) at.push_back(p);
+    const Played q = play(plain, at);
+    report("a fast turn back after a pause is placed where the page went", q.wrong == 0,
+           counts(q) + fmt(", %d wrong%s", q.wrong, q.firstWrong.c_str()));
+  }
+}
+
 // A playing video in the region (#1537): a part of the page that keeps
 // changing while the rest of the frame agrees must not contradict the image
 // or stall a capture the person scrolls themselves (slow scrolling, pausing,
@@ -2710,6 +2794,7 @@ int main() {
   testJumpPastLookAlikes();
   testLostGuessMarksNothing();
   testEdgeLine();
+  testTurnBackLookAlike();
   testPlayingVideo();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
