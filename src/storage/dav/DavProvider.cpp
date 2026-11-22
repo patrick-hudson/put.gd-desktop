@@ -59,33 +59,54 @@ QJsonObject DavProvider::diagnosticSettings(const QJsonObject& settings) const {
     if (out.contains("accountName")) out["accountName"] = out["accountName"].toString().isEmpty() ? QString() : QStringLiteral("<set>");
     return out;
 }
+// The canonical DAV address of the file: scheme, host, port and path, with the bound account's
+// ID for Nextcloud, so two spellings of one server serialize together.
 QString DavProvider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
+    if (object["target"].isString() && !object["target"].toString().isEmpty()) return object["target"].toString();
     const auto name = object["name"].isString() ? object["name"].toString() : candidate;
-    const auto& s = destination.settings;
-    return id_ == dav::nextcloudId ? s["server"].toString() + "/" + s["folder"].toString() + "/" + name : s["address"].toString() + name;
+    QString userId;
+    if (const auto credential = credentials_.cached(destination.profileId, destination.credentialReference))
+        userId = dav::parseBinding(credential->sessionToken)["userId"].toString();
+    return dav::canonicalUrl(dav::fileUrl(destination.settings, id_, userId, name));
+}
+void DavProvider::unlockLinkCredentials(const StorageReceipt& receipt, std::function<void(Error)> reply) {
+    credentials_.unlock(receipt.destination.profileId, receipt.destination.credentialReference, std::move(reply));
 }
 Error DavProvider::validateSettings(const QJsonObject& settings) const { return dav::validateSettings(id_, settings); }
 
 QJsonObject DavProvider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
                               std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                              DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill, std::function<void(const QJsonObject&)> notice, bool needsCredentials) {
+                              DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill, std::function<void(const QJsonObject&)> notice, bool needsCredentials,
+                              const Credentials* given) {
     if (uncertain) *uncertain = false;
     if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
     if (destination.providerId != id_) { error = {"webdav_protocol", "The destination is not a " + label(id_) + " destination", {}}; return {}; }
     if (method != "signIn")
         if (auto e = dav::validateSettings(id_, destination.settings)) { error = e; return {}; }
-    const auto credential = credentials_.cached(destination.profileId, destination.credentialReference);
+    const auto credential = given ? std::optional<Credentials>(*given) : credentials_.cached(destination.profileId, destination.credentialReference);
     if (needsCredentials && (!credential || credential->accessKey.isEmpty() || credential->secretKey.isEmpty())) {
         error = {"credential_setup_required", id_ == dav::nextcloudId
             ? QStringLiteral("put.gd isn't signed in to this Nextcloud destination. Sign in, or unlock saved credentials.")
             : QStringLiteral("Credentials are not loaded for this destination. Unlock saved credentials, or enter the WebDAV user and password and choose Save to keychain or Use for this session."), {}};
         return {};
     }
+    // Credentials go only to the place they were given for (#1872): the binding stored beside them
+    // must name this destination's server or folder; otherwise nothing is sent.
+    const bool sendsCredentials = credential && (needsCredentials || method == "signOut");
+    if (sendsCredentials) {
+        const auto binding = dav::parseBinding(credential->sessionToken);
+        if (binding.isEmpty() || binding["base"].toString() != dav::bindingBase(destination.settings, id_)) {
+            error = {"credential_setup_required", id_ == dav::nextcloudId
+                ? QStringLiteral("put.gd's app password was given for another Nextcloud address. Sign in again.")
+                : QStringLiteral("These credentials were stored for another WebDAV address. Enter them again for this one."), {{"reason", "binding"}}};
+            return {};
+        }
+        params["binding"] = binding;
+    }
     params["schemaVersion"] = 1;
     params["method"] = method;
     params["destination"] = destination.toJson();
-    if (credential && needsCredentials) params["credentials"] = QJsonObject{{"user", credential->accessKey}, {"password", credential->secretKey}};
-    else if (credential && method == "signOut") params["credentials"] = QJsonObject{{"user", credential->accessKey}, {"password", credential->secretKey}};
+    if (sendsCredentials) params["credentials"] = QJsonObject{{"user", credential->accessKey}, {"password", credential->secretKey}};
     if (method == "upload") { params["chunkThresholdBytes"] = double(chunkThreshold_); params["chunkBytes"] = double(chunkBytes_); }
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
@@ -95,8 +116,8 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
         "The " + label(id_) + " helper ended without a confirmed result; reconcile before retrying",
         {"upload", "remove", "share", "testDestination"},
         !QStringList{"checkName", "stat", "reconcile", "inspectAccount", "signIn"}.contains(method), true};
-    // Sign-in waits for the browser (up to 20 minutes) without output; assembling a large
-    // chunked upload can keep the server quiet for minutes.
+    // Sign-in waits for the browser (up to 20 minutes) without output; assembling a large chunked
+    // upload sends a heartbeat while the server works.
     const qint64 perRequest = method == "signIn" ? 7 * 60 * 1000 : 5 * 60 * 1000;
     const auto final = worker::exchange(workerPath(), method, std::move(params), perRequest, policy, stopping_, error, uncertain, cancellation, progress,
                                         checkpoint, kill, {}, std::move(notice));
@@ -173,7 +194,7 @@ void DavProvider::share(const ShareRequest& request, DurableCheckpoint checkpoin
     reply(result);
 }
 void DavProvider::abandonUpload(const Destination& destination, const QJsonObject& journal, std::function<void(Error)> reply) {
-    if (!journal["uploadId"].isString()) { reply({}); return; }
+    if (!journal["uploadId"].isString() && !journal["earlier"].isArray()) { reply({}); return; }
     Error e;
     call("abandon", destination, {{"journal", journal}}, e);
     reply(e);
@@ -184,48 +205,109 @@ void DavProvider::testDestination(const Destination& destination, DurableCheckpo
     reply(r, e);
 }
 void DavProvider::setup(const QString& kind, const Destination& destination, const QJsonObject& input, const Background& background,
-                        std::function<void(Error, QJsonObject)> reply, std::function<void(QJsonObject)> event, std::shared_ptr<std::atomic_bool> cancelled) {
+                        std::function<void(Error, QJsonObject)> reply, std::function<void(QJsonObject)> event, std::shared_ptr<std::atomic_bool> cancelled,
+                        std::function<bool(const Destination&)> current) {
+    Q_UNUSED(input);
     const bool nextcloud = id_ == dav::nextcloudId;
+    auto* store = &credentials_;
+    // Revokes an app password put.gd won't keep, with those credentials and nothing else.
+    const auto revoke = [this, background, destination](Credentials grant, std::function<void(Error)> done) {
+        background([this, destination, grant](Error& error) {
+            Credentials given = grant;
+            return call("signOut", destination, {}, error, nullptr, {}, {}, {}, {}, {}, false, &given);
+        }, [done](Error error, QJsonObject result) { done(error ? error : result["revoked"].toBool() ? Error{} : Error{"nextcloud_revoke_unconfirmed", "The server didn't confirm the revocation", {}}); });
+    };
+    // A server that enforces link passwords: signed in, but no link can be made.
+    const auto passwordEnforced = [](const QJsonObject& account, bool saved) {
+        return Error{"nextcloud_share_password_required",
+                     QString("Signed in as %1, but this Nextcloud server requires a password on every public link, which put.gd doesn't set, so uploads there won't get a link. Ask the administrator to stop enforcing link passwords.")
+                         .arg(account["accountName"].toString(account["userId"].toString())),
+                     {{"credentialSaved", saved}, {"accountName", account["accountName"]}, {"userId", account["userId"]}}};
+    };
     if (kind == "connectAccount") {
         if (!nextcloud) { reply({"setup_unsupported", "A WebDAV destination has no browser sign-in; store its user and password instead", {}}, {}); return; }
-        auto store = &credentials_;
         background([this, destination, event, cancelled](Error& error) {
             return call("signIn", destination, {}, error, nullptr, cancelled, {}, {}, {}, [event](const QJsonObject& value) {
                 const QUrl url(value["url"].toString());
                 if (event && value.size() == 2 && QStringList{"http", "https"}.contains(url.scheme())) event({{"event", "signIn"}, {"url", url.toString(QUrl::FullyEncoded)}});
             }, false);
-        }, [store, destination, reply](Error error, QJsonObject result) {
+        }, [store, destination, reply, cancelled, current, revoke, passwordEnforced](Error error, QJsonObject result) {
             auto password = result.take("appPassword").toString();
-            const auto login = result["loginName"].toString();
-            if (error) { password.fill(QChar('\0')); reply(error, {}); return; }
-            // Only the store keeps the app password; the job's result names the account.
-            store->save(destination.profileId, destination.credentialReference, Credentials{login, password, {}}, [reply, result](Error e) { reply(e, e ? QJsonObject{} : result); });
+            const Credentials grant{result["loginName"].toString(), password, result.take("binding").toString()};
             password.fill(QChar('\0'));
+            if (error) { reply(error, {}); return; }
+            // Cancelled meanwhile, or the destination is gone or names another server: the new grant
+            // is revoked, never saved.
+            if ((cancelled && cancelled->load()) || (current && !current(destination))) {
+                const bool stopped = cancelled && cancelled->load();
+                revoke(grant, [reply, stopped](Error) {
+                    reply(stopped ? Error{"nextcloud_signin_cancelled", "Sign-in cancelled", {}}
+                                  : Error{"config_conflict", "The destination changed while you were signing in. Sign in again.", {}}, {});
+                });
+                return;
+            }
+            const auto previous = store->cached(destination.profileId, destination.credentialReference);
+            store->save(destination.profileId, destination.credentialReference, grant, [store, destination, reply, result, previous, grant, revoke, passwordEnforced](Error saved) {
+                if (saved) {
+                    // Not kept here, so not kept on the server either.
+                    revoke(grant, [reply, saved](Error) { reply(saved, {}); });
+                    return;
+                }
+                // The earlier grant goes only now that the new one is saved, and only when it was
+                // given for this same place.
+                if (previous && previous->secretKey != grant.secretKey &&
+                    dav::parseBinding(previous->sessionToken)["base"] == dav::parseBinding(grant.sessionToken)["base"])
+                    revoke(*previous, [](Error) {});
+                if (result["sharePasswordEnforced"].toBool()) { reply(passwordEnforced(result, true), {}); return; }
+                reply({}, result);
+            });
         });
         return;
     }
     if (kind == "signOut") {
-        auto store = &credentials_;
-        const bool signedIn = credentials_.cached(destination.profileId, destination.credentialReference).has_value();
-        background([this, destination, nextcloud, signedIn](Error& error) -> QJsonObject {
-            if (!nextcloud || !signedIn) return {{"revoked", false}};
-            Error revoke;
-            auto out = call("signOut", destination, {}, revoke, nullptr, {}, {}, {}, {}, {}, false);
-            // A server that can't be reached keeps the app password; the user is told to revoke it there.
-            if (revoke) out = {{"revoked", false}, {"revokeError", revoke.toJson()}};
-            error = {};
-            return out;
-        }, [store, destination, reply](Error, QJsonObject result) {
-            store->erase(destination.profileId, destination.credentialReference, [reply, result](Error e) { reply(e, e ? QJsonObject{} : result); });
+        // A keychain entry not read yet is read first, so its app password can be revoked.
+        const auto proceed = [this, store, destination, nextcloud, background, reply]() {
+            const auto loaded = store->cached(destination.profileId, destination.credentialReference);
+            background([this, destination, nextcloud, loaded](Error& error) -> QJsonObject {
+                if (!nextcloud || !loaded) return {{"revoked", false}};
+                Error revokeError;
+                auto out = call("signOut", destination, {}, revokeError, nullptr, {}, {}, {}, {}, {}, false);
+                // A server that can't be reached keeps the app password; the user is told to revoke it there.
+                if (revokeError) out = {{"revoked", false}, {"revokeError", revokeError.toJson()}};
+                error = {};
+                return out;
+            }, [store, destination, reply](Error, QJsonObject result) {
+                store->erase(destination.profileId, destination.credentialReference, [reply, result](Error e) { reply(e, e ? QJsonObject{} : result); });
+            });
+        };
+        if (nextcloud && !store->cached(destination.profileId, destination.credentialReference) && destination.credentialReference["mode"] == "keychain") {
+            store->unlock(destination.profileId, destination.credentialReference, [proceed](Error) { proceed(); });
+            return;
+        }
+        proceed();
+        return;
+    }
+    if (kind == "inspectAccount") {
+        background([this, destination](Error& error) { return call("inspectAccount", destination, {}, error); },
+                   [store, destination, nextcloud, reply, passwordEnforced](Error error, QJsonObject result) {
+            if (error || !nextcloud) { reply(error, result); return; }
+            // An app password stored by hand is bound to its account here, the first time it is used.
+            const auto credential = store->cached(destination.profileId, destination.credentialReference);
+            const auto finish = [reply, result, passwordEnforced] { if (result["sharePasswordEnforced"].toBool()) reply(passwordEnforced(result, true), {}); else reply({}, result); };
+            if (credential && dav::parseBinding(credential->sessionToken)["userId"].toString().isEmpty()) {
+                auto bound = *credential;
+                bound.sessionToken = dav::binding(destination.settings, dav::nextcloudId, result["userId"].toString());
+                store->save(destination.profileId, destination.credentialReference, bound, [reply, finish](Error saved) { if (saved) reply(saved, {}); else finish(); });
+                return;
+            }
+            finish();
         });
         return;
     }
-    if (kind == "inspectAccount" || kind == "createFolder") {
-        const auto method = kind;
-        background([this, destination, method](Error& error) { return call(method, destination, {}, error); }, std::move(reply));
+    if (kind == "createFolder") {
+        background([this, destination](Error& error) { return call("createFolder", destination, {}, error); }, std::move(reply));
         return;
     }
-    Q_UNUSED(input);
     reply({"setup_unsupported", "This destination has no such setup step", {}}, {});
 }
 }

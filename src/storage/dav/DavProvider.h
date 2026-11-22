@@ -39,15 +39,19 @@ public:
     // forgets the credentials). The helper work runs through `background`; the credential
     // store is used on the calling thread. A sign-in's app password goes only to the store.
     using Background = std::function<void(std::function<QJsonObject(Error&)>, std::function<void(Error, QJsonObject)>)>;
+    // `current` says whether the destination still exists with the same server; a sign-in that
+    // finishes after it changed is revoked, never saved.
     void setup(const QString& kind, const Destination&, const QJsonObject& input, const Background&, std::function<void(Error, QJsonObject)> reply,
-               std::function<void(QJsonObject)> event, std::shared_ptr<std::atomic_bool> cancelled);
+               std::function<void(QJsonObject)> event, std::shared_ptr<std::atomic_bool> cancelled, std::function<bool(const Destination&)> current = {});
+    // History's Unlock saved credentials, before a delete or a link change (#1872).
+    void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
     // The worker executable: the installed sibling, or the build tree's.
     static QString workerPath();
 private:
     QJsonObject call(const QString& method, const Destination&, QJsonObject params, Error&, bool* uncertain = nullptr,
                      std::shared_ptr<std::atomic_bool> cancellation = {}, std::function<void(const UploadProgress&)> progress = {},
                      DurableCheckpoint checkpoint = {}, std::shared_ptr<std::atomic_bool> kill = {},
-                     std::function<void(const QJsonObject&)> notice = {}, bool needsCredentials = true);
+                     std::function<void(const QJsonObject&)> notice = {}, bool needsCredentials = true, const Credentials* given = nullptr);
     CredentialStore& credentials_;
     QString id_;
     qint64 chunkThreshold_, chunkBytes_;

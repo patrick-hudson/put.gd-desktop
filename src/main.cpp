@@ -459,17 +459,22 @@ int main(int argc,char* argv[]) {
   // result (warnings, the account) comes back with it. Share tokens never reach its journal.
   if(putgd::dav::isDav(destination.providerId)){
    const auto dav=destination.providerId==putgd::dav::nextcloudId?nextcloud:webdav;
-   if(kind!="testDestination"){dav->setup(kind,destination,input,[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));},std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind));return;}
+   if(kind!="testDestination"){
+    // A sign-in is kept only while the destination still exists with the server it was for.
+    const auto current=[&settings](const putgd::Destination& d){const auto p=settings.snapshot().profiles.value(d.profileId);return p["provider"]==d.providerId&&p["settings"].toObject()["server"]==d.settings["server"]&&p["credentials"].toObject()==d.credentialReference;};
+    dav->setup(kind,destination,input,[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));},std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind),current);return;
+   }
    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
    auto trail=std::make_shared<putgd::DestinationTestTrail>();
    auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
-    const auto written=putgd::withoutSignedTestLinks(data);auto error=checkpointFile(path,written);if(!error)trail->record(written);ack(error);
+    // A share link's token is a secret in its path: no journal keeps one (#1872).
+    const auto written=putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks(data))).toObject();auto error=checkpointFile(path,written);if(!error)trail->record(written);ack(error);
    };
    operations.background([dav,destination,checkpoint](putgd::Error& error){
     QJsonObject out;dav->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
    },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
     result=trail->completed(result);
-    auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
+    auto journalError=checkpointFile(path,putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}))).toObject());
     if(!error&&journalError)error=journalError;
     if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
     reply(error,result);
@@ -507,6 +512,7 @@ int main(int argc,char* argv[]) {
  };
  setup.setProviderSetup(providerSetup);
  setup.setNamedCredentials(putgd::http::namedCredentials);
+ setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);
  server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
  // A diagnostics package uploads only to a destination whose Test connection

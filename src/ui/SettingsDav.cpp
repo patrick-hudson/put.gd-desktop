@@ -17,13 +17,53 @@
 #include <QPushButton>
 #include <QTimer>
 namespace putgd {
+// Each poll of a running sign-in. A sign-in Settings didn't start in this window (it was reopened
+// meanwhile) is taken up as it stands: waiting, with Open browser again and Cancel, and no browser
+// opened by itself.
 void SettingsWindow::davSignInEvent(const QString& setupId, const QUrl& url) {
-    if (setupId != davSignInSetup_ || !dav_ || dav_->signIn() == DavDestinationPanel::SignIn::Waiting || dav_->signIn() == DavDestinationPanel::SignIn::BrowserFailed) return;
-    // Only a page of the server this destination names is opened.
-    const QUrl server(dav_->settings()["server"].toString());
-    if (!QStringList{"http", "https"}.contains(url.scheme()) || url.host().compare(server.host(), Qt::CaseInsensitive) != 0) return;
+    if (!dav_ || dav_->provider() != dav::nextcloudId) return;
+    QJsonObject job;
+    for (const auto& value : std::as_const(setupJobs_)) if (value.toObject()["setupId"] == setupId) job = value.toObject();
+    if (job["kind"] != "connectAccount" || job["profileId"] != profileId_->text()) return;
+    if (davSignInSetup_.isEmpty()) {
+        davSignInSetup_ = setupId;
+        davAdoptedSetup_ = setupId;
+        if (dav_->signIn() == DavDestinationPanel::SignIn::Idle) dav_->setSignIn(DavDestinationPanel::SignIn::Starting);
+    }
+    if (setupId != davSignInSetup_ || url.isEmpty() || dav_->signIn() == DavDestinationPanel::SignIn::Waiting || dav_->signIn() == DavDestinationPanel::SignIn::BrowserFailed) return;
+    // Only a page of the server this destination names, below its base, is opened.
+    const auto settings = dav_->settings();
+    if (!dav::loginPageAllowed(url, settings["server"].toString(), settings["allowInsecureHttp"].toBool())) return;
     dav_->setSignIn(DavDestinationPanel::SignIn::Waiting, url);
-    openDavBrowser();
+    if (davAdoptedSetup_ != setupId) openDavBrowser();
+    emit viewStateChanged();
+}
+void SettingsWindow::revokeBeforeRemoving(const QString& profileId) {
+    // The removal goes on whatever the answer; a revocation the server didn't confirm is said.
+    const auto proceed = [guard = QPointer<SettingsWindow>(this), profileId](bool confirmed) {
+        if (!guard) return;
+        guard->davRemoving_ = profileId;
+        if (auto* remove = guard->findControl<QPushButton*>("removeDestination")) remove->click();
+        if (!confirmed) guard->setupFeedback("put.gd couldn't revoke the app password on the server; remove it under Nextcloud's Devices & sessions.");
+    };
+    setupFeedback("Signing out of Nextcloud…");
+    settings_.request("setup.signOut", {{"profileId", profileId}, {"expectedRevision", settings_.revision()}}, this, [this, proceed](Error e, QJsonObject data) {
+        if (e) { proceed(false); return; }
+        const auto id = data["setupId"].toString();
+        auto* timer = new QTimer(this);
+        auto polls = std::make_shared<int>(0);
+        connect(timer, &QTimer::timeout, this, [this, timer, id, polls, proceed] {
+            if (++*polls > 400) { timer->deleteLater(); proceed(false); return; }
+            settings_.request("setup.inspect", {{"id", id}}, this, [timer, proceed](Error e, QJsonObject job) {
+                if (!e && job["state"] == "running") return;
+                if (!timer->isActive()) return;
+                timer->stop();
+                timer->deleteLater();
+                proceed(!e && job["state"] == "completed" && !job["result"].toObject().contains("revokeError"));
+            });
+        });
+        timer->start(300);
+    });
 }
 void SettingsWindow::openDavBrowser() {
     if (!dav_ || !dav_->signInUrl().isValid()) return;
@@ -56,7 +96,7 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
         settings["accountName"] = name;
         dav_->setSettings(settings);
         dirty();
-        queueEdit(dav_, "/profiles/{profile}/settings");
+        queueEdit(dav_, "/profiles/{profile}/settings/accountName");
         refreshDestinationList();
         return true;
     };
@@ -64,6 +104,11 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
         if (data["setupId"] == davSignInSetup_ || job["setupId"] == davSignInSetup_) davSignInSetup_.clear();
         if (shown) dav_->setSignIn(DavDestinationPanel::SignIn::Idle);
         if (error.code == "nextcloud_signin_cancelled") { setupFeedback("Sign-in cancelled."); return true; }
+        // Signed in, but the server enforces link passwords: the account is shown, and the error said.
+        if (error.code == "nextcloud_share_password_required" && error.details.value("credentialSaved").toBool()) {
+            applyAccount(error.details.value("accountName").toString(error.details.value("userId").toString()));
+            refreshCredentialHint();
+        }
         if (error) { status(error); return true; }
         const auto name = result["accountName"].toString(result["userId"].toString());
         if (!applyAccount(name)) { setupFeedback("Signed in for the original destination. Select it again to see its account."); return true; }
@@ -75,6 +120,8 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
         return true;
     }
     if (kind == "inspectAccount") {
+        if (error.code == "nextcloud_share_password_required" && error.details.value("credentialSaved").toBool())
+            applyAccount(error.details.value("accountName").toString(error.details.value("userId").toString()));
         if (error) { status(error); return true; }
         if (provider == dav::nextcloudId) {
             const auto name = result["accountName"].toString(result["userId"].toString());

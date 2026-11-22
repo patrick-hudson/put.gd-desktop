@@ -1324,7 +1324,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  dav_=new DavDestinationPanel(this);
  dav_->build([&](QFormLayout* form,const QString& label,QWidget* control,const QString& hint){return setting(form,label,control,{},hint);});
  pageLayout->insertWidget(pageLayout->indexOf(PreferenceRows::sectionFor(credentialForm)),dav_);
- connect(dav_,&DavDestinationPanel::edited,this,[this]{if(loading_)return;dirty();queueEdit(dav_,"/profiles/{profile}/settings");if(updateProviderVisibility_)updateProviderVisibility_();});
+ // Each setting saves on its own, so a refused address never holds back the folder (#1872). An
+ // address and the plain HTTP switch it may need go together.
+ connect(dav_,&DavDestinationPanel::edited,this,[this](const QString& field){if(loading_)return;dirty();
+  const QStringList addresses{"server","address","linkBase","allowInsecureHttp"};
+  for(const auto& key:addresses.contains(field)?(dav_->provider()==dav::nextcloudId?QStringList{"server","allowInsecureHttp"}:QStringList{"address","linkBase","allowInsecureHttp"}):QStringList{field})queueEdit(dav_,"/profiles/{profile}/settings/"+key);
+  if(updateProviderVisibility_)updateProviderVisibility_();});
  connect(dav_,&DavDestinationPanel::signInRequested,this,[this]{if(!admitSetup())return;dav_->setSignIn(DavDestinationPanel::SignIn::Starting);beginSetup("connectAccount");});
  connect(dav_,&DavDestinationPanel::cancelSignInRequested,this,&SettingsWindow::cancelDavSignIn);
  connect(dav_,&DavDestinationPanel::browserRequested,this,&SettingsWindow::openDavBrowser);
@@ -1360,9 +1365,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto all=candidate()["profiles"].toArray();const int at=profile_->currentIndex();if(at<0||at>=all.size())return;const auto label=profileLabel_->text();
  const int uploaded=uploadedCounts_.value(all[at].toObject()["id"].toString(),-1);
  const auto files=uploaded<0?QStringLiteral("Files already uploaded to it stay there, and History keeps them."):uploaded==0?QStringLiteral("No History items were uploaded to it."):QStringLiteral("%1 History %2 uploaded to it; %3 there, and History keeps %4. put.gd can delete %4 there again only if you add a destination for the same place.").arg(uploaded).arg(uploaded==1?"item was":"items were",uploaded==1?"its file stays":"their files stay",uploaded==1?"it":"them");
- if(!Ui::confirm(this,"Remove destination","Remove \""+label+"\" from settings?\n"+files,"Remove destination",true))return;
- // #1872: removing a Nextcloud destination revokes put.gd's app password on the server and forgets it here.
- if(const auto removed=all[at].toObject();removed["provider"]==dav::nextcloudId&&!selectedDestinationChanged())settings_.request("setup.signOut",{{"profileId",removed["id"]},{"expectedRevision",settings_.revision()}},this,[](Error,QJsonObject){});storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();// Routes to it go back to what the file has: no destination where the file routes to it too.
+ const auto removing=all[at].toObject()["id"].toString();
+ if(davRemoving_!=removing&&!Ui::confirm(this,"Remove destination","Remove \""+label+"\" from settings?\n"+files,"Remove destination",true))return;
+ // #1872: a Nextcloud destination's app password is revoked on the server first (SettingsDav.cpp);
+ // the removal follows once that has an answer, whatever it is.
+ if(all[at].toObject()["provider"]==dav::nextcloudId&&davRemoving_!=removing&&!selectedDestinationChanged()){revokeBeforeRemoving(removing);return;}
+ davRemoving_.clear();storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();// Routes to it go back to what the file has: no destination where the file routes to it too.
   const auto accepted=acceptedDocument();const auto back=[&](const QJsonValue& route){const auto object=route.toObject();const auto named=object.value("profileId").toString();return object.value("destination")=="upload"&&named!=id?named:QString();};
   if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(qMax(0,captureProfile_->findData(back(accepted.value("captureDefaults")))));updateCaptureInheritance();}
   {// Quietly: the removal's own fallback, worked out from the file when it is sent, covers these.
@@ -1769,7 +1777,7 @@ void SettingsWindow::loadProfile(){
  const auto shownProfile=profileId_->text();
  credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool r2=p["provider"]==r2::providerId;const bool storage=s3||b2||r2;const bool http=p["provider"]==CustomUploaderPanel::provider();const bool dav=dav::isDav(p["provider"].toString());
  // #1872: another destination's sign-in, notice and Create folder offer do not follow it.
- if(shownProfile!=p["id"].toString()){dav_->setSignIn(DavDestinationPanel::SignIn::Idle);dav_->setFolderMissing(false);dav_->setNotice({});dav_->setAppPasswordShown(false);davSignInSetup_.clear();}
+ if(shownProfile!=p["id"].toString()){dav_->setSignIn(DavDestinationPanel::SignIn::Idle);dav_->setFolderMissing(false);dav_->setNotice({});dav_->setAppPasswordShown(false);dav_->showProblem({},{});davSignInSetup_.clear();}
  if(dav){dav_->setProvider(p["provider"].toString());dav_->setSettings(s);}
  // The form shows this destination's request; another destination's notice does not follow it.
  uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString()){uploader_->setNotice({});s3OtherService_={};}
@@ -2894,7 +2902,7 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
  // made elsewhere is never undone from here (#1699).
  if(result&&op.kind==SaveOperation::Kind::Fields)for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==op.id&&serviceSwitched_.contains(op.id)&&value.toObject()["provider"]==serviceSwitched_.value(op.id))serviceSwitched_.remove(op.id);
  if(!result){
-  const auto& error=result.error;const bool refused=error.code=="config_invalid"||error.code=="s3_settings_invalid"||error.code.startsWith("http_");
+  const auto& error=result.error;const bool refused=error.code=="config_invalid"||error.code=="s3_settings_invalid"||error.code=="webdav_settings_invalid"||error.code.startsWith("http_");
   // An add removed here while it was in flight, and not saved: nothing of it is kept, and the
   // removal queued for it goes too (meetsPreconditions).
   if(op.kind==SaveOperation::Kind::Fields&&!profileOrder().contains(op.id)){
@@ -2943,7 +2951,7 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
   const auto id=op.id;const auto submitted=op.profile;
   const SaveOperation* newer=nullptr;for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==op.key)newer=&queuedOp;
   const auto edited=[&](const QString& group){if(!newer)return false;for(const auto& part:group.split('+'))for(auto it=newer->values.cbegin();it!=newer->values.cend();++it)if(within(part,it.key())||within(it.key(),part))return true;return false;};
-  QString path=error.code=="s3_settings_invalid"&&!field.isEmpty()?"settings/"+field:match.hasMatch()&&!match.captured(1).isEmpty()?match.captured(1):QString();
+  QString path=(error.code=="s3_settings_invalid"||error.code=="webdav_settings_invalid")&&!field.isEmpty()?"settings/"+field:match.hasMatch()&&!match.captured(1).isEmpty()?match.captured(1):QString();
   // While groups are sent one at a time, the one sent is the one refused.
   if(path.isEmpty()&&!op.probing.isEmpty())path=op.probing.first().section('+',0,0);
   bool report=false;QString refusedGroup;
@@ -3001,6 +3009,8 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
    placeConflictBanners();return;
   }
   if(error.code.startsWith("http_")&&uploader_)uploader_->showProblem(field,error.message);
+  // #1872: beside the Nextcloud or WebDAV field it names.
+  if(error.code=="webdav_settings_invalid"&&dav_)dav_->showProblem(field=="allowInsecureHttp"||field.isEmpty()?(dav_->provider()==dav::nextcloudId?QStringLiteral("server"):QStringLiteral("address")):field,error.message);
   status(error);return;
  }
  QWidget* control=nullptr;
@@ -3210,7 +3220,7 @@ void SettingsWindow::refreshCredentialHint(){
   const bool keychain=hint["mode"]=="keychain";g->findControl<QPushButton*>("unlockCredentials")->setVisible(keychain&&!hint["available"].toBool());g->credentialAvailability_[id]=hint["available"].toBool()||keychain;g->refreshDestinationList();g->credentialForm_->setRowVisible(PreferenceRows::rowFor(g->credentialHint_),true);
   if(hint["available"].toBool()){
    // Only the short identifying prefix, never the key.
-   Ui::feedback(g->credentialHint_,hint["accessKeyHint"].toString()+(g->providerType_->currentData()==dav::nextcloudId?" · App password stored":g->providerType_->currentData()==dav::webdavId?" · Password stored":" · Secret key stored")+(hint["tokenStored"].toBool()?QString(" · Session token stored"):QString{})+" · "+(keychain?"In the system keychain":"For this session"));
+   Ui::feedback(g->credentialHint_,hint["accessKeyHint"].toString()+(g->providerType_->currentData()==dav::nextcloudId?" · App password stored":g->providerType_->currentData()==dav::webdavId?" · Password stored":" · Secret key stored")+(hint["tokenStored"].toBool()&&!dav::isDav(g->providerType_->currentData().toString())?QString(" · Session token stored"):QString{})+" · "+(keychain?"In the system keychain":"For this session"));
    g->access_->setPlaceholderText("Type a new key ID to replace it");g->secret_->setPlaceholderText("Type a new secret to replace it");if(hint["tokenStored"].toBool())g->token_->setPlaceholderText("Type a new token to replace it");
   }else Ui::feedback(g->credentialHint_,keychain?"Locked in the system keychain":"None stored");
  });
@@ -3672,7 +3682,7 @@ void SettingsWindow::pollSetup(){
   int index=0;while(index<setupJobs_.size()&&setupJobs_[index].toObject()["setupId"]!=id)++index;
   if(index==setupJobs_.size())return;
   const auto job=setupJobs_[index].toObject();const auto event=data["event"].toObject();
-  if(!e&&event["event"]=="signIn")davSignInEvent(id,QUrl(event["url"].toString()));
+  if(!e&&data["state"]=="running")davSignInEvent(id,QUrl(event["event"]=="signIn"?event["url"].toString():QString()));
   if(!e&&event["event"]=="auth"&&!protonBrowserOpened_){const QUrl url(event["url"].toString());if(url.scheme()=="https"&&url.host()=="account.proton.me"){protonBrowserOpened_=true;pendingProtonUrl_=url;pendingProtonSetup_=id;retryProtonBrowser();updateSetupButton();}}
   if(e.code=="setup_not_found"||(!e&&data["state"]!="running")){
    // The resident recorded what the test found (#1692); its snapshot brings the row's state.

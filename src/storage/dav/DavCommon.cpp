@@ -1,5 +1,7 @@
 #include "DavCommon.h"
 #include "storage/http/HttpCommon.h"
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QRegularExpression>
 #include <QStringList>
 namespace putgd::dav {
@@ -47,9 +49,10 @@ QString addressProblem(const QJsonValue& value, bool allowInsecure, bool require
 QString nextcloudServer(const QString& typed) {
     auto url = parsed(typed);
     if (!url.isValid()) return {};
-    // Everything from the first segment Nextcloud serves below its install base.
+    // Only the routes a pasted link ends with go: /index.php/…, /remote.php/…, /apps/files…,
+    // /s/<token>… and /f/<id>. An install path such as /apps/cloud stays.
     auto path = url.path();
-    static const QRegularExpression tail("/(index\\.php|remote\\.php|public\\.php|status\\.php|ocs|apps|s|login|f|settings)(/.*)?$|/+$");
+    static const QRegularExpression tail("/(index\\.php|remote\\.php|apps/files|s/[^/]+|f/[0-9]+)(/.*)?$|/+$");
     for (int guard = 0; guard < 8; ++guard) {
         const auto match = tail.match(path);
         if (!match.hasMatch()) break;
@@ -79,25 +82,37 @@ QString cleanFolder(const QString& folder) {
 QString encodePath(const QString& path) { return QString::fromLatin1(QUrl::toPercentEncoding(path, "/")); }
 Error validateSettings(const QString& provider, const QJsonObject& s) {
     const auto label = provider == nextcloudId ? QStringLiteral("Nextcloud") : QStringLiteral("WebDAV");
-    const auto bad = [&](const QString& what) { return Error{"webdav_settings_invalid", "Invalid " + label + " settings: " + what, {}}; };
+    // details.field names the setting, so Settings shows the message beside it and saves the rest.
+    QString field;
+    const auto bad = [&](const QString& what) {
+        Error e{"webdav_settings_invalid", "Invalid " + label + " settings: " + what, {}};
+        if (!field.isEmpty()) e.details["field"] = field;
+        return e;
+    };
     if (QStringList(s.keys()) != QStringList(defaults(provider).keys())) return bad("missing or unsupported fields");
+    field = "allowInsecureHttp";
     if (!s["allowInsecureHttp"].isBool()) return bad("Allow plain HTTP is true or false");
     const bool insecure = s["allowInsecureHttp"].toBool();
     if (provider == nextcloudId) {
         // Empty until the user enters one: a new destination saves before it is set up.
+        field = "server";
         if (const auto problem = addressProblem(s["server"], insecure, false); !problem.isEmpty()) return bad(problem);
         const auto server = s["server"].toString();
         if (!server.isEmpty() && (server.endsWith('/') || nextcloudServer(server) != server))
             return bad("the server address is the Nextcloud install's base address, such as https://cloud.example.com");
+        field = "folder";
         const auto folder = s["folder"].toString();
         if (!s["folder"].isString() || folder.size() > maximumFolderChars || cleanFolder(folder) != folder || !controlFree(folder) || folder.contains('\\'))
             return bad("the folder is a path in your files such as put.gd or Screenshots/put.gd, without a leading or trailing /");
+        field = "accountName";
         if (!s["accountName"].isString() || s["accountName"].toString().size() > 256 || !controlFree(s["accountName"].toString()))
             return bad("the account name is text of up to 256 characters");
         return {};
     }
+    field = "address";
     if (const auto problem = addressProblem(s["address"], insecure, false); !problem.isEmpty()) return bad(problem);
     if (!s["address"].toString().isEmpty() && !s["address"].toString().endsWith('/')) return bad("the folder address ends with /");
+    field = "linkBase";
     if (const auto problem = addressProblem(s["linkBase"], insecure, false); !problem.isEmpty()) return bad("link address: " + problem);
     if (s["linkBase"].isString() && s["linkBase"].toString().isEmpty()) return bad("leave the link address out (null) instead of empty");
     return {};
@@ -125,13 +140,57 @@ QString shareToken(const QString& link) {
     return match.hasMatch() ? match.captured(1) : QString();
 }
 QString redactShareTokens(const QString& text) {
-    static const QRegularExpression token("/s/[A-Za-z0-9]{6,}");
+    // The whole segment after /s/, whatever its length or characters: it is the link's secret.
+    static const QRegularExpression token("/s/[^\\s/?#\"'<>]+");
     auto out = text;
     return out.replace(token, QStringLiteral("/s/…"));
+}
+QJsonValue redactShareTokensIn(const QJsonValue& value) {
+    if (value.isString()) return redactShareTokens(value.toString());
+    if (value.isArray()) {
+        QJsonArray out;
+        for (const auto& item : value.toArray()) out.append(redactShareTokensIn(item));
+        return out;
+    }
+    if (value.isObject()) {
+        QJsonObject out;
+        const auto object = value.toObject();
+        for (auto it = object.begin(); it != object.end(); ++it) out[it.key()] = redactShareTokensIn(it.value());
+        return out;
+    }
+    return value;
+}
+QString canonicalUrl(const QUrl& url) {
+    if (!url.isValid() || url.host().isEmpty()) return {};
+    const auto scheme = url.scheme().toLower();
+    auto host = url.host().toLower();
+    if (host.contains(':')) host = "[" + host + "]";
+    const int port = url.port(scheme == "https" ? 443 : 80);
+    return scheme + "://" + host + ":" + QString::number(port) + url.path(QUrl::FullyEncoded);
+}
+QString bindingBase(const QJsonObject& settings, const QString& provider) {
+    // The origin: scheme, host and port. Another folder on the same server keeps its credentials.
+    auto url = QUrl(provider == nextcloudId ? settings["server"].toString() + "/" : settings["address"].toString(), QUrl::StrictMode);
+    url.setPath("/");
+    return canonicalUrl(url);
+}
+QString binding(const QJsonObject& settings, const QString& provider, const QString& userId) {
+    QJsonObject value{{"v", 1}, {"base", bindingBase(settings, provider)}};
+    if (!userId.isEmpty()) value["userId"] = userId;
+    return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));
+}
+QJsonObject parseBinding(const QString& stored) {
+    const auto value = QJsonDocument::fromJson(stored.toUtf8()).object();
+    return value["v"].toInt() == 1 && value["base"].isString() ? value : QJsonObject{};
 }
 bool sameOrigin(const QUrl& a, const QUrl& b) {
     const auto port = [](const QUrl& url) { return url.port(url.scheme() == "https" ? 443 : 80); };
     return a.scheme() == b.scheme() && a.host().compare(b.host(), Qt::CaseInsensitive) == 0 && port(a) == port(b);
+}
+bool loginPageAllowed(const QUrl& page, const QString& server, bool allowInsecure) {
+    const QUrl base(server + "/", QUrl::StrictMode);
+    if (!page.isValid() || !page.userInfo().isEmpty() || !sameOrigin(page, base) || !http::transportAllowed(page, allowInsecure)) return false;
+    return page.path().startsWith(base.path());
 }
 bool plainHttpAddress(const QString& typed) {
     const QUrl url(typed.trimmed());

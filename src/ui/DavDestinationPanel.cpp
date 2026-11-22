@@ -13,9 +13,11 @@ namespace putgd {
 using Ui::space;
 using Ui::Space;
 DavDestinationPanel::DavDestinationPanel(QWidget* parent) : QWidget(parent) { setObjectName("davDestinationEditor"); }
-void DavDestinationPanel::finished() {
+void DavDestinationPanel::finished(const QString& field) {
+    // An edit answers the field's earlier refusal; a new one comes back with the save.
+    if (problems_.contains(field)) showProblem(field, {});
     sync();
-    if (!loading_) emit edited();
+    if (!loading_) emit edited(field);
 }
 void DavDestinationPanel::build(const RowBuilder& row) {
     if (built_) return;
@@ -33,7 +35,7 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     const auto insecure = [this](const char* name) {
         auto* box = new QCheckBox("Allow plain HTTP for this destination", this);
         box->setObjectName(name);
-        connect(box, &QCheckBox::clicked, this, [this] { finished(); });
+        connect(box, &QCheckBox::clicked, this, [this] { finished("allowInsecureHttp"); });
         return box;
     };
     const QString plainHint = QStringLiteral("Plain HTTP sends files and the password unencrypted. Use it only on a network you trust.");
@@ -43,11 +45,12 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     nextcloudForm_->parentWidget()->setObjectName("nextcloudServerSection");
     server_ = line("nextcloudServer", "https://cloud.example.com");
     row(nextcloudForm_, "Server", server_, "The address you open Nextcloud at. A pasted Files or share link works too.");
+    addProblem(nextcloudForm_, "server");
     connect(server_, &QLineEdit::editingFinished, this, [this] {
         // A pasted Files or share link becomes the install's base address.
         const auto base = dav::nextcloudServer(server_->text());
         if (!base.isEmpty() && base != server_->text()) { const QSignalBlocker block(server_); server_->setText(base); }
-        finished();
+        finished("server");
     });
     connect(server_, &QLineEdit::textChanged, this, [this] { sync(); });
     nextcloudInsecure_ = insecure("nextcloudAllowHttp");
@@ -96,10 +99,11 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     folderForm_->parentWidget()->setObjectName("nextcloudFolderSection");
     folder_ = line("nextcloudFolder", "put.gd");
     row(folderForm_, "Folder", folder_, "A folder in your Nextcloud files, such as put.gd or Screenshots/put.gd. put.gd creates it on the first upload.");
+    addProblem(folderForm_, "folder");
     connect(folder_, &QLineEdit::editingFinished, this, [this] {
         const auto clean = dav::cleanFolder(folder_->text());
         if (clean != folder_->text()) { const QSignalBlocker block(folder_); folder_->setText(clean); }
-        finished();
+        finished("folder");
     });
 
     // Plain WebDAV: the folder address and where its files are served.
@@ -107,18 +111,21 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     webdavForm_->parentWidget()->setObjectName("webdavServerSection");
     address_ = line("webdavAddress", "https://dav.example.com/uploads/");
     row(webdavForm_, "Folder address", address_, "The WebDAV address of the folder uploads go to.");
+    addProblem(webdavForm_, "address");
     connect(address_, &QLineEdit::editingFinished, this, [this] {
         const auto clean = dav::collectionAddress(address_->text());
         if (!clean.isEmpty() && clean != address_->text()) { const QSignalBlocker block(address_); address_->setText(clean); }
-        finished();
+        finished("address");
     });
     connect(address_, &QLineEdit::textChanged, this, [this] { sync(); });
     linkBase_ = line("webdavLinkBase", "https://files.example.com/uploads/");
     row(webdavForm_, "Link address", linkBase_, "Optional. Where these files are served publicly; links are this address and the file name. Leave empty to hand out the folder address itself.");
+    addProblem(webdavForm_, "linkBase");
+    connect(linkBase_, &QLineEdit::textChanged, this, [this] { sync(); });
     connect(linkBase_, &QLineEdit::editingFinished, this, [this] {
         const auto clean = dav::collectionAddress(linkBase_->text());
         if (clean != linkBase_->text() && !(clean.isEmpty() && linkBase_->text().trimmed().isEmpty())) { const QSignalBlocker block(linkBase_); linkBase_->setText(clean.isEmpty() ? linkBase_->text().trimmed() : clean); }
-        finished();
+        finished("linkBase");
     });
     webdavInsecure_ = insecure("webdavAllowHttp");
     webdavInsecureRow_ = row(webdavForm_, "Plain HTTP", webdavInsecure_, plainHint);
@@ -192,6 +199,29 @@ void DavDestinationPanel::setAppPasswordShown(bool shown) {
 }
 void DavDestinationPanel::setBusy(bool busy) { busy_ = busy; sync(); }
 void DavDestinationPanel::setFolderMissing(bool missing) { folderMissing_ = missing; sync(); }
+void DavDestinationPanel::addProblem(QFormLayout* form, const QString& field) {
+    auto* label = new QLabel(this);
+    label->setObjectName("davProblem_" + field);
+    label->setWordWrap(true);
+    label->setTextFormat(Qt::PlainText);
+    form->addRow(label);
+    form->setRowVisible(label, false);
+    problems_.insert(field, label);
+    forms_.insert(field, form);
+}
+void DavDestinationPanel::showProblem(const QString& field, const QString& message) {
+    for (auto it = problems_.cbegin(); it != problems_.cend(); ++it) {
+        if (!field.isEmpty() && it.key() != field) continue;
+        if (message.isEmpty()) it.value()->clear();
+        else Ui::feedback(it.value(), message, true);
+        forms_.value(it.key())->setRowVisible(it.value(), !message.isEmpty());
+    }
+}
+QJsonObject DavDestinationPanel::problems() const {
+    QJsonObject out;
+    for (auto it = problems_.cbegin(); it != problems_.cend(); ++it) if (!it.value()->text().isEmpty()) out[it.key()] = it.value()->text();
+    return out;
+}
 void DavDestinationPanel::setNotice(const QString& text, bool success) {
     if (!built_) return;
     notice_->setText(text);
@@ -205,7 +235,8 @@ void DavDestinationPanel::sync() {
     PreferenceRows::sectionFor(folderForm_)->setVisible(nextcloud);
     PreferenceRows::sectionFor(webdavForm_)->setVisible(!nextcloud);
     nextcloudForm_->setRowVisible(nextcloudInsecureRow_, nextcloudInsecure_->isChecked() || dav::plainHttpAddress(server_->text()));
-    webdavForm_->setRowVisible(webdavInsecureRow_, webdavInsecure_->isChecked() || dav::plainHttpAddress(address_->text()));
+    // Shown for an http:// folder address or link address on another computer: both follow the switch.
+    webdavForm_->setRowVisible(webdavInsecureRow_, webdavInsecure_->isChecked() || dav::plainHttpAddress(address_->text()) || dav::plainHttpAddress(linkBase_->text()));
     webdavForm_->setRowVisible(createFolderRow_, !nextcloud && folderMissing_);
     const bool signingIn = signIn_ != SignIn::Idle;
     const bool signedIn = !accountName_.isEmpty();
@@ -244,6 +275,7 @@ QJsonObject DavDestinationPanel::state() const {
         out["plainHttpShown"] = provider_ == dav::nextcloudId ? nextcloudInsecureRow_->isVisibleTo(this) : webdavInsecureRow_->isVisibleTo(this);
         out["createFolderOffered"] = provider_ == dav::webdavId && folderMissing_;
         out["notice"] = notice_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue();
+        out["errors"] = problems();
         out["actions"] = QJsonObject{{"signIn", signInButton_->isVisibleTo(this) && signInButton_->isEnabled()}, {"cancelSignIn", cancel_->isVisibleTo(this)},
                                      {"openBrowser", retry_->isVisibleTo(this) && retry_->isEnabled()}, {"signOut", signOut_->isVisibleTo(this) && signOut_->isEnabled()}};
     }

@@ -11,6 +11,7 @@
 // authority is trusted the way the AppImage trusts the host's: PUTGD_CA_BUNDLE.
 #include "storage/dav/DavProvider.h"
 #include "core/CaBundle.h"
+#include "core/Operation.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QEventLoop>
@@ -60,6 +61,7 @@ int send(const QByteArray& verb, const QUrl& url, const QString& user, const QSt
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Basic " + (user + ':' + password).toUtf8().toBase64());
     request.setRawHeader("OCS-APIRequest", "true");
+    if (verb == "POST") request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
     auto* reply = nam.sendCustomRequest(request, verb, body);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -82,7 +84,8 @@ class DavIntegrationTest final : public QObject {
         settings["server"] = server;
         settings["folder"] = folder;
         Destination d{dav::nextcloudId, "it-nextcloud", "r1", settings, {{"mode", "session"}, {"reference", QJsonValue::Null}}};
-        credentials_.setSession(d.profileId, {env("PUTGD_TEST_NEXTCLOUD_USER"), secret("PUTGD_TEST_NEXTCLOUD_PASSWORD_FILE"), {}});
+        // Bound to this server, as a store from Settings binds them.
+        credentials_.setSession(d.profileId, {env("PUTGD_TEST_NEXTCLOUD_USER"), secret("PUTGD_TEST_NEXTCLOUD_PASSWORD_FILE"), dav::binding(settings, dav::nextcloudId)});
         return d;
     }
     Destination webdav() {
@@ -90,7 +93,7 @@ class DavIntegrationTest final : public QObject {
         settings["address"] = dav::collectionAddress(env("PUTGD_TEST_WEBDAV_URL"));
         if (!env("PUTGD_TEST_WEBDAV_PUBLIC_URL").isEmpty()) settings["linkBase"] = dav::collectionAddress(env("PUTGD_TEST_WEBDAV_PUBLIC_URL"));
         Destination d{dav::webdavId, "it-webdav", "r1", settings, {{"mode", "session"}, {"reference", QJsonValue::Null}}};
-        credentials_.setSession(d.profileId, {env("PUTGD_TEST_WEBDAV_USER"), secret("PUTGD_TEST_WEBDAV_PASSWORD_FILE"), {}});
+        credentials_.setSession(d.profileId, {env("PUTGD_TEST_WEBDAV_USER"), secret("PUTGD_TEST_WEBDAV_PASSWORD_FILE"), dav::binding(settings, dav::webdavId)});
         return d;
     }
     Artifact artifact(const QString& name, const QByteArray& bytes, const QString& mime = "application/octet-stream") {
@@ -152,7 +155,27 @@ private slots:
         Error error;
         const auto tested = test(provider, d, error);
         if (expect == "sharing_off") { QCOMPARE(error.code, QStringLiteral("nextcloud_sharing_disabled")); return; }
-        if (expect == "password") { QCOMPARE(error.code, QStringLiteral("nextcloud_share_password_required")); return; }
+        if (expect == "password") {
+            QCOMPARE(error.code, QStringLiteral("nextcloud_share_password_required"));
+            // A definite share failure after a confirmed upload leaves the file uploaded without a
+            // link, in the state History offers Finish share link for.
+            const auto up = upload(provider, d, artifact("password.png", synthetic(4096, 9), "image/png"));
+            QCOMPARE(up.status, QStringLiteral("uploaded"));
+            const auto refused = share(provider, up.receipt);
+            QCOMPARE(refused.status, QStringLiteral("private"));
+            QCOMPARE(refused.error.code, QStringLiteral("nextcloud_share_password_required"));
+            QVERIFY(shareResultMatchesReceipt(refused, up.receipt));
+            OperationItem item;
+            item.uploadStatus = "uploaded";
+            item.shareIntent = "create";
+            item.shareStatus = refused.status;
+            item.receipt = refused.receipt;
+            item.remoteStatus = "present";
+            QVERIFY(item.linkFinishable());
+            QCOMPARE(remove(provider, up.receipt).status, QStringLiteral("removed"));
+            send("DELETE", QUrl(env("PUTGD_TEST_NEXTCLOUD_URL") + "/remote.php/webdav/putgd-it/" + run_), env("PUTGD_TEST_NEXTCLOUD_USER"), secret("PUTGD_TEST_NEXTCLOUD_PASSWORD_FILE"));
+            return;
+        }
         if (expect == "quota") {
             const auto refused = upload(provider, d, artifact("quota.bin", synthetic(6 * 1024 * 1024, 7)));
             QCOMPARE(refused.status, QStringLiteral("failed"));
@@ -176,14 +199,24 @@ private slots:
         QCOMPARE(upload(provider, d, png).status, QStringLiteral("collision"));
         const auto shared = share(provider, uploaded.receipt);
         QVERIFY2(shared.status == "shared", qPrintable(shared.status + " " + shared.error.message));
+        // Links are compared, never printed: a share token is a secret.
         QVERIFY(shared.receipt.directUrl.startsWith(env("PUTGD_TEST_NEXTCLOUD_URL") + "/s/"));
         if (expect == "expiry") QVERIFY2(!shared.expiresAt.isEmpty(), "an enforced expiry is recorded");
         int status = 0;
         QCOMPARE(fetch(QUrl(dav::shareDownload(env("PUTGD_TEST_NEXTCLOUD_URL"), dav::shareToken(shared.receipt.directUrl))), &status), bytes);
         QCOMPARE(status, 200);
         // An inspection finds the link that exists; a second create hands out the same one.
-        QCOMPARE(share(provider, uploaded.receipt, "inspect").receipt.directUrl, shared.receipt.directUrl);
-        QCOMPARE(share(provider, uploaded.receipt).receipt.directUrl, shared.receipt.directUrl);
+        QVERIFY(share(provider, uploaded.receipt, "inspect").receipt.directUrl == shared.receipt.directUrl);
+        QVERIFY(share(provider, uploaded.receipt).receipt.directUrl == shared.receipt.directUrl);
+        // A link made by hand for the same file is not put.gd's: inspection never takes it.
+        QVERIFY(send("POST", QUrl(env("PUTGD_TEST_NEXTCLOUD_URL") + "/ocs/v2.php/apps/files_sharing/api/v1/shares"), env("PUTGD_TEST_NEXTCLOUD_USER"),
+                     secret("PUTGD_TEST_NEXTCLOUD_PASSWORD_FILE"), "shareType=3&permissions=1&path=" + QUrl::toPercentEncoding(uploaded.receipt.objectReference["path"].toString())) / 100 == 2);
+        QVERIFY(share(provider, uploaded.receipt, "inspect").receipt.directUrl == shared.receipt.directUrl);
+        // A name that is taken is reported present, with what it would be checked against.
+        NameCheck taken;
+        provider.checkName(d, png.name, [&](NameCheck c) { taken = c; });
+        QCOMPARE(taken.status, QStringLiteral("present"));
+        QVERIFY(!taken.objectReference["target"].toString().isEmpty());
         // The share does not change the file's ETag: delete still matches.
         StatResult own;
         provider.stat(uploaded.receipt, [&](StatResult r) { own = r; });
@@ -321,8 +354,8 @@ private slots:
         QVERIFY(created["created"].toBool());
         send("DELETE", QUrl(d.settings["address"].toString()), env("PUTGD_TEST_WEBDAV_USER"), secret("PUTGD_TEST_WEBDAV_PASSWORD_FILE"));
         // A wrong password says so.
-        credentials_.setSession(d.profileId, {env("PUTGD_TEST_WEBDAV_USER"), "not-the-password", {}});
         d.settings["address"] = dav::collectionAddress(env("PUTGD_TEST_WEBDAV_URL"));
+        credentials_.setSession(d.profileId, {env("PUTGD_TEST_WEBDAV_USER"), "putgd-synthetic-wrong-password", dav::binding(d.settings, dav::webdavId)});
         test(provider, d, error);
         QCOMPARE(error.code, QStringLiteral("webdav_auth_failed"));
     }

@@ -1,6 +1,7 @@
 // Nextcloud and WebDAV address and settings rules (#1872). A wrong answer here sends files to
 // the wrong place or a password over plain HTTP, and nothing else would notice.
 #include "storage/dav/DavCommon.h"
+#include <QJsonObject>
 #include <QTest>
 using namespace putgd;
 class DavRulesTest final : public QObject {
@@ -52,7 +53,25 @@ private slots:
     }
     void shareTokensAreRedacted() {
         QCOMPARE(dav::shareToken("https://cloud.example.com/nc/s/AbC123xyz"), QStringLiteral("AbC123xyz"));
-        QCOMPARE(dav::redactShareTokens("link https://cloud.example.com/s/AbC123xyz/download ok"), QStringLiteral("link https://cloud.example.com/s/…/download ok"));
+        QCOMPARE(dav::redactShareTokens(QStringLiteral("link https://cloud.example.com/s/AbC123xyz/download ok")), QStringLiteral("link https://cloud.example.com/s/…/download ok"));
+        // Any length and any characters: the whole segment is the secret.
+        QCOMPARE(dav::redactShareTokens(QStringLiteral("https://h/s/a-b_c.d%2F?x")), QStringLiteral("https://h/s/…?x"));
+        QCOMPARE(dav::redactShareTokensIn(QJsonValue(QJsonObject{{"link", "https://h/s/Tok"}})).toObject()["link"].toString(), QStringLiteral("https://h/s/…"));
+    }
+    void routeSuffixesOnly() {
+        // An install path that looks like a route stays; only the routes a pasted link ends with go.
+        QCOMPARE(dav::nextcloudServer("https://example.com/apps/cloud/index.php/apps/files/"), QStringLiteral("https://example.com/apps/cloud"));
+        QCOMPARE(dav::nextcloudServer("https://example.com/apps/cloud/f/123"), QStringLiteral("https://example.com/apps/cloud"));
+        QCOMPARE(dav::nextcloudServer("https://example.com/apps/cloud"), QStringLiteral("https://example.com/apps/cloud"));
+    }
+    void loginPagesStayOnTheServer() {
+        const QString server = "https://cloud.example.com/nc";
+        QVERIFY(dav::loginPageAllowed(QUrl("https://cloud.example.com/nc/index.php/login/v2/flow/x"), server, false));
+        QVERIFY(dav::loginPageAllowed(QUrl("https://CLOUD.example.com:443/nc/login/v2/poll"), server, false));
+        QVERIFY(!dav::loginPageAllowed(QUrl("https://cloud.example.com/other/login"), server, false));
+        QVERIFY(!dav::loginPageAllowed(QUrl("http://cloud.example.com/nc/login"), server, false));
+        QVERIFY(!dav::loginPageAllowed(QUrl("https://u@cloud.example.com/nc/login"), server, false));
+        QVERIFY(!dav::loginPageAllowed(QUrl("https://cloud.example.com:8443/nc/login"), server, false));
     }
 };
 QTEST_GUILESS_MAIN(DavRulesTest)

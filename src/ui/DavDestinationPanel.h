@@ -1,4 +1,5 @@
 #pragma once
+#include <QHash>
 #include <QJsonObject>
 #include <QUrl>
 #include <QWidget>
@@ -33,10 +34,15 @@ public:
     // The last Test said the WebDAV folder is missing: offer Create folder.
     void setFolderMissing(bool);
     void setNotice(const QString& text, bool success = false);
+    // A refused save: the message under the field it names (server, folder, address, linkBase), or
+    // cleared with an empty message; an empty field means every field.
+    void showProblem(const QString& field, const QString& message);
+    QJsonObject problems() const;
     // Fields, sign-in state and offers, never a credential; for agents.
     QJsonObject state() const;
 signals:
-    void edited();
+    // A setting changed: its key in the destination's settings, saved on its own.
+    void edited(const QString& field);
     void signInRequested();
     void cancelSignInRequested();
     void browserRequested();
@@ -44,7 +50,10 @@ signals:
     void createFolderRequested();
     void appPasswordToggled(bool shown);
 private:
-    void finished();
+    void finished(const QString& field);
+    void addProblem(QFormLayout*, const QString& field);
+    QHash<QString, QLabel*> problems_;
+    QHash<QString, QFormLayout*> forms_;
     void sync();
     bool loading_ = false, built_ = false, appPassword_ = false, busy_ = false, folderMissing_ = false;
     QString provider_ = QStringLiteral("nextcloud");

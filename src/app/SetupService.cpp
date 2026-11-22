@@ -25,7 +25,8 @@ bool validInput(const QString& kind,const QJsonObject& input) {
   if(!input[key].isString()||input[key].toString().isEmpty()||input[key].toString().size()>4096)return false;
  return !input.contains("sessionToken")||(input["sessionToken"].isString()&&input["sessionToken"].toString().size()<=16384);
 }
-QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+kind;}
+// Signing in and signing out change the same account: one at a time per destination (#1872).
+QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+(kind=="connectAccount"||kind=="signOut"?QStringLiteral("account"):kind);}
 }
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
 // (#282), Cloudflare R2 (#1678), Nextcloud and WebDAV (#1872), and a provider with named values
@@ -105,6 +106,8 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    if(!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
    if(value.values.isEmpty()) {complete({"credential_invalid","This destination has no secret values to store",{}});return;}
   }else value={input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
+  // A provider that binds a key pair to where it was given keeps that binding beside it.
+  if(!named&&credentialBinding_)if(const auto bound=credentialBinding_(profile);!bound.isEmpty())value.sessionToken=bound;
   credentials_.save(profileId,reference,std::move(value),complete);
  }else if(kind=="unlockCredentials")credentials_.unlock(profileId,reference,complete);
  else if(tester_)tester_(profileId,profile,complete);

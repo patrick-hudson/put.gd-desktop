@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Error.h"
+#include <QJsonValue>
 #include <QJsonObject>
 #include <QString>
 #include <QUrl>
@@ -28,6 +29,9 @@ inline constexpr qint64 maximumChunks = 10000;
 inline constexpr int connectTimeoutMs = 10000;
 inline constexpr int requestTimeoutMs = 120000;
 inline constexpr int stallTimeoutMs = 60000;
+// Assembling a chunked upload (its MOVE) moves no bytes while the server works: it gets this
+// deadline instead of the stall limit.
+inline constexpr int moveTimeoutMs = 30 * 60 * 1000;
 // Login Flow v2: the poll token is valid for 20 minutes on the server.
 inline constexpr int signInTimeoutMs = 20 * 60 * 1000;
 
@@ -62,6 +66,20 @@ QString shareToken(const QString& link);
 // A share token is a secret held in a path: text for logs, test journals and
 // diagnostics keeps "/s/…" in place of every token.
 QString redactShareTokens(const QString&);
+QJsonValue redactShareTokensIn(const QJsonValue&);
+// Scheme, lower-case host, explicit port and encoded path: one spelling per DAV target, for
+// serializing requests and binding credentials.
+QString canonicalUrl(const QUrl&);
+// Credentials are bound to where they were given (#1872): the server's origin (scheme, host and
+// port), and for Nextcloud the account ID the server reported. The binding is
+// kept beside the secret in the credential store's session-token field, as compact JSON; it is
+// not secret. A request is sent only while the destination still names that place.
+QString bindingBase(const QJsonObject& settings, const QString& provider);
+QString binding(const QJsonObject& settings, const QString& provider, const QString& userId = {});
+QJsonObject parseBinding(const QString& stored);
+// Whether a Login Flow v2 page or poll endpoint may be used for this server: the server's scheme,
+// host and port, a path below its base, no user information, and plain HTTP only where allowed.
+bool loginPageAllowed(const QUrl& page, const QString& server, bool allowInsecure);
 // Whether the two addresses have the same scheme, host and port (Login Flow v2's
 // server and poll endpoint must be the server the user entered).
 bool sameOrigin(const QUrl& a, const QUrl& b);
