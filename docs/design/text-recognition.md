@@ -879,7 +879,11 @@ other tool active it does not. The user's side is in the
       recognition." With other categories chosen, recognition runs as usual.
   - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
     line height above and below and by one and a half characters on each side, clamped to the
-    image. A character's width comes from the edge word's own box, not from the line's span with
+    image. Where a line's matched words are more than three line heights apart, as in two windows
+    side by side or a table, each run of them gets its own box, so the space and any words between
+    the columns stay readable (#1846). Labels such as "Card" next to two test card numbers on one
+    line can still be covered: numbers of repeated digits are matched together as one key, which
+    also covers a card number that recognition misread and that the card rule would miss. A character's width comes from the edge word's own box, not from the line's span with
     its spaces. Recognition boxes can stop a whole glyph short, which the side padding covers.
     Towards the nearest other recognized word on the same line, when the padding plus one
     character could reach it, the padding ends at the far side of the blank space before that
