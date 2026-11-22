@@ -227,7 +227,8 @@ answered, and the error says so. A ProxyJump hop's password prompt, a server's k
 text or a PIN prompt gets nothing. A touch notice is recorded (`touched` in the error details)
 and sent to the resident as a `notice` event; during Test it becomes the setup job's event and
 Settings shows "Touch your security key". When sign-in ends, either way, the socket and its
-directory are removed and the worker wipes both secrets; the request's own credential fields are
+directory are removed and the worker wipes both secrets (an upload keeps them until the request
+ends, for the cleanup reconnect below); the request's own credential fields are
 taken out of it as it arrives and dropped once read. Only requests that sign in carry the
 password and passphrase from the resident; Settings' address check (`inspect`) gets only
 whether a password is set. `putgd-sftp-askpass` is C and links only the C library, because ssh

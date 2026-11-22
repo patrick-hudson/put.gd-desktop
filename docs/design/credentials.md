@@ -113,7 +113,8 @@ reach `putgd-sftp-worker` only with requests that sign in (Settings' address che
 whether a password is set), and from there only the single-use askpass socket of one
 connection, which answers ssh's own exact password and passphrase prompts
 ([storage providers](storage-providers.md#sftp)): never ssh's command line or environment. The
-worker wipes both once sign-in ends. A keychain-mode SFTP destination whose entry isn't loaded still connects,
+worker wipes both once sign-in ends, except that an upload keeps them until the request ends,
+since cleaning up a cancelled upload may need a new connection. A keychain-mode SFTP destination whose entry isn't loaded still connects,
 with the agent and key files. Its keychain reference is `putgd/sftp/<profile id>`; a new SFTP
 destination starts in session mode, so startup unlock never asks the keychain about one that
 has nothing stored.
