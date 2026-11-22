@@ -109,8 +109,9 @@ If that read fails, the store is refused (`credential_incomplete`) and the saved
 alone. The exception is a "not found" answer for an entry that isn't marked as saved; a locked
 entry can answer "not found" too. A successful keychain store marks its entry. The destination
 check records keep the mark across restarts while a destination names the entry or owns it as
-`putgd/<profile id>` or `putgd/sftp/<profile id>`, in either credentials mode. When the records are missing, unreadable
-or from before this rule, every entry a destination names or owns this way is marked as saved. A left-out name with no value
+`putgd/<profile id>` or `putgd/sftp/<profile id>`, in either credentials mode. Records from before this rule mark the
+entries of each destination they show stored credentials for; missing or unreadable records mark
+the entries keychain-mode destinations name. A left-out name with no value
 to keep (nothing saved, or a session-mode destination with nothing loaded) is stored empty.
 Stores and unlocks of one keychain entry run one at a time (`setup_busy` otherwise), and a
 cancel while the entry is read stores nothing. An empty value clears that one (Settings' **Clear**, which keeps
