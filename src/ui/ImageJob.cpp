@@ -2,6 +2,8 @@
 #include "StagingDirectory.h"
 #include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
+#include "core/CaptureStyle.h"
+#include "editor/CaptureStyleRender.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QFile>
@@ -15,6 +17,7 @@
 #include <QTimer>
 #include <QUuid>
 #include <algorithm>
+#include <climits>
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -69,6 +72,27 @@ private:
  staging::Directory staging_;struct stat inputIdentity{},outputIdentity{};
  QString inputHash;
 };
+// #1893: the capture placed on its style. The capture decodes as PNG only (the resident
+// encoded it); the picture backdrop is read here, never in the resident.
+QString styleCapture(PrivateFiles& files,const QJsonObject& styleObject,qint64 maxPixels,qint64 imageBytes,int& width,int& height,QString& note){
+ const auto style=CaptureStyle::fromJson(styleObject);
+ QImageReader reader(&files.input,"png");reader.setAutoDetectImageFormat(false);
+ const auto size=reader.size();if(!size.isValid()||size.isEmpty())return "source_unsupported";
+ if(qint64(size.width())*size.height()>maxPixels||qint64(size.width())*size.height()>imageBytes/4)return "input_excessive";
+ // The styled image has to fit the same limits: padding steps down a size before giving up.
+ const auto geometry=style.fitted(size,std::min(maxPixels,imageBytes/4));
+ if(!geometry.valid())return "input_excessive";
+ reader.setAllocationLimit(int(std::min<qint64>(qint64(size.width())*size.height()*4/(1024*1024)+2,INT_MAX)));
+ const auto capture=reader.read();if(capture.isNull())return "source_unsupported";
+ QImage picture;
+ if(style.backdrop=="picture"){picture=editor::style::loadPicture(style.picture,geometry.canvas);if(picture.isNull())note="picture_missing";}
+ const auto styled=editor::style::render(capture,style,geometry,picture);
+ if(styled.isNull())return "input_excessive";
+ width=styled.width();height=styled.height();
+ QImageWriter writer(&files.output,"png");
+ if(!writer.write(styled))return files.output.excessive?"input_excessive":"image_job_io";
+ return {};
+}
 QString execute(const QString& task,PrivateFiles& files,qint64 maxPixels,qint64 imageBytes,int& width,int& height){
  if(task=="discover"){
   const auto formats=QImageReader::supportedMimeTypes();if(formats.size()>1024)return "input_excessive";
@@ -99,7 +123,7 @@ int runImageJob(QCoreApplication& app,QIODevice& pipes){
  Q_UNUSED(app);Q_UNUSED(pipes);return 2;
 #else
  UiControl control(pipes);PrivateFiles files;
- QString nonce,task;bool bootstrapped=false,active=false,terminal=false;
+ QString nonce,task,note;QJsonObject style;bool bootstrapped=false,active=false,terminal=false;
  qint64 maxPixels=0,imageBytes=0,outputBytes=0;
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
@@ -111,7 +135,8 @@ int runImageJob(QCoreApplication& app,QIODevice& pipes){
   if(type=="bootstrap"&&!bootstrapped){
    nonce=object["nonce"].toString();task=object["task"].toString();const auto limits=object["limits"].toObject();
    const QUuid id(nonce);
-   if(object.size()!=8||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build||(task!="discover"&&task!="decode"&&task!="preview")||limits.size()!=3||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["imageBytes"],imageBytes)||imageBytes<1||imageBytes>maximumBytes||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes||(task=="discover"&&outputBytes>discoveryBudget)||!object["output"].isObject()||!files.open(object["input"],object["output"].toObject(),task=="discover",task=="decode"?imageBytes:maximumBytes,outputBytes)){fail();return;}
+   if(object.size()!=8+(task=="style"?1:0)||(task=="style"&&(!object["style"].isObject()||CaptureStyle::validate(object["style"])))||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build||(task!="discover"&&task!="decode"&&task!="preview"&&task!="style")||limits.size()!=3||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["imageBytes"],imageBytes)||imageBytes<1||imageBytes>maximumBytes||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes||(task=="discover"&&outputBytes>discoveryBudget)||!object["output"].isObject()||!files.open(object["input"],object["output"].toObject(),task=="discover",task=="decode"?imageBytes:maximumBytes,outputBytes)){fail();return;}
+   style=object["style"].toObject();
    bootstrapped=true;auto ready=envelope(nonce);ready["build"]=build;
    if(control.send("ready",ready).isEmpty())fail();
    return;
@@ -120,12 +145,12 @@ int runImageJob(QCoreApplication& app,QIODevice& pipes){
   if(type=="activate"&&!active&&!terminal){
    active=true;auto result=envelope(nonce);QString error;int width=0,height=0;
    if(!files.namesIntact(task!="discover")||(task!="discover"&&!files.checkInput()))error="image_job_io";
-   else error=execute(task,files,maxPixels,imageBytes,width,height);
+   else error=task=="style"?styleCapture(files,style,maxPixels,imageBytes,width,height,note):execute(task,files,maxPixels,imageBytes,width,height);
    if(!files.output.flush()||!files.namesIntact(task!="discover")||(task!="discover"&&!files.checkInput()))error="image_job_io";
    if(error.isEmpty()){
     const auto digest=files.outputHash();const auto size=files.output.size();
     if(size<1||size>outputBytes||digest.size()!=64)error="image_job_io";
-    else{result["ok"]=true;result["bytes"]=QString::number(size);result["sha256"]=QString::fromLatin1(digest);result["width"]=width;result["height"]=height;}
+    else{result["ok"]=true;result["bytes"]=QString::number(size);result["sha256"]=QString::fromLatin1(digest);result["width"]=width;result["height"]=height;if(!note.isEmpty())result["note"]=note;}
    }
    if(!error.isEmpty()){result["ok"]=false;result["code"]=error;}
    terminal=true;

@@ -110,6 +110,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
+ // #1893: the look saved in Settings, and whether this document starts with it (a new capture).
+ CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;
  Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
@@ -393,6 +395,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(choice=="upload"){refuse("check_upload");return true;}
   if(choice=="cancel"){refuse("check_cancel");return true;}
   // Redact and upload: the same document, its suggestions already placed, in the ordinary editor.
+  if(hasStyle&&styleStart){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}
   window->selectTool(editor::Tool::Redact);
   window->show();window->raise();window->activateWindow();
   if(control.send("editing",envelope(nonce)).isEmpty())fail();
@@ -421,6 +424,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      for(const auto& entry:list){if(!entry.isString()||!error(entry.toString()).isEmpty())return false;into.append(entry.toString());}
      return true;};
     if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,Settings::quickRedactPatternError)){fail();return;}}
+   // #1893: {saved, start}: the Settings look, and whether the document starts styled with it.
+   if((hasStyle=object.contains("style"))){
+    const auto style=object["style"].toObject();
+    if(!object["style"].isObject()||style.size()!=2||!style["start"].isBool()||CaptureStyle::validate(style["saved"],"style")){fail();return;}
+    savedStyle=CaptureStyle::fromJson(style["saved"].toObject());styleStart=style["start"].toBool();
+   }
    // #1804: check mode, its categories, whether a person is asked and whether Redact and upload is offered.
    if(object.contains("check")){
     const auto check=object["check"].toObject();checkCategories.clear();
@@ -435,7 +444,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
-   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -488,6 +497,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
    window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
+   // #1893: a new capture starts with the saved look on; a check's hidden document starts plain, so its own
+   // covered export is the capture as it was (the resident styles it), and Redact and upload turns the look on.
+   if(hasStyle){window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});

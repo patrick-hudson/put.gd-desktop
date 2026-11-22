@@ -23,6 +23,7 @@
 #include <QButtonGroup>
 #include <QCloseEvent>
 #include <QColorDialog>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFontComboBox>
 #include <QMap>
@@ -104,7 +105,7 @@ private:
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);Ui::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Ui::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
-const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text","step","pen","ellipse","line","copyText"};
+const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text","step","pen","ellipse","line","copyText","style"};
 QJsonValue rectValue(const std::optional<QRect>& r){if(!r)return QJsonValue();return QJsonArray{r->x(),r->y(),r->width(),r->height()};}
 bool integerIn(const QJsonValue& value,double minimum,double maximum,int& out){
  if(!value.isDouble())return false;const double number=value.toDouble();
@@ -135,6 +136,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // The tool is Redact; the marks it makes are redactions.
  struct Entry{Tool tool;const char* icon;const char* label;const char* key;const char* detail;};
  const Entry entries[]={{Tool::Select,"select","Select and move","V",""},{Tool::Crop,"crop","Crop","C",""},
+  // #1893: Style, beside Crop: like it, it changes the document, not a mark.
+  {Tool::Style,"capture-style","Style","S","padding, a backdrop, rounded corners and a shadow"},
   {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Line,"line","Line","L",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Ellipse,"ellipse","Ellipse","E",""},
   {Tool::Pen,"pen","Pen","P",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""},{Tool::Step,"step","Step number","N",""},
   {Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"},
@@ -286,6 +289,29 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  connect(text_,&EditorTextRecognition::changed,this,[this]{canvas_->update();refresh();});
  connect(canvas_,&editor::EditorCanvas::textSelectionChanged,this,[this]{refresh();});
  connect(canvas_,&editor::EditorCanvas::textCopyRequested,this,[this]{copyRecognizedText(false);});
+ // #1893: Style: on or off for this image, the look and the padding. Backdrop colours, corners and
+ // shadow come from Settings → Capture → Capture style (Saved look) or a preset.
+ styleRow_=column(panel,layout);styleRow_->setObjectName("editorStyle");
+ {
+  styleEnabled_=new QCheckBox("Style this image",styleRow_);styleEnabled_->setObjectName("editorStyleEnabled");styleEnabled_->setAccessibleDescription("Puts the image on a backdrop with padding, rounded corners and a shadow when it is saved or uploaded");layout->addWidget(styleEnabled_);
+  layout->addWidget(fieldLabel("Look",styleRow_));
+  styleLook_=Ui::choiceBox(styleRow_);styleLook_->setObjectName("editorStyleLook");styleLook_->setAccessibleName("Style look");
+  for(const auto& preset:CaptureStyle::presets())styleLook_->addItem(preset.label,preset.id);
+  layout->addWidget(styleLook_);
+  layout->addWidget(fieldLabel("Padding",styleRow_));
+  auto* track=new Ui::SegmentTrack(styleRow_);track->setObjectName("editorStylePaddingTrack");track->setAccessibleName("Style padding");auto* group=new QButtonGroup(this);group->setExclusive(true);
+  const QStringList labels{"Small","Medium","Large"};
+  for(int index=0;index<3;++index){auto* button=new QToolButton(track);button->setObjectName("editorStylePadding"+labels[index]);button->setText(labels[index]);button->setAccessibleName("Padding: "+labels[index].toLower());button->setCheckable(true);button->setFocusPolicy(Qt::StrongFocus);group->addButton(button,index);track->addButton(button);stylePadding_[index]=button;}
+  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(track);row->addStretch(1);layout->addLayout(row);
+  styleSize_=Ui::label({},"secondary",styleRow_);styleSize_->setObjectName("editorStyleSize");styleSize_->setWordWrap(true);layout->addWidget(styleSize_);
+  connect(styleEnabled_,&QCheckBox::toggled,this,[this](bool on){if(!syncingStyle_)changeCaptureStyle([on](CaptureStyle& style){style.enabled=on;});});
+  connect(styleLook_,&QComboBox::activated,this,[this](int index){
+   if(syncingStyle_)return;const auto id=styleLook_->itemData(index).toString();
+   changeCaptureStyle([this,id](CaptureStyle& style){const auto padding=style.padding;style=id=="saved"?savedStyle_:CaptureStyle::preset(id);style.enabled=true;if(id!="saved"&&id!="clear")style.padding=padding;});
+  });
+  connect(group,&QButtonGroup::idClicked,this,[this](int index){if(!syncingStyle_)changeCaptureStyle([index](CaptureStyle& style){style.padding=CaptureStyle::paddingNames().value(index);style.enabled=true;});});
+ }
+ properties->addWidget(styleRow_);
  cropRow_=new QWidget(panel);auto* cropButtons=new QHBoxLayout(cropRow_);cropButtons->setContentsMargins(0,0,0,0);cropButtons->setSpacing(Ui::space(Space::s));
  auto* applyCrop=new QPushButton("Apply crop",cropRow_);applyCrop->setObjectName("applyCrop");applyCrop->setToolTip("Apply crop (Enter)");Ui::role(applyCrop,"primary");cropButtons->addWidget(applyCrop);
  auto* cancelCrop=new QPushButton("Cancel crop",cropRow_);cancelCrop->setObjectName("cancelCrop");cancelCrop->setToolTip("Cancel crop (Esc)");Ui::role(cancelCrop,"quiet");cropButtons->addWidget(cancelCrop);
@@ -442,6 +468,39 @@ QSize EditorWindow::initialSize(const QSize& image,const QSize& available){
  return {std::min(std::max(wanted.width(),900),maximumWidth),std::min(std::max(wanted.height(),620),maximumHeight)};
 }
 
+void EditorWindow::setSavedStyle(const CaptureStyle& style){
+ savedStyle_=style;
+ const int saved=styleLook_->findData("saved");
+ // The look from Settings joins the list when it is not a preset.
+ if(style.presetId()=="custom"){if(saved<0)styleLook_->addItem("Saved look","saved");}
+ else if(saved>=0)styleLook_->removeItem(saved);
+ syncCaptureStyle();
+}
+void EditorWindow::changeCaptureStyle(const std::function<void(CaptureStyle&)>& change){
+ if(busy_)return;
+ auto style=doc_.captureStyle();change(style);
+ if(doc_.setCaptureStyle(style))documentEdited();else syncCaptureStyle();
+}
+void EditorWindow::syncCaptureStyle(){
+ const auto& style=doc_.captureStyle();
+ syncingStyle_=true;
+ styleEnabled_->setChecked(style.enabled);
+ auto id=style.presetId();if(id=="custom"&&style.sameLook(savedStyle_))id="saved";
+ // A look that is neither a preset nor the saved one (an agent's own) shows no choice.
+ styleLook_->setCurrentIndex(styleLook_->findData(id));
+ const int padding=CaptureStyle::paddingNames().indexOf(style.padding);
+ for(int index=0;index<3;++index)stylePadding_[index]->setChecked(index==padding);
+ syncingStyle_=false;
+ for(auto* control:std::initializer_list<QWidget*>{styleEnabled_,styleLook_,stylePadding_[0],stylePadding_[1],stylePadding_[2]})control->setEnabled(!busy_);
+ const auto geometry=doc_.styleGeometry();const auto crop=doc_.crop().size();
+ if(!style.enabled)styleSize_->setText("Off: the image is saved and uploaded as it is.");
+ else if(!geometry.valid())styleSize_->setText("Too large to style: the image is saved and uploaded as it is.");
+ else{
+  auto text=QString("%1 × %2 px becomes %3 × %4 px.").arg(crop.width()).arg(crop.height()).arg(geometry.canvas.width()).arg(geometry.canvas.height());
+  if(style.backdrop=="picture"&&doc_.stylePicture().isNull())text+=" The backdrop picture can't be read, so Graphite is used.";
+  styleSize_->setText(text);
+ }
+}
 void EditorWindow::selectTool(Tool tool){
  if(auto* button=toolButtons_.value(int(tool)))button->setChecked(true);
  canvas_->setTool(tool);syncStyle(false);refresh();canvas_->setFocus();
@@ -657,23 +716,28 @@ void EditorWindow::refresh(){
  copyTextRow_->setVisible(tool==Tool::CopyText);if(tool==Tool::CopyText)syncText();
  quickRedactRow_->setVisible(tool==Tool::Redact);quickRedact_->setEnabled(!busy_&&!quickRedacting_);
  cropRow_->setVisible(tool==Tool::Crop);
+ styleRow_->setVisible(tool==Tool::Style);if(tool==Tool::Style)syncCaptureStyle();
  blurWarning_->setVisible(tool!=Tool::Crop&&(tool==Tool::Blur||kind(editor::Shape::Kind::Blur)));
  hint_->setText(tool==Tool::Redact&&!shape?QStringLiteral("The covered pixels are removed from saved and uploaded images."):QString{});
  hint_->setVisible(!hint_->text().isEmpty());
  if(suggested_&&quickRedactRemove_){const bool suggestedMark=shape&&tool!=Tool::Crop&&!shape->suggested.isEmpty();suggested_->setText(suggestedMark?"Suggested: "+quickRedactLabel(shape->suggested):QString{});suggested_->setVisible(suggestedMark);quickRedactRemove_->setEnabled(!busy_&&std::any_of(doc_.shapes().cbegin(),doc_.shapes().cend(),[](const editor::Shape& mark){return !mark.suggested.isEmpty();}));}
  {
   // The panel names the tool (or the selected mark) and how to use it.
-  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text","Step number","Pen","Ellipse","Line","Copy text"};
+  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text","Step number","Pen","Ellipse","Line","Copy text","Style"};
   static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it; the box snaps to the lines. Click a word, double-click a line, Shift-click to add a word. Hold Alt for a free box.","Click the image to place a label. Enter finishes the text.",
    "Click to drop the next numbered step. Numbers count up; set the next one below.","Drag to draw freehand.","Drag to circle a detail with an outline. Hold Shift for a circle.","Drag to draw a straight line. Hold Shift to keep it at 45°.",
-   "Drag across words to select them. Shift+click extends, double-click takes the line, Ctrl+A takes everything, Ctrl+C copies."};
+   "Drag across words to select them. Shift+click extends, double-click takes the line, Ctrl+A takes everything, Ctrl+C copies.",
+   "Puts the image on a backdrop with padding, rounded corners and a shadow when you save or upload it. The image itself isn't changed."};
   int index=int(tool);QString title=titles.value(index);
   if(tool==Tool::Blur&&pixelate)title=QStringLiteral("Pixelate");
   // A selected mark names itself, whichever tool picked it up.
   if(shape&&tool!=Tool::Crop){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"},
    {int(Kind::Step),"Step"},{int(Kind::Pen),"Pen stroke"},{int(Kind::Ellipse),"Ellipse"},{int(Kind::Line),"Line"}};title=kinds.value(int(shape->kind),"Mark");if(shape->kind==Kind::Blur&&shape->pixelate)title=QStringLiteral("Pixelation");}
   toolTitle_->setText(title);toolTitle_->setAccessibleName(title+(shape&&tool!=Tool::Crop?" selected":" tool"));toolHelp_->setText(shape&&tool!=Tool::Crop?QStringLiteral("Drag to move it."):tool==Tool::Blur&&pixelate?QStringLiteral("Drag over an area to pixelate it."):help.value(index));
-  const auto bounds=doc_.crop();documentInfo_->setText(QString("Document %1 × %2 px · %3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
+  const auto bounds=doc_.crop();const auto exported=doc_.exportSize();
+  // #1893: a styled document names the size it exports at.
+  documentInfo_->setText(exported!=bounds.size()?QString("Document %1 × %2 px · Styled %3 × %4 px · %5").arg(bounds.width()).arg(bounds.height()).arg(exported.width()).arg(exported.height()).arg(doc_.modified()?"Edited":"Unchanged")
+                                               :QString("Document %1 × %2 px · %3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
   static const QHash<int,QPair<const char*,const char*>> placing{{int(Tool::Redact),{"Place redaction","redact"}},{int(Tool::Blur),{"Place blur","blur"}},{int(Tool::Arrow),{"Place arrow","annotate-arrow"}},
@@ -684,7 +748,7 @@ void EditorWindow::refresh(){
   if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(Ui::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
  }
  syncGeometry();syncSaved();remove_->setVisible(shape&&tool!=Tool::Crop);
- bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_,copyTextRow_,quickRedactRow_})options=options||!row->isHidden();
+ bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_,copyTextRow_,quickRedactRow_,styleRow_})options=options||!row->isHidden();
  optionsRule_->setVisible(options);
  undo_->setEnabled(!busy_&&doc_.canUndo());redo_->setEnabled(!busy_&&doc_.canRedo());
  // Cancel asks about discarding edits once there are any; it says so.
@@ -978,7 +1042,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   if(!only({}))return fail("invalid_request","geometryDetails has no other parameters");
   geometryDisclosure_->toggle();
  }else if(action=="tool"){
-  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, line, rectangle, ellipse, pen, highlight, text, step or copyText");
+  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, line, rectangle, ellipse, pen, highlight, text, step, copyText or style");
   selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
  }else if(action=="select"){
   if(!only({"shapeId"})||!params.contains("shapeId"))return fail("invalid_request","select needs shapeId, or null to clear the selection");
@@ -1003,7 +1067,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   if(!only({}))return fail("invalid_request","place has no other parameters");
   // Text needs typing; agents add labels with editor.apply.
   const auto tool=canvas_->tool();
-  if(tool==Tool::Select||tool==Tool::Crop||tool==Tool::Text)return fail("invalid_request","Choose redact, blur, arrow, line, rectangle, ellipse, pen, highlight or step first; add text with editor.apply");
+  if(tool==Tool::Select||tool==Tool::Style||tool==Tool::Crop||tool==Tool::Text)return fail("invalid_request","Choose redact, blur, arrow, line, rectangle, ellipse, pen, highlight or step first; add text with editor.apply");
   canvas_->placeMark();
  }else if(action=="blurStyle"){
   // The Blur / Pixelate choice, as its buttons set it (and restyle a selected blur).

@@ -252,7 +252,7 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","capture-style","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
@@ -275,7 +275,7 @@ QImage iconSpecimen(){
 QImage editorIcons(){
  const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
+ const QStringList names{"edit","select","redact","blur","crop","capture-style","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -283,7 +283,7 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","capture-style","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
  show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;

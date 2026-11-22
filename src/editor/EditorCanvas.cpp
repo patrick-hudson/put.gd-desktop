@@ -1,4 +1,5 @@
 #include "EditorCanvas.h"
+#include "CaptureStyleRender.h"
 #include "HighlightFilter.h"
 #include "ui/Theme.h"
 #include "ui/Ui.h"
@@ -148,13 +149,13 @@ void EditorCanvas::setTool(Tool tool){
  if(textEditor_)finishText(true);
  // A newly chosen drawing tool starts unselected, so its style controls
  // configure the tool rather than restyling an earlier shape.
- const bool deselect=tool!=tool_&&tool!=Tool::Select&&selected_;
+ const bool deselect=tool!=tool_&&tool!=Tool::Select&&tool!=Tool::Style&&selected_;
  if(tool_==Tool::Crop&&tool!=Tool::Crop)cancelCrop();
  abandonDrag();
  tool_=tool;
  if(tool_==Tool::Crop){cropDraft_=doc_.crop();selected_=0;emit selectionChanged();}
  else if(deselect){selected_=0;emit selectionChanged();}
- setCursor(tool_==Tool::Select?Qt::ArrowCursor:tool_==Tool::CopyText?Qt::IBeamCursor:Qt::CrossCursor);
+ setCursor(selecting()?Qt::ArrowCursor:tool_==Tool::CopyText?Qt::IBeamCursor:Qt::CrossCursor);
  if(fitted_)fit();else update();
  announce();
 }
@@ -182,9 +183,14 @@ QPointF EditorCanvas::toImage(const QPointF& p) const {return (p-offset_)/scale_
 QPointF EditorCanvas::toWidget(const QPointF& p) const {return (p-QPointF(visibleBounds().topLeft()))*scale_+offset_;}
 QRectF EditorCanvas::toWidget(const QRect& r) const {return QRectF(toWidget(QPointF(r.topLeft())),QSizeF(r.size())*scale_);}
 
+int EditorCanvas::styleMargin() const {
+ if(tool_==Tool::Crop)return 0;
+ const auto geometry=doc_.styleGeometry();return geometry.valid()?geometry.padding:0;
+}
 void EditorCanvas::fit(){
- const auto bounds=visibleBounds();const QSizeF room=QSizeF(size())-QSizeF(32,32);
- scale_=std::clamp(std::min({1.0,room.width()/bounds.width(),room.height()/bounds.height()}),minimumZoom,maximumZoom);
+ // The styled frame fits too: what is shown is what exports.
+ const auto bounds=visibleBounds();const int margin=styleMargin();const QSizeF framed(bounds.width()+2*margin,bounds.height()+2*margin);const QSizeF room=QSizeF(size())-QSizeF(32,32);
+ scale_=std::clamp(std::min({1.0,room.width()/framed.width(),room.height()/framed.height()}),minimumZoom,maximumZoom);
  offset_=QPointF((width()-bounds.width()*scale_)/2,(height()-bounds.height()*scale_)/2);
  fitted_=true;placeTextEditor();update();emit viewChanged();
 }
@@ -200,9 +206,10 @@ void EditorCanvas::setZoom(double scale){zoomBy(scale/scale_);}
 void EditorCanvas::panBy(const QPointF& delta){offset_+=delta;fitted_=false;clampOffset();placeTextEditor();update();emit viewChanged();}
 QRect EditorCanvas::visibleImageRect() const {return boxFrom(toImage(QPointF(0,0)),toImage(QPointF(width(),height()))).intersected(visibleBounds());}
 void EditorCanvas::clampOffset(){
- const auto bounds=visibleBounds();const double w=bounds.width()*scale_,h=bounds.height()*scale_;
+ // The frame (the image and its style padding) is what is kept in view.
+ const auto bounds=visibleBounds();const double margin=styleMargin()*scale_;const double w=bounds.width()*scale_+2*margin,h=bounds.height()*scale_+2*margin;
  auto axis=[](double offset,double content,double room){return content<=room?(room-content)/2:std::clamp(offset,room-content-48,48.0);};
- offset_=QPointF(axis(offset_.x(),w,width()),axis(offset_.y(),h,height()));
+ offset_=QPointF(axis(offset_.x()-margin,w,width())+margin,axis(offset_.y()-margin,h,height())+margin);
 }
 void EditorCanvas::resizeEvent(QResizeEvent*){
  // Never move the image while a gesture maps pointer positions through it.
@@ -263,7 +270,7 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
  if(space_){setCursor(Qt::OpenHandCursor);return;}
  if(tool_==Tool::Crop){const int h=handleAt(cropDraft_,position);setCursor(h>=0?resizeCursor(h):QRectF(cropDraft_).contains(toImage(position))?Qt::SizeAllCursor:Qt::CrossCursor);return;}
  if(tool_==Tool::CopyText){setCursor(textLayer_&&textLayer_->wordAt(toImage(position))>=0?Qt::IBeamCursor:Qt::ArrowCursor);return;}
- const auto fallback=tool_==Tool::Select?Qt::ArrowCursor:Qt::CrossCursor;
+ const auto fallback=selecting()?Qt::ArrowCursor:Qt::CrossCursor;
  // Ctrl draws a new shape even over existing ones.
  if(drawingTool()&&(modifiers&Qt::ControlModifier)){setCursor(fallback);return;}
  const auto image=toImage(position);
@@ -272,7 +279,7 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
   if(h>=0){setCursor(shape->twoPoint()?Qt::SizeAllCursor:resizeCursor(h));return;}
  }
  quint64 hit=0;
- if(tool_==Tool::Select)hit=shapeAt(image);
+ if(selecting())hit=shapeAt(image);
  else if(tool_==Tool::Text){const auto* shape=doc_.find(shapeAt(image));hit=shape&&shape->kind==Shape::Kind::Text?shape->id:0;}
  else if(drawingTool())hit=grabAt(image);
  setCursor(hit?Qt::SizeAllCursor:fallback);
@@ -389,7 +396,13 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  placeTextWarning();
  QPainter painter(this);painter.fillRect(rect(),canvasBackground());
  const auto bounds=visibleBounds();const auto target=toWidget(bounds);
- Ui::paintImageShadow(painter,target);
+ // #1893: the capture style's backdrop and shadow, behind the image, exactly as export draws them.
+ const auto styleGeometry=styleMargin()>0?doc_.styleGeometry():CaptureStyle::Geometry{};
+ const auto paintFrame=[&]{
+  painter.save();painter.translate(target.topLeft()-QPointF(styleGeometry.padding,styleGeometry.padding)*scale_);painter.scale(scale_,scale_);
+  style::paintBackdrop(painter,doc_.captureStyle(),styleGeometry,bounds.size(),doc_.stylePicture());painter.restore();
+ };
+ if(styleGeometry.valid())paintFrame();else Ui::paintImageShadow(painter,target);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
  if(!visible.isEmpty()){
@@ -416,6 +429,12 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   for(int i=textLayer_->first();i<=textLayer_->last();++i)painter.fillRect(QRectF(textLayer_->words().at(i).rect).adjusted(-1,-1,1,1),tint);
  }
  painter.restore();
+ // Rounded corners: the backdrop drawn again over what lies outside the capture's outline.
+ if(styleGeometry.valid()&&styleGeometry.radius>0){
+  QPainterPath outline;outline.addRoundedRect(target,styleGeometry.radius*scale_,styleGeometry.radius*scale_);
+  QPainterPath corners;corners.addRect(target);corners=corners.subtracted(outline);
+  painter.save();painter.setClipPath(corners);paintFrame();painter.restore();
+ }
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());
@@ -489,9 +508,9 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
  if(!force)if(const auto* shape=doc_.find(selected_)){
   const int handle=selectionHandleAt(*shape,press_);
   if(handle>=0){original_=*shape;handle_=handle;drag_=Drag::Resize;doc_.beginGesture();return;}
-  if((tool_==Tool::Select?shapeAt(image):grabAt(image))==selected_){original_=*shape;drag_=Drag::Move;doc_.beginGesture();return;}
+  if((selecting()?shapeAt(image):grabAt(image))==selected_){original_=*shape;drag_=Drag::Move;doc_.beginGesture();return;}
  }
- if(tool_==Tool::Select){
+ if(selecting()){
   selected_=shapeAt(image);emit selectionChanged();
   if(const auto* shape=doc_.find(selected_)){original_=*shape;drag_=Drag::Move;doc_.beginGesture();}
   update();return;

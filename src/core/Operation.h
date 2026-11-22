@@ -46,6 +46,8 @@ struct Operation {
  QString phase="accepted";
  // #1804: what the sensitive text check found, kinds and counts only ({found, complete, reason?}); empty when none ran.
  QJsonObject sensitive;
+ // #1893: the capture style applied at export ({applied: true, original?: {status, paths}}); empty when none was.
+ QJsonObject style;
  std::optional<int> requestTimeoutMs; // Explicit retry budget, separate from immutable settings.
  Error error;
  QJsonObject toJson() const;

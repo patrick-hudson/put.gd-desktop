@@ -271,6 +271,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="crop") {
   line(color,1.8);p.drawLine(7,3,7,17);p.drawLine(7,17,21,17);
   p.drawLine(3,7,17,7);p.drawLine(17,7,17,21);
+ } else if(name=="capture-style") {
+  // #1893: a framed picture: a washed backdrop, the capture card inside it with a shadow stroke under it.
+  line(color,1.8);QPainterPath frame;frame.addRoundedRect(QRectF(3,3,18,18),3,3);wash(frame);p.drawPath(frame);
+  rounded(7,7,10,8,1.5);p.drawLine(QPointF(8.5,17.5),QPointF(17.5,17.5));
  } else if(name=="annotate-arrow") {
   line(color,1.8);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
  } else if(name=="rectangle") {

@@ -44,10 +44,17 @@ bool sensitiveDraft(const QJsonValue& value){
  for(const auto& choice:kinds.toObject())if(!choice.isString()||choice.toString().size()>16)return false;
  return (check["enabled"].isUndefined()||check["enabled"].isBool())&&(check["categories"].isUndefined()||stringArray(check["categories"],7));
 }
+// #1893: capture style; the picture is a path, like the archive folders.
+bool styleDraft(const QJsonValue& value){
+ if(!fields(value,{"enabled","backdrop","padding","corners","shadow"}))return false;
+ const auto style=value.toObject();const auto backdrop=style["backdrop"];
+ if(!backdrop.isUndefined()&&!scalars(backdrop,{"kind","color","colorEnd","picture"}))return false;
+ return scalars(QJsonObject{{"enabled",style["enabled"]},{"padding",style["padding"]},{"corners",style["corners"]},{"shadow",style["shadow"]}},{"enabled","padding","corners","shadow"});
+}
 bool preferencesDraft(const QJsonValue& value){
- auto object=value.toObject();const auto sensitive=object.take("sensitiveTextCheck");const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");const auto languages=object.take("textRecognitionLanguages");const auto terms=object.take("quickRedactTerms");const auto patterns=object.take("quickRedactPatterns");
+ auto object=value.toObject();const auto style=object.take("captureStyle");const auto sensitive=object.take("sensitiveTextCheck");const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");const auto languages=object.take("textRecognitionLanguages");const auto terms=object.take("quickRedactTerms");const auto patterns=object.take("quickRedactPatterns");
  return value.isObject()&&(languages.isUndefined()||stringArray(languages,3))&&(terms.isUndefined()||stringArray(terms,200))&&(patterns.isUndefined()||stringArray(patterns,50))&&scalars(object,{"scrollCaptureMaxHeight","scrollCaptureFromTop","scrollCaptureAutoScroll","notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","captureDelaySeconds","captureDelayShortcuts","recordingFrameRate","recordingMicrophone","recordingMicrophoneDevice","recordingClickHighlights","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
-  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}))&&(sensitive.isUndefined()||sensitiveDraft(sensitive));
+  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}))&&(sensitive.isUndefined()||sensitiveDraft(sensitive))&&(style.isUndefined()||styleDraft(style));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}

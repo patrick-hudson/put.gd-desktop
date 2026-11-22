@@ -218,6 +218,35 @@ private slots:
                                   QJsonValue(QJsonObject{{"enabled", "yes"}, {"categories", QJsonArray{"card"}}})})
             QVERIFY(bool(putgd::Settings::validate(with(wrong))));
     }
+    // #1893: capture style is off and absent by default, and takes only its own fields.
+    void captureStyleIsOffByDefaultAndTakesOnlyItsFields() {
+        const auto defaults = putgd::SettingsService::defaults();
+        QVERIFY(!defaults["preferences"].toObject().contains("captureStyle"));
+        QVERIFY(!putgd::Settings::fromValidated(defaults).captureStyle.enabled);
+        const auto with = [](const QJsonValue& style) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["captureStyle"] = style;doc["preferences"] = preferences;return doc;};
+        const auto document = with(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "color"}, {"color", "#AABBCC"}}}, {"padding", "large"}, {"corners", false}});
+        const auto refused = putgd::Settings::validate(document);
+        QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(document).captureStyle;
+        QVERIFY(chosen.enabled);QCOMPARE(chosen.backdrop, QString("color"));QCOMPARE(chosen.color, QString("#aabbcc"));QCOMPARE(chosen.padding, QString("large"));QVERIFY(!chosen.corners);QVERIFY(chosen.shadow);
+        // A full object round-trips; enabled alone is a whole style (Graphite).
+        QCOMPARE(putgd::CaptureStyle::fromJson(chosen.toJson()), chosen);
+        QCOMPARE(putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}})).captureStyle.presetId(), QString("graphite"));
+        for (const auto& wrong : {QJsonValue(true), QJsonValue(QJsonObject{}), QJsonValue(QJsonObject{{"enabled", "yes"}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"padding", "huge"}}), QJsonValue(QJsonObject{{"enabled", true}, {"blur", 3}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "picture"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "picture"}, {"picture", "relative.png"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "color"}, {"color", "red"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "stripes"}}}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+        // Padding grows with the capture and is clamped; the shadow always ends inside it.
+        const auto style = putgd::CaptureStyle::preset("graphite");
+        QCOMPARE(style.geometry({300, 80}).padding, 24);QCOMPARE(style.geometry({1920, 1080}).canvas, QSize(2072, 1232));QCOMPARE(style.geometry({3840, 2160}).padding, 151);
+        for (const auto& size : {QSize(300, 80), QSize(3840, 2160), QSize(900, 30000)}) {const auto geometry = style.geometry(size);QVERIFY(geometry.offsetY + 3 * geometry.sigma < geometry.padding);}
+        // Over the limit, padding steps down a size; nothing fits, nothing is styled.
+        QCOMPARE(style.fitted({1920, 1080}, 2072 * 1232 - 1).padding, putgd::CaptureStyle::preset("graphite").geometry({1920, 1080}, 0).padding);
+        QVERIFY(!style.fitted({1920, 1080}, 1920 * 1080).valid());
+    }
     // #1820: each kind is off, warn or redact; #1804's categories list carries forward with its kinds on warn.
     void sensitiveTextKindsAreOffWarnOrRedactAndTheOldListMeansWarn() {
         const auto with = [](const QJsonValue& check) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["sensitiveTextCheck"] = check;doc["preferences"] = preferences;return doc;};

@@ -1,4 +1,5 @@
 #pragma once
+#include "core/CaptureStyle.h"
 #include <QColor>
 #include <QFont>
 #include <QImage>
@@ -87,7 +88,9 @@ public:
  QRect crop() const {return state_.crop;}
  const QList<Shape>& shapes() const {return state_.shapes;}
  const Shape* find(quint64 id) const;
- bool modified() const {return state_.shapes.size()>0||state_.crop!=base_.rect();}
+ bool modified() const {return state_.shapes.size()>0||state_.crop!=base_.rect()||state_.style!=initialStyle_;}
+ // The style the editor opened with (a new capture with Capture style on), which is not an edit.
+ void setInitialStyle(const CaptureStyle& style){state_.style=style;initialStyle_=style;}
  // Bumped by every change to what export renders (edits, live drags, undo,
  // redo), so a saved copy can tell whether it still matches the draft.
  quint64 generation() const {return generation_;}
@@ -109,6 +112,18 @@ public:
  // intersection is at least half of their union. Quick redact skips such a mark.
  bool dismissed(const QRect& suggestedAt,const QString& category) const;
  bool setCrop(const QRect&);
+ // #1893: the capture style export draws last, around the cropped result. Undoable like any
+ // edit; enabled false means none. The picture of a picture backdrop is read once per path.
+ static constexpr qint64 maximumStyledPixels=24000000; // the editor's output admission
+ const CaptureStyle& captureStyle() const {return state_.style;}
+ bool setCaptureStyle(const CaptureStyle&);
+ // The style's geometry for the current crop; invalid when the style is off or can't fit.
+ CaptureStyle::Geometry styleGeometry() const;
+ // The exported image's size: the crop, or the styled canvas around it.
+ QSize exportSize() const;
+ // The backdrop picture for the current style, loaded on first use; null when it can't be read
+ // (export then draws Graphite, as the capture path does). Call on the GUI thread.
+ const QImage& stylePicture() const;
  // Live drags update without a history entry; commit once on release.
  void preview(const Shape&);
  void beginGesture();
@@ -152,7 +167,7 @@ public:
  static void paintAnnotation(class QPainter&,const Shape&,const QPainterPath* textPath=nullptr);
 private:
  struct Dismissed {QRect at;QString category;bool operator==(const Dismissed&) const=default;};
- struct State {QList<Shape> shapes;QRect crop;QList<Dismissed> dismissed;bool operator==(const State&) const=default;};
+ struct State {QList<Shape> shapes;QRect crop;QList<Dismissed> dismissed;CaptureStyle style;bool operator==(const State&) const=default;};
  static qint64 bytesOf(const State&);
  void push(State before);
  void applyRedactions(QImage&,const QRect& within) const;
@@ -160,11 +175,13 @@ private:
  // into `target` (mapping `window` onto it) wherever the shape covers it.
  void pixelatePreview(QImage& target,const QRect& window,const Shape&) const;
  QImage base_;
+ CaptureStyle initialStyle_;
  State state_,gestureStart_;
  bool gesture_=false,truncated_=false;
  QList<State> undo_,redo_;
  qint64 historyBytes_=0;
  quint64 nextId_=1,generation_=0;
+ mutable QString picturePath_;mutable QImage picture_;
  mutable QHash<quint64,QPainterPath> textPaths_;
  mutable quint64 textPathsGeneration_=0;
  mutable QFont textPathsFont_;

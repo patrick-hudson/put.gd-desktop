@@ -1,4 +1,5 @@
 #pragma once
+#include "CaptureStyle.h"
 #include "Error.h"
 #include <QByteArray>
 #include <QImage>
@@ -105,6 +106,9 @@ public:
  // hands off the covered PNG, and Upload anyway keeps those covers.
  struct Check {QStringList categories;bool prompt=true,redact=true;QString file;QStringList cover={};};
  EditorJob& withCheck(Check check){check_=std::move(check);return *this;}
+ // #1893: the Settings capture style for the Style tool, and whether the document starts with it
+ // on (a new capture while Capture style is on; never a file, the clipboard or Edit again).
+ EditorJob& withStyle(CaptureStyle saved,bool start){style_=std::move(saved);styleStart_=start;return *this;}
  // The longest a check may take to say what it found, from the helper's start.
  static constexpr int checkTimeoutMs=40000;
  // An agent's decision: the helper cancels after 5 minutes; this backstop follows.
@@ -120,6 +124,7 @@ public:
  static void discardStaging(const QString& stagingRoot);
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
+ CaptureStyle style_;bool styleStart_=false;
  QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_,redactTerms_,redactPatterns_;
  Error submissionError_;
  std::optional<bool> links_;
