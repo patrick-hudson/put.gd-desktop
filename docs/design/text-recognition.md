@@ -677,10 +677,11 @@ other tool active it does not. The user's side is in the
     card number, a token alphabet run on both sides for a key), or, geometrically, a wrapped column
     whose lines end within 1.5 average character widths of its widest right edge. A preceding word,
     such as "Please email", is not taken in. Recognition can split an address in its local part
-    (`jane.` or `jane`, then `doe@example.com`; also `jane+`, or more than two pieces). A word of
-    address characters that starts with a letter or digit joins the next word on its visual line
-    when their boxes overlap horizontally and that word goes on to the "@", so the whole address
-    is one match. Boxes that only touch, or have any gap between them, are not joined, so "us." after
+    (`jane.` or `jane`, then `doe@example.com`; also `jane+`, or more than two pieces). Words of
+    address characters join the next word on their visual line when their boxes overlap
+    horizontally, as a run that goes on to the "@" and whose first word starts with a letter or
+    digit (a middle piece may be punctuation alone, such as `+`), so the whole address is one
+    match. Boxes that only touch, or have any gap between them, are not joined, so "us." after
     a sentence stays out, and so does a split the recognizer left a gap in. A word that a key, card,
     IP or phone match also wants stays with that match. Names and list entries are matched after
     addresses and don't take a word the address has joined (#1840).
