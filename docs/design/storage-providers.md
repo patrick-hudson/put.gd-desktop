@@ -6,7 +6,29 @@ No profile is accepted without its registered validator. The production registry
 no test provider. S3 implementation belongs exclusively under `src/storage/s3/`,
 Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)), Cloudflare R2's under
 `src/storage/s3/` as a provider over the S3 one (`R2Provider`, [r2.md](../user/r2.md)) and the custom HTTP
-uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)).
+uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)), and Nextcloud's and
+plain WebDAV's under `src/storage/dav/` ([nextcloud.md](../user/nextcloud.md)).
+
+Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class and one helper,
+`putgd-webdav-worker`, which reuses the custom uploader's plain-HTTP rule
+(`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
+Nextcloud files above 50 MB use chunked upload v2 (`MKCOL` an upload folder, `PUT` 16 MB chunks,
+then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
+size and content, and an abandoned upload folder is deleted through its journal. Receipts keep
+the ETag and file ID a `PROPFIND` reports after the write, because a write's own reply can
+differ (Apache's `PUT` ETag, Nextcloud's padded `OC-FileId`). `stat` compares file ID, size and
+ETag; deletion sends `If-Match` with the recorded ETag, and a 412 is `changed`. Apache reports a
+weak ETag for a file written within the last second, which never satisfies `If-Match`, so a 412
+on a weak recorded ETag is retried, at most twice, once `PROPFIND` reports the same file with a
+strong ETag. Nextcloud has `capabilities.sharing`: the link is a public read-only share
+(`shareType=3`, `permissions=1`) made in the two-step sharing pipeline, with the date an enforced
+expiry allows, and its page URL is the `directUrl`. An existing link share of the file is reused
+rather than made twice. Upload is refused beforehand only when the server's capabilities report
+public links off; an enforced link password fails the share step with
+`nextcloud_share_password_required`. Share tokens are secrets in a path: test journals keep
+receipts without the link, and log redaction replaces `/s/TOKEN`. TLS uses the system trust
+store only; a refused certificate is described by issuer, expiry or host name with its SHA-256.
+Requests with file data have only a stall limit, as B2's.
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider

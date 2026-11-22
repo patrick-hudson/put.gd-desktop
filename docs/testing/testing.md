@@ -204,6 +204,17 @@ The custom HTTP uploader (#1361) is tested in four layers:
   including legacy fields and text bodies, the settings rules, which hosts and
   transports are allowed, and that stored values stay names until they are needed and
   out of what is shown or recorded.
+- `dav_rules`: Nextcloud and WebDAV address and settings rules (#1872): pasted Files and share
+  links reduce to the server, plain HTTP only where allowed, per-segment URL encoding and share
+  token redaction.
+- `dav_integration`: the production provider and `putgd-webdav-worker` against real Nextcloud and
+  WebDAV servers named by `PUTGD_TEST_NEXTCLOUD_*` and `PUTGD_TEST_WEBDAV_*` (the lab servers in
+  `tools/lab/storage_servers/`); each case skips when its server isn't named. It covers Test,
+  upload, collision, share link fetched as a visitor, a changed file refused on delete, 60 MB
+  chunked upload and cancel, an untrusted certificate, Login Flow v2 sign-in and sign-out
+  (`PUTGD_TEST_NEXTCLOUD_SIGNIN_URL_FILE`, completed by a browser), a missing WebDAV folder and
+  Create folder, a wrong password, and with `PUTGD_TEST_NEXTCLOUD_EXPECT` a full quota, public
+  links off, an enforced link password and an enforced expiry.
 - `http_uploader_integration`: the production provider and `putgd-http-worker` against
   the scripted loopback receiver `tests/fixtures/http_uploader_server.py`. It covers the
   multipart, JSON and header reply styles, where the token travels, refusals, lost and

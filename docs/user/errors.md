@@ -159,3 +159,25 @@ settings, and `credentials_not_stored` when a screen capture would close unfinis
 credential entry. The window stays open. Resolve the displayed save failure or
 Store/clear the credentials, then start the action again. No action is admitted
 by either rejection.
+
+## Nextcloud and WebDAV
+
+| Code | User action |
+|---|---|
+| `webdav_auth_failed` | Nextcloud refused the app password (it may have been revoked): Sign in again. WebDAV: check the user and password and store them again |
+| `webdav_quota` | The account is out of space (507). For Nextcloud the message gives the space left or used and the quota. Free some space or ask the administrator for more, then Retry |
+| `webdav_folder_missing` | The WebDAV folder doesn't exist; Test offers **Create folder** (`details.createFolder`). For Nextcloud, the folder disappeared during the upload: Retry creates it again |
+| `webdav_too_large` | The server refused a file this large (413). Its upload size limit is lower than the file |
+| `webdav_forbidden`, `webdav_locked` | The server refused access (403) or the file is locked by another app (423) |
+| `webdav_rate_limited` | The server is limiting requests (429). Try again in a few minutes |
+| `webdav_server_error`, `webdav_failed`, `webdav_unreachable` | The server had an error, gave another answer, or couldn't be reached; the message names the status or the connection problem |
+| `webdav_tls_failed` | The server's certificate isn't trusted, has expired, or is for another host. The message gives the certificate's SHA-256 and, for an untrusted issuer, the command that adds your own certificate authority to this distribution's trust store |
+| `webdav_plain_http_refused` | An `http://` address on another computer needs **Allow plain HTTP for this destination** |
+| `webdav_settings_invalid`, `webdav_name_invalid` | Fix the field the message names |
+| `webdav_transport_unknown` | The helper stopped without a confirmed result; Retry reconciles before sending again |
+| `nextcloud_not_found` | The address doesn't answer like a Nextcloud server; use the address you open Nextcloud at in a browser |
+| `nextcloud_sharing_disabled` | Public links are turned off on the server; nothing was uploaded. Ask the administrator to allow sharing with public links |
+| `nextcloud_share_password_required` | The server enforces a password on public links, which put.gd doesn't set. The upload stays in your files without a link |
+| `nextcloud_signin_unavailable` | The server has no browser sign-in (Login Flow v2); use **Use an app password instead** |
+| `nextcloud_signin_timeout`, `nextcloud_signin_cancelled` | Sign-in wasn't finished in the browser within 20 minutes, or was cancelled; choose Sign in again |
+| `nextcloud_server_mismatch` | Nextcloud named another address for sign-in or finished it for another server (its `overwrite.cli.url` or trusted proxies may be wrong); enter the address it names, or ask the administrator |

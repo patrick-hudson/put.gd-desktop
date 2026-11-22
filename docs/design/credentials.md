@@ -29,6 +29,17 @@ startup read.
 requires explicit entry again. `forget` revokes future cache access. Already-sent
 requests drain using their original client/credential generation.
 
+Nextcloud and WebDAV (#1872) store a key pair: the access key is the login name (WebDAV: the
+user) and the secret key the app password (WebDAV: the password). A Nextcloud sign-in
+(`setup.connectAccount`, Login Flow v2) saves the app password Nextcloud hands over to the
+profile's reference, keychain or session, and the job's result never holds it. The DAV user
+in request paths is the account ID the server reports (`/ocs/v2.php/cloud/user`), which can
+differ from the login name. `setup.signOut` revokes the app password on the server
+(`DELETE /ocs/v2.php/core/apppassword`) and then erases the entry; a password that is not an
+app password, or already revoked, is only erased. Removing a Nextcloud destination in Settings
+signs it out first. The worker keeps no cookies, so every request authenticates with the app
+password alone.
+
 A custom HTTP uploader (#1361) stores named values instead of a key pair: one entry
 holds a map from credential-store name to value, where a name is `headers/<name>`,
 `parameters/<name>`, `arguments/<name>`, `secrets/<name>` or `data` (the request body).
