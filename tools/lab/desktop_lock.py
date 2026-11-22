@@ -408,7 +408,6 @@ class Desktop:
     def acquire(self, owner, session, purpose, minutes):
         owner, session, purpose = one_line('owner', owner), one_line('session', session), one_line('purpose', purpose)
         minutes = checked_minutes(minutes)
-        items, notes = self.inventory()
         with self.mutex():
             now = self.clock()
             current = self.state(now)
@@ -416,6 +415,8 @@ class Desktop:
                 raise LockError(f'{self.name} is already locked' + (
                     '. Do other work and retry acquire later; never sleep holding nothing'
                     if self.resource == 'quiet' else ''), **current)
+            # The baseline is taken once the desktop is free, so the last holder's cleanup is in it.
+            items, notes = self.inventory()
             # Under the mutex, so a holder releasing just now can't leave the tray down unseen.
             tray = self.tray_host() if self.tray_host else None
             if tray is not None and not tray.get('ready'):

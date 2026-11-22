@@ -256,6 +256,18 @@ class ReleaseCleanupCheck(LockTest):
         reply = self.desktop.release('local_a', True)
         self.assertNotIn('removedOk', json.loads(Path(reply['receipt']).read_text()))
 
+    def test_the_baseline_is_taken_only_once_the_desktop_is_free(self):
+        self.items = [deb('1.0')]
+        self.acquire()
+        taken = []
+        second = lock.Desktop(self.directory, 'f44', self.clock, lambda: (taken.append(1), ([], []))[1])
+        with self.assertRaises(lock.LockError):
+            self.acquire('local_b', desktop=second)
+        self.assertEqual(taken, [])
+        self.desktop.release('local_a', True)
+        self.acquire('local_b', desktop=second)
+        self.assertEqual(taken, [1])
+
     def test_a_lost_baseline_counts_everything_as_left(self):
         self.items = [process(11)]
         self.acquire()
