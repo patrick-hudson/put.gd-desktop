@@ -680,10 +680,11 @@ other tool active it does not. The user's side is in the
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
     token alphabet joined without spaces (one misread character allowed in eight; quotes around a
-    word don't count, #1820). A segment is
+    word don't count when they enclose 8 characters or more with a digit or a capital, #1820). A segment is
     marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
-    `@`, a quote, `(`, `[` or a backtick inside one when its body has a digit (`KEY_ID=AKIA…`,
-    `"AKIA…"`, `https://ghp_…@host`, but not a URL slug, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    `@`, a quote (straight or curly), a guillemet, `(`, `[` or a backtick inside one when its body
+    has both a digit and a capital (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`; an ordinary
+    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
@@ -698,12 +699,15 @@ other tool active it does not. The user's side is in the
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
     phone number only with a leading `+`, so the tail of a UUID is not taken for one. A number
-    grouped as a card is printed (4-4-4-4, or 4-6-5, with one separator and a first digit from 1 to
-    9) is never a phone number, so a card number that fails the Luhn check is not suggested as one;
-    when its groups are not evenly spaced they are separate fields (two phone numbers in table
-    columns), split at the widest gap (#1820). A card number doesn't start right after a dot, and a
-    candidate that fails the Luhn check doesn't hide a card later in its span (a table's address
-    cell read into the card beside it). Between two digits a hyphen-like dash or a minus sign
+    grouped as a card is printed (4-4-4-4 with an optional fifth group of one to three digits, or
+    4-6-5, with one separator and a first digit from 1 to 9) is never a phone number, so a card
+    number that fails the Luhn check is not suggested as one. A phone candidate of more than 15
+    digits is retried as shorter numbers, except a card-grouped one whose words are evenly spaced;
+    the retry tries the widest gap between its words first (two phone numbers in table columns)
+    and can fall back to another word boundary (#1820). A card number doesn't start right after a
+    digit and a dot (`198.51.100.7 5555-…` reads the card from `5555`), but may after a label such
+    as `No.`. A card candidate that fails the Luhn check is skipped whole, so a valid card that
+    starts inside its span can be missed. Between two digits a hyphen-like dash or a minus sign
     reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
@@ -871,7 +875,10 @@ other tool active it does not. The user's side is in the
     also take in an ordinary word joined to a token, such as a label with digits ("sha256"), the
     words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line. A
     token that runs to the end of its line goes on over each following line that starts with the
-    rest of it (a JWT soft-wrapped in an editor), down to a short last remainder with a digit (#1820).
+    rest of it (a JWT soft-wrapped in an editor). A remainder of 8 characters or more counts by its
+    shape; a shorter one (3 to 7 characters) counts only as a single recognized word with a digit,
+    no run of four lowercase letters, and a closing quote, bracket or separator at its end, so
+    `08edc"` is taken and a bare `08edc` or a letters-only tail is not (#1820, #1850).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
