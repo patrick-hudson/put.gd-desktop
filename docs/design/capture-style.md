@@ -16,7 +16,7 @@ for both forms, and `editor_contract` checks it for the editor export.
 | Path | Rule |
 | --- | --- |
 | Region, window, monitor, desktop, Repeat last region, scrolling captures | Styled when the option is on, just before the capture is stored. This happens before the upload and before the local copy, so both get the styled PNG. Scrolling captures are included because they reach the same step as a PNG |
-| Capture region & edit | A new capture (region, window, desktop, scrolling) opens with the style on in the editor's Style tool, and the editor's export draws it. The resident does not style an editor's output again |
+| Capture region & edit | A new capture (region, window, desktop, scrolling) opens with the style on, as does **Redact and upload** from the sensitive text prompt for a capture (not for a clipboard image or a file) in the editor's Style tool, and the editor's export draws it. The resident does not style an editor's output again |
 | Files, the clipboard and Edit again in the editor | Open with the style off. Edit again of a styled capture opens the `-original` kept beside it, with the style on (see [Originals](#originals-and-edit-again)) |
 | Clipboard images and text, file uploads, recordings | Never styled |
 | Retries | Upload the stored artifact as it was stored |
@@ -80,7 +80,10 @@ The styled image must fit `limits.imagePixels` and `limits.imageBytes / 4`, and 
 24-megapixel output admission for an edit. When it doesn't fit, the padding steps down a size at a
 time. When even Small doesn't fit, the capture is stored as it was captured, and its History item
 says "Capture style wasn't applied: the styled image would be larger than put.gd's image limits."
-A style problem never fails or blocks a capture. If the style can't be drawn for another reason
+A styled PNG is larger than the capture alone. When only the style would pass the Largest file limit
+or the destination's maximum object size, the capture goes out as it was, with "Capture style wasn't
+applied: the styled image would be larger than this destination or put.gd's file size limit
+accepts." A style problem never fails or blocks a capture. If the style can't be drawn for another reason
 (the image-job child fails or times out), the capture is stored as captured, with "Capture style
 wasn't applied: put.gd couldn't draw it." and a warning in the log.
 
@@ -147,9 +150,12 @@ uploaded. `operation.style.original` is `{status, paths}`, as `sensitive.origina
 capture keeps its original from before covering, which is also from before styling.
 
 History's **Edit again** on a styled item opens that `-original`, with `captureStyle: true`, so the
-editor starts with the style on and the result is styled once. Without a kept original (Keep a
+editor starts with the style on (even if the option has been turned off since) and the result is
+styled once. Without a kept original (Keep a
 local copy was off), Edit again opens the styled copy, and the Style tool starts off, so frames
-never stack.
+never stack. A capture the sensitive text check covered and then styled is the same: its kept original
+is from before covering, and Edit again never opens it, so it opens the styled copy with the Style
+tool off. Its frame can't be changed in the editor; a new capture can.
 
 ## Agents
 
