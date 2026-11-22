@@ -933,10 +933,13 @@ desktop title bar or frame, and it moves by dragging its body, through the deskt
 ordinary window: it opens raised and focused, and another window can cover it. On Wayland a window
 can't ask to stay on top, and put.gd keeps it an ordinary window everywhere rather than an overlay that
 can't be moved. While a capture waits, the tray and History say "Waiting for your decision", and a click
-on the tray icon brings the panel back instead of opening History. The tray menu's **Open put.gd**
-still opens History. On a desktop with no tray, put.gd also sends one notification, "A capture is
-waiting for your decision". It has **Show**, which brings the panel back, where the desktop's
-notifications support buttons. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
+on the tray icon brings the panel back instead of opening History, where the tray host sends put.gd the
+click. Ubuntu's AppIndicator tray opens put.gd's menu on a click instead. The tray menu's **Open
+put.gd** still opens History. On every desktop put.gd also sends one notification for each prompt a
+person is shown, "A capture is waiting for your decision", while notifications are on ([#1829](https://github.com/patrick-hudson/put.gd-desktop/issues/1829)).
+It has **Show**, which brings the panel back, where the desktop's notifications support buttons. With
+no notification server, clicking Qt's tray balloon does the same. During a scrolling capture the
+notification waits until the capture ends, and goes out then only if the prompt still waits. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc)
 float it. Where the desktop lets a window choose (X11), it opens centred on the screen with the pointer.
 Focus starts on **Redact and upload**, or on **Cancel** when Redact isn't offered.
 
@@ -1002,7 +1005,7 @@ the decision; `operation.decide` answers only `decided` and `operationId`. The p
 check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
 found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
 those words to the same-user caller that asks, without another recognition run. Placing any suggested
-mark starts a new recognition revision, which clears the result. The notification on a desktop with no tray says only that a capture is waiting.
+mark starts a new recognition revision, which clears the result. The notification says only that a capture is waiting.
 Tests and evidence use only test values.
 
 ### Cost
