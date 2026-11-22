@@ -181,7 +181,7 @@ bool tokenCharacter(QChar c) {return (c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'
 bool tokenPiece(const QString& word,bool loose=false) {
  if(word.isEmpty())return false;
  // An assignment is one, whatever its value's symbols (PASSWORD='R!$^&*()#', Sol on #1903).
- static const QRegularExpression assigned(QStringLiteral("^(?:\\d{1,5}|[{\\[(,])?[\"'`\u201C\u2018]?[A-Za-z_][A-Za-z0-9_.-]{1,63}[\"'`\u201D\u2019]?[=:]\\S"));
+ static const QRegularExpression assigned(QStringLiteral("^(?:\\d{1,5}|[{\\[(,]{1,3})?[\"'`\u201C\u2018]?[A-Za-z_][A-Za-z0-9_.-]{1,63}[\"'`\u201D\u2019]?[=:]\\S"));
  if(loose&&assigned.match(word).hasMatch())return true;
  // #1820: quotes around a word are punctuation, not misread characters ("“AKIA…" in an editor's string).
  static const QString quotes=QStringLiteral("\"'`\u201C\u201D\u2018\u2019\u00AB\u00BB");
@@ -734,7 +734,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  const auto pieceEnd=[&](int piece){return piece+1<pieces?segment.starts.at(piece+1):int(segment.text.size());};
  // URLs with a password, webhooks and bot tokens.
  static const QList<QRegularExpression> urls{
-  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?![0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))[^\\s/@]{3,}")),
+  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?!(?=[0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))(?![^\\s/@]*@))[^\\s/@]{3,}")),
   // The credential-bearing path whole: team, hook and secret (Sol on #1903).
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}/[A-Za-z0-9]{6,}/(?:[0-9]{6,}/)?[A-Za-z0-9]{12,}")),
   QRegularExpression(QStringLiteral("(?i)discord(?:app)?[.,]?com/api/webhooks/[0-9]{6,}/[A-Za-z0-9_-]{8,}")),
@@ -786,13 +786,14 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  // Assignments inside a piece, at its start or after a separator of JSON, CSV or a query string
  // ({"…","TOKEN":"…"}, NAME,value,owner, ?api_key=…&): the piece is covered when the value there is a
  // secret's.
- static const QRegularExpression inner(QStringLiteral("(?:^|[,{;&?(])\\s?[\"']?([A-Za-z_][A-Za-z0-9_.-]{1,63})[\"']?\\s?([=:,])\\s?[\"']?([^,\"'&;}\\s]{4,})"));
+ // A quoted value is read to its closing quote, whatever it holds ({"password":"!&%?"}; Sol on #1903).
+ static const QRegularExpression inner(QStringLiteral("(?:^|[,{;&?(\\[])\\s?[\"']?([A-Za-z_][A-Za-z0-9_.-]{1,63})[\"']?\\s?([=:,])\\s?(?:\"([^\"]{4,200})\"|'([^']{4,200})'|([^,\"'&;}\\s]{4,}))"));
  for(int p=0;p<pieces;++p){
   const auto text=segment.text.mid(segment.starts.at(p),pieceEnd(p)-segment.starts.at(p));
   for(auto it=inner.globalMatch(text);it.hasNext();){
    const auto m=it.next();
    // After a comma (a CSV row) the value needs a digit and a letter, so "Password,please" stays visible.
-   const auto value=m.captured(3);
+   const auto value=!m.captured(3).isEmpty()?m.captured(3):!m.captured(4).isEmpty()?m.captured(4):m.captured(5);
    if(m.captured(2)==QLatin1String(",")&&!(hasDigit(value)&&std::any_of(value.cbegin(),value.cend(),[](QChar c){return c.isLetter();})))continue;
    if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)))){int last=p;while(last+1<pieces&&glued(last+1))++last;out.append(from(p,last));break;}
   }

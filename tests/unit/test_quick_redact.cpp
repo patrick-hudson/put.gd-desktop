@@ -360,6 +360,8 @@ private slots:
    QTest::newRow("an unsigned JWT with typ first stays visible")<<"TOKEN="+none<<QStringList{"key"}<<QStringList{};}
   // Sol on #1903, round 2.
   QTest::newRow("a numeric password split before its @")<<"postgres://alice:12"+QString("34 @db/prod")<<QStringList{"key"}<<QStringList{"key: postgres://alice:12"+QString("34 @db/prod")};
+  QTest::newRow("a password before a bracket and its @")<<"url postgres://alice:12"+QString("34)@db/prod")<<QStringList{"key"}<<QStringList{"key: postgres://alice:12"+QString("34)@db/prod")};
+  QTest::newRow("a symbol password in nested JSON")<<"[{\"password\":\"R!$^"+QString("&*()#\"}]")<<QStringList{"key"}<<QStringList{"key: [{\"password\":\"R!$^"+QString("&*()#\"}]")};
   QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
   for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})
