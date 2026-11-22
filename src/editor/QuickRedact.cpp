@@ -311,7 +311,11 @@ QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const
   if(!current.words.isEmpty()){
    const int previous=current.words.last();
    const int gap=candidates.at(index).rect.left()-candidates.at(previous).rect.right();
-   if(gap>6*qMax(glyph(previous),glyph(index)))close();
+   // After a plain label word (letters alone, AWS, Key) three characters already part it from a
+   // value; between token pieces six (Sol on #1901).
+   const auto& left=plain.at(previous);
+   const bool label=left.size()<=12&&std::all_of(left.cbegin(),left.cend(),[](QChar c){return c.isLetter()||c==':';});
+   if(gap>(label?3:6)*qMax(glyph(previous),glyph(index)))close();
   }
   current.starts.append(int(current.text.size()));current.words.append(index);current.text+=plain.at(index);
  }
@@ -432,6 +436,8 @@ bool digestLine(const QList<int>& line,const QList<QString>& plain) {
  static const QRegularExpression words(QStringLiteral("[^A-Za-z0-9]+")),camel(QStringLiteral("[^A-Za-z0-9]+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"));
  for(const int w:line)for(const auto& part:plain.at(w).split(camel,Qt::SkipEmptyParts))if(secrets.contains(part.toLower()))return false;
  bool hash=false;
+ // A camelCase label in label position, ending in ":" or "=" (gitSha:, commitHash=), names a digest too.
+ for(const int w:line){const auto& t=plain.at(w);if(t.endsWith(':')||t.endsWith('='))for(const auto& part:t.split(camel,Qt::SkipEmptyParts))hash=hash||hashes.contains(part.toLower());}
  for(const int w:line)for(auto part:plain.at(w).split(words,Qt::SkipEmptyParts)){
   part=part.toLower();
   if(secrets.contains(part))return false;
@@ -578,6 +584,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       if(nextLine.size()>1&&(number.match(plain.at(nextLine.first())).hasMatch()||(plain.at(nextLine.first()).size()==1&&!plain.at(nextLine.first()).front().isLetterOrNumber())))lead=1;
       const auto& firstWord=plain.at(nextLine.at(lead));
       if(assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch())break;
+      // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0").
+      static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
+      if(lead+1<nextLine.size()&&name.match(firstWord).hasMatch()&&(plain.at(nextLine.at(lead+1))==QLatin1String("=")||plain.at(nextLine.at(lead+1))==QLatin1String(":")))break;
       // A line with a hash word is a digest of its own, not a wrapped remainder (Sol on #1901).
       if(digestLine(nextLine,plain))break;
       if(nextLine.size()>1&&number.match(plain.at(nextLine.first())).hasMatch()&&number.match(plain.at(line.first())).hasMatch())break;}
@@ -606,7 +615,10 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       const bool part=last.dotted&&(ending.endsWith('.')||ending.endsWith(','));
       if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!(((part&&dots<=2)||((last.length==0||(last.dotted&&dots<2))&&f.payload))&&f.dotted);}))break;}
      used+=int(tail.size());ending=tail;
-     words+=next.first().words;
+     // A remainder ends at the quote that closes the token ("…==”" "// note" stays out).
+     {bool closed=false;
+      for(const int w:next.first().words){words.append(w);const auto& t=plain.at(w);if(!closing.isEmpty()&&!t.isEmpty()&&(closing.contains(t.back())||(t.size()>1&&closing.contains(t.at(t.size()-2))&&QStringLiteral(",;)]}").contains(t.back())))){closed=true;break;}}
+      if(closed)break;}
      if(next.first().words.last()!=nextLine.last())break;
     }
     out.append(words);
@@ -1144,7 +1156,10 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       for(int w=0;w<candidates.size();++w){
        if(candidates.at(w).line!=line||!candidates.at(w).text.startsWith(QLatin1String("ISBN"),Qt::CaseInsensitive))continue;
        static const QRegularExpression part(QStringLiteral("^[0-9Xx-]+[,.;]?$"));
-       int count=0;for(int v=w+1;v<candidates.size()&&candidates.at(v).line==line&&count<13&&part.match(candidates.at(v).text).hasMatch();++v){isbnWords.insert(v);count+=digits(candidates.at(v).text);}
+       // The number ends at its own punctuation ("0-306-40615-2,") or at 10 or 13 digits.
+       int count=0;for(int v=w+1;v<candidates.size()&&candidates.at(v).line==line&&count<13&&part.match(candidates.at(v).text).hasMatch();++v){
+        isbnWords.insert(v);count+=digits(candidates.at(v).text);
+        const auto& t=candidates.at(v).text;if(t.endsWith(',')||t.endsWith(';')||t.endsWith('.')||count==10||count==13)break;}
       }
       if(!isbnWords.isEmpty()&&std::all_of(words.cbegin(),words.cend(),[&](int w){return isbnWords.contains(w);}))continue;}
     }

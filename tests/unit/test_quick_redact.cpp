@@ -298,6 +298,9 @@ private slots:
   QTest::newRow("a Brazilian mobile after a country code word is a phone")<<"Celular BR 91234-5678"<<all<<QStringList{"phone: 91234-5678"};
   QTest::newRow("a bare ZIP+4 is not a phone")<<"Ship to 71674-4468"<<all<<QStringList{};
   QTest::newRow("a phone after a two-digit label is a phone")<<"Phone12:202-555-0143"<<all<<QStringList{"phone: Phone12:202-555-0143"};
+  QTest::newRow("a phone after an ISBN-10 on its line is a phone")<<"ISBN-10: 0-306-40615-2, 202-555-0143"<<all<<QStringList{"phone: 202-555-0143"};
+  {const auto sha=QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab";
+   QTest::newRow("a camelCase digest label leaves its hash visible")<<"gitSha: "+sha<<all<<QStringList{};}
   QTest::newRow("a phone after an ISBN on its line is a phone")<<"ISBN 978-4-579-64374-5, phone 202-555-0143"<<all<<QStringList{"phone: 202-555-0143"};
   {const auto hex=QString("47a74f445ca32dc645e3be45b37a6937")+"d105dae65638df71a251c0d0608b117d";
    QTest::newRow("an acronym secret name beats a hash word")<<"clientAPISecret = "+hex+" // SHA-256"<<all<<QStringList{"key: clientAPISecret = "+hex+" // SHA-256"};}
@@ -347,7 +350,9 @@ private slots:
   const auto aws=QString("AK")+"IA"+"IOSFODNN7"+"EXAMPLE";
   auto page=words("AWS "+aws);
   QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: AWS "+aws});
-  page.last().rect.translate(150,0);
+  page.last().rect.translate(32,0);
+  QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+aws});
+  page.last().rect.translate(118,0);
   QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+aws});
  }
  // #1894: in an editor's .env file the lines after a token are new assignments, numbered or not, never
@@ -365,7 +370,8 @@ private slots:
   QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5=\","),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5=\","});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL="),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DATABASE_URL=\"\""),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
-  QVERIFY(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D // note"),QStringList{"key"}).first().startsWith("key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D"));
+  QCOMPARE(found(words("KEY=\""+secret+" | Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D // note"),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" Xc4Vb9Nm1QwEr3Ty8Ui5==\u201D"});
+  QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | DEBUG_MODE = 0"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
   QCOMPARE(found(words("KEY=\""+secret+" | shaB7m2QaK8V\""),QStringList{"key"}),QStringList{"key: KEY=\""+secret+" shaB7m2QaK8V\""});
   QCOMPARE(found(words("AWS_SECRET_ACCESS_KEY="+secret+" | SHA1 "+QString("efd984b6b1813c2c344524c7")+"8d8f21a76afb9fab"),QStringList{"key"}),QStringList{"key: AWS_SECRET_ACCESS_KEY="+secret});
  }
