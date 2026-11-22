@@ -58,10 +58,11 @@ the nightly's Fedora GNOME guest runs: the extension must be enabled and active,
 `org.kde.StatusNotifierWatcher` on the desktop session bus must have a registered host.
 If either is missing, the lock is refused with one line that says what's wrong and how to
 fix it. Usually the fix is `gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com`
-in the desktop session. If the extension stays `INACTIVE`, check whether the screen is
-locked first, because a locked screen also makes it `INACTIVE`, and unlock it. If it's
-still `INACTIVE`, re-login. A re-login ends the desktop session, so take the lock first
-with `--no-tray-host "repairing the tray host"`, then run `sudo -n systemctl restart gdm`.
+in the desktop session. If the extension stays `INACTIVE`, the repair touches the desktop,
+so take the lock first with `--no-tray-host "repairing the tray host"`. Under that lock,
+unlock the screen if it is locked (a locked screen also makes the extension `INACTIVE`),
+check again, and only if it is still `INACTIVE`, re-login with
+`sudo -n systemctl restart gdm`.
 
 **Testing the no-tray path on purpose.** A case that covers GNOME without a tray, such
 as quitting from the main window's menu or the prompt fallback when no tray can show it,
