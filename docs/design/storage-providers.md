@@ -322,9 +322,9 @@ upload's own connection, sending included (a packet ssh can't take in time ends 
 connection); on a slow link they wait behind the writes already in ssh's buffers
 (#1888), so ssh is then ended and a new connection removes the file, only while it is still a
 regular file of that owner and no larger than the upload. When the connection itself broke, put.gd goes
-straight to that new connection. Both the `fstat` after the open and the new `lstat` must report the
-file's size, owner, times and type for a regular file; otherwise nothing is removed and the outcome
-is unknown with the path. That connection is pinned as History's
+straight to that new connection, but only when the `fstat` after the open gave the file's complete
+regular-file attributes (size, owner, times, type); otherwise nothing is removed and the outcome is
+unknown with the path. A new `lstat` that finds no such file confirms the file is already gone. That connection is pinned as History's
 checks are: only the known_hosts lines the attempt was verified by, and the same host, port and
 user; otherwise nothing is removed. An upload keeps its password and
 passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
