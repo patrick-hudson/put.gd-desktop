@@ -534,6 +534,15 @@ private slots:
   const auto tall=quickRedact::markBoxes(stepped,{"key",{0,1}},QRect(0,0,1000,100));
   QCOMPARE(tall.size(),2);
   for(const auto& box:tall){QVERIFY(box.mark.top()<=13);QVERIFY(box.mark.bottom()>=57);}
+  // The outer edge's neighbour scan covers the row's height too (Sol's geometry): a stroke at
+  // y 46-47 below a short run is matched ink, not blank paper.
+  QImage high(200,80,QImage::Format_RGB32);high.fill(Qt::white);
+  {QPainter p(&high);p.fillRect(QRect(QPoint(10,24),QPoint(19,45)),Qt::black);p.fillRect(QRect(QPoint(98,30),QPoint(109,39)),Qt::black);
+   p.fillRect(QRect(QPoint(116,30),QPoint(124,39)),Qt::black);p.fillRect(QRect(QPoint(113,46),QPoint(115,47)),Qt::black);}
+  const QList<RecognizedWord> edge{{"41",QRect(QPoint(10,24),QPoint(19,45)),90,0},{"555",QRect(QPoint(98,30),QPoint(109,39)),90,0},{"ok",QRect(QPoint(116,30),QPoint(124,39)),90,0}};
+  const auto split=quickRedact::markBoxes(edge,{"key",{0,1}},QRect(0,0,200,80),high);
+  QCOMPARE(split.size(),2);
+  QVERIFY(split.at(1).mark.right()>=115);
  }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
