@@ -270,6 +270,17 @@ text on a dark background, is inverted by put.gd's estimate before Tesseract see
 segmentation 3, which was the first choice, takes monospaced, aligned lines for table columns.
 On the corpus it lost whole terminal and plain-page regions.
 
+Otsu's threshold is one for the whole region, so a line of faint ink (comment grey on a dark
+editor) disappears whenever brighter text pulls the threshold above it (#1894). The page profile
+also counts faint edge ink per row: pixels at least 12 levels from the background and 8 from the
+pixel before them on the background's side of the threshold. A run of such rows with no ink at
+the threshold, half to three line heights tall (at most eight runs), is read once more by the
+first engine with its band's contrast stretched, darkest pixel to black and paper to white. Only
+a job that asks for candidates (Quick redact and the check before uploading) does this, inside its
+time budget; the words join the candidates after the copied text is made, so Copy text is
+unchanged, and a word where one was already read is left out. A page with no such rows does no
+extra work.
+
 - **Screen or region.** An input of at least 4,000,000 pixels is a screen. A screen is cut into
   panels, and its job has a cap of 16,000,000 scaled pixels. Anything smaller is one panel, the
   whole image, with a cap of 8,000,000. The caps were measured on m74: a larger one sent
@@ -694,7 +705,11 @@ other tool active it does not. The user's side is in the
     has both a digit and a capital (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`; an ordinary
     lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions (for the prefix patterns other than a JSON web token's, a `/` between two letters or digits counts as a letter, as recognition reads a `J` at small sizes, while the separator check reads the text as recognized, #1839) and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
-    BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
+    BEGIN line to an END line, with dashes read as `~` or a long dash; with its END line found within
+    100 lines, every line between is taken whatever recognition made of it (#1894). A segment ends
+    at a gap of more than three characters between two words, so a table's label cell is not part
+    of its value (#1895). A line that starts a new assignment (`NAME=` or `name:`, after an
+    editor's line number or not) is no token's wrapped remainder (#1894). Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
     digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
     colon or comma in 80 characters. A prefix never fires inside a word otherwise ("ghosts", "they"). A JSON web token is
@@ -717,8 +732,39 @@ other tool active it does not. The user's side is in the
     token found by its payload (a wrap inside the header), or a token-shaped run above. A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
     three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
-    Prose never repeats so few letters for so long, and a masked secret shown as a run of `x` has the same
-    shape.
+    Prose never repeats so few letters for so long. A run whose commonest character is `x` or `0`
+    is a placeholder, not a token (#1895).
+  - Developer secrets with no prefix of their own (#1894), matched on the line's words joined as
+    above but allowing one misread character in four, since passwords use symbols freely:
+    - a URL of a known scheme (database, cache, queue, mail, file transfer, LDAP, HTTP and others)
+      whose user is followed by a password rather than a port, `postgres://user:password@…`, also
+      with the `@` lost; from its scheme to the end of the segment;
+    - the value of a secret-named setting: a name whose parts (split at anything but a letter or
+      digit and at a lowercase-to-capital change) include TOKEN, SECRET, PASSWORD, PASSWD, PWD,
+      PASS, PASSPHRASE, CREDENTIAL(S), DSN or APIKEY, or API, ACCESS, SECRET, PRIVATE, SIGNING,
+      ENCRYPTION, MASTER, ACCOUNT or APP before KEY, CLIENT or APP before SECRET, or AUTH before
+      TOKEN, or AUTHORIZATION, unless its last part names a setting about the secret (TTL, LENGTH,
+      MIN, MAX, TIMEOUT, FILE, PATH, URL and the like) or a part is PUBLIC or PUBLISHABLE. In one
+      word (`DB_PASSWORD=…`, JSON, CSV or a query string) the word is covered; with the value in
+      the next word (`password:` `…`, or a lone `=`) only the value, and only when it ends the
+      segment. Authorization's scheme word (Bearer, Basic) stays visible. A value is no secret when
+      it is shorter than four characters, digits alone, a reference (`${…}`, `$(…)`, `{{…}}`,
+      `<…>`, `%…%`, `$NAME`, `process.env.`, `os.environ`, `ENV[`, `getenv(`, `op://`, `vault:`,
+      `arn:aws:`), a plain URL, a placeholder word (`your`, `here`, `example`, `changeme`, `dummy`,
+      `fake`, `redacted` and the like), masked (four of one of `X`, `x`, `*`, `•` in a row), a
+      publishable key, or a known prefix with a body under 24 characters;
+    - a webhook URL its holder can post with (Slack, Discord, Microsoft Teams, Zapier, Google Chat,
+      Azure Logic Apps) and a Telegram bot token.
+    Key matches that share a word are one match.
+  - Not secrets (#1894, #1895): a prefixed token whose body is mask characters; a hex run with a
+    hash word on its line (`sha`, `sha1` to `sha512`, `md5`, `commit`, `digest`, `checksum`, `hash`,
+    `etag`, `integrity`, `blake2b`, `blake3`, a label cell or `sha256:` included) and no secret word
+    (`secret`, `key`, `token`, `password`, `signing`, `private`, `hmac`, `auth`, `credential`,
+    `api` and the like); publishable keys (`pk_live_`, `pk_test_`, `pk.ey…`, `sb_publishable_`;
+    Stripe's `pk_` is not a key prefix); the base64 of an SSH public key line; certificate and
+    public-key blocks; data URIs; JSON web tokens signed with `alg: none`; subresource integrity
+    digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); Twilio account SIDs; and base64 that
+    decodes to text with spaces in it.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
@@ -736,9 +782,17 @@ other tool active it does not. The user's side is in the
     reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
-    `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs,
-    GitHub, GitLab, Slack and Stripe prefixed tokens, JWTs, PEM private-key blocks, and unbroken
-    hex or base64 runs of 32 characters or more. `name` and `list` are described below.
+    `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs;
+    GitHub, GitLab, Slack and Stripe secret tokens; OpenAI, Anthropic, Google, Hugging Face, npm,
+    PyPI, SendGrid, DigitalOcean, Shopify, Twilio, Mailgun, Square, Docker Hub, Grafana, Vault,
+    Postman, New Relic, Linear, Atlassian and Sentry tokens (shapes as in gitleaks' default rules);
+    passwords in connection strings; values of secret-named settings; webhook URLs and Telegram bot
+    tokens; JWTs; PEM private-key blocks; and unbroken hex or base64 runs of 32 characters or more,
+    except digests beside a hash word. `name` and `list` are described below.
+  - Speed (#1897): each segment is scanned once with one pattern of every prefix's head, and a
+    prefix's own pattern runs only where its head occurs; the run search looks only as far as 256
+    characters reach from each word and rules a window out from running counts before reading it.
+    A line of thousands of token-shaped words takes well under a second.
   - A word belongs to one match at most. Where kinds overlap the more specific wins, in the order
     key, email, card, ip, phone, name, list. A login inside an email address stays part of the
     email match. Where `name` or `list` would take a word that an earlier match already has,

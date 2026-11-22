@@ -13,6 +13,7 @@ the GNOME Shell extension. They live in `tests/fuzz/` and are built only with cl
 | `fuzz_frames` | `UiControl`, `CaptureControl`, `StdioDevice`, `SessionProtocol::decodeReply` | Input cut at any point, repeated past the frame limit, over real pipes; a failure is reported once and no frame follows it; a reply built for a request id decodes. |
 | `fuzz_localipc` | `src/app/LocalIpc.cpp` | Both ends of the session socket against a peer that sends the bytes in pieces: a reply is one frame within its limit, or an error and nothing. |
 | `fuzz_s3wire` | `S3WorkerProtocol`, `S3Journal.h`, `PublicUrl` | A decoded value encodes and decodes to the same bytes. |
+| `fuzz_quickredact` | `src/editor/QuickRedact.cpp` (`find`, `marks`) | Any text laid out as recognized words: every match names existing words, in order and once; no word is in two matches; every mark stays inside its bounds. |
 | `fuzz_textjob` | `TextJobProtocol` | Sanitized text has no control, bidirectional or invisible characters; what decodes stays inside the image and the byte caps. |
 | `fuzz_settings` | `Settings::validate`, `fromValidated`, `normalized` | A document that validates builds settings that validate again. |
 | `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
