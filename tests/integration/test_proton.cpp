@@ -126,6 +126,9 @@ private slots:
   QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("tokenDigest"));QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("shareId"));
   QJsonObject detail;history.detail(item.artifact.id,[&](Error e,QJsonObject d){QVERIFY(!e);detail=d;});PUTGD_TRY_VERIFY(!detail.isEmpty());
   QVERIFY(!detail["shareProgress"].toObject().contains("shareId"));QVERIFY(!detail["shareProgress"].toObject().contains("tokenDigest"));
+  QJsonObject listed;history.list(HistoryQuery{},[&](Error e,QJsonObject d){QVERIFY(!e);listed=d;});PUTGD_TRY_VERIFY(!listed.isEmpty());
+  QVERIFY(!listed["records"].toArray().isEmpty());
+  for(const auto& record:listed["records"].toArray()){QVERIFY(!record.toObject()["shareProgress"].toObject().contains("shareId"));QVERIFY(!record.toObject()["shareProgress"].toObject().contains("tokenDigest"));}
   QJsonObject inspected;history.inspectSharing(revokeId,[&](Error e,QJsonObject d){QVERIFY(!e);inspected=d;});PUTGD_TRY_VERIFY(!inspected.isEmpty());QVERIFY(!inspected["progress"].toObject().contains("tokenDigest"));
   // A provider other than Nextcloud gets the request progress it always had.
   QVERIFY(HistoryService::recordedShare(item.receipt,QJsonObject{{"shareId","7"}},"revoke").contains("shareId"));

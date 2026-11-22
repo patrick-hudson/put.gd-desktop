@@ -956,7 +956,22 @@ private:
                 error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share didn't name exactly that share.", {{"requestStage", "share_inspect"}}};
                 return std::nullopt;
             }
-            return named.first();
+            // It must also be a link to this file and, when a link was recorded, that link; otherwise
+            // it can't be told apart, and is never used or deleted.
+            const auto share = named.first();
+            const auto fileId = receipt.objectReference["fileId"].toString();
+            const auto listed = share["token"].toString();
+            const auto token = shareToken(receipt.directUrl);
+            const auto digest = progress["tokenDigest"].toString();
+            const bool sameFile = !fileId.isEmpty() && share["item_source"].toVariant().toString() == fileId;
+            const bool sameLink = !token.isEmpty() ? listed == token
+                                : !digest.isEmpty() ? (!listed.isEmpty() && QString::fromLatin1(QCryptographicHash::hash(listed.toUtf8(), QCryptographicHash::Sha256).toHex()) == digest)
+                                                    : true;
+            if (!sameFile || !sameLink) {
+                error = {"webdav_protocol", "put.gd's recorded share no longer is the link of this file, so put.gd won't use or remove it.", {{"requestStage", "share_inspect"}}};
+                return std::nullopt;
+            }
+            return share;
         }
         const auto r = client_.ocs("GET", server(), "/ocs/v2.php/apps/files_sharing/api/v1/shares?path=" + QString::fromLatin1(QUrl::toPercentEncoding(path)) + "&reshares=false");
         if (r.status == 404) return QJsonObject{};
@@ -983,7 +998,8 @@ private:
     QJsonObject shareResult(const QString& status, StorageReceipt receipt, const QJsonObject& share = {}) {
         receipt.directUrl = status == "shared" ? sharePage(server(), share["token"].toString()) : QString();
         QJsonObject out{{"status", status}, {"receipt", receipt.toJson()}};
-        if (shareIdGone_) out["forgetShareId"] = true;
+        // Names the ID this request found gone, so only that one is forgotten.
+        if (shareIdGone_) out["forgetShareId"] = request_["progress"].toObject()["shareId"];
         if (status == "shared") {
             const auto expires = isoDate(share["expiration"].toString());
             if (!expires.isEmpty()) out["expiresAt"] = expires;

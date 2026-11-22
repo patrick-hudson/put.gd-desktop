@@ -208,8 +208,10 @@ void DavProvider::share(const ShareRequest& request, DurableCheckpoint checkpoin
     if (progress.isEmpty()) progress = *last;
     // A recorded share ID outlives the journal of a step that didn't record one itself, unless this
     // step confirmed that share gone.
-    if (r["forgetShareId"].toBool()) progress.remove("shareId");
-    else if (!progress.contains("shareId") && request.progress.contains("shareId")) progress["shareId"] = request.progress["shareId"];
+    // Only the old ID the lookup found gone is dropped; one this step checkpointed (a replacement) stays.
+    const auto gone = r["forgetShareId"].toString();
+    if (!gone.isEmpty() && progress["shareId"].toString() == gone) progress.remove("shareId");
+    else if (gone.isEmpty() && !progress.contains("shareId") && request.progress.contains("shareId")) progress["shareId"] = request.progress["shareId"];
     progress.remove("tokenDigest");
     ShareResult result{status, receipt, progress, e};
     const auto expires = QDateTime::fromString(r.value("expiresAt").toString(), Qt::ISODateWithMs);
