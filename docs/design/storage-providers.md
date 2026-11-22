@@ -254,8 +254,9 @@ didn't ask for, or a second one, is a protocol error that ends the connection. O
 takes at most 1 MiB before it parses. Replies are bounded before use: a packet at most 1 MiB; a
 version reply at most 64 extensions (names up to 256 bytes, data up to 4096); a status message
 up to 4096 bytes and its language tag up to 256; a handle up to 256 bytes; a name list at most
-1024 entries, each name up to 4096 bytes and its long name up to 8192. The folder put.gd sends
-is at most 4096 bytes; the file name is appended after it. At end of file the replies already read are still
+1024 entries, each name up to 4096 bytes and its long name up to 8192. The folder setting
+is at most 4096 bytes; a relative folder is joined to the login folder and the file name is appended,
+so the path sent can be longer. At end of file the replies already read are still
 delivered; only requests without one fail. The server must answer version 3 exactly.
 Extensions are used only at the versions put.gd implements (`fsync@openssh.com` 1,
 `statvfs@openssh.com` 2, `limits@openssh.com` 1); `limits@openssh.com` bounds read and write
@@ -320,7 +321,10 @@ removed safely, so the outcome is unknown with the path. After a cancel or failu
 upload's own connection, sending included (a packet ssh can't take in time ends that
 connection); on a slow link they wait behind the writes already in ssh's buffers
 (#1888), so ssh is then ended and a new connection removes the file, only while it is still a
-regular file of that owner and no larger than the upload. That connection is pinned as History's
+regular file of that owner and no larger than the upload. When the connection itself broke, put.gd goes
+straight to that new connection. Both the `fstat` after the open and the new `lstat` must report the
+file's size, owner, times and type for a regular file; otherwise nothing is removed and the outcome
+is unknown with the path. That connection is pinned as History's
 checks are: only the known_hosts lines the attempt was verified by, and the same host, port and
 user; otherwise nothing is removed. An upload keeps its password and
 passphrase until it ends for that reconnect. The resident gives a cancelled request 45 seconds
