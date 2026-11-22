@@ -31,7 +31,7 @@ uploader worker (`putgd-http-worker`, #1361), the Nextcloud and WebDAV worker
 (`putgd-webdav-worker`, #1872) and the SFTP worker (`putgd-sftp-worker`, #1871) follow the same
 rule: no log files. The SFTP worker's files are put.gd's own `known_hosts` and its `known_hosts.lock`, written on
 **Trust key** and kept, and private temporary known_hosts files and an askpass socket directory,
-which it removes; its stderr goes to `/dev/null`. An SFTP destination's server, user and folder are redacted in a package, its profile shows
+which it removes; its stderr goes to `/dev/null`. An SFTP destination's server, user, folder and SSH key path are redacted in a package, its profile shows
 only whether each is set, and no SFTP error message carries ssh's own output or the server's
 status text in the first place.
 

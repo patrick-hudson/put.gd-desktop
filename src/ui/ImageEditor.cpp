@@ -206,16 +206,19 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto stale=[&](const QJsonObject& params)->bool{const auto value=params["result"];return !value.isDouble()||value.toDouble()!=double(window->text().identity())||window->text().identity()==0;};
  const auto replyText=[](std::function<void(QJsonObject,QString,QString)> done){return [done](Error error,QJsonObject result){if(error)done({},error.code,error.message);else done(result,{},{});};};
  // Agent commands arrive from the resident's editor.* session methods.
- std::function<bool(const QString&)> decide;std::function<void()> handOffCovered;
+ std::function<bool(const QString&)> decide;std::function<void(bool)> handOffCovered;
+ // #1898: Redact and upload covers what was found: offered whenever the check found something on an image it read.
+ const auto redactOffered=[&]{return findings.any()&&document;};
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   if(deciding){
-   // #1804: the capture waits for Redact and upload, Upload anyway or Cancel; the resident sends only decide.
+   // #1804, #1898: the capture waits for Redact and upload, Open in editor, Upload anyway or Cancel; the resident sends only decide.
    if(name=="decide"){
     const auto choice=params["choice"].toString();
-    if(params.size()!=1||!QStringList{"redact","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact, upload or cancel");
+    if(params.size()!=1||!QStringList{"redact_upload","edit","upload","cancel"}.contains(choice))return denied("invalid_request","decide needs choice redact_upload, edit, upload or cancel");
     if(terminal)return denied("editor_finalizing","The capture was already decided");
-    if(choice=="redact"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Redact and upload is not offered for this capture");
+    if(choice=="redact_upload"&&!redactOffered())return denied("sensitive_choice_unavailable","Redact and upload is not offered for this capture: nothing was found to cover");
+    if(choice=="edit"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Open in editor is not offered for this capture");
     if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
     return {{"decided",choice}};
    }
@@ -354,12 +357,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   return denied("invalid_request","Unknown editor command");
  };
  // #1820: the capture with only the automatic covers, handed off for upload like an edit, without a window.
- handOffCovered=[&]{
+ // #1898: with `everything` (Redact and upload), every suggestion stays: exactly the covers the prompt's preview
+ // shows, and the counts name the warn kinds found as well as the automatic covers.
+ handOffCovered=[&](bool everything){
   if(terminal||finalizing||!document)return;
-  QStringList warn;for(const auto& category:std::as_const(checkCategories))if(!checkCover.contains(category))warn<<category;
-  document->removeSuggested(warn);
+  if(everything){for(const auto& [category,count]:std::as_const(findings.found))if(count>0)covered.append({category,count});}
+  else{QStringList warn;for(const auto& category:std::as_const(checkCategories))if(!checkCover.contains(category))warn<<category;document->removeSuggested(warn);}
   finalizing=true;
-  if(control.send("finalizing",envelope(nonce)).isEmpty()){fail();return;}
+  auto frame=envelope(nonce);if(everything)frame["redacted"]=true;
+  if(control.send("finalizing",frame).isEmpty()){fail();return;}
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
@@ -380,8 +386,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(const auto counts=coveredJson(covered);!counts.isEmpty())frame["covered"]=counts;
   if(control.send("checked",frame).isEmpty()){fail();return;}
   if(!checkPrompt){decisionDeadline.start();return;}
-  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
-  // The capture as Redact and upload would open it: every suggestion painted black.
+  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=redactOffered();model.editAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
+  // The capture as Redact and upload sends it and Open in editor opens it: every suggestion painted black.
   if(document)model.preview=document->render();
   prompt=std::make_unique<SensitivePrompt>(std::move(model));
   QObject::connect(prompt.get(),&SensitivePrompt::chosen,&app,[&](const QString& choice){decide(choice);});
@@ -389,14 +395,17 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  };
  decide=[&](const QString& choice)->bool{
   if(!deciding||terminal)return false;
-  if(choice=="redact"&&!(checkRedact&&window))return false;
+  if(choice=="redact_upload"&&!redactOffered())return false;
+  if(choice=="edit"&&!(checkRedact&&window))return false;
   deciding=false;decisionDeadline.stop();
   if(prompt){prompt->choose(choice);prompt->hide();}
+  // #1898: Redact and upload: every suggestion covered, handed off for upload with no editor step.
+  if(choice=="redact_upload"){handOffCovered(true);return true;}
   // #1820: Upload anyway keeps what was covered automatically: the capture goes with those covers, the warn suggestions taken off.
-  if(choice=="upload"&&!coveredJson(covered).isEmpty()&&document){handOffCovered();return true;}
+  if(choice=="upload"&&!coveredJson(covered).isEmpty()&&document){handOffCovered(false);return true;}
   if(choice=="upload"){refuse("check_upload");return true;}
   if(choice=="cancel"){refuse("check_cancel");return true;}
-  // Redact and upload: the same document, its suggestions already placed, in the ordinary editor.
+  // Open in editor: the same document, its suggestions already placed, in the ordinary editor.
   if(hasStyle&&styleStart){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}
   window->selectTool(editor::Tool::Redact);
   window->show();window->raise();window->activateWindow();
@@ -535,7 +544,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      // Nothing found, all of it read: the upload goes ahead as if there were no check.
      if(findings.complete&&!findings.any()){
       // Covered automatically with nothing left to ask about: the covered capture uploads, no prompt (#1820).
-      if(!coveredJson(covered).isEmpty()){handOffCovered();return;}
+      if(!coveredJson(covered).isEmpty()){handOffCovered(false);return;}
       refuse("check_clean");return;
      }
      checked();

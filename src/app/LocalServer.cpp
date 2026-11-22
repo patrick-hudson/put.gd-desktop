@@ -337,7 +337,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
  if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
- // #1804: Redact and upload, Upload anyway or Cancel for a capture waiting in sensitive_text_found.
+ // #1804, #1898: Redact and upload, Open in editor, Upload anyway or Cancel for a capture waiting in sensitive_text_found.
  if(method=="operation.decide") {
   if(!fields(p,{"id","choice"},{"prompt"})||!string(p,"id")||!string(p,"choice",16)||(p.contains("prompt")&&(!p["prompt"].isDouble()||p["prompt"].toDouble()!=p["prompt"].toInt()||p["prompt"].toInt()<1))){reply(invalid(),{});return;}
   operations_.decideSensitive(p["id"].toString(),p["choice"].toString(),reply,p["prompt"].toInt());return;
