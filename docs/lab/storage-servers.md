@@ -6,7 +6,7 @@ Real servers to test the SFTP destination (#1871) and the Nextcloud and WebDAV d
 
 | Server | Version | Port | What it is |
 | --- | --- | --- | --- |
-| SFTP | OpenSSH from Alpine 3.24 | 18371 | Users `putgd-key` (key only) and `putgd-pw` (password only). Folders `/upload` (writable, also served publicly), `/ro` (read-only) and `/full` (a 1 MB tmpfs, filled) |
+| SFTP | OpenSSH as packaged by Alpine 3.24 | 18371 | Users `putgd-key` (key only) and `putgd-pw` (password only). Folders `/upload` (writable, also served publicly), `/ro` (read-only) and `/full` (a 1 MB tmpfs, filled) |
 | SFTP without SFTP | the same | 18372 | The same two users, shell and commands only: the SFTP subsystem is off |
 | Nextcloud, untrusted | 35.0.3 | 18373 | Nextcloud behind a Caddy certificate whose CA is never exported |
 | Nextcloud, trusted CA | 35.0.3 | 18374 | The same Nextcloud behind Caddy's internal CA, which `ca` exports |
@@ -16,7 +16,7 @@ Real servers to test the SFTP destination (#1871) and the Nextcloud and WebDAV d
 
 Ports 18378 and 18379 are free for the next server; 18361 to 18363 belong to the
 [HTTP receivers](http-receivers.md). Images are pinned by digest in `servers.py`; the OpenSSH
-image is built from a pinned Alpine base on the builder. The servers hold synthetic files only.
+image is built on the builder from a pinned Alpine base, so its OpenSSH is whichever version Alpine 3.24 ships at build time and is not itself pinned. The servers hold synthetic files only.
 
 ## Start, check, stop
 
@@ -26,22 +26,25 @@ Run on the builder that hosts the servers, from a checkout or a copy of the fold
 python3 tools/lab/storage_servers/servers.py up --bind 192.168.68.71
 python3 tools/lab/storage_servers/servers.py status --bind 192.168.68.71
 python3 tools/lab/storage_servers/servers.py env --bind 192.168.68.71     # the file the harness sources
-python3 tools/lab/storage_servers/servers.py check --bind 192.168.68.71   # 61 checks, see below
+python3 tools/lab/storage_servers/servers.py check --bind 192.168.68.71   # see below
 python3 tools/lab/storage_servers/servers.py down
 ```
 
 `down --purge` also removes the volumes, the built image, the keys and the passwords.
 
-- `--bind` is the one address the servers listen on: the builder's lab-network address,
-  or `127.0.0.1`. An unspecified or public address is refused. Servers that already run on
-  another address are refused too: run `down` first.
+- `--bind` is the one address the servers listen on: `127.0.0.1` or a lab builder address
+  (192.168.68.69 to 192.168.68.74). Anything else is refused. An existing pod must publish
+  exactly the wanted ports on that address, checked before anything is written; otherwise run `down` first.
+  `up` exits non-zero unless every listener answered.
 - `up` creates two pods, `putgd-st-sftp` and `putgd-st-web`, waits until each service answers,
   finishes Nextcloud's first-run install and settings, makes the user `putgd`, exports the CA
   and writes `known_hosts` and the env file. A second `up` changes nothing that exists.
 - State is in `~/putgd-lab/storage-servers` (mode 0700). `client/` holds what a test reads:
   the key pairs, the passphrase, every password and `known_hosts`, all mode 0600.
-  `server/` holds what the containers read: host keys, configuration, the WebDAV password
-  hash. `ca/putgd-lab-root.crt` is the exported root certificate (public).
+  `server/` is what the two SSH containers mount (host keys, `authorized_keys`, `sshd_config`);
+  the password user's password is mounted into those two alone, as its own 0600 file. `web/` holds
+  the web containers' files (Caddyfiles, the Apache configuration and password hash, Nextcloud's
+  environment file), each mounted on its own, so the key user's shell on the no-SFTP port reads none of them. `ca/putgd-lab-root.crt` is the exported root certificate (public).
 - Secrets are in files, never on a command line. `status` prints which exist, masked.
 - `env` writes `storage-servers.env` (mode 0600): addresses, ports, user names and the paths
   of the key, passphrase, password and CA files. It holds no secret value, so a test sources it
@@ -60,13 +63,21 @@ python3 tools/lab/storage_servers/servers.py down
 ## What `check` proves
 
 `check.py` (run through `servers.py check`) drives every server the way a desktop test would and
-prints one line per check, never a secret. It exits 0 when all 61 pass; its screenshots go to
+prints one line per check, never a secret. It exits 0 when all pass; its screenshots go to
 `~/putgd-lab/storage-servers/checks/`.
+
+It is safe to run beside other tests of the servers, with two things to know. Every file it makes
+has a name unique to the run and only those are removed. It does not rotate the host keys unless
+given `--rotate-hostkey`. The Nextcloud quota, sharing and share-password checks change those
+settings for a few seconds and put back the values it read first; `--no-settings` skips them and
+leaves the settings alone. Poll tokens, share links and browser jobs travel in 0600 files, never
+on a command line.
 
 - SFTP: sign in with the plain key, with the passphrase key through an `ssh-agent`, and with the
   password; each user refuses the other's method; `/ro` write is `Permission denied`; `/full`
   write fails; the chroot shows only the three folders; port 18372 refuses the subsystem but
-  still gives a shell; after `rotate-hostkey` the old pin is refused and the new one works.
+  still gives a shell and that shell cannot read the password user's password or the web services'
+  secrets; with `--rotate-hostkey`, after `rotate-hostkey` the old pin is refused and the new one works.
 - WebDAV: a PUT without login is 401; PUT 201, then 204 over it; `If-None-Match: *` is 201 on a
   new name and 412 on an existing one; MKCOL, PROPFIND, GET, DELETE.
 - Nextcloud: the exported CA verifies the trusted listener and not the untrusted one; Login Flow
