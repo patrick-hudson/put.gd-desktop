@@ -206,6 +206,7 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   when it is the only one where auto-scroll's hint says the page is.
 - A place found again needs `recoverCells` (0.95) agreement from its layer's cells and `recoverKeepShare` (0.80) agreement over its candidate tile area, with `keepShare` as a floor. Another place fitting within `recoverTie` (0.05) makes it ambiguous.
 - After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The tracker stays lost and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
+- While following, without a hint, a pair match that turns back more than half a screen against the last movement loses to an accepted match that goes on the way the page went, fits nearly as well (within `recoverTie`, at least `recoverCells`) and moves at least as much of the frame. On a page that repeats (a pull request's tables), the turn back is the look-alike one period away; taken, every later frame was a table short ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - Frames narrower or lower than 16 px (two cells, two block rows) are refused.
 
 ## Drivers
@@ -508,6 +509,11 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   written. Cells held back there keep their piece of the line (the scroll
   bar's column), and so does a pinned part drawn from the first screen (Firefox's link
   bubble at the bottom).
+- **Frames that come far apart over a page that repeats** (a stream that stalls to a few frames a second on a pull
+  request's tables) can still land a table period short in two ways: a place found again by the image lookup after
+  a lost stretch, and a frame far on judged "no movement" after ambiguous skips, which then becomes the reference.
+  A look-alike ahead in the same direction after a jump of more than a screen did not show on recorded frames
+  ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).
