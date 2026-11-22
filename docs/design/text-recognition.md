@@ -676,11 +676,14 @@ other tool active it does not. The user's side is in the
     character (`@ . - _ +` for an email, `. :` for an address, the numeric separators for a phone or
     card number, a token alphabet run on both sides for a key), or, geometrically, a wrapped column
     whose lines end within 1.5 average character widths of its widest right edge. A preceding word,
-    such as "Please email", is not taken in. An address that recognition splits in its local part,
-    at a dot or with the dot lost (`jane.` or `jane`, then `doe@example.com`), is one match when the
-    two words' boxes overlap, as they do for such a split. A word with a word space before the
-    address, such as "us." after a sentence, stays out, and a word another kind matches, such as a
-    card number's last group, stays with that kind (#1840).
+    such as "Please email", is not taken in. Recognition can split an address in its local part
+    (`jane.` or `jane`, then `doe@example.com`; also `jane+`, or more than two pieces). A word of
+    address characters that starts with a letter or digit joins the next word on its visual line
+    when their boxes overlap horizontally and that word goes on to the "@", so the whole address
+    is one match. Boxes that only touch, or have any gap between them, are not joined, so "us." after
+    a sentence stays out, and so does a split the recognizer left a gap in. A word that a key, card,
+    IP or phone match also wants stays with that match. Names and list entries are matched after
+    addresses and don't take a word the address has joined (#1840).
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
     token alphabet joined without spaces (one misread character allowed in eight; quotes around a
