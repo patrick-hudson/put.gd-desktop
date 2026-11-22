@@ -1042,14 +1042,35 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
  std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
  QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
- struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;};
- QList<Row> rows;
+ // whole: the visual row's box, whose padded height every run keeps; inner: the run's sides that
+ // face another run of the same row.
+ struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;QList<int> members;QRect whole;bool innerLeft=false,innerRight=false;};
+ QList<Row> grouped;
  for(const int w:words){
   const auto& word=candidates.at(w);const double y=word.rect.center().y();
-  if(rows.isEmpty()||std::abs(y-rows.last().centre)>tolerance)rows.append(Row{});
-  auto& row=rows.last();row.box=row.box.united(word.rect);++row.count;row.centre+=(y-row.centre)/row.count;
-  if(row.first<0||word.rect.left()<candidates.at(row.first).rect.left())row.first=w;
-  if(row.last<0||word.rect.right()>candidates.at(row.last).rect.right())row.last=w;
+  if(grouped.isEmpty()||std::abs(y-grouped.last().centre)>tolerance)grouped.append(Row{});
+  auto& row=grouped.last();++row.count;row.centre+=(y-row.centre)/row.count;row.members.append(w);
+ }
+ // #1846: a row's matched words more than three line heights apart are in separate columns (two
+ // windows side by side, a table), so each run of them gets a mark of its own and the space
+ // between the columns stays readable. Words inside a token, a number or a sentence are never that
+ // far apart.
+ QList<Row> rows;
+ for(auto row:std::as_const(grouped)){
+  for(const int w:std::as_const(row.members))row.whole=row.whole.united(candidates.at(w).rect);
+  std::stable_sort(row.members.begin(),row.members.end(),[&](int a,int b){return candidates.at(a).rect.left()<candidates.at(b).rect.left();});
+  QList<int> rowHeights;for(const int w:std::as_const(row.members))rowHeights.append(candidates.at(w).rect.height());std::sort(rowHeights.begin(),rowHeights.end());
+  const int column=3*qMax(1,rowHeights.at(rowHeights.size()/2));
+  Row part;part.centre=row.centre;part.whole=row.whole;int reached=0;
+  for(const int w:std::as_const(row.members)){
+   const auto& rect=candidates.at(w).rect;
+   if(part.first>=0&&rect.left()-reached>column){part.innerRight=true;rows.append(part);part=Row{};part.centre=row.centre;part.whole=row.whole;part.innerLeft=true;}
+   part.box=part.box.united(rect);++part.count;
+   if(part.first<0||rect.left()<candidates.at(part.first).rect.left())part.first=w;
+   if(part.last<0||rect.right()>candidates.at(part.last).rect.right())part.last=w;
+   reached=qMax(part.first==w?rect.right():reached,rect.right());
+  }
+  rows.append(part);
  }
  // A word's glyph width from its own box: the row's span would count the
  // gaps between words as characters (#1838).
@@ -1066,7 +1087,7 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
  // margin ends where reach() says, so that word stays readable; it never cuts
  // into the matched words' own box.
  for(const auto& row:std::as_const(rows)){
-  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);
+  const auto& box=row.box;const int pad=qMax(1,(row.whole.height()+3)/4);
   const double before=glyph(row.first),after=glyph(row.last);
   int left=box.left()-qMax(pad,int(std::ceil(before*1.5)));
   int right=box.right()+qMax(pad,int(std::ceil(after*1.5)));
@@ -1079,9 +1100,13 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
    if(other.right()<box.left()&&other.right()>=left-int(std::ceil(before))){if(!leftNeighbour||other.right()>leftNeighbour->right())leftNeighbour=other;}
    else if(other.left()>box.right()&&other.left()<=right+int(std::ceil(after))){if(!rightNeighbour||other.left()<rightNeighbour->left())rightNeighbour=other;}
   }
-  if(leftNeighbour)if(const auto limit=reach(image,box,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
-  if(rightNeighbour)if(const auto limit=reach(image,box,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
-  const auto mark=QRect(QPoint(left,box.top()-pad),QPoint(right,box.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
+  // A side split off from the rest of its row keeps the whole margin (#1846): the neighbour test
+  // was measured on row ends, and a word there may be matched ink the box missed.
+  // The scan covers the run's width and the whole row's height, as the mark does.
+  const QRect scan(QPoint(box.left(),row.whole.top()),QPoint(box.right(),row.whole.bottom()));
+  if(leftNeighbour&&!row.innerLeft)if(const auto limit=reach(image,scan,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
+  if(rightNeighbour&&!row.innerRight)if(const auto limit=reach(image,scan,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
+  const auto mark=QRect(QPoint(left,row.whole.top()-pad),QPoint(right,row.whole.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
  }
  return out;
 }
