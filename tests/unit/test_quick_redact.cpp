@@ -505,6 +505,20 @@ private slots:
   ink(clear,62,99,12,27);ink(clear,107,120,12,27);
   QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},clear),99+15);
  }
+ // #1846: one match whose words sit in two columns of a row (two windows side by side, as k72's
+ // capture showed) gets a mark per column, so the space and the label between them stay readable;
+ // words a word space apart keep one mark.
+ void marksSplitAtColumns() {
+  const QList<RecognizedWord> row{{"4111",QRect(0,0,32,20),90,0},{"1111",QRect(40,0,32,20),90,0},{"1111",QRect(80,0,32,20),90,0},{"1111",QRect(120,0,32,20),90,0},
+   {"MC",QRect(700,0,16,20),90,0},{"5555",QRect(724,0,32,20),90,0},{"5555",QRect(764,0,32,20),90,0},{"5555",QRect(804,0,32,20),90,0},{"4444",QRect(844,0,32,20),90,0}};
+  const auto boxes=quickRedact::markBoxes(row,{"key",{0,1,2,3,5,6,7,8}},QRect(0,0,1000,100));
+  QCOMPARE(boxes.size(),2);
+  QCOMPARE(boxes.at(0).words,QRect(0,0,152,20));QCOMPARE(boxes.at(1).words,QRect(724,0,152,20));
+  for(const auto& box:boxes)QVERIFY(!box.mark.intersects(QRect(200,0,500,20))||box.mark.right()<700);
+  QVERIFY(!boxes.at(1).mark.intersects(QRect(700,0,16,20)));
+  const auto together=quickRedact::markBoxes(row,{"key",{0,1,2,3}},QRect(0,0,1000,100));
+  QCOMPARE(together.size(),1);
+ }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
   const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));

@@ -1042,14 +1042,32 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
  std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
  QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
- struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;};
- QList<Row> rows;
+ struct Row {QRect box;double centre=0;int count=0;int first=-1;int last=-1;QList<int> members;};
+ QList<Row> grouped;
  for(const int w:words){
   const auto& word=candidates.at(w);const double y=word.rect.center().y();
-  if(rows.isEmpty()||std::abs(y-rows.last().centre)>tolerance)rows.append(Row{});
-  auto& row=rows.last();row.box=row.box.united(word.rect);++row.count;row.centre+=(y-row.centre)/row.count;
-  if(row.first<0||word.rect.left()<candidates.at(row.first).rect.left())row.first=w;
-  if(row.last<0||word.rect.right()>candidates.at(row.last).rect.right())row.last=w;
+  if(grouped.isEmpty()||std::abs(y-grouped.last().centre)>tolerance)grouped.append(Row{});
+  auto& row=grouped.last();++row.count;row.centre+=(y-row.centre)/row.count;row.members.append(w);
+ }
+ // #1846: a row's matched words more than three line heights apart are in separate columns (two
+ // windows side by side, a table), so each run of them gets a mark of its own and the space
+ // between the columns stays readable. Words inside a token, a number or a sentence are never that
+ // far apart.
+ QList<Row> rows;
+ for(auto row:std::as_const(grouped)){
+  std::stable_sort(row.members.begin(),row.members.end(),[&](int a,int b){return candidates.at(a).rect.left()<candidates.at(b).rect.left();});
+  QList<int> rowHeights;for(const int w:std::as_const(row.members))rowHeights.append(candidates.at(w).rect.height());std::sort(rowHeights.begin(),rowHeights.end());
+  const int column=3*qMax(1,rowHeights.at(rowHeights.size()/2));
+  Row part;part.centre=row.centre;int reached=0;
+  for(const int w:std::as_const(row.members)){
+   const auto& rect=candidates.at(w).rect;
+   if(part.first>=0&&rect.left()-reached>column){rows.append(part);part=Row{};part.centre=row.centre;}
+   part.box=part.box.united(rect);++part.count;
+   if(part.first<0||rect.left()<candidates.at(part.first).rect.left())part.first=w;
+   if(part.last<0||rect.right()>candidates.at(part.last).rect.right())part.last=w;
+   reached=qMax(part.first==w?rect.right():reached,rect.right());
+  }
+  rows.append(part);
  }
  // A word's glyph width from its own box: the row's span would count the
  // gaps between words as characters (#1838).
