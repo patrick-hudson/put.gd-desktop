@@ -697,7 +697,16 @@ other tool active it does not. The user's side is in the
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
     digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
-    colon or comma in 80 characters. A prefix never fires inside a word otherwise ("ghosts", "they"). A token
+    colon or comma in 80 characters. A prefix never fires inside a word otherwise ("ghosts", "they"). A JSON web token is
+    also found when a text caret just left of it reads as a character joined to its `eyJ` (`l`, `I`, `|`,
+    `1`, `!`, `j`, `J`, `[` or `{`: `leyJ…` in xed) or merged with the `e` into `kyJ` (a Firefox text
+    field) or `byJ` (Kate), and by its payload's `eyJ` right after the header's dot when the header itself
+    is misread. Those weaker readings count only when the caret reading shares a word with two more
+    characters of the token, the body has a digit and a capital, and the part up to the next dot looks
+    like base64 of JSON (12 characters or more, a fifth of them capitals, few long lowercase runs), so a
+    dotted file name or prose with a date stays plain. A head split off as up to three short words before
+    a token found by its payload (`ley` `Jhb`, `ky`, `Jew`) is covered with it; a payload on the line after
+    a JWT that has not yet read its two dots continues it, #1875. A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
     three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
     Prose never repeats so few letters for so long, and a masked secret shown as a run of `x` has the same
