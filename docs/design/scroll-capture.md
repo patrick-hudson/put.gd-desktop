@@ -515,11 +515,11 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   after a lost stretch, and a distant frame judged "no movement" after ambiguous skips, after which a later frame
   becomes the reference at the wrong place. A look-alike ahead in the same direction after a jump of more than a screen did not show on recorded
   frames and stays a limit ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
-- **A header with a 1-pixel border** whose block rows are joined only by that border down the frame's edges can lose
-  one header-width row to the page. Cells in the frame's two outermost columns no longer join a held-back bar up or
-  down, because the window's scroll bar there once stretched GitHub's header 280 rows down the page and painted those
-  rows flat ([#1837](https://github.com/patrick-hudson/put.gd-desktop/issues/1837)). That was 8 of 4,000 randomized
-  scenes, 300-486 pixels each.
+- **A header with a 1-pixel border** whose block rows are joined only by that border down the frame's edges can let
+  header pixels into the captured page. The two cell columns nearest each side of the frame no longer join a held-back
+  bar up or down, because the window's scroll bar there once stretched GitHub's header 280 rows down the page and those
+  rows were painted flat ([#1837](https://github.com/patrick-hudson/put.gd-desktop/issues/1837)). In 8 of 4,000
+  randomized scenes this left 300-486 pixels different from the expected image, roughly one row's worth.
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).
