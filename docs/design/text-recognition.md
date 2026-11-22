@@ -900,10 +900,14 @@ other tool active it does not. The user's side is in the
     any pixel looked at is not fully opaque; or the image ends before the matched box's edge. A
     covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
-    as a label with digits ("sha256"), a word after a prefixed token read shorter than its usual
-    length that starts before that length ends (counted from the prefix), or the rest of a PEM
-    BEGIN or END line. Ordinary words after a token that already has its usual length are left
-    out ("ghp_…" then "was leaked today", #1839). A token that runs to the end of its line goes on
+    as a label with digits ("sha256"), the words after a prefixed token up to half again its usual
+    length, or the rest of a PEM BEGIN or END line. A kind with one length (an AWS key ID, a
+    classic GitHub token, a fine-grained `github_pat_` token, a Stripe `whsec_` secret) ends at that
+    length counted from its prefix: ordinary words of three letters or more after a whole token are
+    left out ("ghp_…" then "was leaked today"), while a piece of one or two characters just past it
+    stays covered, since a doubled character leaves the token's last letters there. A word that
+    starts before the length ends, as after a token read short, is still taken. JSON web tokens,
+    Slack, Stripe API and GitLab tokens vary in length and keep the wider reach (#1839). A token that runs to the end of its line goes on
     over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
