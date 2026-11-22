@@ -47,7 +47,8 @@ removed or changed its server, or whose account lookup or keychain save fails, r
 app password instead of keeping it, in a helper of its own, and says when the server didn't
 confirm it. Signing in again reads the earlier app password from the keychain first and revokes
 it only once the new one is saved; when it can't be read or the revocation isn't confirmed, the
-result says so and where to remove it. The worker keeps no cookies, so every request authenticates with the app
+result says so and where to remove it. An earlier app password bound to another server address isn't
+revoked (put.gd never sends it there), so sign out before changing servers. The worker keeps no cookies, so every request authenticates with the app
 password alone.
 
 The key pair is bound to where it was given: beside it, in the entry's session-token field, put.gd

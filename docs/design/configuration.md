@@ -399,7 +399,7 @@ folder; Settings stores it ending with `/`, but validation doesn't require one) 
 needs `allowInsecureHttp` true, as for a custom uploader. Credentials are a keychain or session
 reference to the login name (WebDAV: user) and the app password (WebDAV: password). Receipts
 record the file's name, size, SHA-256, its strong ETag (the concurrency token: the one the
-write returned, or when it returned none, one verified by reading the file back) and, for
+write returned, or when it returned none, one verified by reading the file back; when neither gives one, or a file over 256 MiB can't be read back, the receipt has no ETag, its identity is unconfirmed, and share and delete are unavailable for it) and, for
 Nextcloud, its path and file ID; a Nextcloud link is the share page `…/s/TOKEN`, made in the
 sharing step. See [Nextcloud and WebDAV](../user/nextcloud.md).
 

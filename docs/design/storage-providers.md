@@ -26,8 +26,8 @@ for files up to 256 MiB. A validator is exactly one quoted strong ETag (`"…"`,
 list); anything else is neither recorded nor sent. Otherwise the receipt has no concurrency token and records
 `identity: unconfirmed`: History can't delete it and Nextcloud makes no link for it. Receipts also
 record the canonical DAV target (scheme, host, port, path) and, for Nextcloud, the account ID;
-requests serialize on that target. `stat` compares target, file ID, size and the ETag exactly as
-recorded (weak and strong never equal); deletion sends `If-Match` with the recorded ETag
+requests serialize on that target. `stat` compares the target and the ETag exactly as recorded (weak and strong never equal),
+and the file ID and size when both the receipt and the server have them; deletion sends `If-Match` with the recorded ETag
 unchanged, and the first 412 is `changed`, with no second attempt. Nextcloud has
 `capabilities.sharing`: the link is a public read-only share (`shareType=3`, `permissions=1`, no
 password) made in the two-step sharing pipeline, with the date an enforced expiry allows, and its
@@ -67,7 +67,9 @@ scheme, host and port and a path below its base once dot segments are resolved, 
 information (Settings checks again before Open browser again); only a 404 while
 polling means "not yet". Test fetches the link as a visitor through the custom uploader's
 returned-address rules on every redirect.
-Requests with file data have only a stall limit, as B2's.
+Requests with file data have only a stall limit, as B2's. A read-back that checks a file's identity
+sends no progress to the resident, so on a very slow link (about 270 KB/s or less for the 256 MiB
+limit) the resident's 16-minute silence limit can stop it, and the identity stays unconfirmed.
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider
