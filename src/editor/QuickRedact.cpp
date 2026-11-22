@@ -346,13 +346,13 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     // which a short remainder of the token closes on the next line ("edc\"", "edc\")," ).
     // Recognition reads the closing quote straight or curly ("edc\u201D" in 82 of the 101 misses
     // measured with a straight one only), so each opening quote closes with any of its forms.
-    // A quote is open when its family (straight, curly or prime forms together) is counted an odd
-    // number of times on the token's line.
+    // A quote is open when its family (straight and curly forms together, and a prime with the single
+    // quotes) is counted an odd number of times on the token's line.
     QString closing;
     {
      QString first;for(const int w:words)first+=plain.at(w);
      const auto odd=[&](const QString& family){qsizetype n=0;for(const auto c:std::as_const(first))if(family.contains(c))++n;return n%2==1;};
-     for(const auto& family:{QStringLiteral("\"\u201C\u201D\u2033"),QStringLiteral("'\u2018\u2019\u2032"),QStringLiteral("`")})if(odd(family)){closing=family;break;}
+     for(const auto& family:{QStringLiteral("\"\u201C\u201D"),QStringLiteral("'\u2018\u2019\u2032"),QStringLiteral("`")})if(odd(family)){closing=family;break;}
     }
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
