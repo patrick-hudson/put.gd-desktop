@@ -1033,6 +1033,81 @@ std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other
  }
  return edge+dir*qMax(0,end-1);
 }
+// Whether the unmatched word `other` beside the matched box `box` (direction
+// `dir`, -1 left or +1 right) is part of the same secret, joined to it by
+// punctuation recognition dropped: "jane.doe@example.com" read as "jane" and
+// "doe@example.com" with a word space's gap between the boxes (#1854). It is
+// when, between the two boxes, there is a blob of ink (4-connected, since a
+// dot can touch the next glyph at a corner) that touches neither box's columns
+// and is at most half the row's height, such as a dot, comma, hyphen or
+// underscore, and no blank run from the matched ink to the neighbour's box is
+// wider than a quarter glyph, as a word space is. The edge of a glyph a box
+// cut off is part of that glyph's blob, and a whole glyph is taller. Blobs are
+// read at half the text's contrast and at a quarter, so a solid dot whose
+// anti-aliased edge touches a letter, and a faint 2 px dot, are both seen.
+// Paper and blank columns are measured as reach() does. Joining only adds to a
+// cover; without the picture nothing is joined.
+bool joined(const QImage& image,const QRect& box,const QRect& other,int dir,double glyph,int pad){
+ if(image.isNull())return false;
+ const int edge=dir>0?box.right():box.left(),near=dir>0?other.left():other.right(),at=dir*(near-edge),slack=int(std::ceil(glyph));
+ if(at<2)return false;
+ const QRect window=QRect(QPoint(qMin(edge-dir*slack,near+dir*slack),box.top()-pad),QPoint(qMax(edge-dir*slack,near+dir*slack),box.bottom()+pad)).intersected(image.rect());
+ const auto index=[&](int x){return dir*(x-edge);}; // columns counted from the edge (0) towards the neighbour
+ if(window.isEmpty()||!window.contains(QPoint(edge,window.top()))||!window.contains(QPoint(near,window.top())))return false;
+ const QRect around=window.adjusted(0,-pad,0,pad).intersected(image.rect());
+ const auto band=image.copy(around).convertToFormat(QImage::Format_ARGB32);
+ const int first=window.top()-around.top(),last=window.bottom()-around.top();
+ QList<int> channels[3];
+ for(int y=0;y<band.height();++y){
+  const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(y));
+  for(int x=0;x<band.width();++x){
+   if(qAlpha(line[x])!=255)return false;
+   if(y>=first&&y<=last)continue;
+   channels[0].append(qRed(line[x]));channels[1].append(qGreen(line[x]));channels[2].append(qBlue(line[x]));
+  }
+ }
+ if(channels[0].isEmpty())return false;
+ int paper[3];
+ for(int k=0;k<3;++k){auto c=channels[k];std::nth_element(c.begin(),c.begin()+c.size()/2,c.end());paper[k]=c.at(c.size()/2);}
+ const auto distance=[&](QRgb c){return qMax(std::abs(qRed(c)-paper[0]),qMax(std::abs(qGreen(c)-paper[1]),std::abs(qBlue(c)-paper[2])));};
+ qsizetype stray=0;for(qsizetype i=0;i<channels[0].size();++i)if(qMax(std::abs(channels[0].at(i)-paper[0]),qMax(std::abs(channels[1].at(i)-paper[1]),std::abs(channels[2].at(i)-paper[2])))>24)++stray;
+ if(stray*4>channels[0].size())return false;
+ // Each pixel's distance from the paper over the mark's rows, by column index.
+ const int lo=qMin(index(window.left()),index(window.right())),hi=qMax(index(window.left()),index(window.right()));
+ const int rows=last-first+1,width=hi-lo+1;
+ QList<int> ink(rows*width,0);int contrast=0;
+ for(int y=0;y<rows;++y){
+  const auto* line=reinterpret_cast<const QRgb*>(band.constScanLine(first+y));
+  for(int x=0;x<band.width();++x){const int d=distance(line[x]);ink[y*width+index(around.left()+x)-lo]=d;contrast=qMax(contrast,d);}
+ }
+ const int faint=std::clamp(contrast*8/100,4,24);
+ const auto blank=[&](int i){for(int y=0;y<rows;++y)if(ink.at(y*width+i-lo)>faint)return false;return true;};
+ int i=0;while(i>lo&&blank(i))--i; // the edge word's last ink
+ if(blank(i))return false;
+ const int space=qMax(1,int(glyph/4));
+ for(int run=0;++i<=at;)if(blank(i)){if(++run>space)return false;}else run=0;
+ for(const int share:{2,4}){
+  QList<bool> seen(rows*width,false);
+  const auto solid=[&](int y,int x){return ink.at(y*width+x-lo)*share>=contrast;};
+  for(int y=0;y<rows;++y)for(int x=1;x<at;++x){
+   if(!solid(y,x)||seen.at(y*width+x-lo))continue;
+   int left=x,right=x,top=y,bottom=y,pixels=0;QList<QPair<int,int>> todo{{x,y}};seen[y*width+x-lo]=true;
+   while(!todo.isEmpty()){
+    const auto [px,py]=todo.takeLast();++pixels;
+    left=qMin(left,px);right=qMax(right,px);top=qMin(top,py);bottom=qMax(bottom,py);
+    for(const auto& [dx,dy]:{QPair<int,int>{1,0},{-1,0},{0,1},{0,-1}}){
+     const int nx=px+dx,ny=py+dy;
+     if(ny<0||ny>=rows||nx<lo||nx>hi||seen.at(ny*width+nx-lo)||!solid(ny,nx))continue;
+     seen[ny*width+nx-lo]=true;todo.append({nx,ny});
+    }
+   }
+   // At half the contrast a lone pixel can be the core of a letter's edge (the foot of a "j"),
+   // so a blob there needs two.
+   if(left>=1&&right<at&&(bottom-top+1)*2<=box.height()&&(share==4||pixels>=2))return true;
+  }
+ }
+ return false;
+}
 }
 // One box per visual row of the match, as find groups rows (centres within
 // half the median word height), never by the recognizer's line id: a match
@@ -1106,7 +1181,36 @@ QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& ma
   const QRect scan(QPoint(box.left(),row.whole.top()),QPoint(box.right(),row.whole.bottom()));
   if(leftNeighbour&&!row.innerLeft)if(const auto limit=reach(image,scan,*leftNeighbour,-1,before,pad))left=qMax(left,*limit);
   if(rightNeighbour&&!row.innerRight)if(const auto limit=reach(image,scan,*rightNeighbour,1,after,pad))right=qMin(right,*limit);
-  const auto mark=QRect(QPoint(left,row.whole.top()-pad),QPoint(right,row.whole.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
+  // A neighbour joined to the match by a dropped dot (joined()) is covered with it, and so is the
+  // next one it joins; from the last, the margin and reach() go on as above. The side's edge only
+  // ever moves outward.
+  QRect rowBox=row.whole;
+  for(const int dir:{-1,1}){
+   if(dir<0?row.innerLeft:row.innerRight)continue;
+   QSet<int> taken;int edgeWord=dir<0?row.first:row.last;QRect grown=box;
+   for(;;){
+    const double g=glyph(edgeWord);const int margin=qMax(pad,int(std::ceil(g*1.5)));
+    int nearest=-1;
+    for(qsizetype i=0;i<candidates.size();++i){
+     if(match.words.contains(int(i))||taken.contains(int(i)))continue;
+     const auto& other=candidates.at(i).rect;
+     if(other.isEmpty()||std::abs(other.center().y()-row.centre)>tolerance)continue;
+     const QRect best=nearest<0?other:candidates.at(nearest).rect;
+     if(dir<0&&other.right()<grown.left()&&other.right()>=grown.left()-margin-int(std::ceil(g))&&other.right()>=best.right())nearest=int(i);
+     if(dir>0&&other.left()>grown.right()&&other.left()<=grown.right()+margin+int(std::ceil(g))&&other.left()<=best.left())nearest=int(i);
+    }
+    const QRect scanned(QPoint(grown.left(),rowBox.top()),QPoint(grown.right(),rowBox.bottom()));
+    if(nearest>=0&&joined(image,scanned,candidates.at(nearest).rect,dir,g,pad)){
+     grown=grown.united(candidates.at(nearest).rect);rowBox=rowBox.united(candidates.at(nearest).rect);taken.insert(nearest);edgeWord=nearest;continue;
+    }
+    if(taken.isEmpty())break;
+    int edge=dir<0?grown.left()-margin:grown.right()+margin;
+    if(nearest>=0)if(const auto limit=reach(image,scanned,candidates.at(nearest).rect,dir,g,pad))edge=dir<0?qMax(edge,*limit):qMin(edge,*limit);
+    if(dir<0)left=qMin(left,edge);else right=qMax(right,edge);
+    break;
+   }
+  }
+  const auto mark=QRect(QPoint(left,rowBox.top()-pad),QPoint(right,rowBox.bottom()+pad)).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
  }
  return out;
 }

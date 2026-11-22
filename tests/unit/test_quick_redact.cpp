@@ -544,6 +544,58 @@ private slots:
   QCOMPARE(split.size(),2);
   QVERIFY(split.at(1).mark.right()>=115);
  }
+ // #1854, as putgd-ocr read "write to jane.doe@example.com before" in Red Hat
+ // Display at 10 px on a dark panel: the dot was dropped and "jane" and
+ // "doe@example.com" came back 2 px apart, like every word space on the line.
+ // The dot's ink lies between the boxes and no blank run there is wider than
+ // a gap between the address's own glyphs, so "jane" is covered with the
+ // match; "to" and "before" stay readable.
+ void marksCoverAWordJoinedByADroppedDot() {
+  QImage dark(260,80,QImage::Format_RGB32);dark.fill(qRgb(30,30,30));
+  const auto ink=[&](int x0,int x1,int y0=50,int y1=59){for(int x=x0;x<=x1;++x)for(int y=y0;y<=y1;++y)dark.setPixel(x,y,qRgb(220,220,220));};
+  ink(95,103);
+  // The dot (125-126, its two bottom rows) touches the "e" and the "d" only at
+  // their corners.
+  ink(106,107);ink(109,112);ink(114,117);ink(119,124,50,57);
+  ink(125,126,58,59);
+  ink(127,131,50,57);for(int x=133;x<216;x+=6)ink(x,x+4);
+  ink(219,245);
+  const QList<RecognizedWord> row{{"to",QRect(95,50,9,10),90,0},{"jane",QRect(106,50,19,10),90,0},{"doe@example.com",QRect(127,50,89,10),90,0},{"before",QRect(219,50,27,10),90,0}};
+  const auto boxes=quickRedact::markBoxes(row,{"email",{2}},dark.rect(),dark);
+  QCOMPARE(boxes.size(),1);
+  const auto mark=boxes.first().mark;
+  QVERIFY2(mark.left()<=106&&mark.left()>103,qPrintable(QString::number(mark.left())));
+  QVERIFY2(mark.right()>=215&&mark.right()<219,qPrintable(QString::number(mark.right())));
+  // What a deleted suggestion is remembered by stays the matched word's box.
+  QCOMPARE(boxes.first().words,row.at(2).rect);
+  // Without the dot's ink the gap is a word space: "jane" stays readable.
+  for(int y=58;y<=59;++y)for(int x=125;x<=126;++x)dark.setPixel(x,y,qRgb(30,30,30));
+  QVERIFY(quickRedact::markBoxes(row,{"email",{2}},dark.rect(),dark).first().mark.left()>124);
+  // The same line on a white panel, as this fix's desktop fixture drew it: the
+  // dot's anti-aliased ink is about a third of the text's contrast.
+  QImage light(260,80,QImage::Format_RGB32);light.fill(Qt::white);
+  for(int y=0;y<light.height();++y)for(int x=0;x<light.width();++x)if(x!=125&&x!=126&&qRed(dark.pixel(x,y))>100)light.setPixel(x,y,qRgb(0,0,0));
+  for(int y=58;y<=59;++y)for(int x=125;x<=126;++x)light.setPixel(x,y,qRgb(170,170,170));
+  const auto leftOf=[&](const QImage& image){return quickRedact::markBoxes(row,{"email",{2}},image.rect(),image).first().mark.left();};
+  QVERIFY2(leftOf(light)<=106,qPrintable(QString::number(leftOf(light))));
+  // Sol round 2 on #1864: a solid dot whose faint corner pixel (125,57) touches
+  // the "e" at a quarter of the contrast is still a dot at half.
+  for(int y=58;y<=59;++y)for(int x=125;x<=126;++x)light.setPixel(x,y,qRgb(0,0,0));
+  light.setPixel(125,57,qRgb(170,170,170));
+  QVERIFY2(leftOf(light)<=106,qPrintable(QString::number(leftOf(light))));
+  // Sol round 3 on #1864: an ordinary 1 px word space after "More", with a lone dark pixel of its
+  // "e" (105) that a fainter one (104) ties back to the letter. That pixel is no dropped dot, so
+  // "More" is not joined; the margin may still take its last letter, as reach() does on nightly.
+  QImage more(260,80,QImage::Format_RGB32);more.fill(Qt::white);
+  for(int x=80;x<=103;++x)for(int y=50;y<=59;++y)if(x%5!=4)more.setPixel(x,y,qRgb(0,0,0));
+  more.setPixel(104,55,qRgb(180,180,180));more.setPixel(105,55,qRgb(100,100,100));
+  for(int x=107;x<200;x+=6)for(int i=0;i<5;++i)for(int y=50;y<=59;++y)more.setPixel(x+i,y,qRgb(0,0,0));
+  const QList<RecognizedWord> plain{{"More",QRect(80,50,24,10),90,0},{"jane@example.com",QRect(107,50,96,10),90,0}};
+  const auto kept=quickRedact::markBoxes(plain,{"email",{1}},more.rect(),more).first().mark.left();
+  QVERIFY2(kept>90,qPrintable(QString::number(kept)));
+  // Without the picture nothing is joined.
+  QVERIFY(quickRedact::markBoxes(row,{"email",{2}},light.rect()).first().mark.left()>124);
+ }
  // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
  void anInitialOutsideTheBmp() {
   const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));
