@@ -911,15 +911,21 @@ other tool active it does not. The user's side is in the
     covered neighbour is better than a matched glyph showing. A cover can take the last letter of
     a short word right before a match, as the "t" of "at" before an address, when that word's box
     ends inside the letter: from the pixels alone it looks the same as a neighbour's box that
-    starts on a matched glyph (#1849). A neighbouring word joined to the match by ink between
-    their boxes is covered with the match, and the padding goes on from that word. The ink is a
-    piece neither box holds and no taller than half the line, such as a dot, comma, hyphen or
-    underscore recognition dropped: `jane` and `doe@example.com` read from `jane.doe@example.com`
-    (#1854). The join needs that ink and no blank run wider than a quarter of a character between
-    the matched ink and the word's box, where a word space would be. It needs the picture, never
-    applies on a side that faces another run, and only widens a mark. A dot of a single dark pixel
-    whose fainter edge touches the letter before it is not seen, and that word stays uncovered as
-    before. A mark never shrinks inside the
+    starts on a matched glyph (#1849). A neighbouring word joined to the match by dropped punctuation
+    is covered with it (#1854): `jane` and `doe@example.com`, read from `jane.doe@example.com` with
+    the dot left out and a word space's gap between the boxes. Quick redact checks the nearest
+    unmatched word on the row that the padding plus one character could reach. It is joined when,
+    between the two boxes, there is a separate piece of ink: pixels connected edge to edge that stay
+    strictly between the two boxes' columns and are at most half the row's height, such as a dot,
+    comma, hyphen or underscore. The pieces are looked for at half and at a quarter of the text's
+    contrast; at half, a piece needs at least two pixels. No blank run from the matched ink to the
+    word's box may be wider than a quarter of the edge word's average character width (rounded
+    down, at least one pixel), where a word space would be. The background is found as for the
+    padding above, and nothing is joined without the picture or where those background checks fail.
+    The check repeats from each word it joins, and the padding then goes on from the last one. It
+    never applies on a side that faces another run, and it only widens a mark. A dot with a single
+    pixel at half contrast whose fainter edge, at a quarter, touches the letter before it is not
+    found, so that word is not joined, though the padding can still reach part of it. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
     kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
