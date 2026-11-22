@@ -825,10 +825,9 @@ std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other
  if(image.isNull()){const int gap=qMax(1,box.height()/10);return dir>0?qMax(edge,neighbour-1-gap):qMin(edge,neighbour+1+gap);}
  const int slack=int(std::ceil(glyph));
  // From the matched box's own edge column, which a box can overshoot onto the space.
- QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),box.top()-pad),QPoint(qMax(edge,neighbour+dir*slack),box.bottom()+pad));
- if(window.left()<0||window.right()>=image.width())return std::nullopt;
- window=window.intersected(image.rect());
- if(window.isEmpty())return std::nullopt;
+ // Its far end is clipped to the image; the edge itself is inside it.
+ const QRect window=QRect(QPoint(qMin(edge,neighbour+dir*slack),box.top()-pad),QPoint(qMax(edge,neighbour+dir*slack),box.bottom()+pad)).intersected(image.rect());
+ if(window.isEmpty()||edge<window.left()||edge>window.right())return std::nullopt;
  const QRect around=window.adjusted(0,-pad,0,pad).intersected(image.rect());
  const auto band=image.copy(around).convertToFormat(QImage::Format_ARGB32);
  const int first=window.top()-around.top(),last=window.bottom()-around.top();
@@ -863,10 +862,20 @@ std::optional<int> reach(const QImage& image,const QRect& box,const QRect& other
  }
  const int at=dir*(neighbour-edge);
  int end=-1; // the last blank column of the space
+ const auto runBefore=[&](int i){int n=0;while(i-1-n>=0&&blank[i-1-n])++n;return n;};
  // The box edge agrees with the picture when an ink start (ink right after a
- // blank column) is within a pixel of it: boxes are often a pixel off.
- for(int d=0;d<=1&&end<0;++d)for(const int i:{at-d,at+d})if(end<0&&i>=1&&i<count&&!blank[i]&&blank[i-1])end=i-1;
+ // blank column) is within a pixel of it: boxes are often a pixel off. That
+ // ink is the neighbour's only if the blank before it is at least as wide as
+ // the next one after it: a word space is wider than a gap between glyphs, so
+ // a narrower one makes it more likely a last matched glyph.
+ for(int d=0;d<=1&&end<0;++d)for(const int i:{at-d,at+d}){
+  if(end>=0||i<1||i>=count||blank[i]||!blank[i-1])continue;
+  int j=i;while(j<count&&!blank[j])++j;
+  int after=0;while(j+after<count&&blank[j+after])++after;
+  if(runBefore(i)>=after)end=i-1;
+ }
  if(end<0){
+  // Past whatever lies at the edge and the ink after it, to the next blank run.
   int i=at;
   while(i<count&&blank[i])++i;
   while(i<count&&!blank[i])++i;

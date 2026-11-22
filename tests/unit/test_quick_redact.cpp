@@ -392,6 +392,14 @@ private slots:
   // inside the match: both times the glyph at 103-105 is covered and 107 is not.
   QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide),105);
   QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(101,10,20,20),90,0}},wide),105);
+  // Round 3: a narrow last glyph (102-103) within a pixel of the neighbour's
+  // box edge (103), after a narrower blank than the space behind it (104-108),
+  // is the match's; the neighbour's ink at 109 stays.
+  QImage narrow=page(QImage::Format_RGB32,qRgb(255,255,255));
+  ink(narrow,62,99,12,27);ink(narrow,102,103,12,27);ink(narrow,109,120,12,27);
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(103,10,20,20),90,0}},narrow),107);
+  // S8: a picture cut off just past the neighbour's first ink still shows the space.
+  QCOMPARE(right({{"abcd",QRect(60,10,40,20),90,0},{"next",QRect(107,10,20,20),90,0}},wide.copy(0,0,115,60)),105);
   // S6: a box that agrees with the picture is not crossed for an equally near
   // gap after the neighbour's first stroke (space 102-103, stroke 104, gap 105).
   QImage stroke=page(QImage::Format_RGB32,qRgb(255,255,255));
