@@ -1083,12 +1083,12 @@ couldn't finish. Don't extend it into a general "are you sure?".
 | Overlaps | `redact` kinds are matched first, together, then each `warn` kind alone, on the same recognized words, so no `warn` kind's match hides another's. A word both find is covered. A `warn` match whose words the covers took entirely asks nothing; one they took only part of still asks. With no `redact` kind, matching is #1804's single pass |
 | Only `redact` kinds found | The helper's Quick redact marks for those kinds are the covers. It exports the document as a sanitized PNG and hands it off as an edit's PNG, with a `covered` count per kind and no prompt. The operation uploads that PNG, and `sensitive` holds `{found: {}, covered: {card: 1}, complete: true}`. The notification adds "Covered 1 card number." |
 | Found | `warn` kinds found: the operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {key: 1}, covered: {card: 1}, complete: true, prompt: 1}`, kinds and counts only. `found` lists the `warn` kinds left to decide; `covered` the `redact` kinds already covered. A person sees the panel. An agent decides with `operation.decide` |
-| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found. This holds with every kind on `redact`: what was found is covered first and the panel opens, focused on **Redact and upload** when something was found and on **Cancel** otherwise; in report mode an unanswered decision times out to Cancel. **Upload anyway** then keeps the covers |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found. This holds with every kind on `redact`: what was found is covered first and the panel opens, focused on **Redact and upload** when a `warn` kind was found (`sensitive.found` not empty) and on **Cancel** otherwise; in report mode an unanswered decision times out to Cancel. **Upload anyway** then keeps the covers |
 | No decision possible | A check that fails before it can find anything or ask uploads nothing. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, put.gd then tries to save the capture locally, as Cancel does, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text."; if that save fails too (a full disk), the operation fails. Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. If the helper fails after **Open in editor** opened the editor, the operation also fails with `sensitive_check_failed`, `details.cause` holding the editor's error, and there is no local-copy fallback |
 | Covered export fails | When the helper can't export or stage the covered PNG (an encoding failure, an image over the output limit, a failed disk write), including after **Upload anyway** or **Redact and upload**, the original is never sent in its place: the operation ends as under "No decision possible", saved locally as the original with **Keep a local copy** on, otherwise failed with `sensitive_check_failed` |
 | Local copy | Only a covered upload, with no prompt, after **Upload anyway** or after **Redact and upload**, keeps two copies. With **Keep a local copy** on, its History item and archive copy are the covered PNG. The original is saved to the archive too, beside it, with `-original` added to its name, and `sensitive.original` holds `{status, paths}`. It goes straight to the archive, outside the artifact store and its Waiting uploads budget, and is never uploaded. For a file-manager selection, the original is the user's file, copied only while its device, inode, size and modification time still match the check; a changed file isn't copied. A change in the moment between that comparison and the copy is not caught, and affects only the local copy. A failed save of the original is logged, `status` is `failed`, the notification adds "The original before covering couldn't be saved locally.", and the upload goes on |
 | File selections | Each file is checked and covered on its own. A covered file uploads as its covered PNG (named after the file, with `.png`), staged privately under the resident's `covered/` directory until its upload has copied it, then removed. A file still on `warn` asks as before |
-| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. A file covered automatically is not compared: its covered PNG, made at check time, is what uploads, and a change to the file only keeps its optional local original from being saved. If any other checked file differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
+| Files that change | A file-manager upload is checked, then copied from its path for the upload. put.gd records each checked file's device, inode, size and modification time when it checks it, and compares them again just before the files are copied into put.gd's artifact store for the upload. A file covered at check time (automatically, after **Upload anyway** with covers, or with **Redact and upload**) is not compared: its covered PNG, made at check time, is what uploads, and a change to the file only keeps its optional local original from being saved. A file chosen more than once is compared if any of its places still uploads the file itself, whatever another place chose; if it changed between two of its checks, that comparison fails. If any other checked file differs, the whole upload fails with `sensitive_check_failed` (`details.cause` `file_changed`), and nothing is uploaded or archived. A change in the moment between that comparison and the copy is not caught |
 
 ### The prompt
 
@@ -1123,8 +1123,10 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
   automatic covers, exactly as the preview shows them. The helper exports and hands off that PNG as an
   automatic cover does, marked as redacted, with no editor step. The resident accepts it only when its
   `covered` counts equal the prompt's `covered` plus its `found`; the operation records them in
-  `sensitive.covered`, the notification says "Covered …", and **Keep a local copy** keeps the original.
-  It is offered whenever something was found, for each file of a selection too.
+  `sensitive.covered`; once every check finished and the upload completed, the notification says
+  "Covered …", and **Keep a local copy** keeps the original. It is offered when a `warn` kind was found
+  (`sensitive.found` not empty), for each file of a selection too. A check that couldn't finish and found
+  only automatic covers, or nothing, doesn't offer it.
 - **Open in editor** opens the editor on the same document, with the
   suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
   From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
@@ -1136,9 +1138,10 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
   saved to the archive and History as a local item. Otherwise nothing is kept.
 - For a file-manager selection, the panel names the file ("File 2 of 3: receipt.png", counted among
   the PNG and JPEG files of the selection) and offers **Redact and upload**, **Upload anyway** and
-  **Cancel**, without **Open in editor**. Redact and upload covers that file and Upload anyway keeps it;
-  either goes on checking the rest, which can ask again. Cancel uploads none of the files. A file chosen
-  twice is asked about at each place, and each place keeps its own answer. If it changed between those
+  **Cancel**, without **Open in editor**. Redact and upload covers that file; Upload anyway keeps its
+  automatic covers and leaves the `warn` suggestions off. Either goes on checking the rest, which can ask
+  again. Cancel uploads none of the files. A file chosen twice is checked at each place, and a place that
+  asks keeps its own answer. If it changed between those
   two checks and a place stays uncovered, the upload fails as a changed file (`file_changed`). A selection
   of one decodable image within 24 megapixels offers all four; one that is too large or couldn't be
   read offers only Upload anyway and Cancel.
@@ -1172,9 +1175,10 @@ settles a panel that a person is looking at.
     answers, and no details when the decision named another prompt.
   - `editor_finalizing` for a second decision that reached the panel after the first.
   - `editor_busy` in report mode for a decision sent while another is still being answered: the
-    resident forwards one at a time, and accepts only the outcome of the decision it forwarded.
+    resident forwards one at a time, and accepts only the outcome of the decision it forwarded. Wait for
+    the first reply, inspect the operation, then answer its current prompt.
   - `sensitive_choice_unavailable` for `edit` where Open in editor isn't offered, or `redact_upload`
-    where nothing was found to cover.
+    where no `warn` kind was found (`sensitive.found` is empty).
 
 No method waits on the decision, so nothing hangs.
 
