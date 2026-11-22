@@ -424,9 +424,12 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     while(a<core&&plainWord(a))++a;
     // #1875: a JSON web token found by its payload lost its head to recognition. The short words
     // just before what is kept that join into the head as read ("ley" "JhbGci0i", "ley" "Jhb",
-    // "ky" "JhbGci…", "Jew" "hbGci…") are the token's: kept, up to three words and nine characters.
-    if(std::any_of(found.cbegin(),found.cend(),[&](const Found& f){return f.from==core&&f.payload;})){
-     static const QRegularExpression head(QStringLiteral("^(?:[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw]|[kb]y)[A-Za-z0-9_-]*$"));
+    // "ky" "JhbGci…", "Jew" "hbGci…", "ley)" "hbGci…") are the token's: kept, up to three words and
+    // nine characters, unless the first word kept already starts with the head ("eyewear" "|eyfhbGci…").
+    static const QRegularExpression head(QStringLiteral("^(?:[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw]|[kb]y)[A-Za-z0-9_)\\]}|-]*$"));
+    static const QRegularExpression headStart(QStringLiteral("^(?:[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw]|[kb]y)"));
+    if(a<int(segment.words.size())&&!headStart.match(plain.at(segment.words.at(a))).hasMatch()
+       &&std::any_of(found.cbegin(),found.cend(),[&](const Found& f){return f.from==core&&f.payload;})){
      QString joined;
      for(int j=a-1;j>=qMax(0,a-3);--j){joined.prepend(plain.at(segment.words.at(j)));if(joined.size()>9)break;if(head.match(joined).hasMatch()){a=j;break;}}
     }
@@ -477,6 +480,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
     int used=last.length>0?int(segment.text.size())-last.prefix:0;
     QString ending=segment.text;
+    // A JSON web token with its header, payload and signature dots read is whole: a token found by
+    // its payload on the next line is another one (Sol on #1883).
+    int dots=0;if(last.dotted){const auto token=segment.text.mid(last.prefix);dots=int(token.count('.')+token.count(','));}
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
@@ -516,7 +522,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
       // the next line (#1875).
       const bool part=last.dotted&&(ending.endsWith('.')||ending.endsWith(','));
-      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!((part||((last.dotted||last.length==0)&&f.payload))&&f.dotted);}))break;}
+      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!((part||((last.length==0||(last.dotted&&dots<2))&&f.payload))&&f.dotted);}))break;}
      used+=int(tail.size());ending=tail;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;

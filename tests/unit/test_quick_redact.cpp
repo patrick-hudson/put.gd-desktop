@@ -258,6 +258,10 @@ private slots:
   QTest::newRow("a dotted name is no JWT payload")<<"see archive.eyJanuary2026.ReleaseNotes.pdf today"<<all<<QStringList{};
   QTest::newRow("prose with a date after a stray-read prefix is no JWT")<<"leyJanuary 2026. Release notes for the new version"<<all<<QStringList{};
   QTest::newRow("a whole JWT takes no short word before it")<<"Seen ley "+jwt<<all<<QStringList{"key: "+jwt};
+  const auto parenHead=QString("ley) hbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split off with its J read as a parenthesis")<<"Seen "+parenHead<<all<<QStringList{"key: "+parenHead};
+  QTest::newRow("a word before a JWT whose head is in its own word stays out")<<"See eyewear "+headerMisread<<all<<QStringList{"key: "+headerMisread};
+  QTest::newRow("a whole JWT does not take a second one on the next line")<<"Seen "+jwt+" | Seen "+headerMisread<<all<<QStringList{"key: "+jwt,"key: "+headerMisread};
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
