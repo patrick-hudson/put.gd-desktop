@@ -687,7 +687,7 @@ other tool active it does not. The user's side is in the
     addresses and don't take a word the address has joined (#1840).
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
-    token alphabet joined without spaces (one misread character allowed in eight; quotes around a
+    token alphabet joined without spaces (one misread character allowed in eight, and one in any shorter word; quotes around a
     word don't count when they enclose 8 characters or more with a digit or a capital, #1820). A segment is
     marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
     `@`, a quote (straight or curly), a guillemet, `(`, `[` or a backtick inside one when its body
