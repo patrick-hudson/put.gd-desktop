@@ -860,6 +860,16 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('operation.copy', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
+    async def decide_upload(id: str, choice: str, prompt: int | None = None) -> Json:
+        """Settle a capture waiting in phase sensitive_text_found (#1804: Settings' Check captures for sensitive text before uploading is on and its text showed a card number, key or another chosen kind, or the check couldn't finish; get_operation's sensitive has found kinds with counts, complete and reason). choice redact opens the editor with the suggested Redact marks placed, driven with the editor tools by the same id, and uploads on submit_editor; upload uploads the original as it is; cancel uploads nothing and keeps a local copy only when Keep a local copy is on. Uploads this server starts never show the prompt: they wait for this call, and after 5 minutes without one they are cancelled. sensitive_check_running: still checking, ask again. Recognized text is never returned. prompt, when given, must be sensitive.prompt: a selection of files can ask once per file, and a decision naming an earlier prompt is refused."""
+        if not identifier(id) or choice not in {'redact', 'upload', 'cancel'} or (prompt is not None and (type(prompt) is not int or prompt < 1)):
+            return invalid()
+        params: Json = {'id': id, 'choice': choice}
+        if prompt is not None:
+            params['prompt'] = prompt
+        return await adapter.call('operation.decide', params)
+
+    @server.tool(annotations=effect)
     async def cancel_operation(id: str, kind: str = 'operation', item_id: str | None = None) -> Json:
         """Cancel operation/delete work; already sent remote mutations cannot be rolled back. With item_id (an operation item's artifact.id), cancel only that file of an active upload batch; the other files continue and Retry uploads the cancelled one."""
         if not identifier(id) or kind not in {'operation', 'delete'} or (item_id is not None and (kind != 'operation' or not identifier(item_id))):

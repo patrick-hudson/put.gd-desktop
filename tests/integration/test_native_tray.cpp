@@ -498,7 +498,7 @@ private slots:
   QCOMPARE(actions.size(), ids.size());
   // Left-click opens History.
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(actions.size(), ids.size()+1); QCOMPARE(actions.last().at(0).toString(), QString("history"));
+  PUTGD_TRY_COMPARE(actions.size(), ids.size()+1); QCOMPARE(actions.last().at(0).toString(), QString("icon"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
@@ -557,7 +557,7 @@ private slots:
   // Plasma's left click: token, then Activate.
   QCOMPARE(provide("kwin-0123456789abcdef").type(), QDBusMessage::ReplyMessage);
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(actions.size(), 3); QCOMPARE(actions.at(2).at(0).toString(), QString("history")); QCOMPARE(actions.at(2).at(1).toString(), QString("kwin-0123456789abcdef"));
+  PUTGD_TRY_COMPARE(actions.size(), 3); QCOMPARE(actions.at(2).at(0).toString(), QString("icon")); QCOMPARE(actions.at(2).at(1).toString(), QString("kwin-0123456789abcdef"));
   // A click that dispatches nothing still uses up its token.
   QCOMPARE(provide("unused-token").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(2).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 4); QVERIFY(actions.at(3).at(1).toString().isEmpty());

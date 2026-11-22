@@ -35,7 +35,16 @@ public:
  ~OperationService() override;
  // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
  // region, window, monitor, desktop, repeat and edit (of a screen capture) accept {delaySeconds: 0|3|5|10}.
+ // Any action takes sensitiveText (#1804): "prompt" shows the sensitive text
+ // prompt to a person; "report" (the default for session requests) pauses the
+ // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
+ // #1804: settles an operation waiting in sensitive_text_found: redact, upload or cancel.
+ // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
+ void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
+ // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
+ bool raiseSensitivePrompt(const QString& activationToken={});
+ bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
@@ -47,7 +56,7 @@ public:
  // helper so Edit image matches the other windows (#198's rule for putgd-record).
  void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");if(editor_)editor_->setAppearance(editorAppearance_);}
  ScrollCaptureService& scroll() {return *scroll_;}
- void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare")emit explicitRequest();scroll_->command(command,params,std::move(reply));}
+ void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare"){emit explicitRequest();if(!scroll_->active())scrollSensitiveMode_=QStringLiteral("report");}scroll_->command(command,params,std::move(reply));}
  void setScrollBackend(std::unique_ptr<ScrollBackend> backend) {scroll_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}
  // Text recognition (#1428): what the Copy text action, text.recognize and
@@ -83,7 +92,7 @@ public:
  // resolved once and stored with the operation. Never a local-only save. Links
  // are copied as for a capture. Answers with the operation ID once it is durable.
  static constexpr const char* fileManagerAction="files";
- void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply);
+ void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"));
  // Refuses upload.files with a retryable error (initializing) while it answers one,
  // e.g. while the startup read of saved credentials is still running.
  void setUploadGate(std::function<Error()> gate) {uploadGate_=std::move(gate);}
@@ -177,6 +186,8 @@ signals:
  // One notification for a live observation batch, independent of durable results.
  void observationsChanged();
  void storageActivityChanged();
+ // #1804: a capture's sensitive text prompt is open for a person; the tray offers it, or a notification does.
+ void sensitivePromptShown(const QString& id);
  // The accepted configuration changed (Settings, the tray, a patch): what a menu
  // shows from it is stale until it is read again.
  void settingsAccepted();
@@ -243,7 +254,23 @@ private:
  // Retry and manual cleanup requests that arrived during an automatic pass.
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;};
+ // localOnly (#1804): a capture whose sensitive text check was cancelled keeps only its local copy.
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;
+  // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
+  QHash<QString,QString> checkedFiles={};};
+ // #1804: an upload whose capture is checked for sensitive text first, one check at a time.
+ void admitUpload(Job);
+ bool needsSensitiveCheck(const Job&) const;
+ void pumpChecks();
+ void runCheck(Job);
+ void checkPhase(const QString& id,const QString& phase,const QJsonObject& findings);
+ void checkFinished(const QString& id,std::shared_ptr<Job>,std::shared_ptr<EditorResult>,qint64 elapsedMs);
+ QQueue<Job> checkQueue_;QString checkingId_;
+ QHash<QString,std::shared_ptr<EditorSession>> checkSessions_;
+ QHash<QString,Operation> checkOperations_;
+ QHash<QString,std::shared_ptr<Job>> checkJobs_;
+ QHash<QString,QString> sensitiveModes_;
+ QString scrollSensitiveMode_=QStringLiteral("report");
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
@@ -296,7 +323,7 @@ private:
  void beginUploadCopies(const Operation&,bool importing=false);
  void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
  // The sharing actions and Repeat last region, after invoke() has handled recording.
- void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken);
+ void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken,const QString& sensitiveMode);
  QString editorDestination(const Operation&) const;
  void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
  // The editor's Copy text (#1428): recognized text or a code's content, as an explicit copy.

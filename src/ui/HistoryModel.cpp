@@ -202,6 +202,8 @@ QString HistoryModel::statusText(const QJsonObject& r){
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
   if(phase=="preflight")return "Checking the destination…";
   if(phase=="saving_local")return "Saving locally…";
+  if(phase=="checking")return "Checking for sensitive text…";
+  if(phase=="sensitive_text_found")return "Sensitive text found · Waiting for your decision";
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();

@@ -111,7 +111,7 @@ void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_pt
  for(const auto& code:result->codes)codes.append({code.format,code.binary,code.binary?QString():code.text,code.length,polygon(code.quad,offset)});
  QList<editor::RecognizedCode> none;
  editor::TextLayer::exclude(found,codes,redactions);editor::TextLayer::exclude(every,none,redactions);
- layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;
+ layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;languagesSkipped_=result->languagesSkipped;
  lineTops_.clear();for(const auto& word:layer_.words()){if(word.line>=lineTops_.size())lineTops_.append(word.rect.top());else lineTops_[word.line]=qMin(lineTops_[word.line],word.rect.top());}
  state_="completed";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({});

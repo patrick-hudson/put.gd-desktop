@@ -23,6 +23,7 @@
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
 #include "ui/QrCodeWindow.h"
+#include "ui/SensitivePrompt.h"
 #include "core/QrImage.h"
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
@@ -568,6 +569,12 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
+ // Turned on, with its draft still a view state Settings can keep (#1804).
+ window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextCategories"),0,160);if(!save("settings-sensitive-check"))return 2;
+ window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(false);
  // #1618: Quick redact's saved words and regular expressions, under Text recognition; empty, then filled.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");window.findChild<QPlainTextEdit*>("quickRedactPatterns")->setPlainText("\\bJIRA-\\d+\\b\n(?i)\\b[a-z0-9-]+\\.corp\\.example\\b");
@@ -922,6 +929,22 @@ int main(int argc,char** argv){
   QrCodeWindow window("item","screenshot.png","https://example.com/i/Kx7Qm2Zp.png",{});window.show();putgd::test::settle(300);app.processEvents();
   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath("69-history-qr-code.png")))return 2;
   captures.append(QJsonObject{{"file","69-history-qr-code.png"},{"width",image.width()},{"height",image.height()}});window.close();
+ }
+ {
+  // #1804: the prompt before an upload whose capture shows sensitive text, and the one for a check that
+  // couldn't finish. Synthetic capture: a terminal line with a test card number already covered.
+  QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+  {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);painter.drawText(40,240,"Payment accepted");}
+  const auto prompt=[&](const QString& name,SensitivePrompt::Model model){
+   SensitivePrompt window(std::move(model));window.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,window))return false;
+   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});window.hide();return true;};
+  SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+  if(!prompt("70a-sensitive-prompt",found))return 2;
+  SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
+  if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.redactAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  if(!prompt("70c-sensitive-prompt-files",files))return 2;
  }
  {
   // Dark app content must keep a visible image boundary in either scheme.

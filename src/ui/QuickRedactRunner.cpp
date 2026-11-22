@@ -44,6 +44,7 @@ struct Progress {
  std::optional<editor::quickRedact::Result> result;
  std::atomic_bool cancel{false};
  bool delivered=false; // interface thread only
+ bool finished=false; // under mutex: the worker's final result is in `result`
 };
 // The workers still running. Read and written on the interface thread only,
 // and never destroyed, since the exit wait runs while the application object
@@ -240,13 +241,14 @@ void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QS
    QMutexLocker lock(&progress->mutex);progress->result=partial;progress->result->nameUnchecked=nameUnchecked;
   },&progress->cancel,matcher);
   result.nameUnchecked=nameUnchecked;
-  QMutexLocker lock(&progress->mutex);progress->result=std::move(result);
+  QMutexLocker lock(&progress->mutex);progress->result=std::move(result);progress->finished=true;
  });
  auto deliver=[progress,allPatterns,done=std::move(done)]{
   if(progress->delivered)return;
   progress->delivered=true;
   editor::quickRedact::Result result;result.skippedPatterns=allPatterns;
-  {QMutexLocker lock(&progress->mutex);if(progress->result)result=*progress->result;}
+  // A worker that hadn't ended by the deadline says so (#1804: a check must never read that as clean).
+  {QMutexLocker lock(&progress->mutex);if(progress->result)result=*progress->result;result.unfinished=!progress->finished;}
   if(done)done(std::move(result));
  };
  // Both run on the interface thread, and only while `context` exists; the

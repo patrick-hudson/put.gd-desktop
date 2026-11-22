@@ -243,6 +243,8 @@ private:
  QList<QComboBox*> textLanguages_;QLabel* textRecognitionStatus_=nullptr;QJsonObject textCapabilities_;
  // #1618: Quick redact's saved words (one per line) and regular expressions (one per line).
  QPlainTextEdit *quickRedactTerms_=nullptr,*quickRedactPatterns_=nullptr;
+ // #1804: Check captures for sensitive text before uploading, and the Quick redact categories it looks for.
+ QCheckBox* sensitiveCheck_=nullptr;QHash<QString,QCheckBox*> sensitiveCategories_;void showSensitiveCheck();
 public:
  // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.
  void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);

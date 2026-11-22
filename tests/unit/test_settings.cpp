@@ -202,6 +202,22 @@ private slots:
     }
     // #1618: settings.patch, the CLI and agents write Quick redact's lists as given; the file
     // always holds them trimmed and without repeats, the way the Settings window writes them.
+    // #1804: off with card, key and list until chosen; only the seven Quick redact names, each once.
+    void sensitiveTextCheckIsOffByDefaultAndTakesOnlyKnownKinds() {
+        const auto defaults = putgd::Settings::fromValidated(putgd::SettingsService::defaults());
+        QVERIFY(!defaults.sensitiveTextCheck);
+        QCOMPARE(defaults.sensitiveTextCategories, (QStringList{"card", "key", "list"}));
+        const auto with = [](const QJsonValue& check) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["sensitiveTextCheck"] = check;doc["preferences"] = preferences;return doc;};
+        const auto document = with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "email"}}});
+        const auto refused = putgd::Settings::validate(document);
+        QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(document);
+        QVERIFY(chosen.sensitiveTextCheck);QCOMPARE(chosen.sensitiveTextCategories, (QStringList{"email", "key"}));
+        for (const auto& wrong : {QJsonValue(true), QJsonValue(QJsonObject{{"enabled", true}}), QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"card", "card"}}}), QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"password"}}}),
+                                  QJsonValue(QJsonObject{{"enabled", "yes"}, {"categories", QJsonArray{"card"}}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+    }
     void quickRedactListsAreStoredTrimmedAndOnceWhoeverSendsThem() {
         QTemporaryDir dir;
         const auto path = dir.filePath("config.json");

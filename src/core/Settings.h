@@ -124,6 +124,13 @@ struct Settings {
     // covering. Terms are trimmed and unique; both are empty by
     // default. Plain config like folder names, never logged or put in a diagnostics bundle.
     QStringList quickRedactTerms, quickRedactPatterns;
+    // preferences.sensitiveTextCheck (#1804): before an image capture uploads,
+    // recognize its text and ask first when it shows text of these Quick redact
+    // categories. Off by default; the categories default to card, key and list.
+    bool sensitiveTextCheck = false;
+    QStringList sensitiveTextCategories;
+    static QStringList sensitiveTextCategoryNames(); // email, phone, ip, card, key, name, list
+    static QStringList defaultSensitiveTextCategories(); // card, key, list
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
