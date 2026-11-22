@@ -33,8 +33,10 @@ unchanged, and the first 412 is `changed`, with no second attempt. Nextcloud has
 password) made in the two-step sharing pipeline, with the date an enforced expiry allows, and its
 page URL is the `directUrl`. Every form value is percent-encoded, `+` included. put.gd's share
 carries the label `put.gd <publication ID>`. Inspection, Finish share link and revoke find that
-share by the share ID the step journaled, else by the recorded link's token, else by the label,
-which must match exactly one share; none or several is unknown, never a guess, and revoke deletes
+share by the share ID a step journaled (it stays the sharing record's progress whatever the
+outcome, and History's link actions and retries pass it on), else by the recorded link's token (a
+revoke passes the link it removes), else by the label, which must match exactly one share; a
+lookup by ID must name exactly that share; none or several is unknown, never a guess, and revoke deletes
 only a share found this way. A share that comes back as anything but a public read-only link of
 the uploaded file (its `item_source`) is deleted again, and the file counts as without a link only
 once that deletion is confirmed; otherwise the outcome is unknown and the journaled ID stays. A
