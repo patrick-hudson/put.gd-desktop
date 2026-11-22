@@ -99,12 +99,20 @@ QStringList destinationArguments(const QJsonObject& settings) {
     args << "--" << address->host;
     return args;
 }
+QStringList identityArguments(const QJsonObject& settings) {
+    const auto file = keyFile(settings);
+    if (file.isEmpty()) return {};
+    return {"-i", file, "-o", "IdentitiesOnly=yes"};
+}
 Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJsonObject& settings, Error& error) {
     Resolved resolved;
+    resolved.chosenKey = keyFile(settings);
     QProcess process;
     process.setProcessEnvironment(env);
     process.setStandardInputFile(QProcess::nullDevice());
-    process.start(ssh, QStringList{"-G"} + destinationArguments(settings));
+    // With the chosen key, as a connection runs: ssh -G then lists it first among the key files,
+    // and its passphrase prompt is one the askpass answers.
+    process.start(ssh, QStringList{"-G"} + identityArguments(settings) + destinationArguments(settings));
     if (!process.waitForStarted(10000)) { error = sshMissing(); return resolved; }
     if (!process.waitForFinished(15000)) {
         process.kill();
@@ -156,7 +164,8 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
 }
 QString resolvedLine(const Resolved& r, bool password) {
     auto line = "Connects to " + (r.host.contains(':') ? "[" + r.host + "]" : r.host) + (r.port != 22 ? ":" + QString::number(r.port) : QString()) + " as " + r.user;
-    if (!r.identityFiles.isEmpty()) line += " with key " + QFileInfo(r.identityFiles.first()).fileName() + (r.agent ? QStringLiteral(" (agent)") : QString());
+    if (!r.chosenKey.isEmpty()) line += " with key " + QFileInfo(r.chosenKey).fileName();
+    else if (!r.identityFiles.isEmpty()) line += " with key " + QFileInfo(r.identityFiles.first()).fileName() + (r.agent ? QStringLiteral(" (agent)") : QString());
     else if (r.agent) line += QStringLiteral(" with the agent's keys");
     else if (password) line += QStringLiteral(" with a password");
     else line += QStringLiteral(" with no key: no SSH agent or key file was found");
@@ -167,7 +176,8 @@ QString resolvedLine(const Resolved& r, bool password) {
 QJsonObject toJson(const Resolved& r) {
     QJsonArray keys;
     for (const auto& file : r.identityFiles) keys.append(QFileInfo(file).fileName());
-    return {{"host", r.host}, {"port", r.port}, {"user", r.user}, {"alias", r.alias}, {"keyFiles", keys}, {"agent", r.agent}, {"proxy", r.proxyKind}};
+    return {{"host", r.host}, {"port", r.port}, {"user", r.user}, {"alias", r.alias}, {"keyFiles", keys}, {"agent", r.agent}, {"proxy", r.proxyKind},
+            {"chosenKey", r.chosenKey.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QFileInfo(r.chosenKey).fileName())}};
 }
 KnownLookup lookupHost(const QStringList& files, const QString& token, const QProcessEnvironment& env) {
     KnownLookup found;
@@ -454,7 +464,7 @@ QStringList connectionArguments(const QJsonObject& settings, const QString& know
     // global known_hosts nor a KnownHostsCommand from the user's ssh settings. (Certificate
     // authorities come only from known_hosts files, so the recorded lines are all of them.)
     if (pinnedOnly) args << "-o" << "GlobalKnownHostsFile=/dev/null" << "-o" << "KnownHostsCommand=none";
-    return args + QStringList{"-s"} + destinationArguments(settings) + QStringList{"sftp"};
+    return args + identityArguments(settings) + QStringList{"-s"} + destinationArguments(settings) + QStringList{"sftp"};
 }
 Error classify(const QByteArray& raw, const FailureContext& c) {
     const auto text = withoutDebug(raw);
@@ -484,6 +494,10 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
         return {"ssh_connection_refused", QString("The server refused the connection on port %1. Check the server name and port, and that its SSH service runs.").arg(port), {}};
     if (text.contains(QLatin1String("timed out")))
         return {"ssh_connection_timeout", QString("The server did not answer on port %1. Check the server name and port, and your network.").arg(port), {}};
+    // ssh skips a private key other users can read, then signs in without it: say how to fix the file.
+    static const QRegularExpression tooOpen(QStringLiteral("Permissions 0[0-7]+ for '(.+)' are too open"));
+    if (const auto open = tooOpen.match(text); open.hasMatch() && text.contains(QLatin1String("Permission denied")))
+        return {"ssh_key_permissions", "ssh refused your key " + QFileInfo(open.captured(1)).fileName() + " because other users can read it. Make it private (chmod 600 on the file), then test again.", {}};
     static const QRegularExpression denied(QStringLiteral("Permission denied \\(([^)]*)\\)"));
     const auto methods = denied.match(text).captured(1).split(',', Qt::SkipEmptyParts);
     // put.gd turns keyboard-interactive off: a server that offers only that wants a prompt answered
@@ -504,6 +518,12 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
             return {"ssh_auth_failed", "Your key " + QFileInfo(c.passphraseKey).fileName() + " needs its passphrase: enter it in Key passphrase, or add the key to your SSH agent.", {}};
         if (c.asked.contains(QLatin1String("password")) && !c.password)
             return {"ssh_auth_failed", "The server asked " + user + " for a password and refused the keys put.gd offered. Enter the password in Password, or add your key to the server.", {}};
+        // ssh says nothing (below debug level) about a wrong passphrase: one that was asked and given
+        // may be wrong, or the server may not know the key.
+        if (!c.resolved.chosenKey.isEmpty() && !c.password)
+            return {"ssh_auth_failed", "The server refused to sign in " + user + " with the key " + QFileInfo(c.resolved.chosenKey).fileName() + ". " +
+                        (c.asked.contains(QLatin1String("passphrase")) ? QStringLiteral("Check the Key passphrase, the user name, and ") : QStringLiteral("Check the user name, and ")) +
+                        "that the key's public half is in that user's ~/.ssh/authorized_keys on the server.", {}};
         if (!c.resolved.agent && c.resolved.identityFiles.isEmpty() && !c.password)
             return {"ssh_auth_failed", "The server refused to sign in " + user + ". No SSH agent was found and no key file or password is set: start ssh-agent with your key, or enter a password.", {}};
         return {"ssh_auth_failed", "The server refused to sign in " + user + " with the " +

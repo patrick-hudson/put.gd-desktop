@@ -90,6 +90,10 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('sftp_destination_setup', {'action': 'trust', 'profile_id': 'lab', 'expected_revision': 'r'}),
             ('sftp_destination_setup', {'action': 'resolve', 'profile_id': 'lab', 'expected_revision': 'r', 'folder': '/srv'}),
             ('sftp_destination_setup', {'action': 'storeCredentials', 'profile_id': 'lab', 'expected_revision': 'r'}),
+            # #1892: the SSH key file is a path set like the other fields, never null, never longer than 4096.
+            ('drive_sftp_destination', {'action': 'set', 'field': 'keyFile', 'value': None}),
+            ('drive_sftp_destination', {'action': 'set', 'field': 'keyFile', 'value': '/k' * 2049}),
+            ('drive_file_dialog', {'dialog': 'sftpKey', 'action': 'open', 'field': 'root'}),
             # #1753: an error log step the resident does not take, an empty clear, a filter outside setFilter.
             ('act_on_error', {'id': 'synthetic-error', 'action': 'open_destination'}),
             ('clear_errors', {'ids': []}),
