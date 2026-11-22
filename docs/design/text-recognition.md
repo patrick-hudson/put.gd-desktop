@@ -687,12 +687,12 @@ other tool active it does not. The user's side is in the
     addresses and don't take a word the address has joined (#1840).
   - Recognition returns a long token as several words on one line, with gaps no wider than a word
     space and misread characters, so keys and tokens are matched per line on the words of the
-    token alphabet joined without spaces (one misread character allowed in eight; quotes around a
+    token alphabet joined without spaces (one misread character allowed in eight, and one in any shorter word; quotes around a
     word don't count when they enclose 8 characters or more with a digit or a capital, #1820). A segment is
     marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
     `@`, a quote (straight or curly), a guillemet, `(`, `[` or a backtick inside one when its body
     has both a digit and a capital (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`; an ordinary
-    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions (for the prefix patterns other than a JSON web token's, a `/` between two letters or digits counts as a letter, as recognition reads a `J` at small sizes, while the separator check reads the text as recognized, #1839) and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
@@ -900,8 +900,20 @@ other tool active it does not. The user's side is in the
     any pixel looked at is not fully opaque; or the image ends before the matched box's edge. A
     covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
-    as a label with digits ("sha256"), the words after a prefixed token up to its usual length,
-    or the rest of a PEM BEGIN or END line. A token that runs to the end of its line goes on
+    as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
+    kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
+    tokens) takes the token pieces of its run (the adjacent words that count as token pieces under the
+    key rules above, misread characters and quotes allowed as described there, measured in their
+    text joined without spaces) that start within half again
+    its usual length of the first piece it matched, and anything further its prefix pattern's body
+    ran through. A kind with
+    one length (an AWS key ID, a classic GitHub token, a fine-grained `github_pat_` token, a
+    Stripe `whsec_` secret) ends at that length counted from its prefix: it takes the pieces of
+    its run that start before the length is reached, and a piece of one or two characters just past it, which a
+    doubled character leaves. Words after that are treated like any words at the end of a run of
+    token pieces: a run of ordinary words at the end (under 12 letters or digits, no digit, no
+    capital after the first letter, as "was leaked today") is left out, and the rest stay covered
+    (#1839). A token that runs to the end of its line goes on
     over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
