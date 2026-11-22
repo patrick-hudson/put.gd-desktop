@@ -174,6 +174,8 @@ by either rejection.
 | `webdav_tls_failed` | The server's certificate isn't trusted, has expired, or is for another host. The message gives the certificate's SHA-256 and, for an untrusted issuer, the command that adds your own certificate authority to this distribution's trust store |
 | `webdav_plain_http_refused` | An `http://` address on another computer needs **Allow plain HTTP for this destination** |
 | `webdav_settings_invalid`, `webdav_name_invalid` | Fix the field the message names |
+| `webdav_cleanup_failed` | put.gd couldn't remove the parts of an unfinished chunked upload; Nextcloud's own cleanup removes them later |
+| `credential_setup_required` (Nextcloud, WebDAV) | Not signed in, or the stored app password or password was given for another address or account (`details.reason` `binding`): sign in or enter them again |
 | `webdav_transport_unknown` | The helper stopped without a confirmed result; Retry reconciles before sending again |
 | `nextcloud_not_found` | The address doesn't answer like a Nextcloud server; use the address you open Nextcloud at in a browser |
 | `nextcloud_sharing_disabled` | Public links are turned off on the server; nothing was uploaded. Ask the administrator to allow sharing with public links |

@@ -34,8 +34,13 @@ storage is **For this session**. Nextcloud lists it under **Personal settings â†
 Devices & sessions** as `put.gd (computer name)`.
 
 **Sign out** revokes that app password on the server and forgets it here. Removing a Nextcloud
-destination in Settings does the same. If the server can't be reached, put.gd still forgets the password
-and says so; revoke it in Nextcloud under **Devices & sessions**.
+destination in Settings does the same before it removes the destination. If the server can't be
+reached or doesn't confirm, put.gd still forgets the password and says so; revoke it in Nextcloud
+under **Devices & sessions**.
+
+The app password works only for the server and account it was given for. After you change the
+Server to another address, put.gd asks you to sign in again and sends nothing to the new address
+until you do.
 
 ### Use an app password instead
 
@@ -59,9 +64,12 @@ There is no choice of link type, expiry or password in put.gd:
 - When **public links are turned off**, an upload is refused before anything is sent
   (`nextcloud_sharing_disabled`).
 
-If the upload works but the link can't be made (the server was unreachable, for example), the
-file stays in Nextcloud and History offers **Finish share link**, which makes the link without
-uploading again. A failed link never deletes the file.
+If the upload works but the link can't be made (the server was unreachable, or it enforces a
+link password, for example), the file stays in Nextcloud and History offers **Finish share
+link**, which makes the link without uploading again. A failed link never deletes the file.
+
+put.gd's link is labelled `put.gd` and a short code in Nextcloud's sharing panel. put.gd only ever
+uses, finishes or revokes its own link: a link you made by hand for the same file is left alone.
 
 ### Large files
 
@@ -113,8 +121,10 @@ A server that ignores either gets a warning under the form; uploads still work.
 ### Deleting from History
 
 **Delete** sends the file's recorded ETag (`If-Match`), so a file replaced on the server is
-refused with **Changed**. When the server reported no ETag for an upload, Delete is unavailable
-for it.
+refused with **Changed**. Servers such as Apache's mod_dav don't return an ETag when a file is
+written; put.gd then reads the file back once and compares it before it records the ETag. When
+it can't confirm the file that way (files over 256 MB, or a server that gives no usable ETag),
+Delete is unavailable for that upload, and Test leaves its test file on the server and says so.
 
 ## Both services
 
@@ -141,7 +151,7 @@ sign-in page's address (`signInUrl`) while sign-in waits, so an agent can comple
 browser. Without the Settings window, `setup.connectAccount` (`sign_in_destination`) starts
 sign-in; its job's `event.url` is the page, and `setup.cancel` (`cancel_setup_job`) stops it.
 `setup.signOut` (`sign_out_destination`) revokes and forgets the app password, and
-`setup.createFolder` (`create_destination_folder`) makes a missing folder. An app password made
-by hand is stored with `setup.storeCredentials` (`accessKey` the login name, `secretKey` the app
-password). See [cli.md](../automation/cli.md), [mcp.md](../automation/mcp.md) and the settings in
+`setup.createFolder` (`create_destination_folder`) makes a missing folder. `putgd-cli` and the
+MCP helper never carry a password: agents sign in through Login Flow v2, and an app password made
+by hand is typed into Settings. See [cli.md](../automation/cli.md), [mcp.md](../automation/mcp.md) and the settings in
 [configuration.md](../design/configuration.md).

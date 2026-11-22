@@ -36,9 +36,24 @@ profile's reference, keychain or session, and the job's result never holds it. T
 in request paths is the account ID the server reports (`/ocs/v2.php/cloud/user`), which can
 differ from the login name. `setup.signOut` revokes the app password on the server
 (`DELETE /ocs/v2.php/core/apppassword`) and then erases the entry; a password that is not an
-app password, or already revoked, is only erased. Removing a Nextcloud destination in Settings
-signs it out first. The worker keeps no cookies, so every request authenticates with the app
+app password, or already revoked, is only erased; a keychain entry not read yet is read first so
+it can be revoked. Removing a Nextcloud destination in Settings waits for that sign-out and says
+when the server didn't confirm the revocation, then removes it. Sign-in and sign-out run one at a
+time per destination. A sign-in that finishes after it was cancelled, after the destination was
+removed or changed its server, or whose account lookup or keychain save fails, revokes the new
+app password instead of keeping it. Signing in again revokes the earlier app password only once
+the new one is saved. The worker keeps no cookies, so every request authenticates with the app
 password alone.
+
+The key pair is bound to where it was given: beside it, in the entry's session-token field, put.gd
+keeps non-secret JSON naming the origin (scheme, host and port) and, for Nextcloud, the account
+ID. `setup.connectAccount` writes it; `setup.storeCredentials` writes the origin for these
+providers, and the first `setup.inspectAccount` adds the account ID. Before any request that
+carries the credentials (upload, Test, History stat, delete and links, sign-out) the provider
+checks the binding against the destination and answers `credential_setup_required` ("Sign in
+again") without sending anything when it differs. An app password made by hand is entered in
+Settings (Use an app password instead) or through the session socket; `putgd-cli` and the MCP
+helper never carry it, as for every service.
 
 A custom HTTP uploader (#1361) stores named values instead of a key pair: one entry
 holds a map from credential-store name to value, where a name is `headers/<name>`,

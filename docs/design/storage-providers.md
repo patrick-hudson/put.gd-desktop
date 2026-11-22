@@ -14,20 +14,40 @@ Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class a
 (`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
 Nextcloud files above 50 MB use chunked upload v2 (`MKCOL` an upload folder, `PUT` 16 MB chunks,
 then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
-size and content, and an abandoned upload folder is deleted through its journal. Receipts keep
-the ETag and file ID a `PROPFIND` reports after the write, because a write's own reply can
-differ (Apache's `PUT` ETag, Nextcloud's padded `OC-FileId`). `stat` compares file ID, size and
-ETag; deletion sends `If-Match` with the recorded ETag, and a 412 is `changed`. Apache reports a
-weak ETag for a file written within the last second, which never satisfies `If-Match`, so a 412
-on a weak recorded ETag is retried, at most twice, once `PROPFIND` reports the same file with a
-strong ETag. Nextcloud has `capabilities.sharing`: the link is a public read-only share
-(`shareType=3`, `permissions=1`) made in the two-step sharing pipeline, with the date an enforced
-expiry allows, and its page URL is the `directUrl`. An existing link share of the file is reused
-rather than made twice. Upload is refused beforehand only when the server's capabilities report
-public links off; an enforced link password fails the share step with
-`nextcloud_share_password_required`. Share tokens are secrets in a path: test journals keep
-receipts without the link, and log redaction replaces `/s/TOKEN`. TLS uses the system trust
+size and content read back at the target's strong ETag (a failed probe leaves it unknown; a 412
+stays a collision), and an abandoned upload folder is deleted through its journal, which keeps it
+until the deletion is confirmed. The `MOVE` has its own 30-minute deadline and no stall limit, and
+the helper sends a heartbeat while it waits. A file's identity is what the write itself returned:
+the `PUT` or `MOVE` reply's strong ETag and Nextcloud's `OC-FileId` (its number, without the
+padding). A server whose write returns no strong ETag (Apache returns none, and reports a weak
+ETag for a file written within the last second) is asked for the file's strong ETag, and the bytes
+at that ETag are read back (`GET` with `If-Match`) and compared; only then is the ETag recorded,
+for files up to 256 MB. Otherwise the receipt has no concurrency token and records
+`identity: unconfirmed`: History can't delete it and Nextcloud makes no link for it. Receipts also
+record the canonical DAV target (scheme, host, port, path) and, for Nextcloud, the account ID;
+requests serialize on that target. `stat` compares target, file ID, size and the ETag exactly as
+recorded (weak and strong never equal); deletion sends `If-Match` with the recorded ETag
+unchanged, and the first 412 is `changed`, with no second attempt. Nextcloud has
+`capabilities.sharing`: the link is a public read-only share (`shareType=3`, `permissions=1`, no
+password) made in the two-step sharing pipeline, with the date an enforced expiry allows, and its
+page URL is the `directUrl`. Every form value is percent-encoded, `+` included. put.gd's share
+carries the label `put.gd <first 8 characters of the publication ID>`: inspection, Finish share
+link and revoke find that share (by the recorded link's token, else by the label) and never a link
+someone made by hand. The share ID is journaled before the link is used, and a share that comes
+back as anything but a public read-only link of the uploaded file (its `item_source`) is deleted
+again. A create that can't go ahead (links off, an enforced password, a definite refusal) answers
+`private` with the error, so History offers Finish share link. Capabilities are on, off or
+unknown; upload is refused beforehand only when they confirm public links off. Share tokens are
+secrets in a path: test journals keep receipts without the link, the journal boundary and log
+redaction replace the whole `/s/<segment>`, and server reply text never reaches a message,
+journal or log (errors carry `httpStatus` and `ocsStatus`). TLS uses the system trust
 store only; a refused certificate is described by issuer, expiry or host name with its SHA-256.
+Credentials are bound to the origin they were given for and, for Nextcloud, the account ID
+([credentials.md](credentials.md)); the provider refuses before sending anything when the
+destination names another origin. Login Flow v2's page and poll endpoint must have the server's
+scheme, host and port and a path below its base, without user information; only a 404 while
+polling means "not yet". Test fetches the link as a visitor through the custom uploader's
+returned-address rules on every redirect.
 Requests with file data have only a stall limit, as B2's.
 
 All network methods complete through a callback exactly once, including cancellation,
