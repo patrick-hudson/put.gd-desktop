@@ -124,6 +124,11 @@ private slots:
    for(int y=300;y<312;++y)for(int x=60;x<760;++x)if(x%3!=0)dense[y*width+x]=char(70);
    const GreyView denseView{reinterpret_cast<const uint8_t*>(dense.constData()),width,height,width};
    QCOMPARE(plainAround(denseView,trimmed,{},44),QRect(QPoint(60,40),QPoint(759,399)));}
+  // A stripe of the window's shade across the desktop below does not carry it out.
+  {auto striped=grey;
+   for(int y=400;y<height;++y)for(int x=60;x<300;++x)striped[y*width+x]=char(44);
+   const GreyView stripedView{reinterpret_cast<const uint8_t*>(striped.constData()),width,height,width};
+   QCOMPARE(plainAround(stripedView,trimmed,{},44).bottom(),399);}
  }
  // #1911: only an uncertain word shaped like a key or token is read again;
  // its line's rows, joined with a neighbour's, and the least confident first

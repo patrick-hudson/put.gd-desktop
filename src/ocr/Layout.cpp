@@ -509,9 +509,16 @@ QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& ot
  const auto plain=[&](int x0,int y0,int x1,int y1){  // inclusive span
   const QRect line(QPoint(x0,y0),QPoint(x1,y1));
   if(std::any_of(others.cbegin(),others.cend(),[&](const QRect& o){return o.intersects(line);}))return false;
-  qint64 n=0,paper=0;
-  for(int y=y0;y<=y1;++y){const auto* row=image.row(y);for(int x=x0;x<=x1;++x){++n;paper+=std::abs(int(row[x])-background)<=tolerance;}}
-  return 4*paper>=n;
+  // A quarter of the line is paper, and every quarter of it holds some, so a
+  // stripe of the window's shade across a desktop does not pass (Sol on #1920).
+  const bool across=y0==y1;const int from=across?x0:y0,to=across?x1:y1,length=to-from+1;
+  qint64 paper=0;std::array<qint64,4> part{};
+  for(int i=0;i<length;++i){
+   const int v=across?image.row(y0)[from+i]:image.row(from+i)[x0];
+   if(std::abs(v-background)<=tolerance){++paper;++part[size_t(std::min(3,4*i/length))];}
+  }
+  if(4*paper<length)return false;
+  return length<8||std::all_of(part.cbegin(),part.cend(),[&](qint64 p){return 32*p>=length;});
  };
  for(bool grew=true;grew;){
   grew=false;
