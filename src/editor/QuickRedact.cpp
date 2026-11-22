@@ -411,10 +411,11 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     int a=0,b=int(segment.words.size())-1;
     // #1875: the head of a JSON web token split off as a word of its own, a caret read before it
     // and its y or J misread ("ey" "JhbGci…", "ley", "Jew", "jeya"), is the token's, not a
-    // word: kept just before the mark of a segment that holds a JWT.
+    // word: kept in a segment that holds a JWT when the word after it is kept (token-shaped, or
+    // the mark itself: "ley" "JhbGci0i" "…eyIzdW…").
     static const QRegularExpression jwtHead(QStringLiteral("^[lI|1!jJ[{]?[\"'\u201C\u2018]?e[yw][JjIl1)\\]}|a]?$"));
     const bool jwt=std::any_of(found.cbegin(),found.cend(),[](const Found& f){return f.dotted;});
-    while(a<core&&plainWord(a)&&!(jwt&&a==core-1&&jwtHead.match(plain.at(segment.words.at(a))).hasMatch()))++a;
+    while(a<core&&plainWord(a)&&!(jwt&&(a+1==core||!plainWord(a+1))&&jwtHead.match(plain.at(segment.words.at(a))).hasMatch()))++a;
     while(b>coreEnd&&plainWord(b))--b;
     QList<int> words=segment.words.mid(a,b-a+1);
     // A token the line wrapped: the next line's first segment, when it starts

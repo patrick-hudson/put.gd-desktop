@@ -237,6 +237,8 @@ private slots:
    QTest::newRow(qPrintable("a JWT head read as a word of its own: "+head))<<"Seen "+split<<all<<QStringList{"key: "+split};
   }
   const auto jewSplit=QString("Jew hbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  const auto headTwoWords=QString("ley JhbGci0i JSUZI1NiIsInR5cCI6IkpXVCJ9.")+"ey"+"IzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split over two words, the payload's J misread")<<"Seen "+headTwoWords<<all<<QStringList{"key: "+headTwoWords};
   QTest::newRow("a JWT head read with its y and J misread")<<"Seen "+jewSplit<<all<<QStringList{"key: "+jewSplit};
   QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
   QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
