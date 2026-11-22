@@ -3,14 +3,17 @@
 [#1893](https://github.com/patrick-hudson/put.gd-desktop/issues/1893) adds **Capture style**:
 put.gd places a still capture on a styled canvas when it exports it. The canvas has padding
 around the capture, a backdrop in that space, rounded corners on the capture and a soft shadow
-under it. The captured pixels are not changed: the capture is placed on a larger image and its
-corners are cut (see [Rendering](#rendering) for exactly which pixels are copied as they are).
+under it. The capture is placed on a larger image and its corners are cut; its opaque pixels
+inside the rounded outline, away from the antialiased edge, are copied exactly (see
+[Rendering](#rendering)).
 
 It is an option, and it is **off by default**. With `preferences.captureStyle` absent, or with
 `enabled: false`, no capture is styled, and every capture, upload and local copy is byte for byte
-what it was before this feature. An edit is styled only when the user or an agent turns the style
-on in that edit (the Style tool, an `editor.apply` `style` command, or a file opened with
-`captureStyle: true`); an edit with no style exports exactly what it did before.
+what it was before this feature. An edit can still be styled: when the user or an agent turns the
+style on in it (the Style tool or an `editor.apply` `style` command), or when it starts styled,
+which with the option off happens only for a file opened with `captureStyle: true`, as History's
+Edit again does for a style-only original. An edit with no style exports exactly what it did
+before.
 `capture_style_integration` checks captures with the option absent and off, and `editor_contract`
 checks the editor export with no style.
 
@@ -65,8 +68,9 @@ If the picture can't be read when a capture is styled (the copy was deleted, or 
 path that is not an image), Graphite's gradient replaces the backdrop; the padding, corners and
 shadow stay as set. Its History item says "The backdrop picture couldn't be read, so put.gd used
 Graphite.", and the operation's `style` has `pictureMissing: true`. Settings says "The picture
-can't be read, so Graphite is used until you choose another." under the preview, and the editor's
-Style panel says so too.
+can't be read, so Graphite is used until you choose another." under the preview. The editor's Style
+panel, while the style is on and its frame fits, says "The backdrop picture can't be read, so
+Graphite is used."
 
 The sensitive text check reads the capture before the backdrop is added, so text in a backdrop
 picture is never checked. Choose a picture with nothing private in it.
@@ -106,8 +110,10 @@ style.
 
 The editor keeps its styled export within the same image limits and its own 24-megapixel output
 admission, stepping the padding down the same way; when no padding fits, it exports without a
-frame, and the Style panel says so. An edited PNG over the output's byte limit keeps the edit open
-and reports the error, as any edit does; the editor doesn't drop the style by itself.
+frame, and the Style panel says so. An edited PNG over the editor's own output byte limit keeps
+the edit open and reports the error, as any edit does; the editor doesn't drop the style by itself.
+After Upload, the artifact store's limits (a destination's maximum object size, say) apply to the
+edited PNG as to any edit, after the editor has closed, with no unstyled retry.
 
 ## Rendering
 
@@ -118,8 +124,10 @@ geometry:
 1. Fill the canvas with the backdrop (colour, gradient, the covering picture, or transparent).
 2. Draw the shadow. A small blurred rounded square, whose size depends only on the sigma and the
    radius, is drawn as nine slices: its corners as they are, its edges stretched along the
-   capture. The tile costs the same for a tall scrolling capture as for a small one; filling,
-   drawing and encoding the canvas still grow with its size.
+   capture. The tile's size follows the blur and the corner radius, which grow with the
+   capture's shorter edge up to their limits, never with its length: a tall scrolling capture
+   needs no bigger tile than a short one as wide. Filling, drawing and encoding the canvas still
+   grow with its size.
 3. Fill the capture's rounded outline with the capture as a texture at an integer offset, with
    antialiasing. Every fully opaque pixel inside the outline, away from its antialiased edge, is
    copied unchanged; a translucent pixel (a window's transparent corner, an edited image with
@@ -192,7 +200,7 @@ original from before covering. Its frame can't be changed in the editor; a new c
 | Surface | Contract |
 | --- | --- |
 | `settings.patch`, MCP `patch_configuration` | `preferences.captureStyle` |
-| `operation.inspect`, MCP `get_operation` | `style` on a capture the image job styled: `{applied: true}`, `pictureMissing` when Graphite stood in, and `original` (`{status, paths}`) when a style-only original was kept. A covered capture's original is under `sensitive.original`. An edit's export has no `style` member even when it has a frame |
+| `operation.inspect`, MCP `get_operation` | `style` on a capture the image job styled: `{applied: true}`, `pictureMissing` when Graphite stood in, and `original` (`{status, paths}`) when Keep a local copy tried to save a style-only original: `saved` with its path, or `failed` with no paths. A covered capture's original is under `sensitive.original`. An edit's export has no `style` member even when it has a frame |
 | `editor.open`, `action.invoke` with `action: edit`, MCP `open_editor` | `captureStyle` (MCP `capture_style`): `true` starts an edit of a file with the saved style on; only with `source: file` |
 | `editor.apply`, MCP `edit_image` | `{op: style, enabled?, preset?, backdrop?, padding?, corners?, shadow?}` with at least one field. `preset` is `graphite`, `amber`, `paper` or `clear`; it is applied first, sets the whole look and turns the style on, and the other fields then override single parts. A `backdrop` object merges into the current one (a `picture` path already there is kept for kind `picture` and dropped for another kind unless given). `enabled: false` turns the style off. A change is one undo step; a command that leaves the style as it was adds none. A backdrop of kind `picture` needs a `picture` path. Invalid values answer `edit_command_invalid` |
 | `editor.inspect`, MCP `get_editor` | `style`: the resolved fields, `preset` (a preset ID or `custom`) and `pictureMissing` when Graphite stands in; `exportSize`: `[width, height]` of the export |
