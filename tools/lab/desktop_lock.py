@@ -815,10 +815,11 @@ def run_command(args, command, parser, run=subprocess.run, popen=subprocess.Pope
 
     acquire = {'action': 'acquire', 'owner': args.owner, 'purpose': args.purpose, 'minutes': args.minutes}
     add_tray_host(acquire, args, parser)
+    deadline = monotonic() + args.minutes * 60  # from before the ask: no later than the lease's expiry on the host
     reply = explain_tray_host(call(args.host, dict(acquire, resource=args.resource, session=args.session),
                                    args.identity, args.pins, run))
-    deadline = monotonic() + args.minutes * 60  # no later than the lease's expiry on the host
     if not reply['ok'] and (reply.get('lock') or {}).get('session') == args.session:
+        deadline = monotonic() + args.minutes * 60
         reply = lock_call('extend', minutes=args.minutes)  # already ours: confirm it under the mutex and renew it
     else:
         print('\n'.join(describe(reply)), file=sys.stderr)

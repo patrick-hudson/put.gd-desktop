@@ -543,14 +543,17 @@ class HeldAndRun(LockTest):
 
         def call(*args, timeout=90, **kwargs):
             timeouts.append(timeout)
-            return real_call(*args, timeout=timeout, **kwargs)
+            reply = real_call(*args, timeout=timeout, **kwargs)
+            if len(timeouts) == 1:
+                now[0] += 15  # the acquire's reply arrives 15 s after the host granted the lease
+            return reply
 
         process = FakeProcess([timeout, timeout, timeout, 0], during=during)
         with mock.patch.object(lock, 'monotonic', lambda: now[0]), mock.patch.object(lock, 'call', call):
             code, _ = self.run_main('--', 'sleep', '1200', process=process, minutes='1')
         self.assertEqual((code, process.terminated), (1, True))
-        self.assertEqual(process.waits, [20, 20])  # a third of the 1-minute lease; stopped at 40 s, before 60 s
-        self.assertEqual(timeouts[1:], [35, 15])  # each renewal gives up 5 s before the expiry
+        self.assertEqual(process.waits, [20, 20])  # a third of the 1-minute lease; stopped by 56 s, before 60 s
+        self.assertEqual(timeouts[1:], [20, 1])  # each renewal gives up 5 s before the expiry the host set
 
     def test_release_gives_the_lock_back_after_the_command(self):
         code, _ = self.run_main('--release', '--resource', 'quiet', '--', 'true')
