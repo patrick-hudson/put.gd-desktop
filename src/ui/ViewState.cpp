@@ -13,7 +13,7 @@ const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","o
 const QStringList& r2Keys() {static const QStringList value{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
 // Nextcloud and WebDAV (#1872): addresses, the folder, the plain HTTP switch and the account's name.
 const QStringList& davKeys() {static const QStringList value{"server","folder","allowInsecureHttp","accountName","address","linkBase"};return value;}
-const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint"};return value;}
+const QStringList& sftpKeys() {static const QStringList value{"server","user","folder","publicUrlBase","hostKeyFingerprint","keyFile"};return value;}
 const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():provider=="cloudflare-r2"?r2Keys():provider=="nextcloud"||provider=="webdav"?davKeys():provider=="sftp"?sftpKeys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
@@ -172,7 +172,7 @@ bool settingsState(const QJsonObject& s){
   if(!provisional.toObject().isEmpty()&&(!safeProfile(provisional.toObject()["profile"])||!profileEditor(provisional.toObject()["editor"])))return false;
  }
  if(!s["setupJobs"].isArray())return false;
- for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint","sftpClear"},true))return false;auto job=v.toObject();
+ for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint","sftpClear","sftpInspect"},true))return false;auto job=v.toObject();
   // The connection a Test started with (#1692): a SHA-256 in lowercase hex, never settings.
   if(job.contains("fingerprint")&&!QRegularExpression(QRegularExpression::anchoredPattern("[0-9a-f]{64}")).match(job["fingerprint"].toString()).hasMatch())return false;if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(job["kind"].toString()))return false;}
  return true;

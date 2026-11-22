@@ -224,6 +224,39 @@ The custom HTTP uploader (#1361) is tested in four layers:
   XBackBone in containers on a builder and drives a resident against the `.sxcu` file
   each of them generates. This layer is a lab run, not a CTest entry.
 
+
+The SFTP destination (#1871) is tested in three layers:
+
+- `sftp_rules` (unit, no network or files): the Server field's paste forms and refusals
+  (a password in the address, a leading hyphen, a bad port), the saved settings' rules,
+  folders, links and `host:/path`, passwords left out of addresses and user parts out of
+  links, the optional password and passphrase, askpass answering only ssh's exact local
+  password and passphrase prompts as whole strings, literal host tokens, host-key fingerprints as
+  `ssh-keygen -l` prints them, and the bounds of the SFTP reply parser.
+- `fuzz_sftpwire` ([fuzzing](fuzzing.md)): the same parser on arbitrary bytes.
+- `test_sftp_live`, opt-in and not a CTest entry: the production provider, `putgd-sftp-worker`,
+  `putgd-sftp-askpass` and the machine's own `ssh` against the storage lab's real OpenSSH
+  server (`tools/lab/storage_servers/servers.py`, #1877). Build it with
+  `cmake --build build/dev --target test_sftp_live`, source the lab's
+  `storage-servers.env` on the machine that runs it (with its client key, password and
+  passphrase files and the lab CA readable there), and run it; it skips without that
+  file's variables. Two `~/.ssh/config` Host aliases for the key user, one with the plain key
+  and one with the passphrase key (`IdentityFile`, `IdentitiesOnly yes`), named in
+  `PUTGD_SFTP_LAB_ALIAS` and `PUTGD_SFTP_LAB_PP_ALIAS`, cover key files and `ssh -G`. It
+  covers an unknown host key shown and trusted only by its exact fingerprint (put.gd's
+  `ssh/known_hosts` private, its folder closed to others), then a full
+  Test with the link fetched over the lab's HTTPS location and compared; the password user
+  with no, a wrong and a misplaced secret; an agent of its own; a cancelled 256 MB upload
+  whose partial file is removed (and says so); upload, collision, the recorded `known_hosts`
+  line in the receipt, an unknown upload not reconciled without its own evidence, a deletion
+  from a new session proved against the recorded line alone, a record whose recorded key isn't
+  the server's refused as `sftp_server_changed` with the file left in place, deletion and a
+  changed file's refusal;
+  the passphrase key with and without its passphrase (and a password refused at that
+  prompt); the read-only and full folders, a missing folder and Create folder, and the server
+  without the SFTP subsystem. The host-key rotation (`servers.py rotate-hostkey`, then
+  `known-hosts` to pin the new key again) is a manual step of the same run: the changed key
+  in put.gd's file and in the user's own `known_hosts`.
 Whether a reply is whole is tested without relying on timing (#1393). The rows of
 `aReplyCutOffAfterItsStatusLineIsUnknown` cut a reply by an unfulfilled
 `Content-Length`, a reset in the body, a chunked reply without its last chunk and a

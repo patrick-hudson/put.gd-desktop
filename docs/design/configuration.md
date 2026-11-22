@@ -419,6 +419,30 @@ loopback host, or any HTTP with `allowInsecureHttp`. Validation performs no netw
 secret-store IO. Credentials are a keychain or session reference to the named values.
 See [Custom uploader](../user/custom-uploader.md#settings).
 
+`sftp` profiles (#1871) hold exactly `server`, `user`, `folder`, `publicUrlBase` and
+`hostKeyFingerprint` (schema `$defs/sftpSettings`). `server` is `host`, `host:port`,
+`[v6]:port`, a bare IPv6 literal or a `~/.ssh/config` Host alias: letters, digits, dots,
+hyphens and underscores, not starting with a hyphen or a dot, port 1–65535 (digits after a
+colon are always a port, never a path). It holds no user or path; Settings splits a pasted
+`sftp://user@host:port/path` or `user@host:/path` into the three fields (`sftp://host/` gives
+folder `/`), and leaves a password in the address out at once, so it never reaches the field,
+the draft or an agent's inspection. Settings saves no SFTP field that fails these rules; a
+refusal from the resident lands beside its field. An empty `server` saves (a destination still
+being set up) but is refused for any request. `user` is empty (ssh's own choice) or a user
+name without `:` or `@`. `folder` is any path without control characters, at most 4096 bytes;
+`~` and `~/…` mean the login folder, and `~name` is refused. `publicUrlBase` is null or an
+HTTPS address without user information, query or fragment; Settings leaves a pasted user part
+out. `hostKeyFingerprint` is null or
+`TYPE SHA256:<43 base64 characters>`, the key trusted for this destination in put.gd's own
+`known_hosts` (`<config root>/ssh/known_hosts`, used only when the user's own files have no key
+for the server). The resident writes it itself when a trust succeeds, conditional on the
+configuration revision the trust began with; Settings clears it when `server` changes. The check fingerprint below covers all five fields,
+so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
+has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings fills an empty Reference field with
+`putgd/<profile id>`, and if Reference is still empty when it is saved in keychain mode, Settings
+uses `putgd/sftp/<profile id>`. A keychain-mode destination without a reference is refused (`config_invalid`). Validation performs no network, process or secret-store IO. See
+[SFTP](../user/sftp.md).
+
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`) for every request except a PUT with a
 body of positive `Content-Length` (PutObject, UploadPart). That one has no

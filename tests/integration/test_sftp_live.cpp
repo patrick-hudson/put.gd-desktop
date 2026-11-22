@@ -15,6 +15,7 @@
 #include <QProcess>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUuid>
@@ -296,6 +297,65 @@ private slots:
         secrets("pp", {}, secretFile("PUTGD_LAB_SFTP_PASSPHRASE_FILE"));
         auto [r4, e4] = test(pp);
         QVERIFY2(e4.code.isEmpty(), qPrintable(e4.code + ": " + e4.message));
+    }
+    // #1892: the key file chosen in Settings, outside ~/.ssh, with no agent at all: ssh gets it with
+    // -i and IdentitiesOnly=yes. Plain, then the passphrase key with and without its passphrase.
+    void keyFileChosenInSettingsWithoutAnAgent() {
+        qunsetenv("SSH_AUTH_SOCK");
+        // No desktop agent socket either: the agent lookup finds nothing in an empty runtime folder.
+        const auto runtime = qgetenv("XDG_RUNTIME_DIR");
+        QTemporaryDir noAgent;
+        qputenv("XDG_RUNTIME_DIR", noAgent.path().toUtf8());
+        const auto restore = qScopeGuard([&] { qputenv("XDG_RUNTIME_DIR", runtime); });
+        QTemporaryDir keys;
+        const auto copy = [&](const QString& from, const QString& name) {
+            const auto to = keys.filePath(name);
+            QVERIFY(QFile::copy(from, to));
+            QVERIFY(QFile::setPermissions(to, QFileDevice::ReadOwner | QFileDevice::WriteOwner));
+        };
+        copy(env("PUTGD_LAB_SFTP_KEY_FILE"), "deploy");
+        copy(env("PUTGD_LAB_SFTP_KEY_FILE") + ".pub", "deploy.pub");
+        copy(env("PUTGD_LAB_SFTP_PASSPHRASE_KEY_FILE"), "locked");
+        auto s = settings(hostPort(), env("PUTGD_LAB_SFTP_KEY_USER"), env("PUTGD_LAB_SFTP_UPLOAD_DIR"));
+        s["keyFile"] = keys.filePath("deploy");
+        const auto plain = destination(s, "chosen");
+        secrets("chosen", {}, {});
+        trustServer(plain);
+        Error error;
+        const auto resolved = provider_->setup("inspectAccount", plain, {}, error);
+        QVERIFY(error.code.isEmpty());
+        QVERIFY2(resolved["line"].toString().endsWith(" with key deploy"), qPrintable(resolved["line"].toString()));
+        auto [r1, e1] = test(plain);
+        QVERIFY2(e1.code.isEmpty(), qPrintable(e1.code + ": " + e1.message));
+        const auto a = artifact("chosen key", name(".txt"));
+        const auto uploaded = upload(plain, a);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QCOMPARE(removeReceipt(uploaded.receipt), QString("removed"));
+        // The public half, picked by mistake, and a key others can read: put.gd says why before ssh runs.
+        s["keyFile"] = keys.filePath("deploy.pub");
+        auto [r2, e2] = test(destination(s, "chosen"));
+        QCOMPARE(e2.code, QString("ssh_key_public"));
+        QCOMPARE(r2["steps"].toArray().size(), 1);
+        QVERIFY(QFile::setPermissions(keys.filePath("deploy"), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup | QFileDevice::ReadOther));
+        s["keyFile"] = keys.filePath("deploy");
+        // Another destination: "chosen" still holds its signed-in connection, which needs no key file.
+        secrets("open", {}, {});
+        auto [r3, e3] = test(destination(s, "open"));
+        QCOMPARE(e3.code, QString("ssh_key_permissions"));
+        // The passphrase key: asked for by name, then answered from this session's Key passphrase.
+        s["keyFile"] = keys.filePath("locked");
+        const auto locked = destination(s, "locked");
+        secrets("locked", {}, {});
+        auto [r4, e4] = test(locked);
+        QCOMPARE(e4.code, QString("ssh_auth_failed"));
+        QVERIFY2(e4.message.contains("locked needs its passphrase"), qPrintable(e4.message));
+        secrets("locked", {}, "not-the-passphrase");
+        auto [r5, e5] = test(locked);
+        QCOMPARE(e5.code, QString("ssh_auth_failed"));
+        QVERIFY2(e5.message.contains("Key passphrase"), qPrintable(e5.message));
+        secrets("locked", {}, secretFile("PUTGD_LAB_SFTP_PASSPHRASE_FILE"));
+        auto [r6, e6] = test(locked);
+        QVERIFY2(e6.code.isEmpty(), qPrintable(e6.code + ": " + e6.message));
     }
     void serverRefusalsSayWhatHappened() {
         QVERIFY(!agent_.isEmpty());

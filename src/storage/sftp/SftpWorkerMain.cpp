@@ -240,6 +240,9 @@ private:
         auto env = sshEnvironment();
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return false; }
+        // A chosen key file ssh would skip or refuse says why now, in put.gd's words (#1892).
+        if (const auto key = keyFile(settings_); !key.isEmpty())
+            if (auto e = keyFileProblem(key)) { error = e; return false; }
         auto resolved = resolve(program, env, settings_, error);
         if (error) return false;
         if (!env.contains("SSH_AUTH_SOCK") || env.value("SSH_AUTH_SOCK").isEmpty())
@@ -270,7 +273,11 @@ private:
         }
         QStringList hosts{resolved.host};
         if (!resolved.hostKeyAlias.isEmpty()) hosts.prepend(resolved.hostKeyAlias);
-        Askpass askpass(password_, passphrase_, resolved.user, hosts, resolved.identityFiles);
+        // The chosen key's prompt names it exactly as given, which ssh -G's output may not keep (a
+        // trailing space).
+        auto keyFiles = resolved.identityFiles;
+        if (!resolved.chosenKey.isEmpty() && !keyFiles.contains(resolved.chosenKey)) keyFiles.prepend(resolved.chosenKey);
+        Askpass askpass(password_, passphrase_, resolved.user, hosts, keyFiles);
         // A FIDO key waits for a touch while ssh signs in; the resident shows this while it waits.
         askpass.onTouch = [id = id_] { io.emitLine({{"id", double(id)}, {"event", "notice"}, {"notice", "touch"}, {"message", "Touch your security key"}}); };
         QString why;
@@ -402,6 +409,10 @@ private:
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return {{"sshInstalled", false}}; }
         if (auto e = validate(settings_, true)) { error = e; return {{"sshInstalled", true}}; }
+        // A chosen key file ssh can't use is the answer, before ssh -G runs with it (#1892);
+        // Settings shows it beside SSH key (details.field keyFile).
+        if (const auto key = keyFile(settings_); !key.isEmpty())
+            if (auto e = keyFileProblem(key)) { error = e; return {{"sshInstalled", true}}; }
         const auto resolved = resolve(program, env, settings_, error);
         if (error) return {{"sshInstalled", true}};
         // Inspect learns only whether a password is set, never the password.
@@ -837,8 +848,11 @@ private:
         QJsonObject out;
         const auto step = [&](const QString& name, const QString& status, const QString& detail) { steps.append(QJsonObject{{"step", name}, {"status", status}, {"detail", detail}}); out["steps"] = steps; };
         if (!connect(error, true)) {
+            // The chosen key file (#1892) ssh can't use: found before anything connects.
+            if (error.details.value("field").toString() == QLatin1String("keyFile")) { step("signIn", "failed", error.message); return out; }
             const bool key = error.code.startsWith(QLatin1String("ssh_host")) || error.code == QLatin1String("ssh_trusted_key_changed");
-            const bool reached = key || error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_needs_one_time_code") || error.code == QLatin1String("ssh_no_sftp");
+            const bool reached = key || error.code == QLatin1String("ssh_auth_failed") || error.code == QLatin1String("ssh_key_permissions") ||
+                                 error.code == QLatin1String("ssh_needs_one_time_code") || error.code == QLatin1String("ssh_no_sftp");
             step("connect", reached ? "passed" : "failed", reached ? QStringLiteral("Reached the server") : error.message);
             if (reached) step("hostKey", key ? "failed" : "passed", key ? error.message : QStringLiteral("The host key matches"));
             if (reached && !key) step("signIn", error.code == QLatin1String("ssh_no_sftp") ? "passed" : "failed", error.code == QLatin1String("ssh_no_sftp") ? QStringLiteral("Signed in") : error.message);

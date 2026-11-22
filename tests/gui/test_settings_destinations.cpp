@@ -2,7 +2,11 @@
 #include "storage/s3/R2Provider.h"
 #include "storage/s3/R2Settings.h"
 #include "storage/sftp/SftpProvider.h"
+#include "ui/SftpPanel.h"
+#include <QFormLayout>
 #include <QClipboard>
+#include <QDir>
+#include <QFile>
 #include <QThread>
 #include <QRandomGenerator>
 #include <QContextMenuEvent>
@@ -94,6 +98,40 @@ private slots:
   QCOMPARE(stored()->values.value("password"),QString("synthetic-catalog-password"));
   QVERIFY(stored()->values.contains("passphrase")&&stored()->values.value("passphrase").isEmpty());
   PUTGD_TRY_VERIFY(password->text().isEmpty());
+ }
+ // #1892: SSH key sits with Password and Key passphrase in the one Sign-in card; a .pub picked by
+ // mistake saves as the private key next to it, a key others can read says how to fix it, and an
+ // empty field leaves the setting out, as a destination saved before #1892 has it.
+ void sftpKeyFileSitsInSignInAndSavesThePrivateKey(){
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("sftp",std::make_shared<SftpProvider>(secrets,dir.filePath("known_hosts")));
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.setup.setNamedCredentials(sftp::namedCredentials);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject()["settings"].toObject();};
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("sftp"));
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["provider"].toString(),QString("sftp"));
+  auto* key=window.findChild<QLineEdit*>("sftpKeyFile");auto* card=window.findChild<QWidget*>("credentialsEditor");QVERIFY(key&&card);
+  PUTGD_TRY_VERIFY(key->isVisible());
+  for(const auto* name:{"sftpKeyFile","sftpPassword","sftpPassphrase","credentialMode","storeCredentials"})QVERIFY2(card->isAncestorOf(window.findChild<QWidget*>(name)),name);
+  QVERIFY(!window.findChild<QWidget*>("sftpSignInSection"));
+  QVERIFY(!saved().contains("keyFile"));
+  QDir keys(dir.filePath("keys"));QVERIFY(QDir().mkpath(keys.path()));
+  for(const auto* name:{"id_deploy","id_deploy.pub"}){QFile file(keys.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QByteArray(name).endsWith(".pub")?"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA a@b\n":QByteArray("-----BEGIN OPENSSH ")+"PRIVATE "+"KEY-----\n");file.close();QVERIFY(file.setPermissions(QFile::ReadOwner|QFile::WriteOwner));}
+  key->setFocus();key->setText(keys.filePath("id_deploy.pub"));emit key->editingFinished();
+  PUTGD_TRY_COMPARE(saved()["keyFile"].toString(),keys.filePath("id_deploy"));
+  QCOMPARE(key->text(),keys.filePath("id_deploy"));
+  auto* problem=window.findChild<QLabel*>("sftpKeyFileBoxError");QVERIFY(problem);QVERIFY(!problem->isVisible());
+  QVERIFY(QFile::setPermissions(keys.filePath("id_deploy"),QFile::ReadOwner|QFile::WriteOwner|QFile::ReadOther));
+  key->setText(keys.filePath("id_deploy"));emit key->editingFinished();
+  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("chmod 600"));
+  key->clear();emit key->editingFinished();
+  PUTGD_TRY_VERIFY(!saved().contains("keyFile"));
+  QVERIFY(!problem->isVisible());
+  provider->setCurrentIndex(provider->findData("s3"));
+  PUTGD_TRY_VERIFY(!key->isVisible());
+  // A destination saved with "keyFile": null reads back exactly, so it never shows as unsaved.
+  SftpPanel panel;const auto rows=[&](QFormLayout*,const QString&,QWidget* control,const QString&){auto* row=new QWidget(&panel);control->setParent(row);return row;};
+  panel.build(rows,rows);auto withNull=sftp::defaults();withNull["server"]="files.example.com";withNull["keyFile"]=QJsonValue::Null;
+  panel.setSettings(withNull);QCOMPARE(panel.settings(),withNull);
  }
  // #1676: a Region edit right after a provider change saves with the whole changed destination.
  void providerChangeThenRegionSavesBoth(){

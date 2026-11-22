@@ -117,6 +117,8 @@ QJsonObject SftpProvider::diagnosticSettings(const QJsonObject& settings) const 
     for (const auto& key : {"server", "user", "folder"}) out[key] = settings[key].toString().isEmpty() ? QString() : QStringLiteral("(set)");
     out["publicUrlBase"] = settings["publicUrlBase"].isString() ? QJsonValue(QStringLiteral("(set)")) : QJsonValue(QJsonValue::Null);
     out["hostKeyFingerprint"] = settings["hostKeyFingerprint"];
+    // A key file's path names its owner's home: only whether one is chosen (#1892).
+    out["keyFile"] = sftp::keyFile(settings).isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QStringLiteral("(set)"));
     return out;
 }
 QString SftpProvider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
