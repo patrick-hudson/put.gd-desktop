@@ -114,10 +114,8 @@ QList<bool> localJoins(const QList<QString>& words,const QList<RecognizedWord>& 
   const auto& before=candidates.at(i-1);const auto& after=candidates.at(i);
   if(after.line!=before.line||after.rect.left()>before.rect.right()||!part.match(words.at(i-1)).hasMatch())continue;
   // The last label of a domain whose dot was restored ("alice@example." "com") starts no address.
-  if(i>1&&candidates.at(i-2).line==before.line&&words.at(i-2).contains('@')&&words.at(i-2).endsWith('.')){
-   QString domain=words.at(i-2).mid(words.at(i-2).indexOf('@')+1);domain.chop(1);
-   if(!domain.contains('.'))continue;
-  }
+  static const QRegularExpression restored(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+\\.$"));
+  if(i>1&&candidates.at(i-2).line==before.line&&restored.match(words.at(i-2)).hasMatch())continue;
   local[i]=address.match(words.at(i)).hasMatch()||(part.match(words.at(i)).hasMatch()&&local.at(i+1));
  }
  for(int i=1;i<words.size();++i)if(local.at(i)&&!local.at(i-1)&&!words.at(i-1).front().isLetterOrNumber())local[i]=false;
