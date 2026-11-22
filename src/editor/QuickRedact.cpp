@@ -1091,9 +1091,9 @@ bool joined(const QImage& image,const QRect& box,const QRect& other,int dir,doub
   const auto solid=[&](int y,int x){return ink.at(y*width+x-lo)*share>=contrast;};
   for(int y=0;y<rows;++y)for(int x=1;x<at;++x){
    if(!solid(y,x)||seen.at(y*width+x-lo))continue;
-   int left=x,right=x,top=y,bottom=y;QList<QPair<int,int>> todo{{x,y}};seen[y*width+x-lo]=true;
+   int left=x,right=x,top=y,bottom=y,pixels=0;QList<QPair<int,int>> todo{{x,y}};seen[y*width+x-lo]=true;
    while(!todo.isEmpty()){
-    const auto [px,py]=todo.takeLast();
+    const auto [px,py]=todo.takeLast();++pixels;
     left=qMin(left,px);right=qMax(right,px);top=qMin(top,py);bottom=qMax(bottom,py);
     for(const auto& [dx,dy]:{QPair<int,int>{1,0},{-1,0},{0,1},{0,-1}}){
      const int nx=px+dx,ny=py+dy;
@@ -1101,7 +1101,9 @@ bool joined(const QImage& image,const QRect& box,const QRect& other,int dir,doub
      seen[ny*width+nx-lo]=true;todo.append({nx,ny});
     }
    }
-   if(left>=1&&right<at&&(bottom-top+1)*2<=box.height())return true;
+   // At half the contrast a lone pixel can be the core of a letter's edge (the foot of a "j"),
+   // so a blob there needs two.
+   if(left>=1&&right<at&&(bottom-top+1)*2<=box.height()&&(share==4||pixels>=2))return true;
   }
  }
  return false;

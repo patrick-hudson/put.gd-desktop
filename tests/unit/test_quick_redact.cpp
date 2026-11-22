@@ -583,6 +583,16 @@ private slots:
   for(int y=58;y<=59;++y)for(int x=125;x<=126;++x)light.setPixel(x,y,qRgb(0,0,0));
   light.setPixel(125,57,qRgb(170,170,170));
   QVERIFY2(leftOf(light)<=106,qPrintable(QString::number(leftOf(light))));
+  // Sol round 3 on #1864: an ordinary 1 px word space after "More", with a lone dark pixel of its
+  // "e" (105) that a fainter one (104) ties back to the letter. That pixel is no dropped dot, so
+  // "More" is not joined; the margin may still take its last letter, as reach() does on nightly.
+  QImage more(260,80,QImage::Format_RGB32);more.fill(Qt::white);
+  for(int x=80;x<=103;++x)for(int y=50;y<=59;++y)if(x%5!=4)more.setPixel(x,y,qRgb(0,0,0));
+  more.setPixel(104,55,qRgb(180,180,180));more.setPixel(105,55,qRgb(100,100,100));
+  for(int x=107;x<200;x+=6)for(int i=0;i<5;++i)for(int y=50;y<=59;++y)more.setPixel(x+i,y,qRgb(0,0,0));
+  const QList<RecognizedWord> plain{{"More",QRect(80,50,24,10),90,0},{"jane@example.com",QRect(107,50,96,10),90,0}};
+  const auto kept=quickRedact::markBoxes(plain,{"email",{1}},more.rect(),more).first().mark.left();
+  QVERIFY2(kept>90,qPrintable(QString::number(kept)));
   // Without the picture nothing is joined.
   QVERIFY(quickRedact::markBoxes(row,{"email",{2}},light.rect()).first().mark.left()>124);
  }
