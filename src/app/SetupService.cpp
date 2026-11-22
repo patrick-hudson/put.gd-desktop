@@ -67,10 +67,16 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
  if(kind=="createFolder"&&profile["provider"]!="sftp"&&input["name"].toString().size()>255){reply(invalid(),{});return;}
  const auto key=activeKey(profileId,kind);
- if(active_.contains(key)||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
+ // Destinations can share one keychain entry: a store (or Clear) reads, merges and writes it
+ // whole, so only one at a time per entry, from the read through the write (#1890).
+ const auto entry=kind=="storeCredentials"&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
+ if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
+ // Whether credentials were stored for this destination before, read before this store counts.
+ const bool storedBefore=kind=="storeCredentials"&&status_&&status_->credentialRevision(profileId)>0;
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  jobs_.insert(id,{{"setupId",id},{"kind",kind},{"profileId",profileId},{"state","running"},{"error",Error{}.toJson()}});
  active_.insert(key);
+ if(!entry.isEmpty()){active_.insert(entry);entrySlots_.insert(id,entry);}
  if(kind=="testDestination"&&status_)testStarts_.insert(id,{destinationcheck::fingerprint(profile),status_->credentialRevision(profileId)});
  cancellations_.insert(id,std::make_shared<std::atomic_bool>(false));
  // The keys change from here on, so an earlier check never vouches for the new ones, even
@@ -125,11 +131,13 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    // Both SFTP secrets live in one keychain entry (#1890): one stored alone keeps the other, so a
    // saved entry that isn't loaded is read first, and one that can't be read is never overwritten.
    if(sftp&&reference["mode"]=="keychain"&&!cached&&!untyped.isEmpty()) {
-    credentials_.unlock(profileId,reference,[guarded,profileId,reference,merge,untyped,complete](Error error){
+    credentials_.unlock(profileId,reference,[guarded,profileId,reference,merge,untyped,complete,storedBefore](Error error){
      if(!guarded)return;
-     // No saved entry yet: nothing to keep.
-     if(error&&!error.details["missing"].toBool()) {
-      complete({"credential_incomplete","Unlock this destination's saved credentials first: storing one secret alone would erase the other. Nothing was changed.",{{"missing",QJsonArray::fromStringList(untyped)}}});
+     // No saved entry yet: nothing to keep. A keychain that still holds the entry locked (after a
+     // dismissed prompt) can also answer "not found", so that counts only while put.gd never
+     // stored credentials for this destination.
+     if(error&&(!error.details["missing"].toBool()||storedBefore)) {
+      complete({"credential_incomplete","Unlock this destination's saved credentials first, or enter both the password and the key passphrase: storing one secret alone would erase the other. Nothing was changed.",{{"missing",QJsonArray::fromStringList(untyped)}}});
       return;
      }
      Credentials merged;merge(error?std::nullopt:guarded->credentials_.cached(profileId,reference),merged);
@@ -221,6 +229,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  cancellations_.remove(id);
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
+ if(const auto entry=entrySlots_.take(id);!entry.isEmpty())active_.remove(entry);
  startupUnlocks_.remove(id);
  if(record["kind"]=="storeCredentials"||record["kind"]=="unlockCredentials")++credentialGeneration_;
  // The record of the destination's last check changes before anyone hears the job ended.

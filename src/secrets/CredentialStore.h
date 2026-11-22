@@ -32,6 +32,9 @@ public:
     // Removes what save stored: the cached values at once, and the secret-store entry
     // of a keychain reference. An entry that is not there is not an error.
     virtual void erase(const QString& profileId, const QJsonObject& reference, std::function<void(Error)>);
+protected:
+    // What an unlock read, kept as unlock() keeps it: for a stand-in keychain in tests.
+    void rememberRead(const QString& profileId, const QJsonObject& reference, Credentials value) { remember(cacheKey(profileId, reference), std::move(value)); }
 private:
     static QString cacheKey(const QString&, const QJsonObject&);
     void remember(const QString&, Credentials);
