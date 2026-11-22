@@ -103,8 +103,12 @@ in the error's details is set only if that removal itself failed. Three edges:
 
 An SFTP destination (#1871) stores two named values, `password` and `passphrase`, in one
 entry, and either may be empty. `setup.storeCredentials` takes
-`{"values":{…}}` with one or both names; a name left out keeps its loaded value, or is stored
-empty when none is loaded, and an empty value clears that one (Settings' **Clear**, which keeps
+`{"values":{…}}` with one or both names; a name left out keeps its saved value (#1890). A keychain entry
+that isn't loaded is read first. If that read fails, the store is refused (`credential_incomplete`)
+and nothing changes, unless the keychain answers that there is no entry and put.gd never stored
+credentials for this destination: a locked entry can answer "not found" too. Only then, or for a
+session-mode destination with nothing loaded, is a left-out name stored empty. Stores to one
+keychain entry run one at a time. An empty value clears that one (Settings' **Clear**, which keeps
 whatever is typed into the other field). Settings sends only what was typed, so storing a
 passphrase keeps a stored password. A value holds no
 line break, since ssh reads its askpass answer up to one, and is at most 4096 characters.
