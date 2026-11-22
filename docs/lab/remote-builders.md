@@ -43,6 +43,34 @@ These host-desktop checks do not require a VM or `/dev/kvm`. Select direct host
 testing when its actual desktop/version matches the claim being tested; use a
 VM for other required guest profiles. Preserve the release matrix's exact versions.
 
+### GNOME rows run with a tray host
+
+Most GNOME users have a tray: Ubuntu enables its AppIndicator extension by default, and
+a Fedora user who wants put.gd's tray turns it on ([GNOME](../desktops/gnome.md)). So GNOME
+acceptance on f44 runs with a tray host by default. f44 has Fedora's
+`gnome-shell-extension-appindicator` installed, and `appindicatorsupport@rgcjonas.gmail.com`
+is in the desktop user's `org.gnome.shell enabled-extensions`, next to `putgd@put.gd`. A
+fresh login therefore loads it. Check it with
+`gnome-extensions info appindicatorsupport@rgcjonas.gmail.com` (`Enabled: Yes`,
+`State: ACTIVE`).
+
+You don't have to remember to check. `desktop_lock.py acquire f44` runs the same check
+the nightly's Fedora GNOME guest runs: the extension must be enabled and active, and an
+`org.kde.StatusNotifierWatcher` on the desktop session bus must have a registered host.
+If either is missing, the lock is refused with one line that says what's wrong and how to
+fix it. Usually the fix is `gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com`
+in the desktop session, plus a re-login (`sudo -n systemctl restart gdm`) if the extension
+stays `INACTIVE`. A locked screen also shows it `INACTIVE`.
+
+**Testing the no-tray path on purpose.** A case that covers GNOME without a tray, such
+as quitting from the main window's menu or the prompt fallback when no tray can show it,
+takes the lock with `--no-tray-host "<reason>"`. The reason is added to the lock's
+purpose, so `status` shows that the desktop is in a no-tray state on purpose. Disable the
+extension for the test with `gnome-extensions disable appindicatorsupport@rgcjonas.gmail.com`.
+Then turn it back on with `gnome-extensions enable` before you release, and confirm
+`IsStatusNotifierHostRegistered` is true again so the next session gets a tray. A row
+that ran without a tray says so in its record.
+
 ## Pinned SSH access
 
 Connect from the main workstation on the LAN. All five hosts accept
@@ -692,7 +720,7 @@ pinned SSH options above (`ssh ... python3 -`), using the `known_hosts` pins in
 
 ```sh
 python3 tools/lab/desktop_lock.py status [HOST ...] [--check]
-python3 tools/lab/desktop_lock.py acquire f44 --owner NAME --session ID --purpose TEXT --minutes 30
+python3 tools/lab/desktop_lock.py acquire f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--no-tray-host REASON]
 python3 tools/lab/desktop_lock.py heartbeat f44 --session ID [--blocked REASON]
 python3 tools/lab/desktop_lock.py extend f44 --session ID --minutes 30
 python3 tools/lab/desktop_lock.py release f44 --session ID [--verified-clean] [--not-mine ID ...]
@@ -714,6 +742,8 @@ python3 tools/lab/desktop_lock.py break f44 --session ID --reason TEXT
 - If the desktop is locked, don't poll the holder and don't wait idle. Tell your
   coordinator, do other work and try again later. Between session families, the
   lock goes to whoever takes it first.
+- On a GNOME host (f44), `acquire` also checks the tray host and refuses without it
+  ([GNOME rows run with a tray host](#gnome-rows-run-with-a-tray-host)).
 - `acquire` lists what's already on the host, such as an earlier holder's
   processes. Those aren't yours: leave them and tell your coordinator. `status`
   shows who released or broke the lock last.
