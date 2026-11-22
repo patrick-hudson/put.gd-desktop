@@ -34,9 +34,12 @@ user) and the secret key the app password (WebDAV: the password). A Nextcloud si
 (`setup.connectAccount`, Login Flow v2) saves the app password Nextcloud hands over to the
 profile's reference, keychain or session, and the job's result never holds it. The DAV user
 in request paths is the account ID the server reports (`/ocs/v2.php/cloud/user`), which can
-differ from the login name. `setup.signOut` revokes the app password on the server
-(`DELETE /ocs/v2.php/core/apppassword`) and then erases the entry; a password that is not an
-app password, or already revoked, is only erased; a keychain entry not read yet is read first so
+differ from the login name. `setup.signOut` tries to revoke the app password on the server
+(`DELETE /ocs/v2.php/core/apppassword`) and then erases the entry. A refusal (401, 403 or 404:
+not an app password, or already revoked) gives `revoked` false with no error, so it reads as
+signed out; after the Server's origin changed, the binding check stops the old app password
+from being sent to revoke it, so users sign out first and remove leftovers under Devices &
+sessions; a keychain entry not read yet is read first so
 it can be revoked. Removing a Nextcloud destination in Settings waits for that sign-out and says
 when the server didn't confirm the revocation, then removes it. Sign-in and sign-out run one at a
 time per destination. A sign-in that finishes after it was cancelled, after the destination was
@@ -58,8 +61,10 @@ check a diagnostics package upload runs) run one at a time per destination. Sign
 that isn't there is no earlier grant). Binding is by origin, as browsers scope Basic authentication: another folder on the
 same server keeps the same credentials. Before any request that
 carries the credentials (upload, Test, History stat, delete and links, sign-out) the provider
-checks the binding against the destination and answers `credential_setup_required` ("Sign in
-again") without sending anything when it differs. An app password made by hand is entered in
+checks the bound origin against the destination and answers `credential_setup_required`
+(`details.reason` `binding`) without sending anything when it differs. The account ID can only
+be checked after the authenticated `/ocs/v2.php/cloud/user` request: a mismatch there answers
+`credential_setup_required` and stops that operation before its next request. An app password made by hand is entered in
 Settings (Use an app password instead) or through the session socket; `putgd-cli` and the MCP
 helper never carry it, as for every service.
 

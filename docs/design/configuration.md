@@ -395,10 +395,11 @@ trailing `/`, default `put.gd`; empty means the files root), `allowInsecureHttp`
 `accountName` (the account's display name, shown as Signed in as; set by sign-in, empty when
 signed out, never used for requests). `webdav` profiles hold exactly `address` (the folder's
 WebDAV URL, ending with `/`), `linkBase` (null, or the public address that serves the same
-folder, ending with `/`) and `allowInsecureHttp`. An `http://` address to another computer
+folder; Settings stores it ending with `/`, but validation doesn't require one) and `allowInsecureHttp`. An `http://` address to another computer
 needs `allowInsecureHttp` true, as for a custom uploader. Credentials are a keychain or session
 reference to the login name (WebDAV: user) and the app password (WebDAV: password). Receipts
-record the file's name, size, SHA-256, its PROPFIND ETag (the concurrency token) and, for
+record the file's name, size, SHA-256, its strong ETag (the concurrency token: the one the
+write returned, or when it returned none, one verified by reading the file back) and, for
 Nextcloud, its path and file ID; a Nextcloud link is the share page `…/s/TOKEN`, made in the
 sharing step. See [Nextcloud and WebDAV](../user/nextcloud.md).
 

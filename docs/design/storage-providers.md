@@ -12,7 +12,7 @@ plain WebDAV's under `src/storage/dav/` ([nextcloud.md](../user/nextcloud.md)).
 Nextcloud and WebDAV (#1872) are two provider IDs over one `DavProvider` class and one helper,
 `putgd-webdav-worker`, which reuses the custom uploader's plain-HTTP rule
 (`http::transportAllowed`). Uploads are a `PUT` with `If-None-Match: *` (a 412 is a collision);
-Nextcloud files above 50 MB use chunked upload v2 (`MKCOL` an upload folder, `PUT` 16 MB chunks,
+Nextcloud files above 50 MiB use chunked upload v2 (`MKCOL` an upload folder, `PUT` 16 MiB chunks,
 then `MOVE …/.file` with `Overwrite: F`); a `MOVE` with no answer is reconciled by the target's
 size and content read back at the target's strong ETag (a failed probe leaves it unknown; a 412
 stays a collision), and an abandoned upload folder is deleted through its journal, which keeps it
@@ -22,7 +22,7 @@ the `PUT` or `MOVE` reply's strong ETag and Nextcloud's `OC-FileId` (its number,
 padding). A server whose write returns no strong ETag (Apache returns none, and reports a weak
 ETag for a file written within the last second) is asked for the file's strong ETag, and the bytes
 at that ETag are read back (`GET` with `If-Match`) and compared; only then is the ETag recorded,
-for files up to 256 MB. A validator is exactly one quoted strong ETag (`"…"`, no `W/`, no `*`, no
+for files up to 256 MiB. A validator is exactly one quoted strong ETag (`"…"`, no `W/`, no `*`, no
 list); anything else is neither recorded nor sent. Otherwise the receipt has no concurrency token and records
 `identity: unconfirmed`: History can't delete it and Nextcloud makes no link for it. Receipts also
 record the canonical DAV target (scheme, host, port, path) and, for Nextcloud, the account ID;
@@ -35,10 +35,12 @@ page URL is the `directUrl`. Every form value is percent-encoded, `+` included. 
 carries the label `put.gd <publication ID>`. Inspection, Finish share link and revoke find that
 share by the share ID a step journaled (it stays the sharing record's progress whatever the
 outcome, and History's link actions and retries pass it on), else by the recorded link's token (a
-revoke from History passes a SHA-256 of the token, never the link; the share ID and digest go only
+revoke from History passes a SHA-256 of the token, never the link, and the helper compares it
+with each listed link's token locally; the share ID and digest go only
 to Nextcloud and never appear in History detail or share replies), else by the label, which must match exactly one share; a
 lookup by ID must name exactly that share, and an ID it confirms gone is forgotten before the next
-step; none or several is unknown, never a guess, and revoke deletes
+step. A confirmed absence means no share; several matches, an unreadable entry, or a link
+listed without its token when put.gd's isn't found is unknown, never a guess, and revoke deletes
 only a share found this way. A share that comes back as anything but a public read-only link of
 the uploaded file (its `item_source`) is deleted again, and the file counts as without a link only
 once that deletion is confirmed; otherwise the outcome is unknown and the journaled ID stays. A
