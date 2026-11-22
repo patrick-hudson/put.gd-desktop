@@ -1911,7 +1911,8 @@ void testBorderedHeaderEdgeRow() {
         if (firstBad < 0) firstBad = int(y);
       }
     }
-  report("a bordered header loses at most one header-width row (known limit)", r.wrong == 0 && bad <= W + 20,
+  report("a bordered header loses at most one header-width row (known limit)",
+         r.wrong == 0 && r.totals.top == 0 && r.totals.bottom == pos.back() + V && bad <= W + 20,
          counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
 }
 
