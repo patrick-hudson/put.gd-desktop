@@ -31,11 +31,11 @@ struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
  // `check` replaces the sensitiveTextCheck object; `languages` the recognition languages.
- Fixture(QImage image,bool check=true,bool keepLocal=false,QJsonObject checkObject={},QJsonArray languages={"eng"},QJsonArray terms={}){
+ Fixture(QImage image,bool check=true,bool keepLocal=false,QJsonObject checkObject={},QJsonArray languages={"eng"},QJsonArray terms={},QJsonObject style={}){
   registry.add("opaque",provider);
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=keepLocal;doc["archive"]=archive;
-  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=checkObject.isEmpty()?QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}}:checkObject;preferences["textRecognitionLanguages"]=languages;if(!terms.isEmpty())preferences["quickRedactTerms"]=terms;doc["preferences"]=preferences;
+  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=checkObject.isEmpty()?QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}}:checkObject;preferences["textRecognitionLanguages"]=languages;if(!terms.isEmpty())preferences["quickRedactTerms"]=terms;if(!style.isEmpty())preferences["captureStyle"]=style;doc["preferences"]=preferences;
   if(!settings->save(doc,{}))qFatal("fixture configuration rejected");
   source.payload.kind="image";source.payload.image=std::move(image);
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
@@ -157,6 +157,26 @@ private slots:
   QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto bytes=artifact.readAll();QVERIFY(!inspectSanitizedPng(bytes));
   QCOMPARE(QImage::fromData(bytes,"PNG").convertToFormat(QImage::Format_RGB32).pixel(covered.center()),qRgb(0,0,0));
  }
+ // #1893 with #1898: Redact and upload with Capture style on covers first, then styles: the covers sit on the digits inside
+ // the frame. Open in editor starts styled, and its export is not styled a second time.
+ void redactAndUploadWithCaptureStyleCoversInsideTheFrame(){
+  const auto style=CaptureStyle::preset("paper");const auto image=page({card.first(),key.first()});
+  Fixture f(image,true,true,kinds({{"card","warn"},{"key","warn"}}),{"eng"},{},style.toJson());PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto geometry=style.geometry(image.size());
+  const auto id=f.start();QVERIFY(f.reaches(id,"sensitive_text_found"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  const auto styled=uploaded(*f.operations,id);QCOMPARE(styled.size(),geometry.canvas);QVERIFY(f.inspect(id)["style"].toObject()["applied"].toBool());
+  for(int row=0;row<2;++row)QVERIFY2(blackShare(styled,digits(row).translated(geometry.padding,geometry.padding))>0.7,"covered inside the frame");
+  // The kept original is the capture before covering and before styling.
+  const QImage kept(f.inspect(id)["sensitive"].toObject()["original"].toObject()["paths"].toArray().first().toString());QCOMPARE(kept.size(),image.size());
+  const auto edited=f.start();QVERIFY(f.reaches(edited,"sensitive_text_found"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(edited,"edit",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(edited)["phase"].toString(),QString("editing"),20000);
+  QVERIFY(!call([&](JsonReply r){f.operations->editorCommand(edited,"submit",{},r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(edited)["state"].toString(),QString("completed"),20000);
+  QCOMPARE(uploaded(*f.operations,edited).size(),geometry.canvas);QVERIFY(!f.inspect(edited).contains("style"));
+ }
  // #1898: Redact and upload covers exactly what the prompt's preview shows, the suggestions Open in editor places,
  // and uploads with no editor step; the notification's counts name what was covered.
  void redactAndUploadSendsThePreviewedCoversInOneStep(){
@@ -261,6 +281,20 @@ private slots:
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(!kept.isNull());QVERIFY(blackShare(kept,digits(0))<0.4);
   QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+ }
+ // #1893: with Capture style on too, the check reads the capture as it was and the style goes around the covered image:
+ // the cover sits on the digits, offset by the padding, and the original kept is the one from before covering.
+ void aCoveredCaptureIsStyledAfterCovering(){
+  const auto style=CaptureStyle::preset("paper");const auto image=page(card);
+  Fixture f(image,true,true,everyKind,{"eng"},{},style.toJson());PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();QVERIFY(!id.isEmpty());
+  QVERIFY(putgd::test::waitFor([&]{return !Operation::activeState(f.inspect(id)["state"].toString());},40000));QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));
+  const auto op=f.inspect(id);QCOMPARE(op["sensitive"].toObject()["covered"].toObject()["card"].toInt(),1);QVERIFY(op["style"].toObject()["applied"].toBool());
+  const auto styled=uploaded(*f.operations,id);const auto geometry=style.geometry(image.size());
+  QCOMPARE(styled.size(),geometry.canvas);
+  QVERIFY2(blackShare(styled,digits(0).translated(geometry.padding,geometry.padding))>0.7,"the card is covered under the style");
+  const auto original=op["sensitive"].toObject()["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));
+  const QImage kept(original["paths"].toArray().first().toString());QCOMPARE(kept.size(),image.size());
  }
  // #1820: card on Redact automatically, key on Warn: the prompt asks about the key only, and Upload anyway keeps the card covered.
  void aMixedSettingAsksForTheWarnKindOnly(){

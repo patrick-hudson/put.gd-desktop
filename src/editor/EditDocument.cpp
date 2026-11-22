@@ -1,4 +1,5 @@
 #include "EditDocument.h"
+#include "core/CaptureStyleRender.h"
 #include "HighlightFilter.h"
 #include <QBuffer>
 #include <QColorSpace>
@@ -346,6 +347,8 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QP
 }
 
 EditDocument EditDocument::snapshotForExport() const {
+ // #1893: the backdrop picture is read here, on the GUI thread; the snapshot shares it.
+ stylePicture();
  // Qt's FreeType outlines can change after a canvas repaint, even with the
  // same font and draft. Reuse one set for every copy and Upload of that draft.
  const QFont defaultFont;
@@ -384,9 +387,36 @@ QImage EditDocument::render() const {
   for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&(textPathsFrozen_||textPathsFont_==QFont())&&path!=textPaths_.cend()?&path.value():nullptr);}
  }
  if(out.hasAlphaChannel())for(int y=0;y<out.height();++y){auto* line=reinterpret_cast<QRgb*>(out.scanLine(y));for(int x=0;x<out.width();++x)if(qAlpha(line[x])==0)line[x]=0;}
+ // #1893: the capture style goes around the finished result, last; the renderer clears hidden colours again.
+ if(const auto geometry=styleGeometry();geometry.valid()){
+  // A picture not read on the GUI thread (a worker's snapshot always carries it) is read here.
+  return style::render(out,state_.style,geometry,stylePicture());
+ }
  return out;
 }
 
+bool EditDocument::setCaptureStyle(const CaptureStyle& requested){
+ auto style=requested;
+ if(style==state_.style)return false;
+ auto before=state_;state_.style=style;push(std::move(before));++generation_;return true;
+}
+CaptureStyle::Geometry EditDocument::styleGeometry() const {
+ if(!state_.style.enabled)return {};
+ return state_.style.fitted(state_.crop.size(),styleLimit_);
+}
+QSize EditDocument::exportSize() const {
+ const auto geometry=styleGeometry();return geometry.valid()?geometry.canvas:state_.crop.size();
+}
+const QImage& EditDocument::stylePicture() const {
+ const auto& style=state_.style;
+ const auto path=style.enabled&&style.backdrop=="picture"?style.picture:QString();
+ if(path!=picturePath_){
+  picturePath_=path;picture_={};
+  // Decoded once for the largest canvas this document can export: the whole image, styled.
+  if(!path.isEmpty())picture_=style::loadPicture(path,style.fitted(base_.size(),styleLimit_).canvas.expandedTo(base_.size()));
+ }
+ return picture_;
+}
 QByteArray EditDocument::exportPng() const {
  QByteArray encoded;
  {

@@ -36,6 +36,18 @@
 #include <QDoubleSpinBox>
 #include <QCompleter>
 #include "FileDialog.h"
+#include "core/CaptureStyleRender.h"
+#include "Theme.h"
+#include <QBuffer>
+#include <QColorDialog>
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFileInfo>
+#include <QImageWriter>
+#include <QPainter>
+#include <QSaveFile>
+#include <QScopedValueRollback>
+#include <QStandardPaths>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QJsonArray>
@@ -1060,6 +1072,63 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  captureDelay_=choices(this,"captureDelaySeconds",{});for(const int seconds:Settings::captureDelayChoices())captureDelay_->addItem(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"),seconds);setting(delayForm,"Wait before capturing",captureDelay_,"/preferences/captureDelaySeconds");
  captureDelayShortcuts_=new PreferenceCheck("Also delay captures started by a hotkey");captureDelayShortcuts_->setObjectName("captureDelayShortcuts");setting(delayForm,"Hotkeys",captureDelayShortcuts_,"/preferences/captureDelayShortcuts",{});
  // #984: the rate of new recordings; the recorder lowers it while one runs if the machine can't keep up.
+ // #1893: Capture style, off by default. The rows below the switch show only while it is on; the
+ // backdrop rows only for Custom. Every row edits styleDraft_, written as one preferences.captureStyle.
+ {
+  auto* styleForm=section(capture,"Capture style","Put screenshots on a backdrop with padding, rounded corners and a shadow. The captured pixels are not changed.");
+  const auto stylePath=QStringLiteral("/preferences/captureStyle");
+  styleEnabled_=new PreferenceCheck("Style screenshots");styleEnabled_->setObjectName("captureStyleEnabled");
+  setting(styleForm,"Screenshots",styleEnabled_,stylePath,"Region, window, monitor, desktop and scrolling captures, before they upload or are saved. Capture region & edit starts with it on, in the editor's Style tool. With Keep a local copy on, the capture as it was is kept beside it with -original in its name.");
+  styleLook_=choices(this,"captureStyleLook",{});for(const auto& preset:CaptureStyle::presets())styleLook_->addItem(preset.label,preset.id);styleLook_->addItem("Custom","custom");
+  styleRows_.append(setting(styleForm,"Look",styleLook_,stylePath));
+  styleBackdrop_=choices(this,"captureStyleBackdrop",{});for(const auto& [kind,label]:QList<QPair<QString,QString>>{{"color","Colour"},{"gradient","Gradient"},{"picture","Picture"},{"none","None (transparent)"}})styleBackdrop_->addItem(label,kind);
+  styleCustomRows_.append(setting(styleForm,"Backdrop",styleBackdrop_,stylePath));
+  {
+   // One swatch for a colour, two for a gradient (135°, top left to bottom right).
+   styleColorsRow_=new QWidget(this);styleColorsRow_->setObjectName("captureStyleColors");auto* line=new QHBoxLayout(styleColorsRow_);line->setContentsMargins(0,0,0,0);line->setSpacing(space(Space::s));
+   for(const bool end:{false,true}){
+    auto* button=new QToolButton(styleColorsRow_);button->setObjectName(end?"captureStyleColorEnd":"captureStyleColor");button->setAccessibleName(end?"Gradient end colour":"Backdrop colour");
+    button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);Ui::role(button,"quiet");button->setMinimumHeight(Ui::scaled(Ui::Metric::control));line->addWidget(button);
+    (end?styleColorEnd_:styleColor_)=button;connect(button,&QToolButton::clicked,this,[this,end]{pickStyleColor(end);});
+   }
+   line->addStretch(1);
+   auto* row=new QWidget(this);auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->addWidget(styleColorsRow_);
+   styleForm->addRow(Ui::settingLabel("Colours",{},styleColor_,this),row);styleCustomRows_.append(row);styleColorsRow_=row;
+  }
+  {
+   stylePictureRow_=new QWidget(this);stylePictureRow_->setObjectName("captureStylePicture");auto* line=new QHBoxLayout(stylePictureRow_);line->setContentsMargins(0,0,0,0);line->setSpacing(space(Space::s));
+   stylePictureName_=Ui::label("No picture chosen","secondary",stylePictureRow_);stylePictureName_->setObjectName("captureStylePictureName");line->addWidget(stylePictureName_,1);
+   stylePicture_=new QPushButton("Choose picture…",stylePictureRow_);stylePicture_->setObjectName("captureStyleChoosePicture");Ui::role(stylePicture_,"quiet");stylePicture_->setToolTip("A PNG or JPEG. put.gd keeps its own copy, so moving or deleting the file later changes nothing. A photo makes styled screenshots several times larger.");line->addWidget(stylePicture_);
+   connect(stylePicture_,&QPushButton::clicked,this,&SettingsWindow::chooseStylePicture);
+   styleForm->addRow(Ui::settingLabel("Picture",{},stylePicture_,this),stylePictureRow_);styleCustomRows_.append(stylePictureRow_);
+   pictureChooser_=new FileDialog(this);
+  }
+  stylePadding_=choices(this,"captureStylePadding",{});stylePadding_->addItem("Small","small");stylePadding_->addItem("Medium","medium");stylePadding_->addItem("Large","large");
+  styleRows_.append(setting(styleForm,"Padding",stylePadding_,stylePath,"Grows with the capture: a little around a small region, more around a full screen."));
+  styleCorners_=new PreferenceCheck("Rounded corners");styleCorners_->setObjectName("captureStyleCorners");styleRows_.append(setting(styleForm,"Corners",styleCorners_,stylePath));
+  styleShadow_=new PreferenceCheck("Soft shadow");styleShadow_->setObjectName("captureStyleShadow");styleRows_.append(setting(styleForm,"Shadow",styleShadow_,stylePath));
+  {
+   auto* row=new QWidget(this);row->setObjectName("captureStylePreviewRow");auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::xs));
+   stylePreview_=new QLabel(row);stylePreview_->setObjectName("captureStylePreview");stylePreview_->setAccessibleName("Capture style preview");stylePreview_->setFixedSize(Ui::scaled(320),Ui::scaled(200));stylePreview_->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);column->addWidget(stylePreview_);
+   styleSize_=Ui::label({},"meta",row);styleSize_->setObjectName("captureStyleSize");styleSize_->setWordWrap(true);column->addWidget(styleSize_);
+   styleForm->addRow(Ui::settingLabel("Preview",{},stylePreview_,this),row);styleRows_.append(row);
+  }
+  connect(styleEnabled_,&QCheckBox::toggled,this,[this](bool on){if(!loading_)editCaptureStyle([on](CaptureStyle& style){style.enabled=on;});});
+  connect(styleLook_,&QComboBox::activated,this,[this](int index){
+   const auto id=styleLook_->itemData(index).toString();
+   if(id=="custom"){styleCustom_=true;syncCaptureStyle();return;}
+   styleCustom_=false;editCaptureStyle([id](CaptureStyle& style){const bool on=style.enabled;const auto picture=style.picture;style=CaptureStyle::preset(id);style.enabled=on;style.picture=picture;});
+  });
+  connect(styleBackdrop_,&QComboBox::activated,this,[this](int index){
+   const auto kind=styleBackdrop_->itemData(index).toString();
+   // A picture backdrop needs a picture: without one, the chooser opens first.
+   if(kind=="picture"&&styleDraft_.picture.isEmpty()){chooseStylePicture();syncCaptureStyle();return;}
+   editCaptureStyle([kind](CaptureStyle& style){style.backdrop=kind;});
+  });
+  connect(stylePadding_,&QComboBox::activated,this,[this](int index){const auto padding=stylePadding_->itemData(index).toString();editCaptureStyle([padding](CaptureStyle& style){style.padding=padding;});});
+  connect(styleCorners_,&QCheckBox::toggled,this,[this](bool on){if(!loading_)editCaptureStyle([on](CaptureStyle& style){style.corners=on;});});
+  connect(styleShadow_,&QCheckBox::toggled,this,[this](bool on){if(!loading_)editCaptureStyle([on](CaptureStyle& style){style.shadow=on;});});
+ }
  auto* scrollForm=section(capture,"Scrolling capture","Select scrollable content and capture a tall image.");
  scrollHeight_=new QSpinBox(this);scrollHeight_->setObjectName("scrollCaptureMaxHeight");scrollHeight_->setRange(2000,60000);scrollHeight_->setSingleStep(1000);setting(scrollForm,"Maximum height (px)",scrollHeight_,"/preferences/scrollCaptureMaxHeight");
  scrollAutoScroll_=new PreferenceCheck("Start with auto-scroll");scrollAutoScroll_->setObjectName("scrollCaptureAutoScroll");setting(scrollForm,"Who scrolls",scrollAutoScroll_,"/preferences/scrollCaptureAutoScroll","Off: the capture waits for you to scroll. On: put.gd turns the page, and moving the mouse pauses it.");
@@ -1693,6 +1762,90 @@ void SettingsWindow::showTextLanguages(){
  textRecognitionStatus_->setProperty("textRecognitionUnavailable",unavailable);
  showSensitiveCheck();
 }
+// #1893: the controls from styleDraft_. The Look names the preset the draft matches, or Custom, which
+// also shows the backdrop rows (Custom stays chosen while it is being edited).
+void SettingsWindow::syncCaptureStyle(){
+ if(!styleEnabled_)return;
+ const QScopedValueRollback quiet(loading_,true);
+ const auto& style=styleDraft_;const auto preset=style.presetId();
+ if(preset=="custom")styleCustom_=true;
+ styleEnabled_->setChecked(style.enabled);
+ styleLook_->setCurrentIndex(styleLook_->findData(styleCustom_?QStringLiteral("custom"):preset));
+ styleBackdrop_->setCurrentIndex(styleBackdrop_->findData(style.backdrop));
+ stylePadding_->setCurrentIndex(stylePadding_->findData(style.padding));
+ styleCorners_->setChecked(style.corners);styleShadow_->setChecked(style.shadow);
+ const auto swatch=[](QToolButton* button,const QString& color){
+  QPixmap chip(Ui::scaled(16),Ui::scaled(16));chip.fill(QColor(color));button->setIcon(QIcon(chip));button->setText(color);button->setToolTip("Choose a colour ("+color+")");
+ };
+ swatch(styleColor_,style.color);swatch(styleColorEnd_,style.colorEnd);
+ styleColorEnd_->setVisible(style.backdrop=="gradient");
+ stylePictureName_->setText(style.picture.isEmpty()?QStringLiteral("No picture chosen"):QFileInfo(style.picture).fileName());stylePictureName_->setToolTip(style.picture);
+ for(auto* row:std::as_const(styleRows_))row->setVisible(style.enabled);
+ for(auto* row:std::as_const(styleCustomRows_))row->setVisible(style.enabled&&styleCustom_);
+ styleColorsRow_->setVisible(style.enabled&&styleCustom_&&(style.backdrop=="color"||style.backdrop=="gradient"));
+ stylePictureRow_->setVisible(style.enabled&&styleCustom_&&style.backdrop=="picture");
+ if(style.enabled)renderStylePreview();
+}
+void SettingsWindow::editCaptureStyle(const std::function<void(CaptureStyle&)>& change){
+ auto style=styleDraft_;change(style);
+ if(style==styleDraft_){syncCaptureStyle();return;}
+ styleDraft_=style;syncCaptureStyle();queueEdit(styleEnabled_);
+}
+void SettingsWindow::pickStyleColor(bool end){
+ const auto chosen=QColorDialog::getColor(QColor(end?styleDraft_.colorEnd:styleDraft_.color),this,end?"Gradient end colour":"Backdrop colour");
+ if(!chosen.isValid())return;
+ editCaptureStyle([end,name=chosen.name()](CaptureStyle& style){(end?style.colorEnd:style.color)=name;});
+}
+// The chosen picture is decoded once, here, and kept as put.gd's own PNG in its data folder, named by
+// its digest: the backdrop never depends on the user's original file, and the resident never decodes it.
+void SettingsWindow::chooseStylePicture(){
+ pictureChooser_->open({FileDialog::Mode::Open,"Choose a backdrop picture",{},{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){
+  if(!result.chosen()){if(result.failed())stylePictureName_->setText(result.error);return;}
+  const auto picture=style::loadPicture(result.path,QSize(style::maximumPictureEdge,style::maximumPictureEdge));
+  if(picture.isNull()){stylePictureName_->setText("That picture can't be used: choose a PNG or JPEG of at most 64 MB.");return;}
+  QByteArray png;{QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);QImageWriter writer(&buffer,"png");if(!writer.write(picture))png.clear();}
+  const auto folder=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/putgd/backdrops";
+  const auto path=folder+"/"+QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())+".png";
+  QSaveFile file(path);
+  if(png.isEmpty()||!QDir().mkpath(folder)||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){stylePictureName_->setText("The picture couldn't be saved in put.gd's data folder; check free disk space.");return;}
+  QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);
+  styleCustom_=true;editCaptureStyle([path](CaptureStyle& style){style.backdrop="picture";style.picture=path;});
+ });
+}
+QImage SettingsWindow::captureStyleSample(const CaptureStyle& requested){
+ // A synthetic light window: a title bar with three dots and grey text bars, from the light theme's
+ // tokens so the sample is the same in either scheme. Never a real capture.
+ const auto& tone=Theme::palette(Theme::Scheme::Light);
+ QImage sample(1200,750,QImage::Format_RGB32);
+ {
+  QPainter painter(&sample);painter.setRenderHint(QPainter::Antialiasing);painter.setPen(Qt::NoPen);
+  painter.fillRect(sample.rect(),tone.bg);
+  painter.fillRect(QRect(0,0,1200,72),tone.surfaceRaised);
+  for(int index=0;index<3;++index){painter.setBrush(index==0?tone.accent:tone.textMuted);painter.drawEllipse(QPointF(40+index*36,36),11,11);}
+  painter.setBrush(tone.surface);painter.drawRoundedRect(QRectF(48,120,300,580),14,14);
+  for(int row=0;row<7;++row){painter.setBrush(tone.textMuted);painter.drawRoundedRect(QRectF(80,160+row*72,row%2?170:230,20),10,10);}
+  for(int row=0;row<9;++row){painter.setBrush(row==0?tone.text:tone.textMuted);painter.drawRoundedRect(QRectF(400,140+row*60,row==0?420:(row%3==2?520:700),row==0?30:18),9,9);}
+ }
+ auto style=requested;style.enabled=true;
+ const auto geometry=style.geometry(sample.size());
+ const auto picture=style.backdrop=="picture"?style::loadPicture(style.picture,geometry.canvas):QImage();
+ return style::render(sample,style,geometry,picture);
+}
+void SettingsWindow::renderStylePreview(){
+ const auto styled=captureStyleSample(styleDraft_);if(styled.isNull()){stylePreview_->clear();return;}
+ const qreal ratio=devicePixelRatioF();const QSize box=stylePreview_->size()*ratio;
+ QPixmap shown(box);shown.setDevicePixelRatio(ratio);shown.fill(Qt::transparent);
+ {
+  QPainter painter(&shown);painter.setRenderHint(QPainter::SmoothPixmapTransform);
+  const auto size=QSizeF(styled.size()).scaled(QSizeF(stylePreview_->size()),Qt::KeepAspectRatio);const QRectF target(QPointF(0,(stylePreview_->height()-size.height())/2),size);
+  // A transparent backdrop shows as a checkerboard, as image viewers show transparency.
+  if(styleDraft_.backdrop=="none"){const int cell=Ui::scaled(8);for(int y=0;y*cell<target.height();++y)for(int x=0;x*cell<target.width();++x)painter.fillRect(QRectF(target.left()+x*cell,target.top()+y*cell,cell,cell).intersected(target),(x+y)%2?QColor(200,200,200):QColor(240,240,240));}
+  painter.drawImage(target,styled);
+ }
+ stylePreview_->setPixmap(shown);
+ const auto example=styleDraft_.geometry(QSize(1920,1080));
+ styleSize_->setText(QString("A 1920 × 1080 capture becomes %1 × %2.").arg(example.canvas.width()).arg(example.canvas.height())+(styleDraft_.backdrop=="picture"&&style::loadPicture(styleDraft_.picture,QSize(64,64)).isNull()?QStringLiteral(" The picture can't be read, so Graphite is used until you choose another."):QString()));
+}
 void SettingsWindow::showSensitiveCheck(){
  // Without text recognition there is nothing to check with; a saved choice stays as it was.
  const bool unavailable=textCapabilities_.contains("available")&&!textCapabilities_["available"].toBool();
@@ -1737,7 +1890,7 @@ void SettingsWindow::populate(){
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
  bool exceptions=false;for(auto* inherit:std::as_const(useCaptureDefault_))exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
  shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());if(auto* toggle=findChild<QToolButton*>("categoryFoldersToggle")){bool overrides=false;for(auto* field:std::as_const(folders_))overrides|=!field->text().isEmpty();toggle->setChecked(overrides);}
- naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));randomStyle_->setCurrentIndex(randomStyle_->findData(effective.randomName.style));randomLength_->setValue(effective.randomName.length);randomUppercase_->setChecked(effective.randomName.uppercase);randomDigits_->setChecked(effective.randomName.digits);showRandomNameRows();auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));showTextLanguages();{const auto joined=[](const QStringList& lines){return lines.join(QChar(0x0A));};quickRedactTerms_->setPlainText(joined(effective.quickRedactTerms));quickRedactPatterns_->setPlainText(joined(effective.quickRedactPatterns));}sensitiveCheck_->setChecked(effective.sensitiveTextCheck);for(auto it=sensitiveKinds_.begin();it!=sensitiveKinds_.end();++it)it.value()->setCurrentIndex(it.value()->findData(effective.sensitiveTextCover.contains(it.key())?QStringLiteral("redact"):effective.sensitiveTextCategories.contains(it.key())?QStringLiteral("warn"):QStringLiteral("off")));showSensitiveCheck();regionSelection_->setCurrentIndex(regionSelection_->findData(effective.regionSelectionMode));captureDelay_->setCurrentIndex(captureDelay_->findData(effective.captureDelaySeconds));captureDelayShortcuts_->setChecked(effective.captureDelayShortcuts);fileManagerFolders_->setCurrentIndex(fileManagerFolders_->findData(effective.fileManagerFolders));fileManagerMenu_->setChecked(effective.fileManagerMenu||!fileManagerMenu_->isEnabled());recordingFrameRate_->setCurrentIndex(recordingFrameRate_->findData(effective.recordingFrameRate));{int chosen=recordingMicrophone_->findData(effective.recordingMicrophoneDevice);if(chosen<0){recordingMicrophone_->addItem(effective.recordingMicrophoneDevice+" (not connected)",effective.recordingMicrophoneDevice);chosen=recordingMicrophone_->count()-1;}recordingMicrophone_->setCurrentIndex(chosen);}scrollHeight_->setValue(effective.scrollCaptureMaxHeight);scrollFromTop_->setChecked(effective.scrollCaptureFromTop);scrollAutoScroll_->setChecked(effective.scrollCaptureAutoScroll);recordingClicks_->setChecked(effective.recordingClickHighlights);appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
+ naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));randomStyle_->setCurrentIndex(randomStyle_->findData(effective.randomName.style));randomLength_->setValue(effective.randomName.length);randomUppercase_->setChecked(effective.randomName.uppercase);randomDigits_->setChecked(effective.randomName.digits);showRandomNameRows();auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));showTextLanguages();{const auto joined=[](const QStringList& lines){return lines.join(QChar(0x0A));};quickRedactTerms_->setPlainText(joined(effective.quickRedactTerms));quickRedactPatterns_->setPlainText(joined(effective.quickRedactPatterns));}styleDraft_=effective.captureStyle;styleCustom_=styleDraft_.presetId()=="custom";syncCaptureStyle();sensitiveCheck_->setChecked(effective.sensitiveTextCheck);for(auto it=sensitiveKinds_.begin();it!=sensitiveKinds_.end();++it)it.value()->setCurrentIndex(it.value()->findData(effective.sensitiveTextCover.contains(it.key())?QStringLiteral("redact"):effective.sensitiveTextCategories.contains(it.key())?QStringLiteral("warn"):QStringLiteral("off")));showSensitiveCheck();regionSelection_->setCurrentIndex(regionSelection_->findData(effective.regionSelectionMode));captureDelay_->setCurrentIndex(captureDelay_->findData(effective.captureDelaySeconds));captureDelayShortcuts_->setChecked(effective.captureDelayShortcuts);fileManagerFolders_->setCurrentIndex(fileManagerFolders_->findData(effective.fileManagerFolders));fileManagerMenu_->setChecked(effective.fileManagerMenu||!fileManagerMenu_->isEnabled());recordingFrameRate_->setCurrentIndex(recordingFrameRate_->findData(effective.recordingFrameRate));{int chosen=recordingMicrophone_->findData(effective.recordingMicrophoneDevice);if(chosen<0){recordingMicrophone_->addItem(effective.recordingMicrophoneDevice+" (not connected)",effective.recordingMicrophoneDevice);chosen=recordingMicrophone_->count()-1;}recordingMicrophone_->setCurrentIndex(chosen);}scrollHeight_->setValue(effective.scrollCaptureMaxHeight);scrollFromTop_->setChecked(effective.scrollCaptureFromTop);scrollAutoScroll_->setChecked(effective.scrollCaptureAutoScroll);recordingClicks_->setChecked(effective.recordingClickHighlights);appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;updateResourceLimits();
 }
@@ -1881,6 +2034,11 @@ QJsonObject SettingsWindow::candidate() const {
   const auto stored=preferences.value("sensitiveTextCheck").toObject();bool same=preferences.contains("sensitiveTextCheck")&&stored["enabled"].toBool(false)==sensitiveCheck_->isChecked();
   for(const auto& category:Settings::sensitiveTextCategoryNames())same=same&&Settings::sensitiveTextKind(stored,category)==kinds[category].toString();
   if(!same&&(preferences.contains("sensitiveTextCheck")||sensitiveCheck_->isChecked()||!standard))preferences["sensitiveTextCheck"]=QJsonObject{{"enabled",sensitiveCheck_->isChecked()},{"kinds",kinds}};}
+ // #1893: an untouched config keeps no captureStyle (off). A stored object the controls still show stays
+ // exactly as it is (a partial one an agent wrote), so the draft never reads as unsaved.
+ {const auto stored=preferences.value("captureStyle");
+  const bool same=stored.isObject()&&!CaptureStyle::validate(stored)&&CaptureStyle::fromJson(stored.toObject())==styleDraft_;
+  if(!same&&(stored.isObject()||!(styleDraft_==CaptureStyle{})))preferences["captureStyle"]=styleDraft_.toJson();}
  // #1364: both are absent from an untouched config (the system default input, no rings).
  if(preferences.contains("recordingMicrophoneDevice")||!recordingMicrophone_->currentData().toString().isEmpty())preferences["recordingMicrophoneDevice"]=recordingMicrophone_->currentData().toString();
  if(preferences.contains("recordingClickHighlights")||recordingClicks_->isChecked())preferences["recordingClickHighlights"]=recordingClicks_->isChecked();

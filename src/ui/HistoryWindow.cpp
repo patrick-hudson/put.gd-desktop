@@ -1603,6 +1603,10 @@ void HistoryWindow::showQrCode(const QJsonObject& params,std::function<void(Erro
 }
 void HistoryWindow::editAgain(const QJsonObject& record){
  if(!editable(record)){notice("Editing needs a retained local PNG or JPEG copy.");return;}
+ // #1893: a styled capture is edited from the original kept beside it, with the style on again, so frames never
+ // stack. Without that original (no local copy of it), the styled copy opens with the style off.
+ const auto original=record["style"].toObject()["original"].toString();
+ if(!original.isEmpty()&&QFileInfo(original).isFile()){emit editRequested("file",original,true);return;}
  emit editRequested("file",record["local"].toObject()["path"].toString());
 }
 // The row menu offers what this row can do now, from the same state and

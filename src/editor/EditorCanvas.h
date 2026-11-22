@@ -8,7 +8,8 @@
 #include <optional>
 
 namespace putgd::editor {
-enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line,CopyText};
+// Style (#1893) sets the document's capture style; on the canvas it picks and moves marks like Select.
+enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line,CopyText,Style};
 struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
 // Interactive view of one EditDocument. The base stays in the document; only
@@ -97,6 +98,9 @@ private:
  bool nudge(const QPoint& delta,bool resize);
  enum class Drag {None,Create,Move,Resize,Pan,CropNew,CropMove,CropResize};
  QRect visibleBounds() const;
+ // #1893: the capture style's padding around the shown image, in image pixels; 0 while
+ // cropping (the crop edges stay exact) or with no style.
+ int styleMargin() const;
  QPointF toImage(const QPointF&) const;
  QPointF toWidget(const QPointF&) const;
  QRectF toWidget(const QRect&) const;
@@ -123,6 +127,7 @@ private:
  const QImage& cachedTile(const Shape&,const QString& key,QImage (EditDocument::*render)(const Shape&,double) const);
  Shape::Kind kindFor(Tool) const;
  bool drawingTool() const;
+ bool selecting() const {return tool_==Tool::Select||tool_==Tool::Style;}
  EditDocument& doc_;
  Tool tool_=Tool::Redact;
  ToolStyle style_;

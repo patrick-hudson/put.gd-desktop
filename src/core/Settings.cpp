@@ -371,7 +371,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "captureStyle", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -474,6 +474,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactPatterns/%1").arg(index - 1), QStringLiteral("Pattern %1: %2").arg(index).arg(sentence(problem)));
         }
     }
+    // #1893: capture style; absent means off.
+    if (preferences.contains("captureStyle"))
+        if (auto error = CaptureStyle::validate(preferences["captureStyle"])) return error;
     // #1804: the check before uploading and the Quick redact categories it looks for.
     // #1820: kinds gives each one off, warn or redact; categories is #1804's list, each one read as warn.
     if (preferences.contains("sensitiveTextCheck")) {
@@ -617,6 +620,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
         if (!term.isEmpty() && !settings.quickRedactTerms.contains(term)) settings.quickRedactTerms.append(term);
     }
     for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
+    if (doc["preferences"].toObject().contains("captureStyle")) settings.captureStyle = CaptureStyle::fromJson(doc["preferences"].toObject()["captureStyle"].toObject());
     {
         const auto check = doc["preferences"].toObject()["sensitiveTextCheck"].toObject();
         settings.sensitiveTextCheck = check["enabled"].toBool(false);

@@ -252,7 +252,7 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","capture-style","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
@@ -275,7 +275,7 @@ QImage iconSpecimen(){
 QImage editorIcons(){
  const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
+ const QStringList names{"edit","select","redact","blur","crop","capture-style","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -283,7 +283,7 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","capture-style","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
  show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
@@ -579,6 +579,15 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1893: Capture style, off by default; turned on (Graphite) and then Custom with a gradient, each a draft Settings can keep.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStyleEnabled"),0,160);if(!save("settings-capture-style-off"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style"))return 2;
+ {auto* look=window.findChild<QComboBox*>("captureStyleLook");emit look->activated(look->findData("custom"));auto* backdrop=window.findChild<QComboBox*>("captureStyleBackdrop");emit backdrop->activated(backdrop->findData("gradient"));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style-custom"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(false);
  // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
  // Turned on, with its draft still a view state Settings can keep (#1804).
  window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
@@ -948,6 +957,10 @@ int main(int argc,char** argv){
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
   editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
   editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
+  // #1893: the Style tool with Graphite on, then Paper with large padding seen from Select: the canvas shows the frame.
+  editor.resize(1180,820);editor.setSavedStyle(CaptureStyle::preset("graphite"));editor.selectTool(editor::Tool::Style);
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","graphite"}}},code,message);if(!code.isEmpty()||!grab("30q-editor-style"))return 2;
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","paper"},{"padding","large"}}},code,message);editor.selectTool(editor::Tool::Select);if(!code.isEmpty()||!grab("30r-editor-style-canvas"))return 2;
   editor.allowClose();editor.close();
  }
  {
