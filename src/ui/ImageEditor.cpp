@@ -26,6 +26,7 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QTimer>
+#include <QPointer>
 #include <QUuid>
 #include <memory>
 #ifdef Q_OS_UNIX
@@ -215,8 +216,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
     // Without a token (Budgie's tray sends none), a Wayland desktop may refuse to raise a covered window;
     // mapping it again shows it raised and focused, as a new window, on labwc (found in #1806 acceptance).
-    if(token.isEmpty()&&QGuiApplication::platformName().startsWith(QLatin1String("wayland"))){prompt->hide();prompt->show();}
-    else prompt->show();
+    // Only a prompt that isn't already active, and the button that had focus keeps it.
+    if(token.isEmpty()&&!prompt->isActiveWindow()&&QGuiApplication::platformName().startsWith(QLatin1String("wayland"))){
+     const QPointer<QWidget> focused=prompt->focusWidget();prompt->hide();prompt->show();if(focused)focused->setFocus(Qt::ActiveWindowFocusReason);
+    }else prompt->show();
     putgd::activateWindow(prompt.get(),token);return {{"requested",true}};
    }
    return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
