@@ -856,7 +856,8 @@ Before you release:
    you started.
 2. Remove anything temporary you added: desktop entries (then run
    `kbuildsycoca6 --noincremental`), user extension copies (then log out and in
-   again, and check that the packaged extension loaded), packages you installed, and
+   again, and check that the packaged extension loaded), packages you added (put back
+   the acquire-time version of any package you replaced), and
    `~/.local/share/putgd`, `~/.cache/putgd` or `~/.config/putgd` if your runs
    created them.
 3. Run `release HOST --session ID`. On the host it inventories `flatpak ps`
@@ -873,12 +874,12 @@ Before you release:
    collector, and is only counted. If a new item belongs to another session (its
    notes or its owner say so), name it with `--not-mine ID`; the receipt records
    it. Never use `--not-mine` for your own items.
-   Leave the putgd package as acquire found it: the same version, or none. Acquire
-   says `no putgd package installed` when there is none (with `config files of deb
-   <ver> only` if a removal left them). A changed version counts as new, and a
-   package that was there at acquire and is gone blocks the release. Reinstall it,
-   or give `--removed-ok REASON` when the removal is intended; the receipt records
-   the reason.
+   Leave the putgd package as acquire found it: the same version, or none.
+   `acquire`, `release` and `status --check` say `no putgd package installed` when
+   there is none (with `config files of deb <ver> only` if a removal left them). A
+   changed version counts as new, and a package that was there at acquire and is
+   gone blocks the release. Reinstall it, or give `--removed-ok REASON` when the
+   removal is intended; the receipt records the reason under `removedOk`.
 4. Tell the next session in the queue and your coordinator.
 
 Each release and break writes a JSON receipt to `~/putgd-lab/locks/history/` on
