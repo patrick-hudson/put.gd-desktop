@@ -157,8 +157,9 @@ local prompts, compared as whole strings, the trailing `: ` included, with no tr
 truncation or prefix match (`sftp::matchPrompt`): the password to `<user>@<host>'s password: `
 for the resolved user and host or `HostKeyAlias`, the passphrase to
 `Enter passphrase for key '<file>': ` for a key file the destination's settings name, each at
-most once per connection. ssh cuts a key path in that prompt at 100 characters, so the
-passphrase of a key whose path is longer is never sent. A ProxyJump hop's password prompt, a server's keyboard-interactive
+most once per connection. The key path is cut to its first 100 bytes, as OpenSSH's `%.100s` cuts
+it; when two configured key files share those 100 bytes the prompt can't name one, nothing is
+answered, and the error says so. A ProxyJump hop's password prompt, a server's keyboard-interactive
 text or a PIN prompt gets nothing. A touch notice is recorded (`touched` in the error details)
 and sent to the resident as a `notice` event; during Test it becomes the setup job's event and
 Settings shows "Touch your security key". When sign-in ends, either way, the socket and its
@@ -236,9 +237,10 @@ only while the folder still resolves to that path. The canonical (realpath) fold
 name is the path every name check, receipt, lock key and deletion uses. The path and the
 verified server are checkpointed before the open. The file opens under its final name with
 `WRITE|CREAT|EXCL` and no attributes, so the server's umask applies; once that request is sent
-its reply is awaited for up to 20 seconds whatever a cancel says (inside the 30 seconds the
-resident gives a cancelled request), and a handle that comes back is closed and the file
-removed; a lost reply leaves the outcome unknown. A refused open followed by an `lstat` that finds the name is a collision, never
+its reply is awaited for up to 20 seconds whatever a cancel says, and a handle that comes back
+is closed and the file removed; a lost reply leaves the outcome unknown. The resident gives a
+cancelled request five minutes, enough for that wait and the CLOSE and REMOVE after it, before it
+stops the helper. A REMOVE answered "no such file" is reported as already gone, never as removed. A refused open followed by an `lstat` that finds the name is a collision, never
 reconciled into ownership. Writes are pipelined, up to 64 in flight; progress counts only
 acknowledged bytes, and no acknowledgement for two minutes ends the upload. A packet is never
 cut short by a cancel. The bytes sent are hashed and must match the artifact's SHA-256. Then
@@ -268,10 +270,13 @@ nothing journaled the attempt never opened a file, so the name is `missing` for 
 
 **Deletion and capabilities.** `stat`, the check before removal and `reconcile` connect with
 `UserKnownHostsFile` set to a private temporary file holding only the recorded lines,
-`GlobalKnownHostsFile=/dev/null` and `StrictHostKeyChecking=yes`, so ssh itself proves the
-server still holds the recorded key; any host-key failure there is `sftp_server_changed`, as is a
+`GlobalKnownHostsFile=/dev/null`, `KnownHostsCommand=none` and `StrictHostKeyChecking=yes`, so
+ssh itself proves the server still holds the recorded key (certificate authorities come only from
+known_hosts files, so the recorded lines are all of them); any host-key failure there is `sftp_server_changed`, as is a
 destination that now resolves to another host, port or user. A session connection verified by
-exactly those lines (a test checking its own upload) is reused. Then a
+exactly those lines (a test checking its own upload) is reused. A record whose server is known
+only through a certificate authority has no display fingerprint and can still be deleted: the
+recorded lines are what counts, in History and the worker alike. Then a
 regular file with the recorded size, mtime and uid and, up to 32 MB, the recorded SHA-256. The
 intent is checkpointed through the deletion's durable checkpoint before anything is removed, an
 `lstat` right before `REMOVE` must still match, and an unclear outcome keeps the intent as the

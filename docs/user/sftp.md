@@ -133,8 +133,9 @@ A missing folder is never created during an upload: the upload fails with
 creates that folder and any missing folders above it, with the server's default permissions.
 The offer is only for the folder the test found missing: editing Folder on server or Server,
 pasting included, hides it, and put.gd creates the folder only while it still resolves to the
-path the test reported. A folder whose path on the server isn't valid UTF-8 is refused before
-anything is written (`sftp_path_unsupported`).
+path the test reported. An agent's edit hides it too. A folder whose path on the server isn't
+valid UTF-8 is refused before anything is written (`sftp_path_unsupported`), and so is Create
+folder for a relative Folder on server when the server doesn't name your login folder in UTF-8.
 
 ## Uploads
 
@@ -265,8 +266,16 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
   from put.gd's own.
 - Only files up to 32 MB are read back to check their bytes before a deletion; a larger one is
   checked by its size, time, owner and the server's recorded key.
-- ssh cuts a key's path at 100 characters in its passphrase prompt, so the passphrase of a key
-  whose path is longer is never sent. Add that key to your agent instead.
+- ssh shows only the first 100 characters of a key's path in its passphrase prompt. When two of
+  your key files share those 100 characters, put.gd can't tell which one ssh asks about and
+  answers neither; give one a shorter path or add it to your agent.
+- With a port other than 22, an upload is refused if your known_hosts holds the server's key only
+  under its bare name (no `[host]:port` entry): put.gd records the entry ssh checks and fails
+  closed when it finds none.
+- A pasted Server text that isn't an address put.gd can read is refused as a whole; put.gd
+  doesn't guess at malformed plain host text.
+- A folder that a symbolic link inside an existing parent points somewhere else between Test and
+  Create folder isn't noticed.
 - A symbolic link changed between the name check and the upload isn't noticed.
 - put.gd doesn't bound SFTP replies other than file data below the protocol's own limits; the
   paths it sends are at most 4096 bytes.
