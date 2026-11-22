@@ -124,7 +124,8 @@ the password and the key passphrase at most once each, answering ssh's own exact
 ([storage providers](storage-providers.md#sftp)): never ssh's command line or environment. The
 worker wipes both once sign-in ends, except that an upload keeps them until the request ends,
 since cleaning up a cancelled upload may need a new connection. A keychain-mode SFTP destination whose entry isn't loaded still connects,
-with the agent and key files. Its keychain reference is `putgd/<profile id>` once Settings switches it to the keychain; a new SFTP
+with the agent and key files. Switching it to the keychain in Settings fills an empty Reference with `putgd/<profile id>`
+(`putgd/sftp/<profile id>` if Reference is still empty when it is saved); a new SFTP
 destination starts in session mode, so startup unlock never asks the keychain about one that
 has nothing stored.
 

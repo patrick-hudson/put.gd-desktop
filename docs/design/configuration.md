@@ -437,9 +437,9 @@ out. `hostKeyFingerprint` is null or
 for the server). The resident writes it itself when a trust succeeds, conditional on the
 configuration revision the trust began with; Settings clears it when `server` changes. The check fingerprint below covers all five fields,
 so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
-has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings gives it
-`putgd/<profile id>` (Settings saves `putgd/sftp/<profile id>` only when the Reference field is
-empty). A keychain-mode destination without a reference is refused (`config_invalid`). Validation performs no network, process or secret-store IO. See
+has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings fills an empty Reference field with
+`putgd/<profile id>`, and if Reference is still empty when it is saved in keychain mode, Settings
+uses `putgd/sftp/<profile id>`. A keychain-mode destination without a reference is refused (`config_invalid`). Validation performs no network, process or secret-store IO. See
 [SFTP](../user/sftp.md).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
