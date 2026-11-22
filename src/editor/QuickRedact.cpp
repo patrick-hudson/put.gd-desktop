@@ -132,7 +132,8 @@ Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,
   static const QRegularExpression fragment(QStringLiteral("^[0-9A-Fa-f:]+$"));
   const bool colon=i>0&&!boundary&&category=="ip"&&(words.at(i-1).endsWith(':')||words.at(i).startsWith(':'))&&fragment.match(words.at(i-1)).hasMatch()&&fragment.match(words.at(i)).hasMatch();
   // The email view restored a lost dot after the domain: its last label follows at once.
-  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).contains('@')&&words.at(i-1).endsWith('.');
+  // Not when this word starts a local-part join: then it begins another address.
+  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).contains('@')&&words.at(i-1).endsWith('.')&&!local.value(i+1);
   if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }

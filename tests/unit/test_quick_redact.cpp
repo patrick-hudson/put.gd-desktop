@@ -568,6 +568,9 @@ private slots:
   // Sol on #1840: split after a plus; a fragment the address can't start with stays out.
   const QList<RecognizedWord> plus{{"jane+",QRect(0,0,40,20),90,0},{"tag@example.com",QRect(39,0,120,20),90,0}};
   QCOMPARE(found(plus,QStringList{"email"}),QStringList{"email: jane+ tag@example.com"});
+  // Sol on #1840: an address ending a sentence before a split one keeps them apart.
+  const QList<RecognizedWord> after{{"alice@example.net.",QRect(0,0,140,20),90,0},{"jane+",QRect(148,0,40,20),90,0},{"tag@example.com",QRect(187,0,120,20),90,0}};
+  QCOMPARE(found(after,QStringList{"email"}),(QStringList{"email: alice@example.net.","email: jane+ tag@example.com"}));
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
   QCOMPARE(found(dash,QStringList{"email"}),QStringList{"email: bob@example.com"});
   // A word another kind matches stays with that kind: the card keeps its last group.
