@@ -69,10 +69,11 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  const auto key=activeKey(profileId,kind);
  // Destinations can share one keychain entry: a store (or Clear) reads, merges and writes it
  // whole, so only one at a time per entry, from the read through the write (#1890).
- const auto entry=kind=="storeCredentials"&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
+ // An unlock holds it too, so a read begun before a store can't put older values back after it.
+ const auto entry=(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
  if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
  // Whether put.gd ever saved to this keychain entry: only such a save marks it (#1890).
- const bool storedBefore=!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());
+ const bool storedBefore=kind=="storeCredentials"&&!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  jobs_.insert(id,{{"setupId",id},{"kind",kind},{"profileId",profileId},{"state","running"},{"error",Error{}.toJson()}});
  active_.insert(key);

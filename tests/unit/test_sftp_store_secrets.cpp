@@ -146,8 +146,45 @@ private slots:
         QFile file(rig.dir.filePath("destination-status.json"));
         QVERIFY(file.open(QIODevice::ReadOnly));
         const auto saved = QJsonDocument::fromJson(file.readAll()).object();
-        QCOMPARE(saved["keychainEntries"].toArray(), QJsonArray{"putgd/sftp/test"});
+        QVERIFY(saved["keychainEntries"].toArray().contains(QJsonValue("putgd/sftp/test")));
         QVERIFY(saved["destinations"].toObject().contains("test"));
+    }
+    // An install from before #1890 that saved to putgd/<id> and then switched to session mode
+    // (a null reference) still has that entry marked after the upgrade.
+    void anUpgradeMarksEntriesOfSessionDestinations() {
+        Rig rig({sftpProfile("test", {}, "session")});
+        {
+            QFile file(rig.dir.filePath("destination-status.json"));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"destinations", QJsonObject{}}, {"credentialRevisions", QJsonObject{}}}).toJson(QJsonDocument::Compact));
+        }
+        rig.status.load();
+        QVERIFY(rig.status.keychainSaved("putgd/test"));
+        rig.use({sftpProfile("test", "putgd/test")});
+        rig.keychain.unlockError = notFound;
+        QJsonObject job;
+        store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
+        QCOMPARE(job["state"].toString(), QString("failed"));
+        QCOMPARE(rig.keychain.saves, 0);
+    }
+    // An unlock holds the entry like a store, so a read begun before a store can't finish after it.
+    void anUnlockHoldsTheEntry() {
+        Rig rig;
+        rig.keychain.holdUnlock = true;
+        QString unlock;
+        rig.setup.start("unlockCredentials", "test", rig.settings.revision(), {}, [&](Error e, QJsonObject result) { QVERIFY(!e); unlock = result["setupId"].toString(); });
+        QVERIFY(rig.keychain.heldReply);
+        Error busy;
+        rig.setup.start("storeCredentials", "test", rig.settings.revision(), {{"values", QJsonObject{{sftp::passwordKey(), "synthetic-a"}}}}, [&](Error e, QJsonObject) { busy = e; });
+        QCOMPARE(busy.code, QString("setup_busy"));
+        auto reply = std::move(rig.keychain.heldReply);
+        reply({"credential_access_denied", "Synthetic locked keychain", {}});
+        QJsonObject job;
+        PUTGD_TRY_VERIFY((rig.setup.inspect(unlock, [&](Error, QJsonObject value) { job = value; }), job["state"] == "failed"));
+        rig.keychain.holdUnlock = false;
+        rig.keychain.unlockError = notFound;
+        store(rig, {{sftp::passwordKey(), "synthetic-a"}}, job);
+        QCOMPARE(job["state"].toString(), QString("completed"));
     }
     // Keychain, then session, then keychain again keeps the entry marked as saved. Settings
     // writes putgd/<id> when it switches a destination to the keychain.

@@ -11,6 +11,18 @@
 #include <cmath>
 namespace putgd {
 namespace {
+// The keychain entries configured destinations own, in any credentials mode: the reference each
+// names, and putgd/<id> (what Settings writes when it switches to the keychain) and
+// putgd/sftp/<id> for each one, so keychain → session → keychain keeps an entry's mark.
+QSet<QString> ownedEntries(const QHash<QString,QJsonObject>& profiles) {
+ QSet<QString> owned;
+ for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
+  if(const auto reference=(*it)["credentials"].toObject().value("reference");reference.isString()&&!reference.toString().isEmpty())owned.insert(reference.toString());
+  owned.insert("putgd/"+it.key());
+  if((*it)["provider"]=="sftp")owned.insert("putgd/sftp/"+it.key());
+ }
+ return owned;
+}
 constexpr qint64 maximumFileBytes=1024*1024;
 // A JSON number that is an exact integer from 0 to 2^53: a revision this file can hold.
 bool revisionValue(const QJsonValue& value,quint64* out) {
@@ -30,11 +42,11 @@ DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObj
 void DestinationStatus::load() {
  records_.clear();credentialRevisions_.clear();keychainEntries_.clear();
  QFile file(path_);
- // A file from before #1890 has no record of saved keychain entries: every keychain entry a
- // destination names then counts as saved, so a store of one secret never overwrites one.
+ // A file from before #1890 has no record of saved keychain entries: every entry a destination
+ // owns then counts as saved, so a store of one secret never overwrites one.
  // An unreadable file is left as it is: the entries count as saved for this run only.
  const auto upgrade=[this](bool persist){
-  for(const auto& profile:settings_.snapshot().profiles)if(const auto credentials=profile["credentials"].toObject();credentials["mode"]=="keychain"&&!credentials["reference"].toString().isEmpty())keychainEntries_.insert(credentials["reference"].toString());
+  keychainEntries_.unite(ownedEntries(settings_.snapshot().profiles));
   if(persist)save();
  };
  if(!file.exists()){upgrade(true);return;}
@@ -139,16 +151,8 @@ void DestinationStatus::prune() {
  bool removed=false;
  for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
  for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
- // An entry stays marked while a destination names it or owns it, in any credentials mode, as
- // putgd/<id> (what Settings writes when it switches to the keychain) or putgd/sftp/<id>, so
- // keychain → session → keychain keeps it.
- QSet<QString> named;
- for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
-  if(const auto reference=(*it)["credentials"].toObject().value("reference");reference.isString())named.insert(reference.toString());
-  named.insert("putgd/"+it.key());
-  if((*it)["provider"]=="sftp")named.insert("putgd/sftp/"+it.key());
- }
- for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!named.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;
+ const auto owned=ownedEntries(profiles);
+ for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!owned.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;
  if(removed){save();emit changed();}
 }
 QJsonObject DestinationStatus::publicJson() const {
