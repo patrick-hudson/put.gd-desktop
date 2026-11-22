@@ -266,7 +266,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   }
   // A preparation the helper could recover from (encoding, size): it handed
   // nothing off and editing resumes, without a deadline again.
-  if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
+  if(type=="editing"&&editing&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
   // #1820: an agent's Upload anyway with covers is answered after the covered handoff began.
   if(type=="commandResult"&&(editing||prompting||covering)){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
@@ -373,7 +373,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   for(auto& pending:session->take()){
    if(!(editing||prompting)||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
-   if(pending.command=="decide"&&decideRequest.isEmpty()){decideRequest=id;decided=pending.params["choice"].toString();}
+   if(pending.command=="decide"&&check_&&!check_->prompt){
+    // Report mode forwards one decision at a time: a second waits for no answer, it is refused.
+    if(!decideRequest.isEmpty()){pending.reply({"editor_busy","Another decision for this capture is still being answered",{}},{});continue;}
+    decideRequest=id;decided=pending.params["choice"].toString();
+   }
    auto frame=envelope(nonce);frame["requestId"]=id;frame["command"]=pending.command;frame["params"]=pending.params;
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
    // Quick redact (#1428) answers when recognition is done, under the recognition deadline.

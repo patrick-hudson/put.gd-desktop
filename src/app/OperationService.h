@@ -266,8 +266,10 @@ private:
   // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
   QHash<QString,QString> checkedFiles={};
   // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
-  // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
-  // originalFiles: a covered selected file's item index, its path and its identity when checked.
+  // replacedFiles maps a selected file's place in the selection (as a number) to its covered PNG staged under
+  // covered/ (#1898: a file chosen twice may be covered at one place only); covered sums the kinds covered.
+  // originalIdentities: by the same place, the file's identity when checked. originalFiles: a covered selected
+  // file's item index, its path and its identity when checked.
   // originalPath: a covered capture's original, written as a private PNG at once so no raster waits in memory;
   // empty when none was kept, "-" when writing it failed.
   QString originalPath={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};

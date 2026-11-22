@@ -223,6 +223,13 @@ private slots:
    QCOMPARE(prompt.choices(),(QStringList{"redact_upload","upload","cancel"}));QVERIFY(!prompt.findChild<QPushButton*>("sensitiveEdit"));
   }
   {
+   // A long name with no spaces doesn't widen the panel past the screen.
+   auto files=model;files.editAllowed=false;files.file="File 2 of 3: "+QString(240,'x')+".png";files.destination="Upload to "+QString(180,'y');
+   SensitivePrompt prompt(files);prompt.show();QVERIFY(putgd::test::waitForWindowExposed(&prompt));
+   QVERIFY2(prompt.width()<=prompt.screen()->availableGeometry().width(),qPrintable(QString::number(prompt.width())));
+   for(auto* button:prompt.findChildren<QPushButton*>())QVERIFY(button->geometry().right()<prompt.width());
+  }
+  {
    // A check that couldn't finish and found nothing has nothing to cover in one step.
    auto partial=model;partial.findings.found={};partial.findings.complete=false;partial.findings.reason="truncated";SensitivePrompt prompt(partial);
    QCOMPARE(prompt.choices(),(QStringList{"edit","upload","cancel"}));QVERIFY(!prompt.choose("redact_upload"));

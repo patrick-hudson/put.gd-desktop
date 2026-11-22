@@ -649,7 +649,9 @@ void OperationService::runCheck(Job job) {
    return QJsonObject{};
   }
   if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{},cover}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
-  QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
+  // Each image with its place in the selection: a file chosen twice is answered, and covered, once per place (#1898).
+  QStringList images;QList<int> places;
+  for(int place=0;place<shared->payload.files.size();++place)if(checkableImage(shared->payload.files[place])){images.append(shared->payload.files[place]);places.append(place);}
   if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
   // The editor edits one image: Open in editor is offered only for a selection of one; Redact and upload for every file.
   const bool single=shared->payload.files.size()==1&&images.size()==1;
@@ -663,7 +665,7 @@ void OperationService::runCheck(Job job) {
    if(!outcome->png.isEmpty()&&!outcome->covered.isEmpty()){
     const auto folder=QStringLiteral("%1/%2").arg(coveredRoot).arg(index);
     // Within the 255-byte name limit after ".png" is added, cut at a whole character (#1898).
-    auto base=QFileInfo(images[index]).completeBaseName().left(200);
+    auto base=QFileInfo(images[index]).completeBaseName();
     while(base.toUtf8().size()>200){base.chop(1);if(!base.isEmpty()&&base.back().isHighSurrogate())base.chop(1);}
     const auto name=base+QStringLiteral(".png");
     QFile staged(folder+"/"+name);
@@ -673,9 +675,8 @@ void OperationService::runCheck(Job job) {
     }
     staged.close();
     for(auto it=outcome->covered.begin();it!=outcome->covered.end();++it)shared->covered[it.key()]=shared->covered[it.key()].toInt()+it.value().toInt();
-    // The same file selected twice: its first covered copy goes, the second takes its place.
-    if(shared->replacedFiles.contains(images[index]))discardCovered({{images[index],shared->replacedFiles.value(images[index])}});
-    shared->replacedFiles.insert(images[index],staged.fileName());shared->originalIdentities.insert(images[index],shared->checkedFiles.take(images[index]));
+    const auto place=QString::number(places[index]);
+    shared->replacedFiles.insert(place,staged.fileName());shared->originalIdentities.insert(place,shared->checkedFiles.value(images[index]));
     outcome->png.clear();outcome->covered={};outcome->check="upload";
     continue;
    }
@@ -799,8 +800,17 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   // #1820: a selection's covered files upload in their places; the originals are saved locally with Keep a local copy on.
   if(!job.replacedFiles.isEmpty()){
    recordCovered(job.covered);
-   if(op.settings.archive.keepUploads)for(int index=0;index<job.payload.files.size();++index)if(const auto& file=job.payload.files[index];job.replacedFiles.contains(file))job.originalFiles.append({index,file,job.originalIdentities.value(file)});
-   for(auto& file:job.payload.files)file=job.replacedFiles.value(file,file);
+   // Replacements are keyed by place in the selection. A file covered at every place it was chosen uploads only
+   // covered copies, so it is not compared again; one also chosen uncovered still is.
+   QSet<QString> uncovered,coveredPaths;
+   for(int index=0;index<job.payload.files.size();++index){
+    const auto& file=job.payload.files[index];const auto place=QString::number(index);
+    if(!job.replacedFiles.contains(place)){uncovered.insert(file);continue;}
+    coveredPaths.insert(file);
+    if(op.settings.archive.keepUploads)job.originalFiles.append({index,file,job.originalIdentities.value(place)});
+   }
+   for(const auto& file:std::as_const(coveredPaths))if(!uncovered.contains(file))job.checkedFiles.remove(file);
+   for(int index=0;index<job.payload.files.size();++index)job.payload.files[index]=job.replacedFiles.value(QString::number(index),job.payload.files[index]);
   }
   enqueue(std::move(job));next();return;
  }

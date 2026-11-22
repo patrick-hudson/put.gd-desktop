@@ -65,7 +65,8 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
  auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
  // A file-manager selection is answered as a whole: the editor edits one image.
- if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+(model_.redactAllowed?QStringLiteral(" · Redact and upload or Upload anyway sends this file and checks the rest, Cancel sends none"):QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none")),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
+ // A name with no spaces doesn't wrap: it is shortened in the middle to the panel's width.
+ if(!model_.file.isEmpty()){auto* file=Ui::label(QString(),"meta",this);file->ensurePolished();file->setText(file->fontMetrics().elidedText(model_.file,Qt::ElideMiddle,inner)+(model_.redactAllowed?QStringLiteral(" · Redact and upload or Upload anyway sends this file and checks the rest, Cancel sends none"):QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none")));file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
  if(!model_.preview.isNull()){
   // The capture as Redact and upload sends it (and Open in editor starts it), scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);
@@ -73,7 +74,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
  auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
- if(!model_.destination.isEmpty()){auto* where=Ui::label(model_.destination,"meta",this);where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
+ if(!model_.destination.isEmpty()){auto* where=Ui::label(QString(),"meta",this);where->ensurePolished();where->setText(where->fontMetrics().elidedText(model_.destination,Qt::ElideMiddle,inner));where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  // #1898: four choices. Cancel and Open in editor on the left, Upload anyway and the primary Redact and upload on
  // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair.
  cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
@@ -107,7 +108,9 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  }
  setMinimumWidth(std::min(Ui::scaled(460),room));
  // A fixed size: tiling compositors (Hyprland, Budgie's labwc) float such a window instead of tiling it.
- adjustSize();setFixedSize(sizeHint().expandedTo(minimumSize()));
+ // Never wider than the room; wrapped text takes the height it needs at that width.
+ adjustSize();const int width=std::min(sizeHint().expandedTo(minimumSize()).width(),room);
+ setFixedSize(width,hasHeightForWidth()?heightForWidth(width):sizeHint().height());
 }
 void SensitivePrompt::paintEvent(QPaintEvent*){
  const auto& tokens=Theme::current();QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);

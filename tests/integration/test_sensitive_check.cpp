@@ -7,6 +7,7 @@
 #include "core/AllocatorPolicy.h"
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
+#include <algorithm>
 #include <QFileInfo>
 #include <QFont>
 #include <QPainter>
@@ -200,6 +201,23 @@ private slots:
   QCOMPARE(f.provider->uploads.load(),2);QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject(),(QJsonObject{{"card",1},{"key",1}}));
   HistoryStore journal(f.operations->databasePath());for(const auto& item:journal.operation(id).items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));QVERIFY(blackShare(QImage::fromData(artifact.readAll()),digits(0))>0.7);}
   QVERIFY(blackShare(QImage(first),digits(0))<0.4);QVERIFY(blackShare(QImage(second),digits(0))<0.4);
+ }
+ // #1898: a file chosen twice is answered at each place: Redact and upload at the first never becomes the second's
+ // Upload anyway, which keeps only the automatic cover, nor the reverse.
+ void aFileChosenTwiceKeepsEachPlacesAnswer(){
+  Fixture f(page({"nothing"}),true,false,kinds({{"card","redact"},{"key","warn"}}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto path=f.dir.filePath("receipt.png");QVERIFY(page({card.first(),key.first()}).save(path,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({path,path},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  const QStringList choices{"redact_upload","upload"};
+  for(int prompt=1;prompt<=2;++prompt){
+   QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==prompt;},40000));
+   QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,choices[prompt-1],r,prompt);}).error);
+  }
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),40000);
+  HistoryStore journal(f.operations->databasePath());const auto items=journal.operation(id).items;QCOMPARE(items.size(),2);
+  QList<double> keys;for(const auto& item:items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto image=QImage::fromData(artifact.readAll());QVERIFY(blackShare(image,digits(0))>0.7);keys.append(blackShare(image,digits(1)));}
+  std::sort(keys.begin(),keys.end());QVERIFY2(keys[0]<0.4&&keys[1]>0.7,"one place covered the key, the other left it as chosen");
  }
  // #1898: a check that couldn't finish and found nothing has nothing to cover: Redact and upload is refused.
  void redactAndUploadNeedsSomethingFound(){
