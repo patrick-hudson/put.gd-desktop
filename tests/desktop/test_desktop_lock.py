@@ -433,6 +433,13 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
         self.assertEqual(self.desktop.status()['state'], 'free')
 
+    def test_last_event_ignores_other_files_kept_in_history(self):
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        # A retired scratch note sorts after every stamped receipt by name.
+        (self.directory / 'history' / 'plasma1364-scratch-retired.json').write_text('{"note": "retired"}\n')
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+
 
 class QuietLease(LockTest):
     def quiet(self):
