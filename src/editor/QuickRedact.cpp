@@ -606,7 +606,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    const auto& firstWord=plain.at(line.at(lead));
    // A name, then "=" or ":" as a word of its own ("DEBUG_MODE" "=" "0", Sol on #1901).
    static const QRegularExpression name(QStringLiteral("^[A-Za-z_][A-Za-z0-9_.-]*$"));
-   const bool separated=lead+1<line.size()&&name.match(firstWord).hasMatch()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
+   const bool separated=lead+2<line.size()&&name.match(firstWord).hasMatch()&&(plain.at(line.at(lead+1))==QLatin1String("=")||plain.at(line.at(lead+1))==QLatin1String(":"));
    f.statement=assignment.match(firstWord).hasMatch()||empty.match(firstWord).hasMatch()||separated||digestLine(line,plain);
    it=facts.insert(key,std::move(f));
   }
