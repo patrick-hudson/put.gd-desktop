@@ -159,6 +159,8 @@ struct ScrollTracker::Signature {
 namespace {
 
 inline unsigned absDiff(unsigned a, unsigned b) { return a > b ? a - b : b - a; }
+// Cells with texture a row needs to be taken for a line along the frame's edge (#1796).
+constexpr int kEdgeLineCells = 16;
 
 // Rows of a tile: what may disagree as one piece (a sticky header strip that
 // moved by its own distance, a box, a side bar) without the page around it
@@ -3761,7 +3763,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   // holds up to a whole frame of pixels, at most 8 of them, and spare_ keeps
   // their buffers: about 9 frames at the peak (at 3840x2160 some 300 MB),
   // whatever the session's length.
-  if (!pending_.empty()) narrowPending(pending_.back(), blocked);
+  if (!pending_.empty()) narrowPending(pending_.back(), blocked, cur, pos);
   const bool young = youngMask && pending_.size() < 8;
   if (!young) {
     std::vector<uint64_t> area;
@@ -4107,12 +4109,55 @@ void ScrollTracker::pageArea(std::vector<uint64_t>& out, std::vector<uint64_t>* 
 }
 
 // What a waiting frame's next pair found pinned or standing still is not
-// written from it, whenever it is written.
-void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& blocked) const {
-  const int words = store_->words;
+// written from it, whenever it is written. Nor, in the frame's first and last
+// block rows, a cell with texture that the next frame, the page moved, shows
+// the same at the same place of the screen: a line along the region's edge
+// (the dark row under Firefox's page on Cinnamon) stays there, one row of a
+// block that moves with the page, so the block is never held back, and it
+// was written into the page's rows as seen once (#1796). The page's own new
+// rows at the edge are where the next frame shows other rows, and that pair
+// proves them where they moved to.
+void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& blocked, const Signature& cur,
+                                  long long pos) const {
+  const int words = store_->words, C = cells_, R = opts_.blockRows;
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  const bool moved = pend.pos != pos && !viewMoved_;
   for (size_t slot = 0; slot < pend.rows.size(); ++slot) {
-    const int brow = std::min(pend.rows[slot] / opts_.blockRows, blockRowCount_ - 1);
-    for (int w = 0; w < words; ++w) pend.open[slot * size_t(words) + size_t(w)] &= ~blocked[size_t(brow) * words + size_t(w)];
+    const int y = pend.rows[slot];
+    const int brow = std::min(y / R, blockRowCount_ - 1);
+    uint64_t* open = &pend.open[slot * size_t(words)];
+    for (int w = 0; w < words; ++w) open[w] &= ~blocked[size_t(brow) * words + size_t(w)];
+    if (!moved || (y >= R && y < (blockRowCount_ - 1) * R)) continue;
+    // And the next frame must show something else where the page row moved
+    // to: page content that repeats at the step (a rule every step rows)
+    // agrees there too. Only cells in sight and not held back there are
+    // judged, and a row the next frame cannot show is not judged at all: what
+    // the next frame hides there may be the page's (a scroll bar's column
+    // keeps its piece of the line).
+    const long long ya = y - (pos - pend.pos);
+    if (ya < 0 || ya >= height_) continue;
+    const int browA = std::min(int(ya) / R, blockRowCount_ - 1);
+    const uint64_t* blkA = &blocked[size_t(browA) * words];
+    // A line along the edge: most of the row's cells with texture stay, not
+    // a few cells of text that happen to look alike.
+    const uint64_t* plain = &pend.plain[slot * size_t(words)];
+    const uint16_t* was = &pend.cells[slot * size_t(C)];
+    const uint16_t* now = cur.cellRow(y);
+    const uint16_t* there = cur.cellRow(int(ya));
+    std::vector<uint64_t> same(static_cast<size_t>(words), 0);
+    int judged = 0, kept = 0;
+    for (int w = 0; w < words; ++w)
+      for (uint64_t bits = open[w] & ~plain[w]; bits; bits &= bits - 1) {
+        const int c = w * 64 + std::countr_zero(bits);
+        if ((blkA[w] >> (c & 63)) & 1) continue;
+        ++judged;
+        if (absDiff(was[c], now[c]) <= tol && absDiff(was[c], there[c]) > tol) {
+          ++kept;
+          same[size_t(w)] |= 1ull << (c & 63);
+        }
+      }
+    if (kept >= kEdgeLineCells && 10 * kept >= 9 * judged)
+      for (int w = 0; w < words; ++w) open[w] &= ~same[size_t(w)];
   }
 }
 
@@ -4243,6 +4288,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     prevIsLast_ = true;
     prevPos_ = 0;
     prevHasPos_ = true;
+    prevPlaceKnown_ = true;
     prevViewMoved_ = false;
     r.confidence = 1;
     r.state = state_ = TrackState::Following;
@@ -4291,6 +4337,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = true;
       prevPos_ = lastPos_;
       prevHasPos_ = true;
+      prevPlaceKnown_ = true;
       prevViewMoved_ = false;
       framesSincePlaced_ = 0;
       skipsSincePlaced_ = 0;
@@ -4303,6 +4350,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = false;
       prevPos_ = lastPos_;
       prevHasPos_ = true;
+      prevPlaceKnown_ = true;
       prevViewMoved_ = false;
       r.hintsKept = true;
     }
@@ -4346,6 +4394,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   int unexplainedPick = -1;
   int pick = decide(cands, expected, uncertainty, hinted, &byExp, &why, &unexplainedPick);
   long long refusedCandPos = 0;
+  bool refusedKnown = false;  // refusedCandPos was found in the image (or derives from a place that was)
   bool hasRefusedCand = false;
   // A large playing video (>50% of shown tiles) can lower coarseShare below
   // coarseFloor (0.30) or make decide() reject a strong pair match as
@@ -4374,7 +4423,15 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     const Signature* other = usePrev ? prevSig() : &ref;
     const long long otherPos = usePrev ? prevPos_ : lastPos_;
     const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-    if (!otherViewMoved && observeOnce(cur, *other, upos, otherPos, &cands, unexplainedPick, true)) {
+    // Not once the page is lost (here and in the two retries for a refused
+    // place below): the page may be anywhere by then, and the candidate is a
+    // guess that agrees only as look-alikes do (a pull request's tables of
+    // near-equal rows). Its marks repainted verified text with what a later
+    // frame showed over those rows: GitHub's sticky header over a commit
+    // hash, once the page was found again (#1795). A playing video is met
+    // while following, as the retry at rest below has it.
+    if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+        observeOnce(cur, *other, upos, otherPos, &cands, unexplainedPick, true)) {
       computeExcluded(cur, ref, lastPos_);
       cands = searchPair(cur, ref, expected);
       pick = decide(cands, expected, uncertainty, hinted, &byExp, &why);
@@ -4398,7 +4455,10 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     long long upos = 0;
     if (pIdx >= 0) {
       upos = prevPos_ + prevCands[size_t(pIdx)].d;
-      marked = observeOnce(cur, *prevSig(), upos, prevPos_, &prevCands, pIdx, true);
+      refusedKnown = prevPlaceKnown_;
+      // Once lost, only from a place the image lookup found (#1795).
+      if (skipRun_ < opts_.lostAfterSkips || prevPlaceKnown_)
+        marked = observeOnce(cur, *prevSig(), upos, prevPos_, &prevCands, pIdx, true);
     }
     computeExcluded(cur, ref, lastPos_);
     if (marked) {
@@ -4516,7 +4576,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       const Signature* other = usePrev ? prevSig() : &ref;
       const long long otherPos = usePrev ? prevPos_ : lastPos_;
       const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-      if (!otherViewMoved && observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
+      if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+          observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
         bandTally(cur, ref, d, tb);
@@ -4532,6 +4593,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       if (!retried) {
         refusedCandPos = pos;
         hasRefusedCand = true;
+        refusedKnown = false;
         pick = -1;
         why = SkipReason::Contradicted;
       }
@@ -4609,6 +4671,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (!hasRefusedCand) {
       refusedCandPos = lastPos_;
       hasRefusedCand = true;
+      refusedKnown = true;
     }
   }
   if (pick < 0 && why != SkipReason::Ambiguous && (share >= opts_.stillFallback || still)) return noMovement(false);
@@ -4640,7 +4703,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
       bool retried = false;
       const long long fpos = lastPos_ + found[size_t(fp)].d;
-      if (prevHasPos_ && prevSig() && !prevViewMoved_ &&
+      if (prevHasPos_ && prevSig() && !prevViewMoved_ && skipRun_ < opts_.lostAfterSkips &&
           observeOnce(cur, *prevSig(), fpos, prevPos_, &found, fp, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
@@ -4662,6 +4725,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
         if (!hasRefusedCand) {
           refusedCandPos = fpos;
           hasRefusedCand = true;
+          refusedKnown = true;
         }
         fp = -1;
         fw = SkipReason::Contradicted;
@@ -4701,6 +4765,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       prevIsLast_ = false;
       prevPos_ = refusedCandPos;
       prevHasPos_ = true;
+      prevPlaceKnown_ = refusedKnown;
       prevViewMoved_ = false;
     } else {
       prevHasPos_ = false;
@@ -4731,6 +4796,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   prevIsLast_ = true;
   prevPos_ = pos;
   prevHasPos_ = true;
+  prevPlaceKnown_ = true;
   prevViewMoved_ = viewMoved_;
   skipRun_ = 0;
   r.state = state_ = capped_ ? TrackState::Capped : TrackState::Following;

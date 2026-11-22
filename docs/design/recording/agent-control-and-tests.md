@@ -47,21 +47,27 @@ so that refusal does not cancel a waiting Upload; an Upload cannot be sent durin
 anyway. These are `setIn`, `setOut`,
 `resetTrim`, `addMask`, `placeMask`, `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`,
 `strength`, `removeMask`, `cut`, `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`,
-`setCoverEdgeToPlayhead`, `coverKind` and `setTrim`.
+`setCoverEdgeToPlayhead`, `coverKind`, `setTrim`, `retimeCover` and `setCutEdge`.
 
 - `invalid_request`: unknown actions, missing or malformed fields, out-of-range values
   and unknown IDs; also an action that needs a selection the window lacks and checks
-  itself (`placeMask` with nothing armed or selected, `strength`, `removeMask`,
+  itself (`placeMask` with nothing armed or selected, with both or neither of `rect` and `at`, or with an `at` outside the canvas (whole pixels, like `rect`), `setCutEdge` or `scrollTimeline` with a bad value, `strength`, `removeMask`,
   `useSolidCover`, `selectMask` with an unknown ID, and `setMaskIn`, `setMaskOut`,
   `setIn`, `setOut` when the edge would cross the other, or `setOut`, `setMaskOut` and
   `setCoverEdgeToPlayhead` with `edge: end` when no frame is shown for the playhead).
 - `recording_state`: the window's state refuses the action. A cover being placed
-  (`selectRange`, `cut`, `redo`, `saveCopyDialog`, `retryExport`), no failed export to
-  retry (`retryExport`), no time selection
+  (`selectRange`, `cut`, `redo`, `markSelection`, `setCutEdge`, `saveCopyDialog`, `retryExport`), a
+  change or gesture still unanswered or a window state that blocks the retry (`retryExport`; with
+  no failed export in the window it is `invalid_request`, and `recording_state` only when the
+  resident itself lacks the failed request), a refusal detected or a chosen copy already
+  waiting (`saveCopyDialog`), no time selection
   (`cut`), no selected cover (`seekCoverStart`, `seekCoverEnd`, `setCoverEdge`,
-  `setCoverEdgeToPlayhead`, `coverKind`), nothing to undo, redo or step through, no
-  placement to cancel, an excluded cover (`seekCoverStart`, `seekCoverEnd`), playing
-  (`skim`), a panel that is not folded (`panel`), the picture at Fit (`viewerPan`), an
+  `setCoverEdgeToPlayhead`, `coverKind`, `retimeCover`), nothing to undo, redo or step
+  through, no placement to cancel, an excluded cover (`seekCoverStart`, `seekCoverEnd`),
+  playing or skimming turned off (`skim`), every cover already shown in the lanes
+  (`moreCovers`), the timeline at Fit (`scrollTimeline`), a timeline drag in progress
+  (`timelineZoom`, `timelineFit`, `zoomIn`, `zoomOut`, which the timeline ignores then), the frame at the
+  playhead not shown yet (`setCutEdge` with `edge: end`), a panel that is not folded (`panel`), the picture at Fit (`viewerPan`), an
   export running, the discard confirmation or the **Save a copy…** chooser open.
 - **The outcome of the action's own proposals** is its result. Proposals are applied
   **individually**, and each action reports only the proposals it made: a proposal the
@@ -73,7 +79,7 @@ anyway. These are `setIn`, `setOut`,
   as `proposals: [n, ...]`, present **only when the action made one**. An action that proposes an edit is `cut`, `adjustCut`,
   `restoreCut`, `setTrim`, `setIn`, `setOut`, `resetTrim`, `trimToLimit`, `addMask`,
   `placeMask`, `setMaskIn`, `setMaskOut`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
-  `coverKind`, `strength`, `removeMask`, `useSolidCover` (an `updateMask` for a selected blur), `armRedact` and `armBlur` (which commit a pending nudge first), `undo` and `redo`. An error does not mean no
+  `coverKind`, `retimeCover` (an `updateMask`), `setCutEdge` (an `updateCut`), `strength`, `removeMask`, `useSolidCover` (an `updateMask` for a selected blur), `armRedact` and `armBlur` (which commit a pending nudge first), `undo` and `redo`. An error does not mean no
   proposal was applied (an action may have made several, applied one by one): **after any
   error, `inspect` again and read the edit and revision before exporting or repeating the
   action.** `lastRefusal` in `inspect` is for display only: it is the latest refusal the
@@ -106,7 +112,7 @@ anyway. These are `setIn`, `setOut`,
 | `playAcross` | `cutId` | plays from 1 s of kept footage before the cut |
 | `undo`, `redo` | | the resident's history (Ctrl+Z, Ctrl+Shift+Z); `undo` while placing a cover cancels the placement, `redo` then is refused; nothing to step is `recording_state` |
 | `armRedact`, `armBlur` | | X and B: commit a pending nudge, then arm a cover for the time selection, or for the whole recording |
-| `placeMask` | `rect` | while a cover is armed, draws its box as a drag does (one `addMask`); otherwise moves or resizes the selected cover |
+| `placeMask` | exactly one of `rect` or `at` `[x, y]` | while a cover is armed, `rect` draws its box as a drag does (one `addMask`) and `at` is a click: it places the default box (about 20 % × 8 % of the frame, kept inside it) centred on that canvas point; otherwise `rect` moves or resizes the selected cover. `at` needs a cover armed and takes two whole numbers inside the canvas (`invalid_request`) |
 | `cancelPlacement` | | Esc, or the banner's Cancel |
 | `addMask` | `kind` blur or solid, optional `rect` | arms and places in one step: the box (default: centred, half the frame) over the time selection, **or over the whole recording when nothing is selected** (the same as X and B; widening the trim later never uncovers anything) |
 | `selectMask` | `maskId`, or null to clear | selects a cover |
@@ -120,16 +126,25 @@ anyway. These are `setIn`, `setOut`,
 | `useSolidCover` | | turns the selected blur into a redaction (one `updateMask`, one undo step), or an armed Blur into an armed Redact (no edit yet) |
 | `strength` | `strength` 2–64 | the selected blur's strength |
 | `removeMask` | | removes the selected cover |
-| `timelineZoom` | `level` 1 (Fit), 2, 4, 8 or 16 | the timeline's zoom |
-| `timelineFit` | | back to Fit |
+| `timelineZoom` | `level`: one of `inspect` `timeline.zoomLevels` (1 is Fit; the ladder 1, 2, 3, 4, 6, 8, 12, 16, 24, … depends on the clip) | the zoom menu's levels; any other level is `invalid_request` and names the valid ones |
+| `timelineFit` | | back to Fit (Shift+Z) |
+| `zoomIn`, `zoomOut` | | `=` and `-`: one level closer or farther. The anchor is the playhead when it is on screen, else the middle of the view |
+| `setSkimming` | `on` (boolean) | S and the **Skim** toggle. Off, hovering never changes the viewer (`inspect` `timeline.skimming`) |
+| `setSnapping` | `on` (boolean) | N and the **Snap** toggle (`inspect` `timeline.snapping`) |
+| `retimeCover` | `start`, `end` | slides or retimes the selected cover, as dragging its bar's body does: one edit (`updateMask`) and one undo step; `start < end` within the recording (`invalid_request`), a selected cover needed (`recording_state`) |
+| `setCutEdge` | `cutId`, `edge` start or end | the cut's **Set to playhead** (Starts or Ends): the frame on screen is the cut's first frame for `start` (falling back to the playhead's time when no frame can be resolved) and its last for `end` (which needs a resolved frame after the window's decode attempt), as for a cover; `invalid_request` for an unknown cut or edge, `recording_state` while a cover is being placed or when the frame is not shown yet (`end`) |
+| `scrollTimeline` | `start` | scrolls the zoomed timeline's view to start at that source time, clamped to the duration minus the visible span's length (read the result in `timeline.visible.start`), as dragging the overview track does, and suspends playback's follow until playback restarts or the playhead is back in view; `start` within the recording (`invalid_request`), `recording_state` at Fit |
+| `moreCovers` | | the "+n" chip: the Edits list, scrolled to the first cover the lanes hide; `recording_state` when none is hidden |
+| `markSelection` | `edge` start or end | `[` and `]`: the time selection's start or end at the playhead, whatever is selected; `recording_state` while a cover is being placed |
+| `editPoint` | `delta` 1 or −1 | Up and Down: the playhead to the next or previous edit point (a trim end, the kept side of a cut boundary, a cover edge); nothing happens when there is none |
 | `viewerZoom` | `mode` fit or actual | Fit or 100 % (source pixels) |
 | `viewerPan` | `dx`, `dy` (source pixels) | pans at 100 %; `recording_state` at Fit |
-| `skim` | `time` | paused hover on the timeline: the tile shows only when the preceding keyframe's tile is cached (otherwise the viewer keeps what it showed, possibly an earlier skim picture), then the exact frame; `recording_state` while playing |
+| `skim` | `time` | paused hover on the timeline, as the pointer after hover intent: the viewer keeps its picture until the exact frame with its covers arrives (it never shows a thumbnail), or a cached or nearby one when no cover edge lies between; `recording_state` while playing and while skimming is off (`setSkimming` first) |
 | `skimEnd` | none | leaves the skim and restores the playhead frame; takes no time and also clears a skim while playing |
 | `panel` | `open` (boolean) | the folded Edits overlay; `recording_state` while the panel is beside the viewer |
 | `resize` | `width`, `height` (200–16000) | resizes the window, so the panel folds or unfolds |
 | `format` | `format`, `codec` | the output format menu. Offered combinations: `mp4` with `h264` or `h265`, `webm` with `vp9`, and `gif` or `webp` with an empty or omitted `codec`; anything else is `invalid_request` |
-| `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel |
+| `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel. `saveCopyDialog` commits typed changes first, like the press; it is `recording_state` when it detects a refusal ("No copy was saved: a change wasn't applied. Check the edits, then save again.") or when a chosen copy is already waiting for the last change to be saved |
 | `dismissStatus`, `showAdvice` | | clears the status line, or opens an error's details |
 | `showInFolder`, `copyPath`, `dismissSavedCopy` | | the saved-copy result's actions |
 | `retryExport` | | Try again. It has **two layers of outcome, and an agent checks both**. The window's guard answers first: `invalid_request` when the window has no Try again to press (nothing failed there), `recording_state` while a cover is being placed or a change or gesture is still unanswered. Then the resident answers: `recording_state` when it has no failed request, `recording_stale` (an Upload whose edit changed since: "Press Upload to upload them"), `recording_config` (the output changed since: "Press Upload again" for an Upload, "Press Save a copy again" for a copy; both need the output unchanged), or the export-start reply (`state: exporting`, `pending`) as `recording.saveCopy` and `recording.upload` reply. It exports with **the output and revision the failed press stored**: a failed Upload at its own revision, a failed **Save a copy…** with the same path at the current revision. The agent then polls `lastExport`; if the retried request was an **Upload that hands off, `lastExport` disappears with the session, so follow it with `operation.inspect`**. A retried Upload **publishes** |
@@ -154,19 +169,20 @@ removed: those controls no longer exist.
 | `outsideKeptPart` | true while the playhead is on footage the export drops (a cut, or outside the trim) |
 | `outputDurationUs` | the kept time |
 | `undo` | `{canUndo, canRedo}` |
-| `viewer` | `{zoom: fit\|actual, percent, pan {x, y}}` |
+| `viewer` | `{zoom: fit\|actual, percent, pan {x, y}, live, arrowsClaimed, placeWaiting, selectedCover}`. `live` is `null` or `{maskId, pending}` for the cover being moved, resized or nudged (`pending` while the frame without it has not arrived); a blur-strength preview that the panel is still coalescing counts as live too; `arrowsClaimed` is true while the arrow keys belong to the picture; `placeWaiting` is true while a placement waits for its frame; `selectedCover` is `null` or `{box [x, y, w, h], grips [[x, y] × 8]}` in window coordinates, the grips in handle order (top-left, top, top-right, right, bottom-right, bottom, bottom-left, left) |
 | `placement` | `null`, or `{kind, start, end, whole, banner}` while a box is being placed |
 | `warning` | the blur banner's text, or `null` |
 | `tools` | `{cut, undo, redo, pictureZoom, editsToggle}`: whether Cut, Undo and Redo are enabled, the toolbar's "Fit · n%" text, and whether the Edits toggle is shown |
 | `folded` | whether the right panel is folded into the Edits overlay |
 | `panel` | `{mode: empty\|selection\|cover\|cut\|edits, title, rows, buttons, folded, overlayOpen}`: the panel's state, its heading (`"Edits"` in `edits` mode, otherwise the panel's own title text), the Edits rows (the same as `edits`) and the visible buttons with their enabled state |
 | `size` | the window's `[width, height]` |
-| `timeline` | `zoom`, `visible {start, end}`, `selection {start, end}` or `null`, `selectedEdit {kind, id}` (empty strings when nothing is selected), `skim {time, exact}` or `null`, `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
+| `timeline` | `zoom`, `zoomLevels` (the levels `timelineZoom` accepts; 1 is Fit), `visible {start, end}`, `selection {start, end}` or `null`, `selectedEdit {kind, id}` (empty strings when nothing is selected), `skim {time, exact}` or `null`, `snapping` and `skimming` (booleans), `hover {kind, id}` or `null` (the part under the pointer: `trim-start`, `trim-end`, `selection-start`, `selection-end`, `cut`, `cut-start`, `cut-end`, `cover`, `cover-start`, `cover-end`, `playhead`, `more` or `overview`), `pending {kind trim\|cut\|cover, id, start, end}` or `null` (a released drag painted where it was dropped until the resident answers; it clears when the timeline starts easing back, after 1 s), `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
 | `lastRefusal` | `null`, or `{code, message, revision, proposal}` for the latest edit the resident refused |
 | `uploadWaiting` | true while an Upload waits for the resident to answer every proposal. It is cancelled only when what it would export changes: the revision moves other than for the awaited answers, the output changes (even with the revision unchanged), any refusal received while it waits (including one for a later proposal), a trim or cover change the window refuses locally, or 2 s without an answer. A drag or placement started after it do not cancel it; a new press is blocked only while placing or mid-drag. Input, dialogs, menus, hover, `inspect`, `dismissStatus`, a raise and a saved-copy push do not cancel it (see [Commit and upload](overlay-and-review.md#interaction-rules)) |
 | `playbackQueuedEnd` | true when the latest playback run played to the end and queued its last frame (so an agent can tell a finished run from a stopped one) |
-| `preview` | `{error, stale, frameTimeUs, shownUs, frameSize [w, h], skimSize [w, h]}`: the shown frame's error, whether it is an earlier frame, `frameTimeUs` (the **requested** time while paused; `null` before the first frame), `shownUs` (the time of the picture actually shown for the current playhead, `null` when none was decoded for it), the frame's size in pixels (at 100 % the source size) and the size of the skim picture in the viewer (`[0, 0]` when not skimming) |
-| `timeline.skim` | `null`, or `{time, exact}`: the skimmed time and whether the exact frame has arrived (`false` while only the tile shows) |
+| `preview` | `{error, stale, frameTimeUs, shownUs, frameSize [w, h], skimSize [w, h], edgePreviewUs, edgeHeld}`: the shown frame's error, whether it is an earlier frame, `frameTimeUs` (the **requested** time while paused; `null` before the first frame), `shownUs` (the time of the picture actually shown for the current playhead, `null` when none was decoded for it), the frame's size in pixels (at 100 % the source size) and the size of the skim picture in the viewer (`[0, 0]` when not skimming); `edgePreviewUs` is the **requested** preview time of a dragged bracket or edge (it may precede the decoded frame's own time), held until the proposal is answered (`null` otherwise), and `edgeHeld` is true while that held frame waits for the answer; it expires after 1.5 s |
+| `toolNote` | the tool row's short note (an undo's "Undid: …", a speed, the arrows' owner) or `null` |
+| `timeline.skim` | `null`, or `{time, exact}`: the skimmed time and whether the exact frame has arrived (`false` while the viewer still shows the earlier picture, or a nearby frame, and the flag reads "≈") |
 | `statusFacts` | every status fact that holds for the current state, as `{text, tone, actions}`, each action being `{label, drive}` (`drive` is the call the action makes). The window shows one line at a time, an error first: `statusRow` is what is shown, and can hold a cancel notice ("Upload cancelled: …") on a line above one other status line |
 
 The rest is unchanged: `visible`, `playing`, `speed`, `armed`, `audio`, `audioRequested`, `audioEffective`, `selectedMaskId`, `status`,
@@ -230,12 +246,55 @@ lifecycle walk-throughs, A/V sync tones) is left to desktop acceptance.
   queued times when a new request replaces them, stops promptly on cancel or
   destruction, reports a missing clip once, and the skimmer decodes the exact
   frame with covers applied and drops a cancelled answer.
-- `gui_filmstrip_timeline` and `gui_review_panel`: the timeline's drags (trim
-  brackets, a time selection, cut and cover edges) propose one edit on release,
-  its keys and zoom behave, the skim moves, rests and leaves; the panel shows the
-  controls of every selection state and its buttons and fields emit their edits.
-  `gui_review_window_*` covers the window's wiring: a cut lands the playhead before
-  the seam, a cover spans the selection on whole frames, undo follows the
-  resident's history and the length limit counts kept time.
+- `gui_filmstrip_timeline` (`tests/gui/test_filmstrip_timeline.cpp`) pins the timeline's
+  pointer rules: the hit priority and zones (`hitPriorityAndZones`,
+  `cutBodiesAndCoincidentGrips`), press, click and drag (`stripPressSeeksDragSelectsClickClears`,
+  `stripPressWhilePlaying`, `capClickAwayFromTheLineSeeks`), one edit on release with the
+  grab offset and dead zone (`cutEdgeDragSelectsAndAdjustsOnceOnRelease`,
+  `coverEndAndSlideRetimeOnceOnRelease`, `dragLimitsAndRestores`), cancel by Esc or a right
+  press (`escapeAndRightPressCancel`), a released drag waiting for its answer
+  (`releasedEdgeWaitsForItsAnswer`), the late press (`aLatePressKeepsTheGripItLeft`),
+  snapping in screen pixels (`snappingTargets`, `snapReachIsInPixelsOnLongClips`),
+  autoscroll (`dragAutoscrollsAboveFit`), the zoom ladder and trackpad zoom
+  (`zoomLadder`, `trackpadZoomSettlesAndPanKeepsItsStart`), skim intent and its
+  settling (`skimNeedsIntentThenMovesRestsAndLeaves`, `crossingOrSkimmingOffNeverSkims`,
+  `skimIntentAndSeeks`, `noSkimAfterAClickUntilThePointerMoves`), hover reporting
+  (`hoverReportsTheItemUnderThePointer`), that selecting a shown cover keeps the lanes
+  (`selectingAShownCoverKeepsTheLanes`), the skim's drift and presses
+  (`skimDriftAndPresses`, `skimEntryEndsAndCoverEdges`), a scrub's narrow snap and the cap
+  following the pointer (`scrubSnapsNarrowlyAndTheCapFollowsThePointer`) and the ends of a
+  recording and a cut press (`endsSeeksAndCutPressRestore`), and a slide keeping its frame count,
+  the armed range of one frame and zoom ignored mid-drag (`slideFramesArmedRangeAndZoomMidDrag`).
+- `gui_review_panel` shows the controls of every selection state, that its buttons and
+  fields emit their edits, that Remove by pointer returns focus to the timeline and by key
+  moves on (`removeByPointerReturnsFocusAndByKeyMovesOn`), and that the folded overlay's
+  list keeps its fit after an edit (`overlayListKeepsItsFitAfterAnEdit`), and that a refused cut time shows the cut again
+  (`aRefusedCutTimeShowsTheCutAgain`).
+- `gui_review_window_*` (`tests/gui/test_review_window_actions.cpp`) covers the window's
+  wiring: a cut lands the playhead before the seam, a cover spans the selection on whole
+  frames, undo follows the resident's history and the length limit counts kept time; and
+  the feel rules: plain Enter never uploads (`plainEnterNeverUploads`), the keys work from
+  any focus (`windowKeysWorkFromAnyFocus`), timeline clicks keep playing and the selection
+  (`timelineClicksKeepPlayingAndTheSelection`, `pressesWhilePlaying`), every picture handle
+  resizes from the opposite side (`everyHandleResizesFromTheOppositeSide`,
+  `handlesAnswerOnEverySide`), picture gestures have a dead zone and cancel
+  (`viewerGesturesHaveADeadZoneAndCancel`), a moved cover stays covered until its frame
+  arrives (`aMovedCoverStaysCoveredUntilItsFrameArrives`), edge frames are held until the
+  answer (`edgeFramesHoldUntilTheAnswer`), the skim settles on the clip's last frame
+  (`skimAtTheLastFrameSettles`, `skimPictureEndsCleanly`), a placement follows the
+  selection (`placementFollowsTheSelection`), panel fields hand the keys back
+  (`panelFieldsHandTheKeysBack`), typed times commit before an upload
+  (`typedTimesAreCommittedBeforeUpload`) and a cut's times can be typed
+  (`cutTimesAreTyped`), the transport shows the recording time and a steady speed button
+  (`transportShowsRecordingTime`, `theSpeedButtonKeepsItsWidth`) and the arrows come back at
+  100 % (`arrowsComeBackAtActualSize`), a cancelled press restores a trim selection and zoom is
+  ignored during a drag (`timelineTrimSelectionAndZoomDuringADrag`), `placeMask` takes one shape in
+  whole pixels (`placeMaskTakesOneShapeInWholePixels`) and Save a copy waits for typed changes
+  (`saveACopyWaitsForTypedChanges`).
+- The surface-driver recipe `review.wheel-lanes` (`tools/lab/surface_driver/recipes/review.py`) waits for `viewer.placeWaiting` to clear before pressing Enter to place each cover, because Enter placement expires after 1 s while the frame loads, and places five covers over 10–40 % of the recording to check that two lanes show with a "+3" chip.
+- `tests/integration/test_mcp.py` checks the MCP helper strictly: every
+  `drive_recording_review` action and field maps to its session field, including `on`,
+  `at`, `retimeCover`, `markSelection`, `editPoint` and any `timelineZoom` level, and bad
+  values are refused before anything is sent.
 
 None of these records a real microphone.

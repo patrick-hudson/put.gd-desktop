@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <sched.h>
+#include <system_error>
 #include <thread>
 #include <unistd.h>
 
@@ -40,12 +41,51 @@ bool insideCode(const Quad& q,QPoint p){
  return sign!=0;
 }
 }
-int workerThreads(int requested){
+// The CPUs this process may use: its affinity mask, lowered to its cgroup's
+// CPU quota (cpu.max, rounded up). The quota is read from /sys/fs/cgroup, so
+// main() counts before confinement; under Landlock only the affinity counts.
+static int availableCores(){
  // The CPUs this process may run on (affinity, a container's cpuset), not the
  // machine's: glibc's hardware_concurrency counts every online CPU.
  cpu_set_t set;CPU_ZERO(&set);
- const int cores=::sched_getaffinity(0,sizeof set,&set)==0?std::max(1,CPU_COUNT(&set)):int(std::max(1u,std::thread::hardware_concurrency()));
- return std::clamp(requested>0?requested:cores,1,maximumWorkerThreads);
+ int cores=::sched_getaffinity(0,sizeof set,&set)==0?std::max(1,CPU_COUNT(&set)):int(std::max(1u,std::thread::hardware_concurrency()));
+ // A CPU quota (cgroup v2 cpu.max, "quota period" or "max period") on this
+ // process's cgroup or any parent: the tightest one, rounded up to whole CPUs.
+ QFile self(QStringLiteral("/proc/self/cgroup"));
+ if(!self.open(QIODevice::ReadOnly))return cores;
+ QStringList parts;bool found=false;
+ for(const auto& line:self.readAll().split('\n'))if(line.startsWith("0::/")){parts=QString::fromUtf8(line.mid(4)).split(QLatin1Char('/'),Qt::SkipEmptyParts);found=true;break;}
+ if(!found||parts.contains(QLatin1String(".."))||parts.contains(QLatin1String(".")))return cores;
+ // /sys/fs/cgroup may show a subtree (a bind mount, not a cgroup namespace):
+ // the path is relative to the hierarchy's root, so take off the mount's own
+ // root, from mountinfo ("id parent dev root mountpoint ... - cgroup2 ...").
+ QFile mounts(QStringLiteral("/proc/self/mountinfo"));
+ if(!mounts.open(QIODevice::ReadOnly))return cores;
+ QStringList mountRoot;bool mounted=false;
+ for(const auto& line:mounts.readAll().split('\n')){
+  const auto fields=line.split(' ');const auto dash=fields.indexOf("-");
+  if(fields.size()>4&&dash>4&&dash+1<fields.size()&&fields[4]=="/sys/fs/cgroup"&&fields[dash+1]=="cgroup2"){
+   mountRoot=QString::fromUtf8(fields[3]).split(QLatin1Char('/'),Qt::SkipEmptyParts);mounted=true;
+  }
+ }
+ if(!mounted||parts.mid(0,int(mountRoot.size()))!=mountRoot)return cores;
+ parts=parts.mid(int(mountRoot.size()));
+ const QString root=QStringLiteral("/sys/fs/cgroup/");
+ for(;;){
+  QFile max(root+parts.join(QLatin1Char('/'))+QStringLiteral("/cpu.max"));
+  if(max.open(QIODevice::ReadOnly)){
+   const auto fields=max.readAll().simplified().split(' ');
+   bool quotaOk=false,periodOk=false;
+   const qint64 quota=fields.value(0).toLongLong(&quotaOk),period=fields.value(1).toLongLong(&periodOk);
+   if(quotaOk&&periodOk&&quota>0&&period>0)cores=int(std::min<qint64>(cores,std::max<qint64>(1,(quota+period-1)/period)));
+  }
+  if(parts.isEmpty())break;
+  parts.removeLast();
+ }
+ return cores;
+}
+int workerThreads(int requested){
+ return std::clamp(requested>0?requested:availableCores(),1,maximumWorkerThreads);
 }
 JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  JobResult result;QElapsedTimer total;total.start();const auto start=std::chrono::steady_clock::now();
@@ -75,6 +115,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
+ // Bands and strips are cut as for at most four engines (#1812): more engines
+ // share the same tasks, so the text does not change with the core count
+ // above four (cut for six, 47 of the 176 corpus captures read differently).
+ const int cutThreads=std::min(threads,4);
 
  // Panels: a whole screen of windows (an input of largeInputPixels or more)
  // is read window by window, column by column; anything smaller is one
@@ -105,7 +149,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  const double lower=wantedPixels>double(cap)?std::sqrt(double(cap)/wantedPixels):1.0;
  for(auto& p:panelList){
-  auto limits=options.limits;limits.threads=threads;limits.scaledPixels=std::numeric_limits<qint64>::max();
+  auto limits=options.limits;limits.threads=cutThreads;limits.scaledPixels=std::numeric_limits<qint64>::max();
   const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
   limits.forcedScale=std::max(1.0,s*lower);
   p.plan=putgd::ocr::plan(p.rect.width(),p.rect.height(),p.profile,limits);
@@ -128,6 +172,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   bool closed=false;                // under lock: nothing is handed over after this
   std::atomic<bool> closing{false}; // read without the lock before a band copy
   std::atomic<int> next{0},copying{0},running{0},busy{0};
+  // Extra engines starting now, and started so far: a task's growth is not
+  // measured across an engine's start, whose memory it would count.
+  std::atomic<int> starting{0},started{0};
   std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
   std::vector<qint64> taskPixels;   // scaled pixels of each task
   std::atomic<bool> stop{false};
@@ -169,7 +216,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   auto& p=panelList[i];
   const qint64 scaled=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil(p.rect.height()*p.plan.scale));
   if(!p.plan.banded()&&threads>1&&scaled>=options.parallelPixels){
-   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*options.stripsPerThread);
+   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),cutThreads*options.stripsPerThread);
    if(cut.size()>1){p.tasks=cut;p.split=true;}
   }
   anyBanded|=p.plan.banded();
@@ -234,7 +281,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
    largestRead=std::max(largestRead,shared->taskPixels[size_t(task)]);
    struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
-   const qint64 before=residentBytes();
+   const bool quiet=shared->starting.load()==0;const int startsBefore=shared->started.load();const qint64 before=residentBytes();
    // The time budget: never start a task that cannot finish, and give every
    // pass a deadline, so a pass that overruns returns its partial result.
    if(shared->budgetMs>0){const int remaining=shared->left();if(remaining<=0||(shared->slowest.load()>0&&remaining<shared->slowest.load())){shared->stop=true;return;}}
@@ -251,7 +298,11 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    outcome.done=true;
    if(outcome.failed||outcome.cutShort)shared->stop=true;
    const qint64 took=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-clock).count();
-   raise(shared->slowest,took);raise(shared->taskGrowth,residentBytes()-before);
+   raise(shared->slowest,took);
+   // (With seven engines starting beside a 4K screen's second task, it
+   // showed 79 MiB, and every extra worker then found no room for twice that.)
+   const qint64 after=residentBytes();
+   if(quiet&&shared->starting.load()==0&&shared->started.load()==startsBefore)raise(shared->taskGrowth,after-before);
    {std::lock_guard<std::mutex> guard(shared->lock);if(shared->closed)return;shared->outcomes[task]=std::move(outcome);}
    if(afterFirstTask)afterFirstTask();
   }
@@ -266,12 +317,18 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   if(options.budgetMs>0&&shared->left()<2*result.timings.engineStartMs+shared->slowest.load()+250)return;
   for(int w=0;w<count;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
-   shared->running.fetch_add(1);
+   shared->running.fetch_add(1);shared->starting.fetch_add(1);
    const int worker=int(shared->extra.size());
-   pool.emplace_back([shared,engine,work,worker]{
-    if(engine->startLike(shared->first).isEmpty())work(engine,worker,{});
-    std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
-   });
+   // A thread the system refuses (RLIMIT_DATA counts each stack, which the
+   // memory gate does not see) ends the pool here; the engines running go on.
+   try{
+    pool.emplace_back([shared,engine,work,worker]{
+     const bool engineStarted=engine->startLike(shared->first).isEmpty();
+     shared->started.fetch_add(1);shared->starting.fetch_sub(1);
+     if(engineStarted)work(engine,worker,{});
+     std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
+    });
+   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();break;}
   }
  };
  // How many extra engines fit in the memory budget when each costs this much.

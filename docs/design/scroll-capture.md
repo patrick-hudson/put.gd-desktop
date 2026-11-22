@@ -192,7 +192,12 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
 - Content that changes in place (a video, a carousel, a hover effect) is taken as first
-  seen and ends nothing.
+  seen and ends nothing. Once the tracker has lost the page, a frame matched at a guessed
+  place marks no rows as changing in place: over look-alike rows (a pull request's tables)
+  the guess is often wrong, and its marks let a sticky header be written over text the image
+  already held ([#1795](https://github.com/patrick-hudson/put.gd-desktop/issues/1795)). The
+  one exception is the comparison with the previous skipped frame when that frame's place
+  was already known or found in the image.
 - It never writes a row at a guessed offset. The one exception is a frame with nothing to
   compare (a blank stretch) while auto-scroll gives a hint, and only where that frame
   overlaps what the image holds. A frame that stood still is never placed on the hint.
@@ -492,7 +497,17 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   block from being held back; a page row seen only there (after a flick past it) is
   written from the toolbar's edge. A banner that slides in at the page's own speed for a
   few frames (Wikipedia's fundraising banner in Chrome) moves like the page while it does,
-  and its border can be left in the image where it arrived.
+  and its border can be left in the image where it arrived. A line along the frame's top
+  or bottom edge (Firefox's content edge on Cinnamon, one row inside the region) is mostly
+  kept out ([#1796](https://github.com/patrick-hudson/put.gd-desktop/issues/1796)). After
+  the page moves, the tracker checks each row of a waiting frame's first and last 8-row
+  blocks on its own: of the row's textured cells still waiting to be written, it counts
+  only those whose page row is in sight and not held back where the next frame shows it.
+  When at least 90% of those cells, and at least 16, look the same at the same place of the
+  screen and different where their page row moved to, that row's matching cells are not
+  written. Cells held back there keep their piece of the line (the scroll
+  bar's column), and so does a pinned part drawn from the first screen (Firefox's link
+  bubble at the bottom).
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).

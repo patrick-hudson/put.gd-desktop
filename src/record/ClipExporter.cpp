@@ -1226,6 +1226,20 @@ QImage fitPreview(const QImage& image, int maxEdge) {
     return size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 }
+// The review viewer's live cover (#1613 D4): one cover's effect painted onto a
+// preview-sized picture, its rect and blur strength scaled from canvas pixels.
+void paintCoverPreview(QImage& image, const RecordingMask& mask, const QSize& canvas) {
+    const QSize source = canvas.isEmpty() ? image.size() : canvas;
+    if (source.isEmpty() || image.isNull()) return;
+    const double sx = double(image.width()) / source.width(), sy = double(image.height()) / source.height();
+    const QRect r = QRectF(mask.rect.x() * sx, mask.rect.y() * sy, mask.rect.width() * sx, mask.rect.height() * sy).toAlignedRect().intersected(image.rect());
+    if (r.width() < 1 || r.height() < 1) return;
+    // Any blur, however small, is previewed as a blur: what the export does (W2).
+    if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); return; }
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32 && image.format() != QImage::Format_ARGB32_Premultiplied) image = image.convertToFormat(QImage::Format_RGB32);
+    const int radius = std::clamp(int(std::lround(std::clamp(mask.strength, 2, 64) * std::min(sx, sy))), 1, std::max(1, std::min(r.width(), r.height()) / 2 - 1));
+    boxBlur(image, r, radius);
+}
 Error probeClip(const QString& path, qint64& durationUs, QSize& canvas) {
     Input input;
     if (auto e = input.open(path, false)) return e;
@@ -1295,6 +1309,16 @@ Error FrameSequence::open(const QString& path, qint64 startUs) {
     d_->timeBase = stream->time_base;
     d_->origin = streamOrigin(stream);
     d_->startTarget = d_->origin + av_rescale_q(startUs, microseconds, d_->timeBase);
+    return {};
+}
+Error FrameSequence::seek(const QString& path, qint64 startUs) {
+    if (!d_->input.format) return open(path, startUs);
+    av_frame_unref(d_->frame.get());
+    av_packet_unref(d_->packet.get());
+    d_->input.seekTo(startUs, path, false);
+    if (!d_->input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+    d_->startTarget = d_->origin + av_rescale_q(startUs, microseconds, d_->timeBase);
+    d_->ended = d_->flushed = false;
     return {};
 }
 bool FrameSequence::next(const RecordingEdit& edit, int maxEdge, const QSize& canvas, QImage& out, qint64& frameUs, Error* error, const std::function<bool(qint64)>& wanted) {

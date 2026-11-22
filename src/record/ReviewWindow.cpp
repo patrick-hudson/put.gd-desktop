@@ -31,6 +31,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLineF>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -46,14 +47,28 @@
 #include <QVBoxLayout>
 #include <QWidgetAction>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+#include <tuple>
 #include <utility>
 
 namespace putgd::record {
 namespace {
 constexpr int handleSize = 8;
 constexpr qint64 secondUs = 1000000;
+// Skimming and snapping, remembered for the session (#1613 A7, B4): on until
+// the user turns them off with S / N or the transport's Skim toggle.
+bool sessionSkimming = true, sessionSnapping = true;
+// The exact skim frames kept (B2): about 30, never more than 64 MB of pictures.
+constexpr int skimCacheFrames = 30;
+constexpr qint64 skimCacheBytes = 64ll * 1024 * 1024;
+// The live cover's request for the frame without it: never a revision the skim accepts.
+// Revisions above this are request tags, never an edit's: a live cover's base
+// frame and a cover edge's preview are asked for under a tag of their own, so
+// only the answer to the newest such request is taken (W3, W4).
+constexpr quint64 tagFloor = std::numeric_limits<quint64>::max() - (quint64(1) << 40);
+bool textField(const QWidget* w) { return qobject_cast<const QLineEdit*>(w) || qobject_cast<const QAbstractSpinBox*>(w); }
 int reviewSpace(Ui::Space value) { return static_cast<int>(value); }
 // Text controls keep at least 3 px above and below their full text line at every scale.
 int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height() + 2 * 3); }
@@ -78,19 +93,6 @@ void dualOutline(QPainter& painter, const QRectF& r, const QColor& colour, qreal
     painter.setPen(QPen(colour, width, style));
     painter.drawRect(r);
 }
-// The card over the frame when a preview could not be decoded.
-class ErrorCard final : public QWidget {
-public:
-    using QWidget::QWidget;
-protected:
-    void paintEvent(QPaintEvent*) override {
-        QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Theme::mediaScrim());
-        painter.drawRoundedRect(QRectF(rect()), 8, 8);
-    }
-};
 // The destination with its sharing mode ("Project archive · Shared link"); a
 // long name elides before the mode. The popup keeps the full details.
 class DestinationMenu final : public QToolButton {
@@ -147,13 +149,15 @@ private:
 };
 }
 
-// #1613: a banner along the viewer's top edge: the cover placement ("Draw the
-// redaction · 0:08.2 – 0:12.6" with Cancel and its Esc key) or the blur
-// warning (warningSurface / warning). It takes space from the well, never
-// covers the picture.
+// #1613: a message in the tool row's middle, never over or beside the
+// picture (D9): the cover placement ("Draw the redaction · 0:08.2 – 0:12.6"
+// with Cancel and its Esc key), the blur warning (warningSurface / warning) or
+// a frame that couldn't be decoded (dangerSurface / danger, with Retry
+// preview). The text elides when narrow; below its full width the key hint
+// goes first (the compact form).
 class ViewerBanner final : public QWidget {
 public:
-    enum class Tone { Info, Warning };
+    enum class Tone { Info, Warning, Error };
     ViewerBanner(Tone tone, QWidget* parent) : QWidget(parent), tone_(tone) {
         setFont(Ui::font(Ui::Type::caption));
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -165,6 +169,8 @@ public:
         text_ = text;
         setAccessibleName(text);
         setToolTip(text);
+        updateGeometry();
+        place();
         update();
     }
     QString text() const { return text_; }
@@ -179,7 +185,7 @@ public:
         place();
         return action_;
     }
-    QSize sizeHint() const override { return {400, std::max(Ui::scaled(32), fontMetrics().height() + 14)}; }
+    QSize sizeHint() const override { return {fullWidth(), std::max(Ui::scaled(32), fontMetrics().height() + 14)}; }
     QSize minimumSizeHint() const override { return {120, sizeHint().height()}; }
 protected:
     void resizeEvent(QResizeEvent*) override { place(); }
@@ -188,17 +194,17 @@ protected:
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(tone_ == Tone::Warning ? c.warningSurface : c.surface);
+        painter.setBrush(tone_ == Tone::Warning ? c.warningSurface : tone_ == Tone::Error ? c.dangerSurface : c.surface);
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Ui::Metric::radius, Ui::Metric::radius);
         const int side = Ui::scaled(16), pad = reviewSpace(Ui::Space::m);
-        const QColor ink = tone_ == Tone::Warning ? c.warning : c.text;
+        const QColor ink = tone_ == Tone::Warning ? c.warning : tone_ == Tone::Error ? c.danger : c.text;
         const QRect glyph(pad, (height() - side) / 2, side, side);
-        if (tone_ == Tone::Warning) Ui::icon("alert", c.warning).paint(&painter, glyph);
+        if (tone_ != Tone::Info) Ui::icon("alert", ink).paint(&painter, glyph);
         else if (!glyph_.isEmpty()) Ui::icon(glyph_).paint(&painter, glyph);
         int right = width() - pad;
         if (action_) {
             right = action_->geometry().left() - reviewSpace(Ui::Space::s);
-            if (!key_.isEmpty()) {
+            if (showKey()) {
                 const auto keyFont = Ui::monoFont(Ui::Type::caption);
                 const int keyWidth = QFontMetrics(keyFont).horizontalAdvance(key_) + 10;
                 const QRectF cap(width() - pad - keyWidth, (height() - QFontMetrics(keyFont).height() - 4) / 2.0, keyWidth, QFontMetrics(keyFont).height() + 4);
@@ -214,10 +220,21 @@ protected:
         Ui::paintText(painter, QRectF(left, 0, std::max(0, right - left), height()), text_, ink, textFont);
     }
 private:
+    int keySpace() const { return key_.isEmpty() ? 0 : QFontMetrics(Ui::monoFont(Ui::Type::caption)).horizontalAdvance(key_) + 10 + reviewSpace(Ui::Space::s); }
+    // Glyph, the whole text, the action and its key.
+    int fullWidth() const {
+        const int pad = reviewSpace(Ui::Space::m);
+        QFont textFont = font();
+        textFont.setWeight(tone_ == Tone::Warning ? QFont::Medium : QFont::Normal);
+        int w = pad + Ui::scaled(16) + reviewSpace(Ui::Space::s) + QFontMetrics(textFont).horizontalAdvance(text_) + pad;
+        if (action_) w += reviewSpace(Ui::Space::s) + action_->sizeHint().width() + keySpace();
+        return w;
+    }
+    bool showKey() const { return !key_.isEmpty() && width() >= fullWidth(); }
     void place() {
         if (!action_) return;
         const int pad = reviewSpace(Ui::Space::m);
-        const int keyWidth = key_.isEmpty() ? 0 : QFontMetrics(Ui::monoFont(Ui::Type::caption)).horizontalAdvance(key_) + 10 + reviewSpace(Ui::Space::s);
+        const int keyWidth = showKey() ? keySpace() : 0;
         const int h = std::min(height() - 4, textControlHeight(action_));
         const int w = action_->sizeHint().width();
         action_->setGeometry(width() - pad - keyWidth - w, (height() - h) / 2, w, h);
@@ -238,30 +255,44 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     nudge_.setSingleShot(true);
     nudge_.setInterval(350);
     connect(&nudge_, &QTimer::timeout, this, &FrameView::commitNudge);
-    errorCard_ = new ErrorCard(this);
-    errorCard_->setObjectName("previewError");
-    auto* row = new QHBoxLayout(errorCard_);
-    row->setContentsMargins(reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s));
-    row->setSpacing(reviewSpace(Ui::Space::m));
-    errorText_ = new QLabel(errorCard_);
-    errorText_->setObjectName("previewErrorText");
-    errorText_->setWordWrap(true);
-    errorText_->setTextFormat(Qt::PlainText);
-    QPalette onMedia = errorText_->palette();
-    onMedia.setColor(QPalette::WindowText, Theme::onMedia());
-    errorText_->setPalette(onMedia);
-    retry_ = new QPushButton(QStringLiteral("Retry preview"), errorCard_);
-    retry_->setObjectName("retryPreview");
-    retry_->setToolTip(QStringLiteral("Decode the frame at the playhead again"));
-    row->addWidget(errorText_, 1);
-    row->addWidget(retry_, 0, Qt::AlignVCenter);
-    connect(retry_, &QPushButton::clicked, this, &FrameView::retryRequested);
-    errorCard_->hide();
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
 }
 void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); announce(); update(); }
 void FrameView::setSkim(const QImage& image, qint64 timeUs) { skim_ = image; skimUs_ = timeUs; update(); }
-void FrameView::clearSkim() { if (skim_.isNull()) return; skim_ = {}; update(); }
+void FrameView::clearSkim() { fading_ = {}; if (skim_.isNull()) return; skim_ = {}; update(); }
+// F2: the skim picture gives way to the frame with a short crossfade.
+void FrameView::fadeOutSkim(int ms) {
+    if (skim_.isNull()) return;
+    fading_ = skim_;
+    skim_ = {};
+    fadeMs_ = std::max(1, ms);
+    fadeClock_.start();
+    auto* tick = new QTimer(this);
+    tick->setInterval(16);
+    connect(tick, &QTimer::timeout, this, [this, tick] {
+        if (fading_.isNull() || fadeClock_.elapsed() >= fadeMs_) { fading_ = {}; tick->deleteLater(); }
+        update();
+    });
+    tick->start();
+    update();
+}
+// Q10: the skim picture becomes the playhead's picture (no flash of the old frame).
+void FrameView::promoteSkim() {
+    fading_ = {};
+    if (skim_.isNull()) return;
+    frame_ = skim_;
+    timeUs_ = skimUs_;
+    skim_ = {};
+    setPreviewError({});
+    announce();
+    update();
+}
+// Q22: a cover hovered elsewhere (its bar, its Edits row) is outlined here.
+void FrameView::setLinkedHover(const QString& id) {
+    if (linkedHover_ == id) return;
+    linkedHover_ = id;
+    update();
+}
 void FrameView::armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); announce(); update(); }
 void FrameView::disarm() {
     if (drag_ == Drag::Create) drag_ = Drag::None;
@@ -271,45 +302,38 @@ void FrameView::disarm() {
     update();
 }
 void FrameView::setPreviewError(const QString& message) {
+    if (error_ == message) return;
     error_ = message;
     announce();
-    if (message.isEmpty()) { errorCard_->hide(); update(); return; }
-    // A frame still on screen is an earlier one: say which, as well as dimming it.
-    const QString text = frame_.isNull() ? message : message + QStringLiteral("\nShowing an earlier frame (%1).").arg(durationText(timeUs_));
-    errorText_->setText(text);
-    errorText_->setAccessibleName(text);
-    errorCard_->show();
-    placeErrorCard();
     update();
+    // The window shows it in the tool row with Retry preview (D9).
+    emit previewErrorChanged();
 }
-void FrameView::placeErrorCard() {
-    if (errorCard_->isHidden()) return;
-    const QRect where = (frame_.isNull() ? area() : imageRect()).intersected(area()).adjusted(8, 8, -8, -8);
-    if (where.isEmpty()) return;
-    auto* row = static_cast<QBoxLayout*>(errorCard_->layout());
-    const auto margins = row->contentsMargins();
-    const int width = std::min(where.width(), Ui::scaled(640));
-    const int inner = std::max(1, width - margins.left() - margins.right());
-    const int buttonWidth = retry_->sizeHint().width();
-    const int textWidth = inner - buttonWidth - row->spacing();
-    const bool stacked = textWidth < errorText_->fontMetrics().horizontalAdvance(QStringLiteral("Showing an earlier frame"));
-    row->setDirection(stacked ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
-    row->setAlignment(retry_, stacked ? Qt::AlignLeft : Qt::AlignVCenter);
-    const int labelHeight = errorText_->heightForWidth(std::max(1, stacked ? inner : textWidth));
-    const int contentHeight = stacked ? labelHeight + row->spacing() + retry_->sizeHint().height() : std::max(labelHeight, retry_->sizeHint().height());
-    const int height = std::min(where.height(), contentHeight + margins.top() + margins.bottom());
-    errorCard_->setGeometry(QRect(QPoint(where.center().x() - width / 2, where.center().y() - height / 2), QSize(width, height)));
+QString FrameView::previewErrorText() const {
+    if (error_.isEmpty()) return {};
+    // A frame still on screen is an earlier one: say which, as well as dimming it.
+    return frame_.isNull() ? error_ : error_ + QStringLiteral(" Showing an earlier frame (%1).").arg(durationText(timeUs_));
 }
-void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); clampPan(); placeErrorCard(); emit zoomChanged(); }
+void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); clampPan(); emit zoomChanged(); }
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
     // A keyboard nudge not yet proposed keeps its place over the last answer.
     QRect pending;
     if (nudging_) for (const auto& m : std::as_const(masks_)) if (m.id == selected_ && m.id == selected) pending = m.rect;
+    // R27: a move or resize in progress keeps its box over an answer that
+    // didn't change that cover; if the cover itself changed, the gesture ends.
+    std::optional<QRect> dragged;
+    if ((drag_ == Drag::Move || drag_ == Drag::Resize)) {
+        const auto incoming = std::find_if(masks.cbegin(), masks.cend(), [&](const RecordingMask& m) { return m.id == dragId_; });
+        const auto current = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == dragId_; });
+        if (incoming != masks.cend() && incoming->rect == original_ && current != masks_.cend()) dragged = current->rect;
+        else { drag_ = Drag::None; moved_ = false; unsetCursor(); endLive(); }
+    }
     if (selected != selected_) commitNudge();
     maskNames_->observe(masks);
     masks_ = masks;
     selected_ = selected;
     if (!pending.isNull()) for (auto& m : masks_) if (m.id == selected_) m.rect = pending;
+    if (dragged) for (auto& m : masks_) if (m.id == dragId_) m.rect = *dragged;
     announce();
     update();
 }
@@ -335,7 +359,6 @@ void FrameView::setRightInset(int px) {
     if (rightInset_ == px) return;
     rightInset_ = px;
     clampPan();
-    placeErrorCard();
     update();
     emit zoomChanged();
 }
@@ -344,7 +367,6 @@ void FrameView::setActualSize(bool actual) {
     actual_ = actual;
     pan_ = {};
     if (drag_ == Drag::Pan) drag_ = Drag::None;
-    placeErrorCard();
     update();
     emit zoomChanged();
 }
@@ -404,14 +426,194 @@ QRectF FrameView::toView(const QRect& c) const {
     return QRectF(r.x() + c.x() * sx, r.y() + c.y() * sy, c.width() * sx, c.height() * sy);
 }
 bool FrameView::event(QEvent* e) {
-    // Arrows nudge a selected cover or pan at 100 %; otherwise they step time
-    // in the window, so the frame only claims them when it will use them.
+    // Arrows nudge the selected cover, or pan at 100 %, only once the viewer
+    // has them (a click on a cover, or Tab into the viewer, W8); otherwise they
+    // step frames in the window. Esc during a gesture or a nudge, or to give the
+    // arrows back, is the frame's own.
     if (e->type() == QEvent::ShortcutOverride) {
         const auto* key = static_cast<QKeyEvent*>(e);
         const bool arrow = key->key() == Qt::Key_Left || key->key() == Qt::Key_Right || key->key() == Qt::Key_Up || key->key() == Qt::Key_Down;
-        if (arrow && !(key->modifiers() & Qt::AltModifier) && (!selected_.isEmpty() || actual_)) e->accept();
+        if (arrow && arrowsClaimed_ && !(key->modifiers() & Qt::AltModifier) && (!selected_.isEmpty() || actual_)) e->accept();
+        if (key->key() == Qt::Key_Escape && (drag_ != Drag::None || nudging_ || (arrowsClaimed_ && armed_.isEmpty()))) e->accept();
+        // While placing, Esc is the window's (it stops placing) and still
+        // gives the arrows back.
+        else if (key->key() == Qt::Key_Escape && arrowsClaimed_) claimArrows(false);
     }
+    // A lost window (W5): a gesture in progress goes back to where it started.
+    if (e->type() == QEvent::WindowDeactivate && drag_ != Drag::None) cancelGesture();
     return QWidget::event(e);
+}
+namespace {
+// Handles in the image editor's order (EditorCanvas::handleAt): 0 top-left,
+// 1 top, 2 top-right, 3 right, 4 bottom-right, 5 bottom, 6 bottom-left, 7 left.
+std::array<QPointF, 8> handlePoints(const QRectF& r) {
+    return {r.topLeft(), QPointF(r.center().x(), r.top()), r.topRight(), QPointF(r.right(), r.center().y()),
+            r.bottomRight(), QPointF(r.center().x(), r.bottom()), r.bottomLeft(), QPointF(r.left(), r.center().y())};
+}
+Qt::CursorShape resizeCursor(int handle) {
+    return handle == 0 || handle == 4 ? Qt::SizeFDiagCursor : handle == 2 || handle == 6 ? Qt::SizeBDiagCursor : handle == 1 || handle == 5 ? Qt::SizeVerCursor : Qt::SizeHorCursor;
+}
+}
+// The selected cover's box and its eight grips (handle order), in this
+// widget's coordinates, from the same geometry hover, press and paint use.
+QJsonObject FrameView::selectedGeometry() const {
+    for (const auto& mask : masks_) {
+        if (mask.id != selected_) continue;
+        const auto r = toView(mask.rect);
+        QJsonArray grips;
+        const auto points = handlePoints(r);
+        for (int i = 0; i < 8; ++i) grips.append(QJsonArray{points[size_t(i)].x(), points[size_t(i)].y()});
+        return QJsonObject{{"box", QJsonArray{r.x(), r.y(), r.width(), r.height()}}, {"grips", grips}};
+    }
+    return {};
+}
+// The handle a point takes on a cover's view rect (W1): the nearest corner
+// within its 16 × 16 px target, else the side whose band holds it.
+int FrameView::handleAt(const QRectF& r, const QPointF& p) {
+    // How far p lies inside each side (negative: outside it).
+    const qreal left = p.x() - r.left(), right = r.right() - p.x(), top = p.y() - r.top(), bottom = r.bottom() - p.y();
+    // A zone never reaches into the central 6 px: a tiny box keeps a body.
+    const qreal roomX = std::max(0.0, (r.width() - 6) / 2), roomY = std::max(0.0, (r.height() - 6) / 2);
+    const auto within = [](qreal inside, qreal outside, qreal in) { return inside >= -outside && inside <= in; };
+    // Corners win, with 16 × 16 px targets.
+    const qreal cornerX = std::min(8.0, roomX), cornerY = std::min(8.0, roomY);
+    int best = -1;
+    qreal nearest = std::numeric_limits<qreal>::max();
+    for (const auto& [handle, x, y] : std::array<std::tuple<int, qreal, qreal>, 4>{{{0, left, top}, {2, right, top}, {4, right, bottom}, {6, left, bottom}}}) {
+        if (!within(x, 8, cornerX) || !within(y, 8, cornerY)) continue;
+        if (const qreal d = x * x + y * y; d < nearest) { nearest = d; best = handle; }
+    }
+    if (best >= 0) return best;
+    // Then a band along each side, 6 px outside, anywhere along it.
+    // Inside, 6 px on a box at least 40 px across that way, else 4 (R21).
+    const qreal bandX = std::min(r.width() >= 40 ? 6.0 : 4.0, roomX), bandY = std::min(r.height() >= 40 ? 6.0 : 4.0, roomY);
+    const bool alongX = left >= 0 && right >= 0, alongY = top >= 0 && bottom >= 0;
+    for (const auto& [handle, along, inside, band] : std::array<std::tuple<int, bool, qreal, qreal>, 4>{{{1, alongX, top, bandY}, {5, alongX, bottom, bandY}, {7, alongY, left, bandX}, {3, alongY, right, bandX}}}) {
+        if (!along || !within(inside, 6, band)) continue;
+        if (const qreal d = std::abs(inside); d < nearest) { nearest = d; best = handle; }
+    }
+    return best;
+}
+// The opposite edge or corner stays fixed until the dragged one passes it,
+// then the box flips; edges stay in the canvas and the box keeps 2 × 2 px.
+QRect FrameView::resizedRect(const QRect& r, int handle, const QPoint& d, const QRect& bounds) {
+    int left = r.x(), top = r.y(), right = r.x() + r.width(), bottom = r.y() + r.height();
+    if (handle == 0 || handle == 6 || handle == 7) left += d.x();
+    if (handle == 2 || handle == 3 || handle == 4) right += d.x();
+    if (handle == 0 || handle == 1 || handle == 2) top += d.y();
+    if (handle == 4 || handle == 5 || handle == 6) bottom += d.y();
+    // Past the opposite side the box flips (W1), as in the image editor.
+    if (left > right) std::swap(left, right);
+    if (top > bottom) std::swap(top, bottom);
+    const int maxRight = bounds.x() + bounds.width(), maxBottom = bounds.y() + bounds.height();
+    left = std::clamp(left, bounds.x(), maxRight);
+    right = std::clamp(right, bounds.x(), maxRight);
+    top = std::clamp(top, bounds.y(), maxBottom);
+    bottom = std::clamp(bottom, bounds.y(), maxBottom);
+    // At least 2 × 2 source pixels.
+    if (right - left < 2) { right = std::min(maxRight, left + 2); left = right - 2; }
+    if (bottom - top < 2) { bottom = std::min(maxBottom, top + 2); top = bottom - 2; }
+    return QRect(left, top, right - left, bottom - top);
+}
+// What a press at p would take: the selected cover's handles, then its body,
+// then the body of another cover shown at this frame (topmost first). An
+// unselected cover has no handles: a press never grabs what it can't see.
+FrameView::Target FrameView::targetAt(const QPointF& p) const {
+    for (const auto& mask : std::as_const(masks_)) {
+        if (mask.id != selected_) continue;
+        const auto r = toView(mask.rect);
+        if (const int h = handleAt(r, p); h >= 0) return {Target::Kind::Handle, mask.id, h};
+        if (r.contains(p)) return {Target::Kind::Body, mask.id, -1};
+    }
+    for (auto it = masks_.crbegin(); it != masks_.crend(); ++it)
+        if (it->id != selected_ && it->start <= timeUs_ && timeUs_ < it->end && toView(it->rect).contains(p)) return {Target::Kind::Body, it->id, -1};
+    return {};
+}
+void FrameView::updateHover(const QPointF& p) {
+    const auto target = armed_.isEmpty() && drag_ == Drag::None && !playing_ ? targetAt(p) : Target{};
+    // The last grip under the pointer and when it left it, for a press that
+    // arrives late (Q23, Q24). A pointer resting on a grip sends no motion,
+    // so the time counts from leaving, never from the last sample there.
+    if (drag_ == Drag::None) {
+        if (target.kind == Target::Kind::Handle) { gripAt_ = p; gripLeft_.invalidate(); }
+        else if (gripAt_ && !gripLeft_.isValid()) gripLeft_.start();
+    }
+    // The outline follows a cover shown at this frame; the selected one is outlined anyway.
+    QString hovered;
+    for (auto it = masks_.crbegin(); it != masks_.crend(); ++it) if ((it->start <= timeUs_ && timeUs_ < it->end) && toView(it->rect).contains(p)) { hovered = it->id; break; }
+    const int handle = target.kind == Target::Kind::Handle ? target.handle : -1;
+    if (hovered_ != hovered || hoveredHandle_ != handle) {
+        const bool changed = hovered_ != hovered;
+        hovered_ = hovered;
+        hoveredHandle_ = handle;
+        update();
+        if (changed) emit hoveredCoverChanged(hovered_);
+    }
+    if (drag_ != Drag::None) return;
+    if (!armed_.isEmpty()) setCursor(placeWaiting_ ? Qt::BusyCursor : Qt::CrossCursor);
+    else if (target.kind == Target::Kind::Handle) setCursor(resizeCursor(target.handle));
+    else if (target.kind == Target::Kind::Body) setCursor(Qt::SizeAllCursor);
+    // At 100 % the picture can be grabbed and panned (R30).
+    else if (actual_ && imageRect().contains(p.toPoint())) setCursor(Qt::OpenHandCursor);
+    else unsetCursor();
+}
+// ---- the live cover (D4) ----
+void FrameView::beginLive(const QString& id) {
+    const auto it = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == id; });
+    if (it == masks_.cend() || !(it->start <= timeUs_ && timeUs_ < it->end)) return;  // not on this frame: nothing baked to follow
+    if (liveId_ == id) return;
+    liveId_ = id;
+    if (uncoveredId_ != id) uncovered_ = {};
+    emit liveEditStarted(id, timeUs_);
+    update();
+}
+void FrameView::previewStrength(const QString& id, int strength) {
+    liveStrength_ = strength;
+    beginLive(id);
+    if (liveId_ != id) liveStrength_.reset();  // not shown at this frame
+    update();
+}
+void FrameView::endLive() {
+    liveStrength_.reset();
+    if (liveId_.isEmpty() && uncovered_.isNull()) return;
+    liveId_.clear();
+    uncovered_ = {};
+    uncoveredId_.clear();
+    composite_ = {};
+    update();
+}
+void FrameView::setUncovered(const QString& id, const QImage& image, qint64 timeUs) {
+    if (id != liveId_) return;
+    uncovered_ = image;
+    uncoveredId_ = id;
+    uncoveredUs_ = timeUs;
+    composite_ = {};
+    update();
+}
+void FrameView::dropUncovered() {
+    if (uncovered_.isNull()) return;
+    uncovered_ = {};
+    uncoveredId_.clear();
+    composite_ = {};
+    update();
+}
+bool FrameView::livePending() const { return !liveId_.isEmpty() && !(uncoveredId_ == liveId_ && uncoveredUs_ == timeUs_ && !uncovered_.isNull()); }
+// The picture with the live cover's effect where its box is now: the frame
+// without that cover once it has arrived, else the shown frame (its old place
+// still covered) with a pending outline.
+const QImage& FrameView::livePicture() {
+    const auto it = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == liveId_; });
+    if (it == masks_.cend()) return frame_;
+    const QImage& base = livePending() ? frame_ : uncovered_;
+    auto mask = *it;
+    // R29: a blur strength still coalescing shows at once.
+    if (liveStrength_) mask.strength = *liveStrength_;
+    const auto key = std::make_tuple(base.cacheKey(), mask.rect, mask.kind, mask.strength);
+    if (!composite_.isNull() && compositeKey_ == key) return composite_;
+    composite_ = base.copy();
+    paintCoverPreview(composite_, mask, source());
+    compositeKey_ = key;
+    return composite_;
 }
 void FrameView::paintEvent(QPaintEvent*) {
     QPainter painter(this);
@@ -421,28 +623,43 @@ void FrameView::paintEvent(QPaintEvent*) {
     Ui::paintImageShadow(painter, target);
     painter.fillRect(target, Qt::black);
     const bool skimming = !skim_.isNull();
+    const bool live = !skimming && !playing_ && !liveId_.isEmpty() && !frame_.isNull();
     if (skimming) painter.drawImage(target, skim_);
+    else if (live) painter.drawImage(target, livePicture());
     else if (!frame_.isNull()) painter.drawImage(target, frame_);
+    if (!skimming && !fading_.isNull() && fadeClock_.isValid()) {
+        painter.setOpacity(std::clamp(1.0 - double(fadeClock_.elapsed()) / fadeMs_, 0.0, 1.0));
+        painter.drawImage(target, fading_);
+        painter.setOpacity(1.0);
+    }
     // An earlier frame under a preview error is dimmed so it never reads as current.
     if (stale() && !skimming) painter.fillRect(target, QColor(0, 0, 0, 140));
     const qint64 at = skimming ? skimUs_ : timeUs_;
     if (!playing_) for (const auto& mask : std::as_const(masks_)) {
         const bool active = mask.start <= at && at < mask.end;
         const bool selected = mask.id == selected_;
-        if (!active && !selected && mask.id != hovered_) continue;
+        const bool linked = mask.id == hovered_ || mask.id == linkedHover_;
+        if (!active && !selected && !linked) continue;
         const auto r = toView(mask.rect);
-        dualOutline(painter, r, selected ? mediaAccent : active ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 150), selected ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
+        const bool hovered = linked && !selected;
+        dualOutline(painter, r, selected ? mediaAccent : active ? QColor(255, 255, 255, hovered ? 255 : 230) : QColor(255, 255, 255, 150), selected || hovered ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
+        // The effect is still on its old place until the frame without it arrives.
+        if (live && mask.id == liveId_ && livePending()) dualOutline(painter, r.adjusted(-3, -3, 3, 3), QColor(255, 255, 255, 230), 1, Qt::DotLine);
         if (selected) {
-            // Handles at the corners and edge middles; the bottom-right one resizes.
+            // Handles at the corners and edge middles, each a resize grip; the hovered one grows.
             painter.setPen(QPen(QColor(0, 0, 0, 170), 1));
             painter.setBrush(mediaAccent);
-            for (const QPointF& p : {r.topLeft(), r.topRight(), r.bottomLeft(), r.bottomRight(), QPointF(r.center().x(), r.top()), QPointF(r.center().x(), r.bottom()), QPointF(r.left(), r.center().y()), QPointF(r.right(), r.center().y())})
-                painter.drawRect(QRectF(p.x() - handleSize / 2.0, p.y() - handleSize / 2.0, handleSize, handleSize));
+            const auto points = handlePoints(r);
+            for (int i = 0; i < 8; ++i) {
+                const qreal side = i == hoveredHandle_ || (drag_ == Drag::Resize && i == handle_) ? handleSize + 2 : handleSize;
+                painter.drawRect(QRectF(points[size_t(i)].x() - side / 2, points[size_t(i)].y() - side / 2, side, side));
+            }
         }
     }
     if (drag_ == Drag::Create) {
-        // The area being dragged, clipped to the frame like the cover it becomes.
-        const auto pending = QRectF(anchor_, current_).normalized().intersected(target);
+        // The cover the release will make (F5): the default box while the
+        // drag is under 8 × 8 px, else the drawn box, clipped to the frame.
+        const auto pending = toView(placementAt(current_)).intersected(target);
         painter.setPen(Qt::NoPen);
         painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 200)) : QBrush(QColor(255, 255, 255, 60)));
         painter.drawRect(pending);
@@ -451,11 +668,75 @@ void FrameView::paintEvent(QPaintEvent*) {
     painter.setClipping(false);
     if (Ui::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
 }
-void FrameView::focusInEvent(QFocusEvent* e) { QWidget::focusInEvent(e); update(); }
-void FrameView::focusOutEvent(QFocusEvent* e) { commitNudge(); QWidget::focusOutEvent(e); update(); }
+void FrameView::focusInEvent(QFocusEvent* e) {
+    QWidget::focusInEvent(e);
+    // Tab into the viewer gives it the arrows (W8).
+    if (e->reason() == Qt::TabFocusReason || e->reason() == Qt::BacktabFocusReason) claimArrows(true);
+    update();
+}
+void FrameView::focusOutEvent(QFocusEvent* e) { commitNudge(); claimArrows(false); QWidget::focusOutEvent(e); update(); }
+void FrameView::claimArrows(bool on) {
+    if (arrowsClaimed_ == on) return;
+    arrowsClaimed_ = on;
+    emit arrowsClaimedChanged(on);
+}
+void FrameView::setPlaceWaiting(bool waiting) {
+    if (placeWaiting_ == waiting) return;
+    placeWaiting_ = waiting;
+    if (!armed_.isEmpty()) setCursor(waiting ? Qt::BusyCursor : Qt::CrossCursor);
+}
+// The cover a placing drag from the press to p makes (P12, F5): under 8 × 8
+// view px it is a click and places the default box at the press; anything
+// larger (a thin one too) is the drawn box, clamped to the picture (W22),
+// at least 2 source px each way. Empty when nothing would be made.
+QRect FrameView::placementAt(const QPointF& p) const {
+    const QRectF dragged = QRectF(anchor_, p).normalized();
+    if (dragged.width() < 8 && dragged.height() < 8) {
+        const QRect image = imageRect();
+        const QPointF at(std::clamp<qreal>(anchor_.x(), image.left(), image.right()), std::clamp<qreal>(anchor_.y(), image.top(), image.bottom()));
+        return defaultMaskRectAt(toCanvas(at));
+    }
+    QRect r = QRectF(toCanvas(anchor_), toCanvas(p)).normalized().toAlignedRect().intersected(bounds());
+    const QRect all = bounds();
+    if (r.width() < 2) { r.setWidth(2); r.moveLeft(std::clamp(r.left(), 0, std::max(0, all.width() - 2))); }
+    if (r.height() < 2) { r.setHeight(2); r.moveTop(std::clamp(r.top(), 0, std::max(0, all.height() - 2))); }
+    return r.width() >= 2 && r.height() >= 2 && all.contains(r) ? r : QRect();
+}
+QRect FrameView::placementPreview() const { return drag_ == Drag::Create ? placementAt(current_) : QRect(); }
+// A click while armed (W6): a box about 20 % × 8 % of the frame centred on the point, kept in the frame.
+QRect FrameView::defaultMaskRectAt(const QPointF& canvasPoint) const {
+    const QRect all = bounds();
+    if (all.width() < 4 || all.height() < 4) return {};
+    const QSize size(std::max(2, all.width() / 5), std::max(2, all.height() * 8 / 100));
+    const int x = std::clamp(int(std::lround(canvasPoint.x() - size.width() / 2.0)), 0, all.width() - size.width());
+    const int y = std::clamp(int(std::lround(canvasPoint.y() - size.height() / 2.0)), 0, all.height() - size.height());
+    return QRect(QPoint(x, y), size);
+}
+// Esc, a right press, Ctrl+Z or a lost window during a gesture (D7, W5, W20):
+// a move or resize goes back to where it started (the cover stays selected),
+// a pan to where it was, a box being drawn is dropped (placing stays armed).
+bool FrameView::cancelGesture() {
+    if (drag_ == Drag::None) return false;
+    for (auto& mask : masks_) if ((drag_ == Drag::Move || drag_ == Drag::Resize) && mask.id == dragId_) mask.rect = original_;
+    if (drag_ == Drag::Pan) { pan_ = panFrom_; clampPan(); }
+    drag_ = Drag::None;
+    moved_ = false;
+    unsetCursor();
+    if (!armed_.isEmpty()) setCursor(placeWaiting_ ? Qt::BusyCursor : Qt::CrossCursor);
+    endLive();
+    announce();
+    update();
+    return true;
+}
 void FrameView::keyPressEvent(QKeyEvent* e) {
+    if (e->key() == Qt::Key_Escape && drag_ != Drag::None) { cancelGesture(); return; }
+    // The first Esc during a nudge takes the nudge back; the next one gives the
+    // arrows back to the frames (W8); then it deselects.
+    if (e->key() == Qt::Key_Escape && nudging_) { cancelNudge(); return; }
     auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == selected_; });
-    if (e->key() == Qt::Key_Escape && mask != masks_.end() && armed_.isEmpty()) { commitNudge(); selected_.clear(); announce(); emit maskSelected({}); update(); return; }
+    // Esc always gives held arrows back, cover selected or not (no arrow trap at 100 %).
+    if (e->key() == Qt::Key_Escape && arrowsClaimed_ && armed_.isEmpty()) { claimArrows(false); emit arrowsReleased(); return; }
+    if (e->key() == Qt::Key_Escape && mask != masks_.end() && armed_.isEmpty()) { selected_.clear(); announce(); emit maskSelected({}); update(); return; }
     QPoint step;
     switch (e->key()) {
     case Qt::Key_Left: step = {-1, 0}; break;
@@ -464,7 +745,7 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
     case Qt::Key_Down: step = {0, 1}; break;
     default: QWidget::keyPressEvent(e); return;
     }
-    if (e->modifiers() & Qt::AltModifier) { QWidget::keyPressEvent(e); return; }
+    if ((e->modifiers() & Qt::AltModifier) || !arrowsClaimed_) { QWidget::keyPressEvent(e); return; }
     if (mask == masks_.end() || drag_ != Drag::None) {
         if (actual_ && drag_ == Drag::None) {
             // At 100 % the arrows pan; Shift pans a quarter of the view.
@@ -483,15 +764,16 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
     const QRect all = bounds();
     QRect r = mask->rect;
     if (e->modifiers() & Qt::ShiftModifier) {
-        // Resize from the bottom-right corner, as the grip does.
-        r.setWidth(std::clamp(r.width() + step.x(), 2, std::max(2, all.right() + 1 - r.left())));
-        r.setHeight(std::clamp(r.height() + step.y(), 2, std::max(2, all.bottom() + 1 - r.top())));
+        // Resize from the bottom-right corner (its handle).
+        r = resizedRect(r, 4, step, all);
     } else {
         r.translate(step);
         r.moveLeft(std::clamp(r.left(), 0, std::max(0, all.width() - r.width())));
         r.moveTop(std::clamp(r.top(), 0, std::max(0, all.height() - r.height())));
     }
     mask->rect = r;
+    const QString id = mask->id;
+    beginLive(id);
     announce();
     nudge_.start();
     update();
@@ -500,41 +782,75 @@ void FrameView::commitNudge() {
     if (!nudging_) return;
     nudging_ = false;
     nudge_.stop();
-    for (const auto& mask : std::as_const(masks_)) if (mask.id == selected_ && mask.rect != nudgeFrom_) emit maskMoved(mask.id, mask.rect);
+    bool changed = false;
+    QRect rect;
+    QString id;
+    for (const auto& mask : std::as_const(masks_)) if (mask.id == selected_ && mask.rect != nudgeFrom_) { changed = true; rect = mask.rect; id = mask.id; }
+    // Unchanged, there is no answer to wait for: the frame on screen is current.
+    if (!changed) { endLive(); return; }
+    emit maskMoved(id, rect);
 }
 void FrameView::cancelNudge() {
     if (!nudging_) return;
     nudging_ = false;
     nudge_.stop();
     for (auto& mask : masks_) if (mask.id == selected_) mask.rect = nudgeFrom_;
+    endLive();
     announce();
     update();
 }
 void FrameView::mousePressEvent(QMouseEvent* e) {
+    // A right press during a gesture cancels it (D7).
+    if (e->button() == Qt::RightButton && drag_ != Drag::None) { cancelGesture(); return; }
     if (e->button() != Qt::LeftButton) return;
+    // While playing the picture grabs nothing: a click pauses (W3).
+    if (playing_) { emit pauseRequested(); return; }
     commitNudge();
     const auto p = e->position();
-    if (!armed_.isEmpty()) { drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return; }
-    const RecordingMask* nearest = nullptr;
-    qreal distance = std::numeric_limits<qreal>::max();
-    for (const auto& mask : std::as_const(masks_)) {
-        if (mask.id != selected_ && !(mask.start <= timeUs_ && timeUs_ < mask.end)) continue;
-        const auto corner = toView(mask.rect).bottomRight();
-        if (!QRectF(corner - QPointF(16, 16), QSizeF(32, 32)).contains(p)) continue;
-        const auto delta = corner - p;
-        const auto squared = delta.x() * delta.x() + delta.y() * delta.y();
-        if (squared < distance || (squared == distance && mask.id == selected_)) { nearest = &mask; distance = squared; }
+    moved_ = false;
+    panFrom_ = pan_;
+    pressAt_ = p;
+    if (!armed_.isEmpty()) {
+        // Drawing waits for the frame it is drawn on (W6); it may start up to
+        // 8 px beside the picture (W22).
+        if (placeWaiting_ || !imageRect().adjusted(-8, -8, 8, 8).contains(p.toPoint())) return;
+        drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return;
     }
-    if (nearest) {
-        selected_ = nearest->id; original_ = nearest->rect;
-        drag_ = Drag::Resize; anchor_ = p;
-        announce(); emit maskSelected(selected_); update(); return;
+    auto target = targetAt(p);
+    // A press on empty picture within 60 ms of the pointer leaving a grip and
+    // within 8 px of where it left (each axis), the timeline's rule (Q10t),
+    // takes that grip: a press that arrives late (a pointer already moving,
+    // emulated middle buttons) still grabs what was under the cursor (Q23,
+    // Q24). A press on a cover or another grip keeps what it hit, and the drag
+    // counts from the real press point, so a press that never moves changes
+    // nothing (r5-neon #6).
+    if (target.kind == Target::Kind::None && gripAt_ && gripLeft_.isValid() && gripLeft_.elapsed() <= 60
+        && std::abs(p.x() - gripAt_->x()) <= 8 && std::abs(p.y() - gripAt_->y()) <= 8) {
+        if (const auto grip = targetAt(*gripAt_); grip.kind == Target::Kind::Handle) target = grip;
     }
-    for (auto it = masks_.rbegin(); it != masks_.rend(); ++it) {
-        if (it->id != selected_ && !(it->start <= timeUs_ && timeUs_ < it->end)) continue;
-        if (toView(it->rect).contains(p)) { selected_ = it->id; announce(); emit maskSelected(it->id); drag_ = Drag::Move; anchor_ = p; original_ = it->rect; update(); return; }
+    gripAt_.reset();
+    gripLeft_.invalidate();
+    if (target.kind != Target::Kind::None) {
+        const auto it = std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == target.id; });
+        if (it == masks_.cend()) return;
+        // Taken before the selection is announced: the window answers it with setMasks.
+        original_ = it->rect;
+        dragId_ = target.id;
+        handle_ = target.handle;
+        pressedSelected_ = selected_ == target.id;
+        drag_ = target.kind == Target::Kind::Handle ? Drag::Resize : Drag::Move;
+        anchor_ = p;
+        setCursor(drag_ == Drag::Resize ? resizeCursor(handle_) : Qt::SizeAllCursor);
+        // A click on a cover gives the viewer the arrows (W8).
+        claimArrows(true);
+        if (!pressedSelected_) { selected_ = target.id; announce(); emit maskSelected(selected_); }
+        update();
+        return;
     }
-    if (actual_) { drag_ = Drag::Pan; anchor_ = p; panFrom_ = pan_; setCursor(Qt::ClosedHandCursor); return; }
+    // At 100 % a drag pans; a click there deselects (D8).
+    if (actual_) { drag_ = Drag::Pan; anchor_ = p; setCursor(Qt::ClosedHandCursor); return; }
+    // A click on empty picture gives the arrows back to the frames.
+    claimArrows(false);
     if (!selected_.isEmpty()) {
         selected_.clear();
         announce();
@@ -543,41 +859,86 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
     }
 }
 void FrameView::leaveEvent(QEvent* e) {
-    hovered_.clear();
+    // Leaving the viewer from a grip leaves the grip: the late-press clock starts (R1).
+    if (gripAt_ && !gripLeft_.isValid()) gripLeft_.start();
+    if (!hovered_.isEmpty()) { hovered_.clear(); emit hoveredCoverChanged({}); }
+    hoveredHandle_ = -1;
+    if (drag_ == Drag::None) unsetCursor();
+    if (!armed_.isEmpty()) setCursor(Qt::CrossCursor);
     update();
     QWidget::leaveEvent(e);
 }
-void FrameView::mouseMoveEvent(QMouseEvent* e) {
-    QString hovered;
-    for (auto it = masks_.crbegin(); it != masks_.crend(); ++it) if ((it->start <= timeUs_ && timeUs_ < it->end) && toView(it->rect).contains(e->position())) { hovered = it->id; break; }
-    if (hovered_ != hovered) { hovered_ = hovered; update(); }
-    if (drag_ == Drag::None) return;
-    const auto p = e->position();
+// The gesture at pointer p: the drawn area, the pan, or the cover moved or
+// resized by the pointer's delta from the press. Release applies it at the
+// release point too (W5).
+void FrameView::applyDrag(const QPointF& p) {
     if (drag_ == Drag::Create) { current_ = p; update(); return; }
     if (drag_ == Drag::Pan) { pan_ = panFrom_ - (p - anchor_) * devicePixelRatioF(); clampPan(); update(); return; }
     const QPointF delta = toCanvas(p) - toCanvas(anchor_);
-    auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == selected_; });
+    auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == dragId_; });
     if (mask == masks_.end()) return;
     const QRect all = bounds();
     if (drag_ == Drag::Move) { QRect moved = original_.translated(delta.toPoint()); moved.moveLeft(std::clamp(moved.left(), 0, std::max(0, all.width() - moved.width()))); moved.moveTop(std::clamp(moved.top(), 0, std::max(0, all.height() - moved.height()))); mask->rect = moved; }
-    else { QRect resized = original_; resized.setWidth(std::max(2, original_.width() + int(delta.x()))); resized.setHeight(std::max(2, original_.height() + int(delta.y()))); mask->rect = resized.intersected(all); }
+    else mask->rect = resizedRect(original_, handle_, delta.toPoint(), all);
     announce();
     update();
+}
+// Nothing moves until the pointer passes the dead zone: 4 px, or 8 px when the
+// press landed on a cover that wasn't selected (its first press selects, W2).
+bool FrameView::pastDeadZone(const QPointF& p) const {
+    const qreal zone = drag_ == Drag::Move && !pressedSelected_ ? 8 : drag_ == Drag::Create ? 3 : 4;
+    // Travel counts from the real press, even when a late press took a grip
+    // the pointer had just left: a click that doesn't move never edits.
+    return std::max(std::abs(p.x() - pressAt_.x()), std::abs(p.y() - pressAt_.y())) >= zone;
+}
+void FrameView::mouseMoveEvent(QMouseEvent* e) {
+    const auto p = e->position();
+    updateHover(p);
+    if (drag_ == Drag::None) return;
+    if (!moved_ && !pastDeadZone(p)) return;
+    const bool started = !moved_;
+    moved_ = true;
+    applyDrag(p);
+    if (started && (drag_ == Drag::Move || drag_ == Drag::Resize)) beginLive(dragId_);
 }
 void FrameView::mouseReleaseEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton || drag_ == Drag::None) return;
     const auto p = e->position();
-    if (drag_ == Drag::Pan) { drag_ = Drag::None; unsetCursor(); return; }
+    const bool previewed = moved_;  // a drawn area was shown (Q14)
+    const bool moved = moved_ || pastDeadZone(p);
+    moved_ = false;
+    if (moved) applyDrag(p);
+    if (drag_ == Drag::Pan) {
+        drag_ = Drag::None;
+        unsetCursor();
+        // A click (no pan) deselects and gives the arrows back to the frames.
+        if (!moved) claimArrows(false);
+        if (!moved && !selected_.isEmpty()) { selected_.clear(); announce(); emit maskSelected({}); update(); }
+        updateHover(p);
+        return;
+    }
     if (drag_ == Drag::Create) {
-        const QRect r = QRectF(toCanvas(anchor_), toCanvas(p)).normalized().toAlignedRect().intersected(bounds());
         const auto kind = armed_;
         drag_ = Drag::None;
         update();
-        if (r.width() >= 2 && r.height() >= 2) emit maskCreated(kind, r);
+        // Exactly what the preview showed (F5).
+        Q_UNUSED(previewed);
+        if (const QRect r = placementAt(p); !r.isEmpty()) emit maskCreated(kind, r);
         return;
     }
+    if (!moved) {
+        // A click: nothing changed.
+        for (auto& mask : masks_) if (mask.id == dragId_) mask.rect = original_;
+    }
     drag_ = Drag::None;
-    for (const auto& mask : std::as_const(masks_)) if (mask.id == selected_ && mask.rect != original_) emit maskMoved(mask.id, mask.rect);
+    const QString id = dragId_;
+    QRect rect;
+    bool changed = false;
+    for (const auto& mask : std::as_const(masks_)) if (mask.id == id && mask.rect != original_) { changed = true; rect = mask.rect; }
+    // Unchanged (a click, or back where it started): the frame on screen is current.
+    if (!changed) endLive();
+    updateHover(p);
+    if (changed) emit maskMoved(id, rect);
 }
 
 // ---- ReviewWindow ----
@@ -655,6 +1016,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setIconSize(QSize(Ui::scaled(Ui::Metric::icon), Ui::scaled(Ui::Metric::icon)));
         button->setFixedHeight(std::max(Ui::scaled(Ui::Metric::iconTarget), textControlHeight(button) + 4));
         if (text.isEmpty()) button->setFixedWidth(button->height());
+        // A click never takes the keys (Space, arrows, [ ]) from the timeline (E2).
+        button->setFocusPolicy(Qt::TabFocus);
         Ui::focusTooltips(button);
         return button;
     };
@@ -700,7 +1063,17 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     separator();
     tools->addWidget(undo_);
     tools->addWidget(redo_);
-    tools->addStretch(1);
+    // The row's free middle holds the placement prompt, the blur warning and a
+    // frame error (D9): showing one never moves the picture. It takes only the
+    // space left over, so it never widens the window.
+    toolMessages_ = new QWidget(toolRow_);
+    toolMessages_->setObjectName("toolMessages");
+    toolMessages_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    auto* messages = new QHBoxLayout(toolMessages_);
+    messages->setContentsMargins(reviewSpace(Ui::Space::m), 0, reviewSpace(Ui::Space::m), 0);
+    messages->setSpacing(reviewSpace(Ui::Space::s));
+    messages->addStretch(1);
+    tools->addWidget(toolMessages_, 1);
     tools->addWidget(pictureZoom_);
     tools->addWidget(editsToggle_);
     frame->addWidget(toolRow_);
@@ -714,11 +1087,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     column->setContentsMargins(0, 0, 0, 0);
     column->setSpacing(0);
     body->addLayout(column, 1);
-    // Banners take space from the well along its top edge, never over the picture.
+    // The notice and the status lines lie over the viewer's top edge and never
+    // refit the picture (D9); the placement prompt, the blur warning and a
+    // frame error are in the tool row.
     auto* bannerArea = new Ui::Surface("well", {}, this);
+    bannerArea_ = bannerArea;
     bannerArea->setObjectName("viewerBanners");
     auto* banners = new QVBoxLayout(bannerArea);
-    banners->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::m), 0);
+    banners->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), 0);
     banners->setSpacing(reviewSpace(Ui::Space::xs));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     notice_ = new QLabel(this);
@@ -732,17 +1108,31 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     noticeBand->hide();
     noticeBand_ = noticeBand;
     banners->addWidget(noticeBand);
-    placeBanner_ = new ViewerBanner(ViewerBanner::Tone::Info, bannerArea);
+    auto* messageRow = static_cast<QHBoxLayout*>(toolMessages_->layout());
+    // Short notes: "Loading frame…", the arrows' owner, what an undo undid (W6, W8, W10).
+    toolNote_ = new ViewerBanner(ViewerBanner::Tone::Info, toolMessages_);
+    toolNote_->setObjectName("toolNote");
+    messageRow->insertWidget(messageRow->count() - 1, toolNote_);
+    noteTimer_.setSingleShot(true);
+    connect(&noteTimer_, &QTimer::timeout, this, [this] { transientNote_.clear(); refreshNote(); });
+    placeBanner_ = new ViewerBanner(ViewerBanner::Tone::Info, toolMessages_);
     placeBanner_->setObjectName("placementBanner");
     auto* cancelPlace = placeBanner_->setAction(QStringLiteral("Cancel"), QStringLiteral("Esc"));
     cancelPlace->setObjectName("cancelPlacement");
     cancelPlace->setToolTip(QStringLiteral("Cancel placing the cover (Esc)"));
     connect(cancelPlace, &QPushButton::clicked, this, &ReviewWindow::cancelPlacement);
-    banners->addWidget(placeBanner_);
-    blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, bannerArea);
+    messageRow->insertWidget(messageRow->count() - 1, placeBanner_);
+    blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, toolMessages_);
     blurBanner_->setObjectName("blurWarning");
     blurBanner_->setText(QStringLiteral("Blur may be reversible. Use Redact for private information."));
-    banners->addWidget(blurBanner_);
+    messageRow->insertWidget(messageRow->count() - 1, blurBanner_);
+    frameError_ = new ViewerBanner(ViewerBanner::Tone::Error, toolMessages_);
+    frameError_->setObjectName("previewError");
+    auto* retryPreview = frameError_->setAction(QStringLiteral("Retry preview"), {});
+    retryPreview->setObjectName("retryPreview");
+    retryPreview->setToolTip(QStringLiteral("Decode the frame at the playhead again"));
+    connect(retryPreview, &QPushButton::clicked, this, [this] { drive({{"action", "retryPreview"}}); });
+    messageRow->insertWidget(messageRow->count() - 1, frameError_);
     // Errors, results and format advice with their actions; shown only when there are any.
     statusRow_ = new QWidget(bannerArea);
     statusRow_->setObjectName("statusRow");
@@ -752,10 +1142,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_->hide();
     banners->addWidget(statusRow_);
     bannerArea->hide();
-    column->addWidget(bannerArea);
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::s));
+    view_->setContentsMargins(reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs));
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     column->addWidget(view_, 1);
@@ -769,9 +1158,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->setSpacing(reviewSpace(Ui::Space::xs));
     play_ = tool({}, "play", "Play", "Play the kept footage silently (Space)", transport_);
     play_->setObjectName("play");
-    play_->setPopupMode(QToolButton::MenuButtonPopup);
-    play_->setFixedWidth(play_->height() + Ui::Metric::splitZone);
-    speedMenu_ = new QMenu(play_);
+    // Play and its speeds are two buttons side by side, so each answers over
+    // all of its visible half (W13: a split button gave its centre to the menu).
+    playSpeed_ = tool({}, "chevron-down", "Playback speed", "Playback speed: 0.5× to 4× (L plays faster)", transport_);
+    playSpeed_->setObjectName("playSpeed");
+    playSpeed_->setIconSize(QSize(Ui::scaled(12), Ui::scaled(12)));
+    // The button always names its speed and keeps one width, wide enough for
+    // "0.5×" and the chevron, so the transport never shifts (r5-neon #11).
+    playSpeed_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    playSpeed_->setText(QStringLiteral("0.5×"));
+    playSpeed_->setFixedWidth(std::max(playSpeed_->sizeHint().width(), playSpeed_->fontMetrics().horizontalAdvance(QStringLiteral("0.5×")) + Ui::scaled(12) + Ui::scaled(18)));
+    playSpeed_->setText(QStringLiteral("1×"));
+    speedMenu_ = new QMenu(playSpeed_);
     speedMenu_->setObjectName("speedMenu");
     speeds_ = new QActionGroup(speedMenu_);
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) {
@@ -781,7 +1179,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         action->setChecked(factor == 1.0);
         speeds_->addAction(action);
     }
-    play_->setMenu(speedMenu_);
+    // Opened by its own click, so the style draws no second arrow beside the glyph.
+    connect(playSpeed_, &QToolButton::clicked, this, [this] { speedMenu_->popup(playSpeed_->mapToGlobal(QPoint(0, playSpeed_->height()))); });
     previousFrame_ = tool({}, "frame-back", "Previous frame", "Previous frame (,)", transport_);
     previousFrame_->setObjectName("previousFrame");
     nextFrame_ = tool({}, "frame-forward", "Next frame", "Next frame (.)", transport_);
@@ -796,9 +1195,20 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     Ui::role(clipTime_, "meta");
     silent_ = nullptr;
     auto* silent = new SilentPreview(transport_);
-    timelineZoom_ = tool("Fit", "zoom", "Zoom the timeline", "Zoom the timeline", transport_);
+    skimToggle_ = tool("Skim", nullptr, "Skim", "Show the frame under the pointer as it rests on the timeline (S)", transport_);
+    skimToggle_->setObjectName("skimToggle");
+    skimToggle_->setCheckable(true);
+    snapToggle_ = tool("Snap", nullptr, "Snap", "Snap edges to the playhead, trim ends, cuts, covers and the selection (N); hold Ctrl while dragging to place freely", transport_);
+    snapToggle_->setObjectName("snapToggle");
+    snapToggle_->setCheckable(true);
+    timelineZoom_ = tool("Fit", "zoom", "Zoom the timeline", "Zoom the timeline: Fit, or a closer level (= and -, Shift+Z fits)", transport_);
     timelineZoom_->setObjectName("timelineZoom");
+    timelineZoom_->setPopupMode(QToolButton::InstantPopup);
+    timelineZoomMenu_ = new QMenu(timelineZoom_);
+    timelineZoomMenu_->setObjectName("timelineZoomMenu");
+    timelineZoom_->setMenu(timelineZoomMenu_);
     transport->addWidget(play_);
+    transport->addWidget(playSpeed_);
     transport->addSpacing(reviewSpace(Ui::Space::xs));
     transport->addWidget(previousFrame_);
     transport->addWidget(nextFrame_);
@@ -809,6 +1219,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->addStretch(1);
     transport->addWidget(silent);
     transport->addSpacing(reviewSpace(Ui::Space::m));
+    transport->addWidget(skimToggle_);
+    transport->addWidget(snapToggle_);
     transport->addWidget(timelineZoom_);
     column->addWidget(transport_);
 
@@ -914,6 +1326,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     actionRow->addWidget(destinationMenu_);
     actionRow->addWidget(upload_);
     for (auto* button : std::initializer_list<QWidget*>{format_, cancel_, save_, destinationMenu_, upload_}) {
+        // A click never takes the keys; Tab still reaches them (Q16).
+        button->setFocusPolicy(Qt::TabFocus);
         button->setProperty("uiDensity", "compact");
         button->setFixedHeight(textControlHeight(button) + 4);
     }
@@ -926,12 +1340,16 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->hide();
     connect(errorDetails_, &QPushButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
 
-    // Thumbnails and skim: one worker each, never waited on.
+    // Thumbnails, skim frames and playhead frames: one worker each, never waited on.
     filmstrip_ = new Filmstrip(this);
     skimmer_ = new FrameSkimmer(this);
+    skimmer_->setObjectName("skimFrames");
+    frames_ = new FrameSkimmer(this);
+    frames_->setObjectName("playheadFrames");
     if (!options_.workingClip.isEmpty()) {
         filmstrip_->open(options_.workingClip, options_.durationUs, options_.canvas);
         skimmer_->open(options_.workingClip, options_.canvas);
+        frames_->open(options_.workingClip, options_.canvas);
     }
     QPointer<Filmstrip> strip(filmstrip_);
     timeline_->setTileSource([strip](qint64 at) { return strip ? strip->tile(at) : QImage(); });
@@ -940,55 +1358,221 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     tileTimer_.setInterval(0);
     connect(&tileTimer_, &QTimer::timeout, this, &ReviewWindow::requestTiles);
     connect(timeline_, &FilmstripTimeline::visibleSpanChanged, &tileTimer_, qOverload<>(&QTimer::start));
-    connect(skimmer_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64, const QImage& frame) {
-        // Exact only as the answer to the request still current, at the edit's current revision.
-        if (!skimUs_ || *skimUs_ != requested || playing_ || !skimAsked_ || *skimAsked_ != std::pair<qint64, quint64>(requested, edit_.revision)) return;
-        skimAsked_.reset();
-        view_->setSkim(frame, requested);
-        timeline_->setSkimExact(true);
+    connect(skimmer_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 revision, bool exact) {
+        // The frame without a cover being moved goes only under that cover's live effect.
+        if (revision > tagFloor) {
+            // Only the newest base request's answer; an older one (another
+            // cover changed meanwhile) is dropped and the newer still awaited.
+            if (!exact || revision != uncoveredTag_ || !uncoveredAsked_ || uncoveredAsked_->second != requested) return;
+            view_->setUncovered(uncoveredAsked_->first, frame, requested);
+            uncoveredAsked_.reset();
+            return;
+        }
+        // R16: one skim request in flight. Its answer (covers applied, as every
+        // skim frame) shows when it is near the pointer's time, exact or not;
+        // then the newest time is asked for at once.
+        if (exact && skimAsked_ && skimAsked_->first == requested && skimAsked_->second == revision) skimAsked_.reset();
+        if (exact && revision == edit_.revision) cacheSkim({requested, frameUs, revision, viewEdge(), frame});
+        if (!skimUs_ || playing_ || !timeline_->skimming() || revision != edit_.revision) return;
+        // Q11: the exact answer for the time skimmed is that time's frame,
+        // whatever its stored time (Matroska rounding, the clip's last frame).
+        if (exact && requested == *skimUs_) {
+            view_->setSkim(frame, *skimUs_);
+            timeline_->setSkimExact(true);
+            return;
+        }
+        if (const auto* hit = cachedSkim(*skimUs_)) {
+            view_->setSkim(hit->image, *skimUs_);
+            timeline_->setSkimExact(true);
+            return;
+        }
+        // Q12: a nearby frame only when no cover starts or ends between it and the skim time.
+        const qint64 lo = std::min(frameUs, *skimUs_), hi = std::max(frameUs, *skimUs_);
+        const bool coverEdgeBetween = std::any_of(edit_.masks.cbegin(), edit_.masks.cend(), [&](const RecordingMask& m) {
+            return (m.start > lo && m.start <= hi) || (m.end > lo && m.end <= hi);
+        });
+        if (std::abs(frameUs - *skimUs_) <= skimReach() && !coverEdgeBetween) {
+            view_->setSkim(frame, frameUs);
+            timeline_->setSkimExact(false);
+        }
+        if (!skimAsked_ || skimAsked_->first != *skimUs_) askSkimFrame(*skimUs_);
+    });
+    connect(skimmer_, &FrameSkimmer::frameFailed, this, [this] { skimAsked_.reset(); });
+    connect(frames_, &FrameSkimmer::frameReady, this, [this](qint64 requested, qint64 frameUs, const QImage& frame, quint64 tagged, bool exact) {
+        quint64 revision = tagged;
+        // A cover edge's preview answers under its tag, only while that preview lasts (W4).
+        if (revision > tagFloor) {
+            if (!edgePreview_ || revision != edgeTag_) return;
+            revision = edit_.revision;
+        }
+        // Playback draws its own frames; an answer for an older edit is followed by a newer one.
+        if (playing_ || revision != edit_.revision) return;
+        // A frame on the way to a newer request (a fast scrub): shown at its own
+        // time, never taken as the frame for the playhead.
+        if (!exact) { if (!view_->dragging()) view_->setFrame(frame, frameUs); return; }
+        view_->setFrame(frame, requested);
+        shownRevision_ = revision;
+        if (requested == playhead_) {
+            shownFor_ = playhead_;
+            shownActual_ = frameUs;
+            // The frame a placement is drawn on is shown (W6).
+            if (view_->placeWaiting() && !edgePreview_) stopPlaceWait();
+        }
+        // The frame for the edit a cover's move made: its effect is in the picture now.
+        if (liveWaitRevision_ && revision >= *liveWaitRevision_ && !view_->dragging() && !view_->nudging()) { liveWaitRevision_.reset(); view_->endLive(); }
+    });
+    connect(frames_, &FrameSkimmer::frameFailed, this, [this](qint64 requested, const QString& message) {
+        if (playing_ || !frameAsked_ || frameAsked_->at != requested) return;
+        // An Enter waiting for this frame expires (W6).
+        enterPlacePending_ = false;
+        enterPlaceTimer_.stop();
+        // A placement keeps waiting: the error (with Retry preview) says why (R18).
+        showFrameError(requested, message);
     });
 
     // Timeline gestures.
-    // A ruler press scrubs and clears the selection; a strip click seeks, then clears it.
-    connect(timeline_, &FilmstripTimeline::scrubStarted, this, [this] { stopPlayback(); if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); });
-    connect(timeline_, &FilmstripTimeline::seekRequested, this, [this](qint64 at) { seek(at); });
+    // A press on the ruler or the strip seeks at once; playing, it keeps playing
+    // from there (C3). A scrub or an edge drag pauses for its duration. A scrub
+    // keeps the selection (A14); only selectionCleared clears it.
+    connect(timeline_, &FilmstripTimeline::scrubStarted, this, [this] { stopPlayback(); });
+    connect(timeline_, &FilmstripTimeline::seekRequested, this, [this](qint64 at) {
+        const bool resume = playing_;
+        seek(at);
+        if (resume) startPlayback(playhead_, true);
+    });
     connect(timeline_, &FilmstripTimeline::selectionCleared, this, [this] { if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); });
+    // R18t: a plain click on the filmstrip clears a time selection only; a
+    // selected cut or cover stays selected (Set to playhead, Shift+I / O).
+    connect(timeline_, &FilmstripTimeline::timeSelectionCleared, this, [this] {
+        if (!timeSelection_) return;
+        timeSelection_.reset();
+        timeline_->setTimeSelection(std::nullopt);
+        // A seek click doesn't change what a placement covers (P13).
+        refreshAll();
+    });
     connect(timeline_, &FilmstripTimeline::timeSelected, this, &ReviewWindow::selectTime);
     connect(timeline_, &FilmstripTimeline::cutSelected, this, [this](const QString& id) { selectCut(id, false); });
-    connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id); });
+    // A cover bar click seeks only when the playhead is outside the cover (A5).
+    // A press on a cover's bar or edge selects it and leaves the playhead where
+    // it is (r5-neon #2); seeking on select stays for the Edits list and keys.
+    connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id, false); });
+    // T6: a cancelled cut or cover press gives back the trim selection, as its Edits row selects it.
+    connect(timeline_, &FilmstripTimeline::trimSelected, this, [this] { selectEdit(QStringLiteral("trim"), {}); });
+    connect(timeline_, &FilmstripTimeline::moreCoversRequested, this, &ReviewWindow::revealHiddenCovers);
+    connect(timeline_, &FilmstripTimeline::hoverChanged, this, [this](const QString& kind, const QString& id) {
+        view_->setLinkedHover(kind == "cover" ? id : QString());
+        panel_->setLinkedHover(kind, id);
+    });
+    // Any edge drag (a trim bracket, a cut or cover edge, a time selection's
+    // moving end): the viewer shows the frame the edge lands on, at once.
+    // W4: a trim, a time selection or a cover edge shows the frame at the
+    // edge (a start edge its first frame, an end edge its last); a cut edge
+    // shows the kept side; a cover is previewed with its proposed span.
     connect(timeline_, &FilmstripTimeline::trimEdgeDragged, this, [this](bool start, qint64 at) {
         stopPlayback();
+        beginEdgePreview();
         edgePreview_ = start ? at : previousFrame(at);
-        frameTimer_.start();
+        requestFrame();
     });
-    connect(timeline_, &FilmstripTimeline::editEdgeDragged, this, [this](const QString&, const QString&, bool start, qint64 at) {
+    connect(timeline_, &FilmstripTimeline::editEdgeDragged, this, [this](const QString& kind, const QString& id, bool start, qint64 at) {
         stopPlayback();
-        edgePreview_ = start ? at : previousFrame(at);
-        frameTimer_.start();
+        beginEdgePreview();
+        if (kind == "cut") edgePreview_ = start ? previousFrame(at) : at;
+        else edgePreview_ = start ? at : previousFrame(at);
+        edgeEdit_.reset();
+        if (const auto* mask = kind == "cover" ? maskById(id) : nullptr) {
+            // The proposed span: the frame shown is covered as it will be.
+            RecordingEdit proposed = edit_;
+            for (auto& m : proposed.masks) if (m.id == id) {
+                if (start) { m.start = at; m.end = std::max(mask->end, nextFrameEdge(at)); }
+                else { m.end = at; m.start = std::min(mask->start, *edgePreview_); }
+            }
+            edgeEdit_ = proposed;
+        }
+        requestFrame();
     });
-    connect(timeline_, &FilmstripTimeline::edgeDragFinished, this, [this] { edgePreview_.reset(); frameTimer_.start(); });
+    // On release the edge frame stays until the proposal is answered, then the
+    // viewer switches once (W4); a drag that proposed nothing switches at once.
+    connect(timeline_, &FilmstripTimeline::edgeDragFinished, this, [this] {
+        QMetaObject::invokeMethod(this, [this] {
+            if (!edgePreview_) return;
+            if (proposalSeq_ > edgeDragSeq_) { edgeHoldProposal_ = proposalSeq_; edgeHoldTimer_.start(); return; }
+            endEdgePreview();
+        }, Qt::QueuedConnection);
+    });
+    edgeHoldTimer_.setSingleShot(true);
+    edgeHoldTimer_.setInterval(1500);
+    connect(&edgeHoldTimer_, &QTimer::timeout, this, [this] { if (edgeHoldProposal_) endEdgePreview(); });
     connect(timeline_, &FilmstripTimeline::trimProposed, this, &ReviewWindow::proposeTrim);
     connect(timeline_, &FilmstripTimeline::cutAdjusted, this, &ReviewWindow::adjustCut);
     connect(timeline_, &FilmstripTimeline::coverRetimed, this, &ReviewWindow::retimeCover);
+    // Skimming (B2, B4): the viewer keeps its picture until the exact frame
+    // (covers applied) arrives; nothing changes on hover with skimming off.
     connect(timeline_, &FilmstripTimeline::skimMoved, this, [this](qint64 at) {
-        if (playing_) return;
+        if (playing_ || !timeline_->skimming()) return;
         skimUs_ = at;
-        skimAsked_.reset();
-        skimmer_->cancel();
-        const auto tile = filmstrip_->tile(at);
-        if (!tile.isNull()) view_->setSkim(tile, at);
-    });
-    connect(timeline_, &FilmstripTimeline::skimRested, this, [this](qint64 at) {
-        if (playing_ || !skimUs_ || *skimUs_ != at) return;
+        skimMovedClock_.restart();
+        skimReturn_.stop();
+        if (const auto* hit = cachedSkim(at)) { view_->setSkim(hit->image, at); timeline_->setSkimExact(true); return; }
+        timeline_->setSkimExact(false);
+        // R16: the newest time is queued at once; the decode in flight is not
+        // dropped but hands over the frame it has reached (shown when near).
         askSkimFrame(at);
     });
-    connect(timeline_, &FilmstripTimeline::skimLeft, this, [this] { skimUs_.reset(); skimAsked_.reset(); skimmer_->cancel(); view_->clearSkim(); });
+    connect(timeline_, &FilmstripTimeline::skimRested, this, [this](qint64 at) {
+        if (playing_ || !timeline_->skimming() || !skimUs_ || *skimUs_ != at || cachedSkim(at) || (skimAsked_ && skimAsked_->first == at)) return;
+        askSkimFrame(at);
+    });
+    // P10: a skim that ends while the pointer is still on the timeline (it
+    // rests on a grip, or pauses) keeps its picture until a press or until
+    // the pointer leaves the timeline: no flash back to the playhead frame.
+    // F2: a skim that ends without a press returns to the playhead frame after
+    // 250 ms with a 100 ms crossfade; a skim back within 250 ms carries on.
+    skimReturn_.setSingleShot(true);
+    skimReturn_.setInterval(250);
+    connect(&skimReturn_, &QTimer::timeout, this, [this] { if (!skimUs_) view_->fadeOutSkim(100); });
+    connect(timeline_, &FilmstripTimeline::skimLeft, this, [this] {
+        skimUs_.reset();
+        skimAsked_.reset();
+        skimmer_->cancel();
+        if (view_->skimming()) skimReturn_.start();
+    });
+    connect(timeline_, &FilmstripTimeline::skimmingChanged, this, [this](bool on) {
+        sessionSkimming = on;
+        skimToggle_->setChecked(on);
+        if (!on) { skimUs_.reset(); skimAsked_.reset(); skimmer_->cancel(); view_->clearSkim(); }
+    });
+    connect(timeline_, &FilmstripTimeline::snappingChanged, this, [this](bool on) { sessionSnapping = on; snapToggle_->setChecked(on); });
     connect(timeline_, &FilmstripTimeline::zoomChanged, this, [this] { refreshTransport(); });
+    timeline_->setSkimming(sessionSkimming);
+    timeline_->setSnapping(sessionSnapping);
+    skimToggle_->setChecked(timeline_->skimming());
+    connect(skimToggle_, &QToolButton::toggled, this, [this](bool on) { timeline_->setSkimming(on); });
+    snapToggle_->setChecked(timeline_->snapping());
+    connect(snapToggle_, &QToolButton::toggled, this, [this](bool on) { timeline_->setSnapping(on); });
+    // T15: a press on the strip while playing pauses for the press; a click
+    // plays on from where it landed, a drag stays paused.
+    connect(timeline_, &FilmstripTimeline::playbackHeld, this, [this] { heldPlaying_ = heldPlaying_ || playing_; stopPlayback(); });
+    connect(timeline_, &FilmstripTimeline::playbackReleased, this, [this](bool resume) {
+        const bool wasPlaying = heldPlaying_;
+        heldPlaying_ = false;
+        if (resume && wasPlaying && !playing_) startPlayback(playhead_, true);
+    });
 
     // Panel.
     connect(panel_, &ReviewPanel::cutRequested, this, &ReviewWindow::cutSelection);
-    connect(panel_, &ReviewPanel::coverRequested, this, &ReviewWindow::arm);
+    // The panel's Redact / Blur toggle placement as the tool row's do (R28).
+    connect(panel_, &ReviewPanel::coverRequested, this, [this](const QString& kind) { if (placing_ && placing_->kind == kind) cancelPlacement(); else arm(kind); });
     connect(panel_, &ReviewPanel::restoreCut, this, &ReviewWindow::restoreCut);
+    // F6: a cut's typed times go through the same adjust as dragging its edges.
+    connect(panel_, &ReviewPanel::cutAdjustRequested, this, [this](const QString& id, qint64 start, qint64 end) {
+        stopPlayback();
+        adjustCut(id, start, end);
+        cutFieldProposal_ = proposalSeq_;  // its answer refreshes the field (W8)
+    });
+    connect(panel_, &ReviewPanel::cutEdgeToPlayhead, this, [this](const QString& id, bool start) {
+        if (const auto why = cutEdgeToPlayhead(id, start); !why.isEmpty()) refuseChange(why);
+    });
     connect(panel_, &ReviewPanel::playAcross, this, &ReviewWindow::playAcross);
     connect(panel_, &ReviewPanel::seekCoverEdge, this, &ReviewWindow::seekCoverEdge);
     connect(panel_, &ReviewPanel::coverEdgeToPlayhead, this, [this](const QString& id, bool start) { stopPlayback(); setMaskAt(start, id); });
@@ -996,22 +1580,76 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         updateCover(id, [&](QJsonObject& mask) { mask[start ? "start" : "end"] = double(at); });
     });
     connect(panel_, &ReviewPanel::coverKindChanged, this, &ReviewWindow::setCoverKind);
+    // R29: the picture shows a strength at once; the edit follows the 350 ms coalescing.
+    connect(panel_, &ReviewPanel::coverStrengthPreview, this, [this](const QString& id, int strength) {
+        if (strength < 0) view_->endLive(); else view_->previewStrength(id, strength);
+    });
     connect(panel_, &ReviewPanel::coverStrengthChanged, this, [this](const QString& id, int strength) {
+        const quint64 before = proposalSeq_;
         updateCover(id, [&](QJsonObject& mask) { mask["strength"] = strength; });
+        if (proposalSeq_ != before && view_->liveId() == id) { liveProposal_ = proposalSeq_; liveWaitRevision_.reset(); }
     });
     connect(panel_, &ReviewPanel::editActivated, this, [this](const QString& kind, const QString& id) { selectEdit(kind, id); });
+    connect(panel_, &ReviewPanel::rowHovered, this, [this](const QString& kind, const QString& id) {
+        timeline_->setLinkedHover(kind == "trim" ? QString() : kind, kind == "trim" ? QString() : id);
+        view_->setLinkedHover(kind == "cover" ? id : QString());
+    });
+    // W17: Enter in a panel field (or Esc on unchanged text) hands the keys back.
+    connect(panel_, &ReviewPanel::focusReturnRequested, this, [this] {
+        if (overlay_->isOpen()) overlay_->setFocus(Qt::OtherFocusReason);
+        else timeline_->setFocus(Qt::OtherFocusReason);
+    });
+    // W11: the folded overlay ends 8 px above the transport.
+    overlay_->setFloor(transport_);
+    // Q17: an outside press on the picture only closes the overlay; elsewhere it closes it and acts.
+    overlay_->setConsumeArea(view_);
+    // Closed by a pointer press, the keys go back to the timeline (P14).
+    connect(overlay_, &EditsOverlay::dismissedByPointer, this, [this] { timeline_->setFocus(Qt::OtherFocusReason); });
     connect(panel_, &ReviewPanel::resetTrim, this, [this] { propose(QJsonArray{QJsonObject{{"op", "resetTrim"}}}); });
     connect(panel_, &ReviewPanel::removeCover, this, [this](const QString& id) { propose(QJsonArray{QJsonObject{{"op", "removeMask"}, {"maskId", id}}}); });
     connect(overlay_, &EditsOverlay::closed, this, [this] { editsToggle_->setChecked(false); view_->setRightInset(0); });
     connect(editsToggle_, &QToolButton::clicked, this, [this] { setPanelOpen(!overlay_->isOpen()); });
 
     // Viewer.
-    connect(view_, &FrameView::retryRequested, this, [this] { frameTimer_.stop(); refreshFrame(); });
+    connect(view_, &FrameView::previewErrorChanged, this, [this] {
+        frameError_->setText(view_->previewErrorText());
+        refreshNote();
+    });
     connect(view_, &FrameView::maskCreated, this, [this](const QString& kind, const QRect& r) { placeCover(kind, r); });
     connect(view_, &FrameView::maskMoved, this, [this](const QString& id, const QRect& r) {
+        const quint64 before = proposalSeq_;
         updateCover(id, [&](QJsonObject& mask) { mask["rect"] = QJsonArray{r.x(), r.y(), r.width(), r.height()}; });
+        // The live cover holds until the frame for this edit is shown.
+        if (proposalSeq_ != before && view_->liveId() == id) { liveProposal_ = proposalSeq_; liveWaitRevision_.reset(); }
+        else view_->endLive();
+    });
+    // A cover shown at this frame started to move: the frame without it, from
+    // the skim worker (no skim runs during a viewer gesture). Its answer goes
+    // only to the live cover, never to the skim or its cache.
+    connect(view_, &FrameView::liveEditStarted, this, [this](const QString& id, qint64 at) {
+        skimUs_.reset();
+        skimAsked_.reset();
+        skimmer_->cancel();
+        view_->clearSkim();
+        timeline_->skimAt(std::nullopt);
+        liveWaitRevision_.reset();
+        liveProposal_ = 0;
+        askUncovered(id, at);
     });
     connect(view_, &FrameView::maskSelected, this, [this](const QString& id) { if (id.isEmpty()) clearSelection(); else selectCover(id, false); });
+    // W3: a click on the picture while playing pauses, nothing else.
+    connect(view_, &FrameView::pauseRequested, this, &ReviewWindow::stopPlayback);
+    placeHintTimer_.setSingleShot(true);
+    placeHintTimer_.setInterval(2000);
+    connect(&placeHintTimer_, &QTimer::timeout, this, [this] { placeHint_.clear(); refreshNote(); });
+    // Q22: hovering a cover's box, its bar or its Edits row highlights the other two.
+    connect(view_, &FrameView::hoveredCoverChanged, this, [this](const QString& id) {
+        timeline_->setLinkedHover(id.isEmpty() ? QString() : QStringLiteral("cover"), id);
+        panel_->setLinkedHover(id.isEmpty() ? QString() : QStringLiteral("cover"), id);
+    });
+    // W8: the tool row says when the arrows move the box; Esc gives them back to the frames.
+    connect(view_, &FrameView::arrowsClaimedChanged, this, &ReviewWindow::refreshNote);
+    connect(view_, &FrameView::arrowsReleased, this, [this] { timeline_->setFocus(Qt::OtherFocusReason); refreshNote(); });
     connect(view_, &FrameView::zoomChanged, this, &ReviewWindow::refreshTools);
     // A nudge is a new edit: an upload waiting for an answer is called off.
 
@@ -1031,7 +1669,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         shownEdge_ = edge;
         // Playback restarts at the new size; a skim frame asked at the old size is dropped.
         if (playing_) { const qint64 from = playhead_; stopPlayback(); startPlayback(from, true); return; }
-        frameTimer_.start();
+        requestFrame();
+        skimCache_.clear();
         if (skimUs_) {
             skimmer_->cancel();
             skimAsked_.reset();
@@ -1042,11 +1681,24 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(play_, &QToolButton::clicked, this, [this] { if (playing_) stopPlayback(); else startPlayback(); });
     connect(speeds_, &QActionGroup::triggered, this, [this](QAction* action) {
         speed_ = action->data().toDouble();
+        playSpeed_->setText(action->text());
         if (playing_) { const qint64 from = playhead_; stopPlayback(); startPlayback(from, true); }
     });
     connect(previousFrame_, &QToolButton::clicked, this, [this] { stepFrames(-1); });
     connect(nextFrame_, &QToolButton::clicked, this, [this] { stepFrames(1); });
-    connect(timelineZoom_, &QToolButton::clicked, this, [this] { timeline_->setZoom(timeline_->zoom() >= 4 ? 1 : timeline_->zoom() * 2, playhead_); });
+    // The timeline zoom menu: Fit and every level of the ladder (A13).
+    // One group for the menu's life; clear() deletes the actions, which leave it.
+    auto* zoomGroup = new QActionGroup(timelineZoomMenu_);
+    connect(timelineZoomMenu_, &QMenu::aboutToShow, this, [this, group = zoomGroup] {
+        timelineZoomMenu_->clear();
+        for (const int level : timeline_->zoomLevels()) {
+            auto* action = timelineZoomMenu_->addAction(level <= 1 ? QStringLiteral("Fit") : QStringLiteral("%1×").arg(level));
+            action->setCheckable(true);
+            action->setChecked(level == timeline_->zoom());
+            group->addAction(action);
+            connect(action, &QAction::triggered, this, [this, level] { timeline_->setZoom(level); });
+        }
+    });
     connect(formats_, &QActionGroup::triggered, this, [this](QAction* action) {
         const auto value = action->data().toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
@@ -1063,17 +1715,21 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     });
     // Upload hands the clip to the resident: the review closes at once and the
     // export and upload continue in the background, reported like any upload.
-    connect(upload_, &QPushButton::clicked, this, &ReviewWindow::upload);
+    // Save and Upload count refusals from the press on them, which committed a typed time (W5).
+    connect(upload_, &QPushButton::clicked, this, [this] { upload(takePressRefusals(upload_)); });
     chooser_ = new FileDialog(this);
-    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(); });
+    // The refusals counted from the press on Save, when a typed time was committed (W5).
+    connect(save_, &QPushButton::clicked, this, [this] { stopPlayback(); chooseCopy(takePressRefusals(save_)); });
     connect(cancel_, &QPushButton::clicked, this, &ReviewWindow::askDiscard);
 
     // Keys with modifiers; the plain keys arrive in keyPressEvent so a focused
     // field keeps its own typing, arrows and Delete.
     auto shortcut = [this](const QKeySequence& key, auto slot) { auto* s = new QShortcut(key, this); s->setContext(Qt::WindowShortcut); connect(s, &QShortcut::activated, this, slot); return s; };
-    shortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), [this] { undoRedo(true); });
-    shortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z), [this] { undoRedo(false); });
-    shortcut(QKeySequence(Qt::CTRL | Qt::Key_Y), [this] { undoRedo(false); });
+    // During a drag (timeline or picture) these cancel only that drag (W20).
+    // During the blur strength's coalescing it takes back only that step (Q18).
+    shortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), [this] { if (!cancelDrags() && !panel_->cancelPendingStrength()) undoRedo(true); });
+    shortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z), [this] { if (!cancelDrags()) undoRedo(false); });
+    shortcut(QKeySequence(Qt::CTRL | Qt::Key_Y), [this] { if (!cancelDrags()) undoRedo(false); });
     // Ctrl+Enter uploads as the button does; never with a menu open.
     // A held key never repeats into an upload.
     for (const auto key : {Qt::Key_Return, Qt::Key_Enter}) shortcut(QKeySequence(Qt::CTRL | key), [this] { if (!QApplication::activePopupWidget()) upload(); })->setAutoRepeat(false);
@@ -1081,14 +1737,46 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     uploadWait_.setSingleShot(true);
     uploadWait_.setInterval(2000);
     connect(&uploadWait_, &QTimer::timeout, this, [this] { cancelUpload(QStringLiteral("your last change wasn't confirmed in time")); });
+    saveWait_.setSingleShot(true);
+    saveWait_.setInterval(2000);
+    connect(&saveWait_, &QTimer::timeout, this, [this] { cancelSaveCopy(QStringLiteral("your last change wasn't confirmed in time")); });
+    // Space plays and pauses from any focus but a text field or spin box (they
+    // claim it in ShortcutOverride); a clicked button never takes it (E2).
+    // A row or button reached with Tab (its focus ring shown) takes Space as its
+    // own activation (W20).
+    shortcut(QKeySequence(Qt::Key_Space), [this] {
+        if (exporting_) return;
+        auto* focus = focusWidget();
+        if (focus && isAncestorOf(focus) && Ui::keyboardFocus(focus)) {
+            if (auto* button = qobject_cast<QAbstractButton*>(focus)) { if (button->isEnabled()) button->click(); return; }
+            if (focus->objectName() == "reviewPanelRow") { QKeyEvent key(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier, QStringLiteral(" ")); QApplication::sendEvent(focus, &key); return; }
+        }
+        if (playing_) stopPlayback();
+        else { adoptSkim(); startPlayback(); }  // Q10: play from the skimmed frame
+    })->setAutoRepeat(false);
     shortcut(QKeySequence(Qt::ALT | Qt::Key_Left), [this] { stepEdit(-1); });
     shortcut(QKeySequence(Qt::ALT | Qt::Key_Right), [this] { stepEdit(1); });
     view_->installEventFilter(this);
     timeline_->installEventFilter(this);
+    // P9: presses anywhere in the window are seen first (they never stop here).
+    qApp->installEventFilter(this);
+    bannerArea_->installEventFilter(this);
 
+    enterPlaceTimer_.setSingleShot(true);
+    enterPlaceTimer_.setInterval(1000);
+    // Its second is up with the frame still loading (the banner says so) or
+    // failed (the error says so): the Enter expires and nothing is placed on a
+    // frame it wasn't meant for (W6).
+    connect(&enterPlaceTimer_, &QTimer::timeout, this, [this] {
+        if (enterPlacePending_ && placing_ && !view_->placeWaiting()) { placePendingEnter(); return; }
+        enterPlacePending_ = false;
+    });
+    placeWaitTimer_.setSingleShot(true);
+    placeWaitTimer_.setInterval(100);
+    connect(&placeWaitTimer_, &QTimer::timeout, this, [this] { if (view_->placeWaiting()) { loadingFrame_ = true; refreshNote(); } });
     frameTimer_.setSingleShot(true);
-    frameTimer_.setInterval(qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") > 0 ? qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") : 60);
-    connect(&frameTimer_, &QTimer::timeout, this, &ReviewWindow::refreshFrame);
+    frameTimer_.setInterval(std::max(0, qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS")));
+    connect(&frameTimer_, &QTimer::timeout, this, &ReviewWindow::askFrame);
     setConfig(config);
     setEdit({});
     timeline_->setFocus();
@@ -1096,6 +1784,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     refreshFold();
 }
 ReviewWindow::~ReviewWindow() {
+    // Children torn down after this body (focus leaving the viewer, a row) must
+    // not reach the window's handlers once its members are gone.
+    for (auto* child : findChildren<QObject*>()) child->disconnect(this);
     if (playStop_) playStop_->store(true);
     if (playThread_) playThread_->wait();
 }
@@ -1111,7 +1802,6 @@ QSize ReviewWindow::minimumSizeHint() const {
     const int width = std::max({640, footer_->minimumSizeHint().width(), toolRow_->minimumSizeHint().width(), transport_->minimumSizeHint().width()});
     int height = toolRow_->height() + transport_->height() + timeline_->minimumSizeHint().height() + footer_->height() + 180;
     if (header_->isVisibleTo(this)) height += header_->sizeHint().height();
-    if (auto* banners = findChild<QWidget*>("viewerBanners"); banners && banners->isVisibleTo(this)) height += banners->sizeHint().height();
     return {width, std::max(480, height)};
 }
 
@@ -1130,7 +1820,7 @@ qint64 ReviewWindow::nextFrameEdge(qint64 at) const { return std::min(options_.d
 // shown for the playhead there is no end (the caller refuses).
 std::optional<qint64> ReviewWindow::shownFrameEnd() {
     const auto resolved = [this] { return shownFor_ == playhead_ && shownActual_ >= 0 && !edgePreview_; };
-    if (!resolved()) { frameTimer_.stop(); refreshFrame(); }
+    if (!resolved()) decodeFrameNow();
     if (!resolved()) return std::nullopt;
     return std::min(options_.durationUs, frameAt(frameIndex(shownActual_) + 1));
 }
@@ -1165,13 +1855,39 @@ void ReviewWindow::seek(qint64 us, bool user) {
     if (user) { stopPlayback(); pendingCut_.reset(); }
     playhead_ = std::clamp<qint64>(us, 0, std::max<qint64>(0, options_.durationUs - 1));
     timeline_->setPlayhead(playhead_);
+    // Q10: seeking to the skimmed time (a click where the pointer rests, a key
+    // that took the skim) keeps the skim picture as the playhead's: no flash.
+    if (view_->skimming() && std::abs(view_->skimTime() - playhead_) <= frameUs()) {
+        const qint64 skimmed = view_->skimTime();
+        view_->promoteSkim();
+        if (const auto* hit = cachedSkim(skimmed); hit && skimmed == playhead_) { shownFor_ = playhead_; shownActual_ = hit->frameUs; frameAsked_ = FrameAsk{playhead_, edit_.revision, viewEdge(), {}}; shownRevision_ = edit_.revision; }
+    }
     if (skimUs_) { skimUs_.reset(); skimmer_->cancel(); }
     skimAsked_.reset();
     timeline_->setSkimExact(false);
     timeline_->skimAt(std::nullopt);  // the same time skimmed again asks again
     view_->clearSkim();
     refreshTransport();
-    frameTimer_.start();
+    requestFrame();
+    // Q15: a seek while placing waits again for the frame at the new time.
+    if (placing_ && shownFor_ != playhead_ && frameTimer_.interval() == 0) { view_->setPlaceWaiting(true); placeWaitTimer_.start(); }
+}
+// Q10: a skim on the timeline wins for keys: the playhead goes to the
+// frame-snapped skim time first (keeping its picture), then the key acts.
+bool ReviewWindow::adoptSkim() {
+    if (!skimUs_ || playing_ || exporting_) return false;
+    // P11: only a skim that moved within the last 1.5 s; a stale one is dropped
+    // and the key acts at the playhead.
+    if (!skimMovedClock_.isValid() || skimMovedClock_.elapsed() > 1500) {
+        skimUs_.reset();
+        skimAsked_.reset();
+        skimmer_->cancel();
+        timeline_->skimAt(std::nullopt);
+        view_->clearSkim();
+        return false;
+    }
+    seek(std::min(frameAt(frameIndex(*skimUs_)), std::max<qint64>(0, options_.durationUs - 1)));
+    return true;
 }
 void ReviewWindow::stepFrames(int frames) {
     const int fps = std::max(1, config_.fps);
@@ -1198,7 +1914,21 @@ void ReviewWindow::setTimeSelection(std::optional<recording::Span> span) {
     selectedId_.clear();
     timeline_->setTimeSelection(span);
     view_->setMasks(edit_.masks, {});
+    // A placement follows the shown selection (R28).
+    if (placing_) placing_->span = placementSpan(placing_->kind, placing_->whole);
     refreshAll();
+}
+// The time a cover being placed covers: the time selection snapped outward to
+// whole frames, or the whole recording.
+recording::Span ReviewWindow::placementSpan(const QString&, bool& whole) const {
+    whole = !timeSelection_;
+    if (!timeSelection_) return {0, options_.durationUs};
+    const int fps = std::max(1, config_.fps);
+    const qint64 start = frameAt(qint64(std::floor(double(timeSelection_->start) * fps / 1e6 + 1e-9)));
+    const qint64 end = std::min(options_.durationUs, frameAt(qint64(std::ceil(double(timeSelection_->end) * fps / 1e6 - 1e-9))));
+    recording::Span span{std::min(start, timeSelection_->start), std::max(end, std::min(options_.durationUs, timeSelection_->end))};
+    if (span.empty()) span.end = nextFrameEdge(span.start);
+    return span;
 }
 // A drag on the filmstrip (or recording.review selectRange): the half-open span.
 void ReviewWindow::selectTime(qint64 start, qint64 end) {
@@ -1212,6 +1942,7 @@ void ReviewWindow::clearSelection() {
     timeline_->setTimeSelection(std::nullopt);
     timeline_->setSelectedEdit({}, {});
     view_->setMasks(edit_.masks, {});
+    // A placement keeps its time: only a range gesture changes it (P13).
     refreshAll();
 }
 void ReviewWindow::selectCover(const QString& id, bool seekToIt) {
@@ -1224,9 +1955,10 @@ void ReviewWindow::selectCover(const QString& id, bool seekToIt) {
     selectedId_ = id;
     timeline_->setSelectedEdit(selectedKind_, id);
     view_->setMasks(edit_.masks, id);
-    // Its first visible frame; wholly outside kept footage, its start (paused,
-    // "Excluded from output").
-    if (seekToIt) {
+    revealRow_ = {QStringLiteral("cover"), id};
+    // Its first visible frame, only when the playhead is outside the cover (A5,
+    // W15); wholly outside kept footage, its start (paused, "Excluded from output").
+    if (seekToIt && !(mask->start <= playhead_ && playhead_ < mask->end)) {
         const auto first = firstKeptFrame(mask->start, mask->end);
         seek(first ? *first : firstFrameIn({mask->start, mask->end}).value_or(mask->start));
     }
@@ -1241,6 +1973,7 @@ void ReviewWindow::selectCut(const QString& id, bool seekToIt) {
     selectedKind_ = QStringLiteral("cut");
     selectedId_ = id;
     timeline_->setSelectedEdit(selectedKind_, id);
+    revealRow_ = {QStringLiteral("cut"), id};
     view_->setMasks(edit_.masks, {});
     // From Edits: the first kept frame after it (the last before a trailing cut).
     if (seekToIt) {
@@ -1295,15 +2028,20 @@ void ReviewWindow::undoRedo(bool undo) {
     if (exporting_) return;
     // Ctrl+Z while placing cancels the placement.
     if (placing_) { if (undo) cancelPlacement(); return; }
-    // A nudge not yet proposed is dropped, not sent; the step is then the resident's at this revision.
-    view_->cancelNudge();
+    // The first Ctrl+Z during a nudge not yet proposed takes back only the nudge (D6).
+    if (view_->nudging()) { view_->cancelNudge(); return; }
     if (undo ? !edit_.canUndo : !edit_.canRedo) return;
     stopPlayback();
     propose(QJsonArray{QJsonObject{{"op", undo ? "undo" : "redo"}}});
+    undoProposal_ = proposalSeq_;
+    undoWasUndo_ = undo;
+    undoBefore_ = edit_;
 }
 // Trim brackets dragged (and released), or recording.review setTrim.
 void ReviewWindow::proposeTrim(qint64 start, qint64 end) {
+    pendingTrimStart_ = start != edit_.trimStart;
     propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(start)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
+    pendingTrimProposal_ = proposalSeq_;
 }
 // A selected cut's edge dragged, or recording.review adjustCut.
 void ReviewWindow::adjustCut(const QString& id, qint64 start, qint64 end) {
@@ -1342,13 +2080,7 @@ void ReviewWindow::arm(const QString& kind) {
     view_->commitNudge();
     // The time selection snapped outward to whole frames, or the whole recording.
     Placement placement{kind, {0, options_.durationUs}, true};
-    if (timeSelection_) {
-        const int fps = std::max(1, config_.fps);
-        const qint64 start = frameAt(qint64(std::floor(double(timeSelection_->start) * fps / 1e6 + 1e-9)));
-        const qint64 end = std::min(options_.durationUs, frameAt(qint64(std::ceil(double(timeSelection_->end) * fps / 1e6 - 1e-9))));
-        placement = {kind, {std::min(start, timeSelection_->start), std::max(end, std::min(options_.durationUs, timeSelection_->end))}, false};
-        if (placement.span.empty()) placement.span.end = nextFrameEdge(placement.span.start);
-    }
+    placement.span = placementSpan(kind, placement.whole);
     placing_ = placement;
     selectedKind_.clear();
     selectedId_.clear();
@@ -1363,6 +2095,10 @@ void ReviewWindow::arm(const QString& kind) {
         const auto first = firstKeptFrame(span.start, span.end);
         seek(first ? *first : firstFrameIn(span).value_or(span.start), false);
     }
+    // Drawing waits for the frame at the placement time on every path (W6,
+    // R18); past 100 ms the prompt says so. (The test hook that holds frames
+    // back, PUTGD_RECORD_REVIEW_DELAY_MS, draws on whatever is shown.)
+    if (shownFor_ != playhead_ && frameTimer_.interval() == 0) { view_->setPlaceWaiting(true); placeWaitTimer_.start(); }
     if (overlay_->isOpen()) overlay_->dismiss();
     view_->setFocus(Qt::OtherFocusReason);
     refreshAll();
@@ -1370,6 +2106,7 @@ void ReviewWindow::arm(const QString& kind) {
 void ReviewWindow::cancelPlacement() {
     if (!placing_) return;
     placing_.reset();
+    stopPlaceWait();
     view_->disarm();
     refreshAll();
 }
@@ -1379,11 +2116,14 @@ void ReviewWindow::placeCover(const QString& kind, const QRect& rect) {
     QJsonObject mask{{"kind", kind}, {"rect", QJsonArray{rect.x(), rect.y(), rect.width(), rect.height()}}, {"start", double(span.start)}, {"end", double(span.end)}};
     if (kind == "blur") mask["strength"] = 16;
     placing_.reset();
+    stopPlaceWait();
     view_->disarm();
     timeSelection_.reset();
     timeline_->setTimeSelection(std::nullopt);
     // One command creates the box and its time; the new cover becomes the selection.
     propose(QJsonArray{QJsonObject{{"op", "addMask"}, {"mask", mask}}});
+    // The arrows step frames again (W8).
+    timeline_->setFocus(Qt::OtherFocusReason);
     refreshAll();
 }
 void ReviewWindow::updateCover(const QString& id, const std::function<void(QJsonObject&)>& change) {
@@ -1411,6 +2151,32 @@ void ReviewWindow::playAcross(const QString& id) {
     seek(from, false);
     startPlayback(from);
 }
+// A cut's Set to playhead (the panel's button, recording.review setCutEdge):
+// the frame on screen is its first (Starts) or last (Ends) frame, as a
+// cover's. The reason when it can't, else empty.
+QString ReviewWindow::cutEdgeToPlayhead(const QString& id, bool start) {
+    const auto it = std::find_if(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == id; });
+    if (it == edit_.cuts.cend()) return QStringLiteral("No cut has this ID");
+    stopPlayback();
+    if (start) { adjustCut(id, shownFrameStart(), it->end); return {}; }
+    const auto end = shownFrameEnd();
+    if (!end) return QStringLiteral("The frame at the playhead isn't shown yet. Try again once it is.");
+    adjustCut(id, it->start, *end);
+    return {};
+}
+// Q10, F2: a key or action that acts at a frame takes a live skim's frame
+// first; with none, what is shown is the playhead.
+void ReviewWindow::takeSkimForKey() {
+    if (!adoptSkim() && !skimUs_ && view_->skimming()) { skimReturn_.stop(); view_->clearSkim(); }
+}
+void ReviewWindow::askUncovered(const QString& id, qint64 at) {
+    auto without = edit_;
+    uncoveredTag_ = nextRequestTag();
+    without.revision = uncoveredTag_;
+    without.masks.erase(std::remove_if(without.masks.begin(), without.masks.end(), [&](const RecordingMask& m) { return m.id == id; }), without.masks.end());
+    uncoveredAsked_ = std::pair<QString, qint64>(id, at);
+    skimmer_->request(at, without, viewEdge());
+}
 void ReviewWindow::seekCoverEdge(const QString& id, bool start) {
     const auto* mask = maskById(id);
     if (!mask) return;
@@ -1420,12 +2186,22 @@ void ReviewWindow::seekCoverEdge(const QString& id, bool start) {
 // A change refused here was never proposed: a waiting Upload is cancelled so
 // it never goes out without it (#1635 V3).
 QString ReviewWindow::refuseChange(const QString& message) {
+    ++refusals_;
     cancelUpload(QStringLiteral("a change wasn't applied"));
+    cancelSaveCopy(QStringLiteral("a change wasn't applied"));
     showError(message, false);
     return message;
 }
+// The start of the frame on screen for the playhead (P16), as shownFrameEnd
+// finds its end; with no frame to read, the playhead itself.
+qint64 ReviewWindow::shownFrameStart() {
+    const auto resolved = [this] { return shownFor_ == playhead_ && shownActual_ >= 0 && !edgePreview_; };
+    if (!resolved() && !options_.workingClip.isEmpty() && QFileInfo::exists(options_.workingClip)) decodeFrameNow();
+    if (!resolved()) return playhead_;
+    return std::min(frameAt(frameIndex(shownActual_)), std::max<qint64>(0, options_.durationUs - 1));
+}
 QString ReviewWindow::setTrimAt(bool start) {
-    const qint64 at = playhead_;
+    const qint64 at = start ? shownFrameStart() : playhead_;
     const auto refuse = [this](const QString& message) { return refuseChange(message); };
     if (start) {
         if (at >= edit_.exportEnd(options_.durationUs)) return refuse("Trim start must be before the trim end");
@@ -1444,7 +2220,7 @@ QString ReviewWindow::setMaskAt(bool start, const QString& id) {
     const auto refuse = [this](const QString& message) { return refuseChange(message); };
     const auto* mask = id.isEmpty() ? selectedMask() : maskById(id);
     if (!mask) return refuse("Select a cover to set its times");
-    const qint64 at = playhead_;
+    const qint64 at = start ? shownFrameStart() : playhead_;
     if (start) {
         if (at >= mask->end) return refuse("The cover must start before it ends");
         updateCover(mask->id, [&](QJsonObject& m) { m["start"] = double(at); });
@@ -1473,6 +2249,14 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     QStringList before;
     for (const auto& mask : std::as_const(edit_.masks)) before.append(mask.id);
     const bool changed = edit.revision != edit_.revision;
+    // W3: the covers other than the live one, before and after.
+    const QString live = view_->liveId();
+    const auto others = [&live](const RecordingEdit& e) {
+        QJsonArray all;
+        for (const auto& mask : e.masks) if (mask.id != live) all.append(mask.toJson());
+        return all;
+    };
+    const bool othersChanged = changed && !live.isEmpty() && others(edit) != others(edit_);
     // An accepted edit answers a refusal or an earlier result in the status row.
     if (changed && !exporting_) message_ = {};
     maskNames_->observe(edit.masks);
@@ -1492,7 +2276,11 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     }
     // Only the cut's own answer moves the playhead to its seam; its refusal forgets it.
     const bool cutAnswered = pendingCut_ && answered && answered == pendingCutProposal_;
-    if (cutAnswered && !refused.isEmpty()) pendingCut_.reset();
+    // A refused cut gives its range back, dashed, so it can be fixed (W9).
+    if (cutAnswered && !refused.isEmpty()) {
+        if (pendingCut_ && !timeSelection_ && selectedKind_.isEmpty() && !placing_) timeSelection_ = pendingCut_;
+        pendingCut_.reset();
+    }
     timeline_->setEdit(edit_);
     if (isVisible() || initialFitDone_) for (const auto& mask : std::as_const(edit_.masks)) if (!before.contains(mask.id)) {
         selectedKind_ = QStringLiteral("cover");
@@ -1505,6 +2293,12 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     timeline_->setSelectedEdit(selectedKind_, selectedId_);
     if (timeSelection_) timeline_->setTimeSelection(timeSelection_);
     view_->setMasks(edit_.masks, selectedKind_ == "cover" ? selectedId_ : QString());
+    // W3: another cover changed under the live one: its base, the frame
+    // without it, is asked for again with the other covers as they are now.
+    if (othersChanged && view_->liveId() == live) {
+        view_->dropUncovered();
+        askUncovered(live, view_->frameTime());
+    }
     // Opens paused on the first kept frame. Later accepted edits keep the
     // user's playhead, except right after making a cut: 1 s before its seam.
     if (!isVisible() && !initialFitDone_) {
@@ -1517,16 +2311,46 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
         pendingCut_.reset();
         seek(at, false);
     }
+    // A cover's move answered: accepted, the live effect holds until the frame
+    // for this revision is shown; refused, the frame on screen is current.
+    if (liveProposal_ && answered >= liveProposal_) {
+        liveProposal_ = 0;
+        const bool gesture = view_->dragging() || view_->nudging();
+        if (!refused.isEmpty() || !changed) { if (!gesture) view_->endLive(); }
+        else liveWaitRevision_ = edit_.revision;
+    }
+    // W10: an undo or redo says what it took back or put back, and selects a restored item.
+    if (undoProposal_ && answered == undoProposal_) {
+        undoProposal_ = 0;
+        if (refused.isEmpty() && changed) noteUndo();
+    }
+    // C4: a trim that leaves the playhead outside the kept footage brings it to
+    // the edge just set, the frame the drag showed.
+    if (pendingTrimProposal_ && answered == pendingTrimProposal_) {
+        pendingTrimProposal_ = 0;
+        if (refused.isEmpty() && !kept_.kept(playhead_)) {
+            const auto at = pendingTrimStart_ ? firstKeptFrame(edit_.trimStart, options_.durationUs) : lastKeptFrame(0, edit_.exportEnd(options_.durationUs));
+            if (at) seek(*at, false);
+        }
+    }
+    // W4: the edge frame held since release gives way once, now: to the
+    // playhead frame at this revision, or, with the playhead now excluded,
+    // the playhead moves to the edge frame (the picture doesn't change).
+    if (edgeHoldProposal_ && answered >= edgeHoldProposal_ && edgePreview_) {
+        const qint64 edge = *edgePreview_;
+        if (refused.isEmpty() && !kept_.kept(playhead_) && kept_.kept(edge)) seek(edge, false);
+        endEdgePreview();
+    }
     if (changed) {
+        skimCache_.clear();
         // Playback and the exact skim frame follow the current edit: playback
-        // starts again from the playhead, a skim frame is asked for again.
-        // With no kept footage ahead of the playhead it pauses there, never starting over.
+        // starts again from the playhead, a skim frame is asked for again (the
+        // viewer keeps its picture until it arrives). With no kept footage
+        // ahead of the playhead it pauses there, never starting over.
         if (playing_) { const qint64 from = playhead_; stopPlayback(); startPlayback(from, true); }
         if (skimUs_ && !playing_) {
             skimmer_->cancel();
             timeline_->setSkimExact(false);
-            const auto tile = filmstrip_->tile(*skimUs_);
-            if (tile.isNull()) view_->clearSkim(); else view_->setSkim(tile, *skimUs_);
             askSkimFrame(*skimUs_);
         }
     }
@@ -1536,10 +2360,21 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
         while (why.endsWith('.')) why.chop(1);
         showError(why.isEmpty() ? QStringLiteral("That change wasn't applied.") : QStringLiteral("That change wasn't applied: %1.").arg(why), false);
     }
-    if (!refused.isEmpty()) cancelUpload(QStringLiteral("a change wasn't applied"));
+    if (!refused.isEmpty()) {
+        ++refusals_;
+        cancelUpload(QStringLiteral("a change wasn't applied"));
+        cancelSaveCopy(QStringLiteral("a change wasn't applied"));
+    }
+    trySaveCopy();
     if (tryUpload()) return;
     refreshAll();
-    frameTimer_.start();
+    // A typed cut time answered, accepted or refused: its field shows the
+    // cut's times now, even when they didn't change (W8).
+    if (cutFieldProposal_ && answered >= cutFieldProposal_) {
+        cutFieldProposal_ = 0;
+        panel_->refreshCutFields();
+    }
+    requestFrame();
 }
 bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
     // The window's own output choice wins over a config sent before the resident saw it.
@@ -1609,7 +2444,19 @@ void ReviewWindow::setLimits(qint64 animationMaxUs, int animationMaxEdge) {
 // the user or an agent), or the output (format, codec, sound, size) changes;
 // and by a refusal or 2 s without an answer. The resident refuses an upload at
 // any other revision or output.
-void ReviewWindow::upload() {
+// The refusal count when `button` was pressed, for the click its mouse
+// release makes; none for any other click (a key, an agent), which counts
+// from invocation.
+std::optional<quint64> ReviewWindow::takePressRefusals(const QWidget* button) {
+    if (releasing_ != button || !pressRefusals_ || pressRefusals_->first != button) return std::nullopt;
+    return std::exchange(pressRefusals_, std::nullopt)->second;
+}
+void ReviewWindow::upload(std::optional<quint64> refusalsAtPress) {
+    // The upload holds the changes made before Upload, or nothing goes out:
+    // refusals count from the press on Upload, or from now (W5).
+    const quint64 mark = refusalsAtPress.value_or(refusals_);
+    // A time or strength still being typed is committed first (P9).
+    panel_->commitFields();
     // Mid-gesture or placing there is a change not yet made: nothing to upload.
     if (exporting_ || closing_ || placing_ || view_->dragging() || timeline_->dragging()) return;
     if (uploadWaiting_) {
@@ -1619,6 +2466,12 @@ void ReviewWindow::upload() {
     }
     stopPlayback();
     view_->commitNudge();
+    panel_->flushStrength();
+    if (refusals_ != mark) {
+        uploadNotice_ = {QStringLiteral("Nothing was uploaded: a change wasn't applied. Check the edits, then upload again."), QStringLiteral("warning"), {}};
+        refreshAll();
+        return;
+    }
     uploadNotice_ = {};
     uploadAwaits_ = proposalSeq_;
     uploadWaiting_ = true;
@@ -1654,9 +2507,40 @@ int ReviewWindow::viewEdge() const {
     if (view_ && view_->actualSize() && !options_.canvas.isEmpty()) return std::max({1280, options_.canvas.width(), options_.canvas.height()});
     return 1280;
 }
+// R16: an answer shows when its frame lies within 2 strip px of the pointer's
+// time, or 250 ms, whichever is wider.
+qint64 ReviewWindow::skimReach() const {
+    const auto span = timeline_->visibleSpan();
+    return std::max<qint64>(250000, (span.end - span.start) * 2 / std::max(1, timeline_->stripRect().width()));
+}
 void ReviewWindow::askSkimFrame(qint64 at) {
     skimAsked_ = std::pair<qint64, quint64>(at, edit_.revision);
     skimmer_->request(at, edit_, viewEdge());
+}
+// An exact frame answers every time from its request up to its own time (no
+// frame lies between), unless a cover starts or ends in between: then the
+// covers on it could differ.
+const ReviewWindow::SkimFrame* ReviewWindow::cachedSkim(qint64 at) const {
+    for (auto it = skimCache_.crbegin(); it != skimCache_.crend(); ++it) {
+        if (it->revision != edit_.revision || it->edge != viewEdge()) continue;
+        // The requested time itself, or a time between the request and the
+        // frame's own time (either way round: a last frame lies before it, Q11).
+        if (at == it->requested) return &*it;
+        const qint64 lo = std::min(it->requested, it->frameUs), hi = std::max(it->requested, it->frameUs);
+        if (at < lo || at > hi) continue;
+        const bool edgeBetween = std::any_of(edit_.masks.cbegin(), edit_.masks.cend(), [&](const RecordingMask& m) {
+            return (m.start > std::min(it->requested, at) && m.start <= std::max(it->requested, at)) || (m.end > std::min(it->requested, at) && m.end <= std::max(it->requested, at));
+        });
+        if (!edgeBetween) return &*it;
+    }
+    return nullptr;
+}
+void ReviewWindow::cacheSkim(SkimFrame frame) {
+    skimCache_.removeIf([&](const SkimFrame& f) { return f.requested == frame.requested && f.edge == frame.edge; });
+    skimCache_.append(std::move(frame));
+    const qint64 bytes = std::max<qint64>(1, skimCache_.last().image.sizeInBytes());
+    const int keep = int(std::clamp<qint64>(skimCacheBytes / bytes, 1, skimCacheFrames));
+    while (skimCache_.size() > keep) skimCache_.removeFirst();
 }
 
 // ---- refresh ----
@@ -1686,7 +2570,10 @@ void ReviewWindow::refreshTransport() {
     const qint64 output = kept_.toOutput(playhead_);
     time_->setText(QStringLiteral("%1 / %2").arg(durationText(output), durationText(kept_.outputDuration())));
     const bool excluded = !kept_.kept(playhead_);
-    clipTime_->setText(excluded ? QStringLiteral("clip time · Excluded from output") : QStringLiteral("clip time"));
+    // P18: with trims or cuts the recording time is shown too.
+    const bool differs = edit_.trimStart > 0 || edit_.trimEnd || !edit_.cuts.isEmpty();
+    if (excluded) clipTime_->setText(QStringLiteral("rec %1 · excluded").arg(durationText(playhead_)));
+    else clipTime_->setText(differs ? QStringLiteral("clip · rec %1").arg(durationText(playhead_)) : QStringLiteral("clip time"));
     time_->setToolTip(QStringLiteral("Clip time after trims and cuts / clip length. Recording time %1 of %2.").arg(durationText(playhead_), durationText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text() + (excluded ? QStringLiteral(", excluded from output") : QString()));
     play_->setIcon(Ui::icon(playing_ ? "pause" : "play"));
@@ -1746,22 +2633,17 @@ void ReviewWindow::refreshPanel() {
         state.coverLastKept = lastKeptFrame(mask->start, mask->end);
     }
     state.playheadUs = playhead_;
+    state.placingKind = placing_ ? placing_->kind : QString();
     panel_->setState(state);
+    // Q20: a cut or cover selected anywhere has its Edits row in view.
+    if (revealRow_) { panel_->revealRow(revealRow_->first, revealRow_->second); revealRow_.reset(); }
 }
 void ReviewWindow::refreshBanners() {
     if (!placeBanner_) return;
-    if (placing_) {
-        const auto& span = placing_->span;
-        const auto what = placing_->kind == "solid" ? QStringLiteral("Draw the redaction") : QStringLiteral("Draw the blur");
-        placeBanner_->setText(placing_->whole ? what + QStringLiteral(" · whole recording") : QStringLiteral("%1 · %2 – %3").arg(what, durationText(span.start), durationText(span.end)));
-        placeBanner_->setGlyph(placing_->kind == "solid" ? QStringLiteral("redact") : QStringLiteral("blur"));
-    }
-    placeBanner_->setVisible(placing_.has_value());
-    const auto* mask = selectedMask();
-    blurBanner_->setVisible((placing_ && placing_->kind == "blur") || (!placing_ && mask && mask->kind == "blur"));
-    auto* area = findChild<QWidget*>("viewerBanners");
-    const bool any = !placeBanner_->isHidden() || !blurBanner_->isHidden() || !noticeBand_->isHidden() || !statusRow_->isHidden();
-    if (area->isHidden() == any) area->setVisible(any);
+    refreshNote();
+    const bool any = !noticeBand_->isHidden() || !statusRow_->isHidden();
+    if (bannerArea_->isHidden() == any) bannerArea_->setVisible(any);
+    placeBanners();
 }
 QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     QList<StatusEntry> entries;
@@ -1906,9 +2788,23 @@ void ReviewWindow::refreshFold() {
     editsToggle_->setVisible(fold);
 }
 void ReviewWindow::placeOverlayInset() {
-    if (!overlay_->isOpen()) { view_->setRightInset(0); return; }
+    if (!overlay_->isOpen()) { view_->setRightInset(0); placeBanners(); return; }
     const int left = view_->mapFrom(this, overlay_->geometry().topLeft()).x();
     view_->setRightInset(std::max(0, view_->width() - left + reviewSpace(Ui::Space::s)));
+    placeBanners();
+}
+// The banners along the viewer's top edge: the strip the picture leaves free
+// holds one; more stack down over the picture, never moving it (D9).
+void ReviewWindow::placeBanners() {
+    if (!bannerArea_ || !view_) return;
+    const QPoint at = view_->mapTo(this, QPoint());
+    const int width = std::max(0, view_->width() - view_->rightInset());
+    auto* layout = bannerArea_->layout();
+    layout->activate();
+    const int wanted = layout->hasHeightForWidth() ? layout->totalHeightForWidth(width) : bannerArea_->sizeHint().height();
+    bannerArea_->setGeometry(at.x(), at.y(), width, std::min(wanted, view_->height()));
+    bannerArea_->raise();
+    if (overlay_ && overlay_->isOpen()) overlay_->raise();
 }
 void ReviewWindow::requestTiles() {
     const auto times = timeline_->tileTimes();
@@ -1934,7 +2830,7 @@ void ReviewWindow::showEvent(QShowEvent* event) {
         initialFitDone_ = true;
         resize(defaultSize().boundedTo(availableReviewSize()));
         setMinimumSize(minimumSizeHint().boundedTo(availableReviewSize()));
-        frameTimer_.start();
+        requestFrame();
         tileTimer_.start();
     }
     refreshFold();
@@ -2050,8 +2946,23 @@ QJsonObject ReviewWindow::inspect() const {
         {"playbackQueuedEnd", bool(playEnded_ && playEnded_->load())},
         {"playhead", QJsonObject{{"sourceUs", double(playhead_)}, {"outputUs", double(kept_.toOutput(playhead_))}}},
         {"undo", QJsonObject{{"canUndo", edit_.canUndo}, {"canRedo", edit_.canRedo}}},
-        {"viewer", QJsonObject{{"zoom", view_->actualSize() ? QStringLiteral("actual") : QStringLiteral("fit")}, {"percent", view_->zoomPercent()}, {"pan", pan}}},
-        {"warning", blurBanner_->isVisibleTo(this) ? QJsonValue(blurBanner_->text()) : QJsonValue(QJsonValue::Null)}, {"folded", folded_},
+        {"viewer", QJsonObject{{"zoom", view_->actualSize() ? QStringLiteral("actual") : QStringLiteral("fit")}, {"percent", view_->zoomPercent()}, {"pan", pan},
+            {"live", view_->liveId().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QJsonObject{{"maskId", view_->liveId()}, {"pending", view_->livePending()}})},
+            {"arrowsClaimed", view_->arrowsClaimed()}, {"placeWaiting", view_->placeWaiting()},
+            // Q23/Q24: where the selected cover's box and grips really are, in window coordinates.
+            {"selectedCover", [&]() -> QJsonValue {
+                auto geometry = view_->selectedGeometry();
+                if (geometry.isEmpty()) return QJsonValue(QJsonValue::Null);
+                const QPoint origin = view_->mapTo(this, QPoint());
+                auto box = geometry["box"].toArray();
+                geometry["box"] = QJsonArray{box[0].toDouble() + origin.x(), box[1].toDouble() + origin.y(), box[2], box[3]};
+                QJsonArray grips;
+                for (const auto& g : geometry["grips"].toArray()) grips.append(QJsonArray{g.toArray()[0].toDouble() + origin.x(), g.toArray()[1].toDouble() + origin.y()});
+                geometry["grips"] = grips;
+                return geometry;
+            }()}}},
+        {"toolNote", toolNote_->isHidden() ? QJsonValue(QJsonValue::Null) : QJsonValue(toolNote_->text())},
+        {"warning", blurApplies() ? QJsonValue(blurBanner_->text()) : QJsonValue(QJsonValue::Null)}, {"folded", folded_},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"blurGuidance", QJsonObject{{"visible", blurBanner_->isVisibleTo(this)}, {"text", blurBanner_->text()}}},
         {"tools", QJsonObject{{"cut", cut_->isEnabled()}, {"undo", undo_->isEnabled()}, {"redo", redo_->isEnabled()}, {"pictureZoom", pictureZoom_->text()}, {"editsToggle", editsToggle_->isVisibleTo(this)}}},
@@ -2063,7 +2974,9 @@ QJsonObject ReviewWindow::inspect() const {
         {"audio", format_->text()}, {"previewMuted", true}, {"audioRequested", audioIntent_}, {"audioEffective", effectiveAudio(config_, options_.audioRecorded, audioIntent_)},
         {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"uploadSummary", options_.uploadSummary},
         {"notice", noticeBand_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
-        {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}, {"shownUs", shownFor_ == playhead_ ? QJsonValue(double(shownActual_)) : QJsonValue(QJsonValue::Null)}, {"frameSize", QJsonArray{view_->frameSize().width(), view_->frameSize().height()}}, {"skimSize", QJsonArray{view_->skimSize().width(), view_->skimSize().height()}}}},
+        {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}, {"shownUs", shownFor_ == playhead_ ? QJsonValue(double(shownActual_)) : QJsonValue(QJsonValue::Null)}, {"frameSize", QJsonArray{view_->frameSize().width(), view_->frameSize().height()}}, {"skimSize", QJsonArray{view_->skimSize().width(), view_->skimSize().height()}},
+            // An edge drag's frame shown and held until its proposal is answered (W4).
+            {"edgePreviewUs", edgePreview_ ? QJsonValue(double(*edgePreview_)) : QJsonValue(QJsonValue::Null)}, {"edgeHeld", edgeHoldProposal_ != 0}}},
         {"frameFocus", view_->hasFocus()},
         {"discardConfirmation", QJsonObject{{"open", bool(discard_)}, {"text", discard_ ? QJsonValue(discard_->text()) : QJsonValue(QJsonValue::Null)}}},
         {"fileDialog", chooser_->state()},
@@ -2080,7 +2993,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     // dialog open, an export running) is a change not applied: like a refused
     // gesture it cancels a waiting Upload (#1635 W2). The error code is kept.
     static const QSet<QString> edits{"setIn", "setOut", "resetTrim", "addMask", "placeMask", "useSolidCover", "trimToLimit", "setMaskIn", "setMaskOut",
-        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim"};
+        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim", "retimeCover", "setCutEdge"};
     if (!result.code.isEmpty() && edits.contains(params["action"].toString())) refuseChange(result.message);
     if (result.code.isEmpty() && proposalSeq_ != before) {
         QJsonArray made;
@@ -2109,7 +3022,8 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (chooser_->isOpen()) return {"recording_state", "The Save copy dialog is open; close it first (closeFileDialog)", {}};
     if (action == "saveCopyDialog") {
         if (placing_) return {"recording_state", "Place or cancel the cover first", {}};
-        chooseCopy();
+        if (!saveWaitingPath_.isEmpty()) return {"recording_state", "A chosen copy is waiting for your last change to be saved", {}};
+        if (!chooseCopy() && !chooser_->isOpen()) return {"recording_state", "No copy was saved: a change wasn't applied. Check the edits, then save again.", {}};
         return done();
     }
     if (action == "discard") { askDiscard(); return done(); }
@@ -2123,7 +3037,14 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         if (!params["residentRetries"].toBool()) emit retryExportRequested();
         return done();
     }
-    if (action == "retryPreview") { frameTimer_.stop(); refreshFrame(); return done(); }
+    if (action == "retryPreview") {
+        // A clip that could not be opened is opened again; the frame is asked again either way.
+        if (frames_->failedToOpen() && !options_.workingClip.isEmpty()) frames_->open(options_.workingClip, options_.canvas);
+        frameAsked_.reset();
+        frameTimer_.stop();
+        askFrame();
+        return done();
+    }
     if (action == "showAdvice") {
         if (message_.tone != "error") return invalid("There is no error to explain");
         showAdvice();
@@ -2191,8 +3112,18 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         // While a cover is armed: the box a pointer drag draws (one addMask). Otherwise
         // the selected cover's box, as a pointer drag or the frame's arrow keys set it.
         const auto r = params["rect"].toArray();
+        if (params.contains("rect") == params.contains("at")) return invalid("placeMask takes exactly one of rect [x, y, width, height] or, while placing, at [x, y]");
         if (!placing_ && !selectedMask()) return invalid("Arm Redact or Blur to draw a box, or select a mask first");
-        if (r.size() != 4) return invalid("placeMask takes rect [x, y, width, height] in canvas pixels");
+        // A click while placing (W6): the default box centred at a canvas point.
+        if (placing_ && params.contains("at")) {
+            const auto at = params["at"].toArray();
+            const QPointF point(at[0].toInt(-1), at[1].toInt(-1));  // whole canvas pixels, as rect
+            if (at.size() != 2 || point.x() < 0 || point.y() < 0 || (!options_.canvas.isEmpty() && (point.x() >= options_.canvas.width() || point.y() >= options_.canvas.height()))) return invalid("placeMask at takes [x, y] in canvas pixels inside the canvas");
+            stopPlayback();
+            emit view_->maskCreated(placing_->kind, view_->defaultMaskRectAt(point));
+            return done();
+        }
+        if (r.size() != 4) return invalid("placeMask takes rect [x, y, width, height] in canvas pixels, or while placing at [x, y]");
         const QRect rect(r[0].toInt(-1), r[1].toInt(-1), r[2].toInt(-1), r[3].toInt(-1));
         if (rect.x() < 0 || rect.y() < 0 || rect.width() < 2 || rect.height() < 2 || (!options_.canvas.isEmpty() && !QRect(QPoint(), options_.canvas).contains(rect))) return invalid("The mask rect must lie inside the canvas");
         stopPlayback();
@@ -2328,17 +3259,86 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         }
         return done();
     }
+    // T8: the timeline ignores zoom during a drag; say so rather than claim it.
+    if ((action == "timelineZoom" || action == "timelineFit" || action == "zoomIn" || action == "zoomOut") && timeline_->dragging())
+        return state("The timeline is being dragged; zoom is ignored until the drag ends");
     if (action == "timelineZoom") {
+        // A level of the zoom button's menu: inspect's timeline.zoomLevels.
+        const auto levels = timeline_->zoomLevels();
         const auto level = whole("level");
-        if (!level || (*level != 1 && *level != 2 && *level != 4 && *level != 8 && *level != 16)) return invalid("timelineZoom takes level 1 (Fit), 2, 4, 8 or 16");
-        timeline_->setZoom(int(*level), playhead_);
+        if (!level || !levels.contains(int(*level))) {
+            QStringList named;
+            for (const int l : levels) named.append(QString::number(l));
+            return invalid(QStringLiteral("timelineZoom takes a level of timeline.zoomLevels: %1 (1 is Fit)").arg(named.join(QStringLiteral(", "))));
+        }
+        timeline_->setZoom(int(*level));
         return done();
     }
-    if (action == "timelineFit") { timeline_->setZoom(1, playhead_); return done(); }
+    if (action == "timelineFit") { timeline_->zoomFit(); return done(); }
+    // = and - (and Ctrl+= / Ctrl+-): one level closer or farther.
+    // The viewport stays where it is (W19).
+    if (action == "zoomIn") { timeline_->zoomIn(); return done(); }
+    if (action == "zoomOut") { timeline_->zoomOut(); return done(); }
+    // S and the transport's Skim toggle; N.
+    if (action == "setSkimming" || action == "setSnapping") {
+        if (!params["on"].isBool()) return invalid(action + QStringLiteral(" takes on true|false"));
+        if (action == "setSkimming") timeline_->setSkimming(params["on"].toBool());
+        else timeline_->setSnapping(params["on"].toBool());
+        return done();
+    }
+    // [ and ]: the time selection's start or end at the playhead.
+    if (action == "markSelection") {
+        if (params["edge"] != "start" && params["edge"] != "end") return invalid("markSelection takes edge start|end");
+        if (placing_) return state("Place or cancel the cover first");
+        takeSkimForKey();
+        timeline_->markSelectionEdge(params["edge"] == "start");
+        return done();
+    }
+    // Up / Down: the previous or next edit point.
+    if (action == "editPoint") {
+        const auto delta = whole("delta");
+        if (!delta || (*delta != 1 && *delta != -1)) return invalid("editPoint takes delta 1 or -1");
+        takeSkimForKey();
+        stepEditPoint(int(*delta));
+        return done();
+    }
+    // A cover bar's body slid, or both its ends at once: one updateMask, as the drag's release.
+    if (action == "retimeCover") {
+        const auto* mask = selectedMask();
+        if (!mask) return state("Select a cover first");
+        const auto start = whole("start"), end = whole("end");
+        if (!withinRecording(start, end)) return invalid("retimeCover takes start < end, in microseconds within the recording");
+        stopPlayback();
+        retimeCover(mask->id, *start, *end);
+        return done();
+    }
+    // The "+n" chip: the Edits list at the covers the lanes hide.
+    if (action == "moreCovers") {
+        if (timeline_->inspect()["hiddenCovers"].toInt() <= 0) return state("Every cover is shown in the lanes");
+        revealHiddenCovers();
+        return done();
+    }
     if (action == "viewerZoom") {
         const auto mode = params["mode"].toString();
         if (mode != "fit" && mode != "actual") return invalid("viewerZoom takes mode fit|actual");
         view_->setActualSize(mode == "actual");
+        return done();
+    }
+    // A selected cut's Set to playhead (Starts or Ends).
+    if (action == "setCutEdge") {
+        const auto id = idParam("cutId");
+        if (id.isEmpty() || !cutById(id)) return invalid("No cut has this ID");
+        if (params["edge"] != "start" && params["edge"] != "end") return invalid("setCutEdge takes edge start|end");
+        if (placing_) return state("Place or cancel the cover first");
+        if (const auto why = cutEdgeToPlayhead(id, params["edge"] == "start"); !why.isEmpty()) return state(why);
+        return done();
+    }
+    // The overview track: the zoomed timeline's view from a source time.
+    if (action == "scrollTimeline") {
+        const auto start = whole("start");
+        if (!start || *start < 0 || *start > options_.durationUs) return invalid("scrollTimeline takes start in microseconds within the recording");
+        if (timeline_->zoom() <= 1) return state("The timeline is at Fit: the whole recording is in view");
+        timeline_->scrollTo(*start);
         return done();
     }
     if (action == "viewerPan") {
@@ -2357,6 +3357,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         const auto time = whole("time");
         if (!time || *time < 0 || *time >= options_.durationUs) return invalid("skim takes a recording time in microseconds");
         if (playing_) return state("The timeline skims only while paused");
+        if (!timeline_->skimming()) return state("Skimming is off (S); turn it on with setSkimming first");
         timeline_->skimAt(*time);
         return done();
     }
@@ -2390,28 +3391,174 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
 }
 
 // ---- frames and playback ----
-void ReviewWindow::refreshFrame() {
+void ReviewWindow::requestFrame() {
+    if (frameTimer_.interval() > 0) { frameTimer_.start(); return; }
+    askFrame();
+}
+void ReviewWindow::askFrame() {
+    if (!frames_ || playing_) return;  // playback draws its own frames
+    const qint64 at = std::min<qint64>(edgePreview_ ? *edgePreview_ : playhead_, std::max<qint64>(0, options_.durationUs - 1));
+    // A cover edge dragged onto the playhead's frame is still decoded with its proposed span (P15).
+    QString variant;
+    if (edgeEdit_ && edgePreview_) for (const auto& m : std::as_const(edgeEdit_->masks)) variant += QStringLiteral("%1:%2-%3;").arg(m.id).arg(m.start).arg(m.end);
+    const FrameAsk ask{at, edit_.revision, viewEdge(), variant};
+    // Asked already and answered or on its way: nothing new to decode.
+    if (frameAsked_ && frameAsked_->at == ask.at && frameAsked_->revision == ask.revision && frameAsked_->edge == ask.edge && frameAsked_->variant == ask.variant) return;
+    // Answers carry only their time and revision: another picture for the
+    // same time (100 %, a cover edge's proposed span) drops the one on its way (W4).
+    if (frameAsked_ && frameAsked_->at == ask.at && frameAsked_->revision == ask.revision) frames_->cancel();
+    frameAsked_ = ask;
+    // A cover edge being dragged is previewed with its proposed span (W4),
+    // under the preview's tag: once it ends, its answers are dropped.
+    if (edgeEdit_ && edgePreview_) {
+        if (!edgeTag_) edgeTag_ = nextRequestTag();
+        auto proposed = *edgeEdit_;
+        proposed.revision = edgeTag_;
+        frames_->request(at, proposed, ask.edge);
+    } else frames_->request(at, edit_, ask.edge);
+}
+void ReviewWindow::beginEdgePreview() {
+    // F1: an edge drag shows its edge frame for the whole drag: any skim goes now.
+    if (skimUs_ || view_->skimming()) {
+        skimUs_.reset();
+        skimAsked_.reset();
+        skimmer_->cancel();
+        skimReturn_.stop();
+        view_->clearSkim();
+    }
+    // A new edge drag takes over (none before, or the last one's frame held
+    // for its answer): its preview gets a tag of its own, so a late frame
+    // from the earlier drag never paints during it (W4).
+    if (!edgePreview_ || edgeHoldProposal_) { edgeDragSeq_ = proposalSeq_; edgeTag_ = 0; }
+    edgeHoldProposal_ = 0;
+    edgeHoldTimer_.stop();
+}
+void ReviewWindow::endEdgePreview() {
+    edgeHoldProposal_ = 0;
+    edgeHoldTimer_.stop();
+    if (!edgePreview_) return;
+    edgePreview_.reset();
+    edgeEdit_.reset();
+    edgeTag_ = 0;  // an answer still on its way for the preview is dropped (W4)
+    frameAsked_.reset();  // the edge frame may share the playhead's time but not its edit
+    requestFrame();
+}
+// W20: Ctrl+Z during a drag cancels only that drag. True when one was cancelled.
+bool ReviewWindow::cancelDrags() {
+    if (view_->cancelGesture()) return true;
+    if (!timeline_->dragging()) return false;
+    QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    QApplication::sendEvent(timeline_, &escape);
+    return true;
+}
+void ReviewWindow::stopPlaceWait() {
+    placeWaitTimer_.stop();
+    loadingFrame_ = false;
+    view_->setPlaceWaiting(false);
+    refreshNote();
+    placePendingEnter();
+}
+// An Enter given while the placement frame loaded places now (P12).
+void ReviewWindow::placePendingEnter() {
+    if (!enterPlacePending_) return;
+    enterPlacePending_ = false;
+    enterPlaceTimer_.stop();
+    if (placing_) if (const QRect r = view_->defaultMaskRect(); !r.isEmpty()) placeCover(placing_->kind, r);
+}
+// A note's time starts when it is given (Q13): it never plays late.
+void ReviewWindow::showNote(const QString& text, int ms) {
+    transientNote_ = text;
+    noteMs_ = ms;
+    noteTimer_.start(ms);
+    refreshNote();
+}
+// One short note in the tool row: what just happened, else "Loading frame…"
+// while placing waits, else who has the arrows.
+// The tool row's one message (R25): the placement prompt, else a frame error,
+// else the blur warning, else a note (what just happened, the arrows' owner).
+// A frame error comes first while placement waits for that frame (R18); a
+// lower message waits for the row instead of being squeezed in.
+void ReviewWindow::refreshNote() {
+    if (!toolNote_) return;
+    QString note = transientNote_;
+    if (note.isEmpty() && view_->arrowsClaimed() && view_->hasFocus() && selectedMask()) note = QStringLiteral("Arrows move the box · Esc for frames");
+    const bool waiting = placing_ && view_->placeWaiting();
+    if (placing_) {
+        const auto& span = placing_->span;
+        // A blur's prompt carries its warning (Q13).
+        const auto what = placing_->kind == "solid" ? QStringLiteral("Draw the redaction") : QStringLiteral("Draw the blur (may be reversible)");
+        auto text = placing_->whole ? what + QStringLiteral(" · whole recording") : QStringLiteral("%1 · %2 – %3").arg(what, durationText(span.start), durationText(span.end));
+        if (!placeHint_.isEmpty()) text = placeHint_;
+        placeBanner_->setText(waiting && loadingFrame_ ? QStringLiteral("Loading the frame to draw on…") : text);
+        placeBanner_->setGlyph(placing_->kind == "solid" ? QStringLiteral("redact") : QStringLiteral("blur"));
+    }
+    const bool error = !frameError_->text().isEmpty();
+    const bool showError = error && (!placing_ || waiting);
+    const bool showPlace = placing_ && !showError;
+    // Notes come before the blur warning (Q13); the warning isn't repeated
+    // while the side panel shows it beside the selected blur.
+    const bool panelShowsBlur = !placing_ && selectedMask() && (!folded_ || (overlay_ && overlay_->isOpen()));
+    const bool showNote = !note.isEmpty() && !showPlace && !showError;
+    const bool showBlur = blurApplies() && !panelShowsBlur && !showPlace && !showError && !showNote;
+    placeBanner_->setVisible(showPlace);
+    frameError_->setVisible(showError);
+    blurBanner_->setVisible(showBlur);
+    toolNote_->setText(note);
+    toolNote_->setVisible(showNote);
+}
+bool ReviewWindow::blurApplies() const {
+    const auto* mask = selectedMask();
+    return (placing_ && placing_->kind == "blur") || (!placing_ && mask && mask->kind == "blur");
+}
+// What an undo or redo changed, from the edit before it to the answer.
+void ReviewWindow::noteUndo() {
+    const auto span = [](qint64 a, qint64 b) { return QStringLiteral("%1–%2").arg(durationText(a), durationText(b)); };
+    QString what, kind, id;
+    recording::Span item;  // the span the step changed, scrolled into view
+    for (const auto& cut : std::as_const(edit_.cuts)) {
+        const auto old = std::find_if(undoBefore_.cuts.cbegin(), undoBefore_.cuts.cend(), [&](const RecordingCut& c) { return c.id == cut.id; });
+        if (old == undoBefore_.cuts.cend() || old->start != cut.start || old->end != cut.end) { what = QStringLiteral("Cut ") + span(cut.start, cut.end); kind = QStringLiteral("cut"); id = cut.id; item = {cut.start, cut.end}; break; }
+    }
+    if (what.isEmpty()) for (const auto& mask : std::as_const(edit_.masks)) {
+        const auto old = std::find_if(undoBefore_.masks.cbegin(), undoBefore_.masks.cend(), [&](const RecordingMask& m) { return m.id == mask.id; });
+        if (old == undoBefore_.masks.cend() || old->toJson() != mask.toJson()) { what = maskNames_->name(mask) + QLatin1Char(' ') + span(mask.start, mask.end); kind = QStringLiteral("cover"); id = mask.id; item = {mask.start, mask.end}; break; }
+    }
+    if (what.isEmpty()) for (const auto& cut : std::as_const(undoBefore_.cuts))
+        if (std::none_of(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == cut.id; })) { what = QStringLiteral("Cut ") + span(cut.start, cut.end); break; }
+    if (what.isEmpty()) for (const auto& mask : std::as_const(undoBefore_.masks))
+        if (std::none_of(edit_.masks.cbegin(), edit_.masks.cend(), [&](const RecordingMask& m) { return m.id == mask.id; })) { what = maskNames_->name(mask) + QLatin1Char(' ') + span(mask.start, mask.end); break; }
+    if (what.isEmpty() && (edit_.trimStart != undoBefore_.trimStart || edit_.trimEnd != undoBefore_.trimEnd)) what = QStringLiteral("Trim ") + span(edit_.trimStart, edit_.exportEnd(options_.durationUs));
+    if (what.isEmpty()) return;
+    showNote((undoWasUndo_ ? QStringLiteral("Undid: ") : QStringLiteral("Redid: ")) + what, 1500);
+    // An item the step brought back (or changed) is selected; the playhead stays.
+    if (kind == "cut") selectCut(id, false);
+    else if (kind == "cover") selectCover(id, false);
+    if (!kind.isEmpty()) timeline_->reveal(item);
+}
+void ReviewWindow::showFrameError(qint64 at, const QString& message) {
+    // Never a silent old frame: say so over it until a refresh succeeds.
+    debugLog("review: preview failed " + message);
+    QString reason;
+    const QFileInfo clip(options_.workingClip);
+    if (!clip.exists()) reason = QStringLiteral("the private recording file is missing");
+    else if (!clip.isReadable()) reason = QStringLiteral("the private recording file isn't readable; check its permissions");
+    else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("the private recording file couldn't be read; check that it is intact");
+    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("the private recording has no readable video track");
+    else if (message.startsWith("No frame")) reason = QStringLiteral("no video frame is available at this time; try a nearby frame");
+    else reason = QStringLiteral("the video frame couldn't be decoded; try a nearby frame or retry the preview");
+    // A retry asks again even for the same time.
+    frameAsked_.reset();
+    view_->setPreviewError(QStringLiteral("The frame at %1 couldn't be decoded (%2).").arg(durationText(at), reason));
+}
+void ReviewWindow::decodeFrameNow() {
     QImage image;
     qint64 actual = 0;
     const qint64 at = std::min<qint64>(edgePreview_ ? *edgePreview_ : playhead_, std::max<qint64>(0, options_.durationUs - 1));
-    debugLog(QStringLiteral("review: frame at %1").arg(at));
-    if (auto e = previewFrame(options_.workingClip, edit_, config_, at, viewEdge(), options_.canvas, image, &actual)) {
-        // Never a silent old frame: say so over it until a refresh succeeds.
-        debugLog("review: preview failed " + e.message);
-        QString reason;
-        const QFileInfo clip(options_.workingClip);
-        if (!clip.exists()) reason = QStringLiteral("the private recording file is missing");
-        else if (!clip.isReadable()) reason = QStringLiteral("the private recording file isn't readable; check its permissions");
-        else if (e.message.startsWith("Cannot open") || e.message.startsWith("Cannot read") || e.message.startsWith("Reading")) reason = QStringLiteral("the private recording file couldn't be read; check that it is intact");
-        else if (e.message.startsWith("The working clip has no video")) reason = QStringLiteral("the private recording has no readable video track");
-        else if (e.message.startsWith("No frame")) reason = QStringLiteral("no video frame is available at this time; try a nearby frame");
-        else reason = QStringLiteral("the video frame couldn't be decoded; try a nearby frame or retry the preview");
-        view_->setPreviewError(QStringLiteral("The frame at %1 couldn't be decoded (%2).").arg(durationText(at), reason));
-        return;
-    }
+    debugLog(QStringLiteral("review: frame at %1 (now)").arg(at));
+    if (auto e = previewFrame(options_.workingClip, edit_, config_, at, viewEdge(), options_.canvas, image, &actual)) { showFrameError(at, e.message); return; }
     view_->setFrame(image, at);
+    shownRevision_ = edit_.revision;
     if (!edgePreview_) { shownFor_ = at; shownActual_ = actual; }
-    debugLog(QStringLiteral("review: frame %1x%2").arg(image.width()).arg(image.height()));
 }
 void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     if (exporting_ || playing_ || kept_.empty()) return;
@@ -2429,6 +3576,10 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     skimUs_.reset();
     skimmer_->cancel();
     view_->clearSkim();
+    view_->endLive();
+    liveWaitRevision_.reset();
+    // Playback draws over the asked frame: the next seek asks again, even for the same time.
+    frameAsked_.reset();
     playing_ = true;
     view_->setPlaying(true);
     timeline_->setPlaying(true);
@@ -2447,18 +3598,24 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     auto* thread = QThread::create([guard, stop, ended, clip, canvas, edit, kept, start, speed, edge] {
         QElapsedTimer clock;
         clock.start();
+        qint64 heldMs = 0;  // time spent seeking between spans: the clock doesn't run on (R26)
         const qint64 outputStart = kept.toOutput(start);
         // Output time the wall clock has reached at this speed.
-        const auto due = [&] { return outputStart + qint64(clock.elapsed() * 1000 * speed); };
+        const auto due = [&] { return outputStart + qint64((clock.elapsed() - heldMs) * 1000 * speed); };
         qint64 shownAt = -1;
         bool reachedEnd = true;
+        // One input and decoder for the whole run: each kept span is sought to
+        // at its start (a cut is never decoded through), never reopened (R26).
+        FrameSequence frames;
+        bool opened = false;
         for (const auto& span : kept.spans()) {
             if (span.end <= start) continue;
             if (stop->load()) { reachedEnd = false; break; }
-            // Each kept span is opened at its start: a cut is never decoded through.
             const qint64 from = std::max(start, span.start);
-            FrameSequence frames;
-            if (frames.open(clip, from)) { reachedEnd = false; break; }
+            const qint64 seekStarted = clock.elapsed();
+            if (opened ? frames.seek(clip, from) : frames.open(clip, from)) { reachedEnd = false; break; }
+            opened = true;
+            heldMs += clock.elapsed() - seekStarted;
             QImage image;
             qint64 frameUs = 0;
             // Frames more than a frame behind the clock are decoded but not drawn,
@@ -2510,22 +3667,48 @@ void ReviewWindow::stopPlayback() {
 }
 
 // ---- save, discard, close, keys ----
-bool ReviewWindow::chooseCopy() {
-    if (exporting_ || placing_ || chooser_->isOpen()) return false;
+bool ReviewWindow::chooseCopy(std::optional<quint64> refusalsAtPress) {
+    // The copy holds the changes made before Save, or is not saved (W5):
+    // refusals count from the press on Save, or from now.
+    const quint64 mark = refusalsAtPress.value_or(refusals_);
+    panel_->commitFields();  // P9
+    if (exporting_ || placing_ || chooser_->isOpen() || !saveWaitingPath_.isEmpty()) return false;
+    view_->commitNudge();
+    panel_->flushStrength();
+    if (refusals_ != mark) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return false; }
+    saveAwaits_ = proposalSeq_;
+    saveRefusalMark_ = mark;
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
         if (result.failed()) { showError("Couldn't save a copy there: " + result.error, false); return; }
         if (!result.chosen() || exporting_) return;
+        if (refusals_ != saveRefusalMark_) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return; }
         const auto& path = result.path;
-        emit saveCopyRequested(path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension, edit_.revision);
+        saveWaitingPath_ = path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension;
+        saveWait_.start();
+        trySaveCopy();
     });
+}
+void ReviewWindow::trySaveCopy() {
+    if (saveWaitingPath_.isEmpty() || answeredSeq_ < saveAwaits_) return;
+    const QString path = std::exchange(saveWaitingPath_, QString());
+    saveWait_.stop();
+    emit saveCopyRequested(path, edit_.revision);
+}
+void ReviewWindow::cancelSaveCopy(const QString& why) {
+    if (saveWaitingPath_.isEmpty()) return;
+    saveWaitingPath_.clear();
+    saveWait_.stop();
+    showError(QStringLiteral("No copy was saved: %1. Check the edits, then save again.").arg(why), false);
 }
 void ReviewWindow::hideEvent(QHideEvent* e) {
     // Upload, cancel and a stop elsewhere hide the review: its chooser goes too
     // (minimizing is a spontaneous hide and leaves it open).
     if (!e->spontaneous()) {
         chooser_->cancel();
+        saveWaitingPath_.clear();
+        saveWait_.stop();
         if (discard_) answerDiscard(false);
         if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); }
         if (overlay_->isOpen()) overlay_->dismiss();
@@ -2533,6 +3716,45 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
     QWidget::hideEvent(e);
 }
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
+    // W5: a press on Save or Upload commits a typed time (P9, below); its
+    // answer can come back before the release clicks the button, so that click
+    // counts refusals from the press. A double-click's second press is part
+    // of the same activation and keeps the first press's count (U1).
+    // Only the left button counts: a right or middle press or release while
+    // it is held neither sets, clears nor delivers the count (U4).
+    const auto leftButton = [event] { return static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton; };
+    if ((event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) && leftButton()) {
+        auto* target = qobject_cast<QWidget*>(watched);
+        if (target && target->window() == this) {
+            if (target != save_ && target != upload_) pressRefusals_.reset(), lastPressRefusals_.reset();
+            else if (event->type() == QEvent::MouseButtonDblClick && lastPressRefusals_ && lastPressRefusals_->first == target) pressRefusals_ = lastPressRefusals_;
+            else pressRefusals_ = lastPressRefusals_ = std::pair<const QWidget*, quint64>(target, refusals_);
+        }
+    }
+    // The count belongs only to the click its release makes: the release is
+    // delivered to the button here, so a click runs inside this call and reads
+    // it, and it is gone when the call returns, click or not (U2, U3). A key
+    // never sees it.
+    if (event->type() == QEvent::MouseButtonRelease && (watched == save_ || watched == upload_) && !releasing_ && leftButton()) {
+        releasing_ = static_cast<QWidget*>(watched);
+        const bool handled = static_cast<QObject*>(releasing_)->event(event);  // the button handles its release now
+        releasing_ = nullptr;
+        pressRefusals_.reset();
+        return handled;
+    }
+    // P9: a press anywhere in the window outside the panel field being typed
+    // in commits that field and hands the keys to the timeline before the
+    // pressed control acts (Tab-only controls don't take focus by click).
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto* target = qobject_cast<QWidget*>(watched);
+        auto* focus = focusWidget();
+        if (target && target->window() == this && focus && textField(focus) && panel_->isAncestorOf(focus) && target != focus && !focus->isAncestorOf(target) && !(focus->parentWidget() && focus->parentWidget()->isAncestorOf(target) && qobject_cast<QAbstractSpinBox*>(focus))) {
+            panel_->commitFields();
+            timeline_->setFocus(Qt::MouseFocusReason);
+        }
+    }
+    if (watched == view_ && (event->type() == QEvent::Resize || event->type() == QEvent::Move)) placeBanners();
+    if (watched == bannerArea_ && event->type() == QEvent::LayoutRequest) QMetaObject::invokeMethod(this, &ReviewWindow::placeBanners, Qt::QueuedConnection);
     // Delete and Backspace cut or remove only from the viewer and the timeline
     // (the Edits list handles its own rows; a field keeps its own keys).
     if (event->type() == QEvent::KeyPress && (watched == view_ || watched == timeline_)) {
@@ -2540,7 +3762,9 @@ bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
         if ((key->key() == Qt::Key_Delete || key->key() == Qt::Key_Backspace) && !(key->modifiers() & ~Qt::KeypadModifier) && !exporting_) {
             if (timeSelection_ && !placing_) { cutSelection(); return true; }
             if (selectedMask() && !placing_) { stopPlayback(); removeSelectedCover(); return true; }
-            return true;  // Delete never restores a cut
+            // Delete never restores a cut, and says so (W10).
+            if (selectedKind_ == "cut") showNote(QStringLiteral("Delete doesn't restore a cut — use Restore or Ctrl+Z"), 2000);
+            return true;
         }
     }
     return QWidget::eventFilter(watched, event);
@@ -2549,6 +3773,15 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
     const auto modifiers = e->modifiers() & ~Qt::KeypadModifier;
     if (exporting_) { QWidget::keyPressEvent(e); return; }
     const bool plain = modifiers == Qt::NoModifier, shift = modifiers == Qt::ShiftModifier;
+    // A text field or spin box keeps its own keys: no single-key action fires
+    // while one has focus, even a key it passed on (W17).
+    const bool typing = textField(focusWidget());
+    if (typing && e->key() != Qt::Key_Return && e->key() != Qt::Key_Enter) { QWidget::keyPressEvent(e); return; }
+    // Q10: these act at the skimmed frame when a skim is present.
+    static const QSet<int> takesSkim{Qt::Key_I, Qt::Key_O, Qt::Key_BracketLeft, Qt::Key_BracketRight, Qt::Key_L, Qt::Key_J,
+        Qt::Key_Left, Qt::Key_Right, Qt::Key_Comma, Qt::Key_Period, Qt::Key_Up, Qt::Key_Down};
+    // With no live skim the key acts at the playhead, and that is what is shown (F2).
+    if (takesSkim.contains(e->key()) && (plain || shift)) takeSkimForKey();
     switch (e->key()) {
     case Qt::Key_Space: if (plain) { if (playing_) stopPlayback(); else startPlayback(); return; } break;
     case Qt::Key_Escape:
@@ -2558,31 +3791,100 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
         }
         break;
     case Qt::Key_V: if (plain) { cancelPlacement(); return; } break;
+    // Delete / Backspace from any focus but a field (a row handles its own first, P14).
+    case Qt::Key_Delete: case Qt::Key_Backspace:
+        if (plain && !placing_) {
+            if (timeSelection_) { cutSelection(); return; }
+            if (selectedMask()) { stopPlayback(); removeSelectedCover(); return; }
+            if (selectedKind_ == "cut") showNote(QStringLiteral("Delete doesn't restore a cut — use Restore or Ctrl+Z"), 2000);
+            return;
+        }
+        break;
     case Qt::Key_C: if (plain) { cutSelection(); return; } break;
     case Qt::Key_X: if (plain) { arm("solid"); return; } break;
     case Qt::Key_B: if (plain) { arm("blur"); return; } break;
+    // S skims, N snaps (on by default, remembered for the session).
+    case Qt::Key_S: if (plain && !typing) { timeline_->setSkimming(!timeline_->skimming()); return; } break;
+    case Qt::Key_N: if (plain && !typing) { timeline_->setSnapping(!timeline_->snapping()); return; } break;
+    // Shift+Z fits the timeline; = and - (plain or with Ctrl) zoom at the playhead.
+    case Qt::Key_Z: if (shift && !typing) { timeline_->zoomFit(); return; } break;
+    case Qt::Key_Equal: case Qt::Key_Plus:
+        if (!typing && (plain || shift || modifiers == Qt::ControlModifier || modifiers == (Qt::ControlModifier | Qt::ShiftModifier))) { timeline_->zoomIn(); return; }
+        break;
+    case Qt::Key_Minus:
+        if (!typing && (plain || modifiers == Qt::ControlModifier)) { timeline_->zoomOut(); return; }
+        break;
+    // [ and ] mark the time selection at the playhead from any focus but a text field (E4).
+    case Qt::Key_BracketLeft: case Qt::Key_BracketRight:
+        // They always mark a time selection (Q7); a cover's times are Shift+I / Shift+O.
+        if (plain && !typing && !placing_) { timeline_->markSelectionEdge(e->key() == Qt::Key_BracketLeft); return; }
+        break;
     case Qt::Key_I: case Qt::Key_O:
         if (plain) { stopPlayback(); setTrimAt(e->key() == Qt::Key_I); return; }
         if (shift) { stopPlayback(); setMaskAt(e->key() == Qt::Key_I); return; }
         break;
+    // J steps back a second, K pauses, L plays (again: the next faster speed) (W12).
+    // J mirrors L (P17): playing above 1× it steps the speed down, at 1× it
+    // pauses; paused it steps back a second.
+    case Qt::Key_J:
+        if (plain) {
+            if (!playing_) { stepTime(-secondUs); return; }
+            if (speed_ > 1.0) {
+                const auto speeds = speeds_->actions();
+                for (auto it = speeds.crbegin(); it != speeds.crend(); ++it) if ((*it)->data().toDouble() < speed_ && (*it)->data().toDouble() >= 1.0) { (*it)->trigger(); break; }
+                showNote(QStringLiteral("Speed %1").arg(speeds_->checkedAction() ? speeds_->checkedAction()->text() : QStringLiteral("1×")), 1000);
+            } else {
+                stopPlayback();
+                showNote(QStringLiteral("Paused"), 1000);
+            }
+            return;
+        }
+        break;
+    // K pauses and goes back to 1× (Q19).
+    case Qt::Key_K:
+        if (plain) {
+            stopPlayback();
+            for (auto* action : speeds_->actions()) if (action->data().toDouble() == 1.0 && !action->isChecked()) action->trigger();
+            return;
+        }
+        break;
+    case Qt::Key_L:
+        if (plain) {
+            if (!playing_) { startPlayback(); return; }
+            const auto speeds = speeds_->actions();
+            for (auto* action : speeds) if (action->data().toDouble() > speed_) { action->trigger(); break; }
+            showNote(QStringLiteral("Speed %1").arg(speeds_->checkedAction() ? speeds_->checkedAction()->text() : QStringLiteral("1×")), 1000);
+            return;
+        }
+        break;
     case Qt::Key_Comma: if (plain) { stepFrames(-1); return; } break;
     case Qt::Key_Period: if (plain) { stepFrames(1); return; } break;
+    // One frame; Shift one second (E1).
     case Qt::Key_Left: case Qt::Key_Right:
-        if (plain || shift) { stepTime((e->key() == Qt::Key_Left ? -1 : 1) * (shift ? secondUs : secondUs / 10)); return; }
+        if (plain) { stepFrames(e->key() == Qt::Key_Left ? -1 : 1); return; }
+        if (shift) { stepTime((e->key() == Qt::Key_Left ? -1 : 1) * secondUs); return; }
+        break;
+    // The previous or next edit point: a trim end, a cut's or a cover's edge.
+    case Qt::Key_Up: case Qt::Key_Down:
+        if (plain) { stepEditPoint(e->key() == Qt::Key_Up ? -1 : 1); return; }
         break;
     case Qt::Key_Return: case Qt::Key_Enter:
         // A plain widget has no default button, so Enter is handled here by
-        // focus and state: a field keeps it, a focused button presses itself;
-        // while placing it places the centred cover, a selected cut is
-        // restored, otherwise it uploads.
-        if (e->isAutoRepeat()) return;  // a held Enter places or restores once, never uploads
+        // focus and state: a field keeps it, a focused button presses itself,
+        // and while placing it places the centred cover. It never uploads
+        // unless Upload itself has focus (Ctrl+Enter uploads from anywhere),
+        // and a selected cut is restored only by its Restore button or row (E3).
+        if (e->isAutoRepeat()) return;  // a held Enter places or presses once
         if (plain) {
             auto* focus = focusWidget();
-            if (qobject_cast<QLineEdit*>(focus) || qobject_cast<QAbstractSpinBox*>(focus)) return;
+            if (textField(focus)) return;
             if (auto* button = qobject_cast<QAbstractButton*>(focus); button && isAncestorOf(button)) { if (button->isEnabled()) button->click(); return; }
-            if (placing_) { if (const QRect r = view_->defaultMaskRect(); !r.isEmpty()) placeCover(placing_->kind, r); return; }
-            if (selectedKind_ == "cut") { restoreCut(selectedId_); return; }
-            upload();
+            if (placing_) {
+                // P12: on the frame it is meant for; while that frame loads, Enter waits (at most 1 s).
+                if (view_->placeWaiting()) { enterPlacePending_ = true; enterPlaceTimer_.start(); return; }
+                if (const QRect r = view_->defaultMaskRect(); !r.isEmpty()) placeCover(placing_->kind, r);
+                return;
+            }
             return;
         }
         break;
@@ -2597,6 +3899,39 @@ void ReviewWindow::keyPressEvent(QKeyEvent* e) {
     default: break;
     }
     QWidget::keyPressEvent(e);
+}
+// Up / Down: the playhead to the nearest edit point before or after it.
+void ReviewWindow::stepEditPoint(int direction) {
+    QList<qint64> points;
+    if (const auto first = firstKeptFrame(0, options_.durationUs)) points.append(*first);
+    if (const auto last = lastKeptFrame(0, options_.durationUs)) points.append(*last);
+    // A cut's boundary from its kept side: the last kept frame before it, the
+    // first after it (Q21); nothing inside a cut is an edit point.
+    for (const auto& cut : std::as_const(edit_.cuts)) {
+        if (const auto before = lastKeptFrame(0, cut.start)) points << *before;
+        if (const auto after = firstKeptFrame(cut.end, options_.durationUs)) points << *after;
+    }
+    for (const auto& mask : std::as_const(edit_.masks)) points << mask.start << mask.end;
+    points.removeIf([this](qint64 t) { return !kept_.kept(t); });
+    std::optional<qint64> best;
+    for (const qint64 t : std::as_const(points)) {
+        if (t < 0 || t >= options_.durationUs) continue;
+        if (direction > 0 && t > playhead_ && (!best || t < *best)) best = t;
+        if (direction < 0 && t < playhead_ && (!best || t > *best)) best = t;
+    }
+    if (best) seek(*best);
+}
+// The "+n" chip (A12): the Edits list, scrolled to the first cover the lanes hide.
+void ReviewWindow::revealHiddenCovers() {
+    QString id;
+    for (const auto& mask : std::as_const(edit_.masks)) if (timeline_->coverBarRect(mask.id).isEmpty()) { id = mask.id; break; }
+    if (id.isEmpty()) return;
+    if (folded_) setPanelOpen(true);
+    auto* row = panel_->rowFor(QStringLiteral("cover"), id);
+    if (!row) return;
+    for (auto* up = row->parentWidget(); up; up = up->parentWidget())
+        if (auto* scroll = qobject_cast<QScrollArea*>(up)) { scroll->ensureWidgetVisible(row); break; }
+    row->setFocus(Qt::OtherFocusReason);
 }
 void ReviewWindow::closeEvent(QCloseEvent* e) {
     // Closing the window would discard the recording: ask first, as Discard… does.
