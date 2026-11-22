@@ -266,8 +266,8 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
   from put.gd's own.
 - Only files up to 32 MB are read back to check their bytes before a deletion; a larger one is
   checked by its size, time, owner and the server's recorded key.
-- ssh shows only the first 100 characters of a key's path in its passphrase prompt. When two of
-  your key files share those 100 characters, put.gd can't tell which one ssh asks about and
+- ssh shows only the first 100 bytes of a key's path in its passphrase prompt. When two of
+  your key files share those 100 bytes, put.gd can't tell which one ssh asks about and
   answers neither; give one a shorter path or add it to your agent.
 - With a port other than 22, an upload is refused if your known_hosts holds the server's key only
   under its bare name (no `[host]:port` entry): put.gd records the entry ssh checks and fails
