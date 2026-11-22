@@ -182,7 +182,7 @@ proves the server still holds the key it had at the upload; if it doesn't, or th
 now reaches another host, port or user, put.gd refuses with `sftp_server_changed`. Then it checks that the file is still the one it uploaded: a regular
 file with the same size, modification time and owner as recorded, and, for files up to 32 MB,
 the same bytes (it reads the file back and compares its SHA-256). A file that changed is left
-alone and the deletion answers `changed`. put.gd saves its intent to delete before it does,
+alone and the deletion answers `changed`. put.gd saves its intent to delete before these checks,
 checks the file once more right before the removal, and keeps that intent on record when the
 server's answer is lost. A record without these details can't be deleted
 (`sftp_delete_unavailable`).
@@ -280,3 +280,5 @@ identity it was verified as. See [cli.md](../automation/cli.md) and
 - put.gd doesn't bound SFTP replies other than file data below the protocol's own limits; the
   paths it sends are at most 4096 bytes.
 - A port written with leading zeros (`000022`) is read as its number.
+- A server key replaced in your known_hosts while a connection is signing in isn't noticed: the
+  upload records the key the file holds after sign-in.

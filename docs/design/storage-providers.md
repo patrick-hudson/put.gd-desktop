@@ -131,7 +131,7 @@ own prompts never reach askpass. A check of a recorded upload adds
 user, `HostKeyAlias`, the key files that exist (tilde-expanded), `IdentityAgent`, whether a
 ProxyJump or ProxyCommand is set (never its value), and the user's `UserKnownHostsFile` and
 `GlobalKnownHostsFile`, which are split on spaces, so a path with a space in it isn't
-supported. A known_hosts path that still holds a `%` token or a `~user` after put.gd's own
+supported. A known_hosts path that still holds a `%` token, a `${VARIABLE}` or a `~user` after put.gd's own
 `~/` expansion can't be read the way ssh reads it: put.gd fails closed with
 `ssh_known_hosts_unreadable` and nothing connects. The agent is `SSH_AUTH_SOCK`, else the first socket of
 `$XDG_RUNTIME_DIR/{gcr/ssh, keyring/ssh, ssh-agent.socket, openssh_agent,
@@ -279,7 +279,8 @@ exactly those lines (a test checking its own upload) is reused. A record whose s
 only through a certificate authority has no display fingerprint and can still be deleted: the
 recorded lines are what counts, in History and the worker alike. Then a
 regular file with the recorded size, mtime and uid and, up to 32 MB, the recorded SHA-256. The
-intent is checkpointed through the deletion's durable checkpoint before anything is removed, an
+intent is checkpointed through the deletion's durable checkpoint before that file check, so
+waiting for the journal never makes the check stale, an
 `lstat` right before `REMOVE` must still match, and an unclear outcome keeps the intent as the
 deletion's progress. A receipt without the server identity and file fields can't be deleted
 (`receiptCapabilities` turns removal off, `sftp_delete_unavailable`). SFTP has no conditional
