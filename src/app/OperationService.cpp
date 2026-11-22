@@ -665,7 +665,9 @@ void OperationService::runCheck(Job job) {
     }
     staged.close();
     for(auto it=outcome->covered.begin();it!=outcome->covered.end();++it)shared->covered[it.key()]=shared->covered[it.key()].toInt()+it.value().toInt();
-    shared->replacedFiles.insert(images[index],staged.fileName());shared->checkedFiles.remove(images[index]);
+    // The same file selected twice: its first covered copy goes, the second takes its place.
+    if(shared->replacedFiles.contains(images[index]))discardCovered({{images[index],shared->replacedFiles.value(images[index])}});
+    shared->replacedFiles.insert(images[index],staged.fileName());shared->originalIdentities.insert(images[index],shared->checkedFiles.take(images[index]));
     outcome->png.clear();outcome->covered={};outcome->check="upload";
     continue;
    }
@@ -770,7 +772,7 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   // #1820: a selection's covered files upload in their places; the originals are saved locally with Keep a local copy on.
   if(!job.replacedFiles.isEmpty()){
    recordCovered(job.covered);
-   if(op.settings.archive.keepUploads){job.original.kind="files";for(const auto& file:std::as_const(job.payload.files))if(job.replacedFiles.contains(file))job.original.files.append(file);}
+   if(op.settings.archive.keepUploads)for(int index=0;index<job.payload.files.size();++index)if(const auto& file=job.payload.files[index];job.replacedFiles.contains(file))job.originalFiles.append({index,file,job.originalIdentities.value(file)});
    for(auto& file:job.payload.files)file=job.replacedFiles.value(file,file);
   }
   enqueue(std::move(job));next();return;
@@ -779,6 +781,32 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  // Cancel, or an agent's decision that never came: nothing is uploaded; the local copy follows Keep a local copy.
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
+}
+void OperationService::keepOriginals(Job& job,Operation& op) {
+ // Straight to the archive, outside the artifact store: never uploaded, never counted as a waiting upload.
+ QJsonArray paths;int failed=0;
+ const auto keep=[&](Artifact artifact,const QString& path,const QString& name){
+  const QFileInfo named(name);artifact.path=path;artifact.name=named.completeBaseName()+QStringLiteral("-original")+(named.suffix().isEmpty()?QString():"."+named.suffix());
+  const auto copy=LocalArchive::save(artifact,op.settings.archive);if(copy.status=="saved")paths.append(copy.path);else ++failed;
+ };
+ if(!job.original.kind.isEmpty()&&!op.items.isEmpty()){
+  // A capture: its PNG, written privately for the copy and removed after.
+  QByteArray png=job.original.kind=="png"?job.original.bytes:QByteArray();
+  if(job.original.kind=="image"){QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!job.original.image.save(&buffer,"PNG"))png.clear();}
+  job.original={};
+  const auto folder=root_+"/covered";QFile temp(folder+"/"+op.id+"-original.png");
+  if(!png.isEmpty()&&QDir().mkpath(folder)&&temp.open(QIODevice::WriteOnly|QIODevice::Truncate)&&temp.setPermissions(QFile::ReadOwner|QFile::WriteOwner)&&temp.write(png)==png.size()&&temp.flush()){temp.close();keep(op.items.first().artifact,temp.fileName(),op.items.first().artifact.name);}
+  else ++failed;
+  temp.close();QFile::remove(temp.fileName());
+ }
+ // A selected file: the user's own file, only while it is still the one that was checked.
+ for(const auto& [index,path,identity]:std::as_const(job.originalFiles)){
+  if(index>=op.items.size()||identity.isEmpty()||fileIdentity(path)!=identity){++failed;continue;}
+  keep(op.items[index].artifact,path,QFileInfo(path).fileName());
+ }
+ job.originalFiles.clear();
+ op.sensitive["original"]=QJsonObject{{"status",failed?"failed":"saved"},{"paths",paths}};
+ if(failed)logging::warning(logOperation(),"The original of a covered upload was not saved locally",{{"operationId",op.id},{"saved",paths.size()},{"failed",failed}});
 }
 void OperationService::discardCovered(const QHash<QString,QString>& replaced) {
  // Each covered copy sits alone in covered/<operation>/<index>/: the file, then its two folders if empty.
@@ -1240,20 +1268,7 @@ Operation OperationService::run(Job job) {
  const bool local=job.localOnly||route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if(!job.sharingOnly&&(local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  // #1820: with Keep a local copy on, a covered upload's original is kept locally too, beside the covered copy.
- if(!job.original.kind.isEmpty()&&!job.sharingOnly&&op.settings.archive.keepUploads){
-  const auto spool=uuid();
-  auto originals=artifacts.acquire(spool,job.original,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs));
-  job.original={};
-  QJsonArray paths;int failed=originals.error?1:0;
-  for(auto artifact:std::as_const(originals.artifacts)){
-   const QFileInfo named(artifact.name);artifact.name=named.completeBaseName()+QStringLiteral("-original")+(named.suffix().isEmpty()?QString():"."+named.suffix());
-   const auto copy=LocalArchive::save(artifact,op.settings.archive);if(copy.status=="saved")paths.append(copy.path);else ++failed;
-  }
-  artifacts.remove(spool);
-  op.sensitive["original"]=QJsonObject{{"status",failed?"failed":"saved"},{"paths",paths}};
-  if(failed)logging::warning(logOperation(),"The original of a covered upload was not saved locally",{{"operationId",op.id},{"saved",paths.size()},{"error",logging::errorFields(originals.error?originals.error:Error{"archive_failed","Cannot create local copy",{}})}});
-  if(!save())return op;
- }
+ if(!job.sharingOnly&&op.settings.archive.keepUploads&&(!job.original.kind.isEmpty()||!job.originalFiles.isEmpty())){keepOriginals(job,op);if(!save())return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:std::as_const(op.items)) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.advance(OperationState::Failed);save();return op;}
  const auto capabilities=provider->capabilities(op.destination);
@@ -1716,7 +1731,7 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
  if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();if(const auto check=checkSessions_.value(id))check->cancel();
   for(int index=0;index<checkQueue_.size();++index)if(checkQueue_[index].op.id==id){auto job=checkQueue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
-  for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
+  for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);discardCovered(job.replacedFiles);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
  // A finished operation keeps its outcome: marking it cancelled would hide a live
  // link or a failure in History. Only a row a failed journal write left active is.

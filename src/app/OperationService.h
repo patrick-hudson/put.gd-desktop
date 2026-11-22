@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 #include "core/HistoryStore.h"
 #include "core/SourceAdapter.h"
 #include "core/EditorJob.h"
@@ -260,7 +261,11 @@ private:
   QHash<QString,QString> checkedFiles={};
   // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
   // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
-  ClipboardPayload original={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};};
+  // originalFiles: a covered selected file's item index, its path and its identity when checked.
+  ClipboardPayload original={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
+  QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};};
+ // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
+ void keepOriginals(Job&,Operation&);
  // #1820: operations with a check that couldn't finish: their notification never says what was covered.
  QSet<QString> unfinishedChecks_;
  static void discardCovered(const QHash<QString,QString>& replaced);

@@ -504,6 +504,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     // Adding the marks starts a new recognition revision, which clears the result: read whether it was cut first.
     auto truncated=std::make_shared<bool>(false);auto languageMissing=std::make_shared<bool>(false);
     window->text().whenRecognized([&,truncated,languageMissing](Error error){if(!error){*truncated=window->text().truncated();*languageMissing=!window->text().languagesSkipped().isEmpty();}});
+    // #1820: the kinds covered automatically are matched first, so another kind never takes their words.
     window->quickRedact(checkCategories,[&,truncated,languageMissing](Error error,QJsonObject result){
      checking=false;if(terminal)return;
      findings={};covered.clear();
@@ -524,7 +525,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
       refuse("check_clean");return;
      }
      checked();
-    });
+    },{},{},checkCover);
     return;
    }
    window->show();window->raise();window->activateWindow();

@@ -476,6 +476,7 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
   // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
+  if(operation["sensitive"].toObject()["original"].toObject()["status"]=="failed")parts.append("The original before covering couldn't be saved locally.");
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');

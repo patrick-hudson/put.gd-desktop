@@ -302,12 +302,16 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(!recentColorList(payload["recentColors"],colors)){protocolFailed=true;return;}
    if(!payload["ok"].toBool()){
     const auto code=payload["code"].toString();
-    const bool checkCode=checking&&!editing&&(code=="check_clean"?!prompting:QStringList{"check_upload","check_cancel","check_expired"}.contains(code)&&prompting);
+    // #1820: after covers were reported, an original never uploads: check_upload is refused, and so is check_clean once covering began.
+    const bool reportedCovers=!result.findings["covered"].toObject().isEmpty();
+    const bool checkCode=checking&&!editing&&!covering&&(code=="check_clean"?!prompting:QStringList{"check_upload","check_cancel","check_expired"}.contains(code)&&prompting&&!(code=="check_upload"&&reportedCovers));
     if(payload.size()!=6||!(checkCode||QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code))){protocolFailed=true;return;}
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
     // A covered handoff (#1820) names what it covered: one field more.
     if(covering!=payload.contains("covered")||(covering&&(!coveredCounts(payload["covered"],check_->cover)||payload["covered"].toObject().isEmpty()))){protocolFailed=true;return;}
+    // A covered handoff after a prompt covers exactly what the prompt said was covered.
+    if(covering&&result.findings.contains("covered")&&payload["covered"].toObject()!=result.findings["covered"].toObject()){protocolFailed=true;return;}
     if(covering)result.covered=payload["covered"].toObject();
     if(!finalizing||payload.size()!=(covering?10:9)||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
     const auto width=payload["width"].toInteger(),height=payload["height"].toInteger();

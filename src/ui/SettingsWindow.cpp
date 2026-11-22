@@ -1088,7 +1088,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   auto* menu=new QMenu(all);menu->setObjectName("sensitiveTextApplyAllMenu");
   for(const auto& [value,text]:QList<QPair<QString,QString>>{{"off","Off"},{"warn","Warn"},{"redact","Redact automatically"}}){
    auto* action=menu->addAction(text);action->setObjectName("sensitiveTextApplyAll_"+value);
-   connect(action,&QAction::triggered,this,[this,value]{for(auto* kind:std::as_const(sensitiveKinds_))kind->setCurrentIndex(kind->findData(value));});
+   // All seven change before one edit is queued, so no save sees some of them changed.
+   connect(action,&QAction::triggered,this,[this,value]{for(auto* kind:std::as_const(sensitiveKinds_)){const QSignalBlocker quiet(kind);kind->setCurrentIndex(kind->findData(value));}queueEdit(sensitiveKinds_.value("card"));});
   }
   all->setMenu(menu);sensitiveApplyAll_=all;
   auto* row=new QWidget(this);row->setObjectName("sensitiveTextCategories");auto* line=new QHBoxLayout(row);line->setContentsMargins(0,0,0,0);line->addWidget(all);line->addStretch(1);textForm->addRow(row);

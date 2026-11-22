@@ -1203,7 +1203,7 @@ int EditorWindow::removeSuggestions(){
  if(removed){quickRedactResult_->setText(QString("Removed %1 suggested %2").arg(removed).arg(removed==1?"redaction":"redactions"));Ui::role(quickRedactResult_,"body");quickRedactResult_->show();documentEdited();}
  return removed;
 }
-void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns){
+void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns,QStringList first){
  if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
  if(doc_.inGesture()){if(done)done({"editor_busy","A mark is being dragged; try again when the drag ends",{}},{});return;}
  // The list alone, with nothing saved and nothing given: there is nothing to find, so no recognition starts (and none can fail).
@@ -1215,7 +1215,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
  }
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
  const QDeadlineTimer dragWait(quickRedactGestureWaitMs_);
- text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns)](Error error){
+ text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns),first=std::move(first)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
   if(g->busy_){stopWith("Quick redact added nothing: the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
@@ -1227,7 +1227,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   // Matching runs off the UI thread: a pattern can be slow. The document may change meanwhile.
   const auto revision=g->text_->revision();
   const auto candidates=g->text_->candidates();
-  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
+  const std::function<void(editor::quickRedact::Result)> applyFound=[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
    if(!g)return;
    // The marks join the document as one undo step of their own, so they wait for a drag in progress to end.
    // The revision is checked then, not now: a drag can add a Redact mark, and an edit that was undone is still a new revision.
@@ -1267,6 +1267,19 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     if(done)done({},result);
    };
    (*apply)();
+  };
+  // #1820: `first` is matched on its own, before the rest, so a word one of its kinds finds is never
+  // claimed by another kind first; the two results are added together, overlaps and all.
+  QStringList head,rest;for(const auto& category:categories)(first.contains(category)?head:rest).append(category);
+  if(head.isEmpty()||rest.isEmpty()){ui::runQuickRedact(g,candidates,categories,sources,applyFound);return;}
+  ui::runQuickRedact(g,candidates,head,sources,[g=QPointer<EditorWindow>(g),candidates,rest,sources,applyFound](editor::quickRedact::Result before){
+   if(!g)return;
+   ui::runQuickRedact(g,candidates,rest,sources,[before,applyFound](editor::quickRedact::Result after){
+    auto merged=before;merged.matches+=after.matches;
+    for(const int index:std::as_const(after.skippedPatterns))if(!merged.skippedPatterns.contains(index))merged.skippedPatterns.append(index);
+    merged.nameUnchecked=before.nameUnchecked||after.nameUnchecked;merged.unfinished=before.unfinished||after.unfinished;
+    applyFound(merged);
+   });
   });
  });
 }

@@ -29,11 +29,11 @@ struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
  // `check` replaces the sensitiveTextCheck object; `languages` the recognition languages.
- Fixture(QImage image,bool check=true,bool keepLocal=false,QJsonObject checkObject={},QJsonArray languages={"eng"}){
+ Fixture(QImage image,bool check=true,bool keepLocal=false,QJsonObject checkObject={},QJsonArray languages={"eng"},QJsonArray terms={}){
   registry.add("opaque",provider);
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=keepLocal;doc["archive"]=archive;
-  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=checkObject.isEmpty()?QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}}:checkObject;preferences["textRecognitionLanguages"]=languages;doc["preferences"]=preferences;
+  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=checkObject.isEmpty()?QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}}:checkObject;preferences["textRecognitionLanguages"]=languages;if(!terms.isEmpty())preferences["quickRedactTerms"]=terms;doc["preferences"]=preferences;
   if(!settings->save(doc,{}))qFatal("fixture configuration rejected");
   source.payload.kind="image";source.payload.image=std::move(image);
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
@@ -185,6 +185,15 @@ private slots:
   const auto image=uploaded(*f.operations,id);
   QVERIFY2(blackShare(image,digits(0))>0.7,"the card stays covered");QVERIFY2(blackShare(image,digits(1))<0.4,"the key, on Warn, was uploaded as it is");
   QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject()["card"].toInt(),1);
+ }
+ // #1820: a word two kinds match goes to the kind covered automatically too: My redaction list on Redact still covers
+ // "4111" though Card numbers, on Warn, claims the whole number when the kinds are matched together.
+ void aRedactKindKeepsWordsAWarnKindAlsoMatches(){
+  Fixture f(page(card),true,false,kinds({{"card","warn"},{"list","redact"}}),QJsonArray{"eng"},QJsonArray{"4111"});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QCOMPARE(sensitive["found"].toObject()["card"].toInt(),1);QCOMPARE(sensitive["covered"].toObject()["list"].toInt(),1);
  }
  // #1820: a check that can't finish asks, even with every kind on Redact automatically; what was found is covered first.
  void anUnfinishedCheckAsksEvenWithEveryKindOnRedact(){
