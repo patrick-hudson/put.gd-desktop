@@ -463,9 +463,12 @@ def weekly_run(args, log):
         ensure_disk(args.tree, args.state_dir, log, False)
         check_quiet_lease(args.tree, args.lock_dir, log)  # a lease taken while it waited for an idle host
         clock = time.monotonic()
-        if run(['cmake', '--preset', 'dev', '-DPUTGD_TEST_TIMEOUT_SCALE=3'], log, out / 'build.log', cwd=args.tree) or \
-                run(['nice', '-n', '10', 'cmake', '--build', '--preset', 'dev', '-j', str(args.jobs)], log,
-                    out / 'build.log', cwd=args.tree):
+        failed = run(['cmake', '--preset', 'dev', '-DPUTGD_TEST_TIMEOUT_SCALE=3'], log, out / 'build.log', cwd=args.tree)
+        if not failed:
+            check_quiet_lease(args.tree, args.lock_dir, log)  # and one taken during configure
+            failed = run(['nice', '-n', '10', 'cmake', '--build', '--preset', 'dev', '-j', str(args.jobs)], log,
+                         out / 'build.log', cwd=args.tree)
+        if failed:
             tail = (out / 'build.log').read_text(errors='replace').splitlines()[-40:]
             log('build failed; the last lines of build.log:\n' + '\n'.join(tail))
             status.update(status='build-failed')
