@@ -416,9 +416,11 @@ class GnomeTrayHost(LockTest):
 
     def test_locks_once_the_tray_host_serves(self):
         ready = dict(self.NOT_ENABLED, ready=True, enabled=True, state='ACTIVE', hostRegistered=True)
-        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []), tray_host=lambda: ready)
+        desktop = lock.Desktop(self.directory, 'f44', self.clock, lambda: ([], []),
+                               tray_host=lambda: self.clock.advance(seconds=7) or ready)
         reply = dict(desktop.acquire('holder', 'local_a', 'GNOME tray row', 30), ok=True, host='f44', action='acquire')
         self.assertEqual(desktop.status()['state'], 'held')
+        self.assertEqual(reply['lock']['acquired'], '2026-10-19T03:00:07Z')  # the probe's time is not the lease's
         self.assertIn('StatusNotifierWatcher host registered', '\n'.join(lock.describe(reply)))
 
     def test_the_probe_runs_only_once_the_desktop_is_free_under_the_mutex(self):
@@ -437,6 +439,7 @@ class GnomeTrayHost(LockTest):
         problem, fix = lock.tray_host_module().missing({'shell': False, 'installed': False})
         self.assertIn('GNOME Shell is not running', problem)
         self.assertNotIn('dnf', fix)
+        self.assertIn('--no-tray-host', fix)  # a re-login needs the desktop lock first
 
     def acquire_through_main(self, *extra, host='f44'):
         """Run the CLI against a local lock directory; the probe is a stand-in for f44 before the fix."""

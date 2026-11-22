@@ -364,6 +364,7 @@ class Desktop:
             tray = self.tray_host() if self.tray_host else None
             if tray is not None and not tray.get('ready'):
                 raise LockError(f'{self.name} has no tray host', trayHost=tray)
+            now = self.clock()  # the lease starts after the probe
             record = {'owner': owner, 'session': session, 'host': self.host, 'purpose': purpose,
                       'acquired': stamp(now), 'expires': stamp(now + datetime.timedelta(minutes=minutes)),
                       'heartbeat': stamp(now)}

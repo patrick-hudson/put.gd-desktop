@@ -43,22 +43,26 @@ raise SystemExit(0 if ready else 1)
 ''')
 
 
+# A re-login ends the desktop session, so its fix first takes the desktop lock.
+RELOGIN = ('re-login while holding the desktop lock (acquire with --no-tray-host "repairing the tray host", '
+           'then sudo -n systemctl restart gdm)')
+
+
 def missing(report):
     """What a failed probe report says is wrong, and the one-line fix."""
     if report.get('error'):
         return (f'the tray host check could not run ({report["error"]})',
                 'install python3-dbus and check that the desktop session is logged in')
     if not report.get('shell', True):
-        return ('GNOME Shell is not running on the desktop session bus',
-                'log in to the GNOME desktop (sudo -n systemctl restart gdm for the automatic login)')
+        return ('GNOME Shell is not running on the desktop session bus', 'log in to the GNOME desktop: ' + RELOGIN)
     if not report.get('installed'):
         return (f'{TRAY_HOST_EXTENSION} is not installed',
-                f'sudo dnf install {TRAY_HOST_PACKAGE}, then {TRAY_HOST_ENABLE} and re-login (systemctl restart gdm)')
+                f'sudo dnf install {TRAY_HOST_PACKAGE}, {TRAY_HOST_ENABLE}, then {RELOGIN}')
     if not report.get('enabled'):
         return (f'{TRAY_HOST_EXTENSION} is not enabled',
-                f'{TRAY_HOST_ENABLE} in the desktop session, then re-login (systemctl restart gdm) if it stays INACTIVE')
+                f'{TRAY_HOST_ENABLE} in the desktop session; if it stays INACTIVE, {RELOGIN}')
     if report.get('state') != 'ACTIVE':
         return (f'{TRAY_HOST_EXTENSION} is enabled but {report.get("state") or "not loaded"}',
-                'unlock the screen, or re-login (systemctl restart gdm) so the Shell loads it')
+                f'unlock the screen; if that is not it, {RELOGIN}')
     return ('no StatusNotifierWatcher has a registered host on the session bus',
-            f'gnome-extensions disable and enable {TRAY_HOST_EXTENSION}, or re-login (systemctl restart gdm)')
+            f'gnome-extensions disable and enable {TRAY_HOST_EXTENSION}; if that does not help, {RELOGIN}')
