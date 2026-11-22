@@ -26,6 +26,8 @@ public:
  // (prompts are counted per session, one per checked file); checked under the same lock that queues it.
  void decide(const QString& choice,int prompt,Reply);
  void notePrompt(){std::lock_guard lock(mutex_);++prompts_;phase_="prompt";}
+ // The prompt now waiting, by number, or 0: phase and number read together (#1829).
+ int waitingPrompt() const {std::lock_guard lock(mutex_);return phase_=="prompt"?prompts_:0;}
  void setAppearance(const QString&);
  QString takeAppearance();
  void cancel() {cancelled_.store(true);}
