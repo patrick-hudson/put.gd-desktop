@@ -222,6 +222,51 @@ private slots:
   QTest::newRow("Slack token")<<"chat "+slack+" here"<<all<<QStringList{"key: "+slack+" here"};
   QTest::newRow("Stripe key")<<stripe+" set"<<all<<QStringList{"key: "+stripe+" set"};
   QTest::newRow("JWT")<<"Bearer "+jwt<<all<<QStringList{"key: "+jwt};
+  // #1875: a stray character read joined before an unlabelled token's eyJ is covered with it.
+  for(const auto stray:{QString("l"),QString("I"),QString("|"),QString("1"),QString("J"),QString("j"),QString("["),QString("{")})
+   QTest::newRow(qPrintable("unlabelled JWT read with a stray "+stray))<<"$ echo "+stray+jwt<<all<<QStringList{"key: "+stray+jwt};
+  // As putgd-ocr read xed's caret and an unlabelled JWT over three rows on m74 (PR #1863's acceptance).
+  const auto caretRead=QString("l")+"eyJhbGci0iJIUZIINiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIi0iIxXMjMONTY30Dkwliw- | ibmFtZSI6IkpvaG4gRG9LIiwiaWFOI "
+   +"joxNTE2MjM5MDIyfQ.SfLKxwRISMeKKF2Q- | T4fwpMeJ f36POk6yJV_adQssw5c";
+  QTest::newRow("unlabelled JWT behind an editor's caret, over three rows")<<caretRead<<all<<QStringList{"key: "+QString(caretRead).remove("| ")};
+  // The caret and the header's J both misread: the payload's eyJ after the dot finds the token.
+  const auto headerMisread=QString("|eyf")+"hbGciOiJIUzI1NiJ9."+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("unlabelled JWT whose header is misread")<<"Seen "+headerMisread<<all<<QStringList{"key: "+headerMisread};
+  for(const auto head:{QString("ey"),QString("ley"),QString("Jey")}){
+   const auto split=head+" JhbGciOiJIUzI1NiJ9."+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+   QTest::newRow(qPrintable("a JWT head read as a word of its own: "+head))<<"Seen "+split<<all<<QStringList{"key: "+split};
+  }
+  const auto jewSplit=QString("Jew hbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  const auto headTwoWords=QString("ley JhbGci0i JSUZI1NiIsInR5cCI6IkpXVCJ9.")+"ey"+"IzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split over two words, the payload's J misread")<<"Seen "+headTwoWords<<all<<QStringList{"key: "+headTwoWords};
+  QTest::newRow("a JWT head read with its y and J misread")<<"Seen "+jewSplit<<all<<QStringList{"key: "+jewSplit};
+  // As putgd-ocr read the caret merged with the e: in a Firefox text field on m74 and k72, and in Kate on k72.
+  const auto browserField=QString("k")+"yJhbGci0iJSUZI1INiIsInR5cCI6IkpXVCIsImtpZC1I6ImxhYiO3In0."+"ey | "
+   +"JzdW1i0iJzdmMtcmVwb3JOcyIsImF1ZC16ImFwaSIsImV4cCI6MTcSNTAW | MDAWMHO . s8wEdbt4pQJ gmIWOmIms9mbTEGLVEOMDMU7KMdNucvI";
+  QTest::newRow("a JWT behind a text field's caret read as kyJ")<<browserField<<all<<QStringList{"key: "+QString(browserField).remove("| ")};
+  const auto kateRead=QString("b")+"yJhbGc iOiJIUZIANiIsInR5cCI6IkpXVCI9. "+"ey"+"JzdWIiOiIxMjMONTY30Dkw | TiwibmFtZSI6IkpvaG4gRG9LIiwiawFOI j oxNTE2MjJM5MDIyfQ.Sf LKxwRJISM";
+  QTest::newRow("a JWT behind an editor's caret read as byJ")<<kateRead<<all<<QStringList{"key: "+QString(kateRead).remove("| ")};
+  // Sol on #1883: a JWT wrapped inside its header keeps its continuation, the first fragment
+  // there included; a head split over short words or merged into "ky" is covered; a dotted
+  // name or prose with a date is no JWT; a whole JWT takes no short word before it.
+  const auto wrapHead=QString("ey")+"JhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Imxh | Nkl YWItMDci9."+"ey"+"JzdWIiOiIxIn0.c2lnbmF0";
+  QTest::newRow("a JWT wrapped inside its header keeps its next line")<<"token: "+wrapHead<<all<<QStringList{"key: "+QString(wrapHead).remove("| ")};
+  const auto headThree=QString("ley Jhb GciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split over three words")<<"Seen "+headThree<<all<<QStringList{"key: "+headThree};
+  const auto kySplit=QString("ky JhbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a caret merged into ky and split off")<<"Seen "+kySplit<<all<<QStringList{"key: "+kySplit};
+  QTest::newRow("a dotted name is no JWT payload")<<"see archive.eyJanuary2026.ReleaseNotes.pdf today"<<all<<QStringList{};
+  QTest::newRow("prose with a date after a stray-read prefix is no JWT")<<"leyJanuary 2026. Release notes for the new version"<<all<<QStringList{};
+  QTest::newRow("a whole JWT takes no short word before it")<<"Seen ley "+jwt<<all<<QStringList{"key: "+jwt};
+  const auto parenHead=QString("ley) hbGciOiJIUzI1NiJ9.")+"ey"+"JzdWIiOiIxIn0."+"c2lnbmF0dXJlMTIz";
+  QTest::newRow("a JWT head split off with its J read as a parenthesis")<<"Seen "+parenHead<<all<<QStringList{"key: "+parenHead};
+  QTest::newRow("a word before a JWT whose head is in its own word stays out")<<"See eyewear "+headerMisread<<all<<QStringList{"key: "+headerMisread};
+  QTest::newRow("a whole JWT does not take a second one on the next line")<<"Seen "+jwt+" | Seen "+headerMisread<<all<<QStringList{"key: "+jwt,"key: "+headerMisread};
+  QTest::newRow("a whole JWT ending in a comma does not take one on the next line")<<"Seen "+jwt+", | Seen "+headerMisread<<all<<QStringList{"key: "+jwt+",","key: "+headerMisread};
+  {const auto header=QString("ey")+"JhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",rest=QString("ey")+"JzdWIiOiIxIn0.c2lnbmF0dXJlMTIz";
+   QTest::newRow("a JWT after a dotted label wrapped after its first dot")<<"auth.session.jwt="+header+" | "+rest<<all<<QStringList{"key: auth.session.jwt="+header+" "+rest};}
+  QTest::newRow("a stray character before eyJ in plain words stays out")<<"ley January, Jey June, |eyJuly and 1eyJacket sizes"<<all<<QStringList{};
+  QTest::newRow("words around a stray-read JWT prefix stay out")<<"the ley lines, they said, run under leyden jars and eyJanuary"<<all<<QStringList{};
   QTest::newRow("PEM private key block")<<begin+" | "+body+" | Zm9vYmFy "+end+" done"<<all<<QStringList{"key: "+begin+" "+body+" Zm9vYmFy "+end+" done"};
   QTest::newRow("hex digest run")<<"sha256 "+hexRun<<all<<QStringList{"key: sha256 "+hexRun};
   QTest::newRow("base64 run")<<"value "+base64Run<<all<<QStringList{"key: value "+base64Run};
