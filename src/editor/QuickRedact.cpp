@@ -203,7 +203,10 @@ bool tokenPiece(const QString& word,bool loose=false) {
  // Only around a token-like inside: 8 characters or more with a digit or a capital ("“note”" stays a word).
  {bool marked=false;for(qsizetype i=from;i<to;++i)marked=marked||word.at(i).isDigit()||word.at(i).isUpper();if(to-from<8||!marked){from=0;to=word.size();}}
  // Loose: closing quotes and brackets ending the word ("fox\"}") are a value's end, not noise (Sol on #1916).
- if(loose)while(to>from+1&&QStringLiteral("\"'`}])\u201D\u2019").contains(word.at(to-1)))--to;
+ // A word of closers alone ("}]") is no piece: it would end a detached value's segment.
+ static const QString closers=QStringLiteral("\"'`}])\u201D\u2019,;");
+ if(loose&&std::all_of(word.cbegin(),word.cend(),[](QChar c){return closers.contains(c);}))return false;
+ if(loose)while(to>from+1&&closers.contains(word.at(to-1)))--to;
  int noise=0;
  for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
  return noise<=qMax(1,int(to-from)/(loose?4:8));
