@@ -45,8 +45,21 @@ progress and cancel cleanly. It links no SSH library.
    [Without a Link address](#without-a-link-address).
 
    A field that isn't valid isn't saved: its message stays beside it until you fix it.
-6. **Password** and **Key passphrase** are both optional. Leave them empty to sign in with your
-   SSH agent or key files. **Save to keychain** keeps what you typed in the system keychain;
+6. **Sign-in** holds **SSH key**, **Password**, **Key passphrase** and where secrets are kept. All
+   are optional: leave them empty to sign in with your SSH agent and `~/.ssh/config`, as ssh does
+   in a terminal.
+
+   **SSH key** is a private key file for ssh to use when it isn't in your agent or
+   `~/.ssh/config`, for example a key kept outside `~/.ssh`. Type its path or press **Choose…**,
+   which opens in `~/.ssh`. put.gd passes it to ssh as `-i <file>` with `IdentitiesOnly=yes`, so
+   ssh offers that key rather than every key in your agent first. If you pick the `.pub` file,
+   put.gd takes the private key next to it. The field says what to fix when ssh couldn't use the
+   file: it isn't there, it is a public key, it is a PuTTY key (convert it with
+   `puttygen key.ppk -O private-openssh -o key`), or other users can read it (run
+   `chmod 600 <file>`; ssh refuses such a key). A path with `%` or `${` in it isn't taken,
+   because ssh would read those as its own placeholders.
+
+   An encrypted key needs its passphrase in **Key passphrase**. **Save to keychain** keeps what you typed in the system keychain;
    **Use for this session** keeps it until put.gd quits. A new SFTP destination starts with
    **Use for this session**, so put.gd never asks the keychain about a destination that has
    nothing stored. Storing saves only what you typed, and the other saved secret stays. If the
@@ -54,15 +67,15 @@ progress and cancel cleanly. It links no SSH library.
    stored and the message asks you to unlock it first. **Clear**, beside a stored one, forgets just that one and
    leaves whatever you typed into the other field.
    There are two fields so a key passphrase never answers a password prompt, and a password
-   never answers a key's passphrase prompt.
+   never answers a key's passphrase prompt. Choose the storage in **Keep secrets in**.
 7. Press **Test upload** (or **Test upload and link** with a Link address).
 
 Under **Folder on server**, one line says what ssh makes of the address, read from `ssh -G`:
 for example "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)". "(agent)"
-means an SSH agent is there too. The line follows your `~/.ssh/config`, so an alias shows its
+means an SSH agent is there too; a key chosen in **SSH key** is the one named. The line follows your `~/.ssh/config`, so an alias shows its
 real host, port and user, and a ProxyJump or ProxyCommand shows "through a jump host" or
 "through a proxy command" (never the command itself). It updates once the Server or User you
-typed is saved.
+typed, or the SSH key you chose, is saved.
 
 ## What Test checks
 
@@ -221,8 +234,10 @@ deleted file for a while.
 - **SSH agent.** put.gd uses `SSH_AUTH_SOCK` when your session sets it, else the agent sockets
   desktops provide under `$XDG_RUNTIME_DIR`: `gcr/ssh`, `keyring/ssh`, `ssh-agent.socket`,
   `openssh_agent` and `gnupg/S.gpg-agent.ssh`. An `IdentityAgent` in `~/.ssh/config` wins.
-- **Key files** are the ones ssh tries on its own or that `IdentityFile` names. An encrypted key
-  needs its passphrase in **Key passphrase**, unless it is already in your agent.
+- **Key files** are the one chosen in **SSH key**, else the ones ssh tries on its own or that
+  `IdentityFile` names. With a chosen key, ssh offers it first and doesn't try every agent key
+  (`IdentitiesOnly=yes`); `IdentityFile` lines still count. An encrypted key needs its passphrase
+  in **Key passphrase**, unless it is already in your agent.
 - **Password.** put.gd answers ssh's own password prompt for this server
   (`alice@files.example.com's password:`) once, through a private socket only that connection
   can use; a wrong password is not retried. The passphrase answers only ssh's
@@ -249,6 +264,8 @@ nothing asks again.
 | `ssh_config_invalid` | `ssh -G` couldn't read your SSH settings for this server. Run `ssh -G <server>` in a terminal and fix `~/.ssh/config` |
 | `ssh_host_unknown_key`, `ssh_trusted_key_changed`, `ssh_host_key_changed`, `ssh_host_key_mismatch`, `ssh_host_key_known`, `ssh_known_hosts_off`, `ssh_host_alias_pattern` | See [Host keys](#host-keys) |
 | `ssh_auth_failed` | The message says which: a key that needs its passphrase, a server that asks for a password, no agent and no key or password at all, or credentials it refused. Check User too |
+| `ssh_key_missing`, `ssh_key_unreadable`, `ssh_key_public`, `ssh_key_putty` | The file in **SSH key** isn't a private key ssh can read; the message says which and what to choose instead |
+| `ssh_key_permissions` | Other users can read the key, so ssh refuses it. Run `chmod 600` on the file the message names |
 | `ssh_needs_one_time_code` | The server wants keyboard-interactive sign-in. Sign in with a key or your agent, or ask the admin to allow password authentication |
 | `ssh_failed` | ssh stopped for another reason; the message gives its exit status. Run `ssh -v <server>` in a terminal to see why |
 | `ssh_host_not_found`, `ssh_connection_refused`, `ssh_connection_timeout` | Check the server name, port and network |
@@ -265,13 +282,15 @@ Every code is listed in [errors.md](errors.md#sftp).
 
 ## Agents
 
-`ui.sftpDestination` (`putgd-cli`) and `drive_sftp_destination` (MCP) read and edit the form,
+`ui.sftpDestination` (`putgd-cli`) and `drive_sftp_destination` (MCP) read and edit the form
+(Server, User, Folder on server, Link address and **SSH key** as `keyFile`; `inspect` shows
+`keyFile` and what is wrong with it in `problems.keyFile`),
 paste an address into Server, press Test upload, **Trust key** (only with the exact fingerprint
 the form offers), **Create folder**, Store (for what a person typed into Password or Key
 passphrase) and **Clear**, and add an SFTP destination, as a person does. They carry no password
 or passphrase. `setup.inspectAccount`, `setup.trustHostKey` and `setup.createFolder` (the MCP
 tool `sftp_destination_setup`) answer a `setupId` at once, whose result `setup.inspect` gives;
-they resolve the address, trust a key by its exact fingerprint and
+they resolve the address (with `keyProblem` when the chosen key file can't be used), trust a key by its exact fingerprint and
 create the saved folder (up to 4096 bytes, with the path the test reported) for a saved
 destination. A trust records the
 fingerprint in the destination itself. A password or key passphrase is stored with
