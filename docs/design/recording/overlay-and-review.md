@@ -405,7 +405,9 @@ comes back as it was before the press.
   nearest level 150 ms after the gesture ends. **`=`** (or `+`) and **`-`**, plain or with Ctrl,
   zoom one level and **Shift+Z** fits; with no pointer to anchor to (keys, the menu,
   `zoomIn`, `zoomOut`, `timelineZoom`) the anchor is the playhead when it is on screen,
-  else the middle of the view. Zooming never loses an on-screen playhead.
+  else the middle of the view, so from a settled view key and menu zoom never lose an on-screen
+  playhead. Pointer zoom instead holds the time under the pointer in place where the recording's
+  ends allow, and can move the playhead out of view.
 - A zoom step eases over 120 ms with the anchor holding its place on screen; tiles are
   requested when it settles, not per animation frame. A press or a scroll ends the
   animation at once.
@@ -551,7 +553,7 @@ button or row takes Space and Enter as its own activation.
 | `=` or `+`, `-`, Shift+Z | zoom the timeline in, out, or to Fit |
 | Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y | undo, redo (see "Undo and redo" below) |
 | Enter | presses a focused button or row; while placing, places a centred cover (half the frame's width and height), waiting up to 1 s if the frame it is drawn on is still loading (if the frame has not arrived by then, or failed, it places nothing); a field keeps it. It **never uploads** unless the Upload button itself has focus |
-| Ctrl+Enter | uploads, from anywhere; not with a menu open |
+| Ctrl+Enter | uploads, from anywhere; not with a menu open, and not while a cover is being placed, a drag is in progress, an export runs or the window closes (see "What blocks a new Upload press") |
 | Esc | cancels a drag, else a placement, else clears the selection; in the picture it also takes back a nudge, gives the arrows back, then deselects |
 | Arrows, in the viewer once it has them | move the selected cover, Shift+arrows resize it, at 100 % pan |
 
