@@ -230,7 +230,8 @@ QString location(const QJsonObject& settings, const QString& absolutePath) {
 QString keyFile(const QJsonObject& settings) { return settings.value("keyFile").toString(); }
 Error keyFileProblem(const QString& path, QString* privateKey) {
     if (privateKey) privateKey->clear();
-    const auto name = QFileInfo(path).fileName();
+    // "a folder/" has no file name: the message then says which field it is.
+    const auto name = QFileInfo(path).fileName().isEmpty() ? QStringLiteral("chosen in SSH key") : QFileInfo(path).fileName();
     const auto encoded = QFile::encodeName(path);
     struct stat info {};
     if (::stat(encoded.constData(), &info) != 0)

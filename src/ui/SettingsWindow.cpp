@@ -3834,7 +3834,9 @@ void SettingsWindow::pollSetup(){
    // #1871: what ssh resolves goes on its own line; a test that met a host key or a missing folder offers its fix.
    const bool sftpShown=data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider();
    // #1892: an answer for an address or key the form no longer holds is dropped and asked again.
-   if(sftpShown&&data["kind"]=="inspectAccount"&&sftpInspectKey()!=job["sftpInspect"].toString()){sftpInspected_.clear();QTimer::singleShot(0,this,[this]{inspectSftp();});emit viewStateChanged();return;}
+   // It is also dropped when another destination is shown now, which is checked afresh (that
+   // check waited for this one); its error never reaches the other destination's status.
+   if(data["kind"]=="inspectAccount"&&!job["sftpInspect"].toString().isEmpty()&&(!sftpShown||sftpInspectKey()!=job["sftpInspect"].toString())){sftpInspected_.clear();QTimer::singleShot(0,this,[this]{inspectSftp();});emit viewStateChanged();return;}
    if(e&&sftpShown&&data["kind"]=="inspectAccount"){if(e.details.value("field").toString()=="keyFile"){sftpPanel_->setResolved({});sftpPanel_->setKeyProblem(e.message);}else sftpPanel_->setResolved(e.message,true);emit viewStateChanged();return;}
    if(e&&sftpShown&&data["kind"]=="testDestination"&&currentTest){sftpPanel_->showTestError(e.code,e.message,e.details);
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
