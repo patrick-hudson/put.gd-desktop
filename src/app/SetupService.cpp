@@ -3,6 +3,7 @@
 #include <QJsonArray>
 #include <QPointer>
 #include <QUuid>
+#include <optional>
 
 namespace putgd {
 namespace {
@@ -107,15 +108,36 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    for(auto it=values.begin();it!=values.end();++it)typed.insert(it.key(),it.value().toString());
    if(auto error=namedCredentials_(profile,typed,&names)) {complete(error);return;}
    // Values typed now replace stored ones; the rest are kept from the loaded set.
-   const auto cached=credentials_.cached(profileId,reference);QStringList missing;
-   for(const auto& name:std::as_const(names)) {
-    if(typed.contains(name))value.values.insert(name,typed.value(name));
-    else if(cached&&cached->values.contains(name))value.values.insert(name,cached->values.value(name));
-    // An SFTP destination's password and key passphrase are each optional (#1871).
-    else if(profile["provider"]=="sftp")value.values.insert(name,QString());
-    else missing.append(name);
+   const bool sftp=profile["provider"]=="sftp";
+   const auto merge=[names,typed,sftp](const std::optional<Credentials>& loaded,Credentials& merged){
+    QStringList missing;
+    for(const auto& name:std::as_const(names)) {
+     if(typed.contains(name))merged.values.insert(name,typed.value(name));
+     else if(loaded&&loaded->values.contains(name))merged.values.insert(name,loaded->values.value(name));
+     // An SFTP destination's password and key passphrase are each optional (#1871).
+     else if(sftp)merged.values.insert(name,QString());
+     else missing.append(name);
+    }
+    return missing;
+   };
+   const auto cached=credentials_.cached(profileId,reference);
+   QStringList untyped;for(const auto& name:std::as_const(names))if(!typed.contains(name))untyped.append(name);
+   // Both SFTP secrets live in one keychain entry (#1890): one stored alone keeps the other, so a
+   // saved entry that isn't loaded is read first, and one that can't be read is never overwritten.
+   if(sftp&&reference["mode"]=="keychain"&&!cached&&!untyped.isEmpty()) {
+    credentials_.unlock(profileId,reference,[guarded,profileId,reference,merge,untyped,complete](Error error){
+     if(!guarded)return;
+     // No saved entry yet: nothing to keep.
+     if(error&&!error.details["missing"].toBool()) {
+      complete({"credential_incomplete","Unlock this destination's saved credentials first: storing one secret alone would erase the other. Nothing was changed.",{{"missing",QJsonArray::fromStringList(untyped)}}});
+      return;
+     }
+     Credentials merged;merge(error?std::nullopt:guarded->credentials_.cached(profileId,reference),merged);
+     guarded->credentials_.save(profileId,reference,std::move(merged),complete);
+    });
+    return;
    }
-   if(!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
+   if(const auto missing=merge(cached,value);!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
    if(value.values.isEmpty()) {complete({"credential_invalid","This destination has no secret values to store",{}});return;}
   }else value={input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
   // A provider that binds a key pair to where it was given keeps that binding beside it.
