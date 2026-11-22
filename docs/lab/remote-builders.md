@@ -738,13 +738,17 @@ python3 tools/lab/desktop_lock.py held [HOST] [--session ID]
 python3 tools/lab/desktop_lock.py run f44 --owner NAME --session ID --purpose TEXT --minutes 30 [--resource quiet] [--release] -- CMD ...
 ```
 
-Use `run` for lab work on a builder. It is the safe form of "acquire, then
-work": it takes the lock, or confirms that your session already holds it, and
-only then runs CMD on the builder over the same pinned BatchMode SSH, with
-`PUTGD_LAB_SESSION` set to your session. If the lock isn't yours it exits 1
-without running CMD. While CMD runs it renews the lock every 5 minutes; if the
-lock is lost it stops CMD's SSH and exits 1. Otherwise it exits with CMD's exit
-code and keeps the lock, so you can run the next step the same way.
+Use `run` for work that needs a lock: desktop work (the default `desktop` lock)
+and timing runs (`--resource quiet`). Shared SSH builds, tests and VMs need no
+lock. `run` is the safe form of "acquire, then work": it takes the lock, or
+confirms that your session already holds it, and only then runs CMD on the
+builder over the same pinned BatchMode SSH, with `PUTGD_LAB_SESSION` set to your
+session. CMD's words reach the builder as you gave them; put a shell expression
+in `sh -c '...'`. If the lock isn't yours it exits 1 without running CMD. While
+CMD runs it renews the lock three times per lease. A refused renewal, or two in
+a row that can't reach the host, stop CMD's SSH and exit 1; anything CMD started
+on the host may still be running. Otherwise it exits with CMD's exit code and
+keeps the lock, so you can run the next step the same way.
 `--release` gives the lock back after CMD as `release --verified-clean` would,
 and is still refused if something new is left on the host.
 
@@ -759,9 +763,10 @@ HOST it checks the builder's own lock directory. Scripts check it before each
 step. The lab helpers that install packages or drive a builder's desktop
 (`physical.py`, `record_run.py`, `fluidity_run.py`, `recording_bar_shots.py`)
 refuse to start unless your session holds that builder's desktop lock. Under
-`run` this is automatic. `physical.py` runs on the workstation, so give it
-`lock_session` in its config or set `PUTGD_LAB_SESSION`. A host with no lock
-directory, such as a VM guest, is not checked.
+`run` this is automatic. `physical.py` runs on the workstation and checks
+through its own SSH transport, so give it `lock_session` in its config or set
+`PUTGD_LAB_SESSION`. A host with no lab lock directory, such as a VM guest, is
+not checked.
 
 - `--session` is how other sessions reach you. Use your Claude Code `local_...`
   id; a Codex or terminal session uses a unique name such as `codex-<branch>`
