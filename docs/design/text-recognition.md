@@ -905,8 +905,12 @@ other tool active it does not. The user's side is in the
     over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
-    a closing quote, bracket or separator at its end, so `08edc"` is taken and a bare `08edc` or
-    a letters-only tail is not (#1820, #1850).
+    a closing quote, bracket or separator at its end, so `08edc"` is taken and a bare `08edc` is
+    not (#1820). When the token's line leaves a quote open (`"6311…343`), a single word of up to
+    seven token characters that closes it on the next line is the token's tail too, letters alone
+    included: `edc"`, `edc",` or `edc”`, since recognition often reads the closing quote curly.
+    The quote is the evidence, so a word such as `add` under a digest with no open quote is not
+    taken (#1850).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
