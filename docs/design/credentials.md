@@ -106,9 +106,11 @@ entry, and either may be empty. `setup.storeCredentials` takes
 `{"values":{…}}` with one or both names; a name left out keeps its saved value (#1890). Sending both names
 skips the keychain read. With a name left out, a keychain entry that isn't loaded is read first.
 If that read fails, the store is refused (`credential_incomplete`) and the saved values are left
-alone, unless the keychain answers "not found" for an entry put.gd never saved to: a locked
-entry can answer "not found" too. put.gd remembers which keychain entries it saved to
-successfully, across restarts, in the destination check records. A left-out name with no value
+alone. The exception is a "not found" answer for an entry with no recorded successful save; a
+locked entry can answer "not found" too. The destination check records keep those saves across
+restarts for as long as a destination names the entry or owns it as `putgd/sftp/<profile id>`,
+in either credentials mode. Records from before this rule count every keychain entry a
+destination names as saved. A left-out name with no value
 to keep (nothing saved, or a session-mode destination with nothing loaded) is stored empty.
 Stores to one keychain entry run one at a time, and a cancel while the entry is read stores
 nothing. An empty value clears that one (Settings' **Clear**, which keeps
