@@ -8,9 +8,13 @@
 
 // One recognition job, from the grey input to the result JSON (#1428 decisions 3 and 4).
 namespace putgd::ocr {
-// Recognition runs on at most this many threads, each with its own engine.
-inline constexpr int maximumWorkerThreads=4;
-// The threads a job uses: requested, or one per core, at most maximumWorkerThreads.
+// Recognition runs on at most this many threads, each with its own engine
+// (#1812: six engines on six cores read 4 MP screens in 1.09 s against 1.78 s
+// on four). The memory budget still decides how many engines start.
+inline constexpr int maximumWorkerThreads=8;
+// The threads a job uses: requested, or one per CPU the process may use (its
+// affinity, lowered to its cgroup's cpu.max quota), at most
+// maximumWorkerThreads. Count before confinement: Landlock hides the quota.
 int workerThreads(int requested=0);
 
 struct JobOptions {

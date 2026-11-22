@@ -1,6 +1,7 @@
 #include "Confinement.h"
 #include <QByteArray>
 #include <QFile>
+#include <algorithm>
 #include <cerrno>
 #include <climits>
 #include <cstddef>
@@ -280,7 +281,10 @@ bool confine(const Confinement& c,QString& failed,int& abi){
 #ifndef PUTGD_OCR_SANITIZED
  if(::prctl(PR_SET_DUMPABLE,0,0,0,0)!=0){failed=QStringLiteral("dumpable");return false;}
 #endif
- const rlimit none{0,0},cpu{rlim_t(c.cpuSeconds),rlim_t(c.cpuSeconds+1)},files{rlim_t(c.descriptors),rlim_t(c.descriptors)},size{rlim_t(c.fileBytes),rlim_t(c.fileBytes)};
+ // CPU time within what the helper inherited: a hard limit cannot be raised.
+ rlimit inherited{RLIM_INFINITY,RLIM_INFINITY};::getrlimit(RLIMIT_CPU,&inherited);
+ const rlim_t cpuHard=std::min(rlim_t(c.cpuSeconds+1),inherited.rlim_max);
+ const rlimit none{0,0},cpu{std::min(rlim_t(c.cpuSeconds),cpuHard),cpuHard},files{rlim_t(c.descriptors),rlim_t(c.descriptors)},size{rlim_t(c.fileBytes),rlim_t(c.fileBytes)};
  if(::setrlimit(RLIMIT_CORE,&none)||(c.cpuSeconds>0&&::setrlimit(RLIMIT_CPU,&cpu))||(c.descriptors>0&&::setrlimit(RLIMIT_NOFILE,&files))||(c.fileBytes>0&&::setrlimit(RLIMIT_FSIZE,&size))){failed=QStringLiteral("rlimit");return false;}
 #ifndef PUTGD_OCR_SANITIZED
  if(c.dataBytes>0){const rlimit data{rlim_t(c.dataBytes),rlim_t(c.dataBytes)};if(::setrlimit(RLIMIT_DATA,&data)){failed=QStringLiteral("rlimit");return false;}}
