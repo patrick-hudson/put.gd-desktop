@@ -151,6 +151,24 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("customUploader",p,std::move(reply));return;
  }
+ // #1871: the SFTP form in the open Destinations page, edited, pasted into, tested, trusted and
+ // its folder created as a user does. Settings values only, never a password or passphrase.
+ if(method=="ui.sftpDestination") {
+  static const QHash<QString,QStringList> allowed{{"inspect",{"profileId"}},{"set",{"field","value","profileId"}},{"paste",{"text","profileId"}},{"add",{"label"}},
+   {"test",{"profileId"}},{"trust",{"fingerprint","profileId"}},{"createFolder",{"profileId"}},{"store",{"profileId"}},{"clear",{"field","profileId"}}};
+  const auto action=p["action"].toString();
+  bool valid=allowed.contains(action)&&p["action"].isString();
+  for(auto it=p.begin();valid&&it!=p.end();++it)valid=it.key()=="action"||allowed.value(action).contains(it.key());
+  if(valid&&action=="set")valid=QStringList{"server","user","folder","publicUrlBase"}.contains(p["field"].toString())&&p["value"].isString()&&p["value"].toString().size()<=4096;
+  if(valid&&action=="paste")valid=string(p,"text",4096);
+  if(valid&&action=="trust")valid=string(p,"fingerprint",128);
+  if(valid&&action=="clear")valid=p["field"]=="password"||p["field"]=="passphrase";
+  if(valid&&action=="add")valid=string(p,"label",128);
+  if(valid&&p.contains("profileId"))valid=string(p,"profileId",64);
+  if(!valid){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("sftpDestination",p,std::move(reply));return;
+ }
  // #1678: the Cloudflare R2 form in the open Destinations page, edited, pasted into and moved to
  // (from an S3 destination on R2) as a user does. Settings values only, never credentials.
  if(method=="ui.r2Destination") {
@@ -373,8 +391,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
   if(method=="delete.prepare")history_.prepareDelete(ids,reply);else history_.deleteConfirmed(ids,p["acknowledgement"].toString(),reply);return;
  }
- if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword","setup.signOut"}.contains(method)) {
-  const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword";
+ if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword","setup.signOut","setup.trustHostKey"}.contains(method)) {
+  const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword"||method=="setup.trustHostKey";
   if(!fields(p,hasInput?QStringList{"profileId","expectedRevision","input"}:QStringList{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()||(hasInput&&!p["input"].isObject())){reply(invalid(),{});return;}
   if(!setup_){reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->start(method.mid(6),p["profileId"].toString(),p["expectedRevision"].toString(),p["input"].toObject(),std::move(reply));return;
@@ -614,7 +632,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
   {"history.copyText","text_recognition"},{"text.recognize","text_recognition"},
   {"history.share","share_link"},{"history.revokeLink","share_link"},{"history.openLink","share_link"},
   {"history.unlockLinkCredentials","credentials"},{"history.unlockCredentials","credentials"},{"setup.unlockCredentials","credentials"},{"setup.storeCredentials","credentials"},{"setup.storeSharePassword","credentials"},
-  {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},{"setup.signOut","destination_setup"},
+  {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},{"setup.signOut","destination_setup"},{"setup.trustHostKey","destination_setup"},
   {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
   {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},

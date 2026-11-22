@@ -1,4 +1,4 @@
-#include "HelperProcess.h"
+#include "storage/worker/HelperProcess.h"
 #include "OutputBudget.h"
 #include "ProtonProvider.h"
 #include "core/HostEnvironment.h"

@@ -11,6 +11,7 @@
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
 #include "storage/dav/DavProvider.h"
+#include "storage/sftp/SftpProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -271,6 +272,7 @@ int main(int argc,char* argv[]) {
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
  auto nextcloud=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::nextcloudId);providers.add(putgd::dav::nextcloudId,nextcloud);
  auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
+ auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/ssh/known_hosts");providers.add(putgd::sftp::providerId,sftp);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -511,12 +513,47 @@ int main(int argc,char* argv[]) {
    });
    return;
   }
+  // SFTP (#1871): its test writes its own journal, as the custom uploader's does; Settings and
+  // agents also resolve the connection, trust a host key and create the folder. Each blocks on a worker.
+  if(destination.providerId==putgd::sftp::providerId){
+   if(kind=="testDestination"){
+    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+    auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+    operations.background([sftp,destination,checkpoint,event](putgd::Error& error){
+     QJsonObject out;sftp->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;},[event](const QString& message){event({{"event","notice"},{"message",message}});});return out;
+    },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+     auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+     if(!error&&journalError)error=journalError;
+     reply(error,result);
+    });
+    return;
+   }
+   if(kind=="trustHostKey"){
+    // The resident records the trusted key in the destination itself, only while the configuration is
+    // still the one the trust began with; the record changes its check, so an earlier Test no longer vouches.
+    operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},
+     [&settings,destination,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+      if(error){reply(error,result);return;}
+      auto document=settings.document();auto profiles=document["profiles"].toArray();bool found=false;
+      for(qsizetype i=0;i<profiles.size();++i){auto p=profiles[i].toObject();if(p["id"]!=destination.profileId||p["provider"]!=putgd::sftp::providerId)continue;auto s=p["settings"].toObject();s["hostKeyFingerprint"]=result["fingerprint"];p["settings"]=s;profiles[i]=p;found=true;}
+      if(!found){reply({"profile_not_found","The destination was removed while its host key was trusted",{}},result);return;}
+      document["profiles"]=profiles;
+      settings.saveAsync(document,destination.profileRevision,[reply,result](putgd::Result saved){
+       if(saved.error){auto e=saved.error;e.message="The key was trusted, but recording it in the destination failed: "+e.message+" Test the destination again.";reply(e,result);return;}
+       reply({},result);
+      });
+     });
+    return;
+   }
+   operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},std::move(reply));
+   return;
+  }
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
- setup.setNamedCredentials(putgd::http::namedCredentials);
+ setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
  setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);
  server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
@@ -786,7 +823,7 @@ int main(int argc,char* argv[]) {
 #endif
  }
  // A quit that did not come through quitApplication (a signal) stops deletions here.
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();operations.shutdown();errorLog.flush();});
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();sftp->shutdown();operations.shutdown();errorLog.flush();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
 #ifdef Q_OS_LINUX

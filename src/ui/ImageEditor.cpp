@@ -110,7 +110,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
- Error submissionError;QString nonce,destination;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
  bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
@@ -405,7 +405,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  QObject::connect(&control,&UiControl::failed,&app,[&](Error){fail();});
  QObject::connect(&control,&UiControl::frame,&app,[&](const QString& type,const QString&,const QJsonObject& object){
   if(type=="bootstrap"&&!bootstrapped){
-   nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();
+   nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();links=object["links"].toBool(false);
    const QUuid id(nonce);
    if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
    const auto scheme=object["appearance"].toString();
@@ -435,7 +435,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
-   if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -487,7 +487,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});

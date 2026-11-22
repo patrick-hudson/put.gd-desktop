@@ -82,6 +82,14 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('drive_r2_destination', {'action': 'inspect', 'field': None}),
             ('drive_r2_destination', {'action': 'move', 'text': None}),
             ('drive_r2_destination', {'action': 'set', 'field': 'bucket', 'value': None}),
+            # #1871: the SFTP form and its setup steps take only their own fields; secrets never travel through either.
+            ('drive_sftp_destination', {'action': 'set', 'field': 'password', 'value': 'x'}),
+            ('drive_sftp_destination', {'action': 'trust'}),
+            ('drive_sftp_destination', {'action': 'inspect', 'fingerprint': 'ED25519 SHA256:x'}),
+            ('drive_sftp_destination', {'action': 'paste', 'text': 'x' * 4097}),
+            ('sftp_destination_setup', {'action': 'trust', 'profile_id': 'lab', 'expected_revision': 'r'}),
+            ('sftp_destination_setup', {'action': 'resolve', 'profile_id': 'lab', 'expected_revision': 'r', 'folder': '/srv'}),
+            ('sftp_destination_setup', {'action': 'storeCredentials', 'profile_id': 'lab', 'expected_revision': 'r'}),
             # #1753: an error log step the resident does not take, an empty clear, a filter outside setFilter.
             ('act_on_error', {'id': 'synthetic-error', 'action': 'open_destination'}),
             ('clear_errors', {'ids': []}),

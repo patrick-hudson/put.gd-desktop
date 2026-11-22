@@ -34,6 +34,9 @@ struct OutputSummary {
 };
 // The output words for one effective route (Settings::effectiveAction) of the document.
 QString outputName(const QJsonObject& document, const QJsonObject& route);
+// Whether uploads to this destination get a link to copy: every destination but an SFTP one
+// without a Link address (#1871), whose uploads say where the file went instead.
+bool givesLinks(const QJsonObject& profile);
 OutputSummary outputSummary(const QJsonObject& document);
 
 // The capture delay (#1363): "Capture delay: none" / "Capture delay: 5 seconds",

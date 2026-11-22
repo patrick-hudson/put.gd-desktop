@@ -49,6 +49,8 @@ include(cmake/B2.cmake)
 include(cmake/Http.cmake)
 # The Nextcloud and WebDAV destinations.
 include(cmake/Dav.cmake)
+# SFTP destination (#1871)
+include(cmake/Sftp.cmake)
 # The crash handler and debug splitting for every product binary.
 include(cmake/ProductBinaries.cmake)
 # The file-manager menu plugins.
@@ -91,6 +93,8 @@ include(cmake/B2Tests.cmake)
 # The custom HTTP uploader tests.
 include(cmake/HttpTests.cmake)
 include(cmake/DavTests.cmake)
+# SFTP destination tests (#1871)
+include(cmake/SftpTests.cmake)
 # The scroll-capture stitcher, control loop and helper session tests.
 include(cmake/TestsScroll.cmake)
 # Package metadata.

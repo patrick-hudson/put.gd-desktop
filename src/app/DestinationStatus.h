@@ -41,6 +41,11 @@ public:
  // or an error a retry carried unchanged from History, leaves it.
  void uploadStarting(const Operation& operation);
  void uploadSettled(const Operation& operation);
+ // Keychain entries put.gd saved credentials to successfully (#1890), kept across restarts and
+ // apart from the revisions above: a store that keeps one secret trusts "not found" only for an
+ // entry put.gd never wrote. Forgotten once no destination names the entry.
+ bool keychainSaved(const QString& reference) const {return keychainEntries_.contains(reference);}
+ void keychainWritten(const QString& reference);
  // Forgets destinations that are no longer configured.
  void prune();
  // {profileId: {state: passed|failed|untested, source: test|upload, errorCode, fingerprint}}
@@ -60,6 +65,7 @@ private:
  SettingsService& settings_;
  QHash<QString,Record> records_;
  QHash<QString,quint64> credentialRevisions_;
+ QSet<QString> keychainEntries_;
  QHash<QString,Attempt> attempts_;
  std::function<bool(const QJsonObject&)> usesCredentials_;
 };

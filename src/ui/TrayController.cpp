@@ -472,6 +472,8 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
   if(!originalNote.isEmpty())parts.append(originalNote);
   if(!copied.isEmpty())parts.append(copied);
+  // #1871: an SFTP upload without a Link address says where the file went; the clipboard is left as it was.
+  if(!hasLink&&items.size()==1){const auto receipt=items.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())parts.append("Saved to "+place+".");}
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');
  }

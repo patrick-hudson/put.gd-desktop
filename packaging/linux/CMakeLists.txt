@@ -286,6 +286,9 @@ set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2, hicolor-icon-theme, /usr/bin/gtk-update-icon-cache")
+# The SFTP destination (#1871) runs the user's own OpenSSH client, ssh.
+string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", openssh-client")
+string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", openssh-clients")
 set(CPACK_RPM_POST_TRANS_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postinst")
 # Keep the repository erase handling as well as refreshing the theme cache.
 if(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE)

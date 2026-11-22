@@ -917,7 +917,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=read)
     async def get_history_entry(id: str) -> Json:
-        """Read stored original receipt, local-copy status and independent remote-deletion status."""
+        """Read stored original receipt, local-copy status and independent remote-deletion status. An SFTP upload's receipt names where it went on the server (objectReference.location, as History's Copy path gives it) and the server it was verified as (host, port, user, hostKeyFingerprint)."""
         return await adapter.call('history.detail', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
@@ -1246,6 +1246,44 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     async def cancel_setup_job(id: str) -> Json:
         """Ask a running setup job to stop, such as a Nextcloud sign-in waiting for the browser (#1872). Answers cancelRequested; the job then ends on its own (a cancelled sign-in fails with nextcloud_signin_cancelled)."""
         return await adapter.call('setup.cancel', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def drive_sftp_destination(action: str, field: str = OMITTED, value: str = OMITTED, text: str = OMITTED, label: str = OMITTED,
+                                     fingerprint: str = OMITTED, profile_id: str = OMITTED) -> Json:
+        """Drive the SFTP destination form in the open Destinations page as a user does (#1871). Each action takes only its own fields; omit the others (null is refused). inspect (optional profile_id) reads the form: server, user, folder, publicUrlBase, hostKeyFingerprint, resolved (the line saying where ssh connects, as whom and with which key, from ssh -G), problems by field, typedSecrets and storedSecrets (names only), trustOffered ({fingerprint, message} after a test met an unknown or changed host key, else null), createFolderOffered (the missing folder's path, else null), testLabel, saved, setupRunning and status. set (field, value, optional profile_id) types value into server, user, folder or publicUrlBase and leaves the field. paste (text, optional profile_id) pastes into Server: sftp://user@host:port/path or user@host:/path fills Server, User and Folder on server; a password in it is refused. test (optional profile_id) presses Test upload; poll inspect until setupRunning is false. trust (fingerprint, optional profile_id) presses Trust key, only with the exact fingerprint trustOffered names; put.gd fetches the key again and trusts it only if it is still that one. createFolder (optional profile_id) presses Create folder for the missing folder a test found. store (optional profile_id) presses Save to keychain or Use for this session for a password or passphrase a person typed into the form; no value travels through this tool. clear (field password or passphrase, optional profile_id) presses Clear beside a stored one. add (label) adds an SFTP destination with that name. A no-link upload's place on the server (Copy path) is its receipt's objectReference.location in get_history_entry. A control that isn't shown or usable answers control_unavailable. Carries no credentials: a password or key passphrase is typed in Settings. Open Destinations first (ui.show destinations)."""
+        allowed = {'inspect': {'profile_id'}, 'set': {'field', 'value', 'profile_id'}, 'paste': {'text', 'profile_id'}, 'test': {'profile_id'},
+                   'trust': {'fingerprint', 'profile_id'}, 'createFolder': {'profile_id'}, 'store': {'profile_id'}, 'clear': {'field', 'profile_id'}, 'add': {'label'}}
+        given = {name for name, item in (('field', field), ('value', value), ('text', text), ('label', label), ('fingerprint', fingerprint), ('profile_id', profile_id)) if item is not OMITTED}
+        field, value, text, label, fingerprint, profile_id = (None if item is OMITTED else item for item in (field, value, text, label, fingerprint, profile_id))
+        if (action not in allowed or not given <= allowed[action] or (action == 'set' and (field not in {'server', 'user', 'folder', 'publicUrlBase'} or value is None)) or
+                (action == 'clear' and field not in {'password', 'passphrase'}) or
+                (action == 'paste' and text is None) or (action == 'add' and label is None) or (action == 'trust' and fingerprint is None) or
+                (value is not None and (not isinstance(value, str) or len(value) > 4096)) or (text is not None and not identifier(text, 4096)) or
+                (label is not None and not identifier(label, 128)) or (fingerprint is not None and not identifier(fingerprint, 128)) or
+                (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'action': action}
+        for key, item in (('field', field), ('value', value), ('text', text), ('label', label), ('fingerprint', fingerprint), ('profileId', profile_id)):
+            if item is not None:
+                params[key] = item
+        return await adapter.call('ui.sftpDestination', params)
+
+    @server.tool(annotations=effect)
+    async def sftp_destination_setup(action: str, profile_id: str, expected_revision: str, fingerprint: str | None = None, folder: str | None = None,
+                                     path: str | None = None) -> Json:
+        """Start an SFTP destination's setup step (#1871) and return its setupId; poll get_setup_job until state leaves running. resolve: what ssh -G makes of the saved address (result line, such as "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)", and resolved host, port, user, keyFiles, agent, proxy); fails with ssh_not_installed when there is no OpenSSH client. trust (fingerprint): a test that met an unknown or changed host key failed with ssh_host_unknown_key or ssh_trusted_key_changed and details.fingerprint; pass that exact fingerprint. put.gd fetches the key again over the same route, adds it to its own known_hosts only if it still matches (else ssh_host_key_mismatch), and records it in the destination's hostKeyFingerprint itself, only while the configuration is still expected_revision. It refuses when your own known_hosts already has a key for the server (ssh_host_key_known: that one decides), when your SSH settings turn known_hosts off (ssh_known_hosts_off), or when the server's HostKeyAlias is a pattern (ssh_host_alias_pattern). createFolder (folder, path): a test that failed with sftp_folder_missing; pass the destination's saved Folder on server exactly (up to 4096 bytes) and the error's details.path; put.gd creates it and every missing parent only while the folder still resolves to that path. Uploads never create folders."""
+        kinds = {'resolve': 'setup.inspectAccount', 'trust': 'setup.trustHostKey', 'createFolder': 'setup.createFolder'}
+        if (action not in kinds or not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256 or
+                (action == 'trust') != (fingerprint is not None) or (action == 'createFolder') != (folder is not None) or (action == 'createFolder') != (path is not None) or
+                (path is not None and (not identifier(path, 4096) or len(path.encode()) > 4096)) or
+                (fingerprint is not None and not identifier(fingerprint, 128)) or (folder is not None and (not identifier(folder, 4096) or len(folder.encode()) > 4096))):
+            return invalid()
+        params: Json = {'profileId': profile_id, 'expectedRevision': expected_revision}
+        if fingerprint is not None:
+            params['input'] = {'fingerprint': fingerprint}
+        if folder is not None:
+            params['input'] = {'name': folder, 'path': path}
+        return await adapter.call(kinds[action], params, timeout=130)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,

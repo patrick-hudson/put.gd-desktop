@@ -2,6 +2,7 @@
 #include "HistoryService.h"
 #include "StorageLocations.h"
 #include "DestinationTestJournal.h"
+#include "core/CommandText.h"
 #include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
@@ -78,13 +79,15 @@ ActionSettings routeOf(const Operation& op) {
 }
 QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& providers) {
  const auto route=routeOf(op);
- if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
+ if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"links",false},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  auto mode=route.publicationMode;
  if(mode=="default")if(auto provider=providers.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
  const auto label=profile["label"].toString(op.destination.profileId);
- const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
- return {{"destination",label},{"sharingMode",mode},{"summary",summary}};
+ // A destination that gives no links (an SFTP server without a Link address, #1871) never promises one.
+ const bool links=commandtext::givesLinks(profile);
+ const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):links?QStringLiteral("Upload to %1 · Shared link").arg(label):QStringLiteral("Upload to %1").arg(label);
+ return {{"destination",label},{"sharingMode",mode},{"summary",summary},{"links",links}};
 }
 // On-demand previews (#190) answer within historyPreviewReplyMs: at most this
 // long queued, then a local copy check and a decode of up to 10 s each.
@@ -426,7 +429,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
   released();
  }else {
   const auto output=uploadReviewOptions(op,providers_);
-  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
+  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):output["links"].toBool(true)?QStringLiteral("Shared link"):QStringLiteral("Upload only")):QStringLiteral("Saves locally"));
   const bool screenshotFirst=snapshot.regionSelectionMode=="screenshot_first";
   source_.setRegionScreenshotFirst(screenshotFirst);
   if(const auto refused=SourceAdapter::knownPermissionRefusal(source_.capabilities(),source);refused) {
@@ -629,6 +632,7 @@ void OperationService::runCheck(Job job) {
  session->setAppearance(editorAppearance_);
  const auto& op=job.op;
  const auto staging=root_+"/editing",destination=editorDestination(op),appearance=editorAppearance_;
+ const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
  const auto coveredRoot=root_+"/covered/"+id;
@@ -638,7 +642,7 @@ void OperationService::runCheck(Job job) {
  auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();checkJobs_.insert(id,shared);
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -887,6 +891,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.advance(OperationState::Failed);finish(op);return;}
  op.advance(OperationState::Editing);op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",destination=editorDestination(op);
+ const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;const auto redactTerms=op.settings.quickRedactTerms,redactPatterns=op.settings.quickRedactPatterns;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
@@ -923,11 +928,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
