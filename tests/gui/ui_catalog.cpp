@@ -569,6 +569,8 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextCategories"),0,160);if(!save("settings-sensitive-check"))return 2;
  // #1618: Quick redact's saved words and regular expressions, under Text recognition; empty, then filled.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");window.findChild<QPlainTextEdit*>("quickRedactPatterns")->setPlainText("\\bJIRA-\\d+\\b\n(?i)\\b[a-z0-9-]+\\.corp\\.example\\b");
