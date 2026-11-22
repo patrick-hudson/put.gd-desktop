@@ -997,11 +997,12 @@ pattern child, which gets the text over a private pipe when there are patterns. 
 or upload the text as text. The image itself is what uploads or is saved locally, depending on the
 choice. The resident gets findings only: kinds with counts, whether the check finished and why not, and
 the prompt number. It logs the check's start, outcome, findings and duration. The journal,
-observations, `operation.inspect`, `operation.decide` and diagnostics carry the same findings and
-nothing more, up to the decision. The panel shows kinds and counts. After **Redact and upload** the
-check's document becomes an ordinary editor, which keeps the recognition result the check made, as it
-would after Quick redact: `editor.inspect` can return those words to the same-user caller that asks,
-without another recognition run. Words under a Redact mark are left out. The notification on a desktop with no tray says only that a capture is waiting.
+observations, `operation.inspect` and diagnostics carry the same findings and nothing more, up to
+the decision; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Redact and upload** the
+check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
+found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
+those words to the same-user caller that asks, without another recognition run. Placing any suggested
+mark starts a new recognition revision, which clears the result. The notification on a desktop with no tray says only that a capture is waiting.
 Tests and evidence use only test values.
 
 ### Cost
