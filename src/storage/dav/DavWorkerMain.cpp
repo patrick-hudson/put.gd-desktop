@@ -1015,6 +1015,11 @@ private:
         QList<QJsonObject> found;
         for (const auto& value : r.data().toArray()) {
             const auto share = value.toObject();
+            // An entry that isn't a readable share can't show that put.gd's link is absent.
+            if (!value.isObject() || share.value("id").toVariant().toString().isEmpty() || !share.value("share_type").isDouble()) {
+                error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                return std::nullopt;
+            }
             if (share["share_type"].toInt(-1) != 3) continue;
             const auto listed = share["token"].toString();
             const bool match = !token.isEmpty() ? listed == token : !digest.isEmpty() ? (!listed.isEmpty() && digestOf(listed) == digest) : share["label"].toString() == shareLabel(receipt);
