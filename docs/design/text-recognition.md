@@ -902,11 +902,13 @@ other tool active it does not. The user's side is in the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
     kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
-    tokens) takes every recognized word that starts within half again its usual length of the
-    first word it matched, and anything further its prefix pattern's body ran through. A kind with
+    tokens) takes the token pieces of its run (the recognized words of the token alphabet next to each
+    other on the line, measured in their text joined without spaces) that start within half again
+    its usual length of the first piece it matched, and anything further its prefix pattern's body
+    ran through. A kind with
     one length (an AWS key ID, a classic GitHub token, a fine-grained `github_pat_` token, a
-    Stripe `whsec_` secret) ends at that length counted from its prefix: it takes the words that
-    start before the length is reached, and a piece of one or two characters just past it, which a
+    Stripe `whsec_` secret) ends at that length counted from its prefix: it takes the pieces of
+    its run that start before the length is reached, and a piece of one or two characters just past it, which a
     doubled character leaves. Words after that are treated like any words at the end of a run of
     token pieces: a run of ordinary words at the end (under 12 letters or digits, no digit, no
     capital after the first letter, as "was leaked today") is left out, and the rest stay covered
