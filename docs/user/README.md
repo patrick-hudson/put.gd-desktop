@@ -10,6 +10,8 @@ Everyday use of the app, its failures and its storage destinations.
 - S3 requests verify HTTPS certificates. Plain HTTP is accepted only for a literal loopback address.
 - Backblaze B2 uses B2's native API, because B2's S3-compatible API has no conditional writes.
 - A custom uploader's header, parameter, argument and body values are secrets unless a row says otherwise. An imported `.sxcu` token is held in the Settings window until it is stored in the keychain or the session cache; it never reaches `config.json`, a checkpoint, a log, History or a diagnostics package.
+- An SFTP destination connects with the user's own OpenSSH client and never writes `~/.ssh` files; an unknown host key is trusted only by its exact fingerprint, into put.gd's own `known_hosts`.
+- SFTP uploads create the final name only when it is free and never create folders; a deletion first checks the file is still the one uploaded.
 - A custom uploader's server names each upload, so put.gd cannot check whether one arrived. A lost reply is shown as unknown, and only an explicit Retry sends the file again.
 
 ## Documents
@@ -21,5 +23,6 @@ Everyday use of the app, its failures and its storage destinations.
 - [Backblaze B2 destination](b2.md): setting up and using B2 through its native API.
 - [Cloudflare R2 destination](r2.md): setting up R2 from its account ID or S3 API address, its links, and moving an S3 destination on R2 to it.
 - [Nextcloud and WebDAV destinations](nextcloud.md): signing in to Nextcloud through the browser, share links, chunked uploads, plain WebDAV folders and their links.
+- [SFTP destination](sftp.md): your own server over SFTP with your OpenSSH client, host keys, uploads without links and deletion.
 - [Custom uploader (HTTP) destination](custom-uploader.md): your own server or any service with a ShareX `.sxcu` file, its placeholders, secrets, deletion and limits.
 - [Proton Drive](proton-drive.md): the provider, its build checks, release gates and lab sessions.

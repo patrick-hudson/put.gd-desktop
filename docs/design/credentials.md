@@ -101,6 +101,36 @@ in the error's details is set only if that removal itself failed. Three edges:
   answers `credential_store_timeout` and gives its turn back. The entry stays reserved
   until the store answers after all; what it wrote then is erased.
 
+An SFTP destination (#1871) stores two named values, `password` and `passphrase`, in one
+entry, and either may be empty. `setup.storeCredentials` takes
+`{"values":{…}}` with one or both names; a name left out keeps its saved value (#1890). Sending both names
+skips the keychain read. With a name left out, a keychain entry that isn't loaded is read first.
+If that read fails, the store is refused (`credential_incomplete`) and the saved values are left
+alone. The exception is a "not found" answer for an entry that isn't marked as saved; a locked
+entry can answer "not found" too. A successful keychain store marks its entry. The destination
+check records keep the mark across restarts while a destination names the entry or owns it as
+`putgd/<profile id>` or `putgd/sftp/<profile id>`, in either credentials mode. Records from before this rule mark the
+entries owned by each destination whose credential revision is above zero (a failed or cancelled
+store can count too); missing or unreadable records mark
+the entries keychain-mode destinations name. A left-out name with no value
+to keep (nothing saved, or a session-mode destination with nothing loaded) is stored empty.
+Stores and unlocks of one keychain entry run one at a time (`setup_busy` otherwise), and a
+cancel while the entry is read stores nothing. An empty value clears that one (Settings' **Clear**, which keeps
+whatever is typed into the other field). Settings sends only what was typed, so storing a
+passphrase keeps a stored password. A value holds no
+line break, since ssh reads its askpass answer up to one, and is at most 4096 characters.
+`setup.credentialHint` lists in `storedValues` only the values that aren't empty. The values
+reach `putgd-sftp-worker` only with requests that sign in (Settings' address check learns only
+whether a password is set), and from there only a private askpass socket for each connection that signs in, which gives
+the password and the key passphrase at most once each, answering ssh's own exact prompts
+([storage providers](storage-providers.md#sftp)): never ssh's command line or environment. The
+worker wipes both once sign-in ends, except that an upload keeps them until the request ends,
+since cleaning up a cancelled upload may need a new connection. A keychain-mode SFTP destination whose entry isn't loaded still connects,
+with the agent and key files. Switching it to the keychain in Settings fills an empty Reference with `putgd/<profile id>`
+(`putgd/sftp/<profile id>` if Reference is still empty when it is saved); a new SFTP
+destination starts in session mode, so startup unlock never asks the keychain about one that
+has nothing stored.
+
 What is looked for as a credential in a server's replies and addresses is narrower
 than what is stored: see
 [What counts as a credential](../user/custom-uploader.md#what-counts-as-a-credential).

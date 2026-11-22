@@ -27,8 +27,13 @@ then records how each one exited. The resident sets `QT_FORCE_STDERR_LOGGING=1` 
 itself and its helpers, so their Qt warnings reach that pipe instead of the journal. The Backblaze B2 worker
 (`putgd-b2-worker`, #282) also writes nothing to disk; its stderr is read and discarded,
 and its outcome is recorded with the upload or deletion that started it. The custom
-uploader worker (`putgd-http-worker`, #1361) and the Nextcloud and WebDAV worker
-(`putgd-webdav-worker`, #1872) follow the same rule.
+uploader worker (`putgd-http-worker`, #1361), the Nextcloud and WebDAV worker
+(`putgd-webdav-worker`, #1872) and the SFTP worker (`putgd-sftp-worker`, #1871) follow the same
+rule: no log files. The SFTP worker's files are put.gd's own `known_hosts` and its `known_hosts.lock`, written on
+**Trust key** and kept, and private temporary known_hosts files and an askpass socket directory,
+which it removes; its stderr goes to `/dev/null`. An SFTP destination's server, user and folder are redacted in a package, its profile shows
+only whether each is set, and no SFTP error message carries ssh's own output or the server's
+status text in the first place.
 
 ## Records
 
@@ -260,7 +265,7 @@ The last 10 records are kept in `unclean-exits.json`. `diagnostics.uncleanExit` 
 ## Crash records
 
 Every put.gd executable (`putgd`, `putgd-ui`, `putgd-capture`, `putgd-region`,
-`putgd-record`, `putgd-s3-worker`, `putgd-b2-worker`, `putgd-http-worker` and `putgd-webdav-worker`) links a small crash handler (#124,
+`putgd-record`, `putgd-s3-worker`, `putgd-b2-worker`, `putgd-http-worker`, `putgd-webdav-worker` and `putgd-sftp-worker`) links a small crash handler (#124,
 `src/core/CrashHandler.cpp`) that installs itself before `main`, from the
 executable's `.preinit_array`. ld.so runs that before any shared library's
 constructor, so the handler is in place before any other code in the process
@@ -308,6 +313,10 @@ audit rejects a crash-handled program that doesn't export it.
 - **Helpers** write to stderr, which the resident already collects. Their
   `putgd-crash` lines become one `Helper crash record` (level `error`, field
   `crash`), outside the 64 KiB per-generation output bound, before `Helper crashed`.
+  The storage workers (`putgd-b2-worker`, `putgd-http-worker`, `putgd-webdav-worker`,
+  `putgd-sftp-worker`) are the exception: their stderr isn't kept, so a worker's crash record
+  is lost. The action it was running (an upload, deletion, destination test or setup job) still
+  ends with an error, or with an unknown outcome when the worker stopped before answering.
 
 The `crash` object has `recordVersion` (1), `process`, `pid`, `thread`, `version`,
 `signal`, `signalName`, `code`, `faultAddress`, `pc`, `time`, `frames`
