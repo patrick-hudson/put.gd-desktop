@@ -943,7 +943,26 @@ other tool active it does not. The user's side is in the
     token pieces: a run of ordinary words at the end (under 12 letters or digits, no digit, no
     capital after the first letter, as "was leaked today") is left out, and the rest stay covered
     (#1839). A token that runs to the end of its line goes on
-    over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
+    over each following line that starts with the rest of it (a JWT soft-wrapped in an editor),
+    but only while the next line is where a wrap leaves one and holds nothing of its own (#1856,
+    #1859):
+    - The next line sits right below: its top is below the line above's top by at most three
+      times the taller of the two lines' boxes (recognized boxes are shorter than the line pitch).
+      It starts no further right than the line above, plus four and a half characters for an
+      editor's wrap indent. A character's width comes from the line's word boxes, not the gaps
+      between them. A line far down the page, or in a column to the right, is never taken.
+    - A prefixed kind of bounded length (an AWS key ID, a GitHub, GitLab, Slack or Stripe token)
+      takes remainders only up to half again its usual length, counted from its prefix. A JSON
+      web token has no bound.
+    - A line that holds a card number, an email address (with a dot recognition lost restored, as
+      the email rule does) or a prefixed token of its own is not taken, so each stays its own
+      match of its own kind. A JWT wrapped just after one of its dots starts its next line with
+      `eyJ`, which is taken only as that JWT's own next part.
+    - Card lines that recognition reads as one hex run, as
+      `Card 4111 1111 1111 1111 Card 5555 5555 5555 4444` can be, take only further lines with a
+      card's worth of digits, so a misread card number below them stays covered, and a line such
+      as `SIGNING_HEX =` stays out. When a hex fragment follows the card on its line (quoted or not,
+      read with the usual hex misreadings), its wrapped tail of hex digits is taken too.
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
     a closing quote, bracket or separator at its end, so `08edc"` is taken and a bare `08edc` is
@@ -1618,6 +1637,16 @@ and 54 and 56 wrong, and the third 1,268 right.
   16-digit card number of repeated digits at 13 px was counted wrong at every scale tried), and a card
   number read with one digit too many fails the Luhn check, so those can be missed. Held-out pages
   covered 303 of 304 items.
+- A token that ends its line no longer covers the card lines below it (#1856). Where recognition
+  misreads a card number below another card line so that it fails the Luhn check, that line is
+  left uncovered, as the same misread card is anywhere else on a page. Before #1863 the token's
+  match took such a line in by accident. On d69's real-recognition corpus (12 fonts, 11 sizes,
+  5 backgrounds), 139 more of these second card lines were left bare. In the same corpus, the
+  number of pages where one match spanned two kinds fell from 660 to 41, and the number of items
+  not found as their own kind from 1,360 to 285.
+- A mark's padding, a quarter of the line height above and below, can touch a few ink pixels of
+  the line below when lines are set tightly, as in a terminal (8 pixels at the top of "later" in
+  the #1863 acceptance on m74 and k72). That line stays readable.
 - A tall two-column page below 4 megapixels is read as one block, and a banded image has no global
   multi-column order.
 - One extra timing run of the AppImage on k72 had a selector that did not finish within 40 seconds before
