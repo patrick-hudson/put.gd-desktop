@@ -275,12 +275,14 @@ private:
   // #1893: the PNG came from an editor (Redact and upload), which drew its own style or none.
   bool fromEditor=false;
   // #1893: originalPath holds the capture before its style, not before covering.
-  bool styleOriginal=false;};
+  bool styleOriginal=false;
+  // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
+  QByteArray unstyled={};};
  // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
  static bool needsStyle(const Job&);
  // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
  QSet<QString> styledEdits_;
- void styleCapture(Job&,Operation&,qint64 objectLimit,qint64 waitingBytes);
+ void styleCapture(Job&,Operation&);
  // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
  void keepOriginals(Job&,Operation&);
  // #1820: operations with a check that couldn't finish: their notification never says what was covered.

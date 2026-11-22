@@ -111,7 +111,7 @@ private slots:
   // Graphite's gradient starts at its first stop in the top-left corner.
   QVERIFY(qAbs(qRed(styled.pixel(0,0))-0x38)<=2);
  }
- // A styled PNG that only the style makes too large for the Largest file limit: the capture goes out as it was.
+ // The store refuses the styled PNG (over the Largest file limit) where the capture as it was fits: it is stored instead.
  void aStyleThatWouldPassTheFileLimitIsLeftOff(){
   QImage plain(300,200,QImage::Format_RGB32);plain.fill(Qt::white);
   QVERIFY(encoded(plain).size()<4096);
@@ -119,7 +119,7 @@ private slots:
   const auto id=f.capture();QVERIFY(!id.isEmpty());
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
   QCOMPARE(f.artifact(id),encoded(plain));
-  const auto op=f.inspect(id);QVERIFY(!op.contains("style"));QVERIFY2(op["note"].toString().contains("file size limits"),qPrintable(op["note"].toString()));
+  const auto op=f.inspect(id);QVERIFY(!op.contains("style"));QVERIFY2(op["note"].toString().contains("too large to store or upload"),qPrintable(op["note"].toString()));
  }
 };
 

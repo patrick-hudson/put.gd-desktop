@@ -822,7 +822,7 @@ bool OperationService::needsStyle(const Job& job) {
  if(!actions.contains(op.action))return false;
  return (job.payload.kind=="image"&&!job.payload.image.isNull())||(job.payload.kind=="png"&&!job.payload.bytes.isEmpty());
 }
-void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit,qint64 waitingBytes) {
+void OperationService::styleCapture(Job& job,Operation& op) {
  // The same PNG the artifact store would encode; the image-job child decodes, styles and encodes it.
  QByteArray png;
  if(job.payload.kind=="png")png=job.payload.bytes;
@@ -838,17 +838,8 @@ void OperationService::styleCapture(Job& job,Operation& op,qint64 objectLimit,qi
   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(error)}});
   return;
  }
- // A styled PNG is larger: when only the style would pass a byte limit the store applies (Largest file, Largest batch,
- // Space for queued files) or the destination's object limit, the capture goes out as it was.
- const auto& limits=op.settings.limits;
- auto limit=std::min({limits.maxFileBytes,limits.maxBatchBytes,std::max<qint64>(0,limits.pendingArtifactBytes-waitingBytes)});
- if(objectLimit>0)limit=std::min(limit,objectLimit);
- if(styled.size()>limit&&png.size()<=limit){
-  const auto why=QStringLiteral("Capture style wasn't applied: the styled image would be larger than this destination or put.gd's file size limits accept.");
-  op.note=op.note.isEmpty()?why:op.note+" "+why;
-  logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"styledBytes",double(styled.size())},{"limitBytes",double(limit)}});
-  return;
- }
+ // The capture as it was, for run() to store instead if the store refuses the larger styled PNG.
+ job.unstyled=png;
  // With Keep a local copy on, the capture as it was is kept beside the styled copy, as for automatic covers.
  // A covered capture already keeps its original from before covering.
  if(op.settings.archive.keepUploads&&job.originalPath.isEmpty()){
@@ -1346,11 +1337,26 @@ Operation OperationService::run(Job job) {
   }
   // #1893: a still capture goes on its capture style before it is stored. Off, nothing here runs.
   if(needsStyle(job)){
-   styleCapture(job,op,objectLimit,artifacts.bytes());if(job.styleOriginal)styledOriginal=job.originalPath;
+   styleCapture(job,op);if(job.styleOriginal)styledOriginal=job.originalPath;
    // A capture cancelled while it was being styled stores nothing.
    if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
   }
   auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+  // #1893: a style problem never fails a capture. When the store refuses the styled PNG for its size or for disk space,
+  // the capture as it was is stored instead, once, and History says why.
+  if(acquired.error&&!job.unstyled.isEmpty()&&QStringList{"input_excessive","destination_object_too_large","disk_space_insufficient"}.contains(acquired.error.code)){
+   ClipboardPayload plain;plain.kind="png";plain.bytes=std::move(job.unstyled);plain.mime="image/png";
+   auto retried=artifacts.acquire(op.id,plain,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+   if(!retried.error){
+    logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(acquired.error)}});
+    acquired=std::move(retried);op.style={};
+    const auto note=QStringLiteral("Capture style wasn't applied: the styled image was too large to store or upload, so the capture was kept as it was.");
+    op.note=op.note.isEmpty()?note:op.note+" "+note;
+    // The unstyled capture is what was stored: no -original beside it.
+    if(job.styleOriginal){if(!job.originalPath.isEmpty()&&job.originalPath!="-")QFile::remove(job.originalPath);job.originalPath.clear();job.styleOriginal=false;}
+   }
+  }
+  job.unstyled.clear();
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   // A file-manager upload names the requested file or folder a late failure came from.
   if(acquired.error&&!job.origins.isEmpty()){
