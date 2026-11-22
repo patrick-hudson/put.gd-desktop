@@ -860,20 +860,27 @@ other tool active it does not. The user's side is in the
     line height above and below and by one and a half characters on each side, clamped to the
     image. A character's width comes from the edge word's own box, not from the line's span with
     its spaces. Recognition boxes can stop a whole glyph short, which the side padding covers.
-    Towards another recognized word on the same line, the padding ends at the far side of the
-    blank space before that word, leaving the space's last column uncovered, so the word stays
-    readable (#1838). Boxes can be off by about a glyph either way, so the space is found in the
-    pixels of every row the mark covers. A column is blank within 8% of the text's contrast
-    from the background, the median colour of the line spacing outside the mark. The
-    neighbour's box edge counts only where ink starts right after a blank column within a
-    pixel of it, and that blank is at least as wide as the next one after the ink (a word
-    space is wider than a gap between glyphs); otherwise the mark goes past what lies at that edge and the ink after it to
-    the next blank run, so a misplaced box can cost the neighbour a glyph but never shows a
-    matched one. With no blank run in reach, spacing that isn't clean, or any transparency,
-    the whole padding stays: a covered neighbour is better than a matched glyph showing. A
-    mark never shrinks inside the matched words' own boxes. A mark can also take in an ordinary
-    word joined to a token, such as a label with digits ("sha256"), the words after a prefixed
-    token up to its usual length, or the rest of a PEM BEGIN or END line.
+    Towards the nearest other recognized word on the same line, when the padding could reach
+    it, the padding ends at the far side of the blank space before that word, leaving the
+    space's last column uncovered, so the word stays readable (#1838). The space can only
+    shorten the padding. Boxes can be off by about a glyph either way, so the space is found
+    in the pixels of every row the mark covers, up to a character past the neighbour's box
+    edge. A column is blank when every pixel in it is within 8% of the text's contrast of the
+    background (4 to 24 levels in any colour channel). The background is the median colour
+    of the line spacing above and below the mark. The neighbour's box edge counts only where
+    ink starts right after a blank column within a pixel of it, and that blank is at least as
+    wide as the next one after the ink, because a word space is usually wider than a gap
+    between glyphs. Otherwise the mark goes past what lies at that edge and the ink after it,
+    to the next blank run. This is a heuristic: it keeps matched glyphs covered on the
+    measured fonts and sizes. A matched glyph outside its recognized box can still show when
+    the gap before it is wider than the space after it. The whole padding stays in four
+    cases: there is no blank run in reach; more than a quarter of the line-spacing pixels
+    differ from the background by over 24 levels; any pixel looked at is not fully opaque;
+    or the image ends before the matched box's edge. A covered neighbour is better than a
+    matched glyph showing. A mark never shrinks inside the matched words' own boxes. A mark
+    can also take in an ordinary word joined to a token, such as a label with digits
+    ("sha256"), the words after a prefixed token up to its usual length, or the rest of a PEM
+    BEGIN or END line.
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
