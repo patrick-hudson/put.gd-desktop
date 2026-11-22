@@ -498,12 +498,15 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   written from the toolbar's edge. A banner that slides in at the page's own speed for a
   few frames (Wikipedia's fundraising banner in Chrome) moves like the page while it does,
   and its border can be left in the image where it arrived. A line along the frame's top
-  or bottom edge (Firefox's content edge on Cinnamon, one row inside the region) is the
-  exception: where the next frame shows most of that row the same at the same place while
-  the page moved, it is not written into the page's rows, and only the image's last row
-  shows it ([#1796](https://github.com/patrick-hudson/put.gd-desktop/issues/1796)). A pinned
-  part drawn from the first screen (Firefox's link bubble at the bottom) still brings its
-  block's piece of the line along.
+  or bottom edge (Firefox's content edge on Cinnamon, one row inside the region) is mostly
+  kept out ([#1796](https://github.com/patrick-hudson/put.gd-desktop/issues/1796)). After
+  the page moves, the tracker checks a waiting frame's textured cells in its first and last
+  8-row blocks, counting only cells whose page row is in sight and not held back where the
+  next frame shows it. When at least 90% of those cells, and at least 16, look the same at
+  the same place of the screen and different where their page row moved to, the matching
+  cells are not written. Cells held back there keep their piece of the line (the scroll
+  bar's column), and so does a pinned part drawn from the first screen (Firefox's link
+  bubble at the bottom).
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).
