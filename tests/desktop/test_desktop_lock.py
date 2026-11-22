@@ -16,6 +16,10 @@ import desktop_lock as lock
 START = datetime.datetime(2026, 10, 19, 3, 0, tzinfo=datetime.timezone.utc)
 
 
+def deb(version):
+    return {'kind': 'package', 'id': 'putgd', 'key': 'package:deb:' + version, 'detail': 'deb putgd ' + version}
+
+
 def process(pid, command='putgd-ui --view history'):
     return {'kind': 'process', 'id': str(pid), 'key': f'process:{pid}:100', 'detail': command}
 
@@ -212,6 +216,58 @@ class ReleaseCleanupCheck(LockTest):
         self.assertEqual(events, ['inventory', 'ownership'])
         self.assertEqual(reply['check']['notMine'], [process(31)])
 
+    def test_a_package_restored_to_its_acquire_version_is_not_new(self):
+        self.items = [deb('1.0')]
+        self.acquire()
+        self.items = [deb('2.0')]
+        with self.assertRaises(lock.LockError) as refused:
+            self.desktop.release('local_a', True)
+        self.assertEqual(refused.exception.details['check']['left'], [deb('2.0')])
+        self.assertEqual(refused.exception.details['check']['removed'], [])
+        self.items = [deb('1.0')]
+        reply = self.desktop.release('local_a', True)
+        self.assertEqual((reply['check']['preexisting'], reply['check']['removed']), ([deb('1.0')], []))
+
+    def test_a_package_installed_during_the_lock_is_left(self):
+        self.acquire()
+        self.items = [deb('1.0')]
+        with self.assertRaises(lock.LockError) as refused:
+            self.desktop.release('local_a', True)
+        self.assertEqual(refused.exception.details['check']['left'], [deb('1.0')])
+
+    def test_a_removed_package_refuses_release_until_a_reason_is_given(self):
+        self.items = [deb('1.0')]
+        self.acquire()
+        self.items = []
+        with self.assertRaises(lock.LockError) as refused:
+            self.desktop.release('local_a', True)
+        self.assertIn('--removed-ok', str(refused.exception))
+        self.assertEqual(refused.exception.details['check']['removed'], [deb('1.0')])
+        self.assertTrue((self.directory / 'desktop.lock').exists())
+        with self.assertRaises(lock.LockError):
+            self.desktop.release('local_a', True, removed_ok='  ')
+        reply = self.desktop.release('local_a', True, removed_ok='testing the no-package path')
+        receipt = json.loads(Path(reply['receipt']).read_text())
+        self.assertEqual(receipt['removedOk'], 'testing the no-package path')
+        self.assertEqual(receipt['check']['removed'], [deb('1.0')])
+
+    def test_an_old_baseline_without_a_package_never_reports_a_removal(self):
+        self.acquire()
+        reply = self.desktop.release('local_a', True)
+        self.assertNotIn('removedOk', json.loads(Path(reply['receipt']).read_text()))
+
+    def test_the_baseline_is_taken_only_once_the_desktop_is_free(self):
+        self.items = [deb('1.0')]
+        self.acquire()
+        taken = []
+        second = lock.Desktop(self.directory, 'f44', self.clock, lambda: (taken.append(1), ([], []))[1])
+        with self.assertRaises(lock.LockError):
+            self.acquire('local_b', desktop=second)
+        self.assertEqual(taken, [])
+        self.desktop.release('local_a', True)
+        self.acquire('local_b', desktop=second)
+        self.assertEqual(taken, [1])
+
     def test_a_lost_baseline_counts_everything_as_left(self):
         self.items = [process(11)]
         self.acquire()
@@ -310,7 +366,18 @@ class HostInventory(unittest.TestCase):
                 lock.collect_inventory(Path(folder), self.fake({}))
             items, notes = lock.collect_inventory(Path(folder), self.fake({'pgrep': (1, '')}))
         self.assertEqual(items, [])
-        self.assertEqual(notes, ['flatpak is not installed'])
+        self.assertEqual(notes, ['flatpak is not installed', 'no putgd package installed'])
+
+    def test_says_when_no_putgd_package_is_installed_even_with_config_files_left(self):
+        with tempfile.TemporaryDirectory() as folder:
+            outputs = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''),
+                       'dpkg-query': (0, 'rc  26.1122.6374~dev+gffeead0fc1f3')}
+            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs))
+            self.assertEqual((items, notes), ([], ['no putgd package installed '
+                                                   '(config files of deb 26.1122.6374~dev+gffeead0fc1f3 only)']))
+            outputs['dpkg-query'] = (1, '')
+            self.assertEqual(lock.collect_inventory(Path(folder), self.fake(outputs))[1],
+                             ['no putgd package installed'])
 
 
 class ProtonSessionLock(LockTest):
