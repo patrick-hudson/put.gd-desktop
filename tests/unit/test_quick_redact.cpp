@@ -98,6 +98,11 @@ private slots:
   QTest::newRow("a Luhn-failing card is not a phone")<<"Test 4111 1111 1111 1112 rejected"<<all<<QStringList{};
   QTest::newRow("a Luhn-failing Amex is not a phone")<<"Test 3782 822463 10006 rejected"<<all<<QStringList{};
   QTest::newRow("card with dashes and O confused")<<"Paid 5500-0000-0000-0OO4 ok"<<all<<QStringList{"card: 5500-0000-0000-0OO4"};
+  // #1846: two card numbers on one line, read word by word, stay two cards.
+  QTest::newRow("two cards on one line")<<"Card 4111 1111 1111 1111 Card 4111 1111 1111 1111"<<all<<QStringList{"card: 4111 1111 1111 1111","card: 4111 1111 1111 1111"};
+  QTest::newRow("two different cards on one line")<<"Card 4111 1111 1111 1111 Card 5555 5555 5555 4444"<<all<<QStringList{"card: 4111 1111 1111 1111","card: 5555 5555 5555 4444"};
+  QTest::newRow("two cards with labels whose letters are hex")<<"Card 4539 1488 0343 6467 Card 5425 2334 3010 9903"<<all<<QStringList{"card: 4539 1488 0343 6467","card: 5425 2334 3010 9903"};
+  QTest::newRow("two cards in a table row")<<"Visa 4111 1111 1111 1111 | MC 5555 5555 5555 4444"<<all<<QStringList{"card: 4111 1111 1111 1111","card: 5555 5555 5555 4444"};
   QTest::newRow("Luhn invalid is no card")<<"Ref 4111 1111 1111 1112 x"<<QStringList{"card"}<<QStringList{};
   // Token shapes are put together here, so that no literal in the source looks
   // like a credential to a secret scanner. All of them are made up.

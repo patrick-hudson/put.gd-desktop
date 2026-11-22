@@ -214,7 +214,10 @@ bool repeatedRun(const QString& run) {
  if(characters<24||characters*10<int(run.size())*9)return false;
  QList<int> sizes=counts.values();std::sort(sizes.begin(),sizes.end(),std::greater<int>());
  int top=0;for(int i=0;i<qMin(3,int(sizes.size()));++i)top+=sizes.at(i);
- return top*100>=characters*85&&sizes.first()*2>=characters;
+ // The commonest is a letter: test card numbers (4111 1111 …, 5555 5555 …)
+ // repeat digits, and two of them on one line are two cards (#1846).
+ const auto commonest=std::max_element(counts.cbegin(),counts.cend());
+ return top*100>=characters*85&&sizes.first()*2>=characters&&commonest.key().isLetter();
 }
 bool base64Run(const QString& run) {
  if(run.size()<32)return false;
@@ -278,6 +281,22 @@ QList<Segment> segments(const QList<int>& line,const QList<QString>& plain) {
 int pieceAt(const Segment& segment,qsizetype offset) {
  int piece=0;for(int i=0;i<segment.starts.size();++i)if(segment.starts.at(i)<=offset)piece=i;return piece;
 }
+// The run of pieces first to last as hexRun sees it: a piece of letters
+// alone with one outside hex and its misreadings ("Card", "MC", "Visa") is a
+// word, never part of a digest, and counts as characters outside hex. Without
+// this, two card numbers on one line passed as a hex run on the label's
+// letters (#1846).
+QString hexView(const Segment& segment,int first,int last) {
+ static const QString hex=QStringLiteral("0123456789abcdefABCDEFliI|!OoSt");
+ QString out;
+ for(int i=first;i<=last;++i){
+  const int from=segment.starts.at(i),to=i+1<segment.starts.size()?segment.starts.at(i+1):int(segment.text.size());
+  const auto piece=segment.text.mid(from,to-from);
+  const bool word=std::all_of(piece.cbegin(),piece.cend(),[](QChar c){return c.isLetter();})&&std::any_of(piece.cbegin(),piece.cend(),[&](QChar c){return !hex.contains(c);});
+  out+=word?QString(piece.size(),QChar('#')):piece;
+ }
+ return out;
+}
 // Marks found in one segment: prefixed tokens first, then the longest hex or
 // base64 run of whole pieces, then whatever is left either side of it.
 void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,int>>& found) {
@@ -319,7 +338,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   if(to-from>256&&j>i)continue;
   if(to-from<=bestLength)break;
   const auto run=segment.text.mid(from,to-from);
-  if(hexRun(run)||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  if(hexRun(hexView(segment,i,j))||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
  }
  if(bestFirst<0)return;
  segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast});segmentMatches(segment,bestLast+1,last,found);
