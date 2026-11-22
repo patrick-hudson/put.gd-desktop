@@ -978,9 +978,21 @@ and nothing more. Tests and evidence use only test values.
 ### Cost
 
 Each checked capture adds the time to stage it, start the helper, recognize it and match it,
-before its upload starts. Measured on the lab builders with today's engine:
-MEASUREMENTS_PENDING. A faster recognizer is tracked separately in
-[#1805](https://github.com/patrick-hudson/put.gd-desktop/issues/1805). A capture that is not checked (the option off, Edit & upload, a local-only
+before its upload starts. With today's engine, measured on the five lab desktops on 2026-11-21
+(#1806's final candidates) as the extra time to an uploaded link with the option on: Region times are medians of five warm runs; full
+screen is one run each.
+
+| Desktop | Region | Extra time | Full screen | Extra time |
+| --- | --- | --- | --- | --- |
+| Mint 22.3 Cinnamon, X11 (m74) | 676 × 138 | +0.38 s | 1920 × 1080 | +0.50 s |
+| Kubuntu 26.04 Plasma, Wayland (k72) | 676 × 138 | +0.34 s | 1920 × 1080 | +0.42 s |
+| Fedora 44 GNOME, Wayland (f44) | 676 × 178 | +0.23 s | 1920 × 1080 | +0.46 s |
+| Omarchy Hyprland guest (d69) | 676 × 178 | +0.29 s | 1280 × 800 | +0.31 s |
+| Fedora 45 Budgie labwc guest (d69) | 676 × 178 | +0.25 s | 1280 × 800 | +0.33 s |
+
+A screen full of dense text takes longer, as recognition does ([time budget](#time-budget)). The work on
+a faster recognizer, [#1808](https://github.com/patrick-hudson/put.gd-desktop/issues/1808) and
+[#1812](https://github.com/patrick-hudson/put.gd-desktop/issues/1812), will shorten it. A capture that is not checked (the option off, Edit & upload, a local-only
 capture) costs nothing.
 
 ## History

@@ -204,7 +204,7 @@ Turn on **Check captures for sensitive text before uploading** in **Settings →
 
 With it on, each region, window, monitor, desktop and scrolling capture, each image you upload from the clipboard, and each PNG or JPEG you upload with **Upload with put.gd** is read first, the same way Quick redact reads it.
 
-- **Nothing found:** it uploads as usual, with no prompt. The only difference is the time the reading takes: MEASUREMENTS_PENDING.
+- **Nothing found:** it uploads as usual, with no prompt. The only difference is the time the reading takes: on the test machines, about a quarter to half a second for a region, and up to half a second for a full 1080p screen. A screen full of small text takes longer.
 - **Something found:** nothing is uploaded yet, and put.gd shows a small panel. It says what it found, for example "This capture shows a card number and a key or token", with a preview that has the suggested redactions applied. It never shows the text it found. Choose:
   - **Redact and upload** (Enter) opens the editor with the suggested Redact marks already in place. Check them, add or remove any, then press **Upload**.
   - **Upload anyway** uploads the capture as it is.
