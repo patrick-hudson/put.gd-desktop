@@ -906,11 +906,14 @@ other tool active it does not. The user's side is in the
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
     a closing quote, bracket or separator at its end, so `08edc"` is taken and a bare `08edc` is
-    not (#1820). When the token's line leaves a quote open (`"6311…343`), a single word of up to
-    seven token characters that closes it on the next line is the token's tail too, letters alone
-    included: `edc"`, `edc",` or `edc”`, since recognition often reads the closing quote curly.
-    The quote is the evidence, so a word such as `add` under a digest with no open quote is not
-    taken (#1850).
+    not (#1820). When the token's words leave a quote open (`"6311…343`), the next line's first
+    recognized word is the token's tail too when it is 1 to 7 ASCII letters, digits or `+/=_-`, then
+    a closing quote, then only `)`, `]`, `}`, `;` or `,`: letters alone included, as in `edc"`,
+    `edc",` or `edc”` (recognition often reads the closing quote curly). A quote is open when its
+    family appears an odd number of times in the token's words, the first such family counting:
+    straight and curly double quotes, then straight and curly single quotes with the prime, then
+    the backtick. The quote is the evidence, so a word such as `add` under a digest with no open
+    quote is not taken (#1850).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
