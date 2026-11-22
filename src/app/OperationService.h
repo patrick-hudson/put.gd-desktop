@@ -277,7 +277,9 @@ private:
   // #1893: originalPath holds the capture before its style, not before covering.
   bool styleOriginal=false;
   // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
-  QByteArray unstyled={};};
+  QByteArray unstyled={};
+  // #1893: the style applied to the payload ({applied, pictureMissing?}), recorded once it is stored.
+  QJsonObject style={};};
  // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
  static bool needsStyle(const Job&);
  // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.

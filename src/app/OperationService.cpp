@@ -852,11 +852,9 @@ void OperationService::styleCapture(Job& job,Operation& op) {
  }
  job.payload={};job.payloadLease.reset();
  job.payload.kind="png";job.payload.bytes=std::move(styled);job.payload.mime="image/png";
- op.style={{"applied",true}};
- if(note=="picture_missing"){
-  op.style["pictureMissing"]=true;
-  const auto why=QStringLiteral("The backdrop picture couldn't be read, so put.gd used Graphite.");op.note=op.note.isEmpty()?why:op.note+" "+why;
- }
+ // Recorded on the operation only once the styled PNG is stored (run()).
+ job.style={{"applied",true}};
+ if(note=="picture_missing")job.style["pictureMissing"]=true;
  logging::info(logOperation(),"Capture style applied",{{"operationId",op.id},{"durationMs",double(clock.elapsed())},{"bytes",double(job.payload.bytes.size())}});
 }
 void OperationService::keepOriginals(Job& job,Operation& op) {
@@ -1345,18 +1343,24 @@ Operation OperationService::run(Job job) {
   // #1893: a style problem never fails a capture. When the store refuses the styled PNG for its size or for disk space,
   // the capture as it was is stored instead, once, and History says why.
   if(acquired.error&&!job.unstyled.isEmpty()&&QStringList{"input_excessive","destination_object_too_large","disk_space_insufficient"}.contains(acquired.error.code)){
+   logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(acquired.error)}});
+   // The unstyled capture is what will be stored: no -original beside it, and its disk space is free for it first.
+   // A covered capture's original from before covering stays.
+   if(job.styleOriginal){if(!job.originalPath.isEmpty()&&job.originalPath!="-")QFile::remove(job.originalPath);job.originalPath.clear();job.styleOriginal=false;}
+   job.style={};
    ClipboardPayload plain;plain.kind="png";plain.bytes=std::move(job.unstyled);plain.mime="image/png";
-   auto retried=artifacts.acquire(op.id,plain,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
-   if(!retried.error){
-    logging::warning(logOperation(),"Capture style was not applied",{{"operationId",op.id},{"error",logging::errorFields(acquired.error)}});
-    acquired=std::move(retried);op.style={};
+   acquired=artifacts.acquire(op.id,plain,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+   if(!acquired.error){
     const auto note=QStringLiteral("Capture style wasn't applied: the styled image was too large to store or upload, so the capture was kept as it was.");
     op.note=op.note.isEmpty()?note:op.note+" "+note;
-    // The unstyled capture is what was stored: no -original beside it.
-    if(job.styleOriginal){if(!job.originalPath.isEmpty()&&job.originalPath!="-")QFile::remove(job.originalPath);job.originalPath.clear();job.styleOriginal=false;}
    }
   }
   job.unstyled.clear();
+  // #1893: the style stands on the operation only now that its PNG is stored.
+  if(!acquired.error&&!job.style.isEmpty()){
+   op.style=job.style;
+   if(job.style["pictureMissing"].toBool()){const auto why=QStringLiteral("The backdrop picture couldn't be read, so put.gd used Graphite.");op.note=op.note.isEmpty()?why:op.note+" "+why;}
+  }
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   // A file-manager upload names the requested file or folder a late failure came from.
   if(acquired.error&&!job.origins.isEmpty()){
