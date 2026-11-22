@@ -1013,6 +1013,7 @@ private:
         const auto digest = progress["tokenDigest"].toString();
         const auto digestOf = [](const QString& value) { return QString::fromLatin1(QCryptographicHash::hash(value.toUtf8(), QCryptographicHash::Sha256).toHex()); };
         QList<QJsonObject> found;
+        bool unmatchable = false;
         for (const auto& value : r.data().toArray()) {
             const auto share = value.toObject();
             // An entry that isn't a readable share can't show that put.gd's link is absent.
@@ -1022,17 +1023,18 @@ private:
             }
             if (share["share_type"].toInt(-1) != 3) continue;
             const auto listed = share["token"].toString();
-            // A public link always carries its token; one without can't be matched, so it can't
-            // show that put.gd's link is absent either.
-            if (listed.isEmpty()) {
-                error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
-                return std::nullopt;
-            }
+            // Nextcloud hides the token of a link the caller can't manage (another user's link on
+            // a shared file). Such a link can't be matched, so it can't prove put.gd's is absent.
+            if (listed.isEmpty() && (!token.isEmpty() || !digest.isEmpty())) { unmatchable = true; continue; }
             const bool match = !token.isEmpty() ? listed == token : !digest.isEmpty() ? (!listed.isEmpty() && digestOf(listed) == digest) : share["label"].toString() == shareLabel(receipt);
             if (match) found.append(share);
         }
         if (found.size() > 1) {
             error = {"webdav_protocol", "Nextcloud has more than one link labelled as this upload's, so put.gd can't tell which is its own.", {{"requestStage", "share_inspect"}}};
+            return std::nullopt;
+        }
+        if (found.isEmpty() && unmatchable) {
+            error = {"webdav_protocol", "Nextcloud lists a link to this file without its token, so put.gd can't tell whether its own link is still there.", {{"requestStage", "share_inspect"}}};
             return std::nullopt;
         }
         return found.isEmpty() ? QJsonObject{} : found.first();
