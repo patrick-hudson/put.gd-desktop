@@ -112,21 +112,24 @@ void stretchContrast(GreyImage& band,int background);
 inline constexpr int tokenLength=12;
 inline constexpr float tokenConfidence=70;
 bool uncertainToken(const QString& text,float confidence);
-// The areas to read again around such words: each word's box grown by a third
-// of its height and one row above and below and by its height either side,
-// joined where they touch, inside width x height. The least confident first,
-// until `limit` areas or areas covering `share` of width x height are taken;
-// returned top to bottom. Only the words are read again, not their rows: on a
-// 4K terminal of tokens, whole rows made one band of the page (2.1 s to 7.6 s).
+// The rows to read again around such words: each word's box grown by a third
+// of its height and one row, joined where they overlap while the band stays
+// within four of its words' heights (a dense page is many short bands, not one
+// band of the page), inside [0, height). The least confident band first, so a
+// read cut short by time keeps the most doubtful lines. Whole rows, not only
+// the words: Tesseract reads a token in its line better (on the corpus, word
+// areas alone covered 47 more secrets against 96 for rows).
 struct TokenWord { QRect rect;float confidence=0; };
-QList<QRect> tokenAreas(const QList<TokenWord>& words,int width,int height,int limit=64,double share=0.25);
+QList<Band> tokenLines(const QList<TokenWord>& words,int height);
+// The second read stops when it has taken as long as the first pass, or this
+// long when the first was quicker (on the corpus it took at most 694 ms; a 4K
+// terminal full of tokens took 5.5 s, against 2.1 s for its first pass).
+inline constexpr int tokenTimeFloorMs=750;
 // A band copy for that second read: every pixel's distance from its local
 // background (the median of the 80 px around it), stretched so the strongest
 // ink nearby is black, on white. It reads dark and light, faint and coloured
 // backgrounds alike; scaled and bordered like bandImage.
 GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes);
-// The same for an area: columns [area.left(), area.right()] of the band.
-GreyImage contrastArea(const GreyView& source,const QRect& area,double scale,int border,const QList<Quad>& codes);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.

@@ -112,25 +112,22 @@ private slots:
   QVERIFY(!uncertainToken(QStringLiteral("internationalization"),20));    // no digit
   QVERIFY(!uncertainToken(QStringLiteral("2026-11-22.193401"),20));       // no letter
   QVERIFY(!uncertainToken(QStringLiteral("\"a1b2c3d4e5f\""),20));        // 11 once trimmed
-  // Two words of a row that touch once grown are one area; a word far along its
-  // row is its own; nothing beyond the words is read.
-  const auto areas=tokenAreas({{QRect(10,100,200,12),50},{QRect(220,104,100,12),20},{QRect(600,100,100,12),30},{QRect(10,10,200,12),60}},1000,200);
-  QCOMPARE(areas.size(),qsizetype(3));
-  QCOMPARE(areas[0],QRect(QPoint(0,5),QPoint(221,26)));
-  QCOMPARE(areas[1],QRect(QPoint(0,95),QPoint(331,120)));
-  QCOMPARE(areas[2],QRect(QPoint(588,95),QPoint(711,116)));
-  // Too many: the least confident first, by count and by share of the page.
-  const auto least=tokenAreas({{QRect(10,10,200,12),60},{QRect(10,100,200,12),20},{QRect(10,180,200,12),40}},1000,200,2);
-  QCOMPARE(least.size(),qsizetype(2));QCOMPARE(least[0].top(),95);QCOMPARE(least[1].top(),175);
-  QCOMPARE(tokenAreas({{QRect(10,10,200,12),60},{QRect(10,100,200,12),20}},1000,200,64,0.02).size(),qsizetype(1));
+  // Words of one row are one band, the least confident band first; a dense
+  // run of rows is cut into bands of at most four word heights.
+  const auto bands=tokenLines({{QRect(10,100,200,12),50},{QRect(300,104,100,12),20},{QRect(10,10,200,12),60}},200);
+  QCOMPARE(bands.size(),qsizetype(2));
+  QCOMPARE(bands[0].top,100-5);QCOMPARE(bands[0].bottom,116+5);
+  QCOMPARE(bands[1].top,10-5);QCOMPARE(bands[1].bottom,22+5);
+  QList<TokenWord> dense;for(int y=0;y<240;y+=16)dense.append({QRect(10,y,300,12),50});
+  const auto cut=tokenLines(dense,400);
+  QVERIFY(cut.size()>=4);
+  for(const auto& b:cut)QVERIFY2(b.bottom-b.top<=48,qPrintable(QString::number(b.bottom-b.top)));
   const int width=320,height=80;
   for(const auto& [paper,ink]:{std::pair{30,200},std::pair{240,40},std::pair{30,62},std::pair{0x58,0x93}}){
    QByteArray grey(width*height,char(paper));
    for(int y=30;y<42;++y)for(int x=20;x<300;++x)if((x/3)%2==0)grey[y*width+x]=char(ink);
    const auto copy=contrastBand({reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width},{26,46,false},2,4,{});
    QCOMPARE(copy.width,width*2+8);QCOMPARE(copy.height,20*2+8);
-   const auto part=contrastArea({reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width},QRect(100,26,60,20),2,4,{});
-   QCOMPARE(part.width,60*2+8);QCOMPARE(part.height,20*2+8);
    int darkest=255,lightest=0;
    for(int y=0;y<copy.height;++y)for(int x=0;x<copy.width;++x){const int v=uchar(copy.pixels.at(y*copy.width+x));darkest=std::min(darkest,v);lightest=std::max(lightest,v);}
    QVERIFY2(darkest<=40,qPrintable(QStringLiteral("paper %1 ink %2: darkest %3").arg(paper).arg(ink).arg(darkest)));
