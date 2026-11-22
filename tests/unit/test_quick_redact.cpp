@@ -362,6 +362,9 @@ private slots:
   QTest::newRow("a numeric password split before its @")<<"postgres://alice:12"+QString("34 @db/prod")<<QStringList{"key"}<<QStringList{"key: postgres://alice:12"+QString("34 @db/prod")};
   QTest::newRow("a password before a bracket and its @")<<"url postgres://alice:12"+QString("34)@db/prod")<<QStringList{"key"}<<QStringList{"key: postgres://alice:12"+QString("34)@db/prod")};
   QTest::newRow("a symbol password in nested JSON")<<"[{\"password\":\"R!$^"+QString("&*()#\"}]")<<QStringList{"key"}<<QStringList{"key: [{\"password\":\"R!$^"+QString("&*()#\"}]")};
+  QTest::newRow("a JSON password whose closing quote is its own word")<<"{\"password\":\"Hn4!vQ8"+QString("zR2#wLp \"}")<<QStringList{"key"}<<QStringList{"key: {\"password\":\"Hn4!vQ8"+QString("zR2#wLp")};
+  QTest::newRow("a password in a query inside a quoted URL")<<"{\"url\":\"https://db.example.test/x?user=a&password="+QString("Hn4vQ8zR2wLp\"}")<<QStringList{"key"}<<QStringList{"key: {\"url\":\"https://db.example.test/x?user=a&password="+QString("Hn4vQ8zR2wLp\"}")};
+  QTest::newRow("an @ in a URL's query is no password")<<"http://localhost:3000?owner=ops@example.test"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
   for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})
