@@ -510,10 +510,11 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   bar's column), and so does a pinned part drawn from the first screen (Firefox's link
   bubble at the bottom).
 - **Frames that come far apart over a page that repeats** (a stream that stalls to a few frames a second on a pull
-  request's tables) can still land a table period short in two ways: a place found again by the image lookup after
-  a lost stretch, and a frame far on judged "no movement" after ambiguous skips, which then becomes the reference.
-  A look-alike ahead in the same direction after a jump of more than a screen did not show on recorded frames
-  ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
+  request's tables) can still land a table period short in two known ways, being fixed in
+  [#1823](https://github.com/patrick-hudson/put.gd-desktop/issues/1823): a place found again by the image lookup
+  after a lost stretch, and a frame far on judged "no movement" after ambiguous skips, which then becomes the
+  reference. A look-alike ahead in the same direction after a jump of more than a screen did not show on recorded
+  frames and stays a limit ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - **A header that shows up while the steps are over half the frame** leaves page rows
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).
