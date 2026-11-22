@@ -51,7 +51,9 @@ QString hexView(const QString& word) {
  // ...and only where every group stays a group of four or fewer: "alice@2001:db8::1" is a name, then
  // an address (Sol on #1916).
  {static const QRegularExpression groups(QStringLiteral("[^:\\[\\]/]{5,}"));
-  const auto head=out.left(out.indexOf('/')<0?out.size():out.indexOf('/'));
+  // Inside its brackets when it has them ("[2001:db8::AB0D]:54321": the port is no group).
+  auto head=out.left(out.indexOf('/')<0?out.size():out.indexOf('/'));
+  if(head.contains(']'))head=head.left(head.indexOf(']'));
   if(groups.match(head).hasMatch())return word;}
  // A colon of "::" is read as a dash or a dot beside the other one; a stray
  // one beside a whole "::" is dropped rather than making ":::".
@@ -200,6 +202,8 @@ bool tokenPiece(const QString& word,bool loose=false) {
  if(from==to)return false;
  // Only around a token-like inside: 8 characters or more with a digit or a capital ("“note”" stays a word).
  {bool marked=false;for(qsizetype i=from;i<to;++i)marked=marked||word.at(i).isDigit()||word.at(i).isUpper();if(to-from<8||!marked){from=0;to=word.size();}}
+ // Loose: closing quotes and brackets ending the word ("fox\"}") are a value's end, not noise (Sol on #1916).
+ if(loose)while(to>from+1&&QStringLiteral("\"'`}])\u201D\u2019").contains(word.at(to-1)))--to;
  int noise=0;
  for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
  return noise<=qMax(1,int(to-from)/(loose?4:8));
@@ -893,7 +897,8 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     auto& first=f.segments.first();
     for(int i=1;i<first.words.size();++i){
      const auto& t=plain.at(first.words.at(i));
-     if(t.startsWith('#')||t.startsWith(QLatin1String("//"))){first.text.truncate(first.starts.at(i));first.words.resize(i);first.starts.resize(i);first.heads.clear();first.headsFound=false;first.counts={};break;}
+     // A comment marker as a word of its own: "//Q1WEr3…" inside an open quoted value is the value.
+     if(t==QLatin1String("#")||t==QLatin1String("//")){first.text.truncate(first.starts.at(i));first.words.resize(i);first.starts.resize(i);first.heads.clear();first.headsFound=false;first.counts={};break;}
     }
    }
    if(!f.segments.isEmpty()){
