@@ -422,9 +422,14 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    // for a whole read (Sol on #1904).
    auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
    // In a grown panel, also the text outside the rows its panel was read in (#1912).
+   // All of them, before the cap below counts the bands (Sol on #1924); one is
+   // left out only when a faint band already holds its middle row.
    if(p.readBottom>p.readTop){
-    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,9))
-     if(std::none_of(bands.cbegin(),bands.cend(),[&](const Band& b){return u.top<b.bottom&&b.top<u.bottom;}))bands.append(u);
+    const auto faintOnly=bands;
+    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height())){
+     const int middle=(u.top+u.bottom)/2;
+     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return middle>=b.top&&middle<b.bottom;}))bands.append(u);
+    }
     std::sort(bands.begin(),bands.end(),[](const Band& a,const Band& b){return a.top<b.top;});
    }
    if(bands.size()>8)faintCut=true;
