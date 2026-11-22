@@ -139,11 +139,13 @@ void DestinationStatus::prune() {
  bool removed=false;
  for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
  for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
- // An entry stays marked while a destination names it or owns it as putgd/sftp/<id>, in any
- // credentials mode, so keychain → session → keychain keeps it.
+ // An entry stays marked while a destination names it or owns it, in any credentials mode, as
+ // putgd/<id> (what Settings writes when it switches to the keychain) or putgd/sftp/<id>, so
+ // keychain → session → keychain keeps it.
  QSet<QString> named;
  for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
   if(const auto reference=(*it)["credentials"].toObject().value("reference");reference.isString())named.insert(reference.toString());
+  named.insert("putgd/"+it.key());
   if((*it)["provider"]=="sftp")named.insert("putgd/sftp/"+it.key());
  }
  for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!named.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;

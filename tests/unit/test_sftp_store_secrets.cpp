@@ -149,19 +149,20 @@ private slots:
         QCOMPARE(saved["keychainEntries"].toArray(), QJsonArray{"putgd/sftp/test"});
         QVERIFY(saved["destinations"].toObject().contains("test"));
     }
-    // Keychain, then session, then keychain again keeps the entry marked as saved.
+    // Keychain, then session, then keychain again keeps the entry marked as saved. Settings
+    // writes putgd/<id> when it switches a destination to the keychain.
     void aModeRoundTripKeepsTheMark() {
-        Rig rig;
+        Rig rig({sftpProfile("test", "putgd/test")});
         rig.keychain.unlockError = notFound;
         QJsonObject job;
         store(rig, {{sftp::passwordKey(), "synthetic-first-password"}}, job);
         QCOMPARE(job["state"].toString(), QString("completed"));
         rig.use({sftpProfile("test", {}, "session")});
         rig.status.prune();
-        rig.use({sftpProfile("test", "putgd/sftp/test")});
+        rig.use({sftpProfile("test", "putgd/test")});
         rig.status.prune();
-        QVERIFY(rig.status.keychainSaved("putgd/sftp/test"));
-        rig.keychain.forget("test", rig.keychain_reference());
+        QVERIFY(rig.status.keychainSaved("putgd/test"));
+        rig.keychain.forget("test", QJsonObject{{"mode", "keychain"}, {"reference", "putgd/test"}});
         store(rig, {{sftp::passwordKey(), "synthetic-new-password"}}, job);
         QCOMPARE(job["state"].toString(), QString("failed"));
         QCOMPARE(rig.keychain.saves, 1);
