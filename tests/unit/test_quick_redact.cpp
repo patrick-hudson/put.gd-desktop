@@ -56,6 +56,14 @@ private slots:
   const auto matches=quickRedact::find(both,all);
   QCOMPARE(matches.size(),qsizetype(1));QCOMPARE(matches.first().words,QList<int>{1});
   QCOMPARE(matches.first().category,QStringLiteral("key"));
+  // The second read is matched among the first read's other lines: a line of
+  // a public key read again stays part of its PEM block, not a key.
+  {const QString body=QStringLiteral("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo");
+   QList<RecognizedWord> pem{{QStringLiteral("-----BEGIN"),QRect(0,0,80,20),90,0},{QStringLiteral("PUBLIC"),QRect(88,0,48,20),90,0},{QStringLiteral("KEY-----"),QRect(144,0,64,20),90,0},
+                             {body.left(40)+QStringLiteral("§"),QRect(0,30,520,20),35,1},{QStringLiteral("-----END"),QRect(0,60,64,20),90,2},{QStringLiteral("PUBLIC"),QRect(72,60,48,20),90,2},{QStringLiteral("KEY-----"),QRect(128,60,64,20),90,2}};
+   QCOMPARE(found(pem,all),QStringList{});
+   pem.append({body,QRect(1,31,520,20),80,0,true});
+   QCOMPARE(found(pem,all),QStringList{});}
   // The first read's overlapping word is no neighbour of the second read's match.
   QImage image(400,40,QImage::Format_RGB32);image.fill(Qt::white);
   const auto boxes=quickRedact::markBoxes(both,matches.first(),image.rect(),image);

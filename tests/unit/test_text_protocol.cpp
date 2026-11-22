@@ -58,11 +58,11 @@ private slots:
   result.candidates={{"first",QRect(10,12,60,14),41,false},{"second",QRect(10,12,60,14),77,true}};
   const auto json=encodeResult(result,options);
   const auto object=QJsonDocument::fromJson(json).object();
-  QVERIFY(!object["candidates"].toArray().at(0).toObject().contains("second"));
-  QCOMPARE(object["candidates"].toArray().at(1).toObject()["second"],QJsonValue(true));
+  QVERIFY(!object.value("candidates").toArray().at(0).toObject().contains("second"));
+  QCOMPARE(object.value("candidates").toArray().at(1).toObject().value("second"),QJsonValue(true));
   TextResult back;QVERIFY(decodeResult(json,input,options,back));
   QCOMPARE(back.candidates.size(),qsizetype(2));QVERIFY(!back.candidates.at(0).second);QVERIFY(back.candidates.at(1).second);
-  auto falseMark=object;auto list=falseMark["candidates"].toArray();auto word=list.at(0).toObject();word["second"]=false;list[0]=word;falseMark["candidates"]=list;
+  auto falseMark=object;auto list=falseMark.value("candidates").toArray();auto word=list.at(0).toObject();word["second"]=false;list[0]=word;falseMark["candidates"]=list;
   TextResult refused;QVERIFY(!decodeResult(QJsonDocument(falseMark).toJson(QJsonDocument::Compact),input,options,refused));
  }
  void languageNamesAreIdentifiersOnly() {

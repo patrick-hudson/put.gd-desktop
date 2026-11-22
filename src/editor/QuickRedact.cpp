@@ -1593,17 +1593,32 @@ Result findRead(const QList<RecognizedWord>& candidates,const QStringList& chose
 }
 }
 // #1911: words from the second read of an uncertain token's line are matched
-// apart from the first read's. Side by side on one row, the two readings of a
-// line would be taken for one line ("SHORT_SHA=2f6424a SHORT_SHA=2f6424a"),
-// which on the 10k corpus flagged 142 more decoys. The second read's matches
-// are added to the first's; its patterns get what is left of the budget.
+// apart from the first read's. Side by side on one row the two readings of a
+// line would be taken for one ("SHORT_SHA=2f6424a SHORT_SHA=2f6424a"). The
+// second read is matched in the first read's page instead: its words take the
+// place of the first read's on their rows, so the lines around them (a key's
+// name above it, a PEM block's header) still count; read on their own, PEM
+// public-key lines were taken for keys. Only matches holding a second-read
+// word are added to the first read's; they get what is left of the budget.
 Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel,const PatternMatcher& matcher) {
  QList<int> firstRead,secondRead;
  for(int i=0;i<candidates.size();++i)(candidates.at(i).second?secondRead:firstRead).append(i);
  if(secondRead.isEmpty())return findRead(candidates,chosen,sources,budgetMs,progress,cancel,matcher);
  QElapsedTimer clock;clock.start();
+ // The page with the second read in place: first-read words whose centre lies
+ // within a second-read word's height on its row leave.
+ QList<int> replaced;
+ for(const int i:std::as_const(firstRead)){
+  const auto centre=candidates.at(i).rect.center().y();
+  if(std::none_of(secondRead.cbegin(),secondRead.cend(),[&](int j){const auto& r=candidates.at(j).rect;return centre>=r.top()&&centre<=r.bottom();}))replaced.append(i);
+ }
+ replaced+=secondRead;std::sort(replaced.begin(),replaced.end());
  const auto subset=[&](const QList<int>& indexes){QList<RecognizedWord> out;out.reserve(indexes.size());for(const int i:indexes)out.append(candidates.at(i));return out;};
- const auto back=[](Result result,const QList<int>& indexes){for(auto& match:result.matches)for(auto& word:match.words)word=indexes.at(word);return result;};
+ const auto back=[&](Result result,const QList<int>& indexes,bool onlySecond){
+  for(auto& match:result.matches)for(auto& word:match.words)word=indexes.at(word);
+  if(onlySecond)result.matches.removeIf([&](const Match& m){return std::none_of(m.words.cbegin(),m.words.cend(),[&](int w){return candidates.at(w).second;});});
+  return result;
+ };
  const auto merged=[](Result into,const Result& more){
   into.matches+=more.matches;
   for(const int p:more.skippedPatterns)if(!into.skippedPatterns.contains(p))into.skippedPatterns.append(p);
@@ -1612,12 +1627,12 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
   return into;
  };
  std::function<void(const Result&)> firstProgress,secondProgress;
- if(progress)firstProgress=[&](const Result& partial){progress(back(partial,firstRead));};
- const auto one=back(findRead(subset(firstRead),chosen,sources,budgetMs,firstProgress,cancel,matcher),firstRead);
+ if(progress)firstProgress=[&](const Result& partial){progress(back(partial,firstRead,false));};
+ const auto one=back(findRead(subset(firstRead),chosen,sources,budgetMs,firstProgress,cancel,matcher),firstRead,false);
  if(cancel&&cancel->load(std::memory_order_relaxed))return one;
- if(progress)secondProgress=[&](const Result& partial){progress(merged(one,back(partial,secondRead)));};
+ if(progress)secondProgress=[&](const Result& partial){progress(merged(one,back(partial,replaced,true)));};
  const int left=budgetMs>0?std::max(0,budgetMs-int(clock.elapsed())):budgetMs;
- return merged(one,back(findRead(subset(secondRead),chosen,sources,left,secondProgress,cancel,matcher),secondRead));
+ return merged(one,back(findRead(subset(replaced),chosen,sources,left,secondProgress,cancel,matcher),replaced,true));
 }
 namespace {
 QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringList& chosen) {
