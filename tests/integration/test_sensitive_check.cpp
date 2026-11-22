@@ -204,6 +204,16 @@ private slots:
   QVERIFY(putgd::test::waitFor(settled,40000));QVERIFY(!asked);QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));
   QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject()["card"].toInt(),1);
  }
+ // #1820: Warn kinds are matched one by one, so an IP match the covers take entirely can't hide the phone
+ // number beside it, which the IP match would otherwise have claimed a word of first.
+ void aCoveredWarnMatchHidesNoOtherWarnMatch(){
+  Fixture f(page({"Host 192.0.2.1:202 555 0123"}),true,false,kinds({{"ip","warn"},{"phone","warn"},{"list","redact"}}),QJsonArray{"eng"},QJsonArray{"192.0.2.1:202"});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QVERIFY2(sensitive["found"].toObject()["phone"].toInt()>=1,QJsonDocument(sensitive).toJson(QJsonDocument::Compact).constData());
+  QCOMPARE(sensitive["covered"].toObject()["list"].toInt(),1);
+ }
  // #1820: a check that can't finish asks, even with every kind on Redact automatically; what was found is covered first.
  void anUnfinishedCheckAsksEvenWithEveryKindOnRedact(){
   // A second language with no data installed: the check can't read everything.

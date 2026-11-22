@@ -1269,21 +1269,28 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
    (*apply)();
   };
   // #1820: `first` is matched on its own, before the rest, so a word one of its kinds finds is never
-  // claimed by another kind first; the two results are added together, overlaps and all.
+  // claimed by another kind first. Each other kind is then matched on its own too, on the same words, so
+  // no kind drops another's overlapping match. A later match whose words `first` took entirely is covered
+  // already and is not added; one it took only part of stays, overlap and all.
   QStringList head,rest;for(const auto& category:categories)(first.contains(category)?head:rest).append(category);
   if(head.isEmpty()||rest.isEmpty()){ui::runQuickRedact(g,candidates,categories,sources,applyFound);return;}
   ui::runQuickRedact(g,candidates,head,sources,[g=QPointer<EditorWindow>(g),candidates,rest,sources,applyFound](editor::quickRedact::Result before){
    if(!g)return;
-   ui::runQuickRedact(g,candidates,rest,sources,[before,applyFound](editor::quickRedact::Result after){
-    // A later match whose words the first kinds already took all of is covered already: it is not added.
-    // One they took only part of stays, overlap and all.
-    QSet<int> taken;for(const auto& match:std::as_const(before.matches))for(const int word:match.words)taken.insert(word);
-    auto merged=before;
-    for(const auto& match:std::as_const(after.matches))if(!std::all_of(match.words.cbegin(),match.words.cend(),[&](int word){return taken.contains(word);}))merged.matches.append(match);
-    for(const int index:std::as_const(after.skippedPatterns))if(!merged.skippedPatterns.contains(index))merged.skippedPatterns.append(index);
-    merged.nameUnchecked=before.nameUnchecked||after.nameUnchecked;merged.unfinished=before.unfinished||after.unfinished;
-    applyFound(merged);
-   });
+   QSet<int> taken;for(const auto& match:std::as_const(before.matches))for(const int word:match.words)taken.insert(word);
+   auto merged=std::make_shared<editor::quickRedact::Result>(std::move(before));
+   auto next=std::make_shared<std::function<void(int)>>();
+   *next=[g,candidates,rest,sources,applyFound,taken,merged,weak=std::weak_ptr<std::function<void(int)>>(next)](int index){
+    if(!g)return;
+    if(index>=rest.size()){applyFound(*merged);return;}
+    auto keep=weak.lock();
+    ui::runQuickRedact(g,candidates,{rest[index]},sources,[keep,index,taken,merged](editor::quickRedact::Result after){
+     for(const auto& match:std::as_const(after.matches))if(!std::all_of(match.words.cbegin(),match.words.cend(),[&](int word){return taken.contains(word);}))merged->matches.append(match);
+     for(const int pattern:std::as_const(after.skippedPatterns))if(!merged->skippedPatterns.contains(pattern))merged->skippedPatterns.append(pattern);
+     merged->nameUnchecked=merged->nameUnchecked||after.nameUnchecked;merged->unfinished=merged->unfinished||after.unfinished;
+     if(keep)(*keep)(index+1);
+    });
+   };
+   (*next)(0);
   });
  });
 }
