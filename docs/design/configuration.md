@@ -418,8 +418,8 @@ loopback host, or any HTTP with `allowInsecureHttp`. Validation performs no netw
 secret-store IO. Credentials are a keychain or session reference to the named values.
 See [Custom uploader](../user/custom-uploader.md#settings).
 
-`sftp` profiles (#1871) hold exactly `server`, `user`, `folder`, `publicUrlBase` and
-`hostKeyFingerprint` (schema `$defs/sftpSettings`). `server` is `host`, `host:port`,
+`sftp` profiles (#1871) hold `server`, `user`, `folder`, `publicUrlBase` and
+`hostKeyFingerprint`, and optionally `keyFile` (#1892) (schema `$defs/sftpSettings`). `server` is `host`, `host:port`,
 `[v6]:port`, a bare IPv6 literal or a `~/.ssh/config` Host alias: letters, digits, dots,
 hyphens and underscores, not starting with a hyphen or a dot, port 1–65535 (digits after a
 colon are always a port, never a path). It holds no user or path; Settings splits a pasted
@@ -435,7 +435,12 @@ out. `hostKeyFingerprint` is null or
 `TYPE SHA256:<43 base64 characters>`, the key trusted for this destination in put.gd's own
 `known_hosts` (`<config root>/ssh/known_hosts`, used only when the user's own files have no key
 for the server). The resident writes it itself when a trust succeeds, conditional on the
-configuration revision the trust began with; Settings clears it when `server` changes. The check fingerprint below covers all five fields,
+configuration revision the trust began with; Settings clears it when `server` changes. `keyFile`
+is absent or null (no chosen key) or the absolute path of a private key file, without control
+characters, `%` or `${` (ssh would expand those), at most 4096 bytes. Settings writes it only
+while SSH key holds a path, so a destination without one is saved as before #1892 (an explicit
+null already saved is kept as null); a key file
+ssh can't use yet still saves, with its problem shown beside the field. The check fingerprint below covers every field,
 so trusting a key, like any other change, makes an earlier test stale. A new SFTP destination
 has credentials `{"mode":"session","reference":null}`; switching it to the keychain in Settings fills an empty Reference field with
 `putgd/<profile id>`, and if Reference is still empty when it is saved in keychain mode, Settings
