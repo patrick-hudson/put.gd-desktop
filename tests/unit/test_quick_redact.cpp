@@ -95,6 +95,43 @@ private slots:
   QTest::newRow("a tail under a token with no open quote stays out")<<"SECRET "+signing.mid(1)+" | edc\" | later"<<QStringList{"key"}<<QStringList{"key: SECRET "+signing.mid(1)};
   QTest::newRow("a tail under a closed quote stays out")<<"SECRET "+signing+"\" | edc\" | later"<<QStringList{"key"}<<QStringList{"key: SECRET "+signing+"\""};
   QTest::newRow("a tail under a quote closed curly stays out")<<"SECRET "+signing+"\u201D | edc\" | later"<<QStringList{"key"}<<QStringList{"key: SECRET "+signing+"\u201D"};
+  {// #1856: a token that ends its line takes no line below it that holds a card,
+   // an address or a key of its own; each is its own match. Built in pieces for
+   // the repository's secret scan.
+   const auto token=QString("gh")+"p_"+"aB3dE5fG7hJ9kL1mN3pQ"+"5rS7tU9vW1xY3zA5";
+   const auto hex=QString("\"6311d6de7be2f57b64c74d411a0b3")+"7935201bc28fc32d62a927d6cfb5d343";
+   QTest::newRow("a token ending its line takes no card lines")<<"Bearer "+token+" | 4539 1488 0343 6467 | 4111 1111 1111 1111 | SIGNING_HEX = "+hex<<all
+    <<QStringList{"key: "+token,"card: 4539 1488 0343 6467","card: 4111 1111 1111 1111","key: SIGNING_HEX = "+hex};
+   QTest::newRow("a token ending its line takes no address line")<<"Bearer "+token+" | ops-alerts@example.com"<<all<<QStringList{"key: "+token,"email: ops-alerts@example.com"};
+   const auto aws=QString("AKIA")+"IOSFODNN7EXAMPLE";
+   QTest::newRow("a token ending its line takes no key line")<<"Bearer "+token+" | "+aws<<QStringList{"key"}<<QStringList{"key: "+token,"key: "+aws};
+   const QString jwt=QString("e")+"yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+"e"+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ."+"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+   const auto a=jwt.left(37),b=jwt.mid(37,47),c=jwt.mid(84);
+   // Card lines read as one key still take the next line: its misread card (Luhn fails) stays covered.
+   QTest::newRow("card lines read as a key keep a misread card below")<<"Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 | Visa 4111 1171 1171 1171 MC 5555 5555 5555 4444"<<QStringList{"card","key"}
+    <<QStringList{"key: Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 Visa 4111 1171 1171 1171 MC 5555 5555 5555 4444"};
+   QTest::newRow("JWT wrapped just after a dot")<<"id_token: "+a+" | "+b+" | "+c<<QStringList{"key"}<<QStringList{"key: "+a+" "+b+" "+c};
+   // Sol on #1863: the dot lets a JWT's own next part through, not another key...
+   QTest::newRow("a JWT part ending in a dot takes no key line")<<"id_token: "+a+" | "+aws<<QStringList{"key"}<<QStringList{"key: "+a,"key: "+aws};
+   // ...a card earlier on the line leaves a wrapped JWT whole...
+   QTest::newRow("a card before a wrapped JWT")<<"Card 4111 1111 1111 1111 id_token: "+a+" | "+b+" | "+c<<QStringList{"card","key"}<<QStringList{"key: 4111 1111 1111 1111 id_token: "+a+" "+b+" "+c};
+   // ...a JWT has no length bound...
+   QString payload;for(int i=0;i<12;++i)payload+=QString("e")+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ";
+   const QString big=jwt.left(37)+payload+"."+jwt.mid(88);
+   QTest::newRow("a long JWT wrapped over four lines")<<"id_token: "+big.left(200)+" | "+big.mid(200,205)+" | "+big.mid(405,205)+" | "+big.mid(610)<<QStringList{"key"}<<QStringList{"key: "+big.left(200)+" "+big.mid(200,205)+" "+big.mid(405,205)+" "+big.mid(610)};
+   // ...a hex run after a card on its line keeps its wrapped tail...
+   QTest::newRow("a hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 | 5ad015a3"<<QStringList{"card","key"}
+    <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f00a9f86d081884c7d659a2feaa0c5 5ad015a3"};
+   QTest::newRow("a short hex run after a card keeps its wrapped tail")<<"4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 | 0a9f86d08188"<<QStringList{"card","key"}
+    <<QStringList{"key: 4111 1111 1111 1111 a3bf4f1b2b0b822cd15d6c15b0f0 0a9f86d08188"};
+   QTest::newRow("a quoted misread hex run after a card keeps its wrapped tail")<<QString("4111 1111 1111 1111 \u201Ca3bf4f1b2b0b822cd15d6cI5b0f0 | 0a9f86d08188\u201D")<<QStringList{"card","key"}
+    <<QStringList{QString("key: 4111 1111 1111 1111 \u201Ca3bf4f1b2b0b822cd15d6cI5b0f0 0a9f86d08188\u201D")};
+   QTest::newRow("a hex run in guillemets after a card keeps its wrapped tail")<<QString("4111 1111 1111 1111 \u00ABa3bf4f1b2b0b822cd15d6c15b0f0 | 0a9f86d08188\u00BB")<<QStringList{"card","key"}
+    <<QStringList{QString("key: 4111 1111 1111 1111 \u00ABa3bf4f1b2b0b822cd15d6c15b0f0 0a9f86d08188\u00BB")};
+   QTest::newRow("card lines read as a key take no number below them")<<"Card 4539 1488 0343 6467 Card 5425 2334 3010 9903 | 20261122"<<QStringList{"card","key"}
+    <<QStringList{"key: Card 4539 1488 0343 6467 Card 5425 2334 3010 9903"};
+   // ...and an address whose dot recognition lost is still an address.
+   QTest::newRow("a token ending its line takes no address that lost its dot")<<"Bearer "+token+" | ops@EXAMPLE COM"<<all<<QStringList{"key: "+token,"email: ops@EXAMPLE COM"};}
   // m74 acceptance: a card cell right after an IPv4 cell, as recognition read a table row.
   // m74 xed: a string literal read with a straight and a curly quote before the key.
   QTest::newRow("AWS key after two quotes")<<QString("AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")<<QStringList{"key"}<<QStringList{QString("key: AWS_KEY = \"\u201CAKIAIOSFODNN7EXAMPLE\"")};
@@ -205,6 +242,20 @@ private slots:
   const auto row=[](int gap){QList<RecognizedWord> out;int x=0;for(const auto* text:{"7946","0958","7946","0959"}){out.append({QString::fromLatin1(text),QRect(x,0,32,20),90,0});x+=32+(out.size()==2?gap:8);}return out;};
   QCOMPARE(found(row(120),QStringList{"phone"}),(QStringList{"phone: 7946 0958","phone: 7946 0959"}));
   QCOMPARE(found(row(8),QStringList{"phone"}),QStringList{});
+ }
+ // #1859: a token that ends its line takes a token-shaped next line only where a wrap leaves it:
+ // right below, about a line height down, starting no further right than the line above.
+ void aTokenTakesOnlyALineAWrapLeaves() {
+  const auto token=QString("gh")+"p_"+"aB3dE5fG7hJ9kL1mN3pQ"+"5rS7tU9vW";
+  const auto page=[&](int dx,int dy){auto out=words("Your token "+token+" | 1xY3zA5bC7");out.last().rect.translate(dx,dy);return out;};
+  QCOMPARE(found(page(0,0),QStringList{"key"}),QStringList{"key: "+token+" 1xY3zA5bC7"});
+  QCOMPARE(found(page(0,350),QStringList{"key"}),QStringList{"key: "+token});
+  QCOMPARE(found(page(600,0),QStringList{"key"}),QStringList{"key: "+token});
+  // Sol on #1863: word boxes are shorter than the line pitch (rows 50 px apart, boxes 20 px high)...
+  QCOMPARE(found(page(0,20),QStringList{"key"}),QStringList{"key: "+token+" 1xY3zA5bC7"});
+  // ...and a wide gap between words above is no character width.
+  auto spread=page(0,0);spread[2].rect.translate(400,0);spread.last().rect.translate(60,0);
+  QCOMPARE(found(spread,QStringList{"key"}),QStringList{"key: "+token});
  }
  void namesAndListsMatchTheirSpellings_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");

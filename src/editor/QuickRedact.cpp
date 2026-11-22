@@ -191,8 +191,12 @@ bool tokenPiece(const QString& word) {
 // Hex, as recognition misreads it: l, i, I, |, ! for 1; O, o, ©, ° for 0; S
 // for 5; t and £ for f; € for e. At least 32 characters, at most one in twelve
 // outside hex once mapped, and both digits and letters.
-bool hexRun(const QString& run) {
+const QHash<QChar,QChar>& hexConfusions() {
  static const QHash<QChar,QChar> confused{{'l','1'},{'i','1'},{'I','1'},{'|','1'},{'!','1'},{'O','0'},{'o','0'},{QChar(0xa9),'0'},{QChar(0xb0),'0'},{'S','5'},{'t','f'},{QChar(0xa3),'f'},{QChar(0x20ac),'e'}};
+ return confused;
+}
+bool hexRun(const QString& run) {
+ const auto& confused=hexConfusions();
  if(run.size()<32)return false;
  int other=0,digits=0,letters=0;
  for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;}
@@ -267,6 +271,9 @@ const QList<Prefix>& prefixes() {
  return list;
 }
 struct Segment {QList<int> words;QString text;QList<int> starts;};
+// A mark in a segment, by piece; a prefixed token also keeps where its prefix
+// starts in the segment's text and its nominal length (0 for a hex or base64 run).
+struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;};
 // The token segments of one line: maximal runs of token pieces, joined.
 QList<Segment> segments(const QList<int>& line,const QList<QString>& plain) {
  QList<Segment> out;Segment current;
@@ -282,7 +289,7 @@ int pieceAt(const Segment& segment,qsizetype offset) {
 }
 // Marks found in one segment: prefixed tokens first, then the longest hex or
 // base64 run of whole pieces, then whatever is left either side of it.
-void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,int>>& found) {
+void segmentMatches(const Segment& segment,int first,int last,QList<Found>& found) {
  if(first>last)return;
  const auto text=segment.text.mid(segment.starts.at(first),(last+1<segment.starts.size()?segment.starts.at(last+1):segment.text.size())-segment.starts.at(first));
  // A misread character inside a body reads as a letter for the body's sake,
@@ -338,7 +345,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
    while(end<last&&segment.starts.at(end+1)-segment.starts.at(start)<prefix.length*3/2)++end;
    end=qMax(end,pieceAt(segment,base+match.capturedEnd()-1));
   }
-  segmentMatches(segment,first,start-1,found);found.append({start,end});segmentMatches(segment,end+1,last,found);return;
+  segmentMatches(segment,first,start-1,found);found.append({start,end,base+int(match.capturedStart()),prefix.length,prefix.dotted});segmentMatches(segment,end+1,last,found);return;
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the
  // interface thread; a longer blob passes on a part of it and is marked whole.
@@ -351,8 +358,9 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   if(hexRun(run)||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
  }
  if(bestFirst<0)return;
- segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast});segmentMatches(segment,bestLast+1,last,found);
+ segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast,-1,0});segmentMatches(segment,bestLast+1,last,found);
 }
+bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards=nullptr);
 QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList<QString>& plain) {
  QMap<int,QList<int>> lines;for(int i=0;i<candidates.size();++i)lines[candidates.at(i).line].append(i);
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
@@ -376,7 +384,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   }
   if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
   for(const auto& segment:segments(line,plain)){
-   QList<QPair<int,int>> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
+   QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
    if(found.isEmpty())continue;
    // A segment with a token in it is marked whole: recognition splits a token
    // into pieces whose ends often fail a test on their own. Only ordinary words
@@ -389,7 +397,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      for(qsizetype i=0;i<letters.size();++i)if(letters.at(i).isDigit()||(i>0&&letters.at(i).isUpper()))return false;
      return true;
     };
-    int core=int(segment.words.size()),coreEnd=-1;for(const auto& [from,to]:std::as_const(found)){core=qMin(core,from);coreEnd=qMax(coreEnd,to);}
+    int core=int(segment.words.size()),coreEnd=-1;Found last;for(const auto& f:std::as_const(found)){core=qMin(core,f.from);if(f.to>coreEnd){coreEnd=f.to;last=f;}}
     int a=0,b=int(segment.words.size())-1;
     while(a<core&&plainWord(a))++a;
     while(b>coreEnd&&plainWord(b))--b;
@@ -410,8 +418,39 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto odd=[&](const QString& family){qsizetype n=0;for(const auto c:std::as_const(first))if(family.contains(c))++n;return n%2==1;};
      for(const auto& family:{QStringLiteral("\"\u201C\u201D"),QStringLiteral("'\u2018\u2019\u2032"),QStringLiteral("`")})if(odd(family)){closing=family;break;}
     }
+    // #1856: a prefixed token of bounded length takes wrapped remainders only
+    // up to half again its nominal length, counted from its prefix (a JSON web
+    // token has no bound), and never a line that holds a card, an address or
+    // another token of its own: a token ending its line took the two card lines
+    // below it as one key. A hex or base64 run that holds a card itself is card
+    // lines read as a key (#1846): it takes only more lines of card digits,
+    // which hold the misread cards (Luhn fails) it covers, or the tail of a
+    // hex fragment after the card. A hex or base64 run after the card on its line is a token of its
+    // own, followed as any is.
+    // #1859: and only a line that a wrap would leave: right below, within about
+    // a line's pitch (word boxes are shorter than the pitch), starting no
+    // further right than the line above (an editor's wrap indent is up to four
+    // characters).
+    bool ownLine=false,hexAfter=false;
+    if(last.length==0){
+     const auto run=segment.words.mid(last.from,last.to-last.from+1);QSet<int> cards;
+     if(otherMatch(run,plain,candidates,&cards)&&!cards.isEmpty()){
+      qsizetype after=-1;for(qsizetype i=0;i<run.size();++i)if(cards.contains(run.at(i)))after=i;
+      QString rest;for(qsizetype i=after+1;i<run.size();++i)rest+=plain.at(run.at(i));
+      ownLine=!hexRun(rest)&&!base64Run(rest);
+      // Hex as recognition misreads it, after any opening quote.
+      static const QString quotes=QStringLiteral("\"'`\u201C\u2018\u00AB");
+      qsizetype from=0;while(from<rest.size()&&quotes.contains(rest.at(from)))++from;
+      hexAfter=from<rest.size()&&std::all_of(rest.cbegin()+from,rest.cend(),[](QChar c){c=hexConfusions().value(c,c);return c.isDigit()||(c>='a'&&c<='f')||(c>='A'&&c<='F');});
+     }
+    }
+    const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
+    int used=last.length>0?int(segment.text.size())-last.prefix:0;
+    QString ending=segment.text;
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
+     {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
+      if(below.top()<=above.top()||below.top()-above.top()>3*qMax(above.height(),below.height())||below.left()>above.left()+4.5*character)break;}
      const auto next=segments(nextLine,plain);
      const auto nextText=lineText(nextLine);
      // A remainder of letters alone that closes the quote the token opened: the next line's first
@@ -434,6 +473,19 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto& lastWord=plain.at(next.first().words.last());
      const bool shortTail=tail.size()>=3&&tail.size()<8&&digit&&!word.match(tail).hasMatch()&&next.first().words.size()==1&&!lastWord.isEmpty()&&terminators.contains(lastWord.back());
      if(!((tail.size()>=8||shortTail)&&(digit||upper)&&lowercase*10<=tail.size()*3&&tail.size()<=qMax(8,int(segment.text.size()))+2))break;
+     if(last.length>0&&!last.dotted&&used+tail.size()>last.length*3/2)break;
+     if(ownLine){
+      // More card digits, or the hex run's own wrapped tail ("5ad015a3"), never words such as "SIGNING_HEX =".
+      static const QRegularExpression hexTail(QStringLiteral("^[0-9A-Fa-f]+[\"'`)\\]};,\u201D\u2019\u00BB]*$"));
+      int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
+      if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
+     }
+     else if(otherMatch(next.first().words,plain,candidates))break;
+     {QList<Found> own;segmentMatches(next.first(),0,int(next.first().words.size())-1,own);
+      // A JSON web token wrapped just after one of its dots starts its next line with "eyJ".
+      const bool part=last.dotted&&(ending.endsWith('.')||ending.endsWith(','));
+      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!(part&&f.dotted);}))break;}
+     used+=int(tail.size());ending=tail;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;
     }
@@ -472,6 +524,25 @@ const QList<Rule>& rules() {
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
+}
+// #1856: words that hold a card number or an address of their own, read as the
+// card and email rules read them (an address's lost dot restored, #1840).
+bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<RecognizedWord>& candidates,QSet<int>* cards) {
+ QList<QString> asRead,numbers;QList<RecognizedWord> boxes;
+ for(const int w:words){asRead.append(plain.at(w));numbers.append(digitView(plain.at(w)));boxes.append(candidates.at(w));}
+ const auto email=emailView(asRead,boxes);
+ bool found=false;
+ // Cards first, so every card's words are collected before an address answers.
+ for(const auto* kind:{"card","email"})for(const auto& rule:rules()){
+  if(rule.category!=QLatin1String(kind))continue;
+  const auto joined=join(rule.view==1?numbers:email,boxes,false,rule.category,{});
+  for(auto it=rule.pattern.globalMatch(joined.text);it.hasNext();){
+   const auto m=it.next();if(rule.valid&&!rule.valid(m.captured()))continue;
+   found=true;if(!cards||rule.category!="card")return true;
+   for(const int i:owners(joined,m.capturedStart(),m.capturedLength()))cards->insert(words.at(i));
+  }
+ }
+ return found;
 }
 }
 QStringList categories() {return {"email","phone","ip","card","key","name","list"};}
