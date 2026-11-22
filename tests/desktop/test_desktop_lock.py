@@ -630,8 +630,11 @@ class HeldAndRun(LockTest):
         self.assertEqual(code, 3)  # the command's own exit code
         self.assertEqual(process.waits, [200] * 2)  # a third of the 10-minute lease
         self.assertNotEqual(lock.parse_lock((self.directory / 'desktop.lock').read_text())['heartbeat'], old)
-        broken = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 0],
-                             during=lambda: self.desktop.release('local_a', verified_clean=True))
+        def give_up():  # the holder releases mid-command; the host is as the acquire found it (on a builder,
+            # its own putgd package and sessions: the stand-in acquire inventories the machine the test runs on)
+            unchanged = self.desktop.read_baseline()
+            lock.Desktop(self.directory, 'k72', self.clock, lambda: (unchanged, [])).release('local_a', True)
+        broken = FakeProcess([lock.subprocess.TimeoutExpired('ssh', 1), 0], during=give_up)
         code, _ = self.run_main('--', 'sleep', '1200', process=broken)
         self.assertEqual((code, broken.terminated), (1, True))
 
