@@ -4513,6 +4513,31 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     }
   }
   if (stillish && !wholeMove && (pick < 0 || cands[size_t(pick)].cells < share + kStillMargin)) return noMovement(true);
+  // A page that repeats (a pull request's tables, one every 1,010 rows) fits
+  // the pair at its place and a period away. Turning back more than half a
+  // screen from one frame to the next, against the way the page was going,
+  // is the look-alike when the pair also fits, nearly as well, at a place
+  // that goes on the way the page went: GitHub's page, moved on 414 rows
+  // after a pause, was placed 596 rows back at 0.987 of its cells against
+  // 0.967 for the right place, and every later frame was a table short
+  // (#1797). Not on the driver's hint, which says where the page is.
+  if (pick >= 0 && !hinted && skipRun_ == 0 && lastMove_ != 0) {
+    const Candidate& p = cands[size_t(pick)];
+    if ((p.d > 0) != (lastMove_ > 0) && 2 * std::abs(p.d) > height_) {
+      int ahead = -1;
+      for (size_t i = 0; i < cands.size(); ++i) {
+        const Candidate& c = cands[i];
+        if (!c.accepted || c.d == 0 || (c.d > 0) != (lastMove_ > 0) || c.cells < opts_.recoverCells ||
+            c.cells < p.cells - opts_.recoverTie)
+          continue;
+        // The page, not a part at a pace of its own: it moves at least as
+        // much of the frame as the turn back does.
+        if (c.movingTiles < p.movingTiles) continue;
+        if (ahead < 0 || c.cells > cands[size_t(ahead)].cells) ahead = int(i);
+      }
+      if (ahead >= 0) pick = ahead;
+    }
+  }
 
   // Nothing to compare only when there is nothing: a frame and a reference
   // that both show enough are no blank stretch, whatever the search found
