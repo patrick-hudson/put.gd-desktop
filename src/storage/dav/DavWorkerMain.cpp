@@ -968,7 +968,15 @@ private:
             }
             const auto list = data.isArray() ? data.toArray() : QJsonArray{data};
             QList<QJsonObject> named;
-            for (const auto& value : list) if (value.toObject()["id"].toVariant().toString() == recordedId) named.append(value.toObject());
+            for (const auto& value : list) {
+                // An entry without an ID can't show the recorded share is gone.
+                const auto id = value.toObject().value("id").toVariant().toString();
+                if (!value.isObject() || id.isEmpty()) {
+                    error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                    return std::nullopt;
+                }
+                if (id == recordedId) named.append(value.toObject());
+            }
             if (named.isEmpty()) { shareIdGone_ = true; return QJsonObject{}; }
             // Exactly one share with exactly that ID; anything else can't be told apart.
             if (named.size() != 1 || named.first()["share_type"].toInt(-1) != 3) {
