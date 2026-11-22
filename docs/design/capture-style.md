@@ -83,7 +83,11 @@ says "Capture style wasn't applied: the styled image would be larger than put.gd
 A styled PNG is larger than the capture alone. When only the style would pass the Largest file limit
 or the destination's maximum object size, the capture goes out as it was, with "Capture style wasn't
 applied: the styled image would be larger than this destination or put.gd's file size limit
-accepts." A style problem never fails or blocks a capture. If the style can't be drawn for another reason
+accepts." The waiting bytes are counted when the decision is made, before the store admits the file. A
+cleanup that frees space while the style is drawn can leave a capture unstyled that would have fit.
+An import that adds bytes meanwhile, or a disk filled to within the styled PNG's size, can make the
+store refuse the styled capture where the unstyled one would have fitted. Then the capture fails as
+any capture that doesn't fit does. These races are documented, not engineered around. A style problem never fails or blocks a capture in any other case. If the style can't be drawn for another reason
 (the image-job child fails or times out), the capture is stored as captured, with "Capture style
 wasn't applied: put.gd couldn't draw it." and a warning in the log.
 
