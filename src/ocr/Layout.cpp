@@ -109,17 +109,15 @@ Profile measure(const GreyView& image,const QList<Quad>& codes){
  const bool inkIsLight=profile.dark;
  for(int y=0;y<image.height;++y){
   const auto* row=image.row(y);const auto* inCode=rowMask(y);int ink=0;
+  int faint=0;
   for(int x=0;x<image.width;++x){
    const int p=row[x];
-   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!inCode||!inCode[x]))++ink;
+   if(inCode&&inCode[x])continue;
+   const int away=std::abs(p-profile.background);
+   if(inkIsLight?p>threshold:p<=threshold){if(away>=inkContrast)++ink;}
+   else if(x>0&&away>=faintContrast&&std::abs(p-row[x-1])>=faintStep)++faint;
   }
-  profile.rowInk[y]=ink;
-  int faint=0;
-  for(int x=1;x<image.width;++x){
-   const int p=row[x];
-   if(!(inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=faintContrast&&std::abs(p-row[x-1])>=faintStep&&(!inCode||!inCode[x]))++faint;
-  }
-  profile.faintInk[y]=faint;
+  profile.rowInk[y]=ink;profile.faintInk[y]=faint;
  }
  QList<int> runs;int run=0;
  for(int y=0;y<=image.height;++y){
@@ -365,7 +363,14 @@ QList<Band> faintLines(const Profile& profile,int width,int height,int limit){
   if(faint){if(start<0)start=y;continue;}
   if(start>=0){
    const int run=y-start;
-   if(run>=least&&run<=most)out.append({std::max(0,start-2),std::min(height,y+2),false});
+   // Padded by up to two rows, never into a row with ink at the threshold: a bright neighbour
+   // in the copy would pull Otsu's threshold above the faint line again (Sol on #1904).
+   if(run>=least&&run<=most){
+    int top=start,bottom=y;
+    while(top>0&&start-top<2&&profile.blank(top-1,width))--top;
+    while(bottom<height&&bottom-y<2&&profile.blank(bottom,width))++bottom;
+    out.append({top,bottom,false});
+   }
    start=-1;
   }
  }

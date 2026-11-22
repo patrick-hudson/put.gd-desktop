@@ -92,7 +92,8 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
 // #1894: the rows that hold only faint ink, as bands to read again with their
 // contrast stretched: runs of rows with faint ink and no ink at the threshold,
 // at least half a line height (three rows) and at most three line heights
-// tall, padded by two rows, at most `limit` of them, top to bottom.
+// tall, padded by up to two rows that hold no ink at the threshold, at most
+// `limit` of them, top to bottom.
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
 // Stretches a band copy's contrast so its darkest pixel is black and the
 // background white: faint ink becomes ink Otsu keeps.

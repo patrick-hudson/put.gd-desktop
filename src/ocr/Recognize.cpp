@@ -378,17 +378,25 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // first engine, each with its contrast stretched, for Quick redact's
  // candidates only (a job that asks for them). Pages with none cost nothing.
  struct Faint { int panel=0;Band band;Outcome outcome; };
- QList<Faint> faint;
+ QList<Faint> faint;bool faintCut=false;
  if(options.candidates&&!shared->stop.load()){
   for(int i=0;i<panelList.size()&&!shared->stop.load();++i){
    const auto& p=panelList[i];
-   for(const auto& band:faintLines(p.profile,p.rect.width(),p.rect.height())){
-    const int deadline=shared->budgetMs>0?shared->left():0;
-    if(shared->budgetMs>0&&(deadline<=0||deadline<shared->slowest.load()))break;
+   // At most eight runs a panel; one more left unread, or one the budget leaves unread, cut
+   // short or failed, marks the result truncated, so the check before uploading never takes it
+   // for a whole read (Sol on #1904).
+   const auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
+   if(bands.size()>8)faintCut=true;
+   for(int b=0;b<bands.size()&&b<8;++b){
+    const auto& band=bands.at(b);
+    if(shared->budgetMs>0&&shared->left()<=0){faintCut=true;break;}
     auto copy=bandImage(p.view,band,p.plan.scale,options.limits.border,p.codes,p.profile.background,p.invert);
     stretchContrast(copy,p.invert?255-p.profile.background:p.profile.background);
+    const int deadline=shared->budgetMs>0?shared->left():0;
+    if(shared->budgetMs>0&&deadline<=0){faintCut=true;break;}
     Faint f{i,band,{}};
     f.outcome.text=shared->first.recognize(copy,p.plan.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
+    if(f.outcome.failed||f.outcome.cutShort){faintCut=true;if(f.outcome.failed)break;}
     f.outcome.done=!f.outcome.failed;
     if(f.outcome.done)faint.append(std::move(f));
    }
@@ -460,6 +468,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);
+ if(faintCut)result.truncated=true;
  // The faint lines join the words after the copied text is made: they are not
  // copied (kept stays false), and a word where one was already read is left out.
  for(const auto& f:std::as_const(faint)){

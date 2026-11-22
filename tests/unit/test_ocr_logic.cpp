@@ -86,6 +86,12 @@ private slots:
   QCOMPARE(found.size(),qsizetype(1));
   QVERIFY(found.first().top<=100&&found.first().bottom>=112&&found.first().bottom-found.first().top<=20);
   QVERIFY(lines(page(0,false)).isEmpty());
+  // A bright line two rows above stays out of the faint band (Sol on #1904): its ink would pull
+  // the band's threshold above the faint line again.
+  {auto tight=page(72,false);
+   for(int y=86;y<98;++y)for(int x=20;x<380;++x)if((x/2)%2==0)tight[y*width+x]=char(220);
+   const auto close=lines(tight);
+   QCOMPARE(close.size(),qsizetype(1));QVERIFY2(close.first().top>=98,qPrintable(QString::number(close.first().top)));}
   QVERIFY(lines(page(0,true)).isEmpty());
   GreyImage band;band.width=4;band.height=1;band.pixels=QByteArray("\xb6\xc8\xdc\xdc",4);
   stretchContrast(band,220);
