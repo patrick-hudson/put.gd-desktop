@@ -464,6 +464,10 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
         os.utime(brk, ns=(3, 3))  # and the other way round
         self.assertEqual(self.desktop.status()['last']['event'], 'break')
+        later = brk.with_name(brk.name.replace('-break.json', '-break-1.json'))
+        brk.rename(later)  # a suffixed break written before an unsuffixed release
+        os.utime(later, ns=(1, 1))
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
 
 
 class QuietLease(LockTest):
