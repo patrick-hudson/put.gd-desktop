@@ -423,13 +423,12 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
    // In a grown panel, also the text outside the rows its panel was read in (#1912).
    // All of them, before the cap below counts the bands (Sol on #1924); one is
-   // left out only when a faint band already holds its middle row.
+   // left out only when a faint band holds all of it (CodeRabbit on #1924): read
+   // whole otherwise, a word read twice is dropped when the faint words join.
    if(p.readBottom>p.readTop){
     const auto faintOnly=bands;
-    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height())){
-     const int middle=(u.top+u.bottom)/2;
-     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return middle>=b.top&&middle<b.bottom;}))bands.append(u);
-    }
+    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height()))
+     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return b.top<=u.top&&u.bottom<=b.bottom;}))bands.append(u);
     std::sort(bands.begin(),bands.end(),[](const Band& a,const Band& b){return a.top<b.top;});
    }
    if(bands.size()>8)faintCut=true;
