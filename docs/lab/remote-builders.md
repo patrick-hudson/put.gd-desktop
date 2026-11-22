@@ -745,9 +745,10 @@ confirms that your session already holds it, and only then runs CMD on the
 builder over the same pinned BatchMode SSH, with `PUTGD_LAB_SESSION` set to your
 session. CMD's words reach the builder as you gave them; put a shell expression
 in `sh -c '...'`. If the lock isn't yours it exits 1 without running CMD. While
-CMD runs it renews the lock three times per lease. A refused renewal, or two in
-a row that can't reach the host, stop CMD's SSH and exit 1; anything CMD started
-on the host may still be running. Otherwise it exits with CMD's exit code and
+CMD runs it renews the lock every 5 minutes, or every third of the lease if
+that is shorter. A refused renewal stops CMD's SSH and exits 1, and so does one
+that can't reach the host when the lease would lapse before the next try;
+anything CMD started on the host may still be running. Otherwise it exits with CMD's exit code and
 keeps the lock, so you can run the next step the same way.
 `--release` gives the lock back after CMD as `release --verified-clean` would,
 and is still refused if something new is left on the host.
