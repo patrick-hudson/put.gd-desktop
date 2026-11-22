@@ -1223,18 +1223,20 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('ui.sftpDestination', params)
 
     @server.tool(annotations=effect)
-    async def sftp_destination_setup(action: str, profile_id: str, expected_revision: str, fingerprint: str | None = None, folder: str | None = None) -> Json:
-        """Start an SFTP destination's setup step (#1871) and return its setupId; poll get_setup_job until state leaves running. resolve: what ssh -G makes of the saved address (result line, such as "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)", and resolved host, port, user, keyFiles, agent, proxy); fails with ssh_not_installed when there is no OpenSSH client. trust (fingerprint): a test that met an unknown or changed host key failed with ssh_host_unknown_key or ssh_trusted_key_changed and details.fingerprint; pass that exact fingerprint. put.gd fetches the key again over the same route, adds it to its own known_hosts only if it still matches (else ssh_host_key_mismatch), and records it in the destination's hostKeyFingerprint itself, only while the configuration is still expected_revision. It refuses when your own known_hosts already has a key for the server (ssh_host_key_known: that one decides), when your SSH settings turn known_hosts off (ssh_known_hosts_off), or when the server's HostKeyAlias is a pattern (ssh_host_alias_pattern). createFolder (folder): a test that failed with sftp_folder_missing; pass the destination's saved Folder on server exactly (up to 4096 bytes); put.gd creates it and every missing parent. Uploads never create folders."""
+    async def sftp_destination_setup(action: str, profile_id: str, expected_revision: str, fingerprint: str | None = None, folder: str | None = None,
+                                     path: str | None = None) -> Json:
+        """Start an SFTP destination's setup step (#1871) and return its setupId; poll get_setup_job until state leaves running. resolve: what ssh -G makes of the saved address (result line, such as "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)", and resolved host, port, user, keyFiles, agent, proxy); fails with ssh_not_installed when there is no OpenSSH client. trust (fingerprint): a test that met an unknown or changed host key failed with ssh_host_unknown_key or ssh_trusted_key_changed and details.fingerprint; pass that exact fingerprint. put.gd fetches the key again over the same route, adds it to its own known_hosts only if it still matches (else ssh_host_key_mismatch), and records it in the destination's hostKeyFingerprint itself, only while the configuration is still expected_revision. It refuses when your own known_hosts already has a key for the server (ssh_host_key_known: that one decides), when your SSH settings turn known_hosts off (ssh_known_hosts_off), or when the server's HostKeyAlias is a pattern (ssh_host_alias_pattern). createFolder (folder, path): a test that failed with sftp_folder_missing; pass the destination's saved Folder on server exactly (up to 4096 bytes) and the error's details.path; put.gd creates it and every missing parent only while the folder still resolves to that path. Uploads never create folders."""
         kinds = {'resolve': 'setup.inspectAccount', 'trust': 'setup.trustHostKey', 'createFolder': 'setup.createFolder'}
         if (action not in kinds or not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256 or
-                (action == 'trust') != (fingerprint is not None) or (action == 'createFolder') != (folder is not None) or
+                (action == 'trust') != (fingerprint is not None) or (action == 'createFolder') != (folder is not None) or (action == 'createFolder') != (path is not None) or
+                (path is not None and (not identifier(path, 4096) or len(path.encode()) > 4096)) or
                 (fingerprint is not None and not identifier(fingerprint, 128)) or (folder is not None and (not identifier(folder, 4096) or len(folder.encode()) > 4096))):
             return invalid()
         params: Json = {'profileId': profile_id, 'expectedRevision': expected_revision}
         if fingerprint is not None:
             params['input'] = {'fingerprint': fingerprint}
         if folder is not None:
-            params['input'] = {'name': folder}
+            params['input'] = {'name': folder, 'path': path}
         return await adapter.call(kinds[action], params, timeout=130)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))

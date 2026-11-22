@@ -23,7 +23,9 @@ public:
     void setSettings(const QJsonObject&);
     QJsonObject settings() const;
     // Fills Server, User and Folder from an address, as a paste does; false when it isn't one.
-    bool applyAddress(const QString& text);
+    // An address that isn't valid as a whole changes no field: Server goes back to `previous`
+    // (the text before the paste; null: as typed, with any password left out) and says why.
+    bool applyAddress(const QString& text, const QString* previous = nullptr);
     // Typed values by credential-store name: only the ones typed; the others stay as stored.
     QMap<QString, QString> typedSecrets() const;
     bool hasTypedSecrets() const;
@@ -47,13 +49,16 @@ signals:
     void edited();
     void secretsEdited();
     void trustRequested(const QString& fingerprint);
-    void createFolderRequested(const QString& folder);
+    // `path` is the folder the test reported missing, as the server resolves it.
+    void createFolderRequested(const QString& folder, const QString& path);
     // Clear next to a stored password or passphrase: forget that one (an empty value stored).
     void clearRequested(const QString& name);
     // Server or User changed and saved: what ssh resolves may have changed.
     void addressChanged();
 private:
     void refreshProblems();
+    // An edited Folder or Server is another folder than the one a test found missing.
+    void hideCreateFolder();
     void finished(QLineEdit*);
     bool loading_ = false, built_ = false;
     QLineEdit *server_ = nullptr, *user_ = nullptr, *folder_ = nullptr, *link_ = nullptr, *password_ = nullptr, *passphrase_ = nullptr;

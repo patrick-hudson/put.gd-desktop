@@ -109,6 +109,7 @@ private slots:
         QCOMPARE(kind({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': "), PromptKind::Passphrase);
         QCOMPARE(sftp::matchPrompt({}, "Enter passphrase for key '/home/alice/.ssh/id_ed25519': ", "alice", hosts, keys).keyFile, keys.first());
         for (const auto* other : {"alice@jump.example.com's password: ", "bob@files.example.com's password: ", "Password: ", "(alice@files.example.com) Password: ",
+                                  "alice@files.example.com's password:", " alice@files.example.com's password: ", "Enter passphrase for key '/home/alice/.ssh/id_ed25519':",
                                   "Enter passphrase for key '/home/alice/.ssh/other': ", "Verification code: ", "Enter passphrase: "})
             QCOMPARE(kind({}, other), PromptKind::Other);
         QCOMPARE(kind("confirm", "alice@files.example.com's password: "), PromptKind::Other);

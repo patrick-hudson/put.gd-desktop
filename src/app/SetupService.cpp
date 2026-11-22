@@ -9,7 +9,11 @@ namespace {
 Error invalid() {return {"invalid_request","Invalid setup fields or parameter types",{}};}
 bool validInput(const QString& kind,const QJsonObject& input) {
  // An SFTP folder path may be up to 4096 bytes (#1871); Proton's folder name keeps its own 255 below.
- if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().toUtf8().size()<=4096;
+ if(kind=="createFolder"){
+  // SFTP also names the path its test found missing (#1871); Proton names the folder only.
+  if(input.contains("path")&&(input.size()!=2||!input["path"].isString()||input["path"].toString().isEmpty()||input["path"].toString().toUtf8().size()>4096))return false;
+  return input.size()==(input.contains("path")?2:1)&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().toUtf8().size()<=4096;
+ }
  // SFTP (#1871): the host key fingerprint the user (or agent) was shown, exactly.
  if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;

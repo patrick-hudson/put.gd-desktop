@@ -92,7 +92,7 @@ Error Client::request(quint32 id, const QByteArray& packet) {
     }
     return {};
 }
-Error Client::await(quint32 id, wire::Reply& reply) {
+Error Client::await(quint32 id, wire::Reply& reply, int deadlineMs) {
     QElapsedTimer waited;
     waited.start();
     while (true) {
@@ -106,7 +106,7 @@ Error Client::await(quint32 id, wire::Reply& reply) {
             abandoned_.insert(id);
             return cancelledError();
         }
-        if (waited.elapsed() > replyDeadlineMs) { broken_ = true; return {"sftp_timeout", "The server stopped answering", {}}; }
+        if (waited.elapsed() > deadlineMs) { broken_ = true; return {"sftp_timeout", "The server stopped answering", {}}; }
         if (auto e = pump(100)) return e;
     }
 }
@@ -210,11 +210,11 @@ Error Client::fstat(const QByteArray& handle, wire::Attributes& attributes, Stat
     status = {};
     return {};
 }
-Error Client::openExclusive(const QByteArray& path, QByteArray& handle, Status& status) {
+Error Client::openExclusive(const QByteArray& path, QByteArray& handle, Status& status, int deadlineMs) {
     const auto id = nextId();
     if (auto e = request(id, wire::open(id, path, wire::OpenWrite | wire::OpenCreate | wire::OpenExclusive))) return e;
     wire::Reply reply;
-    if (auto e = await(id, reply)) return e;
+    if (auto e = await(id, reply, deadlineMs)) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
     if (reply.type != wire::Handle) { protocolError_ = QStringLiteral("The server answered an open with something else"); return lost(); }
     handle = reply.handle;

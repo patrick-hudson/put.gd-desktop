@@ -24,6 +24,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QRandomGenerator>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QUuid>
 #include <condition_variable>
@@ -128,36 +129,47 @@ QString statusName(quint32 code) {
 }
 
 // The connection a session keeps: ssh, its SFTP client, where the login folder is, and the
-// server identity it verified (the resolved host, port and user, and the host key ssh used).
+// server identity: the resolved host, port and user, and the known_hosts lines that hold a key
+// for it in the files this connection's ssh checked (`knownError` when they couldn't be read).
 struct Connection {
     QByteArray key;
     std::unique_ptr<SshProcess> ssh;
     std::unique_ptr<Client> client;
+    std::unique_ptr<QTemporaryDir> pinFolder;  // the recorded lines a pinned connection checks
     Resolved resolved;
-    QString home, hostKey;
+    QString home;
+    QStringList knownLines;
+    Error knownError;
     bool alive() { return ssh && client && !client->broken() && ssh->running(); }
     void close() {
         client.reset();
         if (ssh) ssh->finish(2000);
         ssh.reset();
+        pinFolder.reset();
+    }
+    // The fingerprint shown for the server: computed from the recorded line, for display only.
+    QString fingerprint() const {
+        for (const auto& line : knownLines) if (!line.startsWith('@')) if (const auto f = fingerprintOfLine(line); !f.isEmpty()) return f;
+        return {};
     }
     QJsonObject server() const {
-        return {{"host", resolved.host}, {"port", resolved.port}, {"user", resolved.user}, {"hostKeyFingerprint", hostKey}};
+        return {{"host", resolved.host}, {"port", resolved.port}, {"user", resolved.user}, {"knownHosts", QJsonArray::fromStringList(knownLines)}, {"hostKeyFingerprint", fingerprint()}};
     }
 };
 
 class Worker {
 public:
-    QJsonObject run(const QJsonObject& request, Error& error, bool& uncertain) {
+    // `secrets` arrives apart from the request and is emptied here once read.
+    QJsonObject run(const QJsonObject& request, QJsonObject& secrets, Error& error, bool& uncertain) {
         request_ = request;
         id_ = qint64(request["id"].toDouble());
         destination_ = Destination::fromJson(request["destination"].toObject());
         settings_ = destination_.settings;
         knownHosts_ = request["knownHostsFile"].toString();
-        // Only methods that sign in get the password and passphrase; they're dropped when this request ends.
-        const auto secrets = request_.take("credentials").toObject();
+        // Only methods that sign in get the password and passphrase; they're dropped after sign-in.
         password_ = secrets[passwordKey()].toString();
         passphrase_ = secrets[passphraseKey()].toString();
+        secrets = {};
         hadPassword_ = !password_.isEmpty();
         hadPassphrase_ = !passphrase_.isEmpty();
         // Computed once: a second connection in this request must not see the wiped secrets.
@@ -199,8 +211,11 @@ private:
     // A connection for this request: the session's, when it still runs with the same
     // settings and secrets, else a new one. `probe` fetches an unknown or changed host
     // key, so a test can show it.
-    bool connect(Error& error, bool probe) {
-        const auto key = requestKey_;
+    // `pinned`: the known_hosts lines a receipt recorded. ssh then checks the server against them
+    // alone (no other user, global or put.gd file), so it proves the server still holds that key.
+    bool connect(Error& error, bool probe, const QStringList& pinned = {}) {
+        auto key = requestKey_;
+        if (!pinned.isEmpty()) key += QCryptographicHash::hash(pinned.join('\n').toUtf8(), QCryptographicHash::Sha256);
         if (connection_.key == key && connection_.alive()) {
             connection_.client->setCancellation(&io.cancelled);
             return true;
@@ -215,8 +230,30 @@ private:
         if (error) return false;
         if (!env.contains("SSH_AUTH_SOCK") || env.value("SSH_AUTH_SOCK").isEmpty())
             if (const auto socket = agentSocket(env); !socket.isEmpty()) env.insert("SSH_AUTH_SOCK", socket);
-        // The user's own known_hosts decides alone once it holds any key for this server.
-        const auto knownHosts = knownHostsOption(resolved, knownHosts_, userKnowsHost(resolved, env));
+        QString knownHosts;
+        KnownLookup user;
+        QStringList checked;  // the files this connection's ssh checks
+        std::unique_ptr<QTemporaryDir> pinFolder;
+        if (pinned.isEmpty()) {
+            // The user's own known_hosts decides alone once it holds any key for this server; a
+            // lookup that fails decides nothing, and nothing connects.
+            user = userKnownLookup(resolved, env);
+            if (user.error) { error = user.error; return false; }
+            if (user.lines.isEmpty())
+                if (auto e = checkPinFile(knownHosts_)) { error = e; return false; }
+            knownHosts = knownHostsOption(resolved, knownHosts_, !user.lines.isEmpty());
+            checked = resolved.userKnownHosts + resolved.globalKnownHosts;
+            if (user.lines.isEmpty() && !resolved.userKnownHostsNone) checked.append(knownHosts_);
+        } else {
+            pinFolder = std::make_unique<QTemporaryDir>();
+            QFile file(pinFolder->filePath("known_hosts"));
+            if (!pinFolder->isValid() || !file.open(QIODevice::WriteOnly) || !file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner) ||
+                file.write((pinned.join('\n') + '\n').toUtf8()) < 0 || !file.flush()) {
+                error = {"sftp_failed", "put.gd couldn't prepare the recorded host key for this check", {}};
+                return false;
+            }
+            knownHosts = "\"" + file.fileName() + "\"";
+        }
         QStringList hosts{resolved.host};
         if (!resolved.hostKeyAlias.isEmpty()) hosts.prepend(resolved.hostKeyAlias);
         Askpass askpass(password_, passphrase_, resolved.user, hosts, resolved.identityFiles);
@@ -225,23 +262,21 @@ private:
         QString why;
         if (!askpass.start(env, askpassProgram(), &why)) { error = {"ssh_failed", "put.gd couldn't prepare its password prompt: " + why, {}}; return false; }
         auto ssh = std::make_unique<SshProcess>();
-        if (!ssh->start(program, connectionArguments(settings_, knownHosts), env, &why)) {
+        if (!ssh->start(program, connectionArguments(settings_, knownHosts, !pinned.isEmpty()), env, &why)) {
             error = {"ssh_failed", "put.gd couldn't start ssh: " + why, {}};
             return false;
         }
+        askpass.setSshPid(ssh->pid());
         auto client = std::make_unique<Client>(*ssh, &io.cancelled);
         bool noise = false;
         const auto failed = client->handshake(noise);
         // Signing in is over either way: nothing more is answered, and both secrets are forgotten.
         askpass.stop();
-        password_.fill(QChar(0));
-        password_.clear();
-        passphrase_.fill(QChar(0));
-        passphrase_.clear();
+        forgetSecrets();
         if (failed) {
             if (failed.code == QLatin1String("cancelled")) { error = failed; return false; }
             ssh->finish(3000);
-            FailureContext context{resolved, hadPassword_, hadPassphrase_, askpass.asked(), askpass.passphraseKey(), knownHosts_, noise, ssh->exitCode()};
+            FailureContext context{resolved, hadPassword_, hadPassphrase_, askpass.asked(), askpass.passphraseKey(), user.file, !pinned.isEmpty(), noise, ssh->exitCode()};
             error = classify(ssh->errorText(), context);
             if (error.code == QLatin1String("ssh_failed") && failed.code == QLatin1String("sftp_protocol")) error.message = failed.message;
             if (askpass.asked().contains(QLatin1String("touch"))) error.details["touched"] = true;
@@ -261,15 +296,35 @@ private:
             return false;
         }
         connection_.key = key;
-        connection_.hostKey = usedHostKey(ssh->errorText());
+        connection_.pinFolder = std::move(pinFolder);
+        connection_.knownLines = pinned;
+        connection_.knownError = {};
+        if (pinned.isEmpty()) {
+            // What ssh accepted this server by: every line for it in the files it checked.
+            const auto lookup = lookupHost(checked, resolved.token(), env);
+            connection_.knownLines = lookup.lines;
+            connection_.knownError = lookup.error ? lookup.error : lookup.lines.isEmpty() ? Error{"sftp_failed", "put.gd couldn't find the known_hosts entry that verified this server, so it can't record the upload", {}} : Error{};
+        }
         connection_.ssh = std::move(ssh);
         connection_.client = std::move(client);
         connection_.resolved = resolved;
         QByteArray home;
         Client::Status status;
         if (auto e = connection_.client->realpath(".", home, status)) { error = e; connection_.close(); return false; }
-        connection_.home = status.code == wire::Ok ? textOf(home) : QString();
+        connection_.home = status.code == wire::Ok && utf8RoundTrip(home) ? textOf(home) : QString();
         return true;
+    }
+    void forgetSecrets() {
+        password_.fill(QChar(0));
+        password_.clear();
+        passphrase_.fill(QChar(0));
+        passphrase_.clear();
+    }
+    // A server path put.gd records: valid UTF-8 that comes back byte for byte.
+    static bool utf8RoundTrip(const QByteArray& bytes) {
+        QStringDecoder decode(QStringDecoder::Utf8);
+        const QString text = decode(bytes);
+        return !decode.hasError() && text.toUtf8() == bytes;
     }
     // The folder as the settings name it: the login folder joined to a relative path.
     QString namedFolder() const {
@@ -308,6 +363,10 @@ private:
             return false;
         }
         if (status.code != wire::Ok) { error = refusal(status, folder, QStringLiteral("open")); return false; }
+        if (!utf8RoundTrip(resolved)) {
+            error = {"sftp_path_unsupported", "The server names the folder " + folder + " with bytes that aren't UTF-8, which put.gd can't record. Choose a folder with a plain name.", {{"path", folder}}};
+            return false;
+        }
         wire::Attributes attributes;
         if (auto e = client().lstat(resolved, attributes, status, true)) { error = e; return false; }
         if (status.code == wire::NoSuchFile) {
@@ -353,7 +412,9 @@ private:
             error = {"ssh_host_alias_pattern", "This server's HostKeyAlias isn't one literal host name, so put.gd can't trust a key for it.", {}};
             return {};
         }
-        if (userKnowsHost(resolved, env)) {
+        const auto user = userKnownLookup(resolved, env);
+        if (user.error) { error = user.error; return {}; }
+        if (!user.lines.isEmpty()) {
             error = {"ssh_host_key_known",
                      "Your own known_hosts already has a key for " + token + ", and put.gd uses it. If the server's key changed, remove the old one with ssh-keygen -R " + token + " and test again.",
                      {}};
@@ -371,6 +432,7 @@ private:
                      {{"fingerprint", fingerprint}}};
             return {};
         }
+        if (auto e = checkPinFile(knownHosts_)) { error = e; return {}; }
         if (auto e = trustLine(knownHosts_, line, settings_["hostKeyFingerprint"].toString())) { error = e; return {}; }
         connection_.close();
         return {{"fingerprint", fingerprint}, {"host", token}};
@@ -419,7 +481,8 @@ private:
         io.emitLine({{"id", double(id_)}, {"event", "progress"}, {"phase", "preparing"}, {"bytesTransferred", 0}, {"bytesTotal", double(artifact.bytes)}});
         QString folder;
         if (!connect(error, false) || !folderReady(error, folder)) return {};
-        if (connection_.hostKey.isEmpty()) { error = {"sftp_failed", "put.gd couldn't tell which host key verified the server, so it can't record this upload", {}}; return {}; }
+        // An upload is recorded with the known_hosts lines that verified its server; without them, nothing is sent.
+        if (connection_.knownError) { error = connection_.knownError; return {}; }
         const auto path = join(folder, candidate);
         // The path is journaled before the open, so a lost reply leaves its name on record.
         if (auto e = io.checkpoint(id_, {{"schemaVersion", 1}, {"phase", "opening"}, {"path", path}, {"server", connection_.server()}})) { error = e; return {}; }
@@ -428,10 +491,12 @@ private:
         {
             // The final name, created only if nothing has it: never a temporary name renamed over it,
             // which several servers would let replace another file. Once OPEN is sent its reply is
-            // awaited (within the client's deadline) whatever a cancel says, so a handle is never lost.
+            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, inside
+            // the 30 the resident gives a cancelled request before it stops the helper.
+            if (io.cancelled) { error = {"cancelled", "Cancelled before anything was sent", {}}; return {}; }
             const std::atomic_bool never{false};
             client().setCancellation(&never);
-            const auto failed = client().openExclusive(bytesOf(path), handle, status);
+            const auto failed = client().openExclusive(bytesOf(path), handle, status, 20000);
             client().setCancellation(&io.cancelled);
             if (failed) { error = failed; error.details["path"] = path; uncertain = true; return {}; }
         }
@@ -443,15 +508,25 @@ private:
             error = refusal(status, path, QStringLiteral("create"), artifact.bytes);
             return {};
         }
-        // From here on the file exists and is ours: any failure removes it.
+        // From here on the file exists and is ours: any failure removes it, and the message says
+        // it was removed only when the server confirmed that.
         const auto abandon = [&](Error e) {
             const bool removed = discard(handle, path);
+            handle.clear();
             uncertain = !removed && e.code != QLatin1String("artifact_changed");
-            if (!removed) e.details["path"] = path;
+            if (removed) {
+                if (e.code == QLatin1String("cancelled")) e.message = QStringLiteral("Cancelled; the partial file was removed from the server");
+                else if (e.code == QLatin1String("artifact_changed")) e.message = QStringLiteral("The file changed while it was uploading; the partial file was removed from the server");
+            } else {
+                e.details["path"] = path;
+                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled; put.gd couldn't confirm the partial file " + path + " was removed. Check it on the server.";
+                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while it was uploading; put.gd couldn't confirm the partial file " + path + " was removed. Check it on the server.";
+                else e.message += " put.gd couldn't confirm the partial file " + path + " was removed.";
+            }
             error = e;
             return QJsonObject{};
         };
-        if (io.cancelled) return abandon({"cancelled", "Cancelled; the partial file was removed from the server", {}});
+        if (io.cancelled) return abandon({"cancelled", "Cancelled", {}});
         QCryptographicHash hash(QCryptographicHash::Sha256);
         QElapsedTimer last;
         last.start();
@@ -460,13 +535,10 @@ private:
             last.restart();
             io.emitLine({{"id", double(id_)}, {"event", "progress"}, {"phase", "uploading"}, {"bytesTransferred", double(done)}, {"bytesTotal", double(artifact.bytes)}});
         };
-        if (auto e = client().write(handle, source, artifact.bytes, hash, sent, status)) {
-            if (e.code == QLatin1String("cancelled")) e.message = QStringLiteral("Cancelled; the partial file was removed from the server");
-            return abandon(e);
-        }
+        if (auto e = client().write(handle, source, artifact.bytes, hash, sent, status)) return abandon(e);
         if (status.code != wire::Ok) return abandon(refusal(status, path, QStringLiteral("write"), artifact.bytes));
         const auto sha = QString::fromLatin1(hash.result().toHex());
-        if (!artifact.sha256.isEmpty() && sha != artifact.sha256) return abandon({"artifact_changed", "The file changed while it was uploading; nothing was kept on the server", {}});
+        if (!artifact.sha256.isEmpty() && sha != artifact.sha256) return abandon({"artifact_changed", "The file changed while it was uploading", {}});
         io.emitLine({{"id", double(id_)}, {"event", "progress"}, {"phase", "finalizing"}, {"bytesTransferred", double(artifact.bytes)}, {"bytesTotal", double(artifact.bytes)}});
         // Every byte is on the server: a cancel from here on is too late, and the upload finishes.
         const std::atomic_bool finishing{false};
@@ -485,8 +557,8 @@ private:
         if (auto e = io.checkpoint(id_, {{"schemaVersion", 1}, {"phase", "written"}, {"path", path}, {"server", connection_.server()}, {"written", evidence}}))
             return abandon(e);
         if (auto e = client().close(handle, status)) { error = e; error.details["path"] = path; uncertain = true; return {}; }
-        if (status.code != wire::Ok) return abandon(refusal(status, path, QStringLiteral("save"), artifact.bytes));
         handle.clear();
+        if (status.code != wire::Ok) return abandon(refusal(status, path, QStringLiteral("save"), artifact.bytes));
         wire::Attributes stored;
         if (auto e = client().lstat(bytesOf(path), stored, status)) { error = e; error.details["path"] = path; uncertain = true; return {}; }
         // The file under the name is the one this handle wrote, or nothing is recorded.
@@ -520,33 +592,38 @@ private:
         sha = QString::fromLatin1(hash.result().toHex());
         return true;
     }
-    // The recorded upload's server is the one this connection reached: same host, port, user
-    // and host key. A destination edited to reach another server never touches this file.
-    bool sameServer(const QJsonObject& object, Error& error) {
+    // A connection to the server a record names: ssh checks the server against the known_hosts
+    // lines recorded with it, and nothing else, so it proves the server still holds that key; the
+    // destination must still resolve to the same host, port and user. The session's connection
+    // serves when it was verified by exactly those lines (a test checking its own upload).
+    bool connectAs(const QJsonObject& recorded, Error& error) {
+        QStringList lines;
+        for (const auto& value : recorded["knownHosts"].toArray()) lines.append(value.toString());
+        if (lines.isEmpty()) { error = {"sftp_delete_unavailable", "This upload's record doesn't name the host key its server was verified by", {}}; return false; }
+        const bool current = connection_.alive() && connection_.knownLines == lines && !connection_.knownError;
+        if (!current && !connect(error, false, lines)) return false;
         const auto now = connection_.server();
-        bool same = !connection_.hostKey.isEmpty();
-        for (const auto* key : {"host", "port", "user", "hostKeyFingerprint"}) same = same && object[key] == now[key];
-        if (!same) {
-                error = {"sftp_server_changed",
-                         "This file went to " + object["host"].toString() + " port " + QString::number(object["port"].toInt()) + " as " + object["user"].toString() +
-                             ". The destination now reaches another server, or the server's host key changed, so put.gd won't check or delete it there.",
-                         {}};
-                return false;
+        if (recorded["host"] != now["host"] || recorded["port"] != now["port"] || recorded["user"] != now["user"]) {
+            error = {"sftp_server_changed",
+                     "This file went to " + recorded["host"].toString() + " port " + QString::number(recorded["port"].toInt()) + " as " + recorded["user"].toString() +
+                         ". The destination now reaches another server or user, so put.gd won't check or delete it there.",
+                     {}};
+            return false;
         }
         return true;
     }
     // What the receipt needs for its identity check; without it, deletion is unavailable.
     static bool recordable(const QJsonObject& object) {
-        for (const auto* key : {"path", "host", "user", "hostKeyFingerprint", "sha256"}) if (object[key].toString().isEmpty()) return false;
+        for (const auto* key : {"path", "host", "user", "sha256"}) if (object[key].toString().isEmpty()) return false;
         for (const auto* key : {"port", "size", "mtime", "uid"}) if (!object[key].isDouble()) return false;
-        return true;
+        return !object["knownHosts"].toArray().isEmpty();
     }
     // Whether the recorded file is still the one put.gd stored: a regular file of the same size,
     // change time and owner, and, up to 32 MB, the same bytes. `seen` is what lstat found.
     QJsonObject identity(const StorageReceipt& receipt, Error& error, wire::Attributes* seen = nullptr) {
         const auto object = receipt.objectReference;
         if (!recordable(object)) { error = {"sftp_delete_unavailable", "This upload's record lacks what put.gd needs to check the file on the server", {}}; return {}; }
-        if (!connect(error, false) || !sameServer(object, error)) return {};
+        if (!connectAs(object, error)) return {};
         const auto path = object["path"].toString();
         wire::Attributes a;
         Client::Status status;
@@ -576,7 +653,7 @@ private:
             error = {"sftp_reconcile_unknown", "put.gd can't tell where this upload went", {}};
             return {{"status", "unknown"}};
         }
-        if (!connect(error, false) || !sameServer(journal["server"].toObject(), error)) return {};
+        if (!connectAs(journal["server"].toObject(), error)) return {};
         wire::Attributes a;
         Client::Status status;
         if (auto e = client().lstat(bytesOf(path), a, status)) { error = e; return {}; }
@@ -632,6 +709,11 @@ private:
     QJsonObject createFolder(Error& error) {
         if (!connect(error, false)) return {};
         const auto folder = namedFolder();
+        // Only the folder a test found missing: the path it reported must be the one made now.
+        if (request_["path"].toString() != folder) {
+            error = {"sftp_settings_invalid", "The folder to create isn't the one the test found missing. Test the destination again.", {{"field", "folder"}}};
+            return {};
+        }
         // Each missing level, from the top: mkdir -p, with the server's umask deciding modes.
         QString path;
         for (const auto& part : folder.split('/', Qt::SkipEmptyParts)) {
@@ -689,7 +771,7 @@ private:
         }
         const auto& r = connection_.resolved;
         step("connect", "passed", "Reached " + (r.host.contains(':') ? "[" + r.host + "]" : r.host) + (r.port != 22 ? ":" + QString::number(r.port) : QString()));
-        step("hostKey", "passed", connection_.hostKey.isEmpty() ? QStringLiteral("The host key matches a trusted one") : "The host key " + connection_.hostKey + " matches a trusted one");
+        step("hostKey", "passed", connection_.fingerprint().isEmpty() ? QStringLiteral("The host key matches a trusted one") : "The host key " + connection_.fingerprint() + " matches a trusted one");
         step("signIn", "passed", "Signed in as " + r.user);
         QString folder;
         if (!folderReady(error, folder)) {
@@ -706,7 +788,15 @@ private:
         if (auto e = io.checkpoint(id_, {{"schemaVersion", 1}, {"phase", "upload_intent"}, {"destination", destination_.toJson()}, {"path", path}})) { error = e; return out; }
         QByteArray handle;
         Client::Status status;
-        if (auto e = client().openExclusive(bytesOf(path), handle, status)) { error = e; step("upload", "failed", e.message); return out; }
+        if (auto e = client().openExclusive(bytesOf(path), handle, status)) {
+            // The reply was lost: the test file may be there, and nothing confirms otherwise.
+            error = e;
+            error.details["path"] = path;
+            out["cleanupStatus"] = "unconfirmed";
+            out["cleanupPath"] = path;
+            step("upload", "failed", e.message);
+            return out;
+        }
         if (status.code != wire::Ok) { error = refusal(status, path, QStringLiteral("create"), bytes.size()); step("upload", "failed", error.message); return out; }
         QByteArray copy = bytes;
         QBuffer buffer(&copy);
@@ -716,6 +806,16 @@ private:
             error = e;
             const bool removed = discard(handle, path);
             out["cleanupStatus"] = removed ? "removed" : "unconfirmed";
+            if (!removed) { out["cleanupPath"] = path; error.details["path"] = path; }
+            step("upload", "failed", e.message);
+            return out;
+        };
+        // The name holds another file now: nothing is removed, and the test file's fate is open.
+        const auto replaced = [&](Error e) {
+            error = e;
+            error.details["path"] = path;
+            out["cleanupStatus"] = "unconfirmed";
+            out["cleanupPath"] = path;
             step("upload", "failed", e.message);
             return out;
         };
@@ -734,7 +834,8 @@ private:
         if (status.code != wire::Ok) return fail(refusal(status, path, QStringLiteral("save")));
         wire::Attributes stored;
         if (auto e = client().lstat(bytesOf(path), stored, status)) return fail(e);
-        if (status.code != wire::Ok || !sameFile(written, stored)) return fail({"sftp_failed", "The test file changed as it was saved", {}});
+        if (status.code != wire::Ok || !sameFile(written, stored))
+            return replaced({"sftp_failed", "The test file at " + path + " changed as it was saved, so put.gd left it alone. Check it on the server.", {}});
         StorageReceipt receipt;
         receipt.destination = destination_;
         receipt.objectReference = reference(path);
@@ -769,17 +870,20 @@ private:
         // History uses, and counts as removed only when the server confirms it.
         Error checkError;
         const auto checked = identity(receipt, checkError);
-        if (checkError) out["cleanupStatus"] = "unconfirmed";
+        // A name that holds another file now gets no REMOVE: its cleanup stays unconfirmed.
+        if (checkError || checked["status"] != "own" && checked["status"] != "missing") out["cleanupStatus"] = "unconfirmed";
         else if (checked["status"] == "missing") out["cleanupStatus"] = "missing";
-        else if (checked["status"] != "own") out["cleanupStatus"] = "failed";
         else if (client().remove(bytesOf(path), status)) out["cleanupStatus"] = "unconfirmed";
-        else out["cleanupStatus"] = status.code == wire::Ok ? "removed" : status.code == wire::NoSuchFile ? "missing" : "failed";
+        else out["cleanupStatus"] = status.code == wire::Ok ? "removed" : status.code == wire::NoSuchFile ? "missing" : "unconfirmed";
         const bool cleaned = out["cleanupStatus"] == "removed" || out["cleanupStatus"] == "missing";
-        step("cleanup", cleaned ? "passed" : "failed", cleaned ? QStringLiteral("Deleted the test file") : "Couldn't confirm the test file " + path + " was deleted");
+        if (!cleaned) out["cleanupPath"] = path;
+        step("cleanup", cleaned ? "passed" : "failed", cleaned ? QStringLiteral("Deleted the test file") : "Couldn't confirm the test file " + path + " was deleted; check it on the server");
         if (!error && !cleaned) error = {"destination_test_incomplete", "The test file " + path + " may still be on the server; delete it there", {{"path", path}}};
         if (!error && linkError) error = linkError;
-        out["summary"] = receipt.directUrl.isEmpty() ? QStringLiteral("Test upload passed: connected, signed in, uploaded and deleted a test file. Uploads give no link without a Link address.")
-                                                     : QStringLiteral("Test upload and link passed: connected, signed in, uploaded a test file, opened its link and deleted it.");
+        // The summary speaks for a test that passed every step only.
+        if (!error)
+            out["summary"] = receipt.directUrl.isEmpty() ? QStringLiteral("Test upload passed: connected, signed in, uploaded and deleted a test file. Uploads give no link without a Link address.")
+                                                         : QStringLiteral("Test upload and link passed: connected, signed in, uploaded a test file, opened its link and deleted it.");
         return out;
     }
 };
@@ -813,7 +917,10 @@ int main(int argc, char** argv) {
         putgd::Error error;
         bool uncertain = false;
         if (request["schemaVersion"].toInt() != 1) error = {"sftp_protocol", "Invalid worker request", {}};
-        const auto result = error ? QJsonObject{} : worker.run(request, error, uncertain);
+        // The secrets leave the request at once: only Worker::run holds them, until sign-in.
+        auto secrets = request.take("credentials").toObject();
+        const auto result = error ? QJsonObject{} : worker.run(request, secrets, error, uncertain);
+        secrets = {};
         request = {};
         if (error)
             io.emitLine({{"id", double(id)}, {"ok", false}, {"error", QJsonObject{{"code", error.code}, {"message", error.message}, {"details", error.details}}}, {"uncertain", uncertain}, {"result", result}});

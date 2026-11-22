@@ -32,6 +32,7 @@ struct Resolved {
     QStringList userKnownHosts;    // the user's known_hosts files, as ssh -G names them
     QStringList globalKnownHosts;
     bool userKnownHostsNone = false;  // UserKnownHostsFile none
+    bool knownHostsUnresolved = false;  // a known_hosts path with a token put.gd can't expand
     QString identityAgent;
     QString proxyKind;             // "ProxyJump", "ProxyCommand" or empty; never the command itself
     bool agent = false;            // an agent socket is there to use
@@ -44,9 +45,16 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment&, const QJsonObje
 // "Connects to files.example.com:2222 as alice with key id_ed25519 (agent)".
 QString resolvedLine(const Resolved&, bool password);
 QJsonObject toJson(const Resolved&);
-// Whether the user's own known_hosts files (their UserKnownHostsFile and GlobalKnownHostsFile)
-// already hold a key for this server, by ssh-keygen -F. Their entry then decides alone.
-bool userKnowsHost(const Resolved&, const QProcessEnvironment&);
+// The known_hosts lines that hold a key for `token` in `files`, by ssh-keygen -F (hashed names,
+// patterns and @cert-authority lines included), and the first file that had one. `error` is set
+// when a lookup failed: callers fail closed then.
+struct KnownLookup { QStringList lines; QString file; Error error; };
+KnownLookup lookupHost(const QStringList& files, const QString& token, const QProcessEnvironment&);
+// The user's own files (UserKnownHostsFile and GlobalKnownHostsFile): their entry decides alone.
+KnownLookup userKnownLookup(const Resolved&, const QProcessEnvironment&);
+// put.gd's own known_hosts may be handed to ssh: a regular file of this user's, mode 0600, in a
+// folder that is not a symbolic link; a file that isn't there yet is fine.
+Error checkPinFile(const QString& file);
 // The UserKnownHostsFile value a connection checks host keys against: the user's files, and
 // put.gd's own file only when the user's files know nothing of this server. "none" when the
 // user turned known_hosts files off.
@@ -61,6 +69,7 @@ public:
     SshProcess& operator=(const SshProcess&) = delete;
     ~SshProcess();
     bool start(const QString& program, const QStringList& arguments, const QProcessEnvironment&, QString* error);
+    pid_t pid() const { return pid_; }
     int input() const { return in_; }
     int output() const { return out_; }
     int errors() const { return err_; }
@@ -93,6 +102,8 @@ public:
     bool start(QProcessEnvironment& environment, QString program, QString* error);
     // Stops answering and forgets both secrets.
     void stop();
+    // The ssh process whose own askpass may be answered: the asking process's parent must be it.
+    void setSshPid(pid_t pid) { sshPid_ = pid; }
     // What was asked: "password", "passphrase", "other", "touch".
     QStringList asked() const;
     QString passphraseKey() const;
@@ -109,23 +120,28 @@ private:
     QStringList asked_;
     QString passphraseKey_;
     std::unique_ptr<std::thread> thread_;
+    std::atomic<pid_t> sshPid_{0};
 };
 
-// The options every SFTP connection runs with, then the destination and the subsystem.
-QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption);
+// The options every SFTP connection runs with, then the destination and the subsystem. With
+// `pinnedOnly`, the global known_hosts is off too: only the given file's keys are accepted.
+QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption, bool pinnedOnly = false);
 // ssh's startup failure as one of the codes the design lists. Messages carry no raw ssh
 // output: only the code, put.gd's own words and fields put.gd parsed (a known_hosts path).
 struct FailureContext {
     Resolved resolved;
     bool password = false, passphrase = false;
     QStringList asked;
-    QString passphraseKey, knownHostsFile;
+    QString passphraseKey;
+    // The user's known_hosts file that holds a key for this server, when one does: a changed key
+    // is then in that file; otherwise only put.gd's own file can hold it.
+    QString userFile;
+    // The connection checked the key a receipt recorded: a host-key failure means another server.
+    bool pinned = false;
     bool protocolNoise = false;  // the stream began with something that isn't SFTP
     int exitCode = -1;
 };
 Error classify(const QByteArray& stderrText, const FailureContext&);
-// The host key the connection was verified with ("ED25519 SHA256:…"), from ssh's debug output.
-QString usedHostKey(const QByteArray& stderrText);
 
 // Host keys (#1871). Fetches the server's key over the real route (ProxyJump and all),
 // with accept-new into a new temporary file, no authentication tried and no askpass, so no

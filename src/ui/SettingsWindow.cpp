@@ -1327,8 +1327,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(sftpPanel_,&SftpPanel::secretsEdited,this,[this]{if(!loading_){updateStoreButtons();emit viewStateChanged();}});
  connect(sftpPanel_,&SftpPanel::addressChanged,this,[this]{sftpInspected_.clear();QTimer::singleShot(900,this,[this]{inspectSftp();});});
  connect(sftpPanel_,&SftpPanel::trustRequested,this,[this](const QString& fingerprint){if(admitSetup())beginSetup("trustHostKey",{{"fingerprint",fingerprint}});});
- connect(sftpPanel_,&SftpPanel::clearRequested,this,[this](const QString& name){if(admitSetup())beginSetup("storeCredentials",{{"values",QJsonObject{{name,QString()}}}});});
- connect(sftpPanel_,&SftpPanel::createFolderRequested,this,[this](const QString& folder){if(admitSetup())beginSetup("createFolder",{{"name",folder}});});
+ // A Clear keeps what is typed in the other field: only the Store button empties both.
+ connect(sftpPanel_,&SftpPanel::clearRequested,this,[this](const QString& name){if(admitSetup()){sftpClearing_=true;beginSetup("storeCredentials",{{"values",QJsonObject{{name,QString()}}}});}});
+ connect(sftpPanel_,&SftpPanel::createFolderRequested,this,[this](const QString& folder,const QString& path){if(admitSetup())beginSetup("createFolder",{{"name",folder},{"path",path}});});
  connect(uploader_,&CustomUploaderPanel::imported,this,[this](const QString& name){if(!name.isEmpty()&&profileLabel_->text()=="Custom uploader"){profileLabel_->setText(name.left(128));queueEdit(profileLabel_);}});
  protonPanel_=new QWidget;protonPanel_->setObjectName("protonDestinationEditor");auto* protonLayout=new QVBoxLayout(protonPanel_);protonLayout->setContentsMargins(0,0,0,0);protonLayout->setSpacing(space(Space::xxl));pageLayout->addWidget(protonPanel_);auto* protonForm=PreferenceRows::card(protonLayout,"Account");auto* folderPrerequisite=new QLabel("Choose an upload folder after connecting");folderPrerequisite->setObjectName("protonFolderPrerequisite");folderPrerequisite->setWordWrap(true);Ui::role(folderPrerequisite,"muted");protonLayout->addWidget(folderPrerequisite);auto* folderForm=PreferenceRows::card(protonLayout,"Where files go");folderForm->parentWidget()->setObjectName("protonFolderSection");protonFolderStatus_=new QLabel;protonFolderStatus_->setObjectName("protonFolderStatus");protonFolderStatus_->setWordWrap(true);protonFolderStatus_->hide();folderForm->addRow(protonFolderStatus_);auto* publicationForm=PreferenceRows::card(protonLayout,"Links");auto* protonAdvancedPanel=new QWidget;auto* protonAdvancedBox=new QVBoxLayout(protonAdvancedPanel);protonAdvancedBox->setContentsMargins(0,0,0,0);auto* protonAdvancedForm=new QFormLayout;Ui::styleForm(protonAdvancedForm);protonAdvancedBox->addLayout(protonAdvancedForm);protonLayout->addWidget(protonAdvancedPanel);protonAdvancedForm->parentWidget()->setObjectName("protonAdvancedSettings");// The account and its Reconnect action share the field column.
  auto* accountField=new QWidget;auto* accountLayout=new QVBoxLayout(accountField);accountLayout->setContentsMargins(0,0,0,0);accountLayout->setSpacing(space(Space::s));
@@ -3604,7 +3605,7 @@ void SettingsWindow::sftpCommand(const QJsonObject& params,std::function<void(Er
   edit->setFocus();edit->setText(params["value"].toString());edit->setModified(true);emit edit->editingFinished();
  }else if(action=="paste"){
   auto* edit=sftpPanel_->findChild<QLineEdit*>("sftpServer");if(!usable(edit)){reply(unavailable,{});return;}
-  edit->setFocus();if(!sftpPanel_->applyAddress(params["text"].toString())){edit->setText(params["text"].toString());emit edit->editingFinished();}
+  edit->setFocus();const auto before=edit->text();if(!sftpPanel_->applyAddress(params["text"].toString(),&before)){edit->setText(params["text"].toString());emit edit->editingFinished();}
  }else if(action=="trust"){
   auto* button=sftpPanel_->findChild<QPushButton*>("sftpTrustKey");if(!usable(button)){reply(unavailable,{});return;}
   // An agent trusts only the key it was shown: the exact fingerprint the offer names.
@@ -3763,7 +3764,7 @@ void SettingsWindow::pollSetup(){
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
     status(e);if(data["kind"]=="connectAccount"&&data["profileId"]==profileId_->text())protonAccount_->setText("Connection failed: "+e.message);}else {
     if(data["kind"]=="storeCredentials"&&data["profileId"]==profileId_->text()&&providerType_->currentData()==CustomUploaderPanel::provider()){clearCurrentCredentialInputs();uploader_->setNotice({});}
-    if(data["kind"]=="storeCredentials"&&data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider())clearCurrentCredentialInputs();
+    if(data["kind"]=="storeCredentials"&&data["profileId"]==profileId_->text()&&providerType_->currentData()==SftpPanel::provider()&&!std::exchange(sftpClearing_,false))clearCurrentCredentialInputs();
     if(data["kind"]=="storeCredentials"||data["kind"]=="unlockCredentials")refreshCredentialHint();
     const auto result=data["result"].toObject();const auto kind=data["kind"].toString();
     // #1871: SFTP's own setup steps, for the destination they were asked about.

@@ -46,6 +46,16 @@ QStringList baseOptions() {
             // A server's own prompts (one-time codes, keyboard-interactive passwords) never reach askpass.
             "-o", "KbdInteractiveAuthentication=no"};
 }
+// The parent process of `pid`, from /proc/<pid>/stat (the field after the command's closing parenthesis).
+pid_t parentOf(pid_t pid) {
+    QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+    if (!stat.open(QIODevice::ReadOnly)) return -1;
+    const auto text = stat.read(4096);
+    const auto close = text.lastIndexOf(')');
+    if (close < 0) return -1;
+    const auto fields = text.mid(close + 2).split(' ');
+    return fields.size() > 1 ? pid_t(fields[1].toLongLong()) : -1;
+}
 // ssh's stderr without its debug lines: what classify() reads.
 QString withoutDebug(const QByteArray& raw) {
     QStringList kept;
@@ -138,6 +148,10 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
     } else resolved.agent = !agentSocket(env).isEmpty();
     if (resolved.userKnownHosts.isEmpty() && !resolved.userKnownHostsNone)
         resolved.userKnownHosts = {expandHome("~/.ssh/known_hosts", env), expandHome("~/.ssh/known_hosts2", env)};
+    // A path still holding a %-token or a ~user can't be read the way ssh reads it: put.gd then
+    // doesn't know what the user trusts, and fails closed.
+    for (const auto& file : resolved.userKnownHosts + resolved.globalKnownHosts)
+        if (file.contains('%') || file.startsWith('~')) resolved.knownHostsUnresolved = true;
     return resolved;
 }
 QString resolvedLine(const Resolved& r, bool password) {
@@ -155,19 +169,50 @@ QJsonObject toJson(const Resolved& r) {
     for (const auto& file : r.identityFiles) keys.append(QFileInfo(file).fileName());
     return {{"host", r.host}, {"port", r.port}, {"user", r.user}, {"alias", r.alias}, {"keyFiles", keys}, {"agent", r.agent}, {"proxy", r.proxyKind}};
 }
-bool userKnowsHost(const Resolved& r, const QProcessEnvironment& env) {
+KnownLookup lookupHost(const QStringList& files, const QString& token, const QProcessEnvironment& env) {
+    KnownLookup found;
     const auto keygen = host::findProgram("ssh-keygen", env);
-    if (keygen.isEmpty()) return false;
-    for (const auto& file : r.userKnownHosts + r.globalKnownHosts) {
-        if (!QFileInfo(file).isFile()) continue;
+    if (keygen.isEmpty()) { found.error = {"ssh_known_hosts_unreadable", "put.gd can't check known_hosts files: ssh-keygen isn't installed.", {}}; return found; }
+    for (const auto& file : files) {
+        struct stat info {};
+        if (::stat(QFile::encodeName(file).constData(), &info) != 0) {
+            if (errno == ENOENT) continue;  // a file that isn't there holds no key
+            found.error = {"ssh_known_hosts_unreadable", "put.gd can't read the known_hosts file " + file + ".", {}};
+            return found;
+        }
         QProcess lookup;
         lookup.setProcessEnvironment(env);
         lookup.setStandardInputFile(QProcess::nullDevice());
-        lookup.start(keygen, {"-F", r.token(), "-f", file});
-        if (lookup.waitForFinished(10000) && lookup.exitStatus() == QProcess::NormalExit && lookup.exitCode() == 0 && !lookup.readAllStandardOutput().trimmed().isEmpty())
-            return true;
+        lookup.start(keygen, {"-F", token, "-f", file});
+        const bool ran = lookup.waitForFinished(10000) && lookup.exitStatus() == QProcess::NormalExit;
+        // 0: found, 1: not found; anything else is a lookup put.gd can't rely on.
+        if (!ran || (lookup.exitCode() != 0 && lookup.exitCode() != 1)) {
+            if (lookup.state() != QProcess::NotRunning) { lookup.kill(); lookup.waitForFinished(2000); }
+            found.error = {"ssh_known_hosts_unreadable", "put.gd couldn't check the known_hosts file " + file + " with ssh-keygen.", {}};
+            return found;
+        }
+        if (lookup.exitCode() != 0) continue;
+        for (const auto& raw : QString::fromUtf8(lookup.readAllStandardOutput()).split('\n')) {
+            const auto line = raw.trimmed();
+            if (line.isEmpty() || line.startsWith('#')) continue;
+            found.lines.append(line);
+            if (found.file.isEmpty()) found.file = file;
+        }
     }
-    return false;
+    return found;
+}
+KnownLookup userKnownLookup(const Resolved& r, const QProcessEnvironment& env) {
+    if (r.knownHostsUnresolved) return {{}, {}, {"ssh_known_hosts_unreadable", "Your SSH settings name a known_hosts file with a token put.gd can't expand, so it can't tell which keys you trust.", {}}};
+    return lookupHost(r.userKnownHosts + r.globalKnownHosts, r.token(), env);
+}
+Error checkPinFile(const QString& file) {
+    const auto refuse = [&](const QString& why) { return Error{"sftp_known_hosts_failed", "put.gd won't use its known_hosts file " + file + ": " + why, {}}; };
+    struct stat info {};
+    const auto folder = QFile::encodeName(QFileInfo(file).absolutePath());
+    if (::lstat(folder.constData(), &info) == 0 && (!S_ISDIR(info.st_mode) || info.st_uid != ::getuid())) return refuse(QStringLiteral("its folder isn't a private folder of yours"));
+    if (::lstat(QFile::encodeName(file).constData(), &info) != 0) return errno == ENOENT ? Error{} : refuse(QStringLiteral("it can't be checked"));
+    if (!S_ISREG(info.st_mode) || info.st_uid != ::getuid() || (info.st_mode & 0777) != 0600) return refuse(QStringLiteral("it isn't a private regular file of yours"));
+    return {};
 }
 QString knownHostsOption(const Resolved& r, const QString& putgdFile, bool userKnows) {
     if (r.userKnownHostsNone) return QStringLiteral("none");
@@ -353,7 +398,11 @@ void Askpass::serve() {
             unsigned char diff = 0;
             for (qsizetype i = 0; i < token_.size(); ++i) diff |= uchar(lines[0][i] ^ token_[i]);
             if (diff == 0) {
-                const auto match = matchPrompt(QString::fromUtf8(lines[1]), QString::fromUtf8(lines[2]), user_, hosts_, identityFiles_);
+                // Only ssh's own askpass child may be answered: a jump host's ssh or a ProxyCommand
+                // child under it is another process with another parent.
+                const bool fromTarget = sshPid_.load() > 0 && parentOf(peer.pid) == sshPid_.load();
+                auto match = matchPrompt(QString::fromUtf8(lines[1]), QString::fromUtf8(lines[2]), user_, hosts_, identityFiles_);
+                if (!fromTarget && (match.kind == PromptKind::Password || match.kind == PromptKind::Passphrase)) match = {};
                 QString what = QStringLiteral("other"), *secret = nullptr;
                 std::atomic_bool* used = nullptr;
                 switch (match.kind) {
@@ -391,38 +440,33 @@ void Askpass::serve() {
     }
 }
 
-QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption) {
-    // LogLevel DEBUG1 makes ssh name the host key it verified ("Server host key: …"); its other
-    // debug lines are read by nothing and kept nowhere.
-    return baseOptions() + QStringList{"-o", "StrictHostKeyChecking=yes", "-o", "NumberOfPasswordPrompts=1", "-o", "BatchMode=no", "-o", "LogLevel=DEBUG1",
-                                       "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "-o", "ConnectTimeout=20",
-                                       "-o", "UserKnownHostsFile=" + knownHostsOption, "-s"} +
-           destinationArguments(settings) + QStringList{"sftp"};
-}
-QString usedHostKey(const QByteArray& raw) {
-    static const QRegularExpression line(QStringLiteral("^debug1: Server host key: (\\S+) (SHA256:[A-Za-z0-9+/]{43})"), QRegularExpression::MultilineOption);
-    const auto match = line.match(QString::fromUtf8(raw));
-    return match.hasMatch() ? keyType(match.captured(1)) + " " + match.captured(2) : QString();
+QStringList connectionArguments(const QJsonObject& settings, const QString& knownHostsOption, bool pinnedOnly) {
+    auto args = baseOptions() + QStringList{"-o", "StrictHostKeyChecking=yes", "-o", "NumberOfPasswordPrompts=1", "-o", "BatchMode=no",
+                                            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "-o", "ConnectTimeout=20",
+                                            "-o", "UserKnownHostsFile=" + knownHostsOption};
+    if (pinnedOnly) args << "-o" << "GlobalKnownHostsFile=/dev/null";
+    return args + QStringList{"-s"} + destinationArguments(settings) + QStringList{"sftp"};
 }
 Error classify(const QByteArray& raw, const FailureContext& c) {
     const auto text = withoutDebug(raw);
     const auto port = c.resolved.port;
-    if (text.contains(QLatin1String("REMOTE HOST IDENTIFICATION HAS CHANGED")) || text.contains(QRegularExpression(QStringLiteral("Host key for \\S+ has changed")))) {
-        static const QRegularExpression offending(QStringLiteral("Offending \\S+ key in (.+):(\\d+)"));
-        const auto match = offending.match(text);
-        const auto file = match.hasMatch() ? match.captured(1).trimmed() : QString();
-        if (!file.isEmpty() && !c.knownHostsFile.isEmpty() && QFileInfo(file).absoluteFilePath() == QFileInfo(c.knownHostsFile).absoluteFilePath())
-            return {"ssh_trusted_key_changed",
-                    "The server's host key changed since you trusted it in put.gd. Ask your server's admin whether it was replaced; trust the new key in "
-                    "Settings → Destinations only if they confirm it.",
-                    {}};
+    const bool changed = text.contains(QLatin1String("REMOTE HOST IDENTIFICATION HAS CHANGED")) || text.contains(QRegularExpression(QStringLiteral("Host key for \\S+ has changed")));
+    const bool unknown = text.contains(QRegularExpression(QStringLiteral("No \\S+ host key is known for"))) || text.contains(QLatin1String("Host key verification failed"));
+    // Checked against the key a receipt recorded: any host-key failure means it isn't that server.
+    if (c.pinned && (changed || unknown))
+        return {"sftp_server_changed", "The server no longer holds the host key it had when this file was uploaded, so put.gd won't check or delete the file there.", {}};
+    // ssh's own lines are not repeated: put.gd says which file it had ssh check.
+    if (changed && c.userFile.isEmpty())
+        return {"ssh_trusted_key_changed",
+                "The server's host key changed since you trusted it in put.gd. Ask your server's admin whether it was replaced; trust the new key in "
+                "Settings → Destinations only if they confirm it.",
+                {}};
+    if (changed)
         return {"ssh_host_key_changed",
-                "The server's host key no longer matches the one in " + (file.isEmpty() ? QStringLiteral("your known_hosts file") : file + " line " + match.captured(2)) +
-                    ". That can mean someone is intercepting the connection. If your server's admin replaced the key, remove the old one with ssh-keygen -R " + c.resolved.token() +
-                    " and test again.",
-                {{"knownHostsFile", file}}};
-    }
-    if (text.contains(QRegularExpression(QStringLiteral("No \\S+ host key is known for"))) || text.contains(QLatin1String("Host key verification failed")))
+                "The server's host key no longer matches the one in " + c.userFile + ". That can mean someone is intercepting the connection. If your server's admin "
+                "replaced the key, remove the old one with ssh-keygen -R " + c.resolved.token() + " and test again.",
+                {{"knownHostsFile", c.userFile}}};
+    if (unknown)
         return {"ssh_host_unknown_key", "put.gd doesn't know this server's host key yet. Test the destination in Settings to see the key, and trust it only if it matches your server's.", {}};
     if (text.contains(QLatin1String("Could not resolve hostname")) || text.contains(QLatin1String("Name or service not known")) ||
         text.contains(QLatin1String("Temporary failure in name resolution")))
@@ -499,9 +543,14 @@ Error knownHostsError(const QString& path, const QString& why) { return {"sftp_k
 Error trustLine(const QString& path, const QString& line, const QString& previous) {
     const auto host = hostOfLine(line), fingerprint = fingerprintOfLine(line);
     if (host.isEmpty() || fingerprint.isEmpty()) return {"sftp_protocol", "The host key line is not one put.gd can read", {}};
-    // Its own folder, private: other users can't add keys put.gd would then trust.
+    // Its own folder, private: other users can't add keys put.gd would then trust. A symbolic
+    // link, or anything but a folder of this user's, is refused.
     const auto folder = QFileInfo(path).absolutePath();
-    if (!QDir().mkpath(folder) || ::chmod(QFile::encodeName(folder).constData(), 0700) != 0) return knownHostsError(path, QStringLiteral("its folder can't be made private"));
+    struct stat place {};
+    if (::lstat(QFile::encodeName(folder).constData(), &place) == 0) {
+        if (!S_ISDIR(place.st_mode) || place.st_uid != ::getuid()) return knownHostsError(path, QStringLiteral("its folder isn't a folder of yours"));
+    } else if (!QDir().mkpath(folder)) return knownHostsError(path, QStringLiteral("its folder can't be made"));
+    if (::chmod(QFile::encodeName(folder).constData(), 0700) != 0) return knownHostsError(path, QStringLiteral("its folder can't be made private"));
     // One worker at a time reads, changes and writes the file.
     const int lock = ::open(QFile::encodeName(folder + "/known_hosts.lock").constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (lock < 0 || ::flock(lock, LOCK_EX) != 0) { if (lock >= 0) ::close(lock); return knownHostsError(path, QStringLiteral("it can't be locked")); }
@@ -511,9 +560,13 @@ Error trustLine(const QString& path, const QString& line, const QString& previou
     QStringList kept;
     if (::lstat(encoded.constData(), &info) == 0) {
         if (!S_ISREG(info.st_mode)) return knownHostsError(path, QStringLiteral("it isn't a regular file"));
+        // All of it is kept; a file too large to be put.gd's own is refused rather than cut short.
+        if (info.st_size > 16 * 1024 * 1024) return knownHostsError(path, QStringLiteral("it is larger than 16 MB"));
         QFile existing(path);
         if (!existing.open(QIODevice::ReadOnly)) return knownHostsError(path, QStringLiteral("it can't be read"));
-        for (const auto& raw : QString::fromUtf8(existing.read(4 * 1024 * 1024)).split('\n')) {
+        const auto content = existing.readAll();
+        if (content.size() != info.st_size) return knownHostsError(path, QStringLiteral("it changed while it was read"));
+        for (const auto& raw : QString::fromUtf8(content).split('\n')) {
             const auto trimmed = raw.trimmed();
             if (trimmed.isEmpty()) continue;
             if (hostOfLine(trimmed) == host) {

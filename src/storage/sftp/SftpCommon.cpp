@@ -260,16 +260,14 @@ PromptMatch matchPrompt(const QString& askpassKind, const QString& prompt, const
         return {lower.contains(QLatin1String("touch")) || lower.contains(QLatin1String("presence")) ? PromptKind::Touch : PromptKind::Notice, {}};
     }
     if (!askpassKind.isEmpty()) return {};  // "confirm" and anything newer: no answer
-    auto text = prompt;
-    while (text.endsWith(' ')) text.chop(1);
-    // sshconnect2.c: "Enter passphrase for key '%.100s': " with the tilde-expanded path.
+    // Whole strings only, the trailing ": " included: no trimming, truncation or prefixes.
+    // sshconnect2.c: "Enter passphrase for key '%s': " with the tilde-expanded path.
     for (const auto& file : identityFiles)
-        if (!file.isEmpty() && text == "Enter passphrase for key '" + file.left(100) + "':") return {PromptKind::Passphrase, file};
-    // "%s@%s's password: ", older releases "%.30s@%.128s's password: ".
+        if (!file.isEmpty() && prompt == "Enter passphrase for key '" + file + "': ") return {PromptKind::Passphrase, file};
+    // "%s@%s's password: "
     if (!user.isEmpty())
         for (const auto& host : hosts)
-            if (!host.isEmpty() && (text == user + "@" + host + "'s password:" || text == user.left(30) + "@" + host.left(128) + "'s password:"))
-                return {PromptKind::Password, {}};
+            if (!host.isEmpty() && prompt == user + "@" + host + "'s password: ") return {PromptKind::Password, {}};
     return {};
 }
 QString hostToken(const QString& host, int port, const QString& alias) {

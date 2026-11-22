@@ -18,7 +18,7 @@ Error parseError(const QJsonObject& value) { return {value["code"].toString("sft
 bool definite(const QString& code) {
     return code.startsWith(QLatin1String("ssh_")) || QStringList{"sftp_settings_invalid", "sftp_folder_missing", "sftp_not_folder", "sftp_permission_denied", "sftp_disk_full",
                                                                  "unsupported_capability", "artifact_invalid", "artifact_changed", "cancelled", "sftp_server_changed",
-                                                                 "sftp_delete_unavailable"}.contains(code);
+                                                                 "sftp_delete_unavailable", "sftp_path_unsupported", "sftp_known_hosts_failed"}.contains(code);
 }
 // Only these methods sign in, so only they get the password and passphrase.
 bool signsIn(const QString& method) {
@@ -374,7 +374,8 @@ QJsonObject SftpProvider::setup(const QString& kind, const Destination& destinat
             error = {"sftp_settings_invalid", "Create folder makes the destination's own Folder on server; save that folder first", {{"field", "folder"}}};
             return {};
         }
-        return call("createFolder", destination, {}, error);
+        // The path the test reported missing: the worker makes it only if the folder resolves there still.
+        return call("createFolder", destination, {{"path", input["path"]}}, error);
     }
     error = {"setup_unsupported", "This SFTP setup step doesn't exist", {}};
     return {};

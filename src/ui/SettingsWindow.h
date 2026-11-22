@@ -204,7 +204,7 @@ private:
  // for agents (inspect, import a .sxcu file into the form, open or close its dialog).
  CustomUploaderPanel* uploader_=nullptr;
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
- SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();
+ SftpPanel* sftpPanel_=nullptr;QString sftpInspected_;void inspectSftp();bool sftpClearing_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
  QHash<QString,CredentialInputs> provisionalCredentials_;
  QJsonObject provisionalProfile_;

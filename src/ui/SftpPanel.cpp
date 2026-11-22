@@ -39,8 +39,10 @@ void SftpPanel::build(const RowBuilder& row) {
     // A paste (or anything typed at once) is read as an address now; typing waits for the field to be left.
     connect(server_, &QLineEdit::textEdited, this, [this](const QString& text) {
         const bool pasted = text.size() - typedServer_.size() > 1;
+        const auto previous = typedServer_;
         typedServer_ = text;
-        if (pasted && applyAddress(text)) return;
+        hideCreateFolder();  // another server is another folder
+        if (pasted && applyAddress(text, &previous)) return;
         if (pinnedField_ == QLatin1String("server")) { pinnedField_.clear(); pinnedProblem_.clear(); }
         refreshProblems();
     });
@@ -50,7 +52,7 @@ void SftpPanel::build(const RowBuilder& row) {
     folder_ = line("sftpFolder", "~/shots or /srv/www/shots");
     Ui::setMono(folder_);
     row(server, "Folder on server", folder_, "Where uploads go. A path that doesn't start with / starts in the login folder.");
-    connect(folder_, &QLineEdit::textEdited, this, [this] { refreshProblems(); });
+    connect(folder_, &QLineEdit::textEdited, this, [this] { hideCreateFolder(); refreshProblems(); });
     resolved_ = new QLabel(this);
     resolved_->setObjectName("sftpResolved");
     resolved_->setAccessibleName("Resolved connection");
@@ -75,7 +77,7 @@ void SftpPanel::build(const RowBuilder& row) {
     createFolder_->hide();
     // Only for the folder the test found missing: an edited folder hides the offer.
     connect(createFolder_->actionButton(), &QPushButton::clicked, this, [this] {
-        if (!offeredFolder_.isEmpty() && folder_->text() == offeredFolderSetting_) emit createFolderRequested(folder_->text());
+        if (!offeredFolder_.isEmpty() && folder_->text() == offeredFolderSetting_) emit createFolderRequested(folder_->text(), offeredFolder_);
         else clearOffers();
     });
 
@@ -84,7 +86,18 @@ void SftpPanel::build(const RowBuilder& row) {
     link_ = line("sftpPublicUrlBase", "https://files.example.com/shots/");
     Ui::setMono(link_);
     row(links, "Link address", link_, "Optional: the public HTTPS address Folder on server is served at. Without one, uploads still work, the clipboard stays as it is, and History offers Copy path.");
-    connect(link_, &QLineEdit::textEdited, this, [this] { refreshProblems(); });
+    // A user name or password in the address is left out as it arrives, typed or pasted.
+    connect(link_, &QLineEdit::textEdited, this, [this](const QString& text) {
+        bool hadUser = false;
+        const auto clean = sftp::withoutUserInfo(text, &hadUser);
+        if (hadUser) {
+            const QSignalBlocker block(link_);
+            link_->setText(clean);
+            pinnedField_ = QStringLiteral("publicUrlBase");
+            pinnedProblem_ = QStringLiteral("A Link address doesn't take a user name or password, so it was left out.");
+        }
+        refreshProblems();
+    });
 
     auto* signIn = PreferenceRows::card(page, "Sign-in", "Both are optional. Leave them empty to sign in with your SSH agent or key files. The key passphrase only ever answers a key's passphrase prompt, never a password prompt.");
     signIn->parentWidget()->setObjectName("sftpSignInSection");
@@ -112,7 +125,11 @@ void SftpPanel::build(const RowBuilder& row) {
     passphrase_ = secret("sftpPassphrase", QStringLiteral("Key passphrase"), sftp::passphraseKey(), clearPassphrase_);
     for (auto* field : {password_, passphrase_}) connect(field, &QLineEdit::textChanged, this, [this] { if (!loading_) emit secretsEdited(); });
 }
-bool SftpPanel::applyAddress(const QString& text) {
+void SftpPanel::hideCreateFolder() {
+    offeredFolder_.clear();
+    if (createFolder_) createFolder_->hide();
+}
+bool SftpPanel::applyAddress(const QString& text, const QString* previous) {
     // A password in the address never stays anywhere: not in the field, the draft or what agents read.
     bool hadPassword = false;
     const auto trimmed = sftp::withoutPassword(text, &hadPassword);
@@ -120,14 +137,24 @@ bool SftpPanel::applyAddress(const QString& text) {
     if (!address) return false;
     const QString passwordProblem = QStringLiteral("put.gd doesn't take a password in the address, so it was left out. Enter it in Password, which keeps it in the keychain.");
     QString why;
-    const auto parsed = sftp::parseServer(trimmed, &why);
+    auto parsed = sftp::parseServer(trimmed, &why);
+    // The whole address must be valid before any field takes a part of it.
+    if (parsed) {
+        auto candidate = settings();
+        candidate["server"] = sftp::serverText(parsed->host, parsed->port);
+        if (parsed->hasUser) candidate["user"] = parsed->user;
+        if (parsed->hasFolder) candidate["folder"] = parsed->folder;
+        for (const auto& key : {QStringLiteral("server"), QStringLiteral("user"), QStringLiteral("folder")})
+            if (const auto problem = sftp::problem(candidate, key); !problem.isEmpty()) { why = problem; parsed.reset(); break; }
+    }
     if (!parsed) {
-        if (hadPassword) {
-            const QSignalBlocker block(server_);
-            server_->setText(trimmed);
-            typedServer_ = trimmed;
-        }
-        showProblem("server", hadPassword ? passwordProblem : why);
+        // Nothing changes: a paste puts back what was there; typed text keeps only its password out.
+        const QSignalBlocker block(server_);
+        server_->setText(previous ? *previous : trimmed);
+        typedServer_ = server_->text();
+        pinnedField_ = QStringLiteral("server");
+        pinnedProblem_ = hadPassword && why.isEmpty() ? passwordProblem : why;
+        showProblem("server", pinnedProblem_);
         return true;
     }
     {

@@ -27,7 +27,8 @@ public:
     Error realpath(const QByteArray& path, QByteArray& absolute, Status& status);
     Error lstat(const QByteArray& path, wire::Attributes& attributes, Status& status, bool follow = false);
     Error fstat(const QByteArray& handle, wire::Attributes& attributes, Status& status);
-    Error openExclusive(const QByteArray& path, QByteArray& handle, Status& status);
+    // `deadlineMs` bounds the wait for the reply; a reply that doesn't come leaves the outcome unknown.
+    Error openExclusive(const QByteArray& path, QByteArray& handle, Status& status, int deadlineMs = 120000);
     Error openRead(const QByteArray& path, QByteArray& handle, Status& status);
     // Sends `total` bytes from `source`, hashing what it sends; `sent` is called with the
     // bytes the server has acknowledged. No acknowledgement for two minutes ends it.
@@ -49,7 +50,7 @@ private:
     // Reads what has arrived (at most a fixed budget), waiting up to `milliseconds`; replies to
     // outstanding requests go into replies_.
     Error pump(int milliseconds);
-    Error await(quint32 id, wire::Reply& reply);
+    Error await(quint32 id, wire::Reply& reply, int deadlineMs = 120000);
     Error simple(const QByteArray& packet, quint32 id, Status& status);
     Error statusOnly(const wire::Reply&, Status&);
     Error lost();

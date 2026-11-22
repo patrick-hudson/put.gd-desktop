@@ -102,10 +102,11 @@ class SftpLiveTest : public QObject {
         provider_->checkName(d, name, [&](NameCheck c) { status = c.status; });
         return status;
     }
-    QString removeReceipt(const StorageReceipt& receipt) {
+    QString removeReceipt(const StorageReceipt& receipt, SftpProvider* provider = nullptr, Error* error = nullptr) {
         DeleteResult result;
         DeleteRequest request{"d", receipt, {}, std::make_shared<std::atomic_bool>(false)};
-        provider_->remove(request, [this](const QJsonObject& journal, std::function<void(Error)> ack) { journal_ = journal; ack({}); }, [&](DeleteResult r) { result = r; });
+        (provider ? provider : provider_.get())->remove(request, [this](const QJsonObject& journal, std::function<void(Error)> ack) { journal_ = journal; ack({}); }, [&](DeleteResult r) { result = r; });
+        if (error) *error = result.error;
         return result.status;
     }
     static QString name(const QString& suffix) { return "putgd-live-" + QUuid::createUuid().toString(QUuid::Id128).left(12) + suffix; }
@@ -184,6 +185,8 @@ private slots:
         QCOMPARE(check(d, a.name), QString("present"));
         QCOMPARE(upload(d, a).status, QString("collision"));
         // The receipt names the server it was verified as; History checks it before anything else.
+        // The receipt records the known_hosts line that verified the server; the fingerprint is shown from it.
+        QVERIFY(!uploaded.receipt.objectReference["knownHosts"].toArray().isEmpty());
         QVERIFY(sftp::fingerprintValid(uploaded.receipt.objectReference["hostKeyFingerprint"].toString()));
         QCOMPARE(uploaded.receipt.objectReference["user"].toString(), env("PUTGD_LAB_SFTP_KEY_USER"));
         // An upload whose outcome was lost is never claimed without this attempt's own evidence.
@@ -196,12 +199,27 @@ private slots:
             lost.condition = "absent";
             lost.resume = {{"schemaVersion", 1}, {"phase", "opening"}, {"path", uploaded.receipt.objectReference["path"]}, {"server", QJsonObject{
                 {"host", uploaded.receipt.objectReference["host"]}, {"port", uploaded.receipt.objectReference["port"]}, {"user", uploaded.receipt.objectReference["user"]},
-                {"hostKeyFingerprint", uploaded.receipt.objectReference["hostKeyFingerprint"]}}}};
+                {"knownHosts", uploaded.receipt.objectReference["knownHosts"]}}}};
             StatResult result;
             provider_->reconcile(lost, [&](StatResult r) { result = r; });
             QCOMPARE(result.status, QString("unknown"));
         }
-        QCOMPARE(removeReceipt(uploaded.receipt), QString("removed"));
+        // A record whose recorded key isn't the server's: ssh itself refuses, and nothing is deleted.
+        {
+            auto forged = uploaded.receipt;
+            const auto host = forged.objectReference["knownHosts"].toArray().first().toString().section(' ', 0, 0);
+            forged.objectReference["knownHosts"] = QJsonArray{host + " ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFIE1eeuTiZD8O0K7jUXHFl1IBU5HCpFTlDsB6zPqGo0"};
+            SftpProvider fresh(credentials_, knownHosts_);
+            Error refused;
+            removeReceipt(forged, &fresh, &refused);
+            QCOMPARE(refused.code, QString("sftp_server_changed"));
+            QCOMPARE(check(d, a.name), QString("present"));
+        }
+        // A new session proves the server with the recorded line alone, then deletes.
+        {
+            SftpProvider fresh(credentials_, knownHosts_);
+            QCOMPARE(removeReceipt(uploaded.receipt, &fresh), QString("removed"));
+        }
         QCOMPARE(check(d, a.name), QString("absent"));
         // The same name holding other bytes is not the recorded upload: deletion refuses it.
         const auto first = upload(d, a);
@@ -224,6 +242,8 @@ private slots:
         const auto result = upload(d, a, cancel, [&](const UploadProgress& p) { if (p.bytesTransferred.value_or(0) > 4 * 1024 * 1024) *cancel = true; });
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("cancelled"));
+        // It says the partial file was removed because the server confirmed it.
+        QVERIFY2(result.error.message.contains("was removed"), qPrintable(result.error.message));
         QCOMPARE(check(d, a.name), QString("absent"));
     }
     void keyFileAndPassphraseFromSshConfig() {
@@ -271,7 +291,7 @@ private slots:
         QCOMPARE(error.code, QString("sftp_folder_missing"));
         QCOMPARE(result["createFolder"].toString(), missing);
         Error created;
-        QCOMPARE(provider_->setup("createFolder", d, {{"name", missing}}, created)["path"].toString(), missing);
+        QCOMPARE(provider_->setup("createFolder", d, {{"name", missing}, {"path", result["createFolder"].toString()}}, created)["path"].toString(), missing);
         QVERIFY(created.code.isEmpty());
         std::tie(result, error) = test(d);
         QVERIFY2(error.code.isEmpty(), qPrintable(error.code + ": " + error.message));
