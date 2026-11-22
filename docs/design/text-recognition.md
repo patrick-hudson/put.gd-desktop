@@ -908,7 +908,16 @@ other tool active it does not. The user's side is in the
     is no blank run in reach; there is no line spacing to sample (a mark as tall as the image);
     more than a quarter of the line-spacing pixels differ from the background by over 24 levels;
     any pixel looked at is not fully opaque; or the image ends before the matched box's edge. A
-    covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
+    covered neighbour is better than a matched glyph showing. A cover can take the last letter of
+    a short word right before a match, as the "t" of "at" before an address, when that word's box
+    ends inside the letter: from the pixels alone it looks the same as a neighbour's box that
+    starts on a matched glyph (#1849). A neighbouring word joined to the match by ink between
+    their boxes is covered with the match, and the padding goes on from that word. The ink is a
+    piece neither box holds and no taller than half the line, such as a dot, comma, hyphen or
+    underscore recognition dropped: `jane` and `doe@example.com` read from `jane.doe@example.com`
+    (#1854). The join needs that ink and no blank run wider than a quarter of a character between
+    the matched ink and the word's box, where a word space would be. It needs the picture, never
+    applies on a side that faces another run, and only widens a mark. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
     as a label with digits ("sha256"), or the rest of a PEM BEGIN or END line. A prefixed token of a
     kind whose length varies (JSON web tokens, Slack `xox…` and `xapp-`, Stripe API keys, GitLab
