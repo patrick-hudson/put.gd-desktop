@@ -481,9 +481,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     int used=last.length>0?int(segment.text.size())-last.prefix:0;
     QString ending=segment.text;
     // A JSON web token with its header, payload and signature dots read is whole: a token on the
-    // next line is another one (Sol on #1883). Counted from the token's first word, so a head
-    // found by its payload counts its header's dot.
-    int dots=0;if(last.dotted){const auto token=segment.text.mid(segment.starts.at(last.from));dots=int(token.count('.')+token.count(','));}
+    // next line is another one (Sol on #1883). Counted from its prefix, so a dotted label before it
+    // ("auth.session.jwt=") does not count, plus the header's dot of a token found by its payload.
+    int dots=0;if(last.dotted){const auto token=segment.text.mid(last.prefix);dots=int(token.count('.')+token.count(','))+(last.payload?1:0);}
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
