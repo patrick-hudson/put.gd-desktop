@@ -226,7 +226,8 @@ private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
  // The notification server's xdg-activation token for a click, sent just before ActionInvoked (#1804).
- void notificationToken(uint id, const QString& token) {notificationTokens_.insert(id, token);}
+ // Kept only for put.gd's own notifications with buttons; the server broadcasts every application's tokens.
+ void notificationToken(uint id, const QString& token) {if(notificationActions_.contains(id))notificationTokens_.insert(id, token);}
  void notificationClosed(uint id, uint reason);
 private:
  void setOwner(const QString& owner);
@@ -309,7 +310,7 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
  connect(&notificationWatcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this](const QString&,const QString& oldOwner,const QString&) {
   notificationServer_.clear();queryNotificationServer();
   if(oldOwner.isEmpty())return;
-  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();openNotifications_.clear();
+  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();notificationTokens_.clear();openNotifications_.clear();
   // The server that held them is gone, and what it showed with it.
   closing_.clear();arriving_=0;closedCheck();
  });
@@ -599,10 +600,10 @@ void NativeTrayPrivate::closeNotification(uint id) {
  call<<id;bus_.asyncCall(call,callTimeoutMs);
 }
 void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
- // A button or a click on the body uses a resident notification up.
- closeNotification(id);
+ // A button or a click on the body uses a resident notification up, and its token with it.
+ closeNotification(id);const auto token=notificationTokens_.take(id);
  if(action!="default"&&notificationActions_.value(id).contains(action)) {
-  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);const auto token=notificationTokens_.take(id);
+  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);
   QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value,token] {
    if(guard)emit guard->notificationAction(action,value,token);
   });
@@ -615,6 +616,7 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
  });
 }
 void NativeTrayPrivate::notificationClosed(uint id,uint) {
+ notificationTokens_.remove(id);
  notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);openNotifications_.remove(id);
  if(closing_.remove(id))closedCheck();
 }
