@@ -40,7 +40,7 @@ public:
  // prompt to a person; "report" (the default for session requests) pauses the
  // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
- // #1804: settles an operation waiting in sensitive_text_found: redact, upload or cancel.
+ // #1804, #1898: settles an operation waiting in sensitive_text_found: redact_upload, edit, upload or cancel.
  // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
  void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
  // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.

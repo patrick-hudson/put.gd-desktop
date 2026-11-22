@@ -39,6 +39,8 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  :QWidget(parent,Qt::Window|Qt::FramelessWindowHint),model_(std::move(model)){
  setObjectName("sensitivePrompt");setAttribute(Qt::WA_TranslucentBackground);
  const bool any=model_.findings.any(),complete=model_.findings.complete;
+ // Nothing found (a check that couldn't finish) leaves nothing to cover in one step.
+ model_.redactAllowed=model_.redactAllowed&&any;
  setWindowTitle(complete?QStringLiteral("Sensitive text found — put.gd"):QStringLiteral("Check before uploading — put.gd"));
  Ui::styleWindow(*this);
  auto* box=new QVBoxLayout(this);box->setContentsMargins(space(Space::xl),space(Space::xl),space(Space::xl),space(Space::l));box->setSpacing(space(Space::m));
@@ -57,27 +59,48 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
  auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
  // A file-manager selection is answered as a whole: the editor edits one image.
- if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none"),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
+ if(!model_.file.isEmpty()){auto* file=Ui::label(model_.file+(model_.redactAllowed?QStringLiteral(" · Redact and upload or Upload anyway sends this file and checks the rest, Cancel sends none"):QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none")),"meta",this);file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
  if(!model_.preview.isNull()){
-  // The capture as Redact and upload would start, scaled down; no text is shown apart from the pixels.
+  // The capture as Redact and upload sends it (and Open in editor starts it), scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);
   const auto dpr=devicePixelRatioF();auto pixmap=QPixmap::fromImage(model_.preview.scaled(QSize(Ui::scaled(480),Ui::scaled(300))*dpr,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(dpr);
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
  auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
  if(!model_.destination.isEmpty()){auto* where=Ui::label(model_.destination,"meta",this);where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
- auto* buttons=new QHBoxLayout;buttons->setSpacing(space(Space::s));
+ // #1898: four choices. Cancel and Open in editor on the left, Upload anyway and the primary Redact and upload on
+ // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair.
  cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
+ if(model_.editAllowed){
+  edit_=new QPushButton(Ui::icon("edit"),QStringLiteral("Open in editor"),this);edit_->setObjectName("sensitiveEdit");
+  edit_->setToolTip(QStringLiteral("Open the editor with the suggested redactions placed, to change them; Upload there sends it"));
+  connect(edit_,&QPushButton::clicked,this,[this]{choose("edit");});
+ }
  upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(covers.isEmpty()?QStringLiteral("Upload the capture as it is"):QStringLiteral("Upload the capture with what put.gd already covered, and nothing else covered"));
- buttons->addWidget(cancel_);buttons->addStretch();buttons->addWidget(upload_);
  if(model_.redactAllowed){
   redact_=new QPushButton(Ui::icon("redact"),QStringLiteral("Redact and upload"),this);redact_->setObjectName("sensitiveRedact");
-  redact_->setToolTip(QStringLiteral("Open the editor with the suggested redactions placed; Upload there sends it"));Ui::role(redact_,"primary");redact_->setDefault(true);buttons->addWidget(redact_);
-  connect(redact_,&QPushButton::clicked,this,[this]{choose("redact");});
+  redact_->setToolTip(QStringLiteral("Cover everything the preview shows covered and upload, without opening the editor"));Ui::role(redact_,"primary");redact_->setDefault(true);
+  connect(redact_,&QPushButton::clicked,this,[this]{choose("redact_upload");});
  }
- box->addLayout(buttons);
  connect(upload_,&QPushButton::clicked,this,[this]{choose("upload");});
  connect(cancel_,&QPushButton::clicked,this,[this]{choose("cancel");});
+ {
+  const auto row=[](std::initializer_list<QPushButton*> left,std::initializer_list<QPushButton*> right){
+   auto* layout=new QHBoxLayout;layout->setSpacing(space(Space::s));
+   for(auto* button:left)if(button)layout->addWidget(button);
+   layout->addStretch();
+   for(auto* button:right)if(button)layout->addWidget(button);
+   return layout;
+  };
+  int needed=box->contentsMargins().left()+box->contentsMargins().right();int count=0;
+  for(auto* button:{cancel_,edit_,upload_,redact_})if(button){needed+=button->sizeHint().width();++count;}
+  needed+=(count-1)*space(Space::s)+space(Space::l);
+  const auto* screen=QGuiApplication::screenAt(QCursor::pos());if(!screen)screen=QGuiApplication::primaryScreen();
+  const int room=screen?screen->availableGeometry().width()*9/10:Ui::scaled(1200);
+  twoRows_=needed>room;
+  if(twoRows_){box->addLayout(row({cancel_,edit_},{}));box->addLayout(row({},{upload_,redact_}));}
+  else box->addLayout(row({cancel_,edit_},{upload_,redact_}));
+ }
  setMinimumWidth(Ui::scaled(460));
  // A fixed size: tiling compositors (Hyprland, Budgie's labwc) float such a window instead of tiling it.
  adjustSize();setFixedSize(sizeHint().expandedTo(minimumSize()));
@@ -104,13 +127,17 @@ void SensitivePrompt::showEvent(QShowEvent* event){
  (redact_?redact_:cancel_)->setFocus(Qt::ActiveWindowFocusReason);
 }
 QJsonObject SensitivePrompt::state() const {
- QJsonArray choices{"upload","cancel"};if(model_.redactAllowed)choices.prepend("redact");
+ const auto choices=QJsonArray::fromStringList(this->choices());
  auto out=model_.findings.json();out["shown"]=isVisible();
- {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
+ {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;out["buttonRows"]=twoRows_?2:1;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
+}
+QStringList SensitivePrompt::choices() const {
+ QStringList out;if(redact_)out<<QStringLiteral("redact_upload");if(edit_)out<<QStringLiteral("edit");
+ return out<<QStringLiteral("upload")<<QStringLiteral("cancel");
 }
 bool SensitivePrompt::choose(const QString& choice){
- if(decided_||!(choice=="upload"||choice=="cancel"||(choice=="redact"&&model_.redactAllowed)))return false;
- decided_=true;for(auto* button:{redact_,upload_,cancel_})if(button)button->setEnabled(false);
+ if(decided_||!choices().contains(choice))return false;
+ decided_=true;for(auto* button:{redact_,edit_,upload_,cancel_})if(button)button->setEnabled(false);
  emit chosen(choice);return true;
 }
 void SensitivePrompt::closeEvent(QCloseEvent* event){if(!decided_)choose("cancel");event->accept();}

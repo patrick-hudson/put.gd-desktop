@@ -616,7 +616,7 @@ void OperationService::runCheck(Job job) {
  session->setPhaseHandler([owner,id](const QString& phase,const QJsonObject& findings){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,phase,findings]{if(owner&&!owner->stopping_)owner->checkPhase(id,phase,findings);},Qt::QueuedConnection);
  });
- // After Redact and upload the helper is an ordinary editor: the same copy paths as Edit & upload.
+ // After Open in editor the helper is an ordinary editor: the same copy paths as Edit & upload.
  session->setCopyHandler([owner,id](QByteArray png,std::function<void(Error)> done){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,png=std::move(png),done=std::move(done)]() mutable {
    if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the image was copied",{}});return;}
@@ -651,7 +651,7 @@ void OperationService::runCheck(Job job) {
   if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{},cover}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
   QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
   if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
-  // The editor edits one image: Redact and upload is offered only for a selection of one.
+  // The editor edits one image: Open in editor is offered only for a selection of one; Redact and upload for every file.
   const bool single=shared->payload.files.size()==1&&images.size()==1;
   for(qsizetype index=0;index<images.size();++index){
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
@@ -702,7 +702,7 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   return;
  }
  if(phase=="editing"){
-  // Redact and upload: an edit now, outside the one-at-a-time check slot.
+  // Open in editor: an edit now, outside the one-at-a-time check slot.
   op.advance(OperationState::Editing);op.phase="editing";
   logging::info(logOperation(),"Sensitive text check opened the editor",{{"operationId",id}});
   // Only the edited PNG can upload now: let the original go. The worker is inside the editor
@@ -727,8 +727,8 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  }
  const auto next=[this,id]{if(checkingId_==id)checkingId_.clear();pumpChecks();};
  const bool unfinished=unfinishedChecks_.remove(id);
- // A prompt's covered counts stand only where those covers upload (set again below): never after Redact and
- // upload's edit, a Cancel or a failure.
+ // A prompt's covered counts stand only where those covers upload (set again below): never after Open in
+ // editor's edit, a Cancel or a failure.
  op.sensitive.remove("covered");
  // #1820: what the check covered on its own, summed over a selection; reported only for a check that finished.
  const auto recordCovered=[&op,unfinished](const QJsonObject& covered){
@@ -743,9 +743,10 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  const auto cancelled=job.cancelled->load()||outcome->error.code=="cancelled";
  if(cancelled){dropCovered();job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();return;}
  if(!outcome->png.isEmpty()){
-  // Redact and upload: only the editor's sanitized PNG goes on, as for Edit & upload.
-  // #1820: or the check's own covered PNG, with no prompt or after Upload anyway; the original then stays
-  // in memory until it is saved locally, with Keep a local copy on.
+  // Open in editor: only the editor's sanitized PNG goes on, as for Edit & upload.
+  // #1820: or the check's own covered PNG, with no prompt or after Upload anyway, or (#1898) after Redact and
+  // upload with every suggestion covered; the original then stays in memory until it is saved locally, with
+  // Keep a local copy on.
   ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(outcome->png);finalized.mime="image/png";
   ClipboardPayload original;
   if(!outcome->covered.isEmpty()){recordCovered(outcome->covered);if(op.settings.archive.keepUploads)original=std::move(job.payload);}
@@ -848,7 +849,7 @@ bool OperationService::raiseSensitivePrompt(const QString& id,const QString& act
  return true;
 }
 void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {
- if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}
+ if(!QStringList{"redact_upload","edit","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact_upload, edit, upload or cancel",{}},{});return;}
  const auto session=checkSessions_.value(id);
  const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
  if(queued||(session&&session->phase()=="checking")||(session&&session->phase()=="starting")){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
@@ -1229,7 +1230,7 @@ void OperationService::recordingCommand(const QString& command,const QJsonObject
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
- // #1804: Redact and upload turns a sensitive text check into an editor with the same ID.
+ // #1804: Open in editor turns a sensitive text check into an editor with the same ID.
  const auto session=editor_&&editingId_==id?editor_:checkSessions_.value(id);
  if(!session||(session!=editor_&&session->phase()!="editing")){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
  QPointer<OperationService> owner(this);

@@ -199,7 +199,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false,covering=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false,covering=false,redacting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -253,8 +253,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3&&(!checking||prompting)){editing=true;prompting=false;session->setPhase("editing");if(checking)if(const auto handler=session->phaseHandler())handler("editing",result.findings);return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
   // #1820: the check covered what it found automatically and hands that PNG off, with no prompt or after Upload anyway.
-  if(type=="finalizing"&&checking&&ready&&!editing&&!finalizing&&!checkpoint&&!check_->cover.isEmpty()&&payload.size()==3){
-   finalizing=true;covering=true;session->setPhase("finalizing");phaseClock.restart();
+  // #1898: or, marked redacted, after Redact and upload at a prompt: every suggestion covered, whatever the kinds' settings.
+  if(type=="finalizing"&&checking&&ready&&!editing&&!finalizing&&!checkpoint&&((payload.size()==3&&!check_->cover.isEmpty())||(payload.size()==4&&prompting&&payload["redacted"]==true&&!result.findings["found"].toObject().isEmpty()))){
+   finalizing=true;covering=true;redacting=payload.size()==4;session->setPhase("finalizing");phaseClock.restart();
    if(prompting){prompting=false;if(const auto handler=session->phaseHandler())handler("checking",result.findings);}
    return;
   }
@@ -310,9 +311,14 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
     // A covered handoff (#1820) names what it covered: one field more.
-    if(covering!=payload.contains("covered")||(covering&&(!coveredCounts(payload["covered"],check_->cover)||payload["covered"].toObject().isEmpty()))){protocolFailed=true;return;}
-    // A covered handoff after a prompt covers exactly what the prompt said was covered.
-    if(covering&&result.findings.contains("found")&&payload["covered"].toObject()!=result.findings["covered"].toObject()){protocolFailed=true;return;}
+    if(covering!=payload.contains("covered")||(covering&&(!coveredCounts(payload["covered"],redacting?check_->categories:check_->cover)||payload["covered"].toObject().isEmpty()))){protocolFailed=true;return;}
+    // A covered handoff after a prompt covers exactly what the prompt said was covered; after Redact and upload (#1898),
+    // that and everything the prompt said was found.
+    if(covering&&result.findings.contains("found")){
+     auto expected=result.findings["covered"].toObject();
+     if(redacting){const auto found=result.findings["found"].toObject();for(auto it=found.begin();it!=found.end();++it)expected[it.key()]=it.value();}
+     if(payload["covered"].toObject()!=expected){protocolFailed=true;return;}
+    }
     if(covering)result.covered=payload["covered"].toObject();
     if(!finalizing||payload.size()!=(covering?10:9)||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
     const auto width=payload["width"].toInteger(),height=payload["height"].toInteger();
