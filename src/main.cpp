@@ -777,7 +777,7 @@ int main(int argc,char* argv[]) {
 #endif
  }
  // A quit that did not come through quitApplication (a signal) stops deletions here.
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();operations.shutdown();errorLog.flush();});
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();sftp->shutdown();operations.shutdown();errorLog.flush();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
 #ifdef Q_OS_LINUX

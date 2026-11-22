@@ -53,6 +53,11 @@ SftpProvider::SftpProvider(CredentialStore& credentials, QString knownHostsFile)
         }
     });
 }
+void SftpProvider::shutdown() {
+    std::lock_guard lock(mutex_);
+    stopping_ = true;
+    wake_.notify_all();
+}
 SftpProvider::~SftpProvider() {
     {
         std::lock_guard lock(mutex_);

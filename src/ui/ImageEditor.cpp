@@ -110,7 +110,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
- Error submissionError;QString nonce,destination;bool links=true;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
  bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
@@ -405,7 +405,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  QObject::connect(&control,&UiControl::failed,&app,[&](Error){fail();});
  QObject::connect(&control,&UiControl::frame,&app,[&](const QString& type,const QString&,const QJsonObject& object){
   if(type=="bootstrap"&&!bootstrapped){
-   nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();links=object["links"].toBool(true);
+   nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();links=object["links"].toBool(false);
    const QUuid id(nonce);
    if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
    const auto scheme=object["appearance"].toString();

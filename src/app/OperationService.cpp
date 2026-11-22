@@ -631,6 +631,7 @@ void OperationService::runCheck(Job job) {
  session->setAppearance(editorAppearance_);
  const auto& op=job.op;
  const auto staging=root_+"/editing",destination=editorDestination(op),appearance=editorAppearance_;
+ const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
  const auto coveredRoot=root_+"/covered/"+id;
@@ -640,7 +641,7 @@ void OperationService::runCheck(Job job) {
  auto shared=std::make_shared<Job>(std::move(job));auto outcome=std::make_shared<EditorResult>();checkJobs_.insert(id,shared);
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withLinks(links).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -889,7 +890,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.advance(OperationState::Failed);finish(op);return;}
  op.advance(OperationState::Editing);op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",destination=editorDestination(op);
- const bool links=uploadReviewOptions(op,providers_)["links"].toBool(true);
+ const bool links=uploadReviewOptions(op,providers_)["links"].toBool(false);
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;const auto redactTerms=op.settings.quickRedactTerms,redactPatterns=op.settings.quickRedactPatterns;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);

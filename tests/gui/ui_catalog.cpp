@@ -831,7 +831,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{61,348,180,28}}}}},
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
-  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
@@ -842,8 +842,8 @@ int main(int argc,char** argv){
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
   // A selected mark with collapsed geometry, then its expanded fields and Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
-  editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews");editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
-  editor.setDestination("Private upload to Project archive");
+  editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews",false);editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
+  editor.setDestination("Private upload to Project archive",false);
   editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
   editor.viewCommand({{"action","geometryDetails"}},code,message);if(!grab("26h-editor-geometry-expanded"))return 2;editor.viewCommand({{"action","geometryDetails"}},code,message);
   editor.viewCommand({{"action","keyboardHelp"}},code,message);putgd::test::settle(100);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.selectTool(editor::Tool::Text);if(!grab("26e-editor-text-stepper-1060"))return 2;editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));editor.resize(1180,820);
@@ -871,12 +871,12 @@ int main(int argc,char** argv){
   {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(doc.imageRect().right()-20,doc.imageRect().bottom()-40,20,20);label.text="Annotation beyond the image edge";const auto id=doc.add(label);editor.documentEdited();if(!grab("25a-editor-finalizing-warning"))return 2;doc.remove(id);editor.documentEdited();}
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
-  editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");
+  editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link",true);
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
   // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
   editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;
-  editor.setDestination("Private upload to Project archive");
+  editor.setDestination("Private upload to Project archive",false);
   const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
   editor.allowClose();editor.close();
@@ -893,7 +893,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"width",4},{"points",QJsonArray{QJsonArray{70,520},QJsonArray{110,500},QJsonArray{150,530},QJsonArray{195,505},QJsonArray{240,526},QJsonArray{290,498},QJsonArray{340,520}}}}}},
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{337,194,256,130}},{"style","pixelate"},{"strength",14}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
-  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Step);if(!grab("30-editor-step"))return 2;
   editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[1].toDouble()));if(!grab("30a-editor-step-selected"))return 2;
@@ -925,7 +925,7 @@ int main(int argc,char** argv){
   TextResult fake;fake.lineTops=tops;fake.words=words;fake.candidates=words;
   {QStringList text;int line=-1;for(const auto& word:words){const int index=int(tops.indexOf(word.rect.top()));if(index!=line){if(line>=0)text.append("\n");line=index;}else text.append(" ");text.append(word.text);}fake.text=text.join("");}
   TextCode code;code.format="QRCode";code.text="https://example.com/notes/november";code.length=code.text.size();code.quad={QPoint(780,320),QPoint(1010,320),QPoint(1010,550),QPoint(780,550)};fake.codes={code};
-  editor::EditDocument doc(page);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);
+  editor::EditDocument doc(page);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);
   editor.text().setRunner([fake](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){return fake;});
   editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
@@ -976,7 +976,7 @@ int main(int argc,char** argv){
   // Dark app content must keep a visible image boundary in either scheme.
   QImage image(960,600,QImage::Format_RGB32);image.fill(QColor("#191919"));
   QPainter painter(&image);painter.fillRect(QRect(0,0,960,44),QColor("#202020"));painter.setFont(Ui::font());painter.setPen(QColor("#F0F0EC"));painter.drawText(QRect(24,0,900,44),Qt::AlignVCenter,"Synthetic dark screenshot");painter.end();
-  editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
+  editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath("26l-editor-dark-content.png")))return 2;
   captures.append(QJsonObject{{"file","26l-editor-dark-content.png"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
  }
@@ -995,7 +995,7 @@ int main(int argc,char** argv){
  // trim, a cut and two covers; compact 1100×700 with the Edits overlay open on
  // a selected cut; the light theme), over a synthetic frame and synthetic
  // filmstrip tiles (no clip exists here), and the ready control bar.
-  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.availableSize=record::ReviewWindow::defaultSize();o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
+  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.links=true;o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.availableSize=record::ReviewWindow::defaultSize();o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;config.audio.system=true;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");

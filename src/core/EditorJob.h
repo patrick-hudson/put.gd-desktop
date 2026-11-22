@@ -88,7 +88,8 @@ public:
  EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}
  // An existing image can be edited and saved without a submission output.
  EditorJob& withSubmissionError(Error error){submissionError_=std::move(error);return *this;}
- // Whether the destination gives a link (commandtext::givesLinks): the upload bar says so, not the label.
+ // Whether the destination gives a link (commandtext::givesLinks): the upload bar says so, not the
+ // label. Unset, the editor promises no link.
  EditorJob& withLinks(bool links){links_=links;return *this;}
  // "dark" or "light": the helper's scheme, the interface's resolved one.
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}

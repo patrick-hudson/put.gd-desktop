@@ -43,6 +43,9 @@ public:
     // Settings and agents: inspectAccount (what ssh -G resolves), trustHostKey (input
     // {"fingerprint"}: fetched again and kept only when it is that one) and createFolder.
     QJsonObject setup(const QString& kind, const Destination&, const QJsonObject& input, Error&);
+    // Resident shutdown, before it waits for operations: running requests are cancelled and get
+    // at most 30 more seconds from here, a cancel already under way included.
+    void shutdown();
     static QString workerPath();
     QString knownHostsFile() const { return knownHosts_; }
 private:
