@@ -692,7 +692,7 @@ other tool active it does not. The user's side is in the
     marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
     `@`, a quote (straight or curly), a guillemet, `(`, `[` or a backtick inside one when its body
     has both a digit and a capital (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`; an ordinary
-    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    lowercase URL slug has no capital, but a slug that does have both can still match, #1820), tolerant of the usual confusions (a `/` between two letters or digits counts as a letter, as recognition reads a `J` at small sizes, #1839) and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
@@ -900,8 +900,10 @@ other tool active it does not. The user's side is in the
     any pixel looked at is not fully opaque; or the image ends before the matched box's edge. A
     covered neighbour is better than a matched glyph showing. A mark never shrinks inside the
     matched words' own boxes. A mark can also take in an ordinary word joined to a token, such
-    as a label with digits ("sha256"), the words after a prefixed token up to its usual length,
-    or the rest of a PEM BEGIN or END line. A token that runs to the end of its line goes on
+    as a label with digits ("sha256"), a word after a prefixed token read shorter than its usual
+    length that starts before that length ends (counted from the prefix), or the rest of a PEM
+    BEGIN or END line. Ordinary words after a token that already has its usual length are left
+    out ("ghp_…" then "was leaked today", #1839). A token that runs to the end of its line goes on
     over each following line that starts with the rest of it (a JWT soft-wrapped in an editor).
     A remainder of 8 characters or more counts by its shape; a shorter one (3 to 7 characters)
     counts only as a single recognized word with a digit, no run of four lowercase letters, and
