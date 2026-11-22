@@ -44,3 +44,5 @@ putgd_fuzz_target(hyprland LIBS putgd_core SOURCES src/platform/hyprland/Hyprlan
 putgd_fuzz_target(httpimport LIBS putgd_http_rules putgd_core putgd_credentials SOURCES src/storage/http/HttpImport.cpp)
 # The SFTP v3 replies putgd-sftp-worker reads from a server (#1871).
 putgd_fuzz_target(sftpwire LIBS putgd_sftp_wire)
+# Quick redact's matching over recognized words, screen text from any page (#1897).
+putgd_fuzz_target(quickredact LIBS putgd_editor)
