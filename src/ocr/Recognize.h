@@ -60,7 +60,9 @@ struct JobOptions {
  // The emoji scan stops this long after the job starts and keeps what it found.
  int emojiBudgetMs=3000;
 };
-struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,emojiMs=0,totalMs=0; };
+// emojiMs is the whole scan; emojiWaitMs what the job waited for it beyond
+// recognition (all of it when it ran inline).
+struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,emojiMs=0,emojiWaitMs=0,totalMs=0; };
 struct JobResult {
  QString error;             // input_excessive, language_unavailable, engine_unavailable
  QString failedLanguage;
