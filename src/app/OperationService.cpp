@@ -659,7 +659,9 @@ void OperationService::runCheck(Job job) {
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
    EditorJob::Check check{categories,prompt,single,{},cover};
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
-   shared->checkedFiles.insert(images[index],fileIdentity(images[index]));
+   // A file chosen twice that changed between its checks matches neither: its uncovered place fails as changed (#1898).
+   {const auto identity=fileIdentity(images[index]);const auto known=shared->checkedFiles.constFind(images[index]);
+    shared->checkedFiles.insert(images[index],known!=shared->checkedFiles.cend()&&*known!=identity?QStringLiteral("-"):identity);}
    *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
    // #1820: a file covered automatically uploads as its covered PNG, staged privately in its place; the selection goes on.
    if(!outcome->png.isEmpty()&&!outcome->covered.isEmpty()){

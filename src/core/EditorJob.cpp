@@ -270,7 +270,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   // #1820: an agent's Upload anyway with covers is answered after the covered handoff began.
   if(type=="commandResult"&&(editing||prompting||covering)){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
-   if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
+   if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id)){
+    // A decision refused after its reply timed out forwarded nothing: the next one may stand.
+    if(id==decideRequest&&!payload["ok"].toBool()){decideRequest.clear();decided.clear();}
+    return;
+   }
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
    const auto callback=found->reply;outstanding.remove(id);
    // A refused decision forwarded nothing: the next one may stand.

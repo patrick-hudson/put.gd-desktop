@@ -219,6 +219,21 @@ private slots:
   QList<double> keys;for(const auto& item:items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto image=QImage::fromData(artifact.readAll());QVERIFY(blackShare(image,digits(0))>0.7);keys.append(blackShare(image,digits(1)));}
   std::sort(keys.begin(),keys.end());QVERIFY2(keys[0]<0.4&&keys[1]>0.7,"one place covered the key, the other left it as chosen");
  }
+ // #1898: a file chosen twice that changes between its two checks never uploads unchecked at the place left uncovered.
+ void aFileChosenTwiceThatChangesBetweenChecksIsNotUploaded(){
+  Fixture f(page({"nothing"}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto path=f.dir.filePath("receipt.png");QVERIFY(page({card.first(),key.first()}).save(path,"PNG"));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({path,path},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==1;},40000));
+  QVERIFY(page({card.first(),key.first(),"changed"}).save(path,"PNG"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r,1);}).error);
+  QVERIFY(putgd::test::waitFor([&]{return f.inspect(id)["sensitive"].toObject()["prompt"].toInt()==2;},40000));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r,2);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("failed"),40000);
+  QCOMPARE(f.inspect(id)["error"].toObject()["details"].toObject()["cause"].toString(),QString("file_changed"));
+  QCOMPARE(f.provider->uploads.load(),0);
+ }
  // #1898: a check that couldn't finish and found nothing has nothing to cover: Redact and upload is refused.
  void redactAndUploadNeedsSomethingFound(){
   Fixture f(page({"Meeting notes for Tuesday"}),true,false,{},QJsonArray{"eng","zzz"});PUTGD_TRY_VERIFY(f.operations->ready());

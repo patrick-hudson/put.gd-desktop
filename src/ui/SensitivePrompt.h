@@ -55,7 +55,7 @@ protected:
  void mousePressEvent(QMouseEvent*) override;
  void showEvent(QShowEvent*) override;
 private:
- Model model_;bool decided_=false,twoRows_=false;
+ Model model_;bool decided_=false;int rows_=1;
  QPushButton *redact_=nullptr,*edit_=nullptr,*upload_=nullptr,*cancel_=nullptr;
 };
 }

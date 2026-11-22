@@ -76,7 +76,8 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
  if(!model_.destination.isEmpty()){auto* where=Ui::label(QString(),"meta",this);where->ensurePolished();where->setText(where->fontMetrics().elidedText(model_.destination,Qt::ElideMiddle,inner));where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  // #1898: four choices. Cancel and Open in editor on the left, Upload anyway and the primary Redact and upload on
- // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair.
+ // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair, else
+ // one button a row.
  cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
  if(model_.editAllowed){
   edit_=new QPushButton(Ui::icon("edit"),QStringLiteral("Open in editor"),this);edit_->setObjectName("sensitiveEdit");
@@ -99,12 +100,12 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
    for(auto* button:right)if(button)layout->addWidget(button);
    return layout;
   };
-  int needed=0,count=0;
-  for(auto* button:{cancel_,edit_,upload_,redact_})if(button){needed+=button->sizeHint().width();++count;}
-  needed+=(count-1)*space(Space::s)+space(Space::l);
-  twoRows_=needed>inner;
-  if(twoRows_){box->addLayout(row({cancel_,edit_},{}));box->addLayout(row({},{upload_,redact_}));}
-  else box->addLayout(row({cancel_,edit_},{upload_,redact_}));
+  // Width of a row of these buttons, with the spacing and the stretch's minimum between them.
+  const auto width=[](std::initializer_list<QPushButton*> buttons){int sum=0,count=0;for(auto* button:buttons)if(button){sum+=button->sizeHint().width();++count;}return sum+std::max(0,count-1)*space(Space::s)+space(Space::l);};
+  if(width({cancel_,edit_,upload_,redact_})<=inner){rows_=1;box->addLayout(row({cancel_,edit_},{upload_,redact_}));}
+  else if(std::max(width({cancel_,edit_}),width({upload_,redact_}))<=inner){rows_=2;box->addLayout(row({cancel_,edit_},{}));box->addLayout(row({},{upload_,redact_}));}
+  // Not even a pair fits (a narrow screen at large text): one button a row, the primary last.
+  else{rows_=0;for(auto* button:{cancel_,edit_,upload_,redact_})if(button){++rows_;box->addLayout(row({},{button}));}}
  }
  setMinimumWidth(std::min(Ui::scaled(460),room));
  // A fixed size: tiling compositors (Hyprland, Budgie's labwc) float such a window instead of tiling it.
@@ -136,7 +137,7 @@ void SensitivePrompt::showEvent(QShowEvent* event){
 QJsonObject SensitivePrompt::state() const {
  const auto choices=QJsonArray::fromStringList(this->choices());
  auto out=model_.findings.json();out["shown"]=isVisible();
- {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;out["buttonRows"]=twoRows_?2:1;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
+ {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;out["buttonRows"]=rows_;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
 }
 QStringList SensitivePrompt::choices() const {
  QStringList out;if(redact_)out<<QStringLiteral("redact_upload");if(edit_)out<<QStringLiteral("edit");
