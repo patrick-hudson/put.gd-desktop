@@ -664,8 +664,8 @@ other tool active it does not. The user's side is in the
     space and misread characters, so keys and tokens are matched per line on the words of the
     token alphabet joined without spaces (one misread character allowed in eight). A segment is
     marked when it holds a known prefix at the start of a word, or right after one of `=`, `:`, `/`,
-    `@`, a quote, `(`, `[` or a backtick inside one (`KEY_ID=AKIA…`, `"AKIA…"`, `https://ghp_…@host`,
-    #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    `@`, a quote, `(`, `[` or a backtick inside one when its body has a digit (`KEY_ID=AKIA…`,
+    `"AKIA…"`, `https://ghp_…@host`, but not a URL slug, #1820), tolerant of the usual confusions and of a lost or doubled separator, a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
     confusions) or a base64 run with the shape of random data. A PEM block is everything from a
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
@@ -680,9 +680,11 @@ other tool active it does not. The user's side is in the
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
     phone number only with a leading `+`, so the tail of a UUID is not taken for one. A number
-    grouped as a card is printed (4-4-4-4, or 4-6-5 and 4-6-4, with one separator) is never a phone
-    number, so a card number that fails the Luhn check is not suggested as one (#1820). Every
-    dash and the minus sign read as a hyphen (`4111–1111–1111–1111`).
+    grouped as a card is printed (4-4-4-4, or 4-6-5, with one separator and a first digit from 1 to
+    9) is never a phone number, so a card number that fails the Luhn check is not suggested as one;
+    when its groups are not evenly spaced they are separate fields (two phone numbers in table
+    columns), split at the widest gap (#1820). Between two digits a hyphen-like dash or a minus sign
+    reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
     `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs,
@@ -847,7 +849,9 @@ other tool active it does not. The user's side is in the
     line height above and below and by one and a half characters on each side, clamped to the
     image. Recognition boxes can stop a whole glyph short, which the side padding covers. A mark can
     also take in an ordinary word joined to a token, such as a label with digits ("sha256"), the
-    words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line.
+    words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line. A
+    token that runs to the end of its line goes on over each following line that starts with the
+    rest of it (a JWT soft-wrapped in an editor), down to a short last remainder with a digit (#1820).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
