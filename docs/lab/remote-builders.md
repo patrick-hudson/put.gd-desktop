@@ -540,8 +540,8 @@ waiting for the lock, over a probe process left behind by a finished test.
   memory and other timing runs take `desktop_lock.py acquire HOST --resource
   quiet` when they are ready to start, and release it the moment the timing
   ends. While another session holds it, don't start new heavy SSH jobs on that
-  host (builds, full ctest, replays, benchmarks); the lab's own helpers refuse
-  to. Jobs already running may finish. See [Quiet leases for timing
+  host (builds, full ctest, replays, benchmarks). The guarded lab helpers refuse
+  to; for anything else, use `desktop_lock.py guard`. Jobs already running may finish. See [Quiet leases for timing
   runs](#quiet-leases-for-timing-runs).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
@@ -785,21 +785,30 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
 - Acquire records the host's load averages and CPU count in the lease. When the
   1-minute load is above the CPU count it says so: find the heavy work before you
   time anything, and keep the recorded load with your results.
-- When another session holds the lease, do other work and retry later. Never sleep
-  waiting for it, and never hold nothing while you wait. The tool's refusal says
-  so too.
-- Heavy work checks the lease mechanically. `rr_loop.py`, `race_loop.py`,
-  `scroll_tracker_score.py`, `fluidity_run.py`,
-  `record_run.py` and the [weekly stress lane](#weekly-stress-lane-on-k72) call
-  `desktop_lock.refuse_while_quiet()` and exit without starting while another
-  session holds the host's lease. Held, blocked and stale leases count; a free or
-  expired one doesn't. Aurora's `putgd-build-env` refuses `cmake` and `ctest` the
-  same way.
-- For a build or job you start yourself, put `desktop_lock.py guard HOST && ` in
-  front of it. `guard` exits 1 while another session holds the lease, and run
-  on a builder without `HOST` it reads that builder's own lock directory.
-- Your own lease doesn't stop your own run: set `PUTGD_LAB_SESSION` to the
-  lease's session (or pass `guard --session ID`).
+- When another session holds the lease, do other work and retry later. Don't
+  wait idle for it. The tool's refusal says so too.
+- These entry points check the lease themselves and exit without starting while
+  another session holds it: `rr_loop.py`, `race_loop.py`,
+  `scroll_tracker_score.py`, `fluidity_run.py` and `record_run.py` (through
+  `desktop_lock.refuse_while_quiet()`), and Aurora's `putgd-build-env` before
+  `cmake` and `ctest`. A held, blocked or stale lease stops them, and so does an
+  unreadable lease written in the last 15 minutes. A free or expired lease
+  doesn't.
+- The [weekly stress lane](#weekly-stress-lane-on-k72) skips the week while
+  anyone else holds the lease. It checks with its desktop-lock guard, right
+  before CMake configure, between configure and the build, and right before the
+  stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+- Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
+  `cmake` run directly, and any other heavy command. For those, put
+  `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
+  another session holds the lease. Run on a builder without `HOST`, it reads that
+  builder's own lock directory.
+- Your own lease doesn't stop your own run in the guarded helpers: set
+  `PUTGD_LAB_SESSION` to the lease's session (or pass `guard --session ID`).
+- An expired lease no longer stops heavy work, but its file stays until someone
+  removes it, so no other timing run can acquire the lease. Clear it as in
+  [Stale locks](#stale-locks), with `--resource quiet`: message the holder, then
+  `break HOST --resource quiet --session ID --reason TEXT`.
 
 ### Release only after a full cleanup check
 
