@@ -571,6 +571,9 @@ private slots:
   // Sol on #1840: an address ending a sentence before a split one keeps them apart.
   const QList<RecognizedWord> after{{"alice@example.net.",QRect(0,0,140,20),90,0},{"jane+",QRect(148,0,40,20),90,0},{"tag@example.com",QRect(187,0,120,20),90,0}};
   QCOMPARE(found(after,QStringList{"email"}),(QStringList{"email: alice@example.net.","email: jane+ tag@example.com"}));
+  // ...while a dot recognition lost after a domain is still restored before one.
+  const QList<RecognizedWord> lost{{"alice@example",QRect(0,0,104,20),90,0},{"com",QRect(112,0,24,20),90,0},{"bob@example.org",QRect(135,0,120,20),90,0}};
+  QCOMPARE(found(lost,QStringList{"email"}),(QStringList{"email: alice@example com","email: bob@example.org"}));
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
   QCOMPARE(found(dash,QStringList{"email"}),QStringList{"email: bob@example.com"});
   // A word another kind matches stays with that kind: the card keeps its last group.

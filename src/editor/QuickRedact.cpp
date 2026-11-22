@@ -113,6 +113,11 @@ QList<bool> localJoins(const QList<QString>& words,const QList<RecognizedWord>& 
  for(int i=int(words.size())-1;i>0;--i){
   const auto& before=candidates.at(i-1);const auto& after=candidates.at(i);
   if(after.line!=before.line||after.rect.left()>before.rect.right()||!part.match(words.at(i-1)).hasMatch())continue;
+  // The last label of a domain whose dot was restored ("alice@example." "com") starts no address.
+  if(i>1&&candidates.at(i-2).line==before.line&&words.at(i-2).contains('@')&&words.at(i-2).endsWith('.')){
+   QString domain=words.at(i-2).mid(words.at(i-2).indexOf('@')+1);domain.chop(1);
+   if(!domain.contains('.'))continue;
+  }
   local[i]=address.match(words.at(i)).hasMatch()||(part.match(words.at(i)).hasMatch()&&local.at(i+1));
  }
  for(int i=1;i<words.size();++i)if(local.at(i)&&!local.at(i-1)&&!words.at(i-1).front().isLetterOrNumber())local[i]=false;
@@ -132,8 +137,10 @@ Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,
   static const QRegularExpression fragment(QStringLiteral("^[0-9A-Fa-f:]+$"));
   const bool colon=i>0&&!boundary&&category=="ip"&&(words.at(i-1).endsWith(':')||words.at(i).startsWith(':'))&&fragment.match(words.at(i-1)).hasMatch()&&fragment.match(words.at(i)).hasMatch();
   // The email view restored a lost dot after the domain: its last label follows at once.
-  // Not when this word starts a local-part join: then it begins another address.
-  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).contains('@')&&words.at(i-1).endsWith('.')&&!local.value(i+1);
+  // Not after a whole address that ends a sentence ("alice@example.net." then "jane+" "tag@…"),
+  // when this word starts a local-part join: then it begins another address.
+  QString domain=i>0?words.at(i-1).mid(words.at(i-1).indexOf('@')+1):QString();domain.chop(1);
+  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).contains('@')&&words.at(i-1).endsWith('.')&&!(local.value(i+1)&&domain.contains('.'));
   if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }
