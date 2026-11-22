@@ -208,6 +208,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
     return {{"decided",choice}};
    }
+   // The tray or a notification brings the panel forward (#1804): it is an ordinary window another can cover.
+   if(name=="raise"&&prompt){
+    const auto token=params["activationToken"].toString();
+    if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
+    prompt->show();putgd::activateWindow(prompt.get(),token);return {{"raised",true}};
+   }
    return denied("sensitive_text_found","The capture is waiting for a decision: use operation.decide");
   }
   // A decision already taken: a late one is answered, never fatal (#1804).

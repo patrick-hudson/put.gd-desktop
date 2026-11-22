@@ -667,6 +667,7 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   auto fields=sensitiveLog(findings);fields["operationId"]=id;
   logging::info(logOperation(),"Sensitive text check needs a decision",fields);
   observe(op.publicJson());emit changed(id);emit observationsChanged();
+  if(sensitiveModes_.value(id)=="prompt")emit sensitivePromptShown(id);
   return;
  }
  if(phase=="checking"){
@@ -729,6 +730,16 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
  // Cancel, or an agent's decision that never came: nothing is uploaded; the local copy follows Keep a local copy.
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
+}
+bool OperationService::raiseSensitivePrompt(const QString& activationToken) {
+ for(auto it=checkOperations_.cbegin();it!=checkOperations_.cend();++it)if(it->phase=="sensitive_text_found"&&raiseSensitivePrompt(it.key(),activationToken))return true;
+ return false;
+}
+bool OperationService::raiseSensitivePrompt(const QString& id,const QString& activationToken) {
+ const auto session=checkSessions_.value(id);
+ if(!session||session->phase()!="prompt"||sensitiveModes_.value(id)!="prompt")return false;
+ session->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});
+ return true;
 }
 void OperationService::decideSensitive(const QString& id,const QString& choice,JsonReply reply,int prompt) {
  if(!QStringList{"redact","upload","cancel"}.contains(choice)){reply({"invalid_request","choice is redact, upload or cancel",{}},{});return;}

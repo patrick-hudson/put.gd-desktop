@@ -239,6 +239,17 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+ // #1804: without a tray to click, one notification leads back to a prompt another window may cover.
+ connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){
+  if(available())return;
+  const auto message=QStringLiteral("A capture is waiting for your decision");
+  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
+#ifdef Q_OS_LINUX
+  const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
+  if(native_){native_->notify("put.gd",message,false,{},actions);return;}
+  if(tray_)showTrayMessage("put.gd",message,false,actions);
+#endif
+ });
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
   logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
   if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
@@ -293,6 +304,7 @@ TrayController::TrayController(OperationService& operations,
    if(key=="save-diagnostics")saveDiagnostics(value);
    else if(key=="show-in-folder")showSavedPackage(value);
    else if(key.startsWith("restart-file-manager-"))restartFileManager(value);
+   else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,{});
   });
   connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
@@ -330,7 +342,7 @@ TrayController::TrayController(OperationService& operations,
  tray_->setContextMenu(menu_.get());
  connect(tray_, &QSystemTrayIcon::activated, this, [this](auto reason) {
   if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
-   showHistory();
+   {if(!operations_.raiseSensitivePrompt())showHistory();}
  });
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
@@ -719,7 +731,8 @@ void TrayController::runCommand(const QString& action) {
  else if (action == "edit-file") showView("editFile");
  else if (action == "capture-settings") showView("captureSettings");
  else if (action == "settings") showSettings();
- else if (action == "history") showHistory();
+ // A tray click brings a waiting sensitive text prompt forward before anything else (#1804).
+ else if (action == "history") {if(!operations_.raiseSensitivePrompt(activationToken_))showHistory();}
  // Lands on Settings → General → Updates with its action focused, not the first settings page.
  else if (action == "update") showView("updates");
  else if (action == "quit") { const auto quit = quit_; quit(); }
@@ -952,6 +965,7 @@ void TrayController::trayNotificationAction(uint id,const QString& key) {
  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
  close<<id;QDBusConnection::sessionBus().asyncCall(close);
  if(key.startsWith("restart-file-manager-"))restartFileManager(value);
+ else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,{});
 }
 #endif
 void TrayController::setUpdateStatus(const QJsonObject& status) {

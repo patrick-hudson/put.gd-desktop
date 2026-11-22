@@ -42,6 +42,9 @@ public:
  // #1804: settles an operation waiting in sensitive_text_found: redact, upload or cancel.
  // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
  void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
+ // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
+ bool raiseSensitivePrompt(const QString& activationToken={});
+ bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
@@ -183,6 +186,8 @@ signals:
  // One notification for a live observation batch, independent of durable results.
  void observationsChanged();
  void storageActivityChanged();
+ // #1804: a capture's sensitive text prompt is open for a person; the tray offers it, or a notification does.
+ void sensitivePromptShown(const QString& id);
  // The accepted configuration changed (Settings, the tray, a patch): what a menu
  // shows from it is stale until it is read again.
  void settingsAccepted();

@@ -50,8 +50,9 @@ QString sensitiveReasonText(const QString& reason){
  return QStringLiteral("Text recognition failed.");
 }
 SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
- // A panel of its own drawing: no title bar or frame from the desktop, kept above the window it interrupts.
- :QWidget(parent,Qt::Window|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint),model_(std::move(model)){
+ // A panel of its own drawing, with no title bar or frame from the desktop. An ordinary window: it opens raised
+ // and focused, and another window can cover it; the tray or a notification brings it back (#1804).
+ :QWidget(parent,Qt::Window|Qt::FramelessWindowHint),model_(std::move(model)){
  setObjectName("sensitivePrompt");setAttribute(Qt::WA_TranslucentBackground);
  const bool any=model_.findings.any(),complete=model_.findings.complete;
  setWindowTitle(complete?QStringLiteral("Sensitive text found — put.gd"):QStringLiteral("Check before uploading — put.gd"));
