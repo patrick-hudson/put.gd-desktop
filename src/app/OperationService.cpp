@@ -198,6 +198,8 @@ void OperationService::recoverJournal() {
   }
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
+  // #1820: covered copies of a selection's files wait here only until their upload acquires them.
+  EditorJob::discardStaging(root_+"/covered");
   RecordingService::discardStaging(root_+"/recording");
   // Earlier destination tests' journals lose their signed links before any test is admitted (#1680).
   scrubDestinationTestJournals(root_+"/destination-tests");
@@ -627,7 +629,8 @@ void OperationService::runCheck(Job job) {
  const auto& op=job.op;
  const auto staging=root_+"/editing",destination=editorDestination(op),appearance=editorAppearance_;
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto languages=op.settings.textRecognitionLanguages;
- const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories;
+ const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
+ const auto coveredRoot=root_+"/covered/"+id;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
  logging::info(logOperation(),"Sensitive text check started",{{"operationId",id},{"action",op.action},{"mode",prompt?"prompt":"report"}});
@@ -637,20 +640,35 @@ void OperationService::runCheck(Job job) {
   const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withRedactList(terms,patterns).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
-   QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{}}).run(copy,destination,outputBytes,session);
+   QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
    return QJsonObject{};
   }
-  if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{}}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
+  if(shared->payload.kind=="png"){*outcome=make({categories,prompt,true,{},cover}).runEncoded(shared->payload.bytes,destination,outputBytes,session);return QJsonObject{};}
   QStringList images;for(const auto& file:shared->payload.files)if(checkableImage(file))images.append(file);
   if(images.isEmpty()){outcome->check="clean";return QJsonObject{};}
   // The editor edits one image: Redact and upload is offered only for a selection of one.
   const bool single=shared->payload.files.size()==1&&images.size()==1;
   for(qsizetype index=0;index<images.size();++index){
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
-   EditorJob::Check check{categories,prompt,single,{}};
+   EditorJob::Check check{categories,prompt,single,{},cover};
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
    shared->checkedFiles.insert(images[index],fileIdentity(images[index]));
    *outcome=make(check).runFile(images[index],inputBytes,destination,outputBytes,session);
+   // #1820: a file covered automatically uploads as its covered PNG, staged privately in its place; the selection goes on.
+   if(!outcome->png.isEmpty()&&!outcome->covered.isEmpty()){
+    const auto folder=QStringLiteral("%1/%2").arg(coveredRoot).arg(index);
+    const auto name=QFileInfo(images[index]).completeBaseName().left(200)+QStringLiteral(".png");
+    QFile staged(folder+"/"+name);
+    if(!QDir().mkpath(folder)||!QFile::setPermissions(coveredRoot,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!staged.open(QIODevice::WriteOnly|QIODevice::NewOnly)||staged.write(outcome->png)!=outcome->png.size()||!staged.flush()){
+     staged.close();QFile::remove(staged.fileName());
+     outcome->png.clear();outcome->error={"image_job_io","Could not save the covered image for upload; check free disk space",{}};break;
+    }
+    staged.close();
+    for(auto it=outcome->covered.begin();it!=outcome->covered.end();++it)shared->covered[it.key()]=shared->covered[it.key()].toInt()+it.value().toInt();
+    shared->replacedFiles.insert(images[index],staged.fileName());shared->checkedFiles.remove(images[index]);
+    outcome->png.clear();outcome->covered={};outcome->check="upload";
+    continue;
+   }
    // Upload anyway goes on to check the files after this one; anything else ends the selection.
    if(outcome->check!="clean"&&outcome->check!="upload")break;
   }
@@ -664,6 +682,7 @@ void OperationService::checkPhase(const QString& id,const QString& phase,const Q
   // Each prompt of a file selection is numbered, so a decision can name the one it answers.
   const int prompt=op.sensitive["prompt"].toInt()+1;
   op.phase="sensitive_text_found";op.sensitive=findings;op.sensitive["prompt"]=prompt;
+  if(!findings["complete"].toBool(true))unfinishedChecks_.insert(id);
   auto fields=sensitiveLog(findings);fields["operationId"]=id;
   logging::info(logOperation(),"Sensitive text check needs a decision",fields);
   observe(op.publicJson());emit changed(id);emit observationsChanged();
@@ -700,20 +719,41 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   logging::info(logOperation(),"Sensitive text check ended",fields);
  }
  const auto next=[this,id]{if(checkingId_==id)checkingId_.clear();pumpChecks();};
+ const bool unfinished=unfinishedChecks_.remove(id);
+ // A prompt's covered counts stand only where those covers upload (set again below): never after Redact and
+ // upload's edit, a Cancel or a failure.
+ op.sensitive.remove("covered");
+ // #1820: what the check covered on its own, summed over a selection; reported only for a check that finished.
+ const auto recordCovered=[&op,unfinished](const QJsonObject& covered){
+  if(covered.isEmpty())return;
+  if(op.sensitive.isEmpty())op.sensitive={{"found",QJsonObject{}},{"complete",true}};
+  op.sensitive.remove("prompt");op.sensitive["covered"]=covered;if(unfinished)op.sensitive["complete"]=false;
+  auto fields=sensitiveLog(op.sensitive);fields["operationId"]=op.id;for(auto it=covered.begin();it!=covered.end();++it)fields["covered_"+it.key()]=it.value();
+  logging::info(logOperation(),"Sensitive text covered automatically",fields);
+ };
+ // Covered copies of selected files that will not upload now.
+ const auto dropCovered=[&job]{discardCovered(job.replacedFiles);job.replacedFiles.clear();};
  const auto cancelled=job.cancelled->load()||outcome->error.code=="cancelled";
- if(cancelled){job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();return;}
+ if(cancelled){dropCovered();job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();return;}
  if(!outcome->png.isEmpty()){
   // Redact and upload: only the editor's sanitized PNG goes on, as for Edit & upload.
+  // #1820: or the check's own covered PNG, with no prompt or after Upload anyway; the original then stays
+  // in memory until it is saved locally, with Keep a local copy on.
   ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(outcome->png);finalized.mime="image/png";
+  ClipboardPayload original;
+  if(!outcome->covered.isEmpty()){recordCovered(outcome->covered);if(op.settings.archive.keepUploads)original=std::move(job.payload);}
+  job.payload={};
   op.advance(OperationState::Acquiring);op.phase="queued";
   const auto path=databasePath();auto flag=job.cancelled;
-  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,finalized=std::move(finalized)](Error e,QJsonObject) mutable {
+  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,finalized=std::move(finalized),original=std::move(original)](Error e,QJsonObject) mutable {
    if(e){op.error=e;op.advance(OperationState::Failed);finish(op);return;}
-   enqueue({op,std::move(finalized),true,flag,{}});
+   Job covered{op,std::move(finalized),true,flag,{}};covered.original=std::move(original);
+   enqueue(std::move(covered));
   });
   next();return;
  }
  if(outcome->error){
+  dropCovered();
   // The helper could not check (it is missing, failed or gave no answer in time): nothing is uploaded.
   // With Keep a local copy on, the capture is still kept, as Cancel keeps it.
   if(op.settings.archive.keepUploads&&op.state()!=OperationState::Editing&&(!job.payload.image.isNull()||!job.payload.bytes.isEmpty()||!job.payload.files.isEmpty())){
@@ -726,10 +766,23 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   op.error={"sensitive_check_failed",QStringLiteral("put.gd couldn't check this capture for sensitive text, so it wasn't uploaded: %1").arg(outcome->error.message),{{"cause",outcome->error.code}}};
   op.advance(OperationState::Failed);finish(op);next();return;
  }
- if(outcome->check=="clean"||outcome->check=="upload"){enqueue(std::move(job));next();return;}
+ if(outcome->check=="clean"||outcome->check=="upload"){
+  // #1820: a selection's covered files upload in their places; the originals are saved locally with Keep a local copy on.
+  if(!job.replacedFiles.isEmpty()){
+   recordCovered(job.covered);
+   if(op.settings.archive.keepUploads){job.original.kind="files";for(const auto& file:std::as_const(job.payload.files))if(job.replacedFiles.contains(file))job.original.files.append(file);}
+   for(auto& file:job.payload.files)file=job.replacedFiles.value(file,file);
+  }
+  enqueue(std::move(job));next();return;
+ }
+ dropCovered();
  // Cancel, or an agent's decision that never came: nothing is uploaded; the local copy follows Keep a local copy.
  if(op.settings.archive.keepUploads){job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;}
  job.payload={};op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);next();
+}
+void OperationService::discardCovered(const QHash<QString,QString>& replaced) {
+ // Each covered copy sits alone in covered/<operation>/<index>/: the file, then its two folders if empty.
+ for(const auto& path:replaced){QFile::remove(path);const QFileInfo file(path);QDir().rmdir(file.absolutePath());QDir().rmdir(QFileInfo(file.absolutePath()).absolutePath());}
 }
 bool OperationService::raiseSensitivePrompt(const QString& activationToken) {
  for(auto it=checkOperations_.cbegin();it!=checkOperations_.cend();++it)if(it->phase=="sensitive_text_found"&&raiseSensitivePrompt(it.key(),activationToken))return true;
@@ -1154,6 +1207,8 @@ Operation OperationService::run(Job job) {
   }
   return true;
  };
+ // #1820: covered copies of selected files are read once, by the acquisition below; then they go, whatever happens.
+ const std::shared_ptr<void> coveredCopies(nullptr,[replaced=job.replacedFiles](void*){discardCovered(replaced);});
  if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.advance(OperationState::Cancelled);save();return op;}
  if(job.acquire) {op.phase="preparing";if(!save())return op;
   // An upload route rejects files its destination can never store before copying them.
@@ -1184,6 +1239,21 @@ Operation OperationService::run(Job job) {
  const auto route=routeOf(op);
  const bool local=job.localOnly||route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if(!job.sharingOnly&&(local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
+ // #1820: with Keep a local copy on, a covered upload's original is kept locally too, beside the covered copy.
+ if(!job.original.kind.isEmpty()&&!job.sharingOnly&&op.settings.archive.keepUploads){
+  const auto spool=uuid();
+  auto originals=artifacts.acquire(spool,job.original,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs));
+  job.original={};
+  QJsonArray paths;int failed=originals.error?1:0;
+  for(auto artifact:std::as_const(originals.artifacts)){
+   const QFileInfo named(artifact.name);artifact.name=named.completeBaseName()+QStringLiteral("-original")+(named.suffix().isEmpty()?QString():"."+named.suffix());
+   const auto copy=LocalArchive::save(artifact,op.settings.archive);if(copy.status=="saved")paths.append(copy.path);else ++failed;
+  }
+  artifacts.remove(spool);
+  op.sensitive["original"]=QJsonObject{{"status",failed?"failed":"saved"},{"paths",paths}};
+  if(failed)logging::warning(logOperation(),"The original of a covered upload was not saved locally",{{"operationId",op.id},{"saved",paths.size()},{"error",logging::errorFields(originals.error?originals.error:Error{"archive_failed","Cannot create local copy",{}})}});
+  if(!save())return op;
+ }
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:std::as_const(op.items)) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.advance(OperationState::Failed);save();return op;}
  const auto capabilities=provider->capabilities(op.destination);

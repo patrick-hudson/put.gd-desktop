@@ -574,6 +574,11 @@ int main(int argc,char** argv){
  window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
  {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextCategories"),0,160);if(!save("settings-sensitive-check"))return 2;
+ // #1820: card numbers and keys on Redact automatically, email on Warn; the draft is still a view state Settings can keep.
+ for(const auto& [kind,value]:QList<QPair<QString,QString>>{{"card","redact"},{"key","redact"},{"email","warn"}}){auto* combo=window.findChild<QComboBox*>("sensitiveTextKind_"+kind);combo->setCurrentIndex(combo->findData(value));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextKind_name"),0,40);if(!save("settings-sensitive-kinds"))return 2;
+ for(const auto& [kind,value]:QList<QPair<QString,QString>>{{"card","warn"},{"key","warn"},{"email","off"}}){auto* combo=window.findChild<QComboBox*>("sensitiveTextKind_"+kind);combo->setCurrentIndex(combo->findData(value));}
  window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(false);
  // #1618: Quick redact's saved words and regular expressions, under Text recognition; empty, then filled.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
@@ -945,6 +950,9 @@ int main(int argc,char** argv){
   if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
   SensitivePrompt::Model files;files.findings.found={{"card",2}};files.redactAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
   if(!prompt("70c-sensitive-prompt-files",files))return 2;
+  // #1820: card numbers on Redact automatically, email on Warn: the card is covered already, the prompt asks about the email.
+  SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;
+  if(!prompt("70d-sensitive-prompt-mixed",mixed))return 2;
  }
  {
   // Dark app content must keep a visible image boundary in either scheme.

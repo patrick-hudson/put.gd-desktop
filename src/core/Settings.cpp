@@ -475,24 +475,46 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         }
     }
     // #1804: the check before uploading and the Quick redact categories it looks for.
+    // #1820: kinds gives each one off, warn or redact; categories is #1804's list, each one read as warn.
     if (preferences.contains("sensitiveTextCheck")) {
         const auto check = preferences["sensitiveTextCheck"].toObject();
-        const char* const wrong = "The sensitive text check is an object with enabled (true or false) and categories: one to seven different names of email, phone, ip, card, key, name and list.";
-        if (!preferences["sensitiveTextCheck"].isObject() || !keys(check, {"enabled", "categories"}) || !check["enabled"].isBool() || !check["categories"].isArray())
+        const char* const wrong = "The sensitive text check is an object with enabled (true or false) and kinds: each of email, phone, ip, card, key, name and list set to off, warn or redact. An older categories list (one to seven of those names) may stay beside it.";
+        if (!preferences["sensitiveTextCheck"].isObject() || !check["enabled"].isBool() || !(check.contains("categories") || check.contains("kinds")))
             return invalid("/preferences/sensitiveTextCheck", wrong);
-        const auto categories = check["categories"].toArray();
-        if (categories.isEmpty() || categories.size() > sensitiveTextCategoryNames().size()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
-        QStringList seen;
-        for (const auto& category : categories) {
-            if (!category.isString() || !sensitiveTextCategoryNames().contains(category.toString()) || seen.contains(category.toString()))
-                return invalid("/preferences/sensitiveTextCheck/categories", wrong);
-            seen << category.toString();
+        for (auto it = check.begin(); it != check.end(); ++it)
+            if (!QStringList{"enabled", "categories", "kinds"}.contains(it.key())) return invalid("/preferences/sensitiveTextCheck", wrong);
+        if (check.contains("categories")) {
+            if (!check["categories"].isArray()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+            const auto categories = check["categories"].toArray();
+            if (categories.isEmpty() || categories.size() > sensitiveTextCategoryNames().size()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+            QStringList seen;
+            for (const auto& category : categories) {
+                if (!category.isString() || !sensitiveTextCategoryNames().contains(category.toString()) || seen.contains(category.toString()))
+                    return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+                seen << category.toString();
+            }
+        }
+        if (check.contains("kinds")) {
+            if (!check["kinds"].isObject()) return invalid("/preferences/sensitiveTextCheck/kinds", wrong);
+            const auto kinds = check["kinds"].toObject();
+            for (auto it = kinds.begin(); it != kinds.end(); ++it)
+                if (!sensitiveTextCategoryNames().contains(it.key()) || !QStringList{"off", "warn", "redact"}.contains(it.value().toString()))
+                    return invalid(QStringLiteral("/preferences/sensitiveTextCheck/kinds/%1").arg(it.key()), wrong);
         }
     }
     return {};
 }
 QStringList Settings::sensitiveTextCategoryNames() { return {"email", "phone", "ip", "card", "key", "name", "list"}; }
 QStringList Settings::defaultSensitiveTextCategories() { return {"card", "key", "list"}; }
+QString Settings::sensitiveTextKind(const QJsonObject& check, const QString& category) {
+    // A kind named in kinds is that; else #1804's categories list (each one there is warn), else the default list.
+    const auto kinds = check["kinds"].toObject();
+    if (kinds.contains(category)) return kinds[category].toString();
+    QStringList listed;
+    for (const auto& value : check["categories"].toArray()) listed.append(value.toString());
+    if (!check.contains("categories")) listed = defaultSensitiveTextCategories();
+    return listed.contains(category) ? QStringLiteral("warn") : QStringLiteral("off");
+}
 
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
@@ -599,10 +621,11 @@ Settings Settings::fromValidated(const QJsonObject& original) {
         const auto check = doc["preferences"].toObject()["sensitiveTextCheck"].toObject();
         settings.sensitiveTextCheck = check["enabled"].toBool(false);
         // In the editor's own order, whatever order they were saved in.
-        QStringList saved;
-        for (const auto& category : check["categories"].toArray()) saved.append(category.toString());
-        if (!check.contains("categories")) saved = defaultSensitiveTextCategories();
-        for (const auto& category : sensitiveTextCategoryNames()) if (saved.contains(category)) settings.sensitiveTextCategories.append(category);
+        for (const auto& category : sensitiveTextCategoryNames()) {
+            const auto choice = sensitiveTextKind(check, category);
+            if (choice != "off") settings.sensitiveTextCategories.append(category);
+            if (choice == "redact") settings.sensitiveTextCover.append(category);
+        }
     }
     return settings;
 }

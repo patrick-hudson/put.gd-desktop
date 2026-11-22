@@ -33,9 +33,12 @@ bool appearanceDraft(const QJsonValue& value){
  return true;
 }
 // #1804: Check captures for sensitive text before uploading, {enabled, categories}.
+// #1820: kinds maps each kind to off, warn or redact.
 bool sensitiveDraft(const QJsonValue& value){
- if(!fields(value,{"enabled","categories"}))return false;
- const auto check=value.toObject();
+ if(!fields(value,{"enabled","categories","kinds"}))return false;
+ const auto check=value.toObject();const auto kinds=check["kinds"];
+ if(!kinds.isUndefined()&&(!kinds.isObject()||kinds.toObject().size()>7))return false;
+ for(const auto& choice:kinds.toObject())if(!choice.isString()||choice.toString().size()>16)return false;
  return (check["enabled"].isUndefined()||check["enabled"].isBool())&&(check["categories"].isUndefined()||stringArray(check["categories"],7));
 }
 bool preferencesDraft(const QJsonValue& value){

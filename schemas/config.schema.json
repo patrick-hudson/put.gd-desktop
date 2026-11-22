@@ -1216,9 +1216,23 @@
         "sensitiveTextCheck": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled", "categories"],
+          "required": ["enabled"],
+          "anyOf": [{"required": ["kinds"]}, {"required": ["categories"]}],
           "properties": {
             "enabled": {"type": "boolean"},
+            "kinds": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "email": {"enum": ["off", "warn", "redact"]},
+                "phone": {"enum": ["off", "warn", "redact"]},
+                "ip": {"enum": ["off", "warn", "redact"]},
+                "card": {"enum": ["off", "warn", "redact"]},
+                "key": {"enum": ["off", "warn", "redact"]},
+                "name": {"enum": ["off", "warn", "redact"]},
+                "list": {"enum": ["off", "warn", "redact"]}
+              }
+            },
             "categories": {
               "type": "array",
               "minItems": 1,
@@ -1227,7 +1241,7 @@
               "items": {"enum": ["email", "phone", "ip", "card", "key", "name", "list"]}
             }
           },
-          "description": "Check captures for sensitive text before uploading (#1804). With enabled true, an image capture going to a destination has its text recognized first, with Quick redact's rules for these categories; when it shows any, put.gd asks before uploading (Redact and upload, Upload anyway, Cancel), and when it can't finish checking it asks too. Nothing found uploads as usual. Omitted means off, with the categories card, key and list. Recognized text is never stored, logged or written to diagnostics."
+          "description": "Check captures for sensitive text before uploading (#1804, #1820). With enabled true, an image capture going to a destination has its text recognized first, with Quick redact's rules. Each kind in kinds is off (not looked for), warn (put.gd asks before uploading: Redact and upload, Upload anyway, Cancel) or redact (what is found is covered and the capture uploads without asking). Redact covers only text put.gd detected; recognition can miss text. A prompt opens only for warn matches left, or when the check can't finish, whatever the kinds say; Upload anyway keeps the automatic covers. A kind not in kinds follows categories, #1804's older list, where each named kind is warn; without categories, card, key and list are warn and the rest off. Omitted means off. Recognized text is never stored, logged or written to diagnostics."
         },
         "appearance": {
           "type": "object",

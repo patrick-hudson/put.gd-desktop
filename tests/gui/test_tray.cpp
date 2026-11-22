@@ -129,6 +129,16 @@ private slots:
   const QJsonObject operation{{"state","partial"},{"copyStatus","no_result"},{"items",items}};
   QCOMPARE(TrayController::completionMessage(operation,false),expected);
  }
+ // #1820: an upload the sensitive text check covered says what it covered, never after a check that couldn't finish.
+ void aCoveredUploadSaysWhatWasCovered() {
+  QJsonObject item;item["uploadStatus"]="uploaded";item["shareStatus"]="shared";
+  QJsonObject covered;covered["key"]=2;covered["card"]=1;
+  QJsonObject sensitive;sensitive["found"]=QJsonObject();sensitive["complete"]=true;sensitive["covered"]=covered;
+  QJsonObject operation;operation["state"]="completed";operation["copyStatus"]="copied";operation["items"]=QJsonArray{item};operation["sensitive"]=sensitive;
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Covered 1 card number and 2 keys or tokens. Link copied to the clipboard."));
+  sensitive["complete"]=false;sensitive["reason"]="truncated";operation["sensitive"]=sensitive;
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Link copied to the clipboard."));
+ }
 };
 
 QTEST_MAIN(ResidentTray)

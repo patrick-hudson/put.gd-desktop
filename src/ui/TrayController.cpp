@@ -1,4 +1,5 @@
 #include "TrayController.h"
+#include "core/SensitiveText.h"
 #include <QScopeGuard>
 #include <QJsonDocument>
 #include "app/FileManagerIntegration.h"
@@ -473,6 +474,8 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
   if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
+  // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
+  if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');

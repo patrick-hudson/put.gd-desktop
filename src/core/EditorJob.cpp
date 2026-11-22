@@ -66,6 +66,13 @@ void EditorSession::setPhaseHandler(PhaseHandler handler){std::lock_guard lock(m
 EditorSession::PhaseHandler EditorSession::phaseHandler() const {std::lock_guard lock(mutex_);return phaseHandler_;}
 
 namespace {
+// #1820: kinds the check covered, each a count of at least one, all of them kinds it was asked to cover.
+bool coveredCounts(const QJsonValue& value,const QStringList& cover){
+ if(!value.isObject())return false;
+ const auto counts=value.toObject();
+ for(auto it=counts.begin();it!=counts.end();++it)if(!cover.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt())return false;
+ return true;
+}
 // At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
 bool recentColorList(const QJsonValue& value,QStringList& colors){
  static const QRegularExpression hex("^#[0-9a-f]{6}$");
@@ -186,11 +193,12 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  if(check_){
   QJsonObject check{{"categories",QJsonArray::fromStringList(check_->categories)},{"prompt",check_->prompt},{"redact",check_->redact}};
   if(!check_->file.isEmpty())check["file"]=check_->file.left(300);
+  if(!check_->cover.isEmpty())check["cover"]=QJsonArray::fromStringList(check_->cover);
   request["check"]=check;session->setPhase("checking");
  }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false,covering=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -229,21 +237,31 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(protocolFailed||!validEnvelope(payload,nonce)){protocolFailed=true;return;}
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
   // #1804: what the check found, kinds and counts only; then the prompt or an agent's decision.
-  if(type=="checked"&&checking&&ready&&!prompting&&!editing&&!checkpoint&&payload.size()==(payload.contains("reason")?6:5)){
+  if(type=="checked"&&checking&&ready&&!prompting&&!editing&&!finalizing&&!checkpoint&&payload.size()==5+(payload.contains("reason")?1:0)+(payload.contains("covered")?1:0)){
    const auto found=payload["found"].toObject();
    if(!payload["found"].isObject()||!payload["complete"].isBool()||payload["complete"].toBool()==payload.contains("reason")||(payload.contains("reason")&&!QStringList{"recognition_failed","truncated","too_large","patterns_skipped","name_unchecked","unavailable","matching_unfinished","language_missing"}.contains(payload["reason"].toString()))){protocolFailed=true;return;}
-   for(auto it=found.begin();it!=found.end();++it)if(!check_->categories.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt()){protocolFailed=true;return;}
+   // #1820: found is what is left to decide (warn kinds); covered what the helper already covered (redact kinds).
+   for(auto it=found.begin();it!=found.end();++it)if(!check_->categories.contains(it.key())||check_->cover.contains(it.key())||!it.value().isDouble()||it.value().toInt()<1||it.value().toDouble()!=it.value().toInt()){protocolFailed=true;return;}
+   if(payload.contains("covered")&&!coveredCounts(payload["covered"],check_->cover)){protocolFailed=true;return;}
    prompting=true;result.findings={{"found",found},{"complete",payload["complete"]}};if(payload.contains("reason"))result.findings["reason"]=payload["reason"];
+   if(payload.contains("covered"))result.findings["covered"]=payload["covered"];
    session->notePrompt();phaseClock.restart();
    if(const auto handler=session->phaseHandler())handler("prompt",result.findings);
    return;
   }
   if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3&&(!checking||prompting)){editing=true;prompting=false;session->setPhase("editing");if(checking)if(const auto handler=session->phaseHandler())handler("editing",result.findings);return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
+  // #1820: the check covered what it found automatically and hands that PNG off, with no prompt or after Upload anyway.
+  if(type=="finalizing"&&checking&&ready&&!editing&&!finalizing&&!checkpoint&&!check_->cover.isEmpty()&&payload.size()==3){
+   finalizing=true;covering=true;session->setPhase("finalizing");phaseClock.restart();
+   if(prompting){prompting=false;if(const auto handler=session->phaseHandler())handler("checking",result.findings);}
+   return;
+  }
   // A preparation the helper could recover from (encoding, size): it handed
   // nothing off and editing resumes, without a deadline again.
   if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
-  if(type=="commandResult"&&(editing||prompting)){
+  // #1820: an agent's Upload anyway with covers is answered after the covered handoff began.
+  if(type=="commandResult"&&(editing||prompting||covering)){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
    if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
@@ -288,7 +306,10 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
     if(payload.size()!=6||!(checkCode||QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code))){protocolFailed=true;return;}
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
-    if(!finalizing||payload.size()!=9||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
+    // A covered handoff (#1820) names what it covered: one field more.
+    if(covering!=payload.contains("covered")||(covering&&(!coveredCounts(payload["covered"],check_->cover)||payload["covered"].toObject().isEmpty()))){protocolFailed=true;return;}
+    if(covering)result.covered=payload["covered"].toObject();
+    if(!finalizing||payload.size()!=(covering?10:9)||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
     const auto width=payload["width"].toInteger(),height=payload["height"].toInteger();
     if(payload["width"].toDouble()!=width||payload["height"].toDouble()!=height||width<1||height<1||width>INT_MAX||height>INT_MAX||width>admissionPixels/height){protocolFailed=true;return;}
    }
@@ -310,7 +331,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  else{helperOutput.started(process.processId());if(control.send("bootstrap",request).isEmpty())protocolFailed=true;}
  while(error.isEmpty()&&process.state()!=QProcess::NotRunning&&!protocolFailed){
   if(session->cancelled()&&!checkpoint){error="cancelled";break;}
-  if(checking&&!prompting&&!editing&&!checkpoint&&clock.elapsed()>checkTimeoutMs){error="sensitive_check_timeout";break;}
+  if(checking&&!prompting&&!editing&&!finalizing&&!checkpoint&&clock.elapsed()>checkTimeoutMs){error="sensitive_check_timeout";break;}
   if(checking&&prompting&&!check_->prompt&&!checkpoint&&phaseClock.elapsed()>decisionBackstopMs){error="sensitive_check_timeout";break;}
   if(!checking&&!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
   if(finalizing&&!checkpoint&&phaseClock.elapsed()>finalizeTimeoutMs_){error="editor_timeout";break;}

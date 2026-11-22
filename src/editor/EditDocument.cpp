@@ -200,6 +200,11 @@ int EditDocument::removeSuggested(){
  if(!removed)return 0;
  ++generation_;if(!gesture_)push(std::move(before));return int(removed);
 }
+int EditDocument::removeSuggested(const QStringList& categories){
+ auto before=state_;const auto removed=state_.shapes.removeIf([&](const Shape& shape){return !shape.suggested.isEmpty()&&categories.contains(shape.suggested);});
+ if(!removed)return 0;
+ ++generation_;if(!gesture_)push(std::move(before));return int(removed);
+}
 bool EditDocument::setCrop(const QRect& requested){
  const auto crop=clampRect(requested,base_.rect());
  if(crop.width()<1||crop.height()<1||crop==state_.crop)return false;

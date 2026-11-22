@@ -257,7 +257,13 @@ private:
  // localOnly (#1804): a capture whose sensitive text check was cancelled keeps only its local copy.
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;
   // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
-  QHash<QString,QString> checkedFiles={};};
+  QHash<QString,QString> checkedFiles={};
+  // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
+  // replacedFiles maps a selected file to its covered PNG staged under covered/; covered sums the kinds covered.
+  ClipboardPayload original={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};};
+ // #1820: operations with a check that couldn't finish: their notification never says what was covered.
+ QSet<QString> unfinishedChecks_;
+ static void discardCovered(const QHash<QString,QString>& replaced);
  // #1804: an upload whose capture is checked for sensitive text first, one check at a time.
  void admitUpload(Job);
  bool needsSensitiveCheck(const Job&) const;

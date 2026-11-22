@@ -28,11 +28,12 @@ Call call(std::function<void(JsonReply)> start){
 struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
- Fixture(QImage image,bool check=true,bool keepLocal=false){
+ // `check` replaces the sensitiveTextCheck object; `languages` the recognition languages.
+ Fixture(QImage image,bool check=true,bool keepLocal=false,QJsonObject checkObject={},QJsonArray languages={"eng"}){
   registry.add("opaque",provider);
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=keepLocal;doc["archive"]=archive;
-  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}};preferences["textRecognitionLanguages"]=QJsonArray{"eng"};doc["preferences"]=preferences;
+  auto preferences=doc["preferences"].toObject();preferences["sensitiveTextCheck"]=checkObject.isEmpty()?QJsonObject{{"enabled",check},{"categories",QJsonArray{"card","key"}}}:checkObject;preferences["textRecognitionLanguages"]=languages;doc["preferences"]=preferences;
   if(!settings->save(doc,{}))qFatal("fixture configuration rejected");
   source.payload.kind="image";source.payload.image=std::move(image);
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
@@ -48,6 +49,21 @@ struct Fixture {
 };
 const QStringList card{"Card 4111 1111 1111 1111"};
 const QStringList key{"key AKIAIOSFODNN7EXAMPLE"};
+// #1820: the check object with each kind set; kinds not named are off.
+QJsonObject kinds(const QJsonObject& chosen){QJsonObject all{{"email","off"},{"phone","off"},{"ip","off"},{"card","off"},{"key","off"},{"name","off"},{"list","off"}};for(auto it=chosen.begin();it!=chosen.end();++it)all[it.key()]=it.value();return {{"enabled",true},{"kinds",all}};}
+const auto everyKind=kinds({{"email","redact"},{"phone","redact"},{"ip","redact"},{"card","redact"},{"key","redact"},{"name","redact"},{"list","redact"}});
+// How much of a band of the uploaded or saved image is black: a cover fills the digits' band, text alone does not.
+double blackShare(const QImage& image,const QRect& band){
+ int black=0;const auto rgb=image.convertToFormat(QImage::Format_RGB32);
+ for(int y=band.top();y<=band.bottom();++y)for(int x=band.left();x<=band.right();++x)black+=qGray(rgb.pixel(x,y))<40;
+ return double(black)/(band.width()*band.height());
+}
+// The digits of page()'s line `row` (40 px monospace from x=40, baseline 80+70*row): after the first word.
+QRect digits(int row){return QRect(220,52+70*row,320,24);}
+QImage uploaded(OperationService& operations,const QString& id){
+ HistoryStore journal(operations.databasePath());const auto item=journal.operation(id).items.first();
+ QFile artifact(item.artifact.path);if(!artifact.open(QIODevice::ReadOnly))return {};return QImage::fromData(artifact.readAll(),"PNG");
+}
 }
 
 class SensitiveCheckTest:public QObject {
@@ -136,6 +152,68 @@ private slots:
   HistoryStore journal(f.operations->databasePath());const auto item=journal.operation(id).items.first();
   QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));const auto bytes=artifact.readAll();QVERIFY(!inspectSanitizedPng(bytes));
   QCOMPARE(QImage::fromData(bytes,"PNG").convertToFormat(QImage::Format_RGB32).pixel(covered.center()),qRgb(0,0,0));
+ }
+ // #1820: every kind on Redact automatically: the card is covered and the capture uploads with no decision.
+ // With Keep a local copy on, the original is kept locally too, beside the covered copy.
+ void everyKindOnRedactUploadsCoveredWithoutAsking(){
+  Fixture f(page(card),true,true,everyKind);PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();QVERIFY(!id.isEmpty());
+  bool asked=false;
+  const auto settled=[&]{const auto op=f.inspect(id);asked=asked||op["phase"]=="sensitive_text_found";return !Operation::activeState(op["state"].toString());};
+  QVERIFY(putgd::test::waitFor(settled,40000));QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));
+  QVERIFY(!asked);QCOMPARE(f.provider->uploads.load(),1);
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QCOMPARE(sensitive["covered"].toObject()["card"].toInt(),1);QVERIFY(sensitive["complete"].toBool());QVERIFY(sensitive["found"].toObject().isEmpty());
+  const auto image=uploaded(*f.operations,id);QVERIFY(!image.isNull());QVERIFY2(blackShare(image,digits(0))>0.7,qPrintable(QString::number(blackShare(image,digits(0)))));
+  // The covered copy and the original, both kept locally.
+  const auto items=f.inspect(id)["items"].toArray();QCOMPARE(items.first().toObject()["local"].toObject()["status"].toString(),QString("saved"));
+  QVERIFY(blackShare(QImage(items.first().toObject()["local"].toObject()["path"].toString()),digits(0))>0.7);
+  const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
+  const QImage kept(original["paths"].toArray().first().toString());QVERIFY(!kept.isNull());QVERIFY(blackShare(kept,digits(0))<0.4);
+  QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+ }
+ // #1820: card on Redact automatically, key on Warn: the prompt asks about the key only, and Upload anyway keeps the card covered.
+ void aMixedSettingAsksForTheWarnKindOnly(){
+  Fixture f(page({card.first(),key.first()}),true,false,kinds({{"card","redact"},{"key","warn"}}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QCOMPARE(sensitive["found"].toObject(),(QJsonObject{{"key",1}}));QCOMPARE(sensitive["covered"].toObject(),(QJsonObject{{"card",1}}));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  QCOMPARE(f.provider->uploads.load(),1);
+  const auto image=uploaded(*f.operations,id);
+  QVERIFY2(blackShare(image,digits(0))>0.7,"the card stays covered");QVERIFY2(blackShare(image,digits(1))<0.4,"the key, on Warn, was uploaded as it is");
+  QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject()["card"].toInt(),1);
+ }
+ // #1820: a check that can't finish asks, even with every kind on Redact automatically; what was found is covered first.
+ void anUnfinishedCheckAsksEvenWithEveryKindOnRedact(){
+  // A second language with no data installed: the check can't read everything.
+  Fixture f(page(card),true,false,everyKind,QJsonArray{"eng","zzz"});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QVERIFY(!sensitive["complete"].toBool());QCOMPARE(sensitive["reason"].toString(),QString("language_missing"));QCOMPARE(sensitive["covered"].toObject()["card"].toInt(),1);
+  QCOMPARE(f.provider->uploads.load(),0);
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  QVERIFY(blackShare(uploaded(*f.operations,id),digits(0))>0.7);
+  // The notification never says what was covered after this.
+  QVERIFY(!f.inspect(id)["sensitive"].toObject()["complete"].toBool());
+ }
+ // #1820: a file-manager selection covers each file on its own and uploads the covered copies in their places.
+ void aSelectionUploadsEachFileCovered(){
+  Fixture f(page({"nothing"}),true,false,everyKind);PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto first=f.dir.filePath("receipt.png"),second=f.dir.filePath("notes.jpg");QVERIFY(page(card).save(first,"PNG"));QVERIFY(page(card).save(second,"JPG",95));
+  const auto started=call([&](JsonReply r){f.operations->uploadFiles({first,second},{},{},r,"report");});QVERIFY2(!started.error,qPrintable(started.error.code));
+  const auto id=started.result["operationId"].toString();
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),60000);
+  QCOMPARE(f.provider->uploads.load(),2);QCOMPARE(f.inspect(id)["sensitive"].toObject()["covered"].toObject()["card"].toInt(),2);
+  HistoryStore journal(f.operations->databasePath());const auto items=journal.operation(id).items;QCOMPARE(items.size(),2);
+  for(const auto& item:items){QFile artifact(item.artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));QVERIFY(blackShare(QImage::fromData(artifact.readAll()),digits(0))>0.7);}
+  // The user's own files are untouched, and no covered copy is left behind.
+  QVERIFY(blackShare(QImage(first),digits(0))<0.4);
+  QVERIFY(QDir(f.dir.filePath("data/covered")).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).isEmpty());
  }
 };
 QTEST_MAIN(SensitiveCheckTest)
