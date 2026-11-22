@@ -12,6 +12,21 @@ where OpenSSL always matches. That is why [#1525](https://github.com/patrick-hud
 (a package that pacman accepted on Omarchy and that then could not load `libcrypto.so.4`)
 went unseen for five nightlies.
 
+## OpenSSL and the Arch package
+
+Omarchy's core and extra repositories come from its own pinned Arch mirror, which lags
+Arch. Arch has had OpenSSL 4 since 2026-10-24; on 2026-11-22 (UTC) a guest from this golden
+still had `openssl 3.6.5-1` and only `libcrypto.so.3` after `omarchy update -y`
+([#1909](https://github.com/patrick-hudson/put.gd-desktop/issues/1909)). That update
+changed only `[omarchy]` packages and pulled three new dependencies from extra. The mirror's
+`core.db` and `lastsync` both date from 2026-10-22. So the golden matches what Omarchy users
+have, and the installer's AppImage fallback is the right result on it: the Arch package
+links `libcrypto.so.4` ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
+Refresh the golden for the Arch package only once Omarchy's own update brings OpenSSL 4.
+Check that with `pacman -Q openssl` in a guest after `omarchy update -y`. The update needs
+the session's `OMARCHY_PATH` and `PATH`, taken from quickshell's environment, and
+passwordless sudo, which you add only in the overlay.
+
 The golden was built end to end on a temporary EC2 instance on 2026-11-08 (UTC), uploaded
 to S3 from there, and only downloaded to the builders. The instance is terminated.
 
