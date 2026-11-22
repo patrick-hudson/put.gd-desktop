@@ -218,8 +218,9 @@ private slots:
   const auto stall=std::make_shared<Stall>();
   struct Release {std::shared_ptr<Stall> stall;~Release(){
    stall->release=true;
-   if(!ui::stopQuickRedactWorkers(QDeadlineTimer(test::scaled(5000)))||!test::waitFor([]{return !ui::quickRedactAccountLookupRunning();}))
-    QTest::qFail("the stalled lookup or a worker did not end",__FILE__,__LINE__);
+   const bool stopped=ui::stopQuickRedactWorkers(QDeadlineTimer(test::scaled(5000)));
+   const bool idle=test::waitFor([]{return !ui::quickRedactAccountLookupRunning();});
+   if(!stopped||!idle)QTest::qFail("the stalled lookup or a worker did not end",__FILE__,__LINE__);
   }} releaseAtEnd{stall};
   ui::setQuickRedactAccountLookup([stall](const std::function<bool()>&){++stall->calls;while(!stall->release.load())QThread::msleep(5);return ui::Account{QStringLiteral("someone"),{}};});
   const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
