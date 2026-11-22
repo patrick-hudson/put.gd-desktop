@@ -480,9 +480,10 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     const auto box=[&](const QList<int>& line){QRect r;int characters=0,inked=0;for(const int i:line){r=r.united(candidates.at(i).rect);characters+=int(plain.at(i).size());inked+=candidates.at(i).rect.width();}return std::pair{r,double(inked)/qMax(1,characters)};};
     int used=last.length>0?int(segment.text.size())-last.prefix:0;
     QString ending=segment.text;
-    // A JSON web token with its header, payload and signature dots read is whole: a token found by
-    // its payload on the next line is another one (Sol on #1883).
-    int dots=0;if(last.dotted){const auto token=segment.text.mid(last.prefix);dots=int(token.count('.')+token.count(','));}
+    // A JSON web token with its header, payload and signature dots read is whole: a token on the
+    // next line is another one (Sol on #1883). Counted from the token's first word, so a head
+    // found by its payload counts its header's dot.
+    int dots=0;if(last.dotted){const auto token=segment.text.mid(segment.starts.at(last.from));dots=int(token.count('.')+token.count(','));}
     for(int follow=k+1;follow<keys.size()&&words.last()==lines[keys.at(follow-1)].last();++follow){
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
@@ -522,7 +523,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
       // the next line (#1875).
       const bool part=last.dotted&&(ending.endsWith('.')||ending.endsWith(','));
-      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!((part||((last.length==0||(last.dotted&&dots<2))&&f.payload))&&f.dotted);}))break;}
+      if(std::any_of(own.cbegin(),own.cend(),[&](const Found& f){return f.length>0&&!(((part&&dots<=2)||((last.length==0||(last.dotted&&dots<2))&&f.payload))&&f.dotted);}))break;}
      used+=int(tail.size());ending=tail;
      words+=next.first().words;
      if(next.first().words.last()!=nextLine.last())break;
