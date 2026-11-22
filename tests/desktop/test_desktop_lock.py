@@ -438,6 +438,7 @@ class ProtonSessionLock(LockTest):
         self.desktop.release('local_desktop', True)
         # A retired scratch note sorts after every stamped receipt by name.
         (self.directory / 'history' / 'plasma1364-scratch-retired.json').write_text('{"note": "retired"}\n')
+        (self.directory / 'history' / '2099-01-01T00-00-00Z-scratch-retired.json').write_text('{"note": "retired"}\n')
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
 
 

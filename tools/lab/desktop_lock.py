@@ -84,7 +84,7 @@ USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
 PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
-RECEIPT_NAME = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-')  # receipt(): <stamp>-<event>.json
+RECEIPT_NAME = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-(?:(?:proton|quiet)-)?(?:release|break)(?:-\d{1,2})?\.json')  # receipt()
 RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session', 'quiet': 'quiet lease'}  # lock file <name>.lock
 SESSION_VARIABLE = 'PUTGD_LAB_SESSION'  # the session a lab helper runs for; its own quiet lease doesn't stop it
 RENEW_SECONDS = 300  # how often `run` renews its lock while CMD runs (at most); well inside STALE_AFTER
@@ -384,7 +384,7 @@ class Desktop:
     def last_event(self):
         # Only this tool's own receipts, which start with their UTC stamp and so sort by time;
         # other files kept in history (retired scratch notes) must not stand in for the last event.
-        receipts = sorted(path for path in self.history.glob('*.json') if RECEIPT_NAME.match(path.name)) \
+        receipts = sorted(path for path in self.history.glob('*.json') if RECEIPT_NAME.fullmatch(path.name)) \
             if self.history.is_dir() else []
         for receipt in reversed(receipts):
             try:
