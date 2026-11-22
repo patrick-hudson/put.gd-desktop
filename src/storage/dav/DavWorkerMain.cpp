@@ -443,7 +443,7 @@ private:
         else e = {"webdav_failed", QString("%1 answered HTTP %2.").arg(service()).arg(r.status), {}};
         e.details["requestStage"] = stage;
         if (r.status) e.details["httpStatus"] = r.status;
-        if (const auto code = r.ocs()["meta"].toObject()["statuscode"]; code.isDouble()) e.details["ocsStatus"] = code.toInt();
+        if (const auto code = r.ocs()["meta"].toObject().value("statuscode"); code.isDouble()) e.details["ocsStatus"] = code.toInt();
         return e;
     }
     Error quotaError() {
@@ -503,7 +503,7 @@ private:
         const auto s = sharing();
         if (s.isEmpty()) return -1; // missing or malformed: not known
         if (s["api_enabled"].isBool() && !s["api_enabled"].toBool()) return 0;
-        const auto enabled = s["public"].toObject()["enabled"];
+        const auto enabled = s["public"].toObject().value("enabled");
         return enabled.isBool() ? (enabled.toBool() ? 1 : 0) : -1;
     }
     bool passwordEnforced() const {
