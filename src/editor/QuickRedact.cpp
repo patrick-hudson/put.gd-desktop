@@ -579,9 +579,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  struct LineFacts {QList<Segment> segments;bool otherDone=false,other=false,ownDone=false;QList<Found> own;bool pem=false,statement=false,numbered=false,digit=false,upper=false,longWord=false;qsizetype lowercase=0;};
  QHash<int,LineFacts> facts;
  // The two costly facts are worked out only when a chain asks for them (Sol on #1902).
- const auto otherOf=[&](int key){auto& f=facts[key];if(!f.otherDone){f.otherDone=true;f.other=!f.segments.isEmpty()&&otherMatch(f.segments.first().words,plain,candidates);}return f.other;};
- const auto ownOf=[&](int key)->const QList<Found>&{auto& f=facts[key];if(!f.ownDone){f.ownDone=true;if(!f.segments.isEmpty())segmentMatches(f.segments.first(),0,int(f.segments.first().words.size())-1,f.own);}return f.own;};
- const auto factsOf=[&](int key)->const LineFacts&{
+ const auto otherOf=[&](LineFacts& f){if(!f.otherDone){f.otherDone=true;f.other=!f.segments.isEmpty()&&otherMatch(f.segments.first().words,plain,candidates);}return f.other;};
+ const auto ownOf=[&](LineFacts& f)->const QList<Found>&{if(!f.ownDone){f.ownDone=true;if(!f.segments.isEmpty())segmentMatches(f.segments.first(),0,int(f.segments.first().words.size())-1,f.own);}return f.own;};
+ const auto factsOf=[&](int key)->LineFacts&{
   auto it=facts.find(key);
   if(it==facts.end()){
    LineFacts f;f.segments=segments(lines[key],plain,candidates);
@@ -720,7 +720,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      const auto& nextLine=lines[keys.at(follow)];
      {const auto [above,character]=box(lines[keys.at(follow-1)]);const auto below=box(nextLine).first;
       if(below.top()<=above.top()||below.top()-above.top()>3*qMax(above.height(),below.height())||below.left()>above.left()+4.5*character)break;}
-     const auto& nextFacts=factsOf(keys.at(follow));const auto& next=nextFacts.segments;
+     auto& nextFacts=factsOf(keys.at(follow));const auto& next=nextFacts.segments;
      // A remainder of letters alone that closes the quote the token opened: the next line's first
      // word, at most seven token characters, then the closing quote and only closing brackets or
      // separators ("edc\");"). Checked first, since its punctuation can keep it from being a token piece.
@@ -750,8 +750,8 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       int count=0;for(const int w:next.first().words)count+=digits(digitView(plain.at(w)));
       if(count<13&&!(hexAfter&&digit&&hexTail.match(tail).hasMatch()))break;
      }
-     else if(otherOf(keys.at(follow)))break;
-     {const auto& own=ownOf(keys.at(follow));
+     else if(otherOf(nextFacts))break;
+     {const auto& own=ownOf(nextFacts);
       // A JSON web token wrapped just after one of its dots starts its next line with "eyJ"; one
       // wrapped inside its header (read as a JWT or a base64 run above) shows its payload's eyJ on
       // the next line (#1875).
