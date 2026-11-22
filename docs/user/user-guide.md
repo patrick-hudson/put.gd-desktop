@@ -208,7 +208,7 @@ Turn on **Check captures for sensitive text before uploading** in **Settings →
 
 **Card numbers**, **Keys and tokens** and **My redaction list** are on **Warn** to start with. **Email addresses**, **Phone numbers**, **IP addresses** and **My username and name** start **Off**, because most chat and terminal screenshots show some of those. **Apply to all kinds** sets every kind at once: choose **Redact automatically** there to have everything put.gd finds covered every time. The option can't be turned on while text recognition is unavailable (the section says why).
 
-**Redact automatically covers only the text put.gd detects.** Text recognition can miss small, faint or dark-theme text, so a covered upload isn't a guarantee that the image is clean.
+**Redact automatically covers only the text put.gd detects.** Text recognition can miss very small text (around 11 pixels or less), faint or low-contrast text, and a number broken across two lines, so a covered upload isn't a guarantee that the image is clean. A key or token is covered together with the name written right before it, such as `AWS_KEY = "…"`.
 
 With it on, put.gd reads an image before it uploads it, the same way Quick redact reads it. That covers region, window, monitor, desktop and scrolling captures, images and image files you upload from the clipboard, and PNG and JPEG files you upload with **Upload with put.gd** (also those inside a folder when folders upload file by file). Captures that only go to your local archive aren't read, since nothing is uploaded.
 
