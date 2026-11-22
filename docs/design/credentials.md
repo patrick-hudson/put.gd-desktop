@@ -110,7 +110,8 @@ alone. The exception is a "not found" answer for an entry that isn't marked as s
 entry can answer "not found" too. A successful keychain store marks its entry. The destination
 check records keep the mark across restarts while a destination names the entry or owns it as
 `putgd/<profile id>` or `putgd/sftp/<profile id>`, in either credentials mode. Records from before this rule mark the
-entries of each destination they show stored credentials for; missing or unreadable records mark
+entries owned by each destination whose credential revision is above zero (a failed or cancelled
+store can count too); missing or unreadable records mark
 the entries keychain-mode destinations name. A left-out name with no value
 to keep (nothing saved, or a session-mode destination with nothing loaded) is stored empty.
 Stores and unlocks of one keychain entry run one at a time (`setup_busy` otherwise), and a
