@@ -184,7 +184,7 @@ banded, parallel recognition, and all of them fail.
 | Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey and 8-bit RGB that is a memfd of at most 96,000,032 bytes: the 32-byte header, 24,000,000 bytes of grey and 72,000,000 of colour. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
-| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition, before it read codes, checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
+| Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition. That clock starts before the codes are read, and the scan itself starts after them. The limit is checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
 | Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
 
@@ -478,17 +478,20 @@ helper finds emoji in the colour plane and names them itself, from templates bui
     and 4 MP+ screens 15% faster on aurora-amd (6 cores), and the corpus 8% faster on k72 (4
     cores). The text was identical on all 176 captures and on the 26 #1748 emoji crops. The
     record is [put.gd-evidence `records/2026-11-22-issue-1815-emoji-scan-overlap`](https://github.com/patrick-hudson/put.gd-evidence/tree/1d1dc859d798c1a16789475e4fc1f7cec9a4e659/records/2026-11-22-issue-1815-emoji-scan-overlap).
-  - The colour rows the scan has passed, the rows read again around each glyph once it is done,
-    and the template pages it read are given back as it goes. Its large working buffers come
+  - The colour rows the scan has passed, and the rows read again around each glyph once it is
+    done, are given back as it goes. The template pages it read are given back when the scan
+    ends. Its large working buffers come
     straight from the kernel, so a freed one does not raise glibc's mmap threshold for
     Tesseract's buffers.
-  - While the scan runs, no task's memory growth is measured, so the memory gate does not count
-    the scan's pages as a task's.
+  - No growth sample is taken from a task that overlaps the scan, so the scan's pages never count
+    as a task's growth. The gate still checks the helper's whole resident set, scan included,
+    before it starts an engine or hands a worker a task.
   - If the system refuses the thread, the scan runs first, inline, as before.
-  - The scan's 3-second limit still counts from the start of recognition. Because the scan now
-    shares the CPU with the engines, a very busy screen can reach the limit sooner. A cut scan
-    keeps what it found and never cuts the text.
-  - `recognizeMs` counts only the time the job waited for the scan at the join.
+  - The scan's 3-second limit is unchanged and still counts from the start of recognition. The
+    scan now shares the CPU with the engines, so on a very busy screen it may get through less
+    of the page before that limit. A cut scan keeps what it found and never cuts the text.
+  - `recognizeMs` is code reading plus text recognition, plus the time the job waited for the
+    scan at the join (or the whole scan, when it ran inline).
 - **What it cannot see.** An emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them)
   has no colour core, so it is not found and Tesseract's reading of it
   stays, usually a symbol the copy filter drops. Apps that draw their own emoji pictures in
