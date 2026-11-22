@@ -365,6 +365,10 @@ private slots:
   QTest::newRow("a JSON password whose closing quote is its own word")<<"{\"password\":\"Hn4!vQ8"+QString("zR2#wLp \"}")<<QStringList{"key"}<<QStringList{"key: {\"password\":\"Hn4!vQ8"+QString("zR2#wLp")};
   QTest::newRow("a password in a query inside a quoted URL")<<"{\"url\":\"https://db.example.test/x?user=a&password="+QString("Hn4vQ8zR2wLp\"}")<<QStringList{"key"}<<QStringList{"key: {\"url\":\"https://db.example.test/x?user=a&password="+QString("Hn4vQ8zR2wLp\"}")};
   QTest::newRow("an @ in a URL's query is no password")<<"http://localhost:3000?owner=ops@example.test"<<QStringList{"key"}<<QStringList{};
+  {const auto dsn=QString("https://8f2c41d0")+"7b9e4a63@o41872.ingest.sentry.io/552";
+   QTest::newRow("a Sentry DSN")<<"dsn "+dsn<<QStringList{"key"}<<QStringList{"key: "+dsn};
+   QTest::newRow("a Sentry DSN split after its scheme by recognition")<<"SENTRY_DSN=https: "+dsn.mid(6)<<QStringList{"key"}<<QStringList{"key: SENTRY_DSN=https: "+dsn.mid(6)};
+   QTest::newRow("a secret-named URL with a key in its userinfo")<<"ANALYTICS_TOKEN=https://"+QString("q9Lm2Vx7Tz4R")+"@collect.example.test/1"<<QStringList{"key"}<<QStringList{"key: ANALYTICS_TOKEN=https://"+QString("q9Lm2Vx7Tz4R")+"@collect.example.test/1"};}
   QTest::newRow("a quoted URL with a port stays visible")<<"\"http://localhost:3000\" (http://localhost:8080)"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a numeric PIN")<<"DB_PIN="+QString("82")+"9413"<<QStringList{"key"}<<QStringList{"key: DB_PIN="+QString("82")+"9413"};
   for(const auto& form:{QString("“PASSWORD”=R!$^&*()#"),QString("12PASSWORD=R!$^&*()#"),QString("{\"password\":\"R!$^&*()#\"}")})

@@ -691,7 +691,8 @@ bool secretValue(QString value,bool numeric=false) {
  if(reference.match(value).hasMatch())return false;
  // A URL with no password in it (redis://localhost:6379/0) is an address, not a secret; one with a
  // password is matched as a URL.
- static const QRegularExpression address(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,24}://"));
+ // A URL with a key in its userinfo (a Sentry DSN, https://<key>@host/1) is a secret (acceptance on #1903).
+ static const QRegularExpression address(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,24}://(?![^\\s/?#@]*@)"));
  if(address.match(value).hasMatch())return false;
  static const QSet<QString> words{"true","false","null","none","nil","yes","no","on","off","required","optional","undefined","empty","redacted","hidden","secret","password","token","string","example","changeme"};
  if(words.contains(value.toLower()))return false;
@@ -742,6 +743,8 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?zapier[.,]?com/hooks/catch/[A-Za-z0-9]{3,}/[A-Za-z0-9]{3,}")),
   QRegularExpression(QStringLiteral("(?i)chat[.,]?googleapis[.,]?com/[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}(?:key|token)=[A-Za-z0-9_-]{8,}")),
   QRegularExpression(QStringLiteral("(?i)logic[.,]?azure[.,]?com[^\\s?&]{0,200}[?&](?:[^\\s&]{0,100}&){0,16}sig=[A-Za-z0-9_%-]{8,}")),
+  // A Sentry DSN: its key is the URL's userinfo (https://<key>@o1.ingest.sentry.io/<project>).
+  QRegularExpression(QStringLiteral("(?i)https?:/{1,2}[0-9a-f]{12,}(?::[0-9a-f]+)?@[A-Za-z0-9.-]{0,100}sentry[.,]io/[0-9]+")),
   // A Telegram bot token: the bot's id, a colon and 35 characters (core.telegram.org/bots/api).
   QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{6,12}:[A-Za-z0-9_-]{30,}")),
  };
