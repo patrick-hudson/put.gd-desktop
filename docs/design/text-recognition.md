@@ -281,6 +281,10 @@ time budget; the words join the candidates after the copied text is made, so Cop
 unchanged, and a word where one was already read is left out. A page with no such rows does no
 extra work.
 
+Limits: ink within about 25 levels of the background is not found as faint ink (a gradient or
+noise looks the same), and on a whole screen of 4 MP or more, read in panels, a faint line outside
+a panel's trimmed area is not read again (#1912).
+
 - **Screen or region.** An input of at least 4,000,000 pixels is a screen. A screen is cut into
   panels, and its job has a cap of 16,000,000 scaled pixels. Anything smaller is one panel, the
   whole image, with a cap of 8,000,000. The caps were measured on m74: a larger one sent
@@ -756,6 +760,10 @@ other tool active it does not. The user's side is in the
     - a webhook URL its holder can post with (Slack, Discord, Microsoft Teams, Zapier, Google Chat,
       Azure Logic Apps) and a Telegram bot token.
     Key matches that share a word are one match.
+  - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
+    Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
+    through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
+    documentation example keys are matched like real keys.
   - Not secrets (#1894, #1895): a prefixed token whose body is mask characters; a hex run with a
     hash word on its line (`sha`, `sha1` to `sha512`, `md5`, `commit`, `digest`, `checksum`, `hash`,
     `etag`, `integrity`, `blake2b`, `blake3`, a label cell or `sha256:` included) and no secret word
