@@ -373,6 +373,27 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const qint64 extraEngineCost=std::max<qint64>(16*1024*1024,engineCost-shared->data.bytesHanded());
  if(!measureFirst&&wanted>1)startExtras(fitting(extraEngineCost+4*largestTask));
  work(&shared->first,0,afterFirstTask);
+ // #1894: lines of faint ink alone (comment grey beside brighter text), which
+ // Tesseract's Otsu binarization turns to background, are read once more by the
+ // first engine, each with its contrast stretched, for Quick redact's
+ // candidates only (a job that asks for them). Pages with none cost nothing.
+ struct Faint { int panel=0;Band band;Outcome outcome; };
+ QList<Faint> faint;
+ if(options.candidates&&!shared->stop.load()){
+  for(int i=0;i<panelList.size()&&!shared->stop.load();++i){
+   const auto& p=panelList[i];
+   for(const auto& band:faintLines(p.profile,p.rect.width(),p.rect.height())){
+    const int deadline=shared->budgetMs>0?shared->left():0;
+    if(shared->budgetMs>0&&(deadline<=0||deadline<shared->slowest.load()))break;
+    auto copy=bandImage(p.view,band,p.plan.scale,options.limits.border,p.codes,p.profile.background,p.invert);
+    stretchContrast(copy,p.invert?255-p.profile.background:p.profile.background);
+    Faint f{i,band,{}};
+    f.outcome.text=shared->first.recognize(copy,p.plan.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
+    f.outcome.done=!f.outcome.failed;
+    if(f.outcome.done)faint.append(std::move(f));
+   }
+  }
+ }
  // Wait for the extra workers, never past the budget (and a second's grace
  // for a pass ending on its monitor deadline). Then close the handover: a
  // late worker's result is dropped, and once no band copy is running nothing
@@ -439,6 +460,21 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);
+ // The faint lines join the words after the copied text is made: they are not
+ // copied (kept stays false), and a word where one was already read is left out.
+ for(const auto& f:std::as_const(faint)){
+  const auto& p=panelList[f.panel];
+  Recognition part;mergeBand(part,f.outcome.text,f.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
+  const int lineBase=int(result.recognition.lines.size());
+  const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
+  for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
+  for(auto word:std::as_const(part.words)){
+   word.rect.translate(p.rect.topLeft());word.line+=lineBase;word.kept=false;
+   for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
+   const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
+   if(!seen)result.recognition.words.append(std::move(word));
+  }
+ }
  result.timings.totalMs=total.elapsed();
  return result;
 }

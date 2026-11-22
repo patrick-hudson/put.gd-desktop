@@ -1,6 +1,6 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips cut between lines and joined in page order, the input limit, and
+// strips cut between lines and joined in page order, faint lines read again (#1894), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
 // confident letters. The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
@@ -62,6 +62,35 @@ private slots:
    const auto band=bandImage(view,{0,height,false},scale,4,codes,255,false);
    for(const char p:band.pixels)QCOMPARE(uchar(p),uchar(255));
   }
+ }
+ // #1894: a line of faint ink alone (comment grey beside brighter text on a dark page), which
+ // Otsu's threshold turns to background, is found as a band to read again; brighter lines and a
+ // smooth gradient are not. Stretched, its darkest pixel is black and the background white.
+ void faintLinesAreFoundForASecondRead(){
+  const int width=400,height=160;
+  const auto page=[&](int faintInk,bool gradient){
+   QByteArray grey(width*height,char(35));
+   for(int y=0;y<height;++y)for(int x=0;x<width;++x){
+    if(gradient)grey[y*width+x]=char(35+x*40/width);
+    const bool glyph=(x/2)%2==0&&x>=20&&x<380;
+    if(glyph&&((y>=10&&y<22)||(y>=40&&y<52)||(y>=70&&y<82)))grey[y*width+x]=char(220);
+    if(glyph&&faintInk&&y>=100&&y<112)grey[y*width+x]=char(faintInk);
+   }
+   return grey;
+  };
+  const auto lines=[&](const QByteArray& grey){
+   const GreyView view{reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width};
+   return faintLines(measure(view,{}),width,height);
+  };
+  const auto found=lines(page(72,false));
+  QCOMPARE(found.size(),qsizetype(1));
+  QVERIFY(found.first().top<=100&&found.first().bottom>=112&&found.first().bottom-found.first().top<=20);
+  QVERIFY(lines(page(0,false)).isEmpty());
+  QVERIFY(lines(page(0,true)).isEmpty());
+  GreyImage band;band.width=4;band.height=1;band.pixels=QByteArray("\xb6\xc8\xdc\xdc",4);
+  stretchContrast(band,220);
+  QCOMPARE(uchar(band.pixels.at(0)),uchar(0));QCOMPARE(uchar(band.pixels.at(3)),uchar(255));
+  QVERIFY(uchar(band.pixels.at(1))>0&&uchar(band.pixels.at(1))<255);
  }
  // Every row is in a band; bands cut at a gap meet, bands cut with no gap
  // overlap by two lines; a word cut by a seam comes from the band that holds

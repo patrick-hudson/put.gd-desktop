@@ -18,6 +18,11 @@ struct Profile {
  bool dark=false;        // light text on a dark background
  int lineHeight=0;       // median height of the ink row runs; 0 when none
  QList<int> rowInk;      // ink pixels per row, code areas excluded
+ // Faint ink per row (#1894): edges at least faintContrast from the background
+ // that stay on the background's side of the Otsu threshold, which Tesseract's
+ // own Otsu binarization then drops (comment grey on a dark editor beside
+ // brighter text). Code areas excluded.
+ QList<int> faintInk;
  bool blank(int y,int width)const{return rowInk.at(y)<=std::max(2,width/256);}
 };
 // Background, polarity, ink per row and the text height, from the whole image.
@@ -83,6 +88,15 @@ QList<Band> strips(const Profile& profile,int width,int height,int parts);
 // single-column image is exactly one panel, the whole image. With several,
 // each is trimmed to its activity plus a margin, and an empty one is dropped.
 QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight);
+
+// #1894: the rows that hold only faint ink, as bands to read again with their
+// contrast stretched: runs of rows with faint ink and no ink at the threshold,
+// at least half a line height (three rows) and at most three line heights
+// tall, padded by two rows, at most `limit` of them, top to bottom.
+QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
+// Stretches a band copy's contrast so its darkest pixel is black and the
+// background white: faint ink becomes ink Otsu keeps.
+void stretchContrast(GreyImage& band,int background);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.
