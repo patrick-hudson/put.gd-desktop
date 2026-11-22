@@ -2673,7 +2673,14 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
           r1 = std::max(r1, r);
           c0 = std::min(c0, c);
           c1 = std::max(c1, c);
-          const int nb[4] = {r > 0 ? j - C : -1, r + 1 < blockRowCount_ ? j + C : -1, c > 0 ? j - 1 : -1, c + 1 < C ? j + 1 : -1};
+          // Not up or down the frame's two outermost columns: the window's
+          // scroll bar there stands still in every row, and joined a header
+          // to the 280 rows below it after a step of 806 rows; those rows,
+          // shown by that frame only, were painted flat (#1837, GitHub on
+          // Cinnamon).
+          const bool edge = c < 2 || c >= C - 2;
+          const int nb[4] = {r > 0 && !edge ? j - C : -1, r + 1 < blockRowCount_ && !edge ? j + C : -1, c > 0 ? j - 1 : -1,
+                             c + 1 < C ? j + 1 : -1};
           for (int k : nb)
             if (k >= 0 && (*in)[size_t(k)] && part[size_t(k)] < 0) {
               part[size_t(k)] = i;
