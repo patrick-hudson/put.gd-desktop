@@ -15,8 +15,8 @@ constexpr qint64 reuseWithinMs = 50000;
 // The worker reports at least every 250 ms while a file moves and has a 120 s SFTP deadline.
 constexpr qint64 silenceLimitMs = 200000;
 // How long a cancelled request may take to finish before the helper is stopped: the worker's
-// 20 s OPEN wait and its 8 s cleanup budget fit inside it.
-constexpr qint64 cancelGraceMs = 30000;
+// 20 s OPEN wait, 3 s on its own connection and a cleanup over a new one fit inside it (#1888).
+constexpr qint64 cancelGraceMs = 45000;
 Error parseError(const QJsonObject& value) { return {value["code"].toString("sftp_failed"), value["message"].toString("The SFTP request failed"), value["details"].toObject()}; }
 // Only these methods sign in, so only they get the password and passphrase.
 bool signsIn(const QString& method) {

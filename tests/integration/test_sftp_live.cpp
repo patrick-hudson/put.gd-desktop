@@ -3,11 +3,13 @@
 // needs the storage lab (tools/lab/storage_servers, PR #1877). Source its env file and run
 //   PUTGD_SFTP_LAB_ALIAS=putgd-sftp-lab PUTGD_SFTP_LAB_PP_ALIAS=putgd-sftp-lab-pp test_sftp_live
 // where the two aliases are ~/.ssh/config Host entries for the key user with the plain key
-// and with the passphrase key (IdentityFile, IdentitiesOnly yes). Secret files are read here
-// only and never printed.
+// and with the passphrase key (IdentityFile, IdentitiesOnly yes). PUTGD_SFTP_LAB_SLOW_ALIAS,
+// optional, names the plain-key alias reached through a ProxyCommand that paces what ssh sends
+// to about 50 KB/s (#1888). Secret files are read here only and never printed.
 #include "storage/sftp/SftpProvider.h"
 #include <QCryptographicHash>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
@@ -244,6 +246,30 @@ private slots:
         QCOMPARE(result.error.code, QString("cancelled"));
         // It says the partial file was removed because the server confirmed it.
         QVERIFY2(result.error.message.contains("was removed"), qPrintable(result.error.message));
+        QCOMPARE(check(d, a.name), QString("absent"));
+    }
+    // #1888: on a slow link CLOSE and REMOVE wait behind the writes already in ssh's buffers; the
+    // partial file is then removed over a new connection, and the cancel says so.
+    void cancelOnASlowLinkRemovesThePartialFile() {
+        if (env("PUTGD_SFTP_LAB_SLOW_ALIAS").isEmpty()) QSKIP("Set PUTGD_SFTP_LAB_SLOW_ALIAS to a paced ~/.ssh/config Host alias");
+        qunsetenv("SSH_AUTH_SOCK");
+        const auto d = destination(settings(env("PUTGD_SFTP_LAB_SLOW_ALIAS"), {}, env("PUTGD_LAB_SFTP_UPLOAD_DIR")), "slow");
+        secrets("slow", {}, {});
+        trustServer(d);
+        QByteArray bytes(16 * 1024 * 1024, Qt::Uninitialized);
+        QRandomGenerator::global()->fillRange(reinterpret_cast<quint32*>(bytes.data()), bytes.size() / 4);
+        const auto a = artifact(bytes, name(".bin"));
+        bytes.clear();
+        auto cancel = std::make_shared<std::atomic_bool>(false);
+        QElapsedTimer took;  // from the cancel: it settles inside the resident's 45 s cancel grace
+        const auto result = upload(d, a, cancel, [&](const UploadProgress& p) {
+            if (p.bytesTransferred.value_or(0) > 256 * 1024 && !cancel->exchange(true)) took.start();
+        });
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QVERIFY2(result.error.message.contains("was removed"), qPrintable(result.error.message));
+        QVERIFY2(took.isValid() && took.elapsed() < 45000, qPrintable(QString::number(took.elapsed())));
+        qInfo("cancel settled %lld ms after it was asked for", took.elapsed());
         QCOMPARE(check(d, a.name), QString("absent"));
     }
     void keyFileAndPassphraseFromSshConfig() {

@@ -150,6 +150,13 @@ struct Connection {
         ssh.reset();
         pinFolder.reset();
     }
+    // Ends ssh at once: what it still holds for the server (a cancelled upload's writes) is dropped.
+    void kill() {
+        client.reset();
+        if (ssh) ssh->kill();
+        ssh.reset();
+        pinFolder.reset();
+    }
     // The fingerprint shown for the server: computed from the recorded line, for display only.
     QString fingerprint() const {
         for (const auto& line : knownLines) if (!line.startsWith('@')) if (const auto f = fingerprintOfLine(line); !f.isEmpty()) return f;
@@ -174,6 +181,8 @@ public:
         passphrase_ = secrets[passphraseKey()].toString();
         secrets = {};
         hadPassword_ = !password_.isEmpty();
+        // An upload keeps them until it ends: cleaning up a cancelled one may need a new connection.
+        keepSecrets_ = request["method"].toString() == QLatin1String("upload");
         hadPassphrase_ = !passphrase_.isEmpty();
         // Computed once: a second connection in this request must not see the wiped secrets.
         requestKey_ = connectionKey();
@@ -201,7 +210,9 @@ private:
     Destination destination_;
     QString knownHosts_, password_, passphrase_;
     QByteArray requestKey_;
-    bool hadPassword_ = false, hadPassphrase_ = false;
+    bool hadPassword_ = false, hadPassphrase_ = false, keepSecrets_ = false;
+    // What stops this request's SFTP calls: the cancel, except while a cancelled upload cleans up.
+    const std::atomic_bool* cancel_ = &io.cancelled;
     qint64 id_ = 0;
     Connection connection_;
 
@@ -220,12 +231,12 @@ private:
         auto key = requestKey_;
         if (!pinned.isEmpty()) key += QCryptographicHash::hash(pinned.join('\n').toUtf8(), QCryptographicHash::Sha256);
         if (connection_.key == key && connection_.alive()) {
-            connection_.client->setCancellation(&io.cancelled);
+            connection_.client->setCancellation(cancel_);
             return true;
         }
         connection_.close();
         // A request cancelled while it waited starts nothing.
-        if (io.cancelled) { error = {"cancelled", "Cancelled before it started", {}}; return false; }
+        if (cancel_->load()) { error = {"cancelled", "Cancelled before it started", {}}; return false; }
         auto env = sshEnvironment();
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return false; }
@@ -270,12 +281,13 @@ private:
             return false;
         }
         askpass.setSshPid(ssh->pid());
-        auto client = std::make_unique<Client>(*ssh, &io.cancelled);
+        auto client = std::make_unique<Client>(*ssh, cancel_);
         bool noise = false;
         const auto failed = client->handshake(noise);
-        // Signing in is over either way: nothing more is answered, and both secrets are forgotten.
+        // Signing in is over either way: nothing more is answered, and both secrets are forgotten
+        // (an upload's at its end).
         askpass.stop();
-        forgetSecrets();
+        if (!keepSecrets_) forgetSecrets();
         if (failed) {
             if (failed.code == QLatin1String("cancelled")) { error = failed; return false; }
             ssh->finish(3000);
@@ -463,19 +475,43 @@ private:
     // Removes a file this request created and could not finish. True only when the server
     // confirmed it is gone.
     enum class Gone { Removed, Already, Unconfirmed };
-    Gone discard(const QByteArray& handle, const QString& path) {
-        if (!connection_.client || connection_.client->broken()) return Gone::Unconfirmed;
+    // `opened`: what FSTAT said of the new file right after OPEN, when it said it. Then, if this
+    // connection can't confirm the removal within 3 seconds (on a slow link CLOSE and REMOVE queue
+    // behind the writes already in ssh's buffers, #1888), ssh is ended and a new connection removes
+    // the file, but only while it is still a regular file of the same owner and no larger than
+    // `bound`, the upload's size. Otherwise CLOSE and REMOVE share one 8-second budget.
+    Gone discard(const QByteArray& handle, const QString& path, const wire::Attributes* opened = nullptr, qint64 bound = 0) {
+        if (connection_.client && !connection_.client->broken()) {
+            const std::atomic_bool never{false};
+            client().setCancellation(&never);
+            struct Restore { Client& c; ~Restore() { c.setCancellation(&io.cancelled); } } restore{client()};
+            const qint64 limit = opened ? 3000 : 8000;
+            QElapsedTimer budget;
+            budget.start();
+            const auto left = [&] { return int(qMax<qint64>(0, limit - budget.elapsed())); };
+            Client::Status status;
+            if (handle.isEmpty() || !client().close(handle, status, left()))
+                if (left() > 0 && !client().remove(bytesOf(path), status, left())) {
+                    if (status.code == wire::Ok) return Gone::Removed;
+                    if (status.code == wire::NoSuchFile) return Gone::Already;
+                }
+        }
+        if (!opened) return Gone::Unconfirmed;
+        return discardFresh(path, *opened, bound);
+    }
+    Gone discardFresh(const QString& path, const wire::Attributes& opened, qint64 bound) {
+        connection_.kill();
         const std::atomic_bool never{false};
-        client().setCancellation(&never);
-        struct Restore { Client& c; ~Restore() { c.setCancellation(&io.cancelled); } } restore{client()};
-        // CLOSE and REMOVE share one 8-second budget, so a cancelled upload ends inside the 30 the
-        // resident gives it after its 20-second OPEN wait; what doesn't finish stays unconfirmed.
-        QElapsedTimer budget;
-        budget.start();
-        const auto left = [&] { return int(qMax<qint64>(0, 8000 - budget.elapsed())); };
+        cancel_ = &never;
+        struct Restore { Worker& w; ~Restore() { w.cancel_ = &io.cancelled; if (w.connection_.client) w.connection_.client->setCancellation(&io.cancelled); } } restore{*this};
+        Error error;
+        if (!connect(error, false)) return Gone::Unconfirmed;
+        wire::Attributes there;
         Client::Status status;
-        if (!handle.isEmpty() && client().close(handle, status, left())) return Gone::Unconfirmed;
-        if (left() <= 0 || client().remove(bytesOf(path), status, left())) return Gone::Unconfirmed;
+        if (client().lstat(bytesOf(path), there, status)) return Gone::Unconfirmed;
+        if (status.code == wire::NoSuchFile) return Gone::Already;
+        if (status.code != wire::Ok || !complete(there) || !there.regularFile() || there.uid != opened.uid || qint64(there.size) > bound) return Gone::Unconfirmed;
+        if (client().remove(bytesOf(path), status, 8000)) return Gone::Unconfirmed;
         return status.code == wire::Ok ? Gone::Removed : status.code == wire::NoSuchFile ? Gone::Already : Gone::Unconfirmed;
     }
     QJsonObject upload(Error& error, bool& uncertain) {
@@ -498,15 +534,22 @@ private:
         if (auto e = io.checkpoint(id_, {{"schemaVersion", 1}, {"phase", "opening"}, {"path", path}, {"server", connection_.server()}})) { error = e; return {}; }
         QByteArray handle;
         Client::Status status;
+        wire::Attributes opened;
+        bool openedKnown = false;
         {
             // The final name, created only if nothing has it: never a temporary name renamed over it,
             // which several servers would let replace another file. Once OPEN is sent its reply is
-            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, then 8
-            // for CLOSE and REMOVE, inside the 30 the resident gives a cancelled request.
+            // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, then the
+            // cleanup (discard), inside the 45 the resident gives a cancelled request.
             if (io.cancelled) { error = {"cancelled", "Cancelled before anything was sent", {}}; return {}; }
             const std::atomic_bool never{false};
             client().setCancellation(&never);
             const auto failed = client().openExclusive(bytesOf(path), handle, status, 20000);
+            // The new file's owner, which a cleanup over a new connection checks (#1888).
+            if (!failed && status.code == wire::Ok) {
+                Client::Status seen;
+                openedKnown = !client().fstat(handle, opened, seen) && seen.code == wire::Ok && complete(opened) && opened.regularFile();
+            }
             client().setCancellation(&io.cancelled);
             if (failed) { error = failed; error.details["path"] = path; uncertain = true; return {}; }
         }
@@ -521,7 +564,7 @@ private:
         // From here on the file exists and is ours: any failure removes it, and the message says
         // it was removed only when the server confirmed that.
         const auto abandon = [&](Error e) {
-            const auto gone = discard(handle, path);
+            const auto gone = discard(handle, path, openedKnown ? &opened : nullptr, artifact.bytes);
             const bool removed = gone != Gone::Unconfirmed;
             handle.clear();
             uncertain = !removed && e.code != QLatin1String("artifact_changed");
