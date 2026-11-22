@@ -53,8 +53,8 @@ ID. `setup.connectAccount` writes it; `setup.storeCredentials` writes the origin
 providers, and the first `setup.inspectAccount` adds the account ID, for the credential it
 inspected only: one changed meanwhile is left unbound. A Nextcloud app password stored by hand
 does nothing but that inspection (and sign-out) until it is bound; Test runs the inspection
-first. Storing credentials, signing in, signing out, the inspection and Test run one at a time per
-destination. Signing in again reads any earlier app password from the keychain first (an entry
+first. Storing credentials, signing in, signing out, the inspection and Test (including the
+check a diagnostics package upload runs) run one at a time per destination. Signing in again reads any earlier app password from the keychain first (an entry
 that isn't there is no earlier grant). Binding is by origin, as browsers scope Basic authentication: another folder on the
 same server keeps the same credentials. Before any request that
 carries the credentials (upload, Test, History stat, delete and links, sign-out) the provider
