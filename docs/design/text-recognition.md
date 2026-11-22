@@ -872,10 +872,14 @@ only when the check finds something. Don't extend it into a general "are you sur
 
 The prompt is put.gd's own frameless panel, drawn by the helper from the theme tokens: the raised
 surface, a strong border, a gold accent edge, the `alert` glyph and the `putgd::Ui` roles. It has no
-desktop title bar or frame, and it moves by dragging its body, through the desktop's own move. It stays
-above other windows. Its size is fixed, so tiling compositors (Hyprland, Budgie's labwc) float it. Where
-the desktop lets a window choose (X11), it opens centred on the screen with the pointer. Focus starts on
-its default button.
+desktop title bar or frame, and it moves by dragging its body, through the desktop's own move. It is an
+ordinary window: it opens raised and focused, and another window can cover it. On Wayland a window
+can't ask to stay on top, and put.gd keeps it an ordinary window everywhere rather than an overlay that
+can't be moved. While a capture waits, the tray and History say "Waiting for your decision", and a click on
+the tray icon brings the prompt back instead of opening History. On a desktop with no tray, put.gd also
+sends one notification, "A capture is waiting for your decision", whose **Show** brings it back. Its size
+is fixed, so tiling compositors (Hyprland, Budgie's labwc) float it. Where the desktop lets a window
+choose (X11), it opens centred on the screen with the pointer. Focus starts on its default button.
 
 - The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
   names what was found by kind and count: "This capture shows a card number and a key or token. It

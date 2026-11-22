@@ -213,7 +213,7 @@ With it on, each region, window, monitor, desktop and scrolling capture, each im
 
 For several files from your file manager, the panel names the file it found something in, and offers only **Upload anyway** and **Cancel**, since the editor edits one image at a time. **Upload anyway** keeps that file and goes on checking the others, so you may be asked again. **Cancel** uploads none of them. If a file changes after put.gd checked it and before it is uploaded, nothing is uploaded and History says why: upload it again to have it checked again.
 
-While one panel is open, a capture you take next waits until you answer. The tray and History show "Checking for sensitive text" and then "Waiting for your decision". The panel has no title bar. Drag it by its body to move it.
+While one panel is open, a capture you take next waits until you answer. The tray and History show "Checking for sensitive text" and then "Waiting for your decision". The panel has no title bar. Drag it by its body to move it. Another window can cover it: click put.gd's tray icon to bring it back. On a desktop without a tray, a notification, "A capture is waiting for your decision", has **Show** for that.
 
 **It only suggests, as Quick redact does.** Recognition can miss text, and a capture with no prompt can still show something private. Captures you make with **Capture region & edit**, recordings and other kinds of files are not checked. Nothing it reads is saved, logged or uploaded.
 
