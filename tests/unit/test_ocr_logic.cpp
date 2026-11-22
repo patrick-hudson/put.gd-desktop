@@ -1,6 +1,7 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips cut between lines and joined in page order, faint lines read again (#1894), the input limit, and
+// strips cut between lines and joined in page order, faint lines read again (#1894) in every
+// window of a screen (#1912), uncertain tokens' lines read again (#1911), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
 // confident letters. The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
@@ -100,6 +101,37 @@ private slots:
   QCOMPARE(uchar(band.pixels.at(0)),uchar(0));QCOMPARE(uchar(band.pixels.at(3)),uchar(255));
   QVERIFY(uchar(band.pixels.at(1))>0&&uchar(band.pixels.at(1))<255);
  }
+ // #1911: only an uncertain word shaped like a key or token is read again;
+ // its line's rows, joined with a neighbour's, and the least confident first
+ // when there are too many. The copy read again is dark ink on white whatever
+ // the page's polarity or contrast.
+ void uncertainTokensAreReadAgain(){
+  QVERIFY(uncertainToken(QStringLiteral("ghp_a1B2c3D4e5F6g7"),40));
+  QVERIFY(uncertainToken(QStringLiteral("\"sk-ant-api03-x9Y8z7\","),69));
+  QVERIFY(!uncertainToken(QStringLiteral("ghp_a1B2c3D4e5F6g7"),70));       // confident
+  QVERIFY(!uncertainToken(QStringLiteral("internationalization"),20));    // no digit
+  QVERIFY(!uncertainToken(QStringLiteral("2026-11-22T19"),20));           // no letter
+  QVERIFY(!uncertainToken(QStringLiteral("\"a1b2c3d4e5f\""),20));        // 11 once trimmed
+  const auto bands=tokenLines({{QRect(10,100,200,12),50},{QRect(300,104,100,12),20},{QRect(10,10,200,12),60}},200);
+  QCOMPARE(bands.size(),qsizetype(2));
+  QCOMPARE(bands[0].top,10-5);QCOMPARE(bands[0].bottom,22+5);
+  QCOMPARE(bands[1].top,100-5);QCOMPARE(bands[1].bottom,116+5);
+  const auto least=tokenLines({{QRect(10,10,200,12),60},{QRect(10,100,200,12),20},{QRect(10,180,200,12),40}},200,2);
+  QCOMPARE(least.size(),qsizetype(2));QCOMPARE(least[0].top,100-5);QCOMPARE(least[1].top,180-5);
+  const int width=320,height=80;
+  for(const auto& [paper,ink]:{std::pair{30,200},std::pair{240,40},std::pair{30,62},std::pair{0x58,0x93}}){
+   QByteArray grey(width*height,char(paper));
+   for(int y=30;y<42;++y)for(int x=20;x<300;++x)if((x/3)%2==0)grey[y*width+x]=char(ink);
+   const auto copy=contrastBand({reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width},{26,46,false},2,4,{});
+   QCOMPARE(copy.width,width*2+8);QCOMPARE(copy.height,20*2+8);
+   int darkest=255,lightest=0;
+   for(int y=0;y<copy.height;++y)for(int x=0;x<copy.width;++x){const int v=uchar(copy.pixels.at(y*copy.width+x));darkest=std::min(darkest,v);lightest=std::max(lightest,v);}
+   QVERIFY2(darkest<=40,qPrintable(QStringLiteral("paper %1 ink %2: darkest %3").arg(paper).arg(ink).arg(darkest)));
+   QCOMPARE(lightest,255);
+   // The rows above the glyphs are paper: white.
+   QCOMPARE(uchar(copy.pixels.at((4+2)*copy.width+copy.width/2)),uchar(255));
+  }
+ }
  // Every row is in a band; bands cut at a gap meet, bands cut with no gap
  // overlap by two lines; a word cut by a seam comes from the band that holds
  // it whole, and a word seen in both bands is kept once.
@@ -193,8 +225,17 @@ private slots:
   QCOMPARE(found.size(),2);
   QVERIFY(found[0].contains(left.adjusted(0,0,-6,-6)));QVERIFY(found[1].contains(right.adjusted(0,0,-6,-6)));
   QVERIFY(found[0].right()<found[1].left());
+  // #1912: the windows before trimming cover the whole screen, so a faint line
+  // below a window's last bright line is still inside one of them.
+  {QList<QRect> cells;panels({reinterpret_cast<const uint8_t*>(two.constData()),width,height,width},{},12,&cells);
+   for(int y=0;y<height;y+=7)for(int x=0;x<width;x+=7)
+    QVERIFY(std::any_of(cells.cbegin(),cells.cend(),[&](const QRect& c){return c.contains(QPoint(x,y));}));
+   QVERIFY(!found[0].contains(QPoint(100,height-6)));
+   QVERIFY(std::any_of(cells.cbegin(),cells.cend(),[&](const QRect& c){return c.contains(found[0])&&c.contains(QPoint(100,height-6));}));}
   const auto one=page({QRect(20,20,1160,360)});
-  QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12),QList<QRect>{QRect(0,0,width,height)});
+  {QList<QRect> cells;
+   QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12,&cells),QList<QRect>{QRect(0,0,width,height)});
+   QCOMPARE(cells,QList<QRect>{QRect(0,0,width,height)});}
   // On a tall page, one long line (a token) past the others of its column
   // is not cut off into panels of its own.
   const int tallWidth=2400,tall=1500;

@@ -329,8 +329,9 @@ void cut(const Activity& a,const CellRect& r,int down,int across,int minimumSide
  out.append(r);
 }
 }
-QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight){
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight,QList<QRect>* cells){
  const QRect whole(0,0,image.width,image.height);
+ if(cells)*cells={whole};
  if(!image.valid())return {whole};
  const int line=lineHeight>0?lineHeight:16;
  const auto a=activity(image,codes,std::max(48,4*line));
@@ -338,7 +339,7 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
  const int down=std::max(6,(3*line+cell-1)/cell),across=std::max(3,(3*line/2+cell-1)/cell),minimumSide=std::max(4,(4*line+cell-1)/cell);
  QList<CellRect> leaves;cut(a,{0,0,a.columns,a.rows},down,across,minimumSide,0,leaves);
  if(leaves.size()<2)return {whole};
- QList<QRect> out;const int margin=std::max(4,line/2);
+ QList<QRect> out,untrimmed;const int margin=std::max(4,line/2);
  for(const auto& r:std::as_const(leaves)){
   // Trimmed to its activity; a panel with less than one short line of it is empty.
   int x0=r.x1,y0=r.y1,x1=r.x0,y1=r.y0;qint64 total=0;
@@ -346,10 +347,12 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
    const qint64 n=qint64(a.down[size_t(y)*size_t(a.columns)+size_t(x)])+a.across[size_t(y)*size_t(a.columns)+size_t(x)];
    if(n>0){total+=n;x0=std::min(x0,x);y0=std::min(y0,y);x1=std::max(x1,x+1);y1=std::max(y1,y+1);}
   }
+  if(cells)untrimmed.append(QRect(r.x0*cell,r.y0*cell,r.width()*cell,r.height()*cell).intersected(whole));
   if(total<qint64(line)*4)continue;
   out.append(QRect(QPoint(std::max(0,x0*cell-margin),std::max(0,y0*cell-margin)),QPoint(std::min(image.width-1,x1*cell+margin-1),std::min(image.height-1,y1*cell+margin-1))));
  }
  if(out.size()<2)return {whole};
+ if(cells)*cells=untrimmed;
  return out;
 }
 QList<Band> faintLines(const Profile& profile,int width,int height,int limit){
@@ -419,5 +422,87 @@ GreyImage bandImage(const GreyView& source,const Band& band,double scale,int bor
  }
  if(invert){auto* p=reinterpret_cast<uint8_t*>(out.pixels.data());for(qsizetype i=0;i<out.pixels.size();++i)p[i]=uint8_t(255-p[i]);}
  return out;
+}
+bool uncertainToken(const QString& text,float confidence){
+ if(confidence>=tokenConfidence)return false;
+ static const QString edges=QStringLiteral("\"'`()[]{}<>,;:.‘’“”");
+ qsizetype from=0,to=text.size();
+ while(from<to&&edges.contains(text.at(from)))++from;
+ while(to>from&&edges.contains(text.at(to-1)))--to;
+ if(to-from<tokenLength)return false;
+ bool letter=false,digit=false;
+ for(qsizetype i=from;i<to;++i){const QChar c=text.at(i);letter|=c.isLetter();digit|=c.isDigit();}
+ return letter&&digit;
+}
+QList<Band> tokenLines(const QList<TokenWord>& words,int height,int limit){
+ struct Run { int top=0,bottom=0;float confidence=0; };
+ QList<Run> runs;
+ for(const auto& w:words){
+  const int grow=w.rect.height()/3+1;
+  runs.append({std::clamp(w.rect.top()-grow,0,height),std::clamp(w.rect.bottom()+1+grow,0,height),w.confidence});
+ }
+ std::sort(runs.begin(),runs.end(),[](const Run& a,const Run& b){return a.top<b.top;});
+ QList<Run> joined;
+ for(const auto& r:std::as_const(runs)){
+  if(r.bottom<=r.top)continue;
+  if(!joined.isEmpty()&&r.top<=joined.last().bottom){auto& j=joined.last();j.bottom=std::max(j.bottom,r.bottom);j.confidence=std::min(j.confidence,r.confidence);}
+  else joined.append(r);
+ }
+ if(joined.size()>limit){
+  std::stable_sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.confidence<b.confidence;});
+  joined.resize(std::max(0,limit));
+  std::sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.top<b.top;});
+ }
+ QList<Band> out;for(const auto& r:std::as_const(joined))out.append({r.top,r.bottom,false});
+ return out;
+}
+GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes){
+ // The band with two tiles of context above and below, where the local
+ // background and ink are measured on 16 px tiles over 5 x 5 of them.
+ constexpr int tile=16,reach=2;
+ const int top=std::max(0,band.top-reach*tile),bottom=std::min(source.height,band.bottom+reach*tile);
+ const int width=source.width,height=bottom-top;
+ if(width<1||height<1)return bandImage(source,band,scale,border,codes,255,false);
+ const int columns=(width+tile-1)/tile,rows=(height+tile-1)/tile;
+ const auto at=[&](int y,int x){return source.row(top+y)[x];};
+ // Per tile histograms, then a 5 x 5 window's percentile.
+ std::vector<std::array<uint32_t,256>> histogram(size_t(columns)*size_t(rows));
+ const auto windowed=[&](std::vector<uint8_t>& result,double fraction){
+  result.assign(size_t(columns)*size_t(rows),0);
+  for(int ty=0;ty<rows;++ty)for(int tx=0;tx<columns;++tx){
+   std::array<uint32_t,256> sum{};uint32_t total=0;
+   for(int y=std::max(0,ty-reach);y<=std::min(rows-1,ty+reach);++y)for(int x=std::max(0,tx-reach);x<=std::min(columns-1,tx+reach);++x){
+    const auto& h=histogram[size_t(y)*size_t(columns)+size_t(x)];
+    for(int v=0;v<256;++v)sum[size_t(v)]+=h[size_t(v)];
+   }
+   for(const auto n:sum)total+=n;
+   const uint32_t want=uint32_t(std::ceil(fraction*total));uint32_t seen=0;int v=0;
+   for(;v<255;++v){seen+=sum[size_t(v)];if(seen>=want&&seen>0)break;}
+   result[size_t(ty)*size_t(columns)+size_t(tx)]=uint8_t(v);
+  }
+ };
+ for(auto& h:histogram)h.fill(0);
+ for(int y=0;y<height;++y)for(int x=0;x<width;++x)++histogram[size_t(y/tile)*size_t(columns)+size_t(x/tile)][at(y,x)];
+ std::vector<uint8_t> background;windowed(background,0.5);
+ GreyImage distance;distance.width=width;distance.height=height;distance.pixels=QByteArray(qsizetype(width)*height,char(0));
+ for(auto& h:histogram)h.fill(0);
+ for(int y=0;y<height;++y){
+  auto* row=distance.row(y);
+  for(int x=0;x<width;++x){
+   const int d=std::abs(int(at(y,x))-int(background[size_t(y/tile)*size_t(columns)+size_t(x/tile)]));
+   row[x]=uint8_t(d);++histogram[size_t(y/tile)*size_t(columns)+size_t(x/tile)][size_t(d)];
+  }
+ }
+ std::vector<uint8_t> strongest;windowed(strongest,0.98);
+ for(int y=0;y<height;++y){
+  auto* row=distance.row(y);
+  for(int x=0;x<width;++x){
+   const int s=std::max<int>(32,strongest[size_t(y/tile)*size_t(columns)+size_t(x/tile)]);
+   row[x]=uint8_t(255-std::min(255,row[x]*255/s));
+  }
+ }
+ QList<Quad> moved;
+ for(const auto& q:codes){Quad m=q;for(auto& p:m)p.ry()-=top;moved.append(m);}
+ return bandImage(distance.view(),{band.top-top,band.bottom-top,false},scale,border,moved,255,false);
 }
 }

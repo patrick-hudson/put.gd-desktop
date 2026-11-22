@@ -139,7 +139,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const bool screen=qint64(image.width)*image.height>=options.limits.largeInputPixels;
  struct Panel { QRect rect;GreyView view;QList<Quad> codes;Profile profile;Plan plan;bool invert=false;QList<Band> tasks;bool split=false; };
  QList<Panel> panelList;
- for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
+ // The untrimmed windows and columns, for the faint lines' second read (#1912).
+ QList<QRect> cells{QRect(0,0,image.width,image.height)};
+ for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight,&cells):QList<QRect>{QRect(0,0,image.width,image.height)}){
   Panel p;p.rect=rect;
   p.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
   for(const auto& q:std::as_const(areas)){
@@ -377,13 +379,40 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // Tesseract's Otsu binarization turns to background, are read once more by the
  // first engine, each with its contrast stretched, for Quick redact's
  // candidates only (a job that asks for them). Pages with none cost nothing.
- struct Faint { int panel=0;Band band;Outcome outcome; };
+ // A whole screen of panels is searched window by window before trimming
+ // (#1912): a faint line has no grey step of 32 levels, so it can sit outside
+ // the trimmed panel, below a window's last bright line. Anything smaller is
+ // one panel, the whole image, as before.
+ struct FaintRegion { QRect rect;GreyView view;QList<Quad> codes;Profile profile;double scale=1;bool invert=false; };
+ QList<FaintRegion> faintRegions;
+ if(options.candidates){
+  if(panelList.size()==1&&panelList.first().rect==cells.value(0)){
+   const auto& p=panelList.first();
+   faintRegions.append({p.rect,p.view,p.codes,p.profile,p.plan.scale,p.invert});
+  }else{
+   double widest=1;for(const auto& p:std::as_const(panelList))widest=std::max(widest,p.plan.scale);
+   for(const auto& rect:std::as_const(cells)){
+    FaintRegion r;r.rect=rect;r.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
+    for(const auto& q:std::as_const(areas)){
+     Quad moved;bool inside=false;
+     for(int i=0;i<4;++i){moved[i]=q[i]-rect.topLeft();inside|=rect.contains(q[i]);}
+     if(inside)r.codes.append(moved);
+    }
+    r.profile=measure(r.view,r.codes);r.invert=options.invertDark&&r.profile.dark;
+    // The scale of the panel read inside this window, or the largest any panel was read at.
+    r.scale=widest;
+    for(const auto& p:std::as_const(panelList))if(rect.contains(p.rect.center())){r.scale=p.plan.scale;break;}
+    faintRegions.append(std::move(r));
+   }
+  }
+ }
+ struct Faint { QRect rect;double scale=1;Band band;Outcome outcome; };
  QList<Faint> faint;bool faintCut=false;
  if(options.candidates&&!shared->stop.load()){
   bool engineFailed=false;
-  for(int i=0;i<panelList.size()&&!shared->stop.load()&&!engineFailed;++i){
-   const auto& p=panelList[i];
-   // At most eight runs a panel; one more left unread, or one the budget leaves unread, cut
+  for(int i=0;i<faintRegions.size()&&!shared->stop.load()&&!engineFailed;++i){
+   const auto& p=faintRegions[i];
+   // At most eight runs a region; one more left unread, or one the budget leaves unread, cut
    // short or failed, marks the result truncated, so the check before uploading never takes it
    // for a whole read (Sol on #1904).
    const auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
@@ -391,12 +420,12 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    for(int b=0;b<bands.size()&&b<8;++b){
     const auto& band=bands.at(b);
     if(shared->budgetMs>0&&shared->left()<=0){faintCut=true;break;}
-    auto copy=bandImage(p.view,band,p.plan.scale,options.limits.border,p.codes,p.profile.background,p.invert);
+    auto copy=bandImage(p.view,band,p.scale,options.limits.border,p.codes,p.profile.background,p.invert);
     stretchContrast(copy,p.invert?255-p.profile.background:p.profile.background);
     const int deadline=shared->budgetMs>0?shared->left():0;
     if(shared->budgetMs>0&&deadline<=0){faintCut=true;break;}
-    Faint f{i,band,{}};
-    f.outcome.text=shared->first.recognize(copy,p.plan.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
+    Faint f{p.rect,p.scale,band,{}};
+    f.outcome.text=shared->first.recognize(copy,p.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
     // A failed engine reads nothing more (Sol on #1904); what the main pass read stands.
     if(f.outcome.failed||f.outcome.cutShort){faintCut=true;if(f.outcome.failed){engineFailed=true;break;}}
     f.outcome.done=!f.outcome.failed;
@@ -427,20 +456,21 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   for(auto& thread:pool)thread.detach();
  }else{
   for(auto& thread:pool)thread.join();
-  shared->data.release();
  }
  const int extraEngines=int(shared->extra.size());
- if(!late)delete shared;
+ // The first engine stays for the uncertain tokens' second read (#1911); a
+ // late worker's engines are never freed.
+ const auto finish=[&]{if(!late){shared->data.release();delete shared;}};
  result.recognition.parts=taskCount;result.recognition.threads=1+extraEngines;result.recognition.panels=int(panelList.size());
  result.recognition.engineTasks.fill(0,1+extraEngines);
  for(const auto& outcome:std::as_const(outcomes))if(outcome.done&&outcome.engine<=extraEngines)++result.recognition.engineTasks[outcome.engine];
 
  // An engine that failed on a task fails the job: no text is not success.
- for(const auto& outcome:std::as_const(outcomes))if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
+ for(const auto& outcome:std::as_const(outcomes))if(outcome.failed){finish();result.error=QStringLiteral("engine_unavailable");return result;}
  // Joined in task order, never in the order the tasks finished: panel by
  // panel, and inside a panel band by band or strip by strip, each in
  // Tesseract's reading order. The first task missing or cut short ends it.
- bool ended=false;int t=0;
+ bool ended=false;int t=0;QList<int> panelWords;
  for(int i=0;i<panelList.size()&&!ended;++i){
   const auto& p=panelList[i];
   Recognition part;int previousFirst=0;
@@ -460,7 +490,39 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   }
   result.recognition.banded|=p.plan.banded();
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
+  panelWords.append(int(result.recognition.words.size()));
  }
+ // #1911: a line holding a word that looks like a key or token, which
+ // recognition was unsure of, is read once more by the first engine from a
+ // copy that measures every pixel against its local background, for Quick
+ // redact's candidates only. Both readings stay candidates: one misread
+ // character breaks a token, and the second read is a second chance. Only the
+ // first read is copied, and a page with no such word costs nothing.
+ struct Token { int panel=0;Band band;BandText text; };
+ QList<Token> tokens;
+ if(options.candidates&&!result.truncated&&!late){
+  for(int i=0;i<panelList.size();++i){
+   const auto& p=panelList[i];
+   QList<TokenWord> unsure;
+   for(int w=i>0?panelWords[i-1]:0;w<panelWords[i];++w){
+    const auto& word=result.recognition.words.at(w);
+    if(uncertainToken(word.text,word.confidence))unsure.append({word.rect.translated(-p.rect.topLeft()),word.confidence});
+   }
+   if(unsure.isEmpty())continue;
+   for(const auto& band:tokenLines(unsure,p.rect.height())){
+    const int deadline=options.budgetMs>0?shared->left():0;
+    if(options.budgetMs>0&&deadline<=0)break;
+    const auto copy=contrastBand(p.view,band,p.plan.scale,options.limits.border,p.codes);
+    bool cutShort=false,failed=false;
+    Token t{i,band,shared->first.recognize(copy,p.plan.scale,deadline,&cutShort,&failed)};
+    // What the first read found stands; a failed or cut second read adds nothing.
+    if(failed)break;
+    if(!cutShort)tokens.append(std::move(t));
+   }
+  }
+ }
+ finish();
+ result.recognition.tokenLines=int(tokens.size());
  result.timings.recognitionMs=stage.elapsed();
  {QElapsedTimer wait;wait.start();if(emojiThread.joinable())emojiThread.join();result.timings.emojiWaitMs=emojiInline?emojiMs:wait.elapsed();}
  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
@@ -474,16 +536,29 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // The faint lines join the words after the copied text is made: they are not
  // copied (kept stays false), and a word where one was already read is left out.
  for(const auto& f:std::as_const(faint)){
-  const auto& p=panelList[f.panel];
-  Recognition part;mergeBand(part,f.outcome.text,f.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
+  Recognition part;mergeBand(part,f.outcome.text,f.band,nullptr,0,f.scale,options.limits.border,0,f.rect.width(),f.rect.height());
+  const int lineBase=int(result.recognition.lines.size());
+  const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
+  for(auto line:std::as_const(part.lines)){line.rect.translate(f.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
+  for(auto word:std::as_const(part.words)){
+   word.rect.translate(f.rect.topLeft());word.line+=lineBase;word.kept=false;
+   for(auto& symbol:word.symbols)symbol.rect.translate(f.rect.topLeft());
+   const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
+   if(!seen)result.recognition.words.append(std::move(word));
+  }
+ }
+ // The tokens' second read joins last, every word of it, each band its own
+ // lines after everything else, so Quick redact matches it apart from the first.
+ for(const auto& tk:std::as_const(tokens)){
+  const auto& p=panelList[tk.panel];
+  Recognition part;mergeBand(part,tk.text,tk.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
   const int lineBase=int(result.recognition.lines.size());
   const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
   for(auto word:std::as_const(part.words)){
    word.rect.translate(p.rect.topLeft());word.line+=lineBase;word.kept=false;
    for(auto& symbol:word.symbols)symbol.rect.translate(p.rect.topLeft());
-   const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
-   if(!seen)result.recognition.words.append(std::move(word));
+   result.recognition.words.append(std::move(word));
   }
  }
  result.timings.totalMs=total.elapsed();

@@ -87,7 +87,11 @@ QList<Band> strips(const Profile& profile,int width,int height,int parts);
 // it is kept only when one of its parts is then cut down. A single-window or
 // single-column image is exactly one panel, the whole image. With several,
 // each is trimmed to its activity plus a margin, and an empty one is dropped.
-QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight);
+// With cells, also every window or column before trimming, the empty ones too,
+// in reading order: the faint lines' second read looks there (#1912), since a
+// faint line has no grey step of 32 levels and can sit outside a trimmed panel.
+// For a single panel, cells is the whole image.
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight,QList<QRect>* cells=nullptr);
 
 // #1894: the rows that hold only faint ink, as bands to read again with their
 // contrast stretched: runs of rows with faint ink and no ink at the threshold,
@@ -98,6 +102,26 @@ QList<Band> faintLines(const Profile& profile,int width,int height,int limit=8);
 // Stretches a band copy's contrast so its darkest pixel is black and the
 // background white: faint ink becomes ink Otsu keeps.
 void stretchContrast(GreyImage& band,int background);
+
+// #1911: a word recognition was unsure of that looks like a key or token: at
+// least tokenLength characters once quotes and brackets are trimmed, letters and
+// digits both, below tokenConfidence. One misread character breaks such a token
+// for Quick redact, and a second, different read of its line is a second chance
+// (on the 10k secret corpus it covered 83 more of 1,933 secrets; on 176 ordinary
+// captures the test held on 8, 0.3% of their rows).
+inline constexpr int tokenLength=12;
+inline constexpr float tokenConfidence=70;
+bool uncertainToken(const QString& text,float confidence);
+// The rows to read again around such words (each word's box grown by a third of
+// its height and one row, joined where they touch), at most `limit`, the least
+// confident first, returned top to bottom. Boxes are in the region's pixels.
+struct TokenWord { QRect rect;float confidence=0; };
+QList<Band> tokenLines(const QList<TokenWord>& words,int height,int limit=24);
+// A band copy for that second read: every pixel's distance from its local
+// background (the median of the 80 px around it), stretched so the strongest
+// ink nearby is black, on white. It reads dark and light, faint and coloured
+// backgrounds alike; scaled and bordered like bandImage.
+GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.
