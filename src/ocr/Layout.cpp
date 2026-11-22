@@ -529,4 +529,27 @@ QRect plainAround(const GreyView& image,const QRect& from,const QList<QRect>& ot
  }
  return r;
 }
+QList<Band> unreadLines(const Profile& profile,int width,int height,int readTop,int readBottom,int limit){
+ QList<Band> out;
+ if(profile.faintInk.size()!=height||profile.rowInk.size()!=height)return out;
+ const int line=profile.lineHeight>0?profile.lineHeight:12;
+ const int least=std::max(3,line/2),most=std::max(least,3*line),enough=std::max(4,width/256);
+ const auto read=[&](int y){return y>=readTop&&y<readBottom;};
+ int start=-1;
+ for(int y=0;y<=height&&out.size()<limit;++y){
+  const bool ink=y<height&&!read(y)&&profile.rowInk[y]+profile.faintInk[y]>=enough;
+  if(ink){if(start<0)start=y;continue;}
+  if(start>=0){
+   const int run=y-start;
+   if(run>=least&&run<=most){
+    int top=start,bottom=y;
+    while(top>0&&start-top<2&&!read(top-1))--top;
+    while(bottom<height&&bottom-y<2&&!read(bottom))++bottom;
+    out.append({top,bottom,false});
+   }
+   start=-1;
+  }
+ }
+ return out;
+}
 }
