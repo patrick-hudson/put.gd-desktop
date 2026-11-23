@@ -54,6 +54,10 @@ What it does not do:
    | Text and codes | The text with each code's content on a line of its own | "Copied 214 characters and 1 code" |
    | Only codes | The content, one per line | "Copied 1 code" |
    | Nothing | Unchanged | "No text found" |
+
+   When an agent asks for the copy, a code put.gd recognises as holding a secret is copied as a
+   placeholder such as `[2FA QR code withheld]` (see [the editor](#the-editor)'s Quick redact QR codes,
+   #1941 and #1962).
    | The user changed the clipboard first | Unchanged | "Text not copied: the clipboard changed" |
    | The write failed | Unchanged | "Text could not be copied" |
 
@@ -1020,7 +1024,8 @@ other tool active it does not. The user's side is in the
       resident gave its own putgd-ui on the private bootstrap pipe (#1962). Any other request is an
       agent's, and the token is in no reply or log. It needs no kernel feature.
     - **Threat model.** put.gd's agent-facing interfaces (putgd-cli, the MCP helper, session replies and
-      the copies they ask for) never hand decoded secret QR content to an agent. A malicious same-user
+      the copies they ask for) never hand an agent the content of a code put.gd recognises as holding a
+      secret (the shapes above); a code whose secret it doesn't recognise is ordinary content. A malicious same-user
       process with access to the socket or to `/proc` is out of scope: it can capture the screen and
       decode the code itself.
     Key matches that share a word are one match.
