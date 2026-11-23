@@ -233,11 +233,9 @@ private slots:
   QTest::newRow("IPv6 split at the double colon")<<"Peer 2001:db8: :42 up"<<all<<QStringList{"ip: 2001:db8: :42"};
   QTest::newRow("IPv6 with a dash read beside the double colon")<<"Route 2001:db8::-4? up"<<all<<QStringList{"ip: 2001:db8::-4?"};
   QTest::newRow("email with its last dot lost")<<"Write corpus@example invalid"<<all<<QStringList{"email: corpus@example invalid"};
-  // #1930: a chart legend's colour squares read as "@" beside amounts and model names are no addresses,
-  // nor is a lost dot restored after a name of digits alone.
+  // #1930: a chart legend's colour squares read as "@" beside amounts and model names are no addresses.
   QTest::newRow("legend swatches between amounts and names")<<"@ Opus 5.5 $8,520 @ Fable5.2 $5,535 @ Fable5.1 $590 @ Sonnet5.5 $325"<<all<<QStringList{};
   QTest::newRow("legend amount joined to the next swatch")<<"$5,535@Fable5.1 $590 535@Fable5.1 x@1.2 @ Sonnet5.5"<<all<<QStringList{};
-  QTest::newRow("no lost dot after a name of digits")<<"s@525 ia"<<all<<QStringList{};
   QTest::newRow("an address beside a legend still matches")<<"@ Opus 5.5 ops@example.com @ Fable5.2"<<all<<QStringList{"email: ops@example.com"};
   // On the final candidate (#1462) with the page cut into eight strips, the
   // 36-letter GitHub fixture at 14 px came back with its prefix gone.
@@ -1115,14 +1113,19 @@ private slots:
   const QList<RecognizedWord> lost{{"alice@example",QRect(0,0,104,20),90,0},{"com",QRect(112,0,24,20),90,0},{"bob@example.org",QRect(135,0,120,20),90,0}};
   QCOMPARE(found(lost,QStringList{"email"}),(QStringList{"email: alice@example com","email: bob@example.org"}));
   // #1930: a word of letters far along the row is no lost last label (read off a bar chart, 648 px apart).
-  const QList<RecognizedWord> far{{"ops@example",QRect(237,1227,104,24),0,0},{"ia",QRect(1211,1226,24,24),52,0}};
+  const QList<RecognizedWord> far{{"s@525",QRect(237,1227,326,85),0,0},{"ia",QRect(1211,1226,118,86),52,0}};
   QCOMPARE(found(far,QStringList{"email"}),QStringList{});
   // ...nor after a legend's square colour swatch read as "W@W", its label beside it.
   const QList<RecognizedWord> swatch{{"W@W",QRect(343,597,25,25),47,0},{"Egress",QRect(384,604,80,29),92,0},{"$25,794",QRect(481,604,100,25),93,0}};
   QCOMPARE(found(swatch,QStringList{"email"}),QStringList{});
-  // A short address that lost its dot is still wide enough: "i@x" "io".
-  const QList<RecognizedWord> narrow{{"i@x",QRect(0,0,30,20),90,0},{"io",QRect(36,0,16,20),90,0}};
-  QCOMPARE(found(narrow,QStringList{"email"}),QStringList{"email: i@x io"});
+  // Narrow addresses that lost their dot are still restored (Sol on #1932, as Tesseract read them):
+  // "i@i" 13 x 10 at 10 px, a numeric name "a@3", and "j@j" before a short "io" six columns on.
+  const QList<RecognizedWord> narrow{{"i@i",QRect(0,0,13,10),90,0},{"io",QRect(17,2,8,8),90,0}};
+  QCOMPARE(found(narrow,QStringList{"email"}),QStringList{"email: i@i io"});
+  const QList<RecognizedWord> numeric{{"a@3",QRect(0,0,26,12),90,0},{"com",QRect(30,3,22,9),90,0}};
+  QCOMPARE(found(numeric,QStringList{"email"}),QStringList{"email: a@3 com"});
+  const QList<RecognizedWord> serif{{"j@j",QRect(0,0,16,12),90,0},{"io",QRect(22,3,8,6),90,0}};
+  QCOMPARE(found(serif,QStringList{"email"}),QStringList{"email: j@j io"});
   const QList<RecognizedWord> handle{{"@support.",QRect(0,0,72,20),90,0},{"jane+",QRect(80,0,40,20),90,0},{"tag@example.com",QRect(119,0,120,20),90,0}};
   QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: @support. jane+ tag@example.com"});
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
