@@ -101,6 +101,9 @@ class PrePush(unittest.TestCase):
         # A ref name git allows but a whitespace split would break up.
         odd = self.git('push', '-q', 'origin', 'work:refs/heads/odd\u00a0name', check=False)
         self.assertNotEqual(odd.returncode, 0)
+        # A fetch remote whose pushes go elsewhere: its tracking refs say nothing about the destination.
+        self.git('remote', 'set-url', '--push', 'other', str(self.remote))
+        self.assertNotEqual(self.git('push', '-q', 'other', 'work', check=False).returncode, 0)
         self.assertFalse(self.on_remote(planted))
 
         missing = self.push(GITLEAKS_BIN=str(self.root / 'absent'))

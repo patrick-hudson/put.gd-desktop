@@ -140,6 +140,10 @@ def enable(scope):
         staged.chmod(0o644 if name.endswith('.py') else 0o755)
         os.replace(staged, target / name)
     git('config', scope, 'core.hooksPath', str(target))
+    effective = git('config', '--type=path', '--get', 'core.hooksPath', check=False).stdout.strip()
+    if Path(effective).expanduser().resolve() != target.resolve():
+        raise SystemExit(f'core.hooksPath is still {effective!r} after setting it in {scope[2:]} config: '
+                         'a later include or scope overrides it. Remove that setting and run this again.')
     return target, previous
 
 
@@ -175,7 +179,7 @@ def outgoing(remote, data):
     for line in data.split(b'\n'):
         if not line:
             continue
-        fields = line.split(b' ')  # ref names cannot contain an ASCII space
+        fields = line.rsplit(b' ', 3)  # the last three fields never contain a space
         if len(fields) != 4:
             return None
         local_sha, remote_sha = fields[1].decode('ascii', 'replace'), fields[3].decode('ascii', 'replace')
@@ -186,8 +190,11 @@ def outgoing(remote, data):
         tips.append(local_sha)
         if set(remote_sha) != {'0'} and git('cat-file', '-e', f'{remote_sha}^{{commit}}', check=False).returncode == 0:
             known.append(remote_sha)
-    configured = git('config', '--get', f'remote.{remote}.url', check=False).returncode == 0 if remote else False
-    return tips, ([f'--remotes={remote}'] if configured else []) + known
+    # Tracking refs describe the push destination only when it is the repository they are fetched from.
+    fetch_url = git('remote', 'get-url', remote, check=False).stdout.strip() if remote else ''
+    push_urls = git('remote', 'get-url', '--push', '--all', remote, check=False).stdout.split() if remote else []
+    tracked = bool(fetch_url) and push_urls == [fetch_url]
+    return tips, ([f'--remotes={remote}'] if tracked else []) + known
 
 
 def pre_push(args, stdin):
@@ -221,17 +228,16 @@ def scan(tips, exclude, count):
     if not config.is_file():
         print(f'pre-push: refused, {config} is missing.', file=sys.stderr)
         return 1
-    # gitleaks parses `git log -p`; colour or other user settings would hide the patch from it,
-    # so git runs with only the repository's own configuration, as on a CI runner.
-    log_opts = ' '.join(['--no-color', *tips, '--not', *exclude])
-    env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1')
+    # gitleaks parses `git log -p`; these undo user settings that would reshape or hide the patch.
+    log_opts = ' '.join(['--no-color', '--no-ext-diff', '--no-textconv', '--no-show-signature', '--default-prefix',
+                         *tips, '--not', *exclude])
     plural = '' if count == 1 else 's'
     print(f'pre-push: gitleaks {GITLEAKS_VERSION} over {count} outgoing commit{plural}', file=sys.stderr)
     with tempfile.TemporaryDirectory(prefix='putgd-gitleaks-') as scratch:
         report = Path(scratch) / 'report.json'
         result = subprocess.run([str(binary), 'git', str(top), '--config', str(config), f'--log-opts={log_opts}',
                                  '--redact', '--no-banner', '--exit-code', '1', '--report-format', 'json',
-                                 '--report-path', str(report)], stdout=sys.stderr, env=env)
+                                 '--report-path', str(report)], stdout=sys.stderr)
         findings = []
         if result.returncode == 1:
             try:
