@@ -971,7 +971,8 @@ other tool active it does not. The user's side is in the
         on the rows below in the heading's column, until a row holds more other words than codes;
       - a seed phrase written as numbered words, 1 to 12 (or up to 24), each a lowercase word of three
         to eight letters as BIP39's are, with list numbers ("1.") or several to a row, at least eight of
-        the numbers there, and only under a label within six rows above: a recovery, seed, secret,
+        the numbers there, in the label's column (from its words' left edge to where its row goes on in
+        another window), and only under a label within six rows above: a recovery, seed, secret,
         backup or wallet phrase or words, a mnemonic, "write down", or a 12- to 24-word phrase. A
         shopping, ingredient or spelling list of short words looks the same and stays visible. The BIP39
         word list itself is not used.
