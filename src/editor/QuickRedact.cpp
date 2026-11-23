@@ -911,9 +911,12 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
     // sentence) never joins it, and the query is never judged as the password (Sol on #1967).
     {const int end=int(m.capturedEnd());
      if(end<segment.text.size()&&segment.text.at(end)=='@'){
-      int piece=pieceAt(segment,end);while(piece+1<pieces&&glued(piece+1))++piece;
-      const int stopAt=pieceEnd(piece);int last=end;
-      for(int i=end+1;i<stopAt;++i){const QChar c=segment.text.at(i);if(c=='/'||c=='?'||c=='#'||c.isSpace())break;if(c=='@')last=i;}
+      // The next box is looked at only when the scan reaches the current one's end (Sol on #1967).
+      int piece=pieceAt(segment,end),stopAt=pieceEnd(piece),last=end;
+      for(int i=end+1;i<int(segment.text.size());++i){
+       if(i>=stopAt){if(piece+1<pieces&&glued(piece+1)){++piece;stopAt=pieceEnd(piece);}else break;}
+       const QChar c=segment.text.at(i);if(c=='/'||c=='?'||c=='#'||c.isSpace())break;if(c=='@')last=i;
+      }
       if(last>end)password=segment.text.mid(m.capturedStart()+colon+1,last-(m.capturedStart()+colon+1));
      }}
     if(password.size()<3)continue;
