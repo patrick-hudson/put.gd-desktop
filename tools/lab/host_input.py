@@ -13,7 +13,7 @@ listening. Forward the socket over pinned SSH and point the runner's
 
     sudo -n python3 tools/lab/host_input.py serve --socket /run/user/1000/putgd-lab-input.sock --user patrick
 """
-import argparse, fcntl, json, os, pwd, socket, struct, sys, time
+import argparse, errno, fcntl, json, os, pwd, socket, struct, sys, time
 
 EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
 SYN_REPORT, ABS_X, ABS_Y = 0, 0, 1
@@ -132,9 +132,16 @@ def emit(device, events):
 
 
 def accept_clients(server, keyboard, tablet):
-    """Serve clients one after another for as long as the listening socket lives."""
+    """Serve clients one after another for as long as the listening socket lives.
+    Shutting the socket down (EINVAL) or closing it (EBADF) ends the loop quietly:
+    that is how its owner stops it."""
     while True:
-        connection, _ = server.accept()
+        try:
+            connection, _ = server.accept()
+        except OSError as error:
+            if error.errno in (errno.EINVAL, errno.EBADF):
+                return
+            raise
         serve_connection(connection, keyboard, tablet)
 
 
