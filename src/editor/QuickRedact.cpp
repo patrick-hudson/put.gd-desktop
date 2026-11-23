@@ -264,29 +264,33 @@ bool tokenPiece(const QString& word,bool loose=false) {
  for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
  return noise<=qMax(1,int(to-from)/(loose?4:8));
 }
-// #1971/#1972: how many characters of a word are not shaped like interface text. The word is cut at
-// every character that is neither a letter nor a digit, and a part counts as ordinary when it is a
-// lowercase, capitalized or upper-case word ("system", "House", "STORAGE"), a brand's or product's
-// camel case of up to two humps ("SanDisk", "SKHynix", "NVMe", "YouTube"), a number of up to four
-// digits ("512", "3}"), or such a number with a short unit ("90s", "16K", "512GB"). A model or part
-// number ("SD8SB8U2", "HFS512GD9TNI") and random token text are counted whole.
-// A word of four letters or more must also read as one: a vowel (y counts) and no four consonants in a
-// row, so random letters split from a token ("CupHsmkc", "QZKRMNXW"; Sol on #1973) stay odd.
-// spoken: set when a part is such a word of five letters or more ("STORAGE", "SanDisk", "House").
-int oddCharacters(const QString& word,bool* spoken=nullptr) {
+// #1971/#1972: how a word is shaped, as interface text or not. The word is cut at every character
+// that is neither a letter nor a digit, and a part counts as ordinary when it is a lowercase,
+// capitalized or upper-case word ("system", "House", "STORAGE"), a brand's or product's camel case of
+// up to two humps ("SanDisk", "SKHynix", "NVMe"), a number of up to four digits ("512", "3}"), or
+// such a number with a short unit ("90s", "16K", "512GB"). A part of four letters or more must also
+// read as a word: a vowel (y counts) and no four consonants in a row, so random letters split from a
+// token ("CupHsmkc", "QZKRMNXW"; Sol on #1973) are not ordinary. odd counts the characters of the
+// other parts (a model number "SD8SB8U2", token text), ordinary those of the ordinary ones; spoken is
+// set by an ordinary word of five letters or more, secret by a part that names a secret ("SECRET",
+// "key", "token") or an equals sign (an assignment, "STRIPE_SECRET_KEY=sk_live_…").
+struct WordShape {int odd=0;int ordinary=0;bool spoken=false;bool secret=false;};
+WordShape wordShape(const QString& word) {
  static const QRegularExpression ordinary(QStringLiteral("^(?:[a-z]+|[A-Z][a-z]+|[A-Z]+|[A-Z]{1,3}[a-z]{2,}(?:[A-Z][a-z]{2,})?|[A-Z]{2,3}[a-z]|\\d{1,4}|\\d{1,4}[A-Za-z]{1,3})$"));
  static const QRegularExpression readable(QStringLiteral("^(?=.*[aeiouy])(?!.*[b-df-hj-np-tv-xz]{4})"));
- int odd=0;qsizetype from=0;
+ static const QSet<QString> secrets{"secret","secrets","key","keys","apikey","token","tokens","password","passwd","pwd","pass","passphrase","auth","private","credential","credentials","bearer","session","cookie","signature"};
+ WordShape shape;shape.secret=word.contains('=');qsizetype from=0;
  for(qsizetype i=0;i<=word.size();++i){
   if(i<word.size()&&word.at(i).isLetterOrNumber())continue;
   const auto part=word.mid(from,i-from);from=i+1;
   if(part.isEmpty())continue;
   const bool letters=std::all_of(part.cbegin(),part.cend(),[](QChar c){return c.isLetter();});
-  const bool word=letters&&part.size()>=4&&readable.match(part.toLower()).hasMatch();
-  if(!ordinary.match(part).hasMatch()||(letters&&part.size()>=4&&!word))odd+=int(part.size());
-  else if(spoken&&word&&part.size()>=5)*spoken=true;
+  const bool spoken=letters&&part.size()>=4&&readable.match(part.toLower()).hasMatch();
+  if(letters&&secrets.contains(part.toLower()))shape.secret=true;
+  if(!ordinary.match(part).hasMatch()||(letters&&part.size()>=4&&!spoken))shape.odd+=int(part.size());
+  else{shape.ordinary+=int(part.size());shape.spoken=shape.spoken||(spoken&&part.size()>=5);}
  }
- return odd;
+ return shape;
 }
 // Hex, as recognition misreads it: l, i, I, |, ! for 1; O, o, ©, ° for 0; S
 // for 5; t and £ for f; € for e. At least 32 characters, at most one in twelve
@@ -473,10 +477,7 @@ bool prefixHead(const QString& word) {
 // characters that are not hex once recognition's confusions are mapped, so a window can be ruled out
 // for the run tests in constant time before they read it.
 struct Counts {QList<int> upper,lower,digit,alnum,nonHex,hexDigit;};
-// odd, spoken (#1971/#1972): running totals, by piece, of the characters that are not shaped like an
-// interface word and of pieces holding a word of five letters or more (see oddCharacters), filled
-// once per segment when a run is judged.
-struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;mutable QList<int> odd,spoken;};
+struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;};
 void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
@@ -626,14 +627,14 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    }
    // #1971: nor is a row of upper-case words after one that reads as the prefix ("US" "ASIA" "EUR"
    // "BONDS" "OIL" "GOLD", a market page's tabs): a body with no digit in its first 16 characters,
-   // across two words or more, each an ordinary word. A key ID's body is 16 random characters of
-   // A to Z and 2 to 7.
+   // across three words or more, each an ordinary word (see wordShape). A key ID's body is 16 random
+   // characters of A to Z and 2 to 7.
    if(index==0){
     const int bodyAt=base+int(candidate.capturedStart(3));const auto body=candidate.captured(3).left(16);
     const int from=pieceAt(segment,bodyAt),to=pieceAt(segment,bodyAt+int(body.size())-1);
     const auto pieceText=[&](int p){const int e=p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size());return segment.text.mid(segment.starts.at(p),e-segment.starts.at(p));};
-    bool words=to>from&&!hasDigit(body);
-    for(int p=from;words&&p<=to;++p)words=oddCharacters(pieceText(p))==0;
+    bool words=to-from>=2&&!hasDigit(body);
+    for(int p=from;words&&p<=to;++p)words=wordShape(pieceText(p)).odd==0;
     if(words)continue;
    }
    // #1875: a JSON web token's payload starts with eyJ after the header's dot, so a token whose
@@ -726,24 +727,22 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // #1897: each piece looks only as far as 256 characters reach (the window's end moves on with it), so
  // a line of thousands of pieces costs about its length, not its square.
  int bestFirst=-1,bestLast=-1,bestLength=0;
- // #1971/#1972: a base64 run joined from several words is interface text run together when, outside
- // its ordinary words and numbers, fewer than 20 characters are left: a drive's model beside its size
- // and name ("STORAGE" "256" "GB" "SanDisk" "SD8SB8U2" "system"), a video title, and only with a
- // word of five letters or more among them. A token that recognition split keeps most of its
- // characters in odd parts, as it has 32 or more.
- const auto interfaceWords=[&](int i,int j){
-  if(i==j)return false;
-  auto& odd=segment.odd;auto& spoken=segment.spoken;
-  if(odd.isEmpty()){
-   odd.fill(0,segment.starts.size()+1);spoken.fill(0,segment.starts.size()+1);
-   for(qsizetype p=0;p<segment.starts.size();++p){
-    bool word=false;
-    odd[p+1]=odd[p]+oddCharacters(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):segment.text.size())-segment.starts.at(p)),&word);
-    spoken[p+1]=spoken[p]+(word?1:0);
-   }
+ // #1971/#1972: a part of a segment joined from several words is interface text run together, and
+ // no base64 run, when fewer than 20 of its characters lie outside ordinary words and numbers, at
+ // least as many lie in them, one of them is a word of five letters or more, and none names a
+ // secret or assigns a value: a drive's model between its size and name ("NVMe" "SSD" "512" "GB"
+ // "SKHynix" "HFS512GD9TNI-L2B0B"), a video title. A token that recognition split keeps most of its
+ // 32 characters or more in odd parts. Judged once on the whole part, so a window inside it can't
+ // leave out the words that show what it is.
+ const bool interfaceText=[&]{
+  if(first==last)return false;
+  WordShape all;
+  for(int p=first;p<=last;++p){
+   const auto shape=wordShape(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size()))-segment.starts.at(p)));
+   all.odd+=shape.odd;all.ordinary+=shape.ordinary;all.spoken=all.spoken||shape.spoken;all.secret=all.secret||shape.secret;
   }
-  return odd.at(j+1)-odd.at(i)<20&&spoken.at(j+1)>spoken.at(i);
- };
+  return all.odd<20&&all.ordinary>=all.odd&&all.spoken&&!all.secret;
+ }();
  const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
  int reach=first;
  for(int i=first;i<=last;++i){
@@ -756,7 +755,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   if(to-from<=bestLength||to-from<24)break;
   if(!possible(from,to))continue;
   const auto run=segment.text.mid(from,to-from);
-  if(hexRun(run)||(base64Run(run)&&!interfaceWords(i,j))||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  if(hexRun(run)||(base64Run(run)&&!interfaceText)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
   }
  }
  if(bestFirst<0)return;

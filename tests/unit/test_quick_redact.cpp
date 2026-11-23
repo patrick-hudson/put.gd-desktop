@@ -913,6 +913,10 @@ private slots:
    QTest::newRow("a base64 key split into word-shaped parts stays covered")<<"CupHsmkc ORgiidsm YU3sGT7a zc9m1AoX"<<key<<QStringList{"key: CupHsmkc ORgiidsm YU3sGT7a zc9m1AoX"};
    QTest::newRow("a temporary AWS key ID of letters split in its body stays covered")<<"AS"+QString("IA QZKRMNXW LTHCVBPS")<<key<<QStringList{"key: AS"+QString("IA QZKRMNXW LTHCVBPS")};
    QTest::newRow("an AWS key ID of letters split after its AK and in its body stays covered")<<"AK"+QString(" IAQZKRMNXW LTHCVBPS")<<key<<QStringList{"key: AK"+QString(" IAQZKRMNXW LTHCVBPS")};
+   QTest::newRow("a base64 key in three parts that start like words stays covered")<<"352NQ IoymaJjs zHcy2d4mUuBo2CgIh54"<<key<<QStringList{"key: 352NQ IoymaJjs zHcy2d4mUuBo2CgIh54"};
+   QTest::newRow("a temporary AWS key ID of two word-like parts stays covered")<<"AS"+QString("IA QAVOCENY BUKEDORA")<<key<<QStringList{"key: AS"+QString("IA QAVOCENY BUKEDORA")};
+   // #1931 fuzz on #1973: a Stripe key whose body has no digit, after its line number, stays covered.
+   QTest::newRow("a secret's assignment after a line number stays covered")<<"2 STRIPE_SECRET_KEY=sk_"+QString("live_eASUMNVdlA")<<key<<QStringList{"key: 2 STRIPE_SECRET_KEY=sk_"+QString("live_eASUMNVdlA")};
    const auto b=base64Of("w",44);
    QTest::newRow("a base64 key split in three stays covered")<<"secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)<<key<<QStringList{"key: secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)};
    QTest::newRow("a base64 key between ordinary words stays covered")<<"The new "+b+" House"<<key<<QStringList{"key: The new "+b+" House"};
