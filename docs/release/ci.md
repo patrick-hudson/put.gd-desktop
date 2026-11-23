@@ -728,8 +728,9 @@ python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-str
 and every test to a CPU subset, and `--time-scale` sets `PUTGD_TEST_TIME_SCALE`.
 It uses a private short `TMPDIR` and `XDG_STATE_HOME`, stops only the
 processes it started, by PID, and removes only its own temporary directory.
-Run it on a builder, one suite per host at a time, after checking
-`tools/lab/desktop_lock.py status` for a quiet-slot lock.
+Run it on a builder, one suite per host at a time, behind
+`tools/lab/desktop_lock.py guard HOST &&`, which refuses while another session
+holds the host's quiet lease (the weekly lane on k72 holds it while it runs).
 
 Results, `tools/ci/stress_suite.py` on the builders, 2026-10-22. The known set
 is the twelve tests that flaked in CI. Pinning (`--test-cpus`, `--hog-cpus`)
@@ -759,9 +760,11 @@ up. Each run does this:
      an hour of waiting. It never stops those processes.
 
    Once the host is idle, it takes k72's quiet lease itself and holds it
-   until the run ends, renewing it every 5 minutes, so no timing run starts
-   under its load ([quiet leases](../lab/remote-builders.md#quiet-leases-for-timing-runs)).
-   It repeats the desktop-lock and idle checks after the build, before the tests start.
+   until the run ends, renewing it every 5 minutes, so no timing run can
+   take the lease while the lane holds it
+   ([quiet leases](../lab/remote-builders.md#quiet-leases-for-timing-runs)).
+   After the build, before the tests start, it checks the desktop lock, the
+   quiet lease (its own lease passes), the other suites and the load again.
 2. **It fetches `origin/nightly`** into its own tree, `~/work/put.gd-stress`,
    with `build/sdk` and `build/dependencies` linked to `~/work/put.gd/build/`.
    It configures with `-DPUTGD_TEST_TIMEOUT_SCALE=3` and builds at

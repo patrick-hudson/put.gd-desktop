@@ -836,12 +836,14 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   itself for its whole run. When the host is idle, it acquires the lease
   (owner `putgd-stress-weekly`, session `putgd-stress-weekly-PID`) before it
   fetches. It renews the lease every 5 minutes and releases it when the run
-  ends, also after a failed build or a stop. If another session holds the
-  lease at the start or takes it while the lane waits for an idle host, the
-  lane skips the week and leaves that lease alone. `PUTGD_LAB_SESSION` doesn't
-  let it through. If the lease stops being the lane's, or a renewal fails and the
-  lease would lapse before the next try, the lane stops its run, children
-  included, before it lets the lease go.
+  ends, also after a failed build or a stop. If the release fails three times,
+  it logs that and records `leaseReleased: false` in `weekly.json`.
+- If another session holds the lease when the lane first checks, or when it
+  tries to acquire it, the lane skips the week and leaves that lease alone.
+  `PUTGD_LAB_SESSION` doesn't let it through.
+- If a renewal finds that the lease is no longer the lane's, or fails with too
+  little time left to retry, the lane stops its run, including the build or
+  test process group that is running.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
   `cmake` run directly, and any other heavy command. For those, put
   `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
@@ -1249,8 +1251,9 @@ lab desktop needs the same treatment.
   shows the lane's lease. A timing run that finds it held does other work and
   retries later.
 - To keep the run away from a timing run, hold the k72 quiet lease
-  (`--resource quiet`) while the timing runs: the lane skips that week. A desktop lock whose purpose says quiet,
-  A/V or performance work also makes it skip.
+  (`--resource quiet`) while the timing runs. A lane that finds it held, at its
+  first check or when it tries to acquire the lease, skips that week. A desktop
+  lock whose purpose says quiet, A/V or performance work also makes it skip.
 - `stress_weekly.py --dry-run` runs the checks and prints the plan without
   fetching, building or writing anything.
 - To stop a run, use `systemctl --user stop putgd-stress-weekly.service`. It
