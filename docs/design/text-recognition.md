@@ -884,8 +884,11 @@ other tool active it does not. The user's side is in the
     than two dots or commas on its first line, counted from its prefix and including the header's dot of a
     token found by its payload (a wrap inside the header), or a token-shaped run above. A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
-    three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
-    Prose never repeats so few letters for so long. A run whose commonest character is `x` or `0`
+    three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone four
+    in five, and any run that holds 16 `A` in a row (a Twitter bearer token's start, even cut short beside a
+    button). Prose never repeats one letter for so long. Until #1975 the commonest had to be only half,
+    which took a status page's uptime bars (read as `TEREEERERE…` or `PULUUUUURU CURR`) and drawn
+    charts for tokens. A run whose commonest character is `x` or `0`
     is a placeholder, not a token (#1895).
   - Developer secrets with no prefix of their own (#1894), matched on the line's words joined as
     above but allowing one misread character in four, since passwords use symbols freely:
@@ -987,7 +990,9 @@ other tool active it does not. The user's side is in the
         groups, after a key, secret, setup, authenticator, 2FA, OTP or scan word on its row or the two rows
         above. It has two digits, or one in six groups or more, or, in capitals as one word or groups of
         one length, none beside words that name a setup key ("Setup key", "Enter this key"). Lowercase
-        words fit the alphabet too, so a lowercase run needs two digits. Its rest on the row just below is
+        words fit the alphabet too, so a lowercase run needs two digits, and only digits inside a group
+        that also holds letters count (#1975): a number of its own between lowercase words ("A blank key,
+        or one longer than 255 characters") makes no key. Its rest on the row just below is
         covered when that row holds only base32 groups of the same case, four characters or more in all,
         and so are two such rows of groups that make a key only together;
       - recovery and backup codes under a heading that says so (recovery, backup, emergency, one-time or
@@ -1135,8 +1140,9 @@ other tool active it does not. The user's side is in the
       whose letters and digits, lowercased and with everything else removed, have eight in ten,
       after the first two, repeating the character two before them and differing from the one before
       (`hahaha`);
-    - a hex run needs one character in eight to be a digit as read, not counting a lowercase `o`, so
-      a receipt's leaders (`ccooecoo`) are no hex;
+    - a hex run needs one character in eight to be a digit as read, `0` to `9` themselves and not an
+      `o` or `O` read for zero, so a receipt's leaders (`ccooecoo`) and a page's ornament read as
+      `EOEOEOOOOO` (#1975) are no hex;
     - a hash word names a digest only in the run's own segment or in up to three words and 32
       characters on each side of it, stopping at a word with seven hex characters in a row or a gap
       wider than 30 characters, so a `commit <sha>` in another window on the same row leaves a hex
@@ -1188,7 +1194,9 @@ other tool active it does not. The user's side is in the
       match is shorter) hold no digit and touch three or more recognized words, and each whole word
       they touch, with anything attached to it such as the prefix or text after the body, has only
       ordinary parts (`US ASIA EUR BONDS OIL GOLD`, a market page's tabs). A body in one or two
-      words goes through the usual key ID checks.
+      words goes through the usual key ID checks. Since #1975 the same holds for every known prefix,
+      with its separator read or lost: npm's own banner, "npm tokens that bypass 2FA are being
+      restricted…", is no npm token.
   - Limits (#1971, #1972): when recognition splits a token into pieces that happen to pass these
     tests, the base64 or AWS key ID rule skips it; another rule can still suggest it. We measured the
     base64 test alone on random base64 tokens split at random points into pieces: it skipped about
@@ -1196,6 +1204,20 @@ other tool active it does not. The user's side is in the
     fewer of longer tokens. A stretch whose other parts hold 20 characters or more is checked as
     before, so a drive's model with a firmware version beside it
     (`SKHynix HFS512GD9TNI-L2B0B FW 1.3.0A1`) can still be taken for a key.
+  - Real websites (#1975): a sweep of 265 public pages, 1,701 captures in Chrome at 100, 125 and
+    150 % (light and dark) and Firefox at 100 and 125 % through the packaged helper
+    ([real-website sweep](../lab/redact-sites.md)), found a false prompt on 21 pages at the upload
+    check's default kinds and on 66 with every kind on. After #1975's rules, 15 and 53. Known limits
+    that stay:
+    - a token collapsed by recognition into two or three mixed letters with its prefix lost
+      (`APC CCEEEECEEEEC…`) is no longer a key; a token of one repeated character still is;
+    - a bit diagram read as long runs of `0` and `1` (Wikipedia's IPv6 page), a search result's
+      breadcrumb URL, and a card-shaped registration or table number (a Chinese ICP filing number,
+      a country population table) can still be taken for a key or card;
+    - with every kind on, numbers joined from tables, charts, prices and long IDs (a populations
+      column, eBay item numbers, an axis) can still read as phones, a Bluesky display name beside its
+      handle as an email, and a version number after a breadcrumb arrow (`rails > 8.1.4.1`) as an IP
+      address.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
@@ -1263,9 +1285,15 @@ other tool active it does not. The user's side is in the
     - a number immediately after a currency sign (`€ $ £ ¥ ₹`, touching it), or with a currency sign or code
       (`EUR`, `USD`, `GBP`, `CHF`, `JPY`, `kr`, `zł`, `₽`) as the next word on its line (`1 234 567 €`);
     - an unbroken number immediately after `#` (touching it, or with the `#` read as its own word
-      on the same line) that follows, on that line, an order-type word (`Order #10234567`,
-      `Invoice`, `Ticket` and the like, past a colon read as its own word) or a time (a receipt line,
-      `19:54:46 #4091291`); `Phone #`, `Telefon #` and `Account #` keep the rule;
+      on the same line), unless the word before it on that line names a number to call or an
+      account (`Phone #`, `Tel #`, `Telefon #`, `Fax #`, `Mobile #`, `Account #`, `No #` and the
+      like, which keep the rule). Since #1975 that covers a run's or an order's number after any
+      other word or none (`helpers #1714797062` on GitHub Actions, `Delivered #523878536`); an
+      order-type word (`Order #10234567`, `Invoice`, `Ticket`, past a colon read as its own word) or a
+      time (a receipt line, `19:54:46 #4091291`) still make one too;
+    - a span of years, the second no earlier than the first, in brackets or not (`1995-2026`,
+      `(1952-2001)`, #1975);
+    - a number right after `~` (about, or a Wikipedia temporary account, `~2026-61798-25`, #1975);
     - a browser's build date in a user agent: an unbroken number in a word that starts with
       `Gecko/` and a digit, optionally after `(` or `[` (`Gecko/20100101`, `Gecko/20100101)`);
     - a date with a dashed time (`2026-11-22 14-03-57`, a GNOME screenshot name);
@@ -1287,10 +1315,20 @@ other tool active it does not. The user's side is in the
   - An IPv4 address is not taken after a standalone package epoch of one or two digits
     (`1:8.17.4.28`; the IPv4 tail of an IPv6 address stays one), before a release suffix of a dash,
     digits, an optional `.`, `~` or `+`, and a letter (`8.17.4.28-3.fc45`, `-1ubuntu2`), or right after a section or version
-    label on its line (`Section 1.2.3.4`, `Version 2.11.7.54`); a range (`10.0.0.1-10.0.0.255`)
-    stays two addresses. An address recognition split at a dot on one line (`148`
+    label on its line (`Section 1.2.3.4`, `Version 2.11.7.54`), or right after a version requirement's
+    operator as its own word (`'>=`, `~>`, `==`, `!=`, `<=`, `^`, `~=`: `gem 'rails', '>= 8.1.4.1'`,
+    #1975); a range (`10.0.0.1-10.0.0.255`) stays two addresses. A loopback or unspecified address
+    names no host and is not taken (#1975): `127.` and anything after it (`127.0.0.1:8000`,
+    `127.0.0.0/8`), `0.0.0.0`, and an IPv6 address whose groups are all zero but a last `1` or `0`
+    (`0:0:0:0:0:0:0:1`; the short forms `::1` and `::` were never taken). Private ranges
+    (`10.`, `172.16.`, `192.168.`) still are. An address recognition split at a dot on one line (`148`
     `.98.250.123:443`, `148.98.250.` `123:443`) is joined when the boxes are no more than one and a
     half characters apart and the two make one whole address.
+  - An email address whose last dot recognition lost (`kenji@gmail` `com`, the next word within a
+    line height) gets it back only when that word is written in one case and is a country's two
+    letters or a common top-level name (`com`, `net`, `org`, `io`, `dev`, `co`, `invalid`, `test`,
+    `example` and some 30 more); a logo's word after an icon read as `@` (`cri@Duzz` `Live`,
+    `WViIg@tio` `lieve`) makes no address (#1975).
   - In a CSV row one word can hold the end of one field and the start of the next
     (`alice@example.com,+1` then `202 555 0143`). A later match keeps its other words instead of
     being dropped when at least one of them is unclaimed and every word it shares with earlier
