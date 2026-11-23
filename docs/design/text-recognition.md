@@ -252,7 +252,7 @@ turned off (#1808).
 - Quick redact's second reads have an allowance of their own inside this budget, ending at
   least a second before it, and wait at most 250 ms for a read ending on its monitor deadline
   (see "One budget for every second read").
-- The budget is a guarantee. At the deadline, plus one second of grace for a pass that ends on
+- The budget is a guarantee. At the deadline, plus one second of first-pass grace for a pass that ends on
   its monitor deadline, the main thread closes the hand-over of results under a lock and waits
   only for band copies already in progress. A thread still in an engine's start or in a
   recognition that overran is detached. Everything a worker touches is one heap object that is
@@ -329,14 +329,15 @@ unchanged, and a page with no uncertain token does no extra work.
 go in one queue: the faint and unread bands first, then the token bands least confident first
 across all panels.
 - **Engines.** The first engine takes from it, and so does every extra engine that started and
-  whose first-pass thread is done with it (one still starting or overrunning sits out). While
-  time and the memory budget allow, more start, up to the job's threads. The memory check counts
+  whose first-pass thread is done with it (one still starting or overrunning sits out), as many
+  as there are bands queued. While time and the memory budget allow, more start, up to the job's
+  threads or the bands queued, whichever is fewer. The memory check counts
   each first-pass engine still starting as one engine's cost, and reserves each new engine its
   cost and 20 bytes a scaled pixel of the largest second-read band. Each engine reads on a thread
   of its own, the first one too, so the job's wait bounds them all.
 - **Time.** The allowance is a quarter of the first pass's time, at least 400 ms and at most
-  1 s. It is then shortened, or removed, so that every read's deadline ends at least 1 s before
-  the job's own budget. A read whose band would not finish at the slowest pace seen so far is not
+  1 s, less whatever would bring it within 1 s of the job's own budget (it can be removed). It is
+  worked out when the first pass ends, and its clock starts once the bands are queued. A read whose band would not finish at the slowest pace seen so far is not
   started, and one cut short adds nothing. After the allowance, the job waits at most 250 ms more
   for a read ending on its monitor deadline, then closes the handover. A reader still running is
   left as the first pass's late workers are.
@@ -469,10 +470,12 @@ How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
       with no such step means a uniform machine. AMD's ranking of alike cores differs by
       smaller steps.
     - `cpufreq/cpuinfo_max_freq`, the same way, only when `highest_perf` is missing or invalid
-      for some CPU. aurora-amd's Ryzen 5 PRO 8500GE is such a
-    machine: its two Zen 4 cores (four logical CPUs) read 196 and its four Zen 4c cores 144, all
-    with the same maximum frequency. With two physical cores it falls back to every CPU, as
-    measured on a dense 4K terminal: 2.18 s on the four Zen 4 CPUs, 2.06 s on four Zen 4c cores,
+      for some CPU.
+
+    aurora-amd's Ryzen 5 PRO 8500GE is a mixed machine whose faster kind is only two physical
+    cores. By `highest_perf`, its two Zen 4 cores (four logical CPUs) read 196 and its four
+    Zen 4c cores 144, all with the same maximum frequency. With two faster physical cores it keeps
+    every CPU, as measured on a dense 4K terminal: 2.18 s on the four Zen 4 CPUs, 2.06 s on four Zen 4c cores,
     1.94 to 2.05 s on any four CPUs, and 1.88 s on eight.
 - **Codes first.** ZXing-cpp reads the full grey image. Then each decoded code's area is
   filled with the background in every band's copy, so a band never needs a code, and code
