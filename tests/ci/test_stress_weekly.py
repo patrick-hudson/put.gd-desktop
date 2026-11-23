@@ -76,6 +76,87 @@ class Quiet(unittest.TestCase):
                     self.assertRaisesRegex(weekly.Skip, 'holds this host.s quiet lease'):
                 self.check(directory)
 
+class Lease(unittest.TestCase):
+    """The run holds the builder's quiet lease from before the fetch to the end, and always gives it back."""
+
+    def run_week(self, root, build_exit=0, while_waiting=None):
+        seen = {}
+
+        def fake_run(command, log, output=None, **options):
+            lease = desktop_lock.Desktop(root / 'locks', 'k72', resource='quiet').state(desktop_lock.now_utc())
+            seen.setdefault(command[0] if command[0] != 'nice' else 'build', lease)
+            if output:
+                output.write_text('build output\n')
+            return build_exit
+
+        def fake_update(tree, ref, sdk_from, log):
+            tree.mkdir(parents=True, exist_ok=True)
+            return 'abc123'
+
+        def idle(log, minutes, dry_run, poll=60):
+            if while_waiting and not seen.get('waited'):
+                seen['waited'] = True
+                while_waiting()
+
+        with mock.patch.object(weekly, 'wait_until_idle', idle), mock.patch.object(weekly, 'run', fake_run), \
+                mock.patch.object(weekly, 'update_tree', fake_update), \
+                mock.patch.object(weekly, 'ensure_disk', lambda *args: None), \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = weekly.main(['--tree', str(root / 'tree'), '--results', str(root / 'results'),
+                                '--state-dir', str(root / 'state'), '--lock-dir', str(root / 'locks'),
+                                '--token-file', str(root / 'token'), '--sdk-from', str(root / 'sdk')])
+        [week] = list((root / 'results').iterdir())
+        return code, seen, json.loads((week / 'weekly.json').read_text()), (week / 'weekly.log').read_text()
+
+    def test_the_lease_is_held_while_it_builds_and_released_after_a_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code, seen, status, log = self.run_week(root, build_exit=2)
+            self.assertEqual((code, status['status']), (1, 'build-failed'))
+            self.assertEqual(seen['cmake']['state'], 'held')
+            self.assertTrue(seen['cmake']['lock']['session'].startswith('putgd-stress-weekly-'))
+            self.assertFalse((root / 'locks/quiet.lock').exists())
+            self.assertIn('quiet lease: released', log)
+            [receipt] = (root / 'locks/history').glob('*-quiet-release.json')
+            self.assertEqual(json.loads(receipt.read_text())['releasedBy'], seen['cmake']['lock']['session'])
+
+    def test_another_sessions_lease_taken_while_it_waited_skips_the_week_and_stays(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            other = desktop_lock.Desktop(root / 'locks', 'k72', resource='quiet')
+            code, seen, status, _log = self.run_week(
+                root, while_waiting=lambda: other.acquire('timer', 'local_timing', 'theme pair', 5))
+            self.assertEqual((code, status['status']), (0, 'skipped'))
+            self.assertIn('could not take the k72 quiet lease', status['reason'])
+            self.assertIn('local_timing', status['reason'])
+            self.assertNotIn('cmake', seen)
+            self.assertEqual(other.held('local_timing')['lock']['owner'], 'timer')
+
+    def test_renewals_extend_it_and_a_lease_about_to_lapse_stops_the_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            locks, lines, lost = Path(directory) / 'locks', [], mock.Mock()
+            lease = weekly.QuietLease(ROOT, locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
+            lease.acquire()
+            renewals = mock.Mock(wraps=lease.lease.extend)
+            lease.lease.extend = renewals
+            for _ in range(200):
+                if renewals.call_count >= 2:
+                    break
+                weekly.time.sleep(.01)
+            renewals.assert_called_with(lease.session, 1)
+            self.assertEqual(lease.lease.held(lease.session)['state'], 'held')
+            (locks / 'quiet.lock').unlink()  # gone: renewals fail; once it would lapse, the run is stopped
+            weekly.time.sleep(.2)  # a renewal in flight may still move the deadline
+            self.assertIn('renewal failed', '\n'.join(lines))
+            lost.assert_not_called()
+            lease.deadline = weekly.time.monotonic()
+            lease.thread.join(5)
+            lost.assert_called_once_with()
+            self.assertIn('stopping the run', '\n'.join(lines))
+            lease.release()
+            self.assertIn('release refused', lines[-1])
+
+
 class Suites(unittest.TestCase):
     def test_exact_names_only(self):
         self.assertEqual(weekly.suite_kind('ctest', ['ctest', '--preset', 'dev']), 'ctest')

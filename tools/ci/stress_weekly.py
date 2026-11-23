@@ -13,6 +13,10 @@ on Sundays at 03:00 local time. One run:
    stress_suite.py process (any owner, matched by its exact process name or
    script, never killed) or a load above the CPU count makes it wait up to
    --wait-minutes, then skip.
+   Once the host is idle it takes the builder's quiet lease itself
+   (QuietLease below) and holds it, renewed every 5 minutes, until the run
+   ends, failed or not, so a timing run can't start under its load. A lease
+   another session took meanwhile skips the week; it never breaks one.
 2. It fetches origin/REF (nightly) into its own tree, ~/work/put.gd-stress,
    with build/sdk and build/dependencies linked to ~/work/put.gd/build.
 3. When the disk lacks room (docs/lab/lab-storage.md: a 10 GiB reserve plus the
@@ -54,6 +58,7 @@ import socket
 import stat
 import subprocess
 import sys
+import threading
 import time
 
 HOME = Path.home()
@@ -68,6 +73,8 @@ RESERVE = 10 * GIB  # docs/lab/lab-storage.md host reserve
 INCREMENTAL = 2 * GIB  # headroom for rebuilding over an existing build/dev
 DEFAULT_BUILD = 4 * GIB  # until a build has been measured
 MIN_INODES = 1024
+LEASE_MINUTES = 15  # the quiet lease's length (desktop_lock.py allows 45 at most)
+LEASE_RENEW_SECONDS = 300  # renewal interval, as `desktop_lock.py run` does: three tries per lease
 # The children get only these variables. A desktop session (Plasma, GNOME) imports DISPLAY, WAYLAND_DISPLAY,
 # XAUTHORITY and the XDG_SESSION_* set into the systemd user manager; tests inheriting them reach the live
 # desktop instead of their own Xvfb and private buses (the first k72 run, 2026-10-21, timed out five tests).
@@ -139,18 +146,19 @@ def lock_verdict(status, host):
     return None, f'{host} desktop lock: {state} by {who} for "{purpose}"; not quiet work, running headless'
 
 
-def check_desktop_lock(tree, lock_dir, host, log):
+def check_desktop_lock(tree, lock_dir, host, log, session=''):
     module, path = desktop_lock_module(tree)
     status = module.Desktop(lock_dir, host).status()
     reason, description = lock_verdict(status, host)
     if reason:
         raise Skip(reason)
     log(f'{description} (read with {path})')
-    check_quiet_lease(tree, lock_dir, log)
+    check_quiet_lease(tree, lock_dir, log, session)
 
 
-def check_quiet_lease(tree, lock_dir, log):
-    """Skip the week while another session holds the builder's quiet lease (desktop_lock.py --resource quiet)."""
+def check_quiet_lease(tree, lock_dir, log, session=''):
+    """Skip the week while another session holds the builder's quiet lease (desktop_lock.py --resource quiet).
+    SESSION is the run's own lease, once it holds one; $PUTGD_LAB_SESSION never lets it through."""
     here = Path(__file__).resolve().parent
     for candidate in (tree / 'tools/lab/desktop_lock.py', here / 'desktop_lock.py', here.parent / 'lab/desktop_lock.py'):
         if candidate.is_file():
@@ -162,10 +170,74 @@ def check_quiet_lease(tree, lock_dir, log):
             raise Skip(f'{lock_dir / "quiet.lock"} exists and no desktop_lock.py here can read it')
         log('quiet lease: free (no lease file)')
         return
-    reason = module.quiet_holder(lock_dir, session='')
+    reason = module.quiet_holder(lock_dir, session=session)
     if reason:
         raise Skip(reason)
     log(f'quiet lease: no other session holds it (read with {path})')
+
+
+class QuietLease:
+    """The builder's quiet lease, taken on the builder itself (the lock directory is local) for the whole run.
+
+    acquire() takes it or skips the week when another session holds it; it never waits holding nothing and
+    never breaks a lease. A thread renews it every LEASE_RENEW_SECONDS. A renewal that fails is retried
+    until the lease would lapse before the next try; then the run is stopped (on_lost, by default SIGTERM to
+    this process, which the run reports as interrupted). release() stops the renewals and gives it back."""
+
+    def __init__(self, tree, lock_dir, host, log, minutes=LEASE_MINUTES, every=LEASE_RENEW_SECONDS, on_lost=None):
+        self.module, self.path = desktop_lock_module(tree)
+        self.host, self.log, self.minutes, self.every = host, log, minutes, min(every, minutes * 20)
+        self.lock_dir = lock_dir
+        self.session = f'putgd-stress-weekly-{os.getpid()}'
+        self.on_lost = on_lost or (lambda: os.kill(os.getpid(), signal.SIGTERM))
+        self.stop, self.thread, self.lease = threading.Event(), None, None
+
+    def acquire(self):
+        asked = time.monotonic()
+        try:
+            self.lease = self.module.Desktop(self.lock_dir, self.host, resource='quiet')
+            reply = self.lease.acquire('putgd-stress-weekly', self.session,
+                                       'weekly stress lane: build and stress suite (putgd-stress-weekly.service)',
+                                       self.minutes)
+        except self.module.LockError as refused:
+            self.lease = None
+            holder = (getattr(refused, 'details', {}).get('lock') or {})
+            who = f" (held by {holder.get('owner')} ({holder.get('session')}) for \"{holder.get('purpose')}\")" \
+                if holder else ''
+            raise Skip(f'could not take the {self.host} quiet lease: {refused}{who}') from None
+        self.deadline = asked + self.minutes * 60
+        self.log(f'quiet lease: taken as {self.session} for {self.minutes} min, renewed every {self.every // 60} min '
+                 f'until the run ends; load {reply["lock"].get("load", "?")} (with {self.path})')
+        for note in reply.get('notes') or []:
+            self.log(f'quiet lease: {note}')
+        self.thread = threading.Thread(target=self.renew, name='quiet-lease', daemon=True)
+        self.thread.start()
+
+    def renew(self):
+        while not self.stop.wait(self.every):
+            asked = time.monotonic()
+            try:
+                self.lease.extend(self.session, self.minutes)
+                self.deadline = asked + self.minutes * 60
+            except (self.module.LockError, OSError) as error:
+                self.log(f'quiet lease: renewal failed: {error}')
+                if self.deadline - time.monotonic() <= self.every:
+                    self.log('quiet lease: it would lapse before the next try; stopping the run')
+                    self.on_lost()
+                    return
+
+    def release(self):
+        if self.lease is None:
+            return
+        self.stop.set()
+        if self.thread:
+            self.thread.join()
+        try:
+            self.lease.release(self.session)
+            self.log(f'quiet lease: released ({self.session})')
+        except (self.module.LockError, OSError) as error:
+            self.log(f'quiet lease: release refused: {error}')
+        self.lease = None
 
 
 def process_args(pid):
@@ -456,16 +528,17 @@ def weekly_run(args, log):
     status = {'status': 'running', 'host': socket.gethostname(), 'ref': args.ref, 'results': str(out),
               'started': datetime.datetime.now().astimezone().isoformat(timespec='seconds')}
     code = 0
+    lease = None
     try:
         check_desktop_lock(args.tree, args.lock_dir, args.host, log)
         wait_until_idle(log, args.wait_minutes, False)
+        lease = QuietLease(args.tree, args.lock_dir, args.host, log)
+        lease.acquire()  # held from here to the end of the run; a lease taken while it waited skips the week
         status['commit'] = update_tree(args.tree, args.ref, args.sdk_from, log)
         ensure_disk(args.tree, args.state_dir, log, False)
-        check_quiet_lease(args.tree, args.lock_dir, log)  # a lease taken while it waited for an idle host
         clock = time.monotonic()
         failed = run(['cmake', '--preset', 'dev', '-DPUTGD_TEST_TIMEOUT_SCALE=3'], log, out / 'build.log', cwd=args.tree)
         if not failed:
-            check_quiet_lease(args.tree, args.lock_dir, log)  # and one taken during configure
             failed = run(['nice', '-n', '10', 'cmake', '--build', '--preset', 'dev', '-j', str(args.jobs)], log,
                          out / 'build.log', cwd=args.tree)
         if failed:
@@ -477,9 +550,9 @@ def weekly_run(args, log):
         build_size = tree_bytes(args.tree / 'build/dev')
         (args.state_dir / 'build-size.json').write_text(json.dumps({'bytes': build_size}) + '\n')
         log(f'built in {status["buildSeconds"]} s; build/dev is {gib(build_size)}')
-        check_desktop_lock(args.tree, args.lock_dir, args.host, log)  # a quiet slot may have started meanwhile
+        # A desktop lock for quiet work may have started meanwhile; the lease is ours.
+        check_desktop_lock(args.tree, args.lock_dir, args.host, log, lease.session)
         wait_until_idle(log, args.wait_minutes, False)
-        check_quiet_lease(args.tree, args.lock_dir, log)
         clock = time.monotonic()
         status['stressExit'] = run(suite_command(args, args.tree, out, out.name), log, cwd=args.tree)
         status['stressSeconds'] = round(time.monotonic() - clock)
@@ -501,6 +574,8 @@ def weekly_run(args, log):
         log(f'error: {error}')
         code = 1
     finally:
+        if lease:
+            lease.release()
         status['ended'] = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
         (out / 'weekly.json').write_text(json.dumps(status, indent=1) + '\n')
         prune(args.results, args.keep, log, current=out)
@@ -515,6 +590,8 @@ def dry_run(args, log):
             raise Skip(f'{args.tree} exists but this script did not create it')
         log(f'would fetch origin/{args.ref} into {args.tree}' + ('' if args.tree.exists() else ' (new clone)')
             + f', linking build/sdk and build/dependencies to {args.sdk_from}')
+        log(f'would take the {args.host} quiet lease for the rest of the run ({LEASE_MINUTES} min, renewed every '
+            f'{LEASE_RENEW_SECONDS // 60} min) and release it at the end')
         ensure_disk(args.tree, args.state_dir, log, True)
         log('would run: cmake --preset dev -DPUTGD_TEST_TIMEOUT_SCALE=3')
         log(f'would run: nice -n 10 cmake --build --preset dev -j {args.jobs}')
