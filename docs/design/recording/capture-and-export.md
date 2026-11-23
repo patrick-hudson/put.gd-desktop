@@ -29,7 +29,7 @@ regardless: without it a 10 s recording on a three-monitor desktop played in
 pixel rate (veryfast up to about 1080p30, superfast to 1440p30 or 1080p60,
 ultrafast above); zerolatency's two sliced threads stalled the capture at
 1080p. The CPU stages take about two thirds of the cores, bounded, so the
-desktop being recorded keeps its own; with Unhinged mode on ([#1937](../text-recognition.md#unhinged-mode)) they take every core. Encoders are tried in order `vah264lpenc, vah264enc,
+desktop being recorded keeps its own. With [Unhinged mode](../text-recognition.md#unhinged-mode) on, `videoconvert`, `x264enc` and `openh264enc` use every logical CPU, at least two threads. Encoders are tried in order `vah264lpenc, vah264enc,
 vaapih264enc, x264enc, openh264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
 by actually starting the pipeline, GPU first, and the chosen names are
 reported in `recording.inspect` progress. The VA encoders take NV12, the CPU
