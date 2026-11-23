@@ -233,6 +233,12 @@ private slots:
   QTest::newRow("IPv6 split at the double colon")<<"Peer 2001:db8: :42 up"<<all<<QStringList{"ip: 2001:db8: :42"};
   QTest::newRow("IPv6 with a dash read beside the double colon")<<"Route 2001:db8::-4? up"<<all<<QStringList{"ip: 2001:db8::-4?"};
   QTest::newRow("email with its last dot lost")<<"Write corpus@example invalid"<<all<<QStringList{"email: corpus@example invalid"};
+  // #1930: a chart legend's colour squares read as "@" beside amounts and model names are no addresses,
+  // nor is a lost dot restored after a name of digits alone.
+  QTest::newRow("legend swatches between amounts and names")<<"@ Opus 5.5 $8,520 @ Fable5.2 $5,535 @ Fable5.1 $590 @ Sonnet5.5 $325"<<all<<QStringList{};
+  QTest::newRow("legend amount joined to the next swatch")<<"$5,535@Fable5.1 $590 535@Fable5.1 x@1.2 @ Sonnet5.5"<<all<<QStringList{};
+  QTest::newRow("no lost dot after a name of digits")<<"s@525 ia"<<all<<QStringList{};
+  QTest::newRow("an address beside a legend still matches")<<"@ Opus 5.5 ops@example.com @ Fable5.2"<<all<<QStringList{"email: ops@example.com"};
   // On the final candidate (#1462) with the page cut into eight strips, the
   // 36-letter GitHub fixture at 14 px came back with its prefix gone.
   QTest::newRow("token collapsed into repeated letters, prefix lost")<<"oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"<<all<<QStringList{"key: oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"};
@@ -1108,6 +1114,9 @@ private slots:
   // ...while a dot recognition lost after a domain is still restored before one.
   const QList<RecognizedWord> lost{{"alice@example",QRect(0,0,104,20),90,0},{"com",QRect(112,0,24,20),90,0},{"bob@example.org",QRect(135,0,120,20),90,0}};
   QCOMPARE(found(lost,QStringList{"email"}),(QStringList{"email: alice@example com","email: bob@example.org"}));
+  // #1930: a word of letters far along the row is no lost last label (read off a bar chart, 648 px apart).
+  const QList<RecognizedWord> far{{"ops@example",QRect(237,1227,104,24),0,0},{"ia",QRect(1211,1226,24,24),52,0}};
+  QCOMPARE(found(far,QStringList{"email"}),QStringList{});
   const QList<RecognizedWord> handle{{"@support.",QRect(0,0,72,20),90,0},{"jane+",QRect(80,0,40,20),90,0},{"tag@example.com",QRect(119,0,120,20),90,0}};
   QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: @support. jane+ tag@example.com"});
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
