@@ -337,8 +337,8 @@ across all panels.
   of its own, the first one too, so the job's wait bounds them all.
 - **Time.** The allowance is a quarter of the first pass's time, at least 400 ms and at most
   1 s, less whatever would bring it within 1 s of the job's own budget (it can be removed). It is
-  worked out from the first pass's time once the second-read bands are queued, and its clock
-  starts right after. A read whose band would not finish at the slowest pace seen so far is not
+  worked out once the second-read bands are queued, from the time since the first pass began
+  (building the queue included), and its clock starts once each band's size has been counted. A read whose band would not finish at the slowest pace seen so far is not
   started, and one cut short adds nothing. After the allowance, the job waits at most 250 ms more
   for a read ending on its monitor deadline, then closes the handover. A reader still running is
   left as the first pass's late workers are.
