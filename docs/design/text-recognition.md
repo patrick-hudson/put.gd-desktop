@@ -1045,7 +1045,8 @@ other tool active it does not. The user's side is in the
     phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
     phrase: telling it from the phrase's own second column would uncover that column. A backslash
     escape that recognition splits from its quote across a word space (`blue\ " jay"`) ends a quoted
-    value there (#1964). A connection string's password holding a `?` or `#` before its last `@` stays
+    value there, and a command separator glued to a word (`host&&`) doesn't end a quoted flag value's
+    command (#1964). A connection string's password holding a `?` or `#` before its last `@` stays
     visible: it reads as the URL's query (#1965).
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
