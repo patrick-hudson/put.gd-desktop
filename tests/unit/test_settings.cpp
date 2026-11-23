@@ -1,6 +1,8 @@
 #include "core/SettingsService.h"
 #include "core/CommandText.h"
 #include "core/TextJobProtocol.h"
+#include "core/CpuShare.h"
+#include "core/PosterJob.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -68,6 +70,27 @@ private slots:
         for(const auto& colors:invalid){preferences["editorRecentColors"]=colors;doc["preferences"]=preferences;QCOMPARE(putgd::Settings::validate(doc,validator).code,QString("config_invalid"));}
         QJsonArray seven;for(int i=0;i<7;++i)seven.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=seven;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
         preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+    }
+    // #1937: Unhinged mode is off unless set, and with it off every share is today's.
+    void unhingedModeIsOffByDefaultAndLiftsEachCpuShare() {
+        auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        QVERIFY(!doc["preferences"].toObject().contains("unhingedMode"));QVERIFY(!putgd::Settings::fromValidated(doc).unhingedMode);
+        auto preferences=doc["preferences"].toObject();preferences["unhingedMode"]=true;doc["preferences"]=preferences;
+        QVERIFY(!putgd::Settings::validate(doc,validator));QVERIFY(putgd::Settings::fromValidated(doc).unhingedMode);
+        for(const QJsonValue& bad:{QJsonValue(1),QJsonValue("on"),QJsonValue(QJsonValue::Null)}){preferences["unhingedMode"]=bad;doc["preferences"]=preferences;
+            const auto error=putgd::Settings::validate(doc,validator);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),QString("/preferences/unhingedMode"));}
+        // Recording's encoder and conversion threads: two thirds of the CPUs, bounded; on, all of them.
+        QCOMPARE(putgd::cpu::share(12,2,8,false),8);QCOMPARE(putgd::cpu::share(12,2,8,true),12);
+        QCOMPARE(putgd::cpu::share(4,2,4,false),2);QCOMPARE(putgd::cpu::share(4,2,4,true),4);
+        QCOMPARE(putgd::cpu::share(1,2,4,false),2);QCOMPARE(putgd::cpu::share(1,2,4,true),2);
+        // The video poster child: low priority, two threads' CPU time; on, normal priority and every CPU's.
+        QCOMPARE(putgd::PosterJob::arguments(9,false),QStringList({"--poster","9"}));QCOMPARE(putgd::PosterJob::arguments(9,true),QStringList({"--poster","9","--all-cores"}));
+        QCOMPARE(putgd::PosterJob::niceness(false),10);QCOMPARE(putgd::PosterJob::niceness(true),0);
+        QCOMPARE(putgd::PosterJob::cpuSeconds(10000,false,12),21);QCOMPARE(putgd::PosterJob::cpuSeconds(10000,true,12),121);QCOMPARE(putgd::PosterJob::cpuSeconds(10000,true,1),21);
+        // History previews in parallel stay within half the free memory.
+        constexpr qint64 mib=1024*1024;
+        QCOMPARE(putgd::cpu::workersWithin(12,8192*mib,128*mib),12);QCOMPARE(putgd::cpu::workersWithin(12,1024*mib,128*mib),4);
+        QCOMPARE(putgd::cpu::workersWithin(12,100*mib,128*mib),1);QCOMPARE(putgd::cpu::workersWithin(12,-1,128*mib),1);
     }
     // #293: no updates object means a daily check on this build's channel.
     void updatePreferencesAreOptionalWithKnownChannels() {

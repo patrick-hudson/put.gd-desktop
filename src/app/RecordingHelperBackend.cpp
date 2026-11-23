@@ -87,6 +87,7 @@ void RecordingHelperBackend::microphones(const QString& device, Reply reply) {
 void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& target, const RecordingConfig& config, const QString& staging, Reply reply, const QJsonObject& reviewOptions) {
     QJsonObject params{{"id", id}, {"target", target.toJson()}, {"config", config.toJson()}, {"staging", staging}, {"reviewOptions", reviewOptions}};
     if (target.kind == "window" && !target.window.isEmpty()) params["window"] = target.window;
+    if (config.allCores) params["allCores"] = true;
     helper_.prepare(id, params, prepareMs_, std::move(reply));
 }
 void RecordingHelperBackend::control(const QString& id, const QString& command, const QJsonObject& params, Reply reply) {

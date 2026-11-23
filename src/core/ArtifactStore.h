@@ -53,7 +53,8 @@ public:
  // A video's poster frame (#112) in the same cache, budget and naming as image
  // previews. It decodes a whole process away and takes up to the job deadline,
  // so it runs after the operation ends, never on the upload or result path.
- QString poster(const Artifact&,qint64 budget,qint64 maximumPixels,std::shared_ptr<std::atomic_bool> cancelled={},Error* failure=nullptr);
+ // allCores: Unhinged mode (#1937), see PosterJob.
+ QString poster(const Artifact&,qint64 budget,qint64 maximumPixels,std::shared_ptr<std::atomic_bool> cancelled={},Error* failure=nullptr,bool allCores=false);
  // Tests may substitute the poster helper (empty: putgd-record beside the app).
  static void setPosterHelperForTesting(const QString& path);
  void clearPreviews();

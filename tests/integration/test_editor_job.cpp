@@ -140,19 +140,21 @@ private slots:
  // not empty, and the editor accepts them (its exact key count allows both). redactText's own
  // checks answer at once, before any recognition: terms and patterns need the list category.
  void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms_data(){
-  QTest::addColumn<QStringList>("terms");QTest::addColumn<QStringList>("patterns");
-  QTest::newRow("neither")<<QStringList{}<<QStringList{};
-  QTest::newRow("words only")<<QStringList{"build-host-7","Project Aurora"}<<QStringList{};
-  QTest::newRow("patterns only")<<QStringList{}<<QStringList{"\\bJIRA-\\d+\\b"};
-  QTest::newRow("both")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"};
+  QTest::addColumn<QStringList>("terms");QTest::addColumn<QStringList>("patterns");QTest::addColumn<bool>("allCores");
+  QTest::newRow("neither")<<QStringList{}<<QStringList{}<<false;
+  QTest::newRow("words only")<<QStringList{"build-host-7","Project Aurora"}<<QStringList{}<<false;
+  QTest::newRow("patterns only")<<QStringList{}<<QStringList{"\\bJIRA-\\d+\\b"}<<false;
+  QTest::newRow("both")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"}<<false;
+  // #1937: Unhinged mode adds allCores to the bootstrap, which the key count allows too.
+  QTest::newRow("both, Unhinged mode")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"}<<true;
   // A list the editor would refuse is never sent, so the editor still starts.
-  QTest::newRow("a word with a line break is dropped")<<QStringList{"two\nlines"}<<QStringList{};
+  QTest::newRow("a word with a line break is dropped")<<QStringList{"two\nlines"}<<QStringList{}<<false;
  }
  void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms(){
-  QFETCH(QStringList,terms);QFETCH(QStringList,patterns);
+  QFETCH(QStringList,terms);QFETCH(QStringList,patterns);QFETCH(bool,allCores);
   QTemporaryDir root;const auto staging=root.filePath("editing");
   auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=noise({160,100},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRedactList(terms,patterns).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  std::thread worker([&]{auto image=noise({160,100},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRedactList(terms,patterns).withAllCores(allCores).run(image,"Upload to synthetic destination",64*1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
   const auto redact=[&](const QJsonObject& command){return ask(*session,"apply",{{"commands",QJsonArray{command}}});};

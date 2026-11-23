@@ -94,8 +94,8 @@ static int availableCores(){
  }
  return cores;
 }
-int workerThreads(int requested){
- return std::clamp(requested>0?requested:availableCores(),1,maximumWorkerThreads);
+int workerThreads(int requested,int maximum){
+ return std::clamp(requested>0?requested:availableCores(),1,std::max(1,maximum));
 }
 JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  JobResult result;QElapsedTimer total;total.start();const auto start=std::chrono::steady_clock::now();
@@ -198,7 +198,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   try{emojiThread=std::thread(scanEmoji);}catch(const std::system_error&){scanEmoji();emojiInline=true;}
  }
  result.profile=measure(image,areas);
- const int threads=workerThreads(options.threads);
+ // A count the caller chose stands, past eight in Unhinged mode (#1937).
+ const int threads=workerThreads(options.threads,std::max(maximumWorkerThreads,options.threads));
  // Bands and strips are cut as for at most four engines (#1812): more engines
  // share the same tasks, so the text does not change with the core count
  // above four (cut for six, 47 of the 176 corpus captures read differently).
@@ -575,7 +576,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  // The budget: a share of the first pass's time, within the floor and the cap,
  // ending secondReadMarginMs before the job's own budget at the latest.
- qint64 secondMs=std::clamp<qint64>(qint64(double(stage.elapsed())*secondReadShare),secondReadFloorMs,secondReadCapMs);
+ // Unhinged mode (#1937) raises the cap by the engines beyond four.
+ const qint64 secondCap=qint64(double(secondReadCapMs)*std::max(1.0,options.secondReadScale));
+ qint64 secondMs=std::clamp<qint64>(qint64(double(stage.elapsed())*secondReadShare),secondReadFloorMs,secondCap);
  if(options.budgetMs>0)secondMs=std::min<qint64>(secondMs,shared->left()-secondReadMarginMs);
  // Read by the workers, which may outlive this function like the first pass's
  // (an engine overrunning its deadline): on the heap, never freed then.

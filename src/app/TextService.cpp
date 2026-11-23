@@ -141,7 +141,7 @@ void TextService::acquired(const QString& id,Error error,Load load){
  QPointer<TextService> guard(this);
  // Recognition never starts before the journal says so.
  advance(id,OperationState::Recognizing,[guard,id,load]{
-  textjob::Options options;options.words=guard->request_.keepResult;options.languagesRequired=!guard->request_.languages.isEmpty();
+  textjob::Options options;options.words=guard->request_.keepResult;options.languagesRequired=!guard->request_.languages.isEmpty();options.allCores=guard->host_.settings().unhingedMode;
   options.languages=options.languagesRequired?guard->request_.languages
    :textjob::defaultLanguages(guard->host_.settings().textRecognitionLanguages,guard->host_.locale?guard->host_.locale():QLocale::system().name(),guard->backend_->languages());
   auto result=std::make_shared<TextResult>();auto failure=std::make_shared<Error>();

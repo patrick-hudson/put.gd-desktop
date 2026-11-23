@@ -132,7 +132,7 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
   protocolFailed=true;
  });
  // Cleared, then only the data path, one OpenMP thread and a C UTF-8 locale.
- QProcessEnvironment environment;environment.insert(textjob::dataPathVariable,dataDirectories().join(':'));environment.insert("OMP_THREAD_LIMIT","1");environment.insert("LC_ALL","C.UTF-8");
+ QProcessEnvironment environment;environment.insert(textjob::dataPathVariable,dataDirectories().join(':'));environment.insert("OMP_THREAD_LIMIT","1");environment.insert("LC_ALL","C.UTF-8");if(options.allCores)environment.insert(textjob::unhingedVariable,"1");
  process.setProcessEnvironment(environment);
  Descriptor inputRead{readOnly(input.fd)};
  if(inputRead.fd<0){error=textjob::failure("text_job_failed");return {};}

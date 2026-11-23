@@ -693,6 +693,8 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
         s.budgetLimit = "max_file_bytes";
+        // Unhinged mode (#1937): the live encode and colour conversion use every CPU.
+        s.config.allCores = s.op.settings.unhingedMode;
         if (disk && disk->available() / 3 < s.config.budgetBytes) {
             s.config.budgetBytes = disk->available() / 3;
             s.budgetLimit = "disk_space";

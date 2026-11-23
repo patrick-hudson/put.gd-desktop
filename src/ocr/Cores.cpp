@@ -85,4 +85,13 @@ QList<int> preferredCpus(){
  QList<int> allowed;for(int c=0;c<CPU_SETSIZE;++c)if(CPU_ISSET(c,&set))allowed.append(c);
  return preferredCpus(allowed);
 }
+MemoryBudgets memoryBudgets(bool unhinged,int threads,qint64 available,qint64 dataLimit){
+ constexpr qint64 mib=1024*1024,base=320*mib,beyond=64*mib;
+ if(!unhinged||available<0)return {base,base+beyond};
+ const qint64 wanted=128*mib+64*mib*std::max(1,threads);
+ qint64 room=available/2-beyond;
+ if(dataLimit>=0)room=std::min(room,dataLimit*2/3-beyond);
+ const qint64 budget=std::clamp(wanted,base,std::max(base,room));
+ return {budget,budget+beyond};
+}
 }

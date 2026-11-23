@@ -84,6 +84,7 @@ private:
     RecordingConfig config_;
     ResolvedTarget resolved_;
     QJsonObject capabilities_, reviewOptions_;
+    bool allCores_ = false; // Unhinged mode (#1937), from prepare
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
     bool audioCaptured_ = false;

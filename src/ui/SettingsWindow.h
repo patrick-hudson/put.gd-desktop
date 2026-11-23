@@ -247,7 +247,7 @@ private:
  QSpinBox* scrollHeight_; QCheckBox* scrollFromTop_; QCheckBox* scrollAutoScroll_;
  // #1729: Random names style; the rows show only while Random names is selected.
  QComboBox* randomStyle_=nullptr;QSpinBox* randomLength_=nullptr;QCheckBox *randomUppercase_=nullptr,*randomDigits_=nullptr;QFormLayout* namingForm_=nullptr;void showRandomNameRows();
- QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*captureDelay_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_,*captureDelayShortcuts_;
+ QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*captureDelay_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_,*captureDelayShortcuts_,*unhinged_;
  // #1364: Capture → Screen recording's microphone choice and click highlights
  // ask the resident what the sound server and the desktop offer right now.
  // force: ask now (the page was just shown, or the device choice changed); otherwise at most every

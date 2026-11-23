@@ -371,7 +371,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "captureStyle", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "captureStyle", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu", "unhingedMode"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -436,6 +436,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/recordingMicrophoneDevice", "The recording microphone is the name of an input device, at most 256 characters; leave it empty for the system default.");
     if (preferences.contains("recordingClickHighlights") && !preferences["recordingClickHighlights"].isBool())
         return invalid("/preferences/recordingClickHighlights", "Click highlights in recordings are true or false.");
+    if (preferences.contains("unhingedMode") && !preferences["unhingedMode"].isBool())
+        return invalid("/preferences/unhingedMode", "Unhinged mode is true or false.");
     if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
         return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
     if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
@@ -602,6 +604,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.recordingMicrophone = doc["preferences"].toObject()["recordingMicrophone"].toBool(false);
     settings.recordingMicrophoneDevice = doc["preferences"].toObject()["recordingMicrophoneDevice"].toString();
     settings.recordingClickHighlights = doc["preferences"].toObject()["recordingClickHighlights"].toBool(false);
+    settings.unhingedMode = doc["preferences"].toObject()["unhingedMode"].toBool(false);
     settings.captureDelaySeconds = doc["preferences"].toObject()["captureDelaySeconds"].toInt(0);
     settings.captureDelayShortcuts = doc["preferences"].toObject()["captureDelayShortcuts"].toBool(false);
     settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");

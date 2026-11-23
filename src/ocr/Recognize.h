@@ -14,8 +14,9 @@ namespace putgd::ocr {
 inline constexpr int maximumWorkerThreads=8;
 // The threads a job uses: requested, or one per CPU the process may use (its
 // affinity, lowered to its cgroup's cpu.max quota), at most
-// maximumWorkerThreads. Count before confinement: Landlock hides the quota.
-int workerThreads(int requested=0);
+// maximum (maximumWorkerThreads, or every CPU in Unhinged mode, #1937). Count
+// before confinement: Landlock hides the quota.
+int workerThreads(int requested=0,int maximum=maximumWorkerThreads);
 
 struct JobOptions {
  QStringList languages{QStringLiteral("eng")};
@@ -32,7 +33,8 @@ struct JobOptions {
  // behind it. 0: no budget (method comparisons).
  int budgetMs=0;
  QString dumpBand;          // method comparisons only: write the first band here
- // Threads for recognition (0: one per core, at most maximumWorkerThreads).
+ // Threads for recognition (0: one per core, at most maximumWorkerThreads;
+ // a count above that, from Unhinged mode, stands).
  // Bands run in parallel; a single pass of at least parallelPixels (scaled) is
  // cut into strips at blank row gaps that run in parallel. Results join in
  // page order, by task index.
@@ -62,6 +64,10 @@ struct JobOptions {
  EmojiOptions emoji;
  // The emoji scan stops this long after the job starts and keeps what it found.
  int emojiBudgetMs=3000;
+ // Unhinged mode (#1937): secondReadCapMs is multiplied by this, the engines
+ // over four, so extra engines buy more second reads; 1 (off, or four engines
+ // or fewer) keeps the cap. The share, the floor and the margin don't change.
+ double secondReadScale=1;
 };
 // emojiMs is the whole scan; emojiWaitMs what the job waited for it beyond
 // recognition (all of it when it ran inline).

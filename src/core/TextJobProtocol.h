@@ -69,6 +69,8 @@ inline constexpr qint64 maximumLanguageDataBytes=64*1024*1024;
 // The child's environment is cleared, then holds only these (decision 2).
 // The data path is a colon-separated list of directories in lookup order.
 inline constexpr char dataPathVariable[]="PUTGD_TEXT_DATA";
+// "1": Unhinged mode (#1937), every CPU and the memory free allows.
+inline constexpr char unhingedVariable[]="PUTGD_TEXT_UNHINGED";
 // The input memfd: a 32-byte little-endian header (magic, version, width,
 // height, stride, colour stride, two reserved zero words), then stride*height
 // bytes of 8-bit grey, then colourStride*height bytes of 8-bit RGB, both
@@ -95,6 +97,9 @@ struct Options {
  // Named by a caller: one that cannot load fails the job. From Settings: one
  // that cannot load is skipped when another loads.
  bool languagesRequired=false;
+ // Unhinged mode (#1937): the parent tells the helper in its environment
+ // (unhingedVariable), before the helper confines itself; never in the bootstrap.
+ bool allCores=false;
  bool operator==(const Options&) const=default;
 };
 // Decision 1: the code kinds read. Linear barcodes and PDF417 are not.

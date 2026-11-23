@@ -112,7 +112,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
  // #1893: the look saved in Settings, and whether this document starts with it (a new capture).
  CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;qint64 styleMaxPixels=0;
- Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool allCores=false,bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
  bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
@@ -427,6 +427,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // The saved text recognition languages (#1428); none means the locale's, then English.
    textLanguages.clear();for(const auto& language:object["textLanguages"].toArray())textLanguages.append(language.toString());
    if(!object["textLanguages"].isArray()||(!textLanguages.isEmpty()&&!textjob::validLanguages(textLanguages))){fail();return;}
+   // Unhinged mode (#1937), present only when on.
+   if(object.contains("allCores")&&!object["allCores"].isBool()){fail();return;}allCores=object["allCores"].toBool(false);
    // The saved Quick redact words and patterns (#1618), present only when not empty.
    {redactTerms.clear();redactPatterns.clear();
     const auto read=[&](const char* key,QStringList& into,int most,QString(*error)(const QString&)){
@@ -455,7 +457,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
-   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(object.contains("allCores")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -507,7 +509,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->text().setAllCores(allCores);window->setRedactList(redactTerms,redactPatterns);
    // #1893: a new capture starts with the saved look on; a check's hidden document starts plain, so its own
    // covered export is the capture as it was (the resident styles it), and Redact and upload turns the look on.
    if(hasStyle){document->setStyleLimit(styleMaxPixels);window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}

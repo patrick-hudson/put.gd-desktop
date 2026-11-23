@@ -318,7 +318,7 @@ private:
  // ends, so a slow or failing decode never delays its upload, link or copied
  // result. #190: a preview History asks for on selection goes ahead of those
  // and answers when it is made.
- struct PosterTask {QString operationId,itemId;bool onDemand=false;qint64 budget=0,maximumPixels=0;QElapsedTimer waiting;QList<JsonReply> replies;};
+ struct PosterTask {QString operationId,itemId;bool onDemand=false,allCores=false;qint64 budget=0,maximumPixels=0;QElapsedTimer waiting;QList<JsonReply> replies;};
  void queuePosters(const Operation&);
  void pumpPosters();
  void settlePreview(const PosterTask&,Error,QJsonObject);

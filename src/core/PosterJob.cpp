@@ -1,5 +1,6 @@
 #include "PosterJob.h"
 #include "ImageFormat.h"
+#include "CpuShare.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -42,7 +43,11 @@ Error failure(const QString& code){
  return {code,"The video preview could not be made",{}};
 }
 }
-PosterJob::PosterJob(QString path,int timeout):helperPath_(path.isEmpty()?defaultHelper():std::move(path)),timeoutMs_(std::clamp(timeout,100,30000)){}
+PosterJob::PosterJob(QString path,int timeout,bool allCores):helperPath_(path.isEmpty()?defaultHelper():std::move(path)),timeoutMs_(std::clamp(timeout,100,30000)),allCores_(allCores){}
+QStringList PosterJob::arguments(qint64 maxPixels,bool allCores){QStringList out{"--poster",QString::number(maxPixels)};if(allCores)out.append("--all-cores");return out;}
+// Two decode threads get twice the deadline in CPU time; every CPU gets the deadline once per CPU.
+int PosterJob::cpuSeconds(int timeoutMs,bool allCores,int cores){const int two=timeoutMs*2/1000+1;return allCores?std::max(two,int(qint64(timeoutMs)*std::max(1,cores)/1000)+1):two;}
+int PosterJob::niceness(bool allCores){return allCores?0:10;}
 QString PosterJob::defaultHelper(){return QCoreApplication::applicationDirPath()+"/putgd-record";}
 QByteArray PosterJob::render(const QString& file,qint64 maxPixels,qint64 budget,Error& error,Cancel cancelled) const {
  error={};
@@ -56,9 +61,9 @@ QByteArray PosterJob::render(const QString& file,qint64 maxPixels,qint64 budget,
  // device, and never whatever the name points at by the time it starts.
  const int fd=::open(QFile::encodeName(file).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
  struct stat s{};if(fd<0||::fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_size<1||::fcntl(fd,F_SETFL,0)<0){if(fd>=0)::close(fd);error=failure("poster_failed");return {};}
- const qint64 limit=std::min(budget,maximumOutput);const int cpuSeconds=timeoutMs_*2/1000+1;
+ const qint64 limit=std::min(budget,maximumOutput);const int cpuSeconds=PosterJob::cpuSeconds(timeoutMs_,allCores_,cpu::logicalCpus());const int lowered=niceness(allCores_);
  QProcess process;process.setStandardErrorFile(QProcess::nullDevice());
- process.setChildProcessModifier([fd,cpuSeconds]{
+ process.setChildProcessModifier([fd,cpuSeconds,lowered]{
   // Only async-signal-safe calls between fork and exec. dup2 clears close-on-exec.
   if(::dup2(fd,STDIN_FILENO)<0)::_exit(126);
   const rlimit none{0,0},cpu{rlim_t(cpuSeconds),rlim_t(cpuSeconds)},files{64,64};
@@ -66,11 +71,11 @@ QByteArray PosterJob::render(const QString& file,qint64 maxPixels,qint64 budget,
 #ifndef PUTGD_POSTER_SANITIZED
   const rlimit memory{addressSpace,addressSpace};::setrlimit(RLIMIT_AS,&memory);
 #endif
-  ::setpriority(PRIO_PROCESS,0,10);
+  if(lowered>0)::setpriority(PRIO_PROCESS,0,lowered);
  });
  QElapsedTimer clock;clock.start();
  const auto stopped=[&]{if(cancelled&&cancelled->load()){error=failure("cancelled");return true;}if(clock.elapsed()>=timeoutMs_){error=failure("poster_timeout");return true;}return false;};
- process.start(helperPath_,{"--poster",QString::number(maxPixels)});
+ process.start(helperPath_,arguments(maxPixels,allCores_));
  const bool started=process.waitForStarted(std::max(1,int(timeoutMs_-clock.elapsed())));::close(fd);
  if(!started){error=failure("poster_helper_missing");return {};}
  process.closeWriteChannel();
