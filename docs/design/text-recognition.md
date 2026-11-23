@@ -279,7 +279,7 @@ first engine with its band's contrast stretched, darkest pixel to black and pape
 a job that asks for candidates (Quick redact and the check before uploading) does this, inside its
 time budget; the words join the candidates after the copied text is made, so Copy text is
 unchanged, and a word where one was already read is left out. When neither this test nor the
-unread-rows test below finds a band, no extra read runs.
+unread-rows test below finds a band, these tests add no extra read.
 
 On a whole screen of 4 MP or more, read in panels, a panel is trimmed to its text, and a faint
 line has no grey step of 32 levels, so it can sit outside its panel (#1912). For the faint lines,
