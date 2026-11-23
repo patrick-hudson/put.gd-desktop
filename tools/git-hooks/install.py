@@ -19,12 +19,15 @@ def main(argv=None):
         return 0
     top = hooklib.git('rev-parse', '--show-toplevel').stdout.strip()
     # With extensions.worktreeConfig the setting stays in this worktree; without it, it is the
-    # repository's, and every worktree of it then runs its own checkout's tools/git-hooks.
+    # repository's and applies to every worktree of it.
     shared = hooklib.git('config', '--bool', '--get', 'extensions.worktreeConfig', check=False).stdout.strip()
     scope = '--worktree' if shared == 'true' else '--local'
-    hooklib.git('-C', top, 'config', scope, 'core.hooksPath', 'tools/git-hooks')
+    # The copy outside the tree keeps the hooks running on branches that predate tools/git-hooks;
+    # where the checkout has them, the copy hands over to the checkout's own files.
+    target = hooklib.install_copy()
+    hooklib.git('-C', top, 'config', scope, 'core.hooksPath', str(target))
     previous = hooklib.previous_hooks_dir()
-    print(f'core.hooksPath=tools/git-hooks set ({scope[2:]}) in {top}; '
+    print(f'core.hooksPath={target} set ({scope[2:]}) in {top}; '
           f'other hooks still forward to {previous}')
     return 0
 

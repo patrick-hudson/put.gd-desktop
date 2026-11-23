@@ -1,3 +1,5 @@
 #!/bin/sh
-# Run the same hook from the directory core.hooksPath=tools/git-hooks replaced.
-exec python3 "$(dirname "$0")/hooklib.py" forward "$(basename "$0")" "$@"
+# Run the same hook from the directory core.hooksPath replaced; see pre-push for the lookup.
+d=$(git rev-parse --show-toplevel 2>/dev/null)/tools/git-hooks
+[ -f "$d/hooklib.py" ] || d=$(dirname "$0")
+exec python3 "$d/hooklib.py" forward "$(basename "$0")" "$@"

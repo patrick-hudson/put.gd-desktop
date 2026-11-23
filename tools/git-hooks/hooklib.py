@@ -8,6 +8,7 @@ rule such as a commit-msg check keeps running.
 """
 import hashlib
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -25,6 +26,7 @@ HOOKS = Path(__file__).resolve().parent
 ROOT = HOOKS.parents[1]
 SKIP_VARIABLE = 'PUTGD_SKIP_GITLEAKS'
 INSTALL = 'python3 tools/git-hooks/install.py'
+HOOK_FILES = ('hooklib.py', 'pre-push', 'commit-msg', 'pre-commit', 'prepare-commit-msg')
 
 
 def cache_binary():
@@ -88,23 +90,42 @@ def git(*args, check=True):
     return result
 
 
+def common_dir():
+    value = git('rev-parse', '--path-format=absolute', '--git-common-dir', check=False).stdout.strip()
+    return Path(value) if value else None
+
+
+def install_copy():
+    """Copy the hooks to <git common dir>/putgd-hooks, which no branch switch removes."""
+    target = common_dir() / 'putgd-hooks'
+    target.mkdir(exist_ok=True)
+    for name in HOOK_FILES:
+        staged = target / f'.{name}.new'
+        shutil.copyfile(HOOKS / name, staged)
+        staged.chmod(0o644 if name.endswith('.py') else 0o755)
+        os.replace(staged, target / name)
+    return target
+
+
 def previous_hooks_dir():
-    """The hooks directory core.hooksPath=tools/git-hooks replaced: a global or system
+    """The hooks directory install.py's core.hooksPath replaced: a global or system
     core.hooksPath, else the repository's own hooks directory."""
     for scope in ('--global', '--system'):
         value = git('config', scope, '--type=path', '--get', 'core.hooksPath', check=False).stdout.strip()
         if value:
             return Path(value).expanduser()
-    common = git('rev-parse', '--git-common-dir', check=False).stdout.strip()
-    return Path(common).resolve() / 'hooks' if common else None
+    common = common_dir()
+    return common / 'hooks' if common else None
 
 
 def run_previous(name, args, stdin=None):
     directory = previous_hooks_dir()
     if directory is None:
         return 0
+    common = common_dir()
+    ours = {HOOKS, common / 'putgd-hooks'} if common else {HOOKS}
     try:
-        if directory.resolve() == HOOKS:
+        if directory.resolve() in {path.resolve() for path in ours}:
             return 0
     except OSError:
         return 0

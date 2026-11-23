@@ -46,7 +46,12 @@ class PrePush(unittest.TestCase):
         self.root = root
         subprocess.run(['git', 'init', '-q', '--bare', str(self.remote)], check=True, env=self.env)
         self.git('init', '-q', '-b', 'work', str(self.work), cwd=root)
-        self.git('config', 'core.hooksPath', str(HOOKS))
+        # As install.py does: a copy outside the tree, here on a branch with no tools/git-hooks.
+        copy = subprocess.run([sys.executable, '-c', 'import sys; sys.path.insert(0, sys.argv[1]); import hooklib; '
+                               'print(hooklib.install_copy())', str(HOOKS)], cwd=self.work, env=self.env,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(Path(copy), (self.work / '.git/putgd-hooks').resolve())
+        self.git('config', 'core.hooksPath', copy)
         self.git('remote', 'add', 'origin', str(self.remote))
         shutil.copy(ROOT / '.gitleaks.toml', self.work / '.gitleaks.toml')
         self.commit('base.txt', 'scratch fixture')
