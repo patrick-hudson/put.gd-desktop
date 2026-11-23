@@ -243,6 +243,31 @@ private slots:
   QTest::newRow("IPv6 split at the double colon")<<"Peer 2001:db8: :42 up"<<all<<QStringList{"ip: 2001:db8: :42"};
   QTest::newRow("IPv6 with a dash read beside the double colon")<<"Route 2001:db8::-4? up"<<all<<QStringList{"ip: 2001:db8::-4?"};
   QTest::newRow("email with its last dot lost")<<"Write corpus@example invalid"<<all<<QStringList{"email: corpus@example invalid"};
+  // #1942: any letter in a local part; no address in a systemd unit, an image name, a git remote,
+  // a fediverse handle or a mail header's message ID; "|" read for the "l" before the "@";
+  // an address recognition split at its "@" or before a domain dot.
+  QTest::newRow("email with accented local parts")<<"josé_tanaka@tyrell.fr <zoë-jansen@oscorp.net>"<<all<<QStringList{"email: josé_tanaka@tyrell.fr","email: <zoë-jansen@oscorp.net>"};
+  QTest::newRow("units, images, remotes and handles are no addresses")<<"user@1000.service getty@tty2.service Logo@2x.PNG icon@3x.png, git@github.com:org/repo.git follow @hana@mastodon.social"<<QStringList{"email"}<<QStringList{};
+  // Sol on #1956: never a shorter domain inside one, and a path's first character may be a digit.
+  QTest::newRow("no shorter domain inside a unit or a remote")<<"user@foo.bar.service git@source.example.com:org/repo.git git@github.com:1password/cli.git"<<QStringList{"email"}<<QStringList{};
+  QTest::newRow("a real .target address and a word after a colon")<<"alice@mail.target alice@example.com:urgent"<<QStringList{"email"}<<QStringList{"email: alice@mail.target","email: alice@example.com:urgent"};
+  QTest::newRow("a path unit and single-part remotes")<<"watch@home.path git@forge.example:repo.git git@forge.example:team+tools/repo.git"<<QStringList{"email"}<<QStringList{};
+  QTest::newRow("an address ending a sentence before a number")<<"Mail jane@example.com. 2026 plans"<<QStringList{"email"}<<QStringList{"email: jane@example.com."};
+  QTest::newRow("a header's colon read apart")<<"References : <CAF5x9q2@mail.gmail.com> | Message-ID: : <a1b2@mail.gmail.com>"<<QStringList{"email"}<<QStringList{};
+  QTest::newRow("a domain label starting with a digit after a split dot")<<"jane@mx. 2fa.example.com"<<QStringList{"email"}<<QStringList{"email: jane@mx. 2fa.example.com"};
+  QTest::newRow("a References word in prose")<<"References available from jane@example.com"<<QStringList{"email"}<<QStringList{"email: jane@example.com"};
+  QTest::newRow("a message ID is no address")<<"Message-ID: <CAF5x9q2@mail.gmail.com> | In-Reply-To: <xyz@mail.example.com>"<<QStringList{"email"}<<QStringList{};
+  QTest::newRow("an address on the next line of a header is one")<<"Message-ID: <CAF5x9q2@mail.gmail.com> | From: jane@example.com"<<QStringList{"email"}<<QStringList{"email: jane@example.com"};
+  QTest::newRow("an address with a colon after it")<<"Mail jane@example.com: soon"<<QStringList{"email"}<<QStringList{"email: jane@example.com:"};
+  QTest::newRow("an address before a port")<<"host jane@db.example.com:5432"<<QStringList{"email"}<<QStringList{"email: jane@db.example.com:5432"};
+  QTest::newRow("l before the @ read as a bar")<<QString("Author: tanaka.|@mail.aperture.com jane+|@example.com jane\U00010400|@example.com")<<QStringList{"email"}<<QStringList{"email: tanaka.|@mail.aperture.com","email: jane+|@example.com",QString("email: jane\U00010400|@example.com")};
+  QTest::newRow("an address split at its @ or a domain dot")<<"zoe.sato8 @wayne-corp.ai diego-reyes@ mail.fabrikam.com <kenji@gmail .com>"<<QStringList{"email"}<<QStringList{"email: zoe.sato8 @wayne-corp.ai","email: diego-reyes@ mail.fabrikam.com","email: <kenji@gmail .com>"};
+  QTest::newRow("a split after punctuation or before a digit label")<<"<jane @example.com> jane+ @example.org jane@mx .2fa.example.com"<<QStringList{"email"}<<QStringList{"email: <jane @example.com>","email: jane+ @example.org","email: jane@mx .2fa.example.com"};
+  QTest::newRow("a whole address takes no name after it")<<"alice@example.com .env"<<QStringList{"email"}<<QStringList{"email: alice@example.com"};
+  QTest::newRow("a country code split from its domain")<<"alice@example.co .uk"<<QStringList{"email"}<<QStringList{"email: alice@example.co .uk"};
+  // Sol on #1956: a key's next line read as "A91de @b3fa.aFe" still continues the key.
+  {const QString hex=QStringLiteral("9f86d081884c7d65")+QStringLiteral("9a2feaa0c55ad015")+QStringLiteral("a3bf4f1b2b0b822c")+QStringLiteral("d15d6c15b0f0");
+   QTest::newRow("a key's continuation is no split address")<<"secret: "+hex+" | A91de @b3fa.aFe"<<QStringList{"key"}<<QStringList{"key: secret: "+hex+" A91de @b3fa.aFe"};}
   // #1930: a chart legend's colour squares read as "@" beside amounts and model names are no addresses.
   QTest::newRow("legend swatches between amounts and names")<<"@ Opus 5.5 $8,520 @ Fable5.2 $5,535 @ Fable5.1 $590 @ Sonnet5.5 $325"<<all<<QStringList{};
   QTest::newRow("legend amount joined to the next swatch")<<"$5,535@Fable5.1 $590 535@Fable5.1 x@1.2 @ Sonnet5.5"<<all<<QStringList{};
@@ -723,6 +748,11 @@ private slots:
   QTest::newRow("name: initial and last name")<<"phudson p.hudson P. Hudson p-hudson"<<name<<me<<QStringList{"name: phudson","name: p.hudson","name: P. Hudson","name: p-hudson"};
   QTest::newRow("name: up to four digits after a login")<<"phudson2 phudson1234 phudson12345"<<name<<me<<QStringList{"name: phudson2","name: phudson1234"};
   QTest::newRow("name: each part alone")<<"Patrick wrote to Hudson"<<name<<me<<QStringList{"name: Patrick","name: Hudson"};
+  // #1942: a prompt whose "@" recognition read as letters runs the login into the host.
+  QTest::newRow("name: a prompt with its @ misread")<<"phudsonPd69:~$ ls | |lphudsonfidevbox:~/src$ | phudson.notes:~ | phudsonia"<<name<<me<<QStringList{"name: phudsonPd69:~$","name: |lphudsonfidevbox:~/src$","name: phudson.notes:~"};
+  // Sol on #1956: an "@" that recognition kept names another login.
+  QTest::newRow("name: another login's prompt")<<"mphudson@host:/tmp | phudsondev@host:/tmp"<<name<<me<<QStringList{};
+  QTest::newRow("name: an @ in the prompt's path")<<"phudsonPd69:~/work@v2"<<name<<me<<QStringList{"name: phudsonPd69:~/work@v2"};
   QTest::newRow("name: a part inside a path and a prompt")<<"cd /home/patrick/project | patrick@d69:~$ ls"<<name<<me<<QStringList{"name: /home/patrick/project","name: patrick@d69:~$"};
   QTest::newRow("name: a wrapped line with the dash at its end")<<"see patrick- | hudson now"<<name<<me<<QStringList{"name: patrick- hudson"};
   QTest::newRow("name: a wrapped line at the column")<<"ABCDEFGHIJKLMNO | PQRSTUVWXYZABCD | Contact Patrick | Hudson today"<<name<<me<<QStringList{"name: Patrick Hudson"};
@@ -1254,8 +1284,13 @@ private slots:
   QCOMPARE(found(numeric,QStringList{"email"}),QStringList{"email: a@3 com"});
   const QList<RecognizedWord> serif{{"j@j",QRect(0,0,16,12),90,0},{"io",QRect(22,3,8,6),90,0}};
   QCOMPARE(found(serif,QStringList{"email"}),QStringList{"email: j@j io"});
+  // #1942: a word before an @-mention stands at least half a line's height off; it joins nothing.
+  const QList<RecognizedWord> mention{{"thanks",QRect(0,0,48,20),90,0},{"@jane.doe",QRect(60,0,72,20),90,0}};
+  QCOMPARE(found(mention,QStringList{"email"}),QStringList{});
+  const QList<RecognizedWord> split{{"zoe.sato8",QRect(0,0,72,22),90,0},{"@wayne-corp.ai",QRect(78,0,112,22),90,0}};
+  QCOMPARE(found(split,QStringList{"email"}),QStringList{"email: zoe.sato8 @wayne-corp.ai"});
   const QList<RecognizedWord> handle{{"@support.",QRect(0,0,72,20),90,0},{"jane+",QRect(80,0,40,20),90,0},{"tag@example.com",QRect(119,0,120,20),90,0}};
-  QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: @support. jane+ tag@example.com"});
+  QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: jane+ tag@example.com"});
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
   QCOMPARE(found(dash,QStringList{"email"}),QStringList{"email: bob@example.com"});
   // A word another kind matches stays with that kind: the card keeps its last group.

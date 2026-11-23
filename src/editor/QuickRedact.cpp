@@ -74,12 +74,14 @@ QString hexView(const QString& word) {
 QList<QString> emailView(const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
  static const QRegularExpression letters(QStringLiteral("^[A-Za-z]{2,24}$"));
  QList<QString> out=plain;
+ // #1942: an "l" just before the "@" read as "|" (tanaka.|@mail.aperture.com).
+ for(auto& word:out){const auto at=word.indexOf('@');if(at>1&&word.at(at-1)=='|'&&(word.at(at-2).isLetterOrNumber()||word.at(at-2).isMark()||word.at(at-2).isLowSurrogate()||QStringLiteral("._%+-").contains(word.at(at-2))))word[at-1]='l';}
  for(qsizetype i=0;i+1<plain.size();++i){
-  const auto at=plain.at(i).indexOf('@');
+  const auto at=out.at(i).indexOf('@');
   const auto& word=candidates.at(i).rect;const auto& next=candidates.at(i+1).rect;
   const bool beside=next.left()-(word.right()+1)<=qMax(word.height(),next.height());
   const bool wide=word.width()*10>word.height()*11;
-  if(at>0&&!plain.at(i).mid(at).contains('.')&&beside&&wide&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(plain.at(i+1)).hasMatch())out[i]+='.';
+  if(at>0&&!out.at(i).mid(at).contains('.')&&beside&&wide&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(plain.at(i+1)).hasMatch())out[i]+='.';
  }
  return out;
 }
@@ -131,23 +133,41 @@ bool wrapEvidence(const QString& left,const QString& right,const QString& catego
 // a letter or digit, as the email rule needs. Entry i is true when word i joins
 // word i - 1.
 QList<bool> localJoins(const QList<QString>& words,const QList<RecognizedWord>& candidates) {
- static const QRegularExpression part(QStringLiteral("^[A-Za-z0-9._%+-]+$")),address(QStringLiteral("^[A-Za-z0-9._%+-]+@"));
+ static const QRegularExpression part(QStringLiteral("^[\\p{L}\\p{M}\\p{N}._%+-]+$")),address(QStringLiteral("^[\\p{L}\\p{M}\\p{N}._%+-]+@"));
  QList<bool> local(words.size()+1,false);
  for(int i=int(words.size())-1;i>0;--i){
   const auto& before=candidates.at(i-1);const auto& after=candidates.at(i);
   if(after.line!=before.line||after.rect.left()>before.rect.right()||!part.match(words.at(i-1)).hasMatch())continue;
   // The last label of a domain whose dot was restored ("alice@example." "com") starts no address.
-  static const QRegularExpression restored(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+\\.$"));
+  static const QRegularExpression restored(QStringLiteral("^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N}._%+-]*@[A-Za-z0-9-]+\\.$"));
   if(i>1&&candidates.at(i-2).line==before.line&&restored.match(words.at(i-2)).hasMatch())continue;
   local[i]=address.match(words.at(i)).hasMatch()||(part.match(words.at(i)).hasMatch()&&local.at(i+1));
  }
  for(int i=1;i<words.size();++i)if(local.at(i)&&!local.at(i-1)&&!words.at(i-1).front().isLetterOrNumber())local[i]=false;
  return local;
 }
+// #1942: recognition splits an address at its "@" or before a dot of its domain
+// ("zoe.sato8" "@wayne-corp.ai", "diego-reyes@" "mail.fabrikam.com", "kenji@gmail"
+// ".com"), leaving a gap a quarter of the line's height (at most 0.47 measured), while
+// a word before an @-mention stands at least half a line's height off (0.53 in 95%).
+// Two words on a line split so, at most 0.45 line heights apart, read as one.
+bool splitAddress(const QString& left,const QString& right,const QRect& a,const QRect& b) {
+ if(left.isEmpty()||right.size()<2||b.left()-(a.right()+1)>0.45*qMax(a.height(),b.height()))return false;
+ // As the email rule reads them: a local part's tail after any opening punctuation ("<jane", "jane+"),
+ // and a domain's first label.
+ static const QRegularExpression local(QStringLiteral("[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N}._%+-]*$")),domain(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9-]*\\.[A-Za-z0-9]")),
+  complete(QStringLiteral("@[A-Za-z0-9.-]*\\.[A-Za-z]{2,}$")),country(QStringLiteral("^\\.[A-Za-z]{2}[,;:)>\\]]?$"));
+ if(right.front()=='@')return !left.contains('@')&&local.match(left).hasMatch()&&domain.match(right.mid(1)).hasMatch();
+ if(left.back()=='@')return left.count('@')==1&&local.match(left.chopped(1)).hasMatch()&&domain.match(right).hasMatch();
+ // Before a domain dot only while the domain is still unfinished ("kenji@gmail" ".com"): a whole
+ // address is not extended into a name after it ("alice@example.com" ".env").
+ // A country code may still follow a whole domain ("alice@example.co" ".uk", Sol on #1956).
+ return left.count('@')==1&&left.indexOf('@')>0&&(!complete.match(left).hasMatch()||country.match(right).hasMatch())&&right.front()=='.'&&right.at(1).isLetterOrNumber();
+}
 // Every character keeps its word owner. Both views retain an unsupported
 // line boundary; only the wrapped view removes a supported boundary entirely.
 struct Joined {QString text;QList<int> owner;};
-Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full) {
+Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full,bool splits=true) {
  Joined joined;
  const auto local=category=="email"?localJoins(words,candidates):QList<bool>(words.size()+1,false);
  for(int i=0;i<words.size();++i){
@@ -161,8 +181,13 @@ Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,
   // Not after a whole address that ends a sentence ("alice@example.net." then "jane+" "tag@…"),
   // when this word starts a local-part join: then it begins another address.
   QString domain=i>0?words.at(i-1).mid(words.at(i-1).indexOf('@')+1):QString();domain.chop(1);
-  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).contains('@')&&words.at(i-1).endsWith('.')&&!(local.value(i+1)&&domain.contains('.'));
-  if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
+  // #1942: only after a local part: a handle ("@support.") ends its sentence and starts no address.
+  // And only before a label: a letter, or a digit that goes on to a dot ("jane@mx." "2fa.example.com");
+  // a sentence's period then "2026" is no domain (Sol on #1956).
+  static const QRegularExpression labels(QStringLiteral("^[0-9][A-Za-z0-9-]*\\.[A-Za-z]"));
+  const bool label=i>0&&!words.at(i).isEmpty()&&(words.at(i).front().isLetter()||labels.match(words.at(i)).hasMatch());
+  const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).indexOf('@')>0&&words.at(i-1).endsWith('.')&&label&&!(local.value(i+1)&&domain.contains('.'));
+  if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)&&!(splits&&category=="email"&&!boundary&&splitAddress(words.at(i-1),words.at(i),candidates.at(i-1).rect,candidates.at(i).rect))){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }
  return joined;
@@ -1548,7 +1573,12 @@ bool isbn13(const QString& text) {
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
-  {"email",QRegularExpression(R"((?<![\w.%+-])[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,}(?![\w-]))"),{},3},
+  // #1942: a local part may hold any letter (josé, zoë). No address starts right after another "@"
+  // (a fediverse handle, @me@mastodon.social), ends in a systemd unit's or an image file's suffix
+  // (user@1000.service, icon@2x.png), or goes on with ":" and a path (git@github.com:org/repo.git;
+  // a port, @db.internal:5432/app, still ends one, and so does a word, jane@example.com:urgent).
+  // The last label ends the domain, so a shorter domain is never taken (user@foo.bar.service).
+  {"email",QRegularExpression(R"((?<![\p{L}\p{M}\p{N}_.%+@-])[\p{L}\p{N}][\p{L}\p{M}\p{N}._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.(?!(?i:service|socket|mount|automount|timer|slice|scope|device|swap|path|png|jpe?g|gif|svg|webp|ico|bmp|tiff?|avif|heic)(?![\w-]))[A-Za-z]{2,}(?![\w-]|\.[A-Za-z0-9]|:(?!\d+/)[\w.~+-]*(?:/|\.git(?![\w-]))))"),{},3},
   {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d)&&!isbn13(d);},1},
   {"ip",QRegularExpression(R"((?<![\d.vV])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
@@ -1581,7 +1611,9 @@ bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<
  // Cards first, so every card's words are collected before an address answers.
  for(const auto* kind:{"card","email"})for(const auto& rule:rules()){
   if(rule.category!=QLatin1String(kind))continue;
-  const auto joined=join(rule.view==1?numbers:email,boxes,false,rule.category,{});
+  // #1942: without the gap joins, which guess at an address: a key's next line ("A91de" "@b3fa.aFe")
+  // must not read as an address and stop the key's cover (Sol on #1956).
+  const auto joined=join(rule.view==1?numbers:email,boxes,false,rule.category,{},false);
   for(auto it=rule.pattern.globalMatch(joined.text);it.hasNext();){
    const auto m=it.next();if(rule.valid&&!rule.valid(m.captured()))continue;
    found=true;if(!cards||rule.category!="card")return true;
@@ -1752,6 +1784,28 @@ QList<QList<int>> formHits(const Joined& joined,const Form& form) {
   if(end>at)out.append(owners(joined,at,end-at));
  }
  return out;
+}
+// #1942: the login as a prompt word is compared: case folded, with I, l, 1 and | read
+// as one character and O and 0 as another; logins of 3 characters or more.
+QString promptLogin(const QString& login) {
+ QString out;for(const auto c:literalView(login))out+=confusion(c);
+ return points(out)>=3?out:QString();
+}
+bool promptHolds(const QString& word,const QString& login) {
+ static const QRegularExpression prompt(QStringLiteral("^\\S{0,2}?(\\S+?)[A-Za-z0-9][A-Za-z0-9.-]*:[~/]\\S*$"));
+ if(!prompt.match(word).hasMatch())return false;
+ QString folded;for(const auto c:word)folded+=confusion(c);
+ // Up to two glyphs of a window edge or caret before it, read as | l I 1 j ! ( or [ (folded to l).
+ static const QString edge=QStringLiteral("lj!([");
+ qsizetype from=0;
+ while(from<2&&from<folded.size()&&!folded.mid(from).startsWith(login)&&edge.contains(folded.at(from)))++from;
+ if(!folded.mid(from).startsWith(login))return false;
+ // An "@" recognition kept before the host's colon names the login: it must follow it at once (Sol on #1956: with login
+ // alice, malice@host and alicedev@host are other logins).
+ const auto at=folded.indexOf('@');
+ if(at>=0&&at<folded.indexOf(':'))return at==from+login.size();
+ // The login, then the host: at least one more character before the colon.
+ return from+login.size()<folded.indexOf(':');
 }
 // Decision 3's name forms: the whole name, "last, first" (first name only),
 // first initial plus last name, the login (with the part rules, so jane.doe
@@ -1956,6 +2010,13 @@ Result findRead(const QList<RecognizedWord>& candidates,const QStringList& chose
   if(name&&!cancelled()){
    const auto joined=join(literal,ordered,false,QStringLiteral("name"),full);
    for(const auto& f:nameForms(sources.login,sources.realName))for(const auto& words:formHits(joined,f))claim("name",words,taken,result.matches);
+   // #1942: a shell prompt whose "@" recognition read as a letter or two, or lost
+   // ("mriveraPmint:~$", "hsatofinova:~$", "ychenorion:~$"), runs the login into the host,
+   // so no word edge ends it. A prompt-shaped word (host, ":", then "~" or "/") that starts
+   // with the login, after at most two characters of window edge or caret ("|lsoconnor@…"),
+   // is the login's.
+   if(const auto login=promptLogin(sources.login);!login.isEmpty())
+    for(int w=0;w<ordered.size();++w)if(!taken.contains(w)&&promptHolds(literal.at(w),login))claim("name",{w},taken,result.matches);
   }
   if(list&&!cancelled()){
    // A list entry matches only whole, with the variations above.
@@ -2149,6 +2210,20 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
         const auto& t=candidates.at(v).text;if(t.endsWith(',')||t.endsWith(';')||t.endsWith('.')||count==10||count==13)break;}
       }
       if(!isbnWords.isEmpty()&&std::all_of(words.cbegin(),words.cend(),[&](int w){return isbnWords.contains(w);}))continue;}
+    }
+    // #1942: a mail header's message identifiers (Message-ID, In-Reply-To, References)
+    // are shaped like addresses and are none.
+    if(rule.category=="email"){
+     // The header's field name, colon and all, starts the line; the word in prose does not count.
+     static const QRegularExpression header(QStringLiteral("^(?:Message-ID|In-Reply-To|References|X-Message-ID|Resent-Message-ID):$"),QRegularExpression::CaseInsensitiveOption);
+     const int line=candidates.at(words.first()).line;int first=-1;
+     for(int w=0;w<candidates.size();++w)if(candidates.at(w).line==line&&(first<0||candidates.at(w).rect.left()<candidates.at(first).rect.left()))first=w;
+     // Recognition may give the colon as a word of its own ("References" ":"), Sol on #1956.
+     int second=-1;
+     for(int w=0;w<candidates.size();++w)if(w!=first&&candidates.at(w).line==line&&candidates.at(w).rect.left()>=candidates.at(first).rect.left()&&(second<0||candidates.at(w).rect.left()<candidates.at(second).rect.left()))second=w;
+     const auto& field=candidates.at(first).text;
+     const bool apart=second>=0&&candidates.at(second).text==QLatin1String(":");
+     if(!words.contains(first)&&(header.match(field).hasMatch()||(apart&&header.match(field+QLatin1Char(':')).hasMatch())))continue;
     }
     // Merge both views before reserving any word, so a wrapped continuation
     // cannot be discarded merely because its prefix matched the plain view.
