@@ -991,8 +991,9 @@ other tool active it does not. The user's side is in the
         above. It has two digits, or one in six groups or more, or, in capitals as one word or groups of
         one length, none beside words that name a setup key ("Setup key", "Enter this key"). Lowercase
         words fit the alphabet too, so a lowercase run needs two digits, and only digits inside a group
-        that also holds letters count (#1975): a number of its own between lowercase words ("A blank key,
-        or one longer than 255 characters") makes no key. Its rest on the row just below is
+        that also holds letters count, unless the groups are a key's even groups of three to eight
+        (`jbsw 2345 hpkp xpab`), #1975: a number of its own between lowercase words ("A blank key, or
+        one longer than 255 characters") makes no key. Its rest on the row just below is
         covered when that row holds only base32 groups of the same case, four characters or more in all,
         and so are two such rows of groups that make a key only together;
       - recovery and backup codes under a heading that says so (recovery, backup, emergency, one-time or
@@ -1140,9 +1141,9 @@ other tool active it does not. The user's side is in the
       whose letters and digits, lowercased and with everything else removed, have eight in ten,
       after the first two, repeating the character two before them and differing from the one before
       (`hahaha`);
-    - a hex run needs one character in eight to be a digit as read, `0` to `9` themselves and not an
-      `o` or `O` read for zero, so a receipt's leaders (`ccooecoo`) and a page's ornament read as
-      `EOEOEOOOOO` (#1975) are no hex;
+    - a hex run needs one character in eight to be a digit as read, counting the usual confusions for
+      `1` (`l`, `I`, `|`, `!`) but not an `o` or `O` read for zero, so a receipt's leaders
+      (`ccooecoo`) and a page's ornament read as `EOEOEOOOOO` (#1975) are no hex;
     - a hash word names a digest only in the run's own segment or in up to three words and 32
       characters on each side of it, stopping at a word with seven hex characters in a row or a gap
       wider than 30 characters, so a `commit <sha>` in another window on the same row leaves a hex
@@ -1194,9 +1195,9 @@ other tool active it does not. The user's side is in the
       match is shorter) hold no digit and touch three or more recognized words, and each whole word
       they touch, with anything attached to it such as the prefix or text after the body, has only
       ordinary parts (`US ASIA EUR BONDS OIL GOLD`, a market page's tabs). A body in one or two
-      words goes through the usual key ID checks. Since #1975 the same holds for every known prefix,
-      with its separator read or lost: npm's own banner, "npm tokens that bypass 2FA are being
-      restricted…", is no npm token.
+      words goes through the usual key ID checks. Since #1975 the same holds for every known prefix
+      whose separator recognition lost (`npm` then words): npm's own banner, "npm tokens that bypass
+      2FA are being restricted…", is no npm token, while `npm_` then the same words still is one.
   - Limits (#1971, #1972): when recognition splits a token into pieces that happen to pass these
     tests, the base64 or AWS key ID rule skips it; another rule can still suggest it. We measured the
     base64 test alone on random base64 tokens split at random points into pieces: it skipped about
@@ -1207,8 +1208,18 @@ other tool active it does not. The user's side is in the
   - Real websites (#1975): a sweep of 265 public pages, 1,701 captures in Chrome at 100, 125 and
     150 % (light and dark) and Firefox at 100 and 125 % through the packaged helper
     ([real-website sweep](../lab/redact-sites.md)), found a false prompt on 21 pages at the upload
-    check's default kinds and on 66 with every kind on. After #1975's rules, 15 and 53. Known limits
+    check's default kinds and on 66 with every kind on. After #1975's rules, 15 and 54. Known limits
     that stay:
+    - a page in another script (Chinese, Japanese, Korean, Russian, Hebrew) read with English only
+      comes back as random-looking Latin words, which can look like a split token. Recognition reads
+      the languages chosen in Settings → Text recognition, or, with none chosen, the system
+      locale's, so an English-locale user opening such a page reads it with English. Choosing the
+      page's language there fixes it. We tried skipping key candidates made of many short,
+      low-confidence words with no prefix, label or secret word: it cleared none of the six such
+      pages fully and dropped three true covers in the fuzz scenes, so it was not kept;
+    - a row of navigation words run together in mixed case (`GrandTheftAutoVI`, `BAskeTBALL`,
+      `ForMULA1`: news trending chips, a sports site's tabs) can be taken for a split token. Counting
+      such words as ordinary would loosen the split-token guard of #1971;
     - a token collapsed by recognition into two or three mixed letters with its prefix lost
       (`APC CCEEEECEEEEC…`) is no longer a key; a token of one repeated character still is;
     - a bit diagram read as long runs of `0` and `1` (Wikipedia's IPv6 page), a search result's
@@ -1285,15 +1296,18 @@ other tool active it does not. The user's side is in the
     - a number immediately after a currency sign (`€ $ £ ¥ ₹`, touching it), or with a currency sign or code
       (`EUR`, `USD`, `GBP`, `CHF`, `JPY`, `kr`, `zł`, `₽`) as the next word on its line (`1 234 567 €`);
     - an unbroken number immediately after `#` (touching it, or with the `#` read as its own word
-      on the same line), unless the word before it on that line names a number to call or an
-      account (`Phone #`, `Tel #`, `Telefon #`, `Fax #`, `Mobile #`, `Account #`, `No #` and the
-      like, which keep the rule). Since #1975 that covers a run's or an order's number after any
-      other word or none (`helpers #1714797062` on GitHub Actions, `Delivered #523878536`); an
-      order-type word (`Order #10234567`, `Invoice`, `Ticket`, past a colon read as its own word) or a
-      time (a receipt line, `19:54:46 #4091291`) still make one too;
-    - a span of years, the second no earlier than the first, in brackets or not (`1995-2026`,
-      `(1952-2001)`, #1975);
-    - a number right after `~` (about, or a Wikipedia temporary account, `~2026-61798-25`, #1975);
+      on the same line) after another word on that line, unless that word names a number to call or
+      an account (`Phone #`, `Tel #`, `Telefon #`, `Celular #`, `Fax #`, `Mobile #`, `Account #`,
+      `No #` and the like keep the rule). Since #1975 that covers a run's or an order's number after
+      any such word (`helpers #1714797062` on GitHub Actions, `Delivered #523878536`); a `#` number
+      with nothing before it on its line stays a phone number. An order-type word (`Order #10234567`,
+      `Invoice`, `Ticket`, past a colon read as its own word) or a time (a receipt line,
+      `19:54:46 #4091291`) make one too;
+    - a span of years from 1900 to 2099, the second no earlier than the first, in brackets or not
+      (`1995-2026`, `(1952-2001)`, #1975). Korea's service numbers (`1899-1995`, `1588-…`) are not
+      years and stay phone numbers;
+    - a number of digits right after `~` (about, or a Wikipedia temporary account,
+      `~2026-61798-25`, #1975); a dialling form with `+` after it (`~+1-202-555-0143`) stays one;
     - a browser's build date in a user agent: an unbroken number in a word that starts with
       `Gecko/` and a digit, optionally after `(` or `[` (`Gecko/20100101`, `Gecko/20100101)`);
     - a date with a dashed time (`2026-11-22 14-03-57`, a GNOME screenshot name);
@@ -1316,19 +1330,21 @@ other tool active it does not. The user's side is in the
     (`1:8.17.4.28`; the IPv4 tail of an IPv6 address stays one), before a release suffix of a dash,
     digits, an optional `.`, `~` or `+`, and a letter (`8.17.4.28-3.fc45`, `-1ubuntu2`), or right after a section or version
     label on its line (`Section 1.2.3.4`, `Version 2.11.7.54`), or right after a version requirement's
-    operator as its own word (`'>=`, `~>`, `==`, `!=`, `<=`, `^`, `~=`: `gem 'rails', '>= 8.1.4.1'`,
-    #1975); a range (`10.0.0.1-10.0.0.255`) stays two addresses. A loopback or unspecified address
+    operator as its own word (`'>=`, `~>`, `<=`, `^`, `~=`: `gem 'rails', '>= 8.1.4.1'`, #1975; not
+    `==` or `!=`, which filters compare addresses with, `ip.addr == 192.168.0.1`); a range (`10.0.0.1-10.0.0.255`) stays two addresses. A loopback or unspecified address
     names no host and is not taken (#1975): `127.` and anything after it (`127.0.0.1:8000`,
     `127.0.0.0/8`), `0.0.0.0`, and an IPv6 address whose groups are all zero but a last `1` or `0`
-    (`0:0:0:0:0:0:0:1`; the short forms `::1` and `::` were never taken). Private ranges
+    (`0:0:0:0:0:0:0:1`; the short forms `::1` and `::` were never taken). An address that ends in
+    `::` ends in a zero group (`0:0:1::` stays one). Private ranges
     (`10.`, `172.16.`, `192.168.`) still are. An address recognition split at a dot on one line (`148`
     `.98.250.123:443`, `148.98.250.` `123:443`) is joined when the boxes are no more than one and a
     half characters apart and the two make one whole address.
   - An email address whose last dot recognition lost (`kenji@gmail` `com`, the next word within a
-    line height) gets it back only when that word is written in one case and is a country's two
-    letters or a common top-level name (`com`, `net`, `org`, `io`, `dev`, `co`, `invalid`, `test`,
-    `example` and some 30 more); a logo's word after an icon read as `@` (`cri@Duzz` `Live`,
-    `WViIg@tio` `lieve`) makes no address (#1975).
+    line height) gets it back only when that word is a country's two letters written in one case,
+    or a common top-level name in any case (`com`, `CoM`, `net`, `org`, `io`, `dev`, `co`,
+    `invalid`, `test`, `example` and some 30 more); a logo's word after an icon read as `@`
+    (`cri@Duzz` `Live`, `WViIg@tio` `lieve`) makes no address (#1975). An address on a rarer
+    top-level name whose dot was lost (`ops@example` `systems`) is a limit.
   - In a CSV row one word can hold the end of one field and the start of the next
     (`alice@example.com,+1` then `202 555 0143`). A later match keeps its other words instead of
     being dropped when at least one of them is unclaimed and every word it shares with earlier

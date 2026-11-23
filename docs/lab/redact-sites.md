@@ -12,7 +12,7 @@ tool, not acceptance evidence for any desktop.
 | --- | --- |
 | `sites.tsv` | The page list, by category: news, finance, video, social, shopping, developer docs and GitHub, registries, Wikipedia, weather, sports, status pages, forums, search, maps, travel, mail and chat landing pages, cloud pricing, government, education and non-English sites. Every page loads without a login. |
 | `sweep.py` | `capture`, `run`, `replay`, `report` and `compare`, described below. |
-| `triage.tsv` | One rule per line: kind, a regular expression on the matched text (or `url=RX text=RX` for one site), verdict `true` or `false`, and the root-cause group. The first rule that matches decides; a match no rule decides counts as `untriaged`, which is false. |
+| `triage.tsv` | One rule per line: kind, a regular expression on the matched text (or `url=RX text=RX` for one site), verdict `true` or `false`, and the root-cause group. The first rule that matches decides; a match no rule decides counts as `untriaged`, which is false. False verdicts name the pages they were checked on, so a real address or number on a new page shows up untriaged rather than called a misread. |
 
 The captures and results hold page text, so they stay out of git and off the workstation. Run on a
 builder, holding your own quiet lease (see [remote builders](remote-builders.md)).
@@ -56,7 +56,10 @@ builder, holding your own quiet lease (see [remote builders](remote-builders.md)
    `report` writes `matches.tsv` (every match with its page, browser, scale, theme, verdict, group
    and words around it), `summary.json` and `table.md`. The table gives, per profile and scale, the
    captures with any prompt and those with a false one, the pages with a false prompt in any capture,
-   and false matches per group. `compare rep-before rep-after` prints both side by side.
+   and false matches per group. A capture the check couldn't finish (recognition failed or cut,
+   matching unfinished) counts as a false prompt in its own group, since the check asks then too.
+   `compare rep-before rep-after` prints both side by side. `run` says `INCOMPLETE` and exits 1 when a
+   capture has no result; run it again to retry those.
 
 ## Results (#1975)
 
@@ -65,7 +68,7 @@ Nightly 8c6d168ca against the fix in #1976, on the same recognized words:
 | Profile | Pages with a false prompt, before | After |
 | --- | --- | --- |
 | Default kinds | 21 of 265 | 15 |
-| Every kind | 66 of 265 | 53 |
+| Every kind | 66 of 265 | 54 |
 
 The groups left are listed with the limits in
 [text recognition](../design/text-recognition.md#the-editor). Some public pages show the visitor's own
