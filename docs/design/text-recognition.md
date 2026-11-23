@@ -1906,18 +1906,19 @@ and 54 and 56 wrong, and the third 1,268 right.
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
-- Quick redact and the upload check leave these visible. Each was found by the
-  [sensitive-text fuzz harness](../lab/redact-fuzz.md) (#1931) and kept as a limit:
+- With the matching kind chosen, Quick redact and the upload check can leave these visible. Each was found by
+  the [sensitive-text fuzz harness](../lab/redact-fuzz.md) (#1931) and kept as a limit:
   - An IP address that recognition misreads: a comma read for a dot (`192.168,36.135`), a digit
-    inserted (`192.168.408.230`), or `O` read for `0` in IPv6 (`fdOO0::2efb`). In 6,500 rendered scenes
-    this left 270 addresses visible, mostly in 11 to 13 px monospace logs.
-  - Text recognition doesn't find at all. Grey text on light grey at about 2.6:1 contrast is often
-    not read, though people can read it (it is below the WCAG minimum), so nothing in it is checked.
-  - A phone number in a right-to-left paragraph with no direction marks. It is shown with its digit
-    groups in reverse order (`5388 555 (210) 1+` for `+1 (210) 555 5388`), and only part of it is
-    covered.
-  - One-time codes, licence and product keys, a card's CVC, and the path of a share link. None has
-    a shape of its own.
+    inserted (`192.168.408.230`), or a character inserted into an IPv6 group so that it is longer than four
+    (`fdOO0::2efb` for `fd00::2efb`). In 6,500 rendered scenes this left 270 addresses visible, mostly in 11 to
+    13 px monospace logs.
+  - Text that recognition doesn't find at all. Grey text on light grey at about 2.6:1 contrast is often not
+    read, though people can read it (it is below the WCAG minimum), so nothing in it is checked.
+  - A phone number in a right-to-left paragraph with no direction marks. It is shown with its digit groups in
+    reverse order (`5388 555 (210) 1+` for `+1 (210) 555 5388`), and only part of it is covered.
+  - One-time codes, licence and product keys, a card's CVC, and the path of a share link. No built-in rule
+    looks for them, since none has a shape of its own; a word or pattern in the user's redaction list can
+    still find one.
 - Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found. In desktop
   acceptance, 🇬🇧 at the tested editors' default size and Noto's ☕ on white at 150% zoom were
   missed too. Plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app
