@@ -914,8 +914,8 @@ other tool active it does not. The user's side is in the
       and is still matched. A fingerprint of exactly ten groups of four hex is skipped;
     - a digest: up to four words joined, 129 characters at most, 32, 40, 56, 64, 96 or 128 hex
       characters within two as read. It is skipped when it starts its row (after a line number)
-      before a ref (`refs/…`, `HEAD`) or a file name, the rest of its column at most a word in
-      brackets. It is also skipped on the rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`,
+      before a ref (`refs/…`, `HEAD`) or a file name in its own column (within four characters of it,
+      not in a pane beside it, #1958), the rest of that column at most a word in brackets. It is also skipped on the rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`,
       `b3sum`, `cksum`, as read too: `mdSsum`), a git plumbing command (`rev-parse`, `show-ref`,
       `ls-remote`, `rev-list`, `cat-file`, `submodule` and the like) or `podman`/`docker` with
       `--no-trunc`, `inspect` or `--digests`. The row is cut into columns at gaps of more than four
@@ -932,8 +932,10 @@ other tool active it does not. The user's side is in the
       `public key`, go.sum's `h1:`, `Message-ID`, `X-Google-Smtp-Source`, and a DKIM signature's `b=`
       and `bh=` when `DKIM-Signature`, `ARC-` or `bh=` appears on its row or the six above. No
       certificate field is one. The value is the label's alphabet up to its usual length, at most 15
-      percent and two characters more; a label of no fixed length (`b=`, `X-Google-Smtp-Source`) runs
-      on over the rows below that hold its alphabet alone, each right below the one before, starting
+      percent and two characters more. A word counts as in the alphabet after quotes and a trailing
+      comma or semicolon are trimmed, with at most one character in eight outside it and no colon. A
+      label of no fixed length (`b=`, `X-Google-Smtp-Source`) runs on over the rows below whose every
+      word is in its alphabet that way, each right below the one before, starting
       within four characters of the label's row or the value's start, while each row it leaves
       reaches the block's right edge. `ID` and `Key` take the word before them as part of the label
       when it is letters alone, 16 or fewer, within one and a half characters; a qualifier not in the
@@ -943,9 +945,10 @@ other tool active it does not. The user's side is in the
     - a W3C `traceparent` value as a word of its own; and a word starting with a subresource
       integrity prefix (`sha256-`, `sha384-`, `sha512-`, the number as read too: `shaS12-`,
       `sha51i2-`) with the base64 words joined after it while their total stays within the digest's
-      length plus four (the first word itself has no cap). Separately, a run whose text starts with an
-      exact `sha256-`, `sha384-` or `sha512-` (or does after up to two short label words, `integrity`)
-      is public, as before.
+      length plus four (the first word itself has no cap). Separately, a run that holds an exact
+      `sha256-`, `sha384-` or `sha512-` followed by base64, at its start or after any character that
+      is not a letter or digit, is public as a whole, as before #1940 (the run may hold more than the
+      digest); so is one that does after up to two short label words (`4` `integrity`).
     Fallback, failing closed: a segment of the line as it would be without skipping, holding a
     skipped word, is matched as if nothing in it were skipped when it also holds a word that is not
     skipped, not a label or evidence for one, and looks like a secret of its own (eight letters and
@@ -960,9 +963,10 @@ other tool active it does not. The user's side is in the
       85 percent of its letters, when letters are four in five of its letters and digits) are all
       from a meter's bars (`I l L i T | E F t f j J`, htop and btop) or all from a receipt's dotted
       leaders in lowercase (`c e o s n m r u v w t`); a run whose letters and digits are 85 percent
-      `0` and `1`, or 60 percent with `0b` and 16 binary digits in it; and a run in which, after its
-      first two characters, eight in ten repeat the character two before them and differ from the one
-      before (`hahaha`);
+      `0` and `1`, or 60 percent with `0b` followed by at least 16 binary digits in it; and a run
+      whose letters and digits, case folded and with everything else removed, have eight in ten,
+      after the first two, repeating the character two before them and differing from the one before
+      (`hahaha`);
     - a hex run needs one character in eight to be a digit as read, not counting a lowercase `o`, so
       a receipt's leaders (`ccooecoo`) are no hex;
     - a hash word names a digest only in the run's own segment or in up to three words and 32
