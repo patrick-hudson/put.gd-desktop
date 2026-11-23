@@ -140,8 +140,8 @@ def enable(scope):
         staged.chmod(0o644 if name.endswith('.py') else 0o755)
         os.replace(staged, target / name)
     git('config', scope, 'core.hooksPath', str(target))
-    effective = git('config', '--type=path', '--get', 'core.hooksPath', check=False).stdout.strip()
-    if Path(effective).expanduser().resolve() != target.resolve():
+    effective = git('config', '--type=path', '--get', 'core.hooksPath', check=False).stdout.removesuffix('\n')
+    if effective != str(target):
         raise SystemExit(f'core.hooksPath is still {effective!r} after setting it in {scope[2:]} config: '
                          'a later include or scope overrides it. Remove that setting and run this again.')
     return target, previous
@@ -191,8 +191,8 @@ def outgoing(remote, data):
         if set(remote_sha) != {'0'} and git('cat-file', '-e', f'{remote_sha}^{{commit}}', check=False).returncode == 0:
             known.append(remote_sha)
     # Tracking refs describe the push destination only when it is the repository they are fetched from.
-    fetch_url = git('remote', 'get-url', remote, check=False).stdout.strip() if remote else ''
-    push_urls = git('remote', 'get-url', '--push', '--all', remote, check=False).stdout.split() if remote else []
+    fetch_url = git('remote', 'get-url', remote, check=False).stdout.removesuffix('\n') if remote else ''
+    push_urls = git('remote', 'get-url', '--push', '--all', remote, check=False).stdout.split('\n')[:-1] if remote else []
     tracked = bool(fetch_url) and push_urls == [fetch_url]
     return tips, ([f'--remotes={remote}'] if tracked else []) + known
 
@@ -229,7 +229,7 @@ def scan(tips, exclude, count):
         print(f'pre-push: refused, {config} is missing.', file=sys.stderr)
         return 1
     # gitleaks parses `git log -p`; these undo user settings that would reshape or hide the patch.
-    log_opts = ' '.join(['--no-color', '--no-ext-diff', '--no-textconv', '--no-show-signature', '--default-prefix',
+    log_opts = ' '.join(['--no-color', '--no-ext-diff', '--no-textconv', '--no-show-signature', '--default-prefix', '--root',
                          *tips, '--not', *exclude])
     plural = '' if count == 1 else 's'
     print(f'pre-push: gitleaks {GITLEAKS_VERSION} over {count} outgoing commit{plural}', file=sys.stderr)
@@ -237,7 +237,10 @@ def scan(tips, exclude, count):
         report = Path(scratch) / 'report.json'
         result = subprocess.run([str(binary), 'git', str(top), '--config', str(config), f'--log-opts={log_opts}',
                                  '--redact', '--no-banner', '--exit-code', '1', '--report-format', 'json',
-                                 '--report-path', str(report)], stdout=sys.stderr)
+                                 '--report-path', str(report)], stdout=sys.stderr,
+                                # Git's default, so a user's lower threshold cannot turn text fixtures binary.
+                                env=dict(os.environ, GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='core.bigFileThreshold',
+                                         GIT_CONFIG_VALUE_0='512m'))
         findings = []
         if result.returncode == 1:
             try:

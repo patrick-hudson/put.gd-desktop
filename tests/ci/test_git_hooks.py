@@ -38,8 +38,9 @@ class PrePush(unittest.TestCase):
             hook.write_text(f'#!/bin/sh\necho ran >> "{root}/{name}.ran"\n')
             hook.chmod(0o755)
         global_config = root / 'gitconfig'
-        # Forced colour must not hide patches from the scanner.
-        global_config.write_text(f'[core]\n\thooksPath = {previous}\n[color]\n\tui = always\n')
+        # User settings that reshape `git log -p` must not hide patches from the scanner.
+        global_config.write_text(f'[core]\n\thooksPath = {previous}\n\tbigFileThreshold = 1k\n'
+                                 '[color]\n\tui = always\n[log]\n\tshowRoot = false\n')
         self.env = dict(os.environ, GIT_CONFIG_GLOBAL=str(global_config), GIT_CONFIG_NOSYSTEM='1',
                         GITLEAKS_BIN=self.binary, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                         GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
@@ -84,7 +85,8 @@ class PrePush(unittest.TestCase):
             self.assertTrue((self.root / f'{name}.ran').exists(), f'the replaced {name} must still run')
 
         # Assembled at runtime so this source is not itself a finding.
-        planted = self.commit('aws.txt', 'synthetic aws_key = "' + 'AKIA' + 'QWERTYUI' + 'ASDFGHJK' + '"')
+        planted = self.commit('aws.txt', 'synthetic aws_key = "' + 'AKIA' + 'QWERTYUI' + 'ASDFGHJK' + '"'
+                              + '\nfiller' * 400)
         refused = self.push()
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn('found a secret-shaped value', refused.stderr)
