@@ -82,7 +82,7 @@ def make_scene(seed, idx, families=None):
                features='zero' if R.random() < 0.25 else None)
     aa = R.choices(['grey', 'subpixel', 'none'], [70, 22, 8])[0]
     hint = R.choice(['none', 'slight', 'slight', 'full'])
-    meta = dict(id=f'{seed}-{idx:05d}', seed=seed, index=idx, families=picks, scale=scale, antialias=aa, hint=hint,
+    meta = dict(id=f'{safe_name(seed)}-{idx:05d}', seed=seed, index=idx, families=picks, scale=scale, antialias=aa, hint=hint,
                 ui=ctx['ui'], mono=ctx['mono'], ui_size=ctx['ui_size'], mono_size=ctx['mono_size'], login=login, realName=real, tiled=tiled, features=ctx['features'])
     full = CV.Canvas(W, H, '#000000', scale, aa, hint)
     variants, themes = [], []
@@ -127,6 +127,11 @@ def make_scene(seed, idx, families=None):
     return full, meta, R
 
 
+def safe_name(seed):
+    """The seed as it may appear in a file name: letters, digits, '.', '_' and '-' only, never a path."""
+    return re.sub(r'[^A-Za-z0-9_.-]', '_', str(seed)).lstrip('.') or '_'
+
+
 def _post_marks(R, cv, th):
     """Overlays a real screen has on top of text: a caret beside a secret, a spell-check squiggle."""
     secrets = [s for s in cv.spans if s['label'] == 'secret']
@@ -156,6 +161,7 @@ def _post_marks(R, cv, th):
 
 def render_one(job):
     seed, idx, out, families = job
+    out = Path(out)
     full, meta, R = make_scene(seed, idx, families)
     img = Path(out) / 'images' / f'{meta["id"]}.png'
     full.png(str(img))
@@ -167,7 +173,7 @@ def render_one(job):
         img.unlink()
         img = jpg
         meta['jpeg'] = q
-    meta.update(image=str(img), width=full.surface.get_width(), height=full.surface.get_height(), spans=full.spans, words=full.words)
+    meta.update(image=str(img.relative_to(out)), width=full.surface.get_width(), height=full.surface.get_height(), spans=full.spans, words=full.words)
     return meta
 
 
@@ -190,6 +196,43 @@ def guard_ok(session):
     return subprocess.run(cmd, capture_output=True).returncode == 0
 
 
+def scene_image(scenes, meta):
+    """A scene's image: recorded relative to the corpus; older corpora recorded an absolute path, which may have moved."""
+    image = Path(meta['image'])
+    if not image.is_absolute():
+        return (scenes / image).resolve()
+    return image if image.exists() else (scenes / 'images' / image.name).resolve()
+
+
+def new_shard(out):
+    """Open the next unused shard file; never truncate one another run (or a gap in the numbering) already holds."""
+    k = len(list(out.glob('shard-*.jsonl')))
+    while True:
+        try:
+            return open(out / f'shard-{k:04d}.jsonl', 'x')
+        except FileExistsError:
+            k += 1
+
+
+def completed(out, oracle_only, retries):
+    """Scene ids whose result is final: it holds the run's own output (recognized words, or the oracle alone), or it
+    failed more than `retries` times. A failed or partial row is otherwise run again."""
+    ok, failures = set(), {}
+    for f in out.glob('shard-*.jsonl'):
+        with open(f) as fh:
+            rows = fh.readlines()
+        for l in rows:
+            try:
+                r = json.loads(l)
+            except ValueError:
+                continue
+            if ('oracle' in r) if oracle_only else ('ocr' in r):
+                ok.add(r['id'])
+            else:
+                failures[r.get('id')] = failures.get(r.get('id'), 0) + 1
+    return ok | {i for i, n in failures.items() if n > retries}
+
+
 def run(args):
     scenes = Path(args.scenes)
     labels = [json.loads(l) for l in open(scenes / 'labels.jsonl')]
@@ -198,45 +241,50 @@ def run(args):
         labels = [m for m in labels if keep & set(m['families'])]
     out = Path(args.out or scenes / 'results')
     out.mkdir(exist_ok=True)
-    done = set()
-    for f in out.glob('shard-*.jsonl'):
-        for l in open(f):
-            try:
-                done.add(json.loads(l)['id'])
-            except ValueError:
-                pass
+    done = completed(out, args.oracle_only, args.retries)
     todo = [m for m in labels if m['id'] not in done]
-    print(f'{len(todo)} scenes to run, {len(done)} done', flush=True)
-    batch = args.batch
-    shard = len(list(out.glob('shard-*.jsonl')))
-    while todo:
-        if not guard_ok(args.session):
-            print('guard refused: waiting for the quiet lease to clear', flush=True)
-            time.sleep(60)
-            continue
-        procs = []
-        for k in range(args.jobs):
-            part = todo[k * batch:(k + 1) * batch]
-            if not part:
-                break
-            lines = []
-            for m in part:
-                job = dict(id=m['id'], image=str(Path(m['image']).resolve()), login=m['login'], realName=m['realName'], terms=TERMS,
-                           profiles={'all': ALL, 'check': CHECK}, words=m['words'], oracleOnly=args.oracle_only)
-                lines.append(json.dumps(job, ensure_ascii=False))
-            fh = open(out / f'shard-{shard:04d}.jsonl', 'w')
-            shard += 1
-            env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
-            cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
-            p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=fh, stderr=subprocess.DEVNULL, env=env, text=True)
-            p.stdin.write('\n'.join(lines) + '\n')
-            p.stdin.close()
-            procs.append((p, fh))
-        for p, fh in procs:
-            p.wait()
-            fh.close()
-        todo = todo[args.jobs * batch:]
-        print(f'{len(todo)} left', flush=True)
+    print(f'{len(todo)} scenes to run, {len(labels) - len(todo)} done', flush=True)
+    env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
+    cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
+    for attempt in range(args.retries + 1):
+        while todo:
+            procs = []
+            for _ in range(args.jobs):
+                if not todo:
+                    break
+                # Checked before every driver: one still busy with its batch may have let another session take the lease.
+                if not guard_ok(args.session):
+                    break
+                part, todo = todo[:args.batch], todo[args.batch:]
+                lines = []
+                for m in part:
+                    job = dict(id=m['id'], image=str(scene_image(scenes, m)), login=m['login'], realName=m['realName'], terms=TERMS,
+                               profiles={'all': ALL, 'check': CHECK}, words=m['words'], oracleOnly=args.oracle_only)
+                    lines.append(json.dumps(job, ensure_ascii=False))
+                fh = new_shard(out)
+                p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=fh, stderr=subprocess.DEVNULL, env=env, text=True)
+                try:
+                    p.stdin.write('\n'.join(lines) + '\n')
+                    p.stdin.close()
+                except BrokenPipeError:
+                    pass  # the driver died; its scenes are missing and are run again below
+                procs.append((p, fh))
+            if not procs:
+                print('guard refused: waiting for the quiet lease to clear', flush=True)
+                time.sleep(60)
+                continue
+            for p, fh in procs:
+                p.wait()
+                fh.close()
+            print(f'{len(todo)} left', flush=True)
+        done = completed(out, args.oracle_only, args.retries)
+        todo = [m for m in labels if m['id'] not in done]
+        if not todo:
+            break
+        print(f'{len(todo)} scenes have no result yet: running them again', flush=True)
+    if todo:
+        print(f'INCOMPLETE: {len(todo)} scenes have no result', flush=True)
+        sys.exit(1)
     print('DONE', flush=True)
 
 
@@ -264,17 +312,24 @@ def _marks(profile):
 
 
 IPV4 = re.compile(r'(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.]*\d)')
+IPV6 = re.compile(r'(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}')
 
 
-def _by_design(meta, m, decoys):
-    """A cover the rules intend whatever the content: any IP literal, and any form of the user's own name."""
-    if m['category'] == 'ip' and not decoys and (IPV4.search(m['text']) or '::' in m['text'] or m['text'].count(':') >= 2):
-        return True
-    if m['category'] == 'name':
-        text = re.sub(r'[^a-z0-9]', '', m['text'].lower())
+def _by_design(meta, category, under, decoys):
+    """A cover the rules intend whatever its look: any IP address, and any form of the user's own name. Judged on
+    the true words under the cover, never on what recognition read."""
+    text = ' '.join(under)
+    if category == 'ip' and not decoys:
+        return bool(IPV4.search(text) or any(IPV6.fullmatch(w.strip('[](),;')) and w.count(':') >= 2 for w in under))
+    if category == 'name':
+        flat = re.sub(r'[^a-z0-9]', '', text.lower())
         parts = [p for p in re.split(r'[^a-z0-9]+', (meta['realName'] + ' ' + meta['login']).lower()) if len(p) >= 3]
-        return any(p in text for p in parts)
+        return any(p in flat for p in parts)
     return False
+
+
+def _box(w):
+    return [w[1], w[2], w[1] + w[3], w[2] + w[4]]
 
 
 def score_scene(meta, res, profile):
@@ -290,8 +345,8 @@ def score_scene(meta, res, profile):
                 font=meta['mono'] + '|' + meta['ui'], size=f"{meta['mono_size']}|{meta['ui_size']}", profile=profile)
     W, H = meta.get('width', 1 << 30), meta.get('height', 1 << 30)
     for s in meta['spans']:
-        if s['label'] != 'secret':
-            continue
+        if s['label'] != 'secret' or s.get('clipped'):
+            continue  # partly hidden (under a minimap or the next pane): not a whole secret on screen
         # characters past the image's edge are not in the picture (scenes rendered before the canvas dropped them)
         kept = [c for c in s['chars'] if c[2] <= W and c[3] <= H]
         if len(kept) < len(s['chars']):
@@ -300,25 +355,20 @@ def score_scene(meta, res, profile):
         kind = s['kind']
         if kind not in want and kind != 'gap':
             continue
-        cov = [_covered(c, ocr_rects) for c in s['chars']]
-        vis = sum(1 for v in cov if v < 0.6)
-        if vis == 0:
+        shown = {i for i, c in enumerate(s['chars']) if _covered(c, ocr_rects) < 0.6}
+        if not shown:
             continue
-        ocov = [_covered(c, orc_rects) for c in s['chars']]
-        ovis = sum(1 for v in ocov if v < 0.6)
+        oshown = {i for i, c in enumerate(s['chars']) if _covered(c, orc_rects) < 0.6}
+        # The rules are at fault for the characters the true words leave visible too; recognition for the rest.
+        by_rule = len(shown & oshown)
         read = [w[0] for w in words if any(_overlap(p, w[1:5]) for p in s['pieces'])]
         near = [m['category'] + ':' + m['text'] for m in ocr if any(_overlap(p, m['rect']) for p in s['pieces'])]
-        findings.append(dict(base, type='FN' if vis == len(cov) else 'PARTIAL', kind=kind, tag=s['tag'], text=s['text'], visible=vis, chars=len(cov),
-                             cause='rule' if ovis else 'ocr', oracle_visible=ovis, read=' '.join(read), marks_near=near))
+        findings.append(dict(base, type='FN' if len(shown) == len(s['chars']) else 'PARTIAL', kind=kind, tag=s['tag'], text=s['text'],
+                             visible=len(shown), chars=len(s['chars']), cause='rule' if 2 * by_rule >= len(shown) else 'ocr',
+                             by_rule=by_rule, oracle_visible=len(oshown), read=' '.join(read), marks_near=near))
     # a match that covers a secret anywhere is a true finding; its other rows are over-cover
-    def secret_rows(marks):
-        good = set()
-        for m in marks:
-            r = m['rect']
-            if any(s['label'] in ('secret', 'neutral') and any(_overlap(c, r) and _covered(c, [r]) >= 0.3 for c in s['chars']) for s in meta['spans']):
-                good.add(m['match'])
-        return good
-    good = secret_rows(ocr)
+    good = {m['match'] for m in ocr if any(s['label'] in ('secret', 'neutral') and any(_overlap(c, m['rect']) and _covered(c, [m['rect']]) >= 0.3
+                                                                                     for c in s['chars']) for s in meta['spans'])}
     seen = {}
     for m in ocr:
         r = m['rect']
@@ -327,20 +377,28 @@ def score_scene(meta, res, profile):
         if any(s['label'] in ('secret', 'neutral') for s in hits):
             continue
         decoys = [s for s in hits if s['label'] == 'decoy']
-        if _by_design(meta, m, decoys):
-            if m['category'] == 'name':
-                findings.append(dict(base, type='DESIGN', category='name', match=m['text'][:120], rows=1, decoy='name_part', decoy_text='', under='', cause='rule'))
-            continue
-        under = [w[0] for w in meta['words'] if _overlap(box, w[1:5]) and _covered([w[1], w[2], w[1] + w[3], w[2] + w[4]], [r]) >= 0.5]
-        in_oracle = any(o['category'] == m['category'] and _overlap(box, o['rect']) for o in orc)
-        kind = 'OVER' if m['match'] in good else 'FP'
+        under_words = [w for w in meta['words'] if _overlap(box, w[1:5]) and _covered(_box(w), [r]) >= 0.5]
+        under = [w[0] for w in under_words]
+        design = _by_design(meta, m['category'], under, decoys)
+        # The same mistake on the true words: the oracle's marks of this category cover the same true words (or, with
+        # no word under the cover, most of the cover itself).
+        same = [o['rect'] for o in orc if o['category'] == m['category']]
+        if under_words:
+            rule = 2 * sum(1 for w in under_words if _covered(_box(w), same) >= 0.5) >= len(under_words)
+        else:
+            rule = _covered(box, same) >= 0.5
+        kind = 'DESIGN' if design else 'OVER' if m['match'] in good else 'FP'
         key = (kind, m['match'])
-        if key in seen:  # one finding per match; count its rows
-            seen[key]['rows'] += 1
-            seen[key]['under'] = (seen[key]['under'] + ' / ' + ' '.join(under))[:240]
+        if key in seen:  # one finding per match; count its rows, and the rows the oracle shares
+            f = seen[key]
+            f['rows'] += 1
+            f['rule_rows'] += int(rule)
+            f['cause'] = 'rule' if 2 * f['rule_rows'] >= f['rows'] else 'ocr'
+            f['under'] = (f['under'] + ' / ' + ' '.join(under))[:240]
             continue
-        f = dict(base, type=kind, category=m['category'], match=m['text'][:240], rows=1, decoy=','.join(sorted({s['kind'] or '?' for s in decoys})) or 'ordinary',
-                 decoy_text=' | '.join(s['text'] for s in decoys)[:200], under=' '.join(under)[:200], cause='rule' if in_oracle else 'ocr')
+        f = dict(base, type=kind, category=m['category'], match=m['text'][:240], rows=1, rule_rows=int(rule),
+                 decoy=('ip_address' if m['category'] == 'ip' else 'name_part') if design else ','.join(sorted({s['kind'] or '?' for s in decoys})) or 'ordinary',
+                 decoy_text=' | '.join(s['text'] for s in decoys)[:200], under=' '.join(under)[:200], cause='rule' if rule else 'ocr')
         seen[key] = f
         findings.append(f)
     return findings
@@ -368,13 +426,17 @@ def score(args):
     out.mkdir(parents=True, exist_ok=True)
     findings = []
     errors = {}
-    totals = {'scenes': 0, 'secrets': {}, 'marks': {}}
+    totals = {'scenes': 0, 'missing': 0, 'incomplete': 0, 'secrets': {}, 'marks': {}}
     for sid, meta in labels.items():
         r = results.get(sid)
         if not r:
+            totals['missing'] += 1  # no result at all: counted, never scored as zero matches
             continue
         if r.get('error'):
             errors[r['error']] = errors.get(r['error'], 0) + 1
+            continue
+        if not all(p in r.get('ocr', {}) and p in r.get('oracle', {}) for p in ('all', 'check')):
+            totals['incomplete'] += 1  # a profile is missing (an oracle-only row scored without --oracle, or a cut row)
             continue
         totals['scenes'] += 1
         for s in meta['spans']:
@@ -403,6 +465,8 @@ def score(args):
         for k, g in sorted(groups.items(), key=lambda kv: -kv[1]['count'])]}
     (out / 'summary.json').write_text(json.dumps(summary, indent=1, ensure_ascii=False))
     print(json.dumps(totals))
+    if totals['missing'] or totals['incomplete'] or errors:
+        print(f"NOT SCORED: {totals['missing']} scenes with no result, {totals['incomplete']} incomplete, errors {errors}")
     for g in summary['groups'][:args.top]:
         print(f"{g['profile']:5} {g['type']:7} {g['what']:6} {g['sub'][:28]:28} {g['cause']:4} {g['count']:5} in {g['scenes']:4} scenes  e.g. {json.dumps(g['examples'][0], ensure_ascii=False)[:160]}")
 
@@ -420,6 +484,16 @@ def show(args):
                 break
 
 
+def blank_png(width, height):
+    """A white RGB PNG, from the standard library alone (a toolbox may have no Cairo for Python)."""
+    import struct
+    import zlib
+    chunk = lambda kind, data: struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+    rows = (b'\x00' + b'\xff' * (3 * width)) * height
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
+
+
 def probe(args):
     """Run text lines through find() as perfectly recognized words (8 px a character, 20 px a line) and print the matches:
     the quickest way to see what a rule does with a string."""
@@ -431,22 +505,27 @@ def probe(args):
             if part and not part.isspace():
                 words.append([part, 10 + x * 8, 10 + i * 20, len(part) * 8, 14])
             x += len(part)
-    image = Path(args.image)
-    if not image.exists():
-        import cairo
-        surface = cairo.ImageSurface(cairo.FORMAT_RGB24, 1400, 30 + 20 * len(lines))
-        ctx = cairo.Context(surface)
-        ctx.set_source_rgb(1, 1, 1)
-        ctx.paint()
-        surface.write_to_png(str(image))
+    import tempfile
+    private = tempfile.mkdtemp(prefix='redact-probe-')
+    image = Path(private) / 'blank.png'
+    image.write_bytes(blank_png(max([20 + 8 * len(line) for line in lines] + [200]), 30 + 20 * len(lines)))
     job = dict(id='probe', image=str(image.resolve()), login=args.login, realName=args.real_name, terms=TERMS, oracleOnly=True,
                profiles={'all': ALL, 'check': CHECK}, words=words)
     out = subprocess.run([args.driver, '--helper', '/bin/false', '--build-json', args.build_json], input=json.dumps(job) + '\n',
                          capture_output=True, text=True, env=dict(os.environ, QT_QPA_PLATFORM='offscreen')).stdout
+    image.unlink()
+    os.rmdir(private)
     res = json.loads(out)
     for prof in ('all', 'check'):
         for m in res['oracle'][prof]['matches']:
             print(f"{prof:5} {m['category']:6} {m['text']}")
+
+
+def positive(text):
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError('must be 1 or more')
+    return value
 
 
 def main():
@@ -455,22 +534,23 @@ def main():
     b = sub.add_parser('build')
     b.add_argument('--source', required=True)
     b.add_argument('--out', required=True)
-    b.add_argument('--jobs', type=int, default=4)
+    b.add_argument('--jobs', type=positive, default=4)
     r = sub.add_parser('render')
     r.add_argument('--seed', required=True)
     r.add_argument('--count', type=int, required=True)
     r.add_argument('--start', type=int, default=0)
     r.add_argument('--out', required=True)
     r.add_argument('--families')
-    r.add_argument('--jobs', type=int, default=4)
+    r.add_argument('--jobs', type=positive, default=4)
     u = sub.add_parser('run')
     u.add_argument('--scenes', required=True)
     u.add_argument('--driver', required=True)
     u.add_argument('--helper', required=True)
     u.add_argument('--build-json', required=True)
     u.add_argument('--data', action='append', required=True)
-    u.add_argument('--jobs', type=int, default=4)
-    u.add_argument('--batch', type=int, default=10)
+    u.add_argument('--jobs', type=positive, default=4)
+    u.add_argument('--batch', type=positive, default=10)
+    u.add_argument('--retries', type=int, default=1, help='times a scene with no result is run again (default 1)')
     u.add_argument('--session')
     u.add_argument('--out', help='results directory (default SCENES/results); give your own to reuse scenes read-only')
     u.add_argument('--families', help='run only scenes holding one of these families (comma-separated)')
@@ -485,7 +565,6 @@ def main():
     q.add_argument('lines', nargs='*')
     q.add_argument('--driver', required=True)
     q.add_argument('--build-json', required=True)
-    q.add_argument('--image', default='/tmp/redact-probe-blank.png')
     q.add_argument('--login', default='jdoe')
     q.add_argument('--real-name', default='Jane Doe')
     w = sub.add_parser('show')

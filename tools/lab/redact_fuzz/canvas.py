@@ -267,6 +267,8 @@ class Canvas:
             t = s.text if isinstance(s, Val) else s
             if isinstance(s, Val) and s.label in ('secret', 'decoy', 'neutral'):
                 cs = [chars[i] for i in range(pos, pos + len(t)) if chars[i] is not None and not text[i].isspace()]
+                # Part of it hidden (past the edge, under a minimap or the next pane): not a whole secret on screen.
+                hidden = any(chars[i] is None and not text[i].isspace() for i in range(pos, pos + len(t)))
                 if cs:
                     pieces = {}
                     for li, x0, y0, x1, y1 in cs:
@@ -275,6 +277,8 @@ class Canvas:
                     self.spans.append({'label': s.label, 'kind': s.kind, 'tag': s.tag, 'text': t,
                                        'pieces': [[round(v) for v in pc] for _, pc in sorted(pieces.items())],
                                        'chars': [[round(x0), round(y0), round(x1), round(y1)] for _, x0, y0, x1, y1 in cs]})
+                    if hidden:
+                        self.spans[-1]['clipped'] = True
             pos += len(t)
 
     def caret(self, x, y, h, color, width=1.0):
