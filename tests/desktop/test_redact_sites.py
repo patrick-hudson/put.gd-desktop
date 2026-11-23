@@ -33,6 +33,7 @@ class Triage(unittest.TestCase):
         self.assertEqual(sweep.triage(rules, 'key', 'eyJhbGci', 'https://example.org/jwt.io/'), ('false', 'noise'))
         self.assertEqual(sweep.triage(rules, 'key', 'eyJhbGci', 'https://jwt.io.example/'), ('false', 'noise'))
         self.assertEqual(sweep.triage(rules, 'key', 'eyJhbGci', 'https://www.jwt.io'), ('true', 'sample'))
+        self.assertEqual(sweep.triage(rules, 'key', 'eyJhbGci', 'https://jwt.io?x=1#top'), ('true', 'sample'))
 
     def test_a_rule_holds_only_for_its_kind_and_unmatched_text_is_untriaged(self):
         rules = self.rules('phone\t^19\\d\\d-\tfalse\tyears\n')

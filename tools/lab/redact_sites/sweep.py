@@ -35,6 +35,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.parse
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -324,9 +325,12 @@ def read_triage(path):
 def triage(rules, kind, text, url):
     # A page rule matches the address from its host on (scheme and "www." dropped), so it names the
     # site it was checked on rather than any address that holds the word.
-    place = re.sub(r'^[a-z]+://(www\.)?', '', url)
+    # Host and path only (no query or fragment), ending in "/" whether the address has one or not, so a
+    # rule's host or path ends at a boundary (Sol S17 on #1976).
+    parts = urllib.parse.urlsplit(url)
+    place = re.sub(r'^www\.', '', parts.hostname or '') + parts.path
     if not place.endswith('/'):
-        place += '/'  # so a rule's host or path ends at "/" whether the address has one or not
+        place += '/'
     for k, urx, rx, verdict, group in rules:
         if k in ('*', kind) and (urx is None or urx.match(place)) and rx.search(text):
             return verdict, group
