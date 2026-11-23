@@ -45,6 +45,7 @@ running or writing anything. PUTGD_STRESS_REF and PUTGD_STRESS_LOCK_DIR set
 --ref and --lock-dir (for `systemctl --user set-environment`).
 """
 import argparse
+import contextlib
 import datetime
 import fcntl
 import importlib.util
@@ -184,8 +185,12 @@ class QuietLease:
     until the lease would lapse before the next try; then the run is stopped (on_lost, by default SIGTERM to
     this process, which the run reports as interrupted). release() stops the renewals and gives it back."""
 
-    def __init__(self, tree, lock_dir, host, log, minutes=LEASE_MINUTES, every=LEASE_RENEW_SECONDS, on_lost=None):
-        self.module, self.path = desktop_lock_module(tree)
+    def __init__(self, lock_dir, host, log, minutes=LEASE_MINUTES, every=LEASE_RENEW_SECONDS, on_lost=None):
+        # The copy installed beside this wrapper (or the repository's), never the tree's: the tree holds the
+        # previous run's checkout, which may predate the quiet lease.
+        here = Path(__file__).resolve().parent
+        self.module, self.path = load_module('desktop_lock_lease', [here / 'desktop_lock.py',
+                                                                    here.parent / 'lab/desktop_lock.py'])
         self.host, self.log, self.minutes, self.every = host, log, minutes, min(every, minutes * 20)
         self.lock_dir = lock_dir
         self.session = f'putgd-stress-weekly-{os.getpid()}'
@@ -221,23 +226,41 @@ class QuietLease:
                 self.deadline = asked + self.minutes * 60
             except (self.module.LockError, OSError) as error:
                 self.log(f'quiet lease: renewal failed: {error}')
-                if self.deadline - time.monotonic() <= self.every:
-                    self.log('quiet lease: it would lapse before the next try; stopping the run')
+                if not self.ours() or self.deadline - time.monotonic() <= self.every:
+                    self.log('quiet lease: no longer ours, or it would lapse before the next try; stopping the run')
                     self.on_lost()
                     return
 
+    def ours(self):
+        """False once the lease file is gone or names another session; True while it is ours or unreadable now."""
+        try:
+            current = self.lease.state(self.module.now_utc())
+        except OSError:
+            return True
+        return current['state'] == 'invalid' or (current.get('lock') or {}).get('session') == self.session
+
     def release(self):
         if self.lease is None:
-            return
+            return True
         self.stop.set()
         if self.thread:
             self.thread.join()
-        try:
-            self.lease.release(self.session)
-            self.log(f'quiet lease: released ({self.session})')
-        except (self.module.LockError, OSError) as error:
-            self.log(f'quiet lease: release refused: {error}')
+        for attempt in range(3):
+            try:
+                self.lease.release(self.session)
+                self.log(f'quiet lease: released ({self.session})')
+                break
+            except (self.module.LockError, OSError) as error:
+                self.log(f'quiet lease: release refused: {error}')
+                if not self.ours():
+                    break
+                if attempt < 2:
+                    time.sleep(5)  # the lock directory's mutex was busy; it is held for milliseconds
+        else:
+            self.lease = None
+            return False
         self.lease = None
+        return True
 
 
 def process_args(pid):
@@ -354,15 +377,34 @@ def run(command, log, output=None, **options):
     """Run a command; its output goes to the log, or to OUTPUT (a path) when given. Returns the exit code."""
     log('$ ' + ' '.join(map(str, command)))
     options.setdefault('env', headless_environment())
-    if output:
-        with output.open('a') as stream:
-            return subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                                  **options).returncode
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                               text=True, **options)
-    for line in process.stdout:
-        log(line.rstrip('\n'))
-    return process.wait()
+    with contextlib.ExitStack() as stack:
+        stream = stack.enter_context(output.open('a')) if output else subprocess.PIPE
+        # Its own process group, so a stopped run stops the whole child (CTest, its tests and the busy loops)
+        # before the quiet lease is released.
+        process = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                   text=True, start_new_session=True, **options)
+        try:
+            if not output:
+                for line in process.stdout:
+                    log(line.rstrip('\n'))
+            return process.wait()
+        except BaseException:
+            stop_group(process)
+            raise
+
+
+def stop_group(process, grace=30):
+    """Stop a child started by run() and everything in its process group: SIGTERM, then SIGKILL after GRACE s."""
+    for number in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(process.pid, number)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(grace)
+            return
+        except subprocess.TimeoutExpired:
+            continue
 
 
 def git(tree, log, *args):
@@ -521,7 +563,7 @@ def main(argv=None):
 def weekly_run(args, log):
     def on_signal(number, _frame):
         raise KeyboardInterrupt(f'signal {number}')
-    signal.signal(signal.SIGTERM, on_signal)
+    previous = signal.signal(signal.SIGTERM, on_signal)
 
     out = new_run_dir(args.results, datetime.date.today().isoformat())
     log.attach(out / 'weekly.log')
@@ -532,7 +574,7 @@ def weekly_run(args, log):
     try:
         check_desktop_lock(args.tree, args.lock_dir, args.host, log)
         wait_until_idle(log, args.wait_minutes, False)
-        lease = QuietLease(args.tree, args.lock_dir, args.host, log)
+        lease = QuietLease(args.lock_dir, args.host, log)
         lease.acquire()  # held from here to the end of the run; a lease taken while it waited skips the week
         status['commit'] = update_tree(args.tree, args.ref, args.sdk_from, log)
         ensure_disk(args.tree, args.state_dir, log, False)
@@ -574,8 +616,12 @@ def weekly_run(args, log):
         log(f'error: {error}')
         code = 1
     finally:
-        if lease:
-            lease.release()
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)  # a stop now must not interrupt the release
+        if lease and not lease.release():
+            status['leaseReleased'] = False
+            log(f'quiet lease: still held by {lease.session}; break it with desktop_lock.py break '
+                f'{args.host} --resource quiet once it expires')
+        signal.signal(signal.SIGTERM, previous)
         status['ended'] = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
         (out / 'weekly.json').write_text(json.dumps(status, indent=1) + '\n')
         prune(args.results, args.keep, log, current=out)

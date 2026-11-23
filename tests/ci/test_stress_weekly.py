@@ -132,29 +132,66 @@ class Lease(unittest.TestCase):
             self.assertNotIn('cmake', seen)
             self.assertEqual(other.held('local_timing')['lock']['owner'], 'timer')
 
-    def test_renewals_extend_it_and_a_lease_about_to_lapse_stops_the_run(self):
+    def wait_for(self, condition):
+        for _ in range(300):
+            if condition():
+                return
+            weekly.time.sleep(.01)
+        self.fail('condition not reached')
+
+    def test_renewals_extend_it_and_a_lost_lease_stops_the_run(self):
         with tempfile.TemporaryDirectory() as directory:
             locks, lines, lost = Path(directory) / 'locks', [], mock.Mock()
-            lease = weekly.QuietLease(ROOT, locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
+            lease = weekly.QuietLease(locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
             lease.acquire()
-            renewals = mock.Mock(wraps=lease.lease.extend)
+            renew = lease.lease.extend
+            renewals = mock.Mock(wraps=renew)
             lease.lease.extend = renewals
-            for _ in range(200):
-                if renewals.call_count >= 2:
-                    break
-                weekly.time.sleep(.01)
+            self.wait_for(lambda: renewals.call_count >= 2)
             renewals.assert_called_with(lease.session, 1)
-            self.assertEqual(lease.lease.held(lease.session)['state'], 'held')
-            (locks / 'quiet.lock').unlink()  # gone: renewals fail; once it would lapse, the run is stopped
-            weekly.time.sleep(.2)  # a renewal in flight may still move the deadline
-            self.assertIn('renewal failed', '\n'.join(lines))
+            # A transient refusal (a busy mutex) is retried while the lease has time left.
+            renewals.side_effect = lease.module.LockError('Another lock operation is still running on this host')
+            self.wait_for(lambda: 'renewal failed' in '\n'.join(lines))
             lost.assert_not_called()
-            lease.deadline = weekly.time.monotonic()
+            # A lease that is no longer ours stops the run at once.
+            (locks / 'quiet.lock').unlink()
             lease.thread.join(5)
             lost.assert_called_once_with()
             self.assertIn('stopping the run', '\n'.join(lines))
-            lease.release()
-            self.assertIn('release refused', lines[-1])
+            self.assertTrue(lease.release())  # nothing of ours is left to release
+
+    def test_a_stopped_command_stops_its_whole_process_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / 'grandchild'
+            script = ('import subprocess, sys, time; child = subprocess.Popen([sys.executable, "-c", '
+                      '"import time; time.sleep(60)"]); open(sys.argv[1], "w").write(str(child.pid)); time.sleep(60)')
+            def stop_once_started():
+                for _ in range(1000):
+                    if pid_file.is_file() and pid_file.read_text():
+                        break
+                    weekly.time.sleep(.01)
+                weekly.os.kill(weekly.os.getpid(), weekly.signal.SIGUSR1)
+            timer = weekly.threading.Thread(target=stop_once_started)
+
+            def interrupt(_number, _frame):
+                raise KeyboardInterrupt('stop')
+            previous = weekly.signal.signal(weekly.signal.SIGUSR1, interrupt)
+            try:
+                timer.start()
+                with self.assertRaises(KeyboardInterrupt):
+                    weekly.run([sys.executable, '-c', script, str(pid_file)], lambda line: None,
+                               Path(directory) / 'out.log')
+            finally:
+                timer.join()
+                weekly.signal.signal(weekly.signal.SIGUSR1, previous)
+            grandchild = int(pid_file.read_text())
+
+            def gone():
+                try:
+                    return Path(f'/proc/{grandchild}/stat').read_text().split(')')[1].split()[0] == 'Z'
+                except (FileNotFoundError, ProcessLookupError):
+                    return True
+            self.wait_for(gone)
 
 
 class Suites(unittest.TestCase):
