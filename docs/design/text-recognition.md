@@ -909,9 +909,11 @@ other tool active it does not. The user's side is in the
       but not one about it (`--password-stdin`, `--token-ttl`), and short flags only after the program that
       reads them: `-p…` after the MySQL and MariaDB clients, `-p` after `sshpass` and a registry `login`
       (docker, podman and the like), `-a` after `redis-cli`, `-P` after `sqlcmd`, `-w` after the LDAP tools,
-      `-U user%password` after `smbclient`, `-u user:password` after `curl` and `wget`. A flag's value in
-      the next word has the shape of a secret: it reads as a password (below), is quoted, or has a digit
-      and eight characters or more.
+      `-U user%password` after `smbclient`, `-u user:password` after `curl` and `wget`. A password flag
+      says what its argument is, so any value counts (`--password 7654`, `--password OrchardLantern`) but
+      one public by its shape (below) or masks alone; a quoted value runs to its closing quote. A token
+      or secret flag's value in the next word also has the shape of a secret: it reads as a password
+      (below), is quoted, or has a digit and eight characters or more.
     - **Names glued to their program:** one part ending in a secret word (`PGPASSWORD`, `SSHPASS`,
       `VAULTTOKEN`), not a word that only ends in `pass` (`BYPASS`, `COMPASS`). Also `psk`, `sessionid`,
       `csrftoken`, `PHPSESSID`, `JSESSIONID`, and WPA, PRE-SHARED, NETWORK, WIRELESS, SECURITY, SETUP,
@@ -920,22 +922,23 @@ other tool active it does not. The user's side is in the
       `Client secret`, `Wi-Fi Password`), a 2FA code (`Recovery code`, `Setup key`) or a password in one
       of about 30 languages (`Passwort`, `Mot de passe`, `Пароль`, `密码`, `パスワード`, `Hasło`, `كلمة المرور`,
       `סיסמה`…), their words a word space apart. Then:
-      - `Label: value` (or ` :`, ` =`, `is`): the value ends the row, or the row's part before a gap of six
-        characters, or reads as a password, or is quoted. A quoted value runs to its closing quote, up to
+      - `Label: value` (or ` :`, ` =`): the value ends the row, or the row's part before a gap of six
+        characters, or reads as a password, or is quoted. After `is` or `was` (`The password is …`) the
+        value must read as a password. A quoted value runs to its closing quote, up to
         eight words on; a quote after an odd run of backslashes (`\"`) closes nothing. So "Password: must
         be at least 8 characters" stays visible and "Temporary password: Wel2024! (please change it)"
-        does not. A value up to
-        16 characters away belongs to the label; one up to 80 away only in a form's row, which the label
-        starts and the value ends.
-      - `Label     value` with no colon, the label starting its row and the value at least three characters
-        away ending it (a router or settings page): the value has a digit or reads as a password; a
-        password or Wi-Fi passphrase may be several words.
+        does not. A value up to 16 characters away belongs to the label; one up to 80 away only in a
+        form's row, which the label starts and the value ends.
+      - `Label     value` with no colon, the label starting its row and the value three to 80 characters
+        away ending it (a router or settings page): the value has a digit or reads as a password, or
+        under a Wi-Fi passphrase label is eight characters or more; a password or Wi-Fi passphrase may
+        be several words, up to 80 characters.
       - A password word straight before a quoted value or one that reads as a password (`.netrc`'s
         `password …`, nmcli's `password …`, SQL's `PASSWORD '…'`).
       - A label alone on its row, made of words (not a sentence naming a setting), or an assignment with
         nothing after its `=`, and the value alone on the row below, starting under it (a password
         manager's field): it reads as a password, or has a digit and eight characters or more, or is a
-        long token-shaped word. A prompt or a command below is no value.
+        long token-shaped word, or under a Wi-Fi passphrase label is eight characters or more. A prompt or a command below is no value.
       - Right-to-left labels read their value on their left.
       - Authorization's scheme word stays visible; its credential is covered when it is 16 characters or
         more with a digit, or reads as a password.
@@ -946,15 +949,18 @@ other tool active it does not. The user's side is in the
     - A value **reads as a password** with six characters or more, a letter, a digit, and a capital or a
       symbol, or ten or more mixing cases irregularly with a symbol and no digit; never a URL, a path, an
       address, a version, a time or a call (`varchar(255)`).
-    - A value **shows no secret by its shape**, whatever its label says: an SSH, age or PEM public key,
-      a publishable key, a `data:` URI, a password hash (`$2b$…`, `$argon2id$…`), a digest (`sha256:…`), an
-      analytics ID (`G-…`, `UA-…`), a version (`19.1.4+build.107`), a cloud region, a colour, a code
-      identifier of three words or more run together, `TODO`, and the shapes `publicRun` names.
+    - A value **shows no secret by its shape**, under the labels, flags and cookies of this section: an
+      SSH, age or PEM public key, a publishable key, a `data:` URI, a password hash (`$2b$…`,
+      `$argon2id$…`), a digest (`sha256:…`), a version (`19.1.4+build.107`), `TODO`, and the shapes
+      `publicRun` names. After a token or secret flag with its value in the next word, a Bearer scheme or
+      in a cookie, so does an analytics ID (`G-…`, `UA-…`), a cloud region, a colour and a code identifier
+      of three words or more run together; under a label or after `--token=` they are covered
+      (`Mot de passe : us-east-1`). The older setting rules above keep their own exemptions.
       Code that reads a secret from elsewhere (`std::env::var("DB_PASSWORD")`) is none either, but a
       reference followed by a quoted literal of four characters or more as its fallback
       (`os.Getenv("DB_PASSWORD")+"…"`, `process.env.KEY||"…"`) shows that literal and is covered.
-    - **Cookies:** each value of a `Cookie:` or `Set-Cookie:` header of 16 characters or more of letters
-      and digits, with both.
+    - **Cookies:** each value of a `Cookie:` or `Set-Cookie:` header of 16 characters or more, nine in ten
+      of them letters and digits, with a digit or with both capitals and small letters.
     - **Diff signs:** a key or a setting behind `+`, `-`, `{+` or `[-` at a word's start
       (`-AKIA…`, `+DB_PASSWORD=…`, `{+AKIA…+}`). A wrapped token's next line ends at a diff's setting
       line (`+PORT=3000`) and at a line starting with a shell or SQL prompt.
@@ -963,43 +969,57 @@ other tool active it does not. The user's side is in the
       key (`tskey-auth-`, `tskey-client-`…), and a kubeadm bootstrap token (six and sixteen lowercase
       letters and digits) on a line that names kubeadm or a token.
     - **2FA and wallets:**
-      - a TOTP setup key: base32 of 16 characters or more, as one word or groups, after a key, secret,
-        setup, authenticator, 2FA, OTP or scan word on its row or the two rows above. It has two digits,
+      - a TOTP setup key: base32 of 16 characters or more with eight letters or more, as one word or
+        groups, after a key, secret, setup, authenticator, 2FA, OTP or scan word on its row or the two rows above. It has two digits,
         or one in six groups or more, or, in capitals as one word or groups of one length, none beside
         words that name a setup key ("Setup key", "Enter this key"). Lowercase words fit the alphabet too,
-        so a lowercase run needs two digits. Its rest on the row below is covered, and so are two rows of
-        groups that make a key only together;
-      - recovery and backup codes under a heading that says so, on the heading's own row after it and
-        on the rows below in the heading's column, until a row holds more other words than codes. A
+        so a lowercase run needs two digits. Its rest on the row below is covered when that row holds only
+        base32 groups of the same case, and so are two such rows of groups that make a key only together;
+      - recovery and backup codes under a heading that says so (recovery, backup, emergency, one-time or
+        single-use codes or keys), on the heading's own row after it up to the first other word, and on
+        the rows below in the heading's column, at most 24 rows, until a row holds more other words than
+        codes. A
         grouped code with one character misread as `/`, `|` or `!` is still a code;
       - a seed phrase written as numbered words, 1 to 12 (or up to 24), each a lowercase word of three
         to eight letters as BIP39's are, with list numbers ("1.") or several to a row, at least eight of
         the numbers there, in the label's column (from its words' left edge to where its row goes on in
-        another window, less two characters, since a list's `10.` starts left of its `9.`), one word a
-        number (the one nearest the label's column), never a `0.` or a number past 24, and only under a
-        label within six rows above: a recovery, seed, secret, backup or wallet phrase or words, a
-        mnemonic, "write down", or a 12- to 24-word phrase. A
-        shopping, ingredient or spelling list of short words looks the same and stays visible. The BIP39
-        word list itself is not used.
+        another window), one word a number (the one nearest the label's column), never a `0.` or a
+        number past 24, and only under a label within six rows above: a recovery, seed, secret, backup or
+        wallet phrase or words, a mnemonic, "write down", or a 12- to 24-word phrase. A two-digit entry
+        just left of the next window's edge (`10.` starts left of `9.`) is that window's when its list's
+        one-digit numbers start at that edge. A shopping, ingredient or spelling list of short words looks
+        the same, and with no such label this rule leaves it alone. The BIP39 word list itself is not
+        used.
     - **QR codes.** With Keys and tokens chosen, a decoded code whose content starts with `otpauth://`
-      or `otpauth-migration://`, a `WIFI:` code with a password (`P:`) on a network that isn't open, or
+      or `otpauth-migration://`, a `WIFI:` code with a nonempty password (`P:`, whatever its `T:` says), or
       any content the key rules find when read as lines of words, gets one solid suggested Redact mark
       over the whole symbol, finder patterns and all, and a fifth of its side around it (at least 4 px):
-      a code decodes through damage to part of it. A code that touches a Redact mark already is covered
-      too, since it can still decode. It counts as a Keys and tokens match. The content is read only to
-      decide, on the recognition worker, and is kept nowhere: Quick redact's answer gives the code's
-      kind (`codes: {otp: 1}`, also `wifi` and `key`) and the mark's box; the sensitive text prompt
+      a code decodes through damage to part of it. Recognition reads the image with every Redact mark
+      applied, so a code a mark already touches is found, and covered, only if it still decodes. A
+      code that decodes but holds no shape these rules know (an unlabelled password, say) is an
+      ordinary code: it is not covered and its content is not withheld. It counts as a Keys and tokens
+      match, and like any suggestion it can be dismissed. The content is classified on the recognition
+      worker. The editor keeps it in memory with the rest of the recognition result for its panel and
+      Copy text, and it is written nowhere else: Quick redact's answer gives the created marks and the
+      code's kind (`codes: {otp: 1}`, also `wifi` and `key`); the sensitive text prompt
       names it ("a 2FA QR code", "a Wi-Fi QR code", "a QR code with a key"); the resident and the
       notification count it as a key or token. `editor.inspect` and `text.inspect` list such a code as
-      `kind: "withheld"` with `withheld` naming its kind, and no `text`. The codes the person sees in
-      the editor's panel, Copy text and History's Show QR code are unchanged.
+      `kind: "withheld"` with `withheld` naming its kind, and no `text`. A copy an agent asks for
+      (`text.recognize` with `copy`, `editor.copyText`) puts a placeholder such as
+      `[2FA QR code withheld]` in its place, and `editor.copyCode` refuses it (`code_withheld`). The codes
+      the person sees in the editor's panel, the person's own Copy text and History's Show QR code are
+      unchanged, and so, for now, are `history.copyText` and `action.invoke` with `text`, which can't
+      yet tell an agent from the person (#1962).
     Key matches that share a word are one match.
-  - Limits (#1941): one-time codes (short-lived, and any six digits look alike), licence keys, a card's
-    CVC and share-link paths are not looked for. A value with no digit far from its label, a password
+  - Limits (#1941): short-lived sign-in codes from an authenticator app or a text message (any six
+    digits look alike; a list under a one-time or single-use codes heading is read as recovery codes),
+    licence keys, a card's CVC and share-link paths are not looked for. A value with no digit far from its label, a password
     whose label recognition reads too far from it, and a seed phrase with no label above it can stay
     visible. A secret shaped like a public key, a password hash, a digest or a version stays visible
-    under any label; after a token flag, a Bearer scheme or in a cookie, so does one shaped like a cloud
-    region, a colour or a code identifier of three words run together. With nothing beside a seed
+    under any label; after a token or secret flag with its value in the next word, a Bearer scheme or
+    in a cookie, so does one shaped like a cloud
+    region, a colour or a code identifier of three words run together. A QR code is covered only when
+    it decodes and its content has one of the shapes above. With nothing beside a seed
     phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
     phrase: telling it from the phrase's own second column would uncover that column.
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
