@@ -176,6 +176,7 @@ private slots:
   QTest::newRow("a phone after a hash is a phone")<<"Phone #202-555-0143 Telefon #2125550100"<<QStringList{"phone"}<<QStringList{"phone: #202-555-0143","phone: #2125550100"};
   QTest::newRow("a phone after Total: or a product's slash is a phone")<<"Total: 2125550100 | Mobile/2025550143"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: Mobile/2025550143"};
   QTest::newRow("a labelled card keeps the earlier rule")<<"Card: 4110 4111 4112 4113"<<QStringList{"card"}<<QStringList{"card: 4110 4111 4112 4113"};
+  QTest::newRow("a full-width card label counts too")<<QString("\uFF23\uFF41\uFF52\uFF44: 4110 4111 4112 4113")<<QStringList{"card"}<<QStringList{"card: 4110 4111 4112 4113"};
   QTest::newRow("an IPv6 address in two-digit groups with a port")<<"[02:1a:2b:ff:fe:3c:4d:5e]:443"<<QStringList{"ip"}<<QStringList{"ip: [02:1a:2b:ff:fe:3c:4d:5e]:443"};
   QTest::newRow("an address split after a dot")<<"LISTEN 148.98.250. 123:443"<<QStringList{"ip"}<<QStringList{"ip: 148.98.250. 123:443"};
   QTest::newRow("a phone after Total: is a phone")<<"Total: +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};

@@ -3030,7 +3030,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      if(rule.category!="card"||!cardNumber(text)||from>=joined.owner.size()||joined.owner.at(from)<0)return false;
      static const QRegularExpression label(QStringLiteral("^(?:card|cards|visa|mastercard|mc|amex|discover|jcb|diners|maestro|unionpay|cc|ccn|pan|credit|debit|kreditkarte|karte|carte|tarjeta)[:.#]*$"),QRegularExpression::CaseInsensitiveOption);
      const int w=joined.owner.at(from);
-     for(int k=w-1;k>=0&&k>=w-2&&candidates.at(k).line==candidates.at(w).line;--k)if(label.match(candidates.at(k).text).hasMatch())return true;
+     for(int k=w-1;k>=0&&k>=w-2&&candidates.at(k).line==candidates.at(w).line;--k)if(label.match(plain.at(k)).hasMatch())return true;
      return false;
     };
     const bool retry=rule.category=="card"&&rule.valid&&!cardValid(found.capturedStart(),found.capturedLength());
