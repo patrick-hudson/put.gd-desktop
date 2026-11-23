@@ -540,13 +540,17 @@ waiting for the lock, over a probe process left behind by a finished test.
 - **SSH builds, tests and VMs on the builders are shared.** Run builds with
   `nice -n 10` and a bounded `-j`. Check `uptime` before you start another heavy
   job on a host whose load is already above its core count; k72 and m74 have four cores.
-- **Timing runs hold the host's quiet lease.** Recording, capture-latency,
-  memory and other timing runs take `desktop_lock.py acquire HOST --resource
-  quiet` when they are ready to start, and release it the moment the timing
-  ends. While another session holds it, don't start new heavy SSH jobs on that
-  host (builds, full ctest, replays, benchmarks). The guarded lab helpers refuse
-  to; for anything else, use `desktop_lock.py guard`. Jobs already running may finish. See [Quiet leases for timing
-  runs](#quiet-leases-for-timing-runs).
+- **Long jobs hold the host's quiet lease.** Any builder job that runs longer than
+  about a minute (a build, a corpus, fuzz or OCR batch, a timing run) takes
+  `desktop_lock.py acquire HOST --resource quiet` when it is ready to start, holds it
+  for its whole run with a heartbeat every 3 to 4 minutes, and releases it when it
+  ends. `guard` only checks the moment it runs, and on 2026-11-22/23 three timing runs
+  were spoiled by heavy jobs that started under a clean `guard` or before the timing
+  took its lease. Prefix a short command with `desktop_lock.py guard HOST &&`. While
+  another session holds the lease, start no new heavy job on that host; the guarded
+  lab helpers refuse to. Run at most 4 jobs per host, and with several campaigns
+  running hold one quiet lease at a time unless the coordinator says otherwise. See
+  [Quiet leases](#quiet-leases-for-timing-runs).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
   plasma, xorg, mesa, GPU drivers, pipewire or xdg-desktop-portal*. Read every
@@ -798,10 +802,16 @@ not checked.
 ### Quiet leases for timing runs
 
 The `desktop` lock means "I'm driving this desktop session". The quiet lease
-(`--resource quiet`, `~/putgd-lab/locks/quiet.lock`) means "don't load this
-host's CPU". They are independent: a timing run on a desktop holds both, a desktop
-acceptance run usually holds only `desktop`, and a headless benchmark over SSH
-holds only `quiet`.
+(`--resource quiet`, `~/putgd-lab/locks/quiet.lock`) means "this session is loading
+this host's CPU, or needs it unloaded". Every builder job longer than about a
+minute holds it, timing or not: builds, corpus, fuzz and OCR batches, and timing
+runs. `guard` checks only the moment it runs, so a short command uses it and a long
+job takes the lease; on 2026-11-22/23 three timing runs were spoiled that way. The
+two locks are independent: a timing run on a desktop holds both, a desktop
+acceptance run usually holds only `desktop`, and a headless benchmark or fuzz run
+over SSH holds only `quiet`. At most 4 jobs per host, and with several campaigns
+running a session holds one quiet lease at a time unless the coordinator says
+otherwise.
 
 There are no clock windows and no private marker files. On 2026-11-22 a booked
 "aurora is quiet 02:30-02:50Z" window failed both ways: a build that didn't know
@@ -816,9 +826,9 @@ python3 tools/lab/desktop_lock.py release aurora-amd --resource quiet --session 
 python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
 ```
 
-- Take the lease when the timing work is ready to start, never ahead of it, and
-  release it the moment the timing ends. Heartbeat, extend, status and break work
-  as for the desktop lock. Release needs no `--verified-clean`: there is nothing
+- Take the lease when the work is ready to start, never ahead of it, heartbeat it
+  every 3 to 4 minutes, and release it the moment the work ends. Heartbeat, extend,
+  status and break work as for the desktop lock. Release needs no `--verified-clean`: there is nothing
   on screen to check.
 - Acquire records the host's load averages and CPU count in the lease. When the
   1-minute load is above the CPU count it says so: find the heavy work before you

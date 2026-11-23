@@ -34,19 +34,21 @@ with their boxes from the renderer. Comparing the two runs attributes each findi
 
 Labels: `secret` spans carry the category that should find them, or `gap` for secrets no category targets
 (seed phrases, recovery and TOTP codes, licence keys). The rules cover any IP address and any form of the user's
-own name by design, so the scorer doesn't count those covers as false positives. It skips an `ip` cover that
-holds an address and lies over no labelled look-alike, and records a `name` cover that holds a part of the user's
-name as `DESIGN`. An `ip` cover over a labelled look-alike, such as a version number, stays a false positive.
+own name by design, so the scorer records those covers as `DESIGN`, judged on the true words under the cover: an
+`ip` cover over an address, a `name` cover over a part of the user's name. A labelled look-alike under an `ip`
+cover, such as a version number, stops that exemption, and the cover is then an `FP`, or an `OVER` when another
+row of the same match covers a secret. Secrets partly hidden (past the edge, under a minimap or the next pane) are
+not scored.
 
 ## Running it
 
 Run it on a builder, never on the workstation, under the
-[sharing rules](remote-builders.md#sharing-the-lab-between-concurrent-sessions). A run keeps every core it
-is given busy for minutes, the way a timing run doesn't want its host to be, so hold your own quiet lease
-(`desktop_lock.py acquire HOST --resource quiet`) on that host for the whole run, with a heartbeat every 3 to
-4 minutes, and release it when the run ends. Use at most 4 jobs per host. Start a short command, such as a probe,
-with `desktop_lock.py guard HOST &&`. `run` checks `guard` itself before each batch and waits while another session
-holds the lease.
+[sharing rules](remote-builders.md#sharing-the-lab-between-concurrent-sessions). Every stage expected to run
+longer than about a minute (rendering a few thousand scenes, a recognition run, scoring a large corpus) holds
+your own quiet lease on that host (`desktop_lock.py acquire HOST --resource quiet`), with a heartbeat every 3 to
+4 minutes, released when it ends. A short command, such as the build, a probe or a small oracle run, starts
+with `desktop_lock.py guard HOST &&`. Use at most 4 jobs per host. `run` also checks `guard` before starting each
+driver and waits while another session holds the lease.
 
 Below, `fuzz.py` means `python3 tools/lab/redact_fuzz/fuzz.py`, run from the directory you copied the tools into,
 and `PKG` is the directory the package was unpacked into.
@@ -57,30 +59,36 @@ and `PKG` is the directory the package was unpacked into.
    file beside the package).
 2. Put a `git archive` of that commit's `src/` next to it, and copy `tools/lab/redact_fuzz` and
    `tools/lab/desktop_lock.py` to the host.
-3. Build the driver, which takes about 40 s at 4 compile jobs: `nice -n 10 fuzz.py build --source SRC_TREE --out build`.
+3. Build the driver, which takes about 40 s at 4 compile jobs:
+   `desktop_lock.py guard HOST && nice -n 10 fuzz.py build --source SRC_TREE --out build`.
    On aurora, run it inside the `putgd-build` toolbox. On Mint, Debian and Kubuntu, run it with the distribution's Qt
    development packages.
 4. Render: `fuzz.py render --seed S --count N --out scenes-S`. Pango, Cairo and PyGObject come from the host,
    and Pillow is used for JPEG. The same seed, start and count on the same host, with the same fonts, give the
-   same images. `fonts.json` lists the font families the host had.
+   same images. `fonts.json` lists the font families the host had. Labels record each image relative to the
+   corpus directory, so a copied corpus finds its own images; a corpus rendered before that records absolute
+   paths, and `run` falls back to `SCENES/images/<name>` when the recorded path is gone.
 5. Run: `fuzz.py run --scenes scenes-S --out results-X --driver build/redact_fuzz_driver --helper PKG/usr/bin/putgd-ocr
    --build-json PKG/usr/share/putgd/build-info.json --data TESSDATA --jobs 4 --session YOUR_SESSION`. On aurora, run
    it inside the toolbox with `--data /usr/share/tesseract/tessdata`. On Debian and Ubuntu the data is in
    `/usr/share/tesseract-ocr/5/tessdata`. `--families a,b` runs only the scenes that hold those families, and
    `--oracle-only` matches the true words alone, with no recognition: a few seconds a thousand scenes, the quick
-   loop for a rule change. A run started again skips every scene already in its `--out` directory, failed ones
-   included, so give each driver, helper or mode its own `--out`; scenes rendered by someone else can be reused
-   read-only that way.
+   loop for a rule change. A run started again skips every scene its `--out` directory already holds a result for,
+   so give each configuration (driver, helper, language data or mode) its own `--out`; scenes rendered by someone
+   else can be reused read-only that way. A scene whose run failed is tried again (`--retries`, 1 by default), and
+   `run` exits with `INCOMPLETE` when some scenes still have no result.
 6. Score: `fuzz.py score --scenes scenes-S --results results-X --out score-X` (add `--oracle` after an
    `--oracle-only` run). This writes `findings.jsonl` (one row per false negative, partial cover, false positive,
    over-cover and by-design cover) and `summary.json` (groups by profile, kind, decoy or tag, and cause, with
-   examples). The first line it prints counts the scenes scored; `summary.json` also counts the scenes whose run
-   failed (`errors`). Check both before comparing two runs.
-7. Look at one group with `fuzz.py show score-S/findings.jsonl type=FN kind=card --n 10`. A filter is `FIELD=VALUE`; a
+   examples). The first line it prints counts the scenes scored, and those with no result (`missing`) or without
+   both profiles (`incomplete`); `summary.json` also counts failed runs (`errors`). Check them before comparing
+   two runs.
+7. Look at one group with `fuzz.py show score-X/findings.jsonl type=FN kind=card --n 10`. A filter is `FIELD=VALUE`; a
    value ending in `*` matches a prefix. To see what a rule does with a string, give it perfectly recognized words:
    `fuzz.py probe --driver build/redact_fuzz_driver --build-json PKG/usr/share/putgd/build-info.json "Reference 12   4111 1111 1111 1111"`.
    That prints every match of both profiles. Each argument is one line of one scene (with none, lines are read from
-   stdin), and a line starting with `-` needs `--` before it. Probe has no recognition, so it needs no helper.
+   stdin), and a line starting with `-` needs `--` before it. Probe has no recognition, so it needs no helper; it
+   draws its own blank page in a private temporary directory and removes it.
 
 At 4 jobs, aurora runs about 200 scenes a minute and a 4-core builder about 100.
 
@@ -92,11 +100,12 @@ At 4 jobs, aurora runs about 200 scenes a minute and a 4-core builder about 100.
 | `PARTIAL` | some characters of a secret left visible (`visible` of `chars`) |
 | `FP` | a mark over nothing sensitive (`decoy` names the look-alike under it, or `ordinary`) |
 | `OVER` | a row of a true match that covers nothing sensitive (a match running on past its secret) |
-| `DESIGN` | a cover the rules intend over a part of the user's name (by-design IP covers are skipped, not listed) |
+| `DESIGN` | a cover the rules intend: an IP address, or a part of the user's name |
 
-`cause` is an attribution, not a proof. A missed secret is `rule` when the oracle run also leaves at least one of
-its characters visible, and `ocr` when the oracle covers it all. An extra cover is `rule` when the oracle run has a
-mark of the same category overlapping it, and `ocr` otherwise. `read` holds what recognition made of a missed
+`cause` is an attribution, not a proof. A missed secret is `rule` when at least half of the characters left visible
+are visible in the oracle run too (`by_rule` counts them), and `ocr` otherwise. A row of an extra cover is `rule`
+when the oracle's marks of the same category cover at least half of the true words under it (or, with no word
+under it, half of the row), and a cover of several rows takes the cause of most of its rows (`rule_rows`). `read` holds what recognition made of a missed
 secret. `match` holds the matched text of an extra cover.
 
 ## Traps
