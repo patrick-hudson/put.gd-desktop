@@ -880,8 +880,8 @@ Before you release:
    process is shared SSH work only when that environment has `SSH_CONNECTION` or `SSH_CLIENT`
    and no display variable: another session's SSH benchmark helper doesn't block, while the
    editor's helper does (#1938). The check sees only the current parents, so a helper adopted by
-   a subreaper is judged by that subreaper; put.gd's own helper is never adopted, since it is
-   killed with the process that started it. It also counts when no
+   a subreaper is judged by that subreaper; put.gd's own helper doesn't outlive its parent, since
+   Linux sends it `SIGKILL` when the thread that started it exits. It also counts when no
    readable environment turns up before PID 1 or within eight levels, or when a parent can't be
    looked up or exits during the check. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
    (xvfb-run inside a lab tool's private `/tmp/pg*` TMPDIR) blocks release once
