@@ -54,12 +54,12 @@ What it does not do:
    | Text and codes | The text with each code's content on a line of its own | "Copied 214 characters and 1 code" |
    | Only codes | The content, one per line | "Copied 1 code" |
    | Nothing | Unchanged | "No text found" |
+   | The user changed the clipboard first | Unchanged | "Text not copied: the clipboard changed" |
+   | The write failed | Unchanged | "Text could not be copied" |
 
    When an agent asks for the copy, a code put.gd recognises as holding a secret is copied as a
    placeholder such as `[2FA QR code withheld]` (see [the editor](#the-editor)'s Quick redact QR codes,
    #1941 and #1962).
-   | The user changed the clipboard first | Unchanged | "Text not copied: the clipboard changed" |
-   | The write failed | Unchanged | "Text could not be copied" |
 
    One character reads "1 character" and one code "1 code". Characters are counted as a person
    counts them (grapheme clusters): an emoji with a skin tone, a flag or a family is one. When the result was cut, the
