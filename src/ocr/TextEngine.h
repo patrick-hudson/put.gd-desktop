@@ -75,6 +75,7 @@ public:
  // Another instance for the same job: exactly the languages the first loaded.
  QString startLike(const TextEngine& first);
  QStringList used()const{return used_;}
+ bool ready()const{return api_!=nullptr;}  // started, and not failed to
  QStringList skipped()const{return skipped_;}
  // Stops at the deadline (milliseconds from now; 0 means none) and returns the
  // words read until then, in reading order, with cutShort set. failed is set

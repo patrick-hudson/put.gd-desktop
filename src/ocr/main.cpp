@@ -4,9 +4,11 @@
 // protocol and the two memfds are the contract's (TextJobChild); this file
 // confines the process and hands runChild the engine.
 #include "Confinement.h"
+#include "Cores.h"
 #include "Recognize.h"
 #include "TextJobChild.h"
 #include "core/BuildInfo.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <QString>
@@ -63,7 +65,9 @@ int main(int argc,char** argv){
  const auto directories=safeLanguageDirectories(dataDirectories());
  Confinement confinement;confinement.readable=readableDirectories(directories);
  // The engines, counted before confinement: Landlock hides the cgroup's quota.
- const int threads=workerThreads();
+ // On a machine of mixed cores, one engine for each of the faster CPUs (#1929).
+ const auto cpus=preferredCpus();
+ const int threads=cpus.isEmpty()?workerThreads():std::min(workerThreads(),int(cpus.size()));
  confinement.dataBytes=largestBudget*3/2;confinement.cpuSeconds=cpuSecondsPerThread*threads;
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
  QString failed;int abi=0;
@@ -72,7 +76,7 @@ int main(int argc,char** argv){
   JobOptions job;job.languages=options.languages;job.strictLanguages=options.languagesRequired;
   // Emoji from the colour plane (#1748), named by the templates built in.
   job.colour={image.colour,image.width,image.height,image.colourStride,image.releaseColour};job.emojiTemplates=&EmojiTemplates::builtIn();
-  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.threads=threads;job.memoryBudget=baseBudget;job.memoryCeiling=largestBudget;
+  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.threads=threads;job.memoryBudget=baseBudget;job.memoryCeiling=largestBudget;job.cpus=cpus;
   if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(baseBudget*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);
   if(!recognized.error.isEmpty())return {recognized.error,recognized.failedLanguage};

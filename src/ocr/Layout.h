@@ -4,6 +4,7 @@
 #include <QList>
 #include <QString>
 #include <algorithm>
+#include <utility>
 
 // Scale and band planning, and the band copies Tesseract reads (#1428 decision 3).
 // Pure image arithmetic: no engine, no allocation beyond one band at a time.
@@ -134,12 +135,30 @@ bool uncertainToken(const QString& text,float confidence);
 // the words: Tesseract reads a token in its line better (on the corpus, word
 // areas alone covered 47 more secrets against 96 for rows).
 struct TokenWord { QRect rect;float confidence=0; };
-struct TokenBand { Band band;float confidence=0; };  // its least confident word's
+// confidence: its least confident word's; [left, right): the columns its words span.
+struct TokenBand { Band band;float confidence=0;int left=0,right=0;int tallest=0; };
 QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height);
-// The second read stops when it has taken as long as the first pass, or this
-// long when the first was quicker (on the corpus it took at most 694 ms; a 4K
-// terminal full of tokens took 5.5 s, against 2.1 s for its first pass).
-inline constexpr int tokenTimeFloorMs=750;
+// The columns of a token band to read again (#1929): its words' columns grown by
+// `margin`, then outward to the nearest gap of `gap` columns holding no ink (no
+// pixel `contrast` or more from the background) in the band's rows, so the read
+// keeps the words' run of text and leaves out blank screen and other columns of
+// text. A full-width row of a 4K terminal was 5,334 px wide after scaling, more
+// than half of it blank. Within [0, source.width).
+std::pair<int,int> tokenColumns(const GreyView& source,const Band& band,int left,int right,int background,int margin,int gap,int contrast=12);
+// All second reads of a job together (faint lines, text a grown panel never
+// read, uncertain tokens) take at most secondReadShare of the first pass's
+// time, never under secondReadFloorMs nor over secondReadCapMs, on every
+// engine the job has (#1929: capped at the first pass's time on one engine,
+// they doubled a dense 4K check on a 4-core laptop, 5.2 s to 10.3 s). They end
+// secondReadMarginMs before the job's own budget at the latest, and never mark
+// a check truncated: what the first pass read stands either way.
+// A token band's columns: its words' grown by tokenMargin of their height,
+// then out to a gap of tokenGap of it (between words; #1929).
+inline constexpr double tokenMargin=4,tokenGap=0.6;
+inline constexpr double secondReadShare=0.25;
+inline constexpr int secondReadFloorMs=400;
+inline constexpr int secondReadCapMs=1000;
+inline constexpr int secondReadMarginMs=1000;
 // A band copy for that second read: every pixel's distance from its local
 // background (the median of the 80 px around it), stretched so the strongest
 // ink nearby is black, on white. It reads dark and light, faint and coloured

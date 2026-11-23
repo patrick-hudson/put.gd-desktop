@@ -432,11 +432,11 @@ bool uncertainToken(const QString& text,float confidence){
  return letter&&digit;
 }
 QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height){
- struct Run { int top=0,bottom=0,tallest=0;float confidence=0; };
+ struct Run { int top=0,bottom=0,tallest=0;float confidence=0;int left=0,right=0; };
  QList<Run> runs;
  for(const auto& w:words){
   const int grow=w.rect.height()/3+1;
-  const Run r{std::clamp(w.rect.top()-grow,0,height),std::clamp(w.rect.bottom()+1+grow,0,height),w.rect.height(),w.confidence};
+  const Run r{std::clamp(w.rect.top()-grow,0,height),std::clamp(w.rect.bottom()+1+grow,0,height),w.rect.height(),w.confidence,w.rect.left(),w.rect.right()+1};
   if(r.bottom>r.top)runs.append(r);
  }
  std::sort(runs.begin(),runs.end(),[](const Run& a,const Run& b){return a.top<b.top;});
@@ -445,13 +445,26 @@ QList<TokenBand> tokenLines(const QList<TokenWord>& words,int height){
   if(!joined.isEmpty()){
    auto& j=joined.last();
    const int bottom=std::max(j.bottom,r.bottom),tallest=std::max(j.tallest,r.tallest);
-   if(r.top<j.bottom&&bottom-j.top<=4*tallest){j.bottom=bottom;j.tallest=tallest;j.confidence=std::min(j.confidence,r.confidence);continue;}
+   if(r.top<j.bottom&&bottom-j.top<=4*tallest){j.bottom=bottom;j.tallest=tallest;j.confidence=std::min(j.confidence,r.confidence);j.left=std::min(j.left,r.left);j.right=std::max(j.right,r.right);continue;}
   }
   joined.append(r);
  }
  std::stable_sort(joined.begin(),joined.end(),[](const Run& a,const Run& b){return a.confidence<b.confidence;});
- QList<TokenBand> out;for(const auto& r:std::as_const(joined))out.append({{r.top,r.bottom,false},r.confidence});
+ QList<TokenBand> out;for(const auto& r:std::as_const(joined))out.append({{r.top,r.bottom,false},r.confidence,r.left,r.right,r.tallest});
  return out;
+}
+std::pair<int,int> tokenColumns(const GreyView& source,const Band& band,int left,int right,int background,int margin,int gap,int contrast){
+ const int width=source.width,top=std::clamp(band.top,0,source.height),bottom=std::clamp(band.bottom,top,source.height);
+ left=std::clamp(left-margin,0,width);right=std::clamp(right+margin,left,width);
+ if(bottom<=top||gap<1)return {left,right};
+ const auto ink=[&](int x){
+  for(int y=top;y<bottom;++y)if(std::abs(int(source.row(y)[x])-background)>=contrast)return true;
+  return false;
+ };
+ // Outward, column by column, until `gap` blank columns in a row (or the edge).
+ for(int blank=0;left>0&&blank<gap;--left)blank=ink(left-1)?0:blank+1;
+ for(int blank=0;right<width&&blank<gap;++right)blank=ink(right)?0:blank+1;
+ return {left,right};
 }
 GreyImage contrastBand(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes){
  // The band with two tiles of context above and below, where the local

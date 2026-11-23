@@ -80,32 +80,32 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
  if(input.fd<0||output.fd<0||!writeAt(input.fd,textjob::encodeInputHeader(header).constData(),textjob::inputHeaderBytes,0)){error=textjob::failure("text_job_failed");return {};}
  // In strips of 256 rows, so the parent never holds a second full copy: each
  // strip is flattened onto white, then written as packed grey rows and packed
- // RGB rows at their places in the two planes.
- {
+ // RGB rows at their places in the two planes. Then sealed, so the child reads
+ // exactly what was written here and nothing can change under it.
+ const auto writePixels=[&]()->bool{
   constexpr int strip=256;const int width=header.width;
   QByteArray grey,colour;
   for(int y=0;y<header.height;y+=strip){
-   if(stopped())return {};
+   if(stopped())return false;
    const int rows=std::min(strip,header.height-y);
-   QImage flat(width,rows,QImage::Format_RGB32);if(flat.isNull()){error=textjob::failure("text_job_failed");return {};}
+   QImage flat(width,rows,QImage::Format_RGB32);if(flat.isNull())return false;
    // An explicit target: drawn at a point, an image with a device pixel ratio
    // (a scaled screen's capture) would be drawn at its logical size.
    flat.fill(Qt::white);{QPainter painter(&flat);painter.drawImage(QRect(0,0,width,rows),image,QRect(0,y,width,rows));}
    const auto greyRows=flat.convertToFormat(QImage::Format_Grayscale8),colourRows=flat.convertToFormat(QImage::Format_RGB888);
-   if(greyRows.isNull()||colourRows.isNull()){error=textjob::failure("text_job_failed");return {};}
+   if(greyRows.isNull()||colourRows.isNull())return false;
    grey.resize(qsizetype(width)*rows);colour.resize(qsizetype(width)*3*rows);
    for(int row=0;row<rows;++row){
     std::memcpy(grey.data()+qsizetype(row)*width,greyRows.constScanLine(row),size_t(width));
     std::memcpy(colour.data()+qsizetype(row)*width*3,colourRows.constScanLine(row),size_t(width)*3);
    }
    if(!writeAt(input.fd,grey.constData(),grey.size(),textjob::inputHeaderBytes+qint64(y)*header.stride)
-      ||!writeAt(input.fd,colour.constData(),colour.size(),textjob::colourOffset(header)+qint64(y)*header.colourStride)){error=textjob::failure("text_job_failed");return {};}
+      ||!writeAt(input.fd,colour.constData(),colour.size(),textjob::colourOffset(header)+qint64(y)*header.colourStride))return false;
   }
- }
- // The memfd holds the pixels now; the image never counts in this process again.
- image=QImage();
- // Sealed, so the child reads exactly what was written here and nothing can change under it.
- if(::fcntl(input.fd,F_ADD_SEALS,textjob::requiredSeals|F_SEAL_SEAL)!=0){error=textjob::failure("text_job_failed");return {};}
+  // The memfd holds the pixels now; the image never counts in this process again.
+  image=QImage();
+  return ::fcntl(input.fd,F_ADD_SEALS,textjob::requiredSeals|F_SEAL_SEAL)==0;
+ };
  const auto nonce=QUuid::createUuid().toString(QUuid::WithoutBraces);
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);bool ready=false,result=false,protocolFailed=false,flooded=false;Error childError;qint64 bytes=0,spawnMs=0;QString sha256;
@@ -144,8 +144,13 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
   if(process.waitForStarted(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)))){started=true;break;}
   if(process.error()==QProcess::FailedToStart){error=textjob::failure("text_helper_missing");break;}
  }
+ // The helper starts (loads its libraries, confines itself) while the pixels
+ // are written here (#1929: about a tenth of a second of a 4K check on a
+ // 4-core laptop). It reads them only once activated, after the bootstrap,
+ // which goes once they are sealed.
+ if(started&&!error&&!writePixels()&&!error)error=textjob::failure("text_job_failed");
  // The child holds its own copy now; the pixels never count in this process again.
- input.reset();
+ input.reset();image=QImage();
  if(started&&!error&&control.send("bootstrap",textjob::bootstrap(nonce,build(),header,options)).isEmpty())protocolFailed=true;
  while(started&&process.state()!=QProcess::NotRunning&&!protocolFailed&&!flooded&&!stopped())process.waitForReadyRead(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)));
  if(!error&&protocolFailed)error=textjob::failure("text_incompatible");
