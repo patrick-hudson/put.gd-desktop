@@ -163,8 +163,11 @@ class Lease(unittest.TestCase):
     def test_a_stopped_command_stops_its_whole_process_group(self):
         with tempfile.TemporaryDirectory() as directory:
             pid_file = Path(directory) / 'grandchild'
+            # The grandchild ignores SIGTERM and outlives its parent: only the group's SIGKILL stops it.
             script = ('import subprocess, sys, time; child = subprocess.Popen([sys.executable, "-c", '
-                      '"import time; time.sleep(60)"]); open(sys.argv[1], "w").write(str(child.pid)); time.sleep(60)')
+                      '"import signal, sys, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); '
+                      'print(flush=True); time.sleep(60)"], stdout=subprocess.PIPE); child.stdout.readline(); '
+                      'open(sys.argv[1], "w").write(str(child.pid)); time.sleep(60)')
             def stop_once_started():
                 for _ in range(1000):
                     if pid_file.is_file() and pid_file.read_text():
@@ -176,22 +179,41 @@ class Lease(unittest.TestCase):
             def interrupt(_number, _frame):
                 raise KeyboardInterrupt('stop')
             previous = weekly.signal.signal(weekly.signal.SIGUSR1, interrupt)
+            self.addCleanup(setattr, weekly, 'STOP_GRACE_SECONDS', weekly.STOP_GRACE_SECONDS)
+            weekly.STOP_GRACE_SECONDS = .5
             try:
                 timer.start()
-                with self.assertRaises(KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):  # run() returns only once the whole group is gone
                     weekly.run([sys.executable, '-c', script, str(pid_file)], lambda line: None,
                                Path(directory) / 'out.log')
             finally:
                 timer.join()
                 weekly.signal.signal(weekly.signal.SIGUSR1, previous)
             grandchild = int(pid_file.read_text())
+            self.assertTrue(gone(grandchild))
 
-            def gone():
-                try:
-                    return Path(f'/proc/{grandchild}/stat').read_text().split(')')[1].split()[0] == 'Z'
-                except (FileNotFoundError, ProcessLookupError):
-                    return True
-            self.wait_for(gone)
+    def test_a_lease_file_that_is_not_text_is_retried_like_a_busy_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            locks, lines, lost = Path(directory) / 'locks', [], mock.Mock()
+            lease = weekly.QuietLease(locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
+            lease.acquire()
+            (locks / 'quiet.lock').write_bytes(b'\xff\xfe')
+            self.wait_for(lambda: 'renewal failed' in '\n'.join(lines))
+            lost.assert_not_called()
+            lease.deadline = weekly.time.monotonic()
+            lease.thread.join(5)
+            lost.assert_called_once_with()
+            with mock.patch.object(weekly.time, 'sleep'):
+                self.assertFalse(lease.release())
+            self.assertEqual(sum('release refused' in line for line in lines), 3)
+
+
+def gone(pid):
+    """True once PID has exited (or is a zombie waiting for its reaper)."""
+    try:
+        return Path(f'/proc/{pid}/stat').read_text().split(')')[1].split()[0] == 'Z'
+    except (FileNotFoundError, ProcessLookupError):
+        return True
 
 
 class Suites(unittest.TestCase):

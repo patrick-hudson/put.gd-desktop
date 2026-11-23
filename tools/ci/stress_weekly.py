@@ -75,6 +75,7 @@ INCREMENTAL = 2 * GIB  # headroom for rebuilding over an existing build/dev
 DEFAULT_BUILD = 4 * GIB  # until a build has been measured
 MIN_INODES = 1024
 LEASE_MINUTES = 15  # the quiet lease's length (desktop_lock.py allows 45 at most)
+STOP_GRACE_SECONDS = 30  # how long a stopped run's child group gets after SIGTERM before SIGKILL
 LEASE_RENEW_SECONDS = 300  # renewal interval, as `desktop_lock.py run` does: three tries per lease
 # The children get only these variables. A desktop session (Plasma, GNOME) imports DISPLAY, WAYLAND_DISPLAY,
 # XAUTHORITY and the XDG_SESSION_* set into the systemd user manager; tests inheriting them reach the live
@@ -224,7 +225,7 @@ class QuietLease:
             try:
                 self.lease.extend(self.session, self.minutes)
                 self.deadline = asked + self.minutes * 60
-            except (self.module.LockError, OSError) as error:
+            except (self.module.LockError, OSError, ValueError) as error:  # ValueError: a lease file not UTF-8
                 self.log(f'quiet lease: renewal failed: {error}')
                 if not self.ours() or self.deadline - time.monotonic() <= self.every:
                     self.log('quiet lease: no longer ours, or it would lapse before the next try; stopping the run')
@@ -235,7 +236,7 @@ class QuietLease:
         """False once the lease file is gone or names another session; True while it is ours or unreadable now."""
         try:
             current = self.lease.state(self.module.now_utc())
-        except OSError:
+        except (OSError, ValueError):
             return True
         return current['state'] == 'invalid' or (current.get('lock') or {}).get('session') == self.session
 
@@ -250,7 +251,7 @@ class QuietLease:
                 self.lease.release(self.session)
                 self.log(f'quiet lease: released ({self.session})')
                 break
-            except (self.module.LockError, OSError) as error:
+            except (self.module.LockError, OSError, ValueError) as error:
                 self.log(f'quiet lease: release refused: {error}')
                 if not self.ours():
                     break
@@ -393,18 +394,23 @@ def run(command, log, output=None, **options):
             raise
 
 
-def stop_group(process, grace=30):
-    """Stop a child started by run() and everything in its process group: SIGTERM, then SIGKILL after GRACE s."""
-    for number in (signal.SIGTERM, signal.SIGKILL):
+def stop_group(process, grace=None):
+    """Stop a child started by run() and everything left in its process group: SIGTERM, then SIGKILL for
+    whatever is still there after GRACE s (STOP_GRACE_SECONDS). Returns once the group is empty."""
+    grace = STOP_GRACE_SECONDS if grace is None else grace
+    for number, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 10)):
         try:
             os.killpg(process.pid, number)
         except ProcessLookupError:
             return
-        try:
-            process.wait(grace)
-            return
-        except subprocess.TimeoutExpired:
-            continue
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline:
+            process.poll()  # reap the leader; members that outlive it still keep the group
+            try:
+                os.killpg(process.pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(.1)
 
 
 def git(tree, log, *args):
@@ -619,8 +625,8 @@ def weekly_run(args, log):
         signal.signal(signal.SIGTERM, signal.SIG_IGN)  # a stop now must not interrupt the release
         if lease and not lease.release():
             status['leaseReleased'] = False
-            log(f'quiet lease: still held by {lease.session}; break it with desktop_lock.py break '
-                f'{args.host} --resource quiet once it expires')
+            log(f'quiet lease: still held by {lease.session}; break it once it expires: desktop_lock.py break '
+                f'{args.host} --resource quiet --session YOUR-SESSION --reason TEXT')
         signal.signal(signal.SIGTERM, previous)
         status['ended'] = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
         (out / 'weekly.json').write_text(json.dumps(status, indent=1) + '\n')
