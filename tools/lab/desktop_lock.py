@@ -217,19 +217,43 @@ def process_environment(pid):
     return {entry.partition(b'=')[0].decode(errors='replace') for entry in data.split(b'\0') if entry}
 
 
+def process_parent(pid):
+    """Return PID's parent PID, or None when it can't be read."""
+    try:
+        return Path(f'/proc/{pid}/stat').read_text().rpartition(')')[2].split()[1]
+    except (OSError, IndexError):
+        return None
+
+
 def process_orphaned(pid):
     """True once the process that started PID has exited: PID now belongs to init or to a
     systemd subreaper. False while its parent runs, or when PID can't be read."""
+    parent = process_parent(pid)
     try:
-        parent = Path(f'/proc/{pid}/stat').read_text().rpartition(')')[2].split()[1]
-        return parent == '1' or Path(f'/proc/{parent}/comm').read_text().strip() == 'systemd'
-    except (OSError, IndexError):
+        return parent is not None and (parent == '1' or Path(f'/proc/{parent}/comm').read_text().strip() == 'systemd')
+    except OSError:
         return False
 
 
-def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned):
+def started_environment(pid, environment=process_environment, parent=process_parent, depth=8):
+    """The environment names of the nearest process up PID's parent chain whose environment can
+    be read, None when none can (or that process has exited) before init. A confined helper such as
+    putgd-ocr makes itself non-dumpable, so its own environment is root's to read; whoever
+    started it decides whether it is desktop work or another session's SSH work (#1938)."""
+    for _ in range(depth):
+        pid = parent(pid)
+        if pid is None or pid in ('0', '1'):
+            return None
+        names = environment(pid)
+        if names is not None:
+            return None if names is False else names
+    return None
+
+
+def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned,
+                      parent=process_parent):
     """List what a desktop session can leave on this host: matching processes in the desktop
-    session (or that can't be told apart), input agents, test patterns and cover players,
+    session (or that can't be told apart, judged by the nearest readable parent), input agents, test patterns and cover players,
     orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
     data, and a putgd package. Other matching processes without DISPLAY or WAYLAND_DISPLAY are
     shared SSH work (builds, syncs, collectors), and so is a lab test X server whose test still
@@ -258,6 +282,8 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
         names = environment(pid)
         if names is False:
             continue
+        if names is None:
+            names = started_environment(pid, environment, parent)
         if names is not None and not names & {'DISPLAY', 'WAYLAND_DISPLAY'} and \
                 not any(word in command for word in ALWAYS_REPORTED) and not COVER_PLAYER.search(command):
             shared.append(pid)
