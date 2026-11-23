@@ -382,14 +382,16 @@ class HostInventory(unittest.TestCase):
         for user in ('Xvfb :99 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/xvfb-run.Q1w2e3/Xauthority',
                      'Xvfb :98 -auth /tmp/pgadmin-dev/personal.auth'):
             self.assertIsNone(lock.LAB_XVFB.match(user))
-        outputs = {'pgrep': (0, f'200 {cover}\n300 {orphan}\n400 {running}\n'),
+            self.assertNotRegex(user, lock.PROCESS_PATTERN)
+        tests = 'python3 -m unittest tests/desktop/test_cover_player.py'
+        outputs = {'pgrep': (0, f'200 {cover}\n300 {orphan}\n400 {running}\n500 {tests}\n'),
                    'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
-        environments = {'200': {'HOME'}, '300': {'HOME'}, '400': {'HOME'}}
+        environments = {'200': {'HOME'}, '300': {'HOME'}, '400': {'HOME'}, '500': {'HOME'}}
         with tempfile.TemporaryDirectory() as folder:
             items, notes = lock.collect_inventory(Path(folder), self.fake(outputs), own=set(),
                                                     environment=environments.get, orphaned={'300'}.__contains__)
         self.assertEqual([(item['kind'], item['id']) for item in items], [('process', '200'), ('process', '300')])
-        self.assertTrue(notes[0].endswith('shared SSH work): 400'))
+        self.assertTrue(notes[0].endswith('shared SSH work): 400 500'))
 
     def test_a_process_is_orphaned_once_its_parent_exits(self):
         self.assertFalse(lock.process_orphaned(os.getpid()))

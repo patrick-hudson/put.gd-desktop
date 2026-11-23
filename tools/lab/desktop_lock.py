@@ -92,9 +92,12 @@ monotonic = time.monotonic  # `run`'s clock for its own lease deadline
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
-PROCESS_PATTERN = 'putgd|host_input|videotestsrc|cover_player|Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\\.'
-# Input agents, test patterns and the magenta test cover, with or without a display (#1925).
-ALWAYS_REPORTED = ('host_input', 'videotestsrc', 'cover_player')
+PROCESS_PATTERN = ('putgd|host_input|videotestsrc|cover_player'
+                   '|Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\\.[^/ ]+/Xauthority( |$)')
+ALWAYS_REPORTED = ('host_input', 'videotestsrc')  # input agents and test patterns, with or without a display
+# The magenta test cover (or its surface-driver copy) run as a script, with or without a display (#1925);
+# not a command that only names it, such as a unittest run of test_cover_player.py.
+COVER_PLAYER = re.compile(r'(?:^|[ /])cover_player\.py(?: |$)')
 # A test X server whose xvfb-run auth file sits in a lab tool's private /tmp/pg* TMPDIR (stress_suite's
 # /tmp/pgst.*, for one). A user's own xvfb-run keeps it in /tmp/xvfb-run.*, which doesn't match.
 LAB_XVFB = re.compile(r'(?:\S*/)?Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\.[^/ ]+/Xauthority(?: |$)')
@@ -256,7 +259,7 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
         if names is False:
             continue
         if names is not None and not names & {'DISPLAY', 'WAYLAND_DISPLAY'} and \
-                not any(word in command for word in ALWAYS_REPORTED):
+                not any(word in command for word in ALWAYS_REPORTED) and not COVER_PLAYER.search(command):
             shared.append(pid)
             continue
         add('process', pid, f'process:{pid}:{process_start(pid)}', command)
