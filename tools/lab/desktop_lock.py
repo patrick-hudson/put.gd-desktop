@@ -220,7 +220,7 @@ def process_environment(pid):
 def process_parent(pid):
     """Return PID's parent PID, or None when it can't be read."""
     try:
-        return Path(f'/proc/{pid}/stat').read_text().rpartition(')')[2].split()[1]
+        return Path(f'/proc/{pid}/stat').read_bytes().rpartition(b')')[2].split()[1].decode()
     except (OSError, IndexError):
         return None
 
@@ -239,7 +239,7 @@ def started_environment(pid, environment=process_environment, parent=process_par
     """The environment names of the nearest process up PID's parent chain whose environment can
     be read, None when none can (or that process has exited) before init. A confined helper such as
     putgd-ocr makes itself non-dumpable, so its own environment is root's to read; whoever
-    started it decides whether it is desktop work or another session's SSH work (#1938)."""
+    started it decides whether it is another session's SSH work (#1938)."""
     for _ in range(depth):
         pid = parent(pid)
         if pid is None or pid in ('0', '1'):
@@ -253,8 +253,8 @@ def started_environment(pid, environment=process_environment, parent=process_par
 def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned,
                       parent=process_parent):
     """List what a desktop session can leave on this host: matching processes in the desktop
-    session (or that can't be told apart, judged by the nearest readable parent), input agents, test patterns and cover players,
-    orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
+    session (or that can't be told apart, unless the nearest readable parent shows an SSH
+    login), input agents, test patterns and cover players, orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
     data, and a putgd package. Other matching processes without DISPLAY or WAYLAND_DISPLAY are
     shared SSH work (builds, syncs, collectors), and so is a lab test X server whose test still
     runs."""
@@ -283,7 +283,10 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
         if names is False:
             continue
         if names is None:
-            names = started_environment(pid, environment, parent)
+            # Exempt only with positive evidence of SSH work: an adoptive parent (a subreaper)
+            # without display variables is not the desktop process that started it.
+            started = started_environment(pid, environment, parent)
+            names = started if started and started & {'SSH_CONNECTION', 'SSH_CLIENT'} else None
         if names is not None and not names & {'DISPLAY', 'WAYLAND_DISPLAY'} and \
                 not any(word in command for word in ALWAYS_REPORTED) and not COVER_PLAYER.search(command):
             shared.append(pid)
