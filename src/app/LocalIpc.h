@@ -9,9 +9,7 @@ enum class LocalSessionState { Connected, Absent, Unavailable };
 // The process listening on a session socket, from the kernel's credentials for
 // the connection (#490). start is its start time since boot, which tells it
 // apart from a later process given the same PID; 0 where it cannot be read.
-// pinned: pid and start are the connecting process's own, held through its pidfd while they were read
-// (#1962); without it a process that exited may have handed its PID to another.
-struct LocalPeer { bool connected=false; qint64 pid=0; uint uid=0; quint64 start=0; bool pinned=false; };
+struct LocalPeer { bool connected=false; qint64 pid=0; uint uid=0; quint64 start=0; };
 quint64 processStartTime(qint64 pid);
 // A connected peer owns the session even when its activation reply fails.
 // response contains one complete frame only; errorCode never contains peer data.
@@ -37,8 +35,6 @@ public:
  void stopReading();
  void sendAndClose(QByteArray bytes);
  void disconnectFromServer();
- // The connecting process, read with SO_PEERCRED when the connection was accepted (#1962).
- const LocalPeer& peer() const;
 signals:
  void readyRead();
  void disconnected();

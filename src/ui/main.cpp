@@ -81,7 +81,7 @@ int main(int argc,char** argv){
   auto state=payload["state"].toObject();if(state.isEmpty())state={{"schemaVersion",1}};
   if(putgd::validateUiState(state)){control.send("incompatible");app.exit(4);return;}
   client=std::make_unique<putgd::SessionClient>(payload["socketPath"].toString());
-  session=std::make_unique<putgd::UiSession>(*client);
+  session=std::make_unique<putgd::UiSession>(*client);session->setPersonToken(payload["personToken"].toString());
   session->refreshSnapshot([&,state](putgd::Error error){
    if(error||session->build()!=build||session->residentEpoch()!=epoch){control.send("incompatible");app.exit(4);return;}
    windows=std::make_unique<putgd::UiApplicationController>(*session,control,state);

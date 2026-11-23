@@ -84,30 +84,11 @@ quint64 processStartTime(qint64 pid) {
  return fields.size()>20?fields[20].toULongLong():0;
 }
 namespace {
-#ifndef SO_PEERPIDFD
-#define SO_PEERPIDFD 77
-#endif
-// The PID a pidfd's process has while it runs, or -1 once it exited (Linux 6.5 and later).
-qint64 pidfdPid(int pidfd) {
- QFile info(QStringLiteral("/proc/self/fdinfo/%1").arg(pidfd));
- if(!info.open(QIODevice::ReadOnly))return 0;
- for(const auto& line:info.readAll().split('\n'))if(line.startsWith("Pid:"))return line.mid(4).trimmed().toLongLong();
- return 0;
-}
 LocalPeer peerOf(int fd) {
  LocalPeer peer;peer.connected=true;
  ucred credentials{};socklen_t size=sizeof(credentials);
  if(::getsockopt(fd,SOL_SOCKET,SO_PEERCRED,&credentials,&size)==0&&size==sizeof(credentials)&&credentials.pid>0) {
   peer.pid=credentials.pid;peer.uid=credentials.uid;peer.start=processStartTime(peer.pid);
-  // #1962: SO_PEERCRED gives the connecting process's PID number, and /proc may show a later process
-  // given it. Its pidfd holds the process itself: read the start time while it is held, and if the
-  // pidfd still shows that PID afterwards, the process was running throughout and the start time is its own.
-  int pidfd=-1;socklen_t pidfdSize=sizeof(pidfd);
-  if(::getsockopt(fd,SOL_SOCKET,SO_PEERPIDFD,&pidfd,&pidfdSize)==0&&pidfd>=0) {
-   const auto start=processStartTime(peer.pid);
-   if(start!=0&&pidfdPid(pidfd)==peer.pid){peer.start=start;peer.pinned=true;}
-   ::close(pidfd);
-  }
  }
  return peer;
 }
@@ -166,9 +147,7 @@ struct LocalIpcConnection::State {
  QByteArray output;
  qsizetype sent=0;
  bool requestHandled=false;
- LocalPeer peer;
  State(LocalIpcConnection* q,int handle):owner(q),fd(handle),readable(new QSocketNotifier(fd,QSocketNotifier::Read,q)),writable(new QSocketNotifier(fd,QSocketNotifier::Write,q)) {
-  peer=peerOf(fd);
   writable->setEnabled(false);
   QObject::connect(readable,&QSocketNotifier::activated,q,[this]{
    if(requestHandled)discardInput();else emit owner->readyRead();
@@ -213,7 +192,6 @@ struct LocalIpcConnection::State {
 };
 LocalIpcConnection::LocalIpcConnection(qintptr handle,QObject* parent):QObject(parent),state_(std::make_unique<State>(this,int(handle))){}
 LocalIpcConnection::~LocalIpcConnection()=default;
-const LocalPeer& LocalIpcConnection::peer() const{return state_->peer;}
 void LocalIpcConnection::setReadBufferSize(qsizetype size){state_->limit=size;}
 QByteArray LocalIpcConnection::readAll() {
  QByteArray bytes;
@@ -333,12 +311,11 @@ LocalExchange exchangeLocalSession(const QString& path,const QByteArray& request
  exchange(socket,request,deadline,maximumResponse,result.sent,result.response,result.errorCode);
  return result;
 }
-struct LocalIpcConnection::State {QLocalSocket* socket;LocalPeer peer;explicit State(QLocalSocket* value):socket(value){}};
+struct LocalIpcConnection::State {QLocalSocket* socket;explicit State(QLocalSocket* value):socket(value){}};
 LocalIpcConnection::LocalIpcConnection(qintptr handle,QObject* parent):QObject(parent),state_(std::make_unique<State>(reinterpret_cast<QLocalSocket*>(handle))) {
  state_->socket->setParent(this);connect(state_->socket,&QLocalSocket::readyRead,this,&LocalIpcConnection::readyRead);connect(state_->socket,&QLocalSocket::disconnected,this,&LocalIpcConnection::disconnected);
 }
 LocalIpcConnection::~LocalIpcConnection()=default;
-const LocalPeer& LocalIpcConnection::peer() const{return state_->peer;}
 void LocalIpcConnection::setReadBufferSize(qsizetype size){state_->socket->setReadBufferSize(size);}
 QByteArray LocalIpcConnection::readAll(){return state_->socket->readAll();}
 void LocalIpcConnection::stopReading(){QObject::disconnect(state_->socket,&QLocalSocket::readyRead,this,&LocalIpcConnection::readyRead);}

@@ -34,12 +34,11 @@ public:
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
  // How long a client waits for this method's reply.
  static int replyDeadlineMs(const QString& method);
- // person: the request came from the putgd-ui process this resident started (#1962). Every other
- // client, putgd-cli and the MCP helper among them, is an agent's: a copy it asks for withholds a
- // code that holds a secret.
- void dispatch(const QJsonObject&,JsonReply,bool person=false);
- // The putgd-ui process this resident started, or 0 (#1962). Its start time pins it against PID reuse.
- void setUiProcess(qint64 pid);
+ void dispatch(const QJsonObject&,JsonReply);
+ // #1962: the secret this resident hands its own putgd-ui on the private control pipe. A Copy text request
+ // that carries it ("person") is the person's; any other, from putgd-cli, the MCP helper or another client,
+ // is an agent's, and its copy withholds a code that holds a secret. Never part of a reply.
+ QString personToken() const {return personToken_;}
  void setUiActivation(std::function<void(const QString&,std::function<void(Error)>)> callback) {uiActivation_=std::move(callback); }
  // A command for an open interface view; the helper validates its semantics.
  void setUiCommand(std::function<void(const QString&,const QJsonObject&,JsonReply)> callback) {uiCommand_=std::move(callback);}
@@ -68,12 +67,12 @@ private:
  QPointer<UpdateService> updates_;
  QPointer<ErrorLog> errorLog_;
  const QString residentEpoch_;
+ const QString personToken_;
  SettingsService& settings_;
  OperationService& operations_;
  HistoryService& history_;
  LocalIpcServer server_;
  QSet<LocalIpcConnection*> clients_;
- qint64 uiPid_=0;quint64 uiStart_=0;
- bool fromUi(const LocalPeer&) const;
+ bool fromPerson(const QJsonObject& params) const;
 };
 }

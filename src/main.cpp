@@ -598,6 +598,7 @@ int main(int argc,char* argv[]) {
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);
+ ui.setPersonToken(server.personToken());
  ui.setShortcutRecordingHandler([&](bool active,std::function<void(putgd::Error)> reply){
   // Gate dispatch before asking native services to release their registrations.
   // The adapter acknowledgement, not this flag, makes capture safe to start.
@@ -620,7 +621,7 @@ int main(int argc,char* argv[]) {
 #endif
   reply(active?putgd::Error{"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}}:putgd::Error{});
  });
- QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);server.setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
+ QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
 #ifdef PUTGD_NATIVE_X11
  if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);

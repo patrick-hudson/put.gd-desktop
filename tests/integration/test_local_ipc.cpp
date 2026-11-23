@@ -101,17 +101,6 @@ private slots:
   const auto other=d.filePath("not-a-socket");QVERIFY(QDir().mkpath(other));QFile file(other+"/session.sock");QVERIFY(file.open(QIODevice::WriteOnly));file.write("preserve");file.close();LocalServer blocked(settings,operations,history);QVERIFY(blocked.listen(other).error);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),QByteArray("preserve"));
  }
 #ifdef Q_OS_LINUX
- // #1962: the resident knows which process connected. SO_PEERCRED gives its PID, and its pidfd pins it, so
- // a PID a later process reuses cannot pass for it.
- void connectionKnowsItsPeerProcess() {
-  QTemporaryDir d;LocalIpcServer server;QVERIFY(server.listen(d.filePath("session.sock")));
-  LocalPeer seen;connect(&server,&LocalIpcServer::newConnection,this,[&]{auto* peer=server.nextPendingConnection();seen=peer->peer();peer->disconnectFromServer();});
-  QLocalSocket client;client.connectToServer(server.fullServerName());QVERIFY(client.waitForConnected(1000));
-  PUTGD_TRY_VERIFY(seen.connected);
-  QCOMPARE(seen.pid,QCoreApplication::applicationPid());QCOMPARE(seen.uid,uint(::getuid()));
-  QCOMPARE(seen.start,processStartTime(QCoreApplication::applicationPid()));QVERIFY(seen.start!=0);
-  QVERIFY2(seen.pinned,"SO_PEERPIDFD needs Linux 6.5 or later");
- }
  void halfClosedRequestReceivesReply() {
   QTemporaryDir d;LocalIpcServer server;QVERIFY(server.listen(d.filePath("session.sock")));
   connect(&server,&LocalIpcServer::newConnection,this,[&]{auto* peer=server.nextPendingConnection();connect(peer,&LocalIpcConnection::readyRead,this,[peer]{if(peer->readAll()=="request")peer->sendAndClose("reply\n");});});

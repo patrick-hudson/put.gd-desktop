@@ -6,6 +6,8 @@
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include <QUuid>
+#include <QRandomGenerator>
+#include <array>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -34,7 +36,7 @@ void logRejection(const QString& method,const Error& error) {
  logging::warning(logIpc(),"Session request rejected",{{"method",name.match(method).hasMatch()?method:QStringLiteral("<invalid>")},{"code",error.code}});
 }
 }
-LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),residentEpoch_(QUuid::createUuid().toString(QUuid::WithoutBraces)),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
+LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),residentEpoch_(QUuid::createUuid().toString(QUuid::WithoutBraces)),personToken_(QString::fromLatin1(QByteArray::fromStdString([]{std::array<quint32,8> words{};QRandomGenerator::system()->fillRange(words.data(),words.size());return std::string(reinterpret_cast<const char*>(words.data()),sizeof(words));}()).toHex())),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
 QString LocalServer::defaultRuntimeDirectory() {const auto runtime=QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);return runtime.isEmpty()?QString{}:QDir(runtime).filePath("putgd");}
 QString LocalServer::defaultSocketPath() {return QDir(defaultRuntimeDirectory()).filePath("session.sock");}
 Result LocalServer::listen(const QString& supplied) {
@@ -109,17 +111,17 @@ void LocalServer::accept() {
    if(bytes.indexOf('\n')!=bytes.size()-1) {send({},invalid(),{});return;}
    QJsonParseError parseError;auto doc=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!doc.isObject()) {send({}, {"invalid_json","Request must be a JSON object",{}},{});return;}
    auto request=doc.object();const auto id=request["requestId"].toString();QPointer<LocalIpcConnection> guarded(socket);
-   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');}},fromUi(socket->peer()));
+   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');}});
   });
  }
 }
-void LocalServer::setUiProcess(qint64 pid) {uiPid_=pid>0?pid:0;uiStart_=uiPid_?processStartTime(uiPid_):0;}
-bool LocalServer::fromUi(const LocalPeer& peer) const {
- // The same process, not a later one given its PID: the peer held by its pidfd while its start time was
- // read, and that start time the UI's. An unknown one, or a kernel without SO_PEERPIDFD, is no match.
- return uiPid_>0&&uiStart_!=0&&peer.pinned&&peer.pid==uiPid_&&peer.start==uiStart_&&peer.uid==uint(::getuid());
+bool LocalServer::fromPerson(const QJsonObject& params) const {
+ const auto given=params["person"].toString().toLatin1();const auto token=personToken_.toLatin1();
+ if(token.isEmpty()||given.size()!=token.size())return false;
+ char difference=0;for(qsizetype i=0;i<token.size();++i)difference|=char(given.at(i)^token.at(i));
+ return difference==0;
 }
-void LocalServer::dispatch(const QJsonObject& request,JsonReply reply,bool person) {
+void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  reply=[guarded=QPointer<LocalServer>(this),reply=std::move(reply),method=request["method"].toString().left(64),params=request["params"].toObject()](Error error,QJsonObject result){if(error)logRejection(method,error);if(guarded)guarded->noteOutcome(method,params,error);reply(std::move(error),std::move(result));};
  if(!fields(request,{"schemaVersion","requestId","session","method","params"})||!string(request,"requestId",128)||!string(request,"method",64)||!request["params"].isObject()||!request["session"].isString()) {reply(invalid(),{});return;}
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
@@ -214,8 +216,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply,bool perso
   uiCommand_("davDestination",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle"})||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
-  auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options,!person);return;
+  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle","person"})||(p.contains("person")&&!string(p,"person",128))||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  auto options=p;options.remove("action");options.remove("person");operations_.invoke(p["action"].toString(),reply,options,!fromPerson(p));return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
  // client resolves URIs first. A menu entry's client names its installation and
@@ -289,10 +291,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply,bool perso
   {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
  }
  if(method=="history.copyText") {
-  if(!fields(p,{"id"},{"keepResult"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())){reply(invalid(),{});return;}
+  if(!fields(p,{"id"},{"keepResult","person"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())||(p.contains("person")&&!string(p,"person",128))){reply(invalid(),{});return;}
   // History's Copy text: the retained local copy, one clipboard write; counts only unless asked to keep the result.
   // #1962: an agent's copy withholds a code that holds a secret; the person's History keeps it.
-  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()},{"agent",!person}},reply);return;
+  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()},{"agent",!fromPerson(p)}},reply);return;
  }
  // save needs an absolute path and may overwrite; copy and show take neither.
  if(method=="history.qr") {

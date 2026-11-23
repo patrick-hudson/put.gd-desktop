@@ -1553,7 +1553,7 @@ void HistoryWindow::copyText(const QJsonObject& record){
  if(const auto reason=copyTextUnavailable(record);!reason.isEmpty()){notice(reason);return;}
  if(textPoll_->isActive()){notice("Text recognition is still running");return;}
  copyText_->setEnabled(false);Ui::feedback(status_,"Reading text…");
- session_.request("history.copyText",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject result){
+ session_.request("history.copyText",{{"id",record["id"]},{"person",session_.personToken()}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject result){
   if(!g)return;
   if(e){if(e.code=="text_busy")g->notice("Text recognition is still running");else g->notify(e);g->copyText_->setEnabled(copyTextUnavailable(g->currentDetail_).isEmpty());return;}
   g->textOperation_=result["operationId"].toString();g->textPoll_->start();

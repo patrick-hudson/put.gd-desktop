@@ -6,7 +6,6 @@
 #include "core/Log.h"
 #include "app/LocalServer.h"
 #include <QLocalSocket>
-#include <QProcess>
 #include <QDirIterator>
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -183,32 +182,38 @@ private slots:
   {HistoryStore store(resident.operations->databasePath());QVERIFY(!store.saveOperation(operation));}
   resident.source.payload.kind="image";resident.source.payload.image=image;
   HistoryService history(*resident.operations);LocalServer server(*resident.settings,*resident.operations,history);QVERIFY(!server.listen(resident.dir.filePath("runtime")).error);
-  const auto call=[&](const QString& method,const QJsonObject& params)->QString{
+  QByteArray replies;
+  const auto send=[&](const QString& method,const QJsonObject& params)->QByteArray{
    QLocalSocket socket;socket.connectToServer(server.socketPath());if(!socket.waitForConnected(1000))return {};
    socket.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"requestId","copy-1962"},{"session",server.socketPath()},{"method",method},{"params",params}}).toJson(QJsonDocument::Compact)+'\n');
    QByteArray reply;if(!waitFor([&]{socket.waitForReadyRead(50);reply+=socket.readAll();return reply.endsWith('\n');}))return {};
-   const auto id=QJsonDocument::fromJson(reply).object()["result"].toObject()["operationId"].toString();
+   replies+=reply;return reply;
+  };
+  const auto call=[&](const QString& method,const QJsonObject& params)->QString{
+   const auto id=QJsonDocument::fromJson(send(method,params)).object()["result"].toObject()["operationId"].toString();
    return !id.isEmpty()&&waitFor([&]{return resident.ended(id);})?id:QString();
   };
-  // Another process standing in for putgd-ui: a caller that is not it is an agent even while a UI runs.
-  QProcess ui;ui.start(QStringLiteral("sleep"),{QStringLiteral("60")});QVERIFY(ui.waitForStarted(5000));
-  const auto stop=qScopeGuard([&ui]{ui.kill();ui.waitForFinished(5000);});
   struct Case {QString method;QJsonObject params;};
   const QList<Case> cases{{"history.copyText",{{"id","text-item"}}},{"action.invoke",{{"action","text"}}}};
   for(const auto& c:cases){
-   // An agent, with no putgd-ui and with another process as putgd-ui: the clipboard gets the code by its kind,
-   // the ordinary code whole.
-   for(const qint64 registered:{qint64(0),qint64(ui.processId())}){
-    server.setUiProcess(registered);
-    QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
+   // An agent: no token, or one that is not the resident's. The clipboard gets the code by its kind, the
+   // ordinary code whole; each call copies anew (Sol on #1966).
+   auto wrong=c.params;wrong["person"]=QString(server.personToken().size(),QChar('0'));
+   for(const auto& params:{c.params,wrong}){
+    const int copies=resident.source.copies;
+    QVERIFY2(!call(c.method,params).isEmpty(),qPrintable(c.method));QCOMPARE(resident.source.copies,copies+1);
     QVERIFY2(!resident.source.copied.text.contains(seed),qPrintable(c.method));QVERIFY2(resident.source.copied.text.contains("[2FA QR code withheld]"),qPrintable(c.method));
     QVERIFY(resident.source.copied.text.contains(codeCanary));
    }
-   // The person's putgd-ui (here, this process): their own copy keeps it.
-   server.setUiProcess(QCoreApplication::applicationPid());
-   QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
+   // The person's putgd-ui, with the token from its private pipe: their own copy keeps it.
+   auto person=c.params;person["person"]=server.personToken();
+   const int copies=resident.source.copies;
+   QVERIFY2(!call(c.method,person).isEmpty(),qPrintable(c.method));QCOMPARE(resident.source.copies,copies+1);
    QVERIFY2(resident.source.copied.text.contains(seed),qPrintable(c.method));
   }
+  // The token is the resident's alone: long, and in no reply.
+  QVERIFY(server.personToken().size()>=32);QVERIFY(!send("capabilities",{}).isEmpty());
+  QVERIFY(!replies.contains(server.personToken().toLatin1()));
  }
  void keptResultExpires() {
   Resident resident;QVERIFY(resident.start());resident.operations->text().setResultLifetimeForTesting(50);
