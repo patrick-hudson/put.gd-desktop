@@ -174,6 +174,9 @@ private slots:
   QTest::newRow("a card after a long number and before a year")<<"12345678901234567 4111 1111 1111 1111 2026"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
   QTest::newRow("a phone before a month is a phone")<<"Call 202-555-0143 Nov 22"<<QStringList{"phone"}<<QStringList{"phone: 202-555-0143"};
   QTest::newRow("a phone after a slash is a phone")<<"Phone/202-555-0143"<<QStringList{"phone"}<<QStringList{"phone: Phone/202-555-0143"};
+  // #1975: a "#" number after any other word is a run's or an order's number.
+  QTest::newRow("a workflow run's number is no phone")<<"12:31 PM EST helpers #1714797062 master 1m 15s"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("an order's number after its status is no phone")<<"Ordered Delivered #523878536 Shopping"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a phone after a hash is a phone")<<"Phone #202-555-0143 Telefon #2125550100"<<QStringList{"phone"}<<QStringList{"phone: #202-555-0143","phone: #2125550100"};
   QTest::newRow("a phone after Total: or a product's slash is a phone")<<"Total: 2125550100 | Mobile/2025550143"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: Mobile/2025550143"};
   QTest::newRow("a labelled card keeps the earlier rule")<<"Card: 4110 4111 4112 4113"<<QStringList{"card"}<<QStringList{"card: 4110 4111 4112 4113"};
@@ -183,7 +186,12 @@ private slots:
   QTest::newRow("a phone after Total: is a phone")<<"Total: +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
   QTest::newRow("an address and a stray dotted number")<<"IP 192.0.2.1 .5"<<QStringList{"ip"}<<QStringList{"ip: 192.0.2.1"};
   QTest::newRow("an IPv6 address with an IPv4 tail")<<"Host 2001:db8:0:0:0:0:192.0.2.1"<<QStringList{"ip"}<<QStringList{"ip: 2001:db8:0:0:0:0:192.0.2.1"};
-  QTest::newRow("loopback in eight two-digit groups")<<"IPv6 [00:00:00:00:00:00:00:01]"<<QStringList{"ip"}<<QStringList{"ip: [00:00:00:00:00:00:00:01]"};
+  // #1975: loopback and unspecified addresses name no host; a LAN address beside them still counts.
+  QTest::newRow("loopback in eight two-digit groups is no address")<<"IPv6 [00:00:00:00:00:00:00:01]"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a loopback address with a port is no address")<<"Servers localhost http://127.0.0.1:8000 and 10.0.4.17:8000"<<QStringList{"ip"}<<QStringList{"ip: 10.0.4.17:8000"};
+  QTest::newRow("the unspecified IPv6 address in full is no address")<<"bind 0:0:0:0:0:0:0:0 port 80"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a loopback network prefix is no address")<<"route 127.0.0.0/8 dev lo"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("an address after 127 in its own octets stays")<<"host 172.127.0.1 up"<<QStringList{"ip"}<<QStringList{"ip: 172.127.0.1"};
   QTest::newRow("two cards in a row")<<"4111 1111 1111 1111 5555 5555 5555 4444"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111","card: 5555 5555 5555 4444"};
   // #1939 (groups 5 and 12): counted rows, dates and counts are no cards or phones.
   QTest::newRow("a calendar week is no card or phone")<<"19 20 21 22 23 24 25"<<all<<QStringList{};
@@ -227,8 +235,9 @@ private slots:
   QTest::newRow("a package version before its release is no address")<<"libfoo 8.17.4.28-3.fc45"<<QStringList{"ip"}<<QStringList{};
   QTest::newRow("a section number is no address")<<"See Section 1.2.3.4 below"<<QStringList{"ip"}<<QStringList{};
   QTest::newRow("a version number is no address")<<"Version 2.11.7.54"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a version requirement is no address")<<"gem 'rails', '>= 8.1.4.1' and pin ~> 10.2.0.4"<<QStringList{"ip"}<<QStringList{};
   QTest::newRow("an address range stays an address")<<"Pool 10.0.0.1-10.0.0.255"<<QStringList{"ip"}<<QStringList{"ip: 10.0.0.1-10.0.0.255"};
-  QTest::newRow("an address split at a dot")<<"LISTEN 0 4096 148 .98.250.123:443 0.0.0.0:*"<<QStringList{"ip"}<<QStringList{"ip: 148 .98.250.123:443","ip: 0.0.0.0:*"};
+  QTest::newRow("an address split at a dot")<<"LISTEN 0 4096 148 .98.250.123:443 0.0.0.0:*"<<QStringList{"ip"}<<QStringList{"ip: 148 .98.250.123:443"};
   QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
   // #1850, Kate on k72: a 64-character hex secret soft-wrapped so its last three letters and the
   // closing quote start the next line. The quote the first line left open closes there.
@@ -366,8 +375,41 @@ private slots:
   QTest::newRow("an address beside a legend still matches")<<"@ Opus 5.5 ops@example.com @ Fable5.2"<<all<<QStringList{"email: ops@example.com"};
   // On the final candidate (#1462) with the page cut into eight strips, the
   // 36-letter GitHub fixture at 14 px came back with its prefix gone.
-  QTest::newRow("token collapsed into repeated letters, prefix lost")<<"oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"<<all<<QStringList{"key: oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"};
-  QTest::newRow("token collapsed into two letters, prefix misread")<<"APC CCEEEECEEEECEEECEEEECEEECEEEECEEETT"<<all<<QStringList{"key: APC CCEEEECEEEECEEECEEEECEEECEEEECEEETT"};
+  QTest::newRow("token collapsed into repeated letters, prefix lost")<<"oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"<<all<<QStringList{"key: aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"};
+  // #1975: one character must be four in five of the run, not half: two or three letters mixed are what
+  // recognition makes of drawn bars (a status page's uptime bars), so a token collapsed into two letters
+  // is a limit now.
+  QTest::newRow("token collapsed into two letters is a limit")<<"APC CCEEEECEEEECEEECEEEECEEECEEEECEEETT"<<all<<QStringList{};
+  QTest::newRow("a status page's uptime bars are no key")<<"TEREEEREREEEREREERREREREREREREEREREREEERERERERRREREREREEREREREEERERREREEEREEEEROEOEEREEEOE"<<all<<QStringList{};
+  QTest::newRow("uptime bars read as words are no key")<<"PULUUUUURU CURR RUC UULUUUUURUOUUURUR OU GURL RUGUUU UU URRUU RO CURURRRUREOUROURUURR"<<all<<QStringList{};
+  QTest::newRow("npm's banner naming tokens in a sentence is no key")<<"npm tokens that bypass 2FA are being restricted — account changes (Aug 2026) and direct publishing (Jan 2027)."<<all<<QStringList{};
+  {const QString body=QStringLiteral("a1B2c3D4e5").repeated(3)+QStringLiteral("F6g7H8");
+   QTest::newRow("an npm token with its separator lost is still a key")<<QStringLiteral("np")+QStringLiteral("m ")+body<<all<<QStringList{QStringLiteral("key: np")+QStringLiteral("m ")+body};}
+  QTest::newRow("prose naming a key beside a number is no setup key")<<"A blank key, or one longer than 255 characters, gets rejected"<<all<<QStringList{};
+  QTest::newRow("an ornament of E and O is no hex")<<"EOOOOOOOOEOEOEOEOAEaEEaEEEOOOEOEOEOEOEOEOEOEOEOEOEOEOEOEOEOEOEOEOEEE"<<all<<QStringList{};
+  QTest::newRow("a span of years is no phone")<<"© 1995-2026 eBay Inc. Douglas Adams (1952-2001)"<<all<<QStringList{};
+  QTest::newRow("a Wikipedia temporary account is no phone")<<"(talk) ~2026-61798-25 edited Linux"<<all<<QStringList{};
+  QTest::newRow("a phone beside a span of years still counts")<<"Since 1995-2026 call 212-555-0100"<<all<<QStringList{"phone: 212-555-0100"};
+  QTest::newRow("a bearer token cut short beside a button is a key")<<"AAAAAAAAAAAAAAAAA… Regenerate"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAA… Regenerate"};
+  // Sol on #1976: the #1975 exemptions keep real secrets.
+  QTest::newRow("an npm token with its separator, split into words, is a key")<<QStringLiteral("np")+QStringLiteral("m_ Ta By eza Faveru Bano fb37HkH5nE4T2s9c4p3")<<all<<QStringList{QStringLiteral("key: np")+QStringLiteral("m_ Ta By eza Faveru Bano fb37HkH5nE4T2s9c4p3")};
+  QTest::newRow("hex with ones read as l is a key")<<"8delacell9be6fdaclbdllfldbbdeacle"<<all<<QStringList{"key: 8delacell9be6fdaclbdllfldbbdeacle"};
+  QTest::newRow("an address in a filter's comparison is an address")<<"filter ip.addr == 192.168.0.1"<<all<<QStringList{"ip: 192.168.0.1"};
+  QTest::newRow("an IPv6 address ending in :: is no loopback")<<"addr 0:0:1:: up"<<all<<QStringList{"ip: 0:0:1::"};
+  QTest::newRow("a phone after a hash alone is a phone")<<"#2125550100"<<all<<QStringList{"phone: #2125550100"};
+  QTest::newRow("a phone after Celular and a hash is a phone")<<"Celular: #912345678"<<all<<QStringList{"phone: #912345678"};
+  QTest::newRow("a Korean service number is no span of years")<<"Phone: 1899-1995"<<all<<QStringList{"phone: 1899-1995"};
+  QTest::newRow("a dialling form after a tilde is a phone")<<"Tel: ~+1-202-555-0143"<<all<<QStringList{"phone: ~+1-202-555-0143"};
+  QTest::newRow("an address whose dot was lost before a mixed-case ending")<<"Write ops@example CoM"<<all<<QStringList{"email: ops@example CoM"};
+  QTest::newRow("a phone after a hash and a bullet is a phone")<<"• #2125550100"<<all<<QStringList{"phone: #2125550100"};
+  QTest::newRow("a run's number after a path and its dot is no phone")<<"go_modules in /. #1709579542 master"<<all<<QStringList{};
+  QTest::newRow("an address whose dot was lost before live")<<"Write support@example live"<<all<<QStringList{"email: support@example live"};
+  QTest::newRow("a page number after scan is no setup key")<<"scan pages 2345 from book"<<all<<QStringList{};
+  QTest::newRow("a setup key in capitals with a group of digits")<<"Scan | JBSW 2345 EHPK XPAB"<<all<<QStringList{"key: JBSW 2345 EHPK XPAB"};
+  QTest::newRow("a phone after a bracketed hash is a phone")<<"(#2125550100)"<<all<<QStringList{"phone: (#2125550100)"};
+  QTest::newRow("a padded setup key with a group of digits")<<"Scan | jbsw 2345 hpkp xpab jbsw hpkp xpaa===="<<all<<QStringList{"key: jbsw 2345 hpkp xpab jbsw hpkp xpaa===="};
+  QTest::newRow("a masked bearer token is no key")<<"AAAAAAAAAAAAAAAAAAAAAxxxxxxxxxxxxxxxxxxxx"<<all<<QStringList{};
+  QTest::newRow("a bearer token's run of A's is a key")<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"};
   QTest::newRow("a UUID split before its last group is no phone")<<"UUID 550e8400-e29b-41d4-a7 16-446655440000 assigned to device VM-07."<<all<<QStringList{};
   // Ordinary lines that resembled tokens or numbers once words were joined.
   QTest::newRow("a version is not a phone")<<"Release 26.1112.4660 for Ubuntu 24.04"<<all<<QStringList{};
@@ -625,7 +667,7 @@ private slots:
   {const auto masked=QString("sk")+"_li"+"ve_"+QString(32,'X')+"9aB3dE5fG7hJ";
    // #1894: a run of X no key holds marks a masked display, whose tail is meant to be seen.
    QTest::newRow("a masked key with a tail shown stays visible")<<"key "+masked<<all<<QStringList{};}
-  QTest::newRow("half zeros and the rest a token stays covered")<<"TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"<<QStringList{"key"}<<QStringList{"key: TOKEN "+QString(16,'0')+"RRRRRRRRaaaabbbb"};
+  QTest::newRow("mostly zeros and the rest a token stays covered")<<"TOKEN "+QString(24,'0')+"RRaabb"<<QStringList{"key"}<<QStringList{"key: TOKEN "+QString(24,'0')+"RRaabb"};
   // Sol on #1901, round 2.
   QTest::newRow("a Brazilian mobile after a country code word is a phone")<<"Celular BR 91234-5678"<<all<<QStringList{"phone: 91234-5678"};
   QTest::newRow("a bare ZIP+4 is not a phone")<<"Ship to 71674-4468"<<all<<QStringList{};
@@ -720,7 +762,8 @@ private slots:
    QTest::newRow("a quoted passphrase after a flag")<<"$ deploy --password='correct horse battery staple' --yes"<<key<<QStringList{"key: --password='correct horse battery staple'"};
    QTest::newRow("a region-shaped password under its label")<<"Mot de passe : us-east-1"<<key<<QStringList{"key: us-east-1"};
    QTest::newRow("a passphrase of eight words")<<"wpa_passphrase=one two three four five six seven eight"<<key<<QStringList{"key: wpa_passphrase=one two three four five six seven eight"};
-   QTest::newRow("a setup key of letters alone")<<"Setup key: | JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
+   QTest::newRow("a lowercase setup key with a group of digits")<<"Setup key: | jbsw 2345 hpkp xpab"<<key<<QStringList{"key: jbsw 2345 hpkp xpab"};
+  QTest::newRow("a setup key of letters alone")<<"Setup key: | JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
    QTest::newRow("a setup key over two rows")<<"Enter this key: | JBSW Y3DP | EHPK 3PXP"<<key<<QStringList{"key: JBSW Y3DP EHPK 3PXP"};
    QTest::newRow("recovery codes on the heading's row")<<"Recovery codes: MTAX-CKAP GHRQ-PLKD"<<key<<QStringList{"key: MTAX-CKAP GHRQ-PLKD"};
    const auto sid=QString("12dsfFdsf")+"bn23dsk",letters=QString("KgmBntgvf")+"RQhGHgdKW";
@@ -1734,6 +1777,13 @@ private slots:
   QCOMPARE(found(numeric,QStringList{"email"}),QStringList{"email: a@3 com"});
   const QList<RecognizedWord> serif{{"j@j",QRect(0,0,16,12),90,0},{"io",QRect(22,3,8,6),90,0}};
   QCOMPARE(found(serif,QStringList{"email"}),QStringList{"email: j@j io"});
+  // #1975: a logo's word after an icon read as "@" gets no dot: capitalized, or no domain's ending.
+  const QList<RecognizedWord> logo{{"cri@Duzz",QRect(0,0,64,20),40,0},{"Live",QRect(70,0,32,20),90,0}};
+  QCOMPARE(found(logo,QStringList{"email"}),QStringList{});
+  const QList<RecognizedWord> word{{"WViIg@tio",QRect(0,0,72,20),40,0},{"lieve",QRect(78,0,40,20),90,0}};
+  QCOMPARE(found(word,QStringList{"email"}),QStringList{});
+  const QList<RecognizedWord> upper{{"OPS@EXAMPLE",QRect(0,0,96,20),90,0},{"COM",QRect(102,0,30,20),90,0}};
+  QCOMPARE(found(upper,QStringList{"email"}),QStringList{"email: OPS@EXAMPLE COM"});
   // #1942: a word before an @-mention stands at least half a line's height off; it joins nothing.
   const QList<RecognizedWord> mention{{"thanks",QRect(0,0,48,20),90,0},{"@jane.doe",QRect(60,0,72,20),90,0}};
   QCOMPARE(found(mention,QStringList{"email"}),QStringList{});

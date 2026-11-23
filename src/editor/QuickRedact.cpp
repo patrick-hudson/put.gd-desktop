@@ -81,7 +81,16 @@ QList<QString> emailView(const QList<QString>& plain,const QList<RecognizedWord>
   const auto& word=candidates.at(i).rect;const auto& next=candidates.at(i+1).rect;
   const bool beside=next.left()-(word.right()+1)<=qMax(word.height(),next.height());
   const bool wide=word.width()*10>word.height()*11;
-  if(at>0&&!out.at(i).mid(at).contains('.')&&beside&&wide&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(plain.at(i+1)).hasMatch())out[i]+='.';
+  // #1975: and only before a top-level domain as written, one case throughout: a country's two letters
+  // or a common name ("kenji@gmail" "com"), not a logo's word after an icon read as "@" ("cri@Duzz" "Live").
+  // A common name may be read in mixed case ("ops@example" "CoM"; Sol S7 on #1976).
+  // Names that are ordinary words too (live, one, page…) only in one case: "Live" after a logo is no
+  // domain (cri@Duzz Live), "live" may be (Sol S13 on #1976).
+  static const QSet<QString> common{"com","net","org","edu","gov","mil","int","info","biz","pro","io","ai","app","dev","co","tv","xyz","eu","asia","invalid","example","internal"};
+  static const QSet<QString> words{"name","me","cloud","online","site","tech","email","mail","page","blog","shop","store","news","club","space","host","test","local","lan","home","live"};
+  const auto& tld=plain.at(i+1);
+  const bool single=tld==tld.toLower()||tld==tld.toUpper();
+  if(at>0&&!out.at(i).mid(at).contains('.')&&beside&&wide&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(tld).hasMatch()&&((single&&(tld.size()==2||words.contains(tld.toLower())))||common.contains(tld.toLower())))out[i]+='.';
  }
  return out;
 }
@@ -217,6 +226,11 @@ QList<int> owners(const Joined& joined,qsizetype start,qsizetype length) {
  return words;
 }
 int digits(const QString& text) {return int(std::count_if(text.cbegin(),text.cend(),[](QChar c){return c>='0'&&c<='9';}));}
+// #1975: a loopback or unspecified address (127.0.0.1:8000, 0.0.0.0, 0:0:0:0:0:0:0:1) names no host.
+bool validIpv4(const QString& text) {
+ const auto address=text.section(QLatin1Char('/'),0,0).section(QLatin1Char(':'),0,0);
+ return !address.startsWith(QLatin1String("127."))&&address!=QLatin1String("0.0.0.0");
+}
 bool validIpv6(const QString& text) {
  if(text.count("::")>1||text.contains(":::"))return false;
  const bool compressed=text.contains("::");
@@ -224,6 +238,8 @@ bool validIpv6(const QString& text) {
  static const QRegularExpression hex("^[0-9A-Fa-f]{1,4}$");
  for(const auto& group:groups)if(!hex.match(group).hasMatch())return false;
  if(compressed?groups.size()>7:groups.size()!=8)return false;
+ static const QRegularExpression zero("^0+$"),last("^0*[01]$");
+ if(!groups.isEmpty()&&(text.endsWith(QLatin1String("::"))?zero:last).match(groups.last()).hasMatch()&&std::all_of(groups.cbegin(),groups.cend()-1,[](const QString& g){return zero.match(g).hasMatch();}))return false;
  if(!compressed&&(text.startsWith(':')||text.endsWith(':')))return false;
  // Short forms like a::b are too common in code to call an address.
  return groups.size()>=3||(compressed&&std::any_of(groups.cbegin(),groups.cend(),[](const QString& g){return g.size()==4;}));
@@ -303,21 +319,25 @@ bool hexRun(const QString& run) {
  const auto& confused=hexConfusions();
  if(run.size()<32)return false;
  int other=0,digits=0,letters=0,read=0;
- for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;if(c>='0'&&c<='9'&&raw!='o')++read;}
- // #1940: and one character in eight a digit other than a lowercase o: a receipt's leaders read as
- // "ccooecoo" are hex only through their o, while hex keeps its digits 2 to 9 however 0 and 1 are read.
+ for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;if(c>='0'&&c<='9'&&raw!='o'&&raw!='O')++read;}
+ // #1940: and one character in eight a digit as read: a receipt's leaders read as "ccooecoo" are hex
+ // only through their o, while hex keeps its digits 2 to 9 however 0 and 1 are read. #1975: an upper-case
+ // O is no digit either: a page's ornament read as "EOEOEOOOOOEOEO" (kakaku.com) is no hex; an l or I
+ // read for a one still is (Sol S3 on #1976).
  return other*12<=run.size()&&digits*5>=run.size()&&letters*10>=run.size()&&read*8>=run.size();
 }
 // Base64 or base64url of random bytes: upper and lower case and digits, and a
 // change of character class at least every third character on average.
-// A token whose recognition collapsed into a run of two or three repeated
-// letters: on the final candidate, with the page cut into eight strips, a
-// GitHub token of 36 identical letters came back as "oho aeaaaaaaeae aad …"
-// and "APC CCEEEECEEEEC…", the prefix gone. A masked or placeholder secret
-// ("xxxxxxxxxxxxxxxx") has the same shape. At least 24 letters or digits, the
-// three commonest characters (ignoring case) at least 85 % of them and the
-// commonest alone half; prose never repeats so few letters for so long, and
-// rules of dashes or dots are not letters.
+// A run of one repeated character: a Twitter bearer token starts with 21 A's
+// (AAAAAAAAAAAAAAAAAAAAA…). A masked or placeholder secret ("xxxxxxxxxxxxxxxx")
+// has the same shape. At least 24 letters or digits, the three commonest
+// characters (ignoring case) at least 85 % of them and the commonest alone four
+// in five; prose never repeats one letter for so long, and rules of dashes or
+// dots are not letters. #1975: four in five, no longer half: what recognition
+// makes of a status page's uptime bars ("TEREEEREREEERERE…", "PULUUUUURU CURR")
+// or a chart repeats two or three letters too, and so did a synthetic token of
+// 36 identical letters whose prefix recognition lost ("oho aeaaaaaaeae aad"),
+// now a limit.
 bool repeatedRun(const QString& run) {
  // #1897: counted in an array (ASCII) and a hash for the rest: the fallback tries many windows.
  std::array<int,128> ascii{};QHash<QChar,int> other;int characters=0;
@@ -352,9 +372,12 @@ bool repeatedRun(const QString& run) {
  {qsizetype cut=-1;for(const QChar c:{QChar('_'),QChar('-'),QChar('.'),QChar('='),QChar(':')})cut=qMax(cut,run.lastIndexOf(c));
   const auto tail=run.mid(cut+1);
   if(cut>=0&&tail.size()>=16)for(const QChar mask:{QChar('x'),QChar('0')})if(tail.count(mask,Qt::CaseInsensitive)*10>=tail.size()*9)return false;}
+ // A Twitter bearer token's own start, even cut short beside a button ("AAAAAAAAAAAAAAAAA…  Regenerate"),
+ // after the mask checks above, so a masked one ("AAAA…xxxx") stays visible.
+ {static const QRegularExpression bearer(QStringLiteral("A{16}"));if(bearer.match(run).hasMatch())return true;}
  QList<int> sizes=counts.values();std::sort(sizes.begin(),sizes.end(),std::greater<int>());
  int top=0;for(int i=0;i<qMin(3,int(sizes.size()));++i)top+=sizes.at(i);
- return top*100>=characters*85&&sizes.first()*2>=characters;
+ return top*100>=characters*85&&sizes.first()*5>=characters*4;
 }
 bool base64Run(const QString& run) {
  if(run.size()<32)return false;
@@ -628,8 +651,10 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // #1971: nor is a row of upper-case words after one that reads as the prefix ("US" "ASIA" "EUR"
    // "BONDS" "OIL" "GOLD", a market page's tabs): a body with no digit in its first 16 characters,
    // across three words or more, each an ordinary word (see wordShape). A key ID's body is 16 random
-   // characters of A to Z and 2 to 7.
-   if(index==0){
+   // characters of A to Z and 2 to 7. #1975: the same for every prefix whose separator was lost: a
+   // sentence after the word ("npm tokens that bypass 2FA are…", npm's own banner) is no token. A
+   // separator read as written ("npm_" then the body) keeps it a token (Sol S1 on #1976).
+   if(index==0||candidate.capturedLength(2)==0){
     const int bodyAt=base+int(candidate.capturedStart(3));const auto body=candidate.captured(3).left(16);
     const int from=pieceAt(segment,bodyAt),to=pieceAt(segment,bodyAt+int(body.size())-1);
     const auto pieceText=[&](int p){const int e=p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size());return segment.text.mid(segment.starts.at(p),e-segment.starts.at(p));};
@@ -1878,12 +1903,20 @@ QList<QList<int>> twoFactorMatches(const QMap<int,QList<int>>& lines,const QList
   // base32 alphabet too ("notes cluster track please…").
   const auto passes=[&](const QList<int>& words,bool strong){
    QString run;QSet<qsizetype> sizes;for(const int w:words){run+=plain.at(w);sizes.insert(plain.at(w).size()-plain.at(w).count('='));}
-   const int digits=int(std::count_if(run.cbegin(),run.cend(),[](QChar c){return c.isDigit();}));
+   const bool even=words.size()==1||(sizes.size()<=2&&std::all_of(sizes.cbegin(),sizes.cend(),[](qsizetype n){return n>=3&&n<=8;}));
+   // #1975: unless the groups are a key's groups of one width (the last may be shorter), digits count
+   // inside a group that holds letters too: a number of its own between lowercase words is prose's ("A
+   // blank key, or one longer than 255 characters", "scan pages 2345 from book"), while "jbsw 2345 hpkp
+   // xpab" keeps its digit group (Sol S2 and S15 on #1976).
+   bool uniform=words.size()>1;
+   // Widths without base32's "=" padding, as above.
+   const auto width=[&](int k){const auto& t=plain.at(words.at(k));return t.size()-t.count('=');};
+   for(int k=1;uniform&&k<words.size();++k){const auto a=width(0),b=width(k);uniform=a>=3&&a<=8&&(b==a||(k==words.size()-1&&b<a));}
+   int digits=0;for(const int w:words){const auto& t=plain.at(w);if(words.size()==1||uniform||std::any_of(t.cbegin(),t.cend(),[](QChar c){return c.isLetter();}))digits+=int(std::count_if(t.cbegin(),t.cend(),[](QChar c){return c.isDigit();}));}
    const int letters=int(std::count_if(run.cbegin(),run.cend(),[](QChar c){return c.isLetter();}));
    if(run.size()<16||letters<8)return false;
    if(digits>=2)return true;
    const bool capitals=std::none_of(run.cbegin(),run.cend(),[](QChar c){return c.isLower();});
-   const bool even=words.size()==1||(sizes.size()<=2&&std::all_of(sizes.cbegin(),sizes.cend(),[](qsizetype n){return n>=3&&n<=8;}));
    return capitals&&even&&((digits==1&&words.size()>=6)||strong);
   };
   for(int k=0;k<keys.size();++k){
@@ -2451,17 +2484,23 @@ const QList<Rule>& rules() {
   // #1939: a package version shaped as an address is none: after an epoch (1:8.17.4.28) or before a
   // release (8.17.4.28-3.fc45, 2.11.7.54-1ubuntu2). A range (10.0.0.1-10.0.0.255) stays. Each
   // lookbehind has a fixed length: Qt 6.4's PCRE2 rejects variable-length ones.
-  {"ip",QRegularExpression(R"((?<![\d.vV])(?<!(?<![\w:.])\d:)(?<!(?<![\w:.])\d\d:)(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d|-\d+[.~+]?[A-Za-z]))"),{},1},
+  {"ip",QRegularExpression(R"((?<![\d.vV])(?<!(?<![\w:.])\d:)(?<!(?<![\w:.])\d\d:)(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d|-\d+[.~+]?[A-Za-z]))"),validIpv4,1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
   // #1939: nor after a currency sign (an order number after "#" is left out in findOrdered). An area
   // code may end at a slash, as in German (+49 30 / 813854, 030 / 813854).
-  {"phone",QRegularExpression(R"((?<![\w+.$€£¥₹-])(?<!(?<![A-Za-z0-9])\d\d:)(?:\+\d{1,3}[ .-]?(?:\d{1,5} ?/ ?)?|0\d{2,4} ?/ ?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
+  // #1975: nor a number of digits right after "~" (about, or a Wikipedia temporary account,
+  // ~2026-61798-25); a "+" dialling form after it stays one (Sol S10 on #1976).
+  {"phone",QRegularExpression(R"((?<![\w+.$€£¥₹-])(?!(?<=~)\d)(?<!(?<![A-Za-z0-9])\d\d:)(?:\+\d{1,3}[ .-]?(?:\d{1,5} ?/ ?)?|0\d{2,4} ?/ ?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
     // At least 7 digits and at most 15 (E.164); a date or an IPv4 address is not a number to call.
     static const QRegularExpression date(R"(^(?:\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4})$)"),dotted(R"(^\d{1,3}(?:\.\d{1,3}){3}$)");
     // Separated by dots alone, a number is a phone in the 3-3-4 grouping or in
     // pairs (01.23.45.67.89); 26.1112.4660 is a version.
     static const QRegularExpression dots(R"(^\d+(?:\.\d+)+$)"),grouped(R"(^(?:\d{3}\.\d{3}\.\d{4}|\d{2}(?:\.\d{2}){3,})$)");
     if(dots.match(m).hasMatch()&&!grouped.match(m).hasMatch())return false;
+    // #1975: a span of years is no number to call (1995-2026, (1952-2001)).
+    // Years 1900 to 2099 only: Korea's eight-digit service numbers start 15xx to 18xx (1899-1995; Sol S9 on #1976).
+    {static const QRegularExpression years(R"(^\(?((?:19|20)\d\d) ?[-–] ?((?:19|20)\d\d)\)?$)");
+     const auto y=years.match(m);if(y.hasMatch()&&y.captured(2).toInt()>=y.captured(1).toInt())return false;}
     // More than ten digits unbroken is written only after a "+" (16-446655440000 was a UUID's tail).
     // #1939: except an 11-digit mobile written whole, as China (138...) and the trunk-0 countries (UK
     // 07700..., Japan 090..., Korea 010...) write them.
@@ -3289,7 +3328,15 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
        int before=loneHash?first-2:first-1;if(before>=head&&before>=0&&candidates.at(before).text==QLatin1String(":"))--before;
        const QString label=at>1?word.left(at-1):before>=head&&before>=0?candidates.at(before).text:QString();
        static const QRegularExpression time(QStringLiteral("^\\d{1,2}:\\d{2}(?::\\d{2})?$"));
-       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()))continue;}
+       // #1975: and after any other word than one that names a number to call or an account: a
+       // run's or an order's number ("helpers #1714797062", GitHub Actions; "Delivered #523878536"). With
+       // no word before it, it stays a phone (Sol S6 on #1976); punctuation alone (a bullet, "/.") is passed
+       // over to the word before it.
+       QString context=label;
+       {static const QRegularExpression mark(QStringLiteral("[\\p{L}\\p{N}]"));
+        if(!mark.match(context).hasMatch()){context.clear();for(int k=at>1?first-1:before-1;k>=head&&k>=0;--k)if(mark.match(candidates.at(k).text).hasMatch()){context=candidates.at(k).text;break;}}}
+       static const QRegularExpression calling(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|t\\x{00e9}l\\x{00e9}phone|tlf|phone|ph|mobile|mobil|mob|movil|m\\x{00f3}vil|cell|cel|celular|handy|fax|whatsapp|call|contact|kontakt|account|acct|konto|number|num|no|nr)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
+       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()||(!context.isEmpty()&&!calling.match(context).hasMatch())))continue;}
       if(currency.match(after).hasMatch())continue;
       // A browser's build date in a user agent (Gecko/20100101).
       static const QRegularExpression product(QStringLiteral("^[(\\[]?Gecko/\\d"));
@@ -3300,6 +3347,10 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      static const QRegularExpression label(QStringLiteral("^(?:section|sect\\.?|\\x{00a7}|chapter|clause|article|rule|version|ver\\.?|release|build|firmware|kernel|revision|rev\\.?)[:.]?$"),QRegularExpression::CaseInsensitiveOption);
      const int first=words.first();
      if(first>0&&candidates.at(first-1).line==candidates.at(first).line&&label.match(candidates.at(first-1).text).hasMatch())continue;
+     // #1975: nor one after a version requirement's operator (gem 'rails', '>= 8.1.4.1'; ~> 8.1.4.1). Not
+     // == or !=, which filters compare addresses with (ip.addr == 192.168.0.1; Sol S4 on #1976).
+     static const QRegularExpression requirement(QStringLiteral("^[\"'(\\[]?(?:>=|<=|~>|\\^|~=)$"));
+     if(first>0&&candidates.at(first-1).line==candidates.at(first).line&&requirement.match(candidates.at(first-1).text).hasMatch())continue;
     }
     // #1942: a mail header's message identifiers (Message-ID, In-Reply-To, References)
     // are shaped like addresses and are none.

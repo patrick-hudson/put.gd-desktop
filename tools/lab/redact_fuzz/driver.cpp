@@ -8,7 +8,9 @@
 //
 // One JSON object per input line:
 //   {"id": "...", "image": "/abs/scene.png",
-//    "words": [[text, x, y, w, h], ...],        // optional: ground-truth words (the oracle)
+//    "words": [[text, x, y, w, h], ...],        // optional: ground-truth words (the oracle); a sixth
+//                                               // element is the confidence (95 when left out) and a
+//                                               // seventh 1 for a second read, as the "words" results give
 //    "login": "...", "realName": "...", "terms": ["..."],
 //    "profiles": {"all": ["email", ...], "check": ["card", "key", "list"]}}
 // and one result line per job: the recognized candidates, and for each profile
@@ -111,7 +113,7 @@ int main(int argc,char** argv){
    out["width"]=image.width();out["height"]=image.height();
    if(spec.contains("words")){
     QList<editor::RecognizedWord> truth;
-    for(const auto& w:spec["words"].toArray()){const auto a=w.toArray();truth.append({a.at(0).toString(),QRect(a.at(1).toInt(),a.at(2).toInt(),a.at(3).toInt(),a.at(4).toInt()),95,0,false});}
+    for(const auto& w:spec["words"].toArray()){const auto a=w.toArray();truth.append({a.at(0).toString(),QRect(a.at(1).toInt(),a.at(2).toInt(),a.at(3).toInt(),a.at(4).toInt()),a.size()>5?a.at(5).toInt():95,0,a.size()>6&&a.at(6).toInt()!=0});}
     QList<editor::RecognizedCode> none;editor::TextLayer::exclude(truth,none,{});
     out["oracle"]=run(truth,profiles,sources,image);
    }
