@@ -867,7 +867,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  const auto pieceEnd=[&](int piece){return piece+1<pieces?segment.starts.at(piece+1):int(segment.text.size());};
  // URLs with a password, webhooks and bot tokens.
  static const QList<QRegularExpression> urls{
-  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?!(?=[0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))(?![^\\s/?#@]*@))[^\\s/@]{3,}")),
+  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?!(?=[0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))(?![^\\s/?#@]*@))[^\\s/@]*")),
   // The credential-bearing path whole: team, hook and secret (Sol on #1903).
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}/[A-Za-z0-9]{6,}/(?:[0-9]{6,}/)?[A-Za-z0-9]{12,}")),
   QRegularExpression(QStringLiteral("(?i)discord(?:app)?[.,]?com/api/webhooks/[0-9]{6,}/[A-Za-z0-9_-]{8,}")),
@@ -903,9 +903,31 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
    // after the colon that end a recognized word are a port, the @ never lost (Sol on #1903).
    if(&pattern==&urls.first()){
     const auto text=m.captured();const auto scheme=text.indexOf(QLatin1String("//"));
-    const auto colon=text.indexOf(':',scheme<0?0:scheme+2);const auto at2=text.indexOf('@',colon);
-    const auto password=text.mid(colon+1,at2<0?-1:at2-colon-1);
-    if(at2<0){
+    const auto colon=text.indexOf(':',scheme<0?0:scheme+2);
+    auto password=text.mid(colon+1);
+    // #1965: a password may hold an @ itself, and start with one. In the recognized word that holds the
+    // match's end, and the words recognition split from it with no space, it runs to the last @ before the
+    // host's path, query or fragment, found in one pass; a word after a space (an address in the same
+    // sentence) never joins it, and the query is never judged as the password (Sol on #1967).
+    {const int end=int(m.capturedEnd());
+     // The password and its @ must be one word: every box boundary from the user's colon to the @ joined with
+     // no space. An @ in a word after a space starts another word ("localhost:3000" "a@b.co,c@d.co"), and
+     // there is no extension (CodeRabbit and Sol on #1967).
+     bool spaced=false;
+     for(int p=pieceAt(segment,m.capturedStart()+colon)+1;p<=pieceAt(segment,end)&&!spaced;++p)spaced=!glued(p);
+     if(end<segment.text.size()&&segment.text.at(end)=='@'&&!spaced){
+      // The next box is looked at only when the scan reaches the current one's end (Sol on #1967).
+      int piece=pieceAt(segment,end),stopAt=pieceEnd(piece),last=end;
+      for(int i=end+1;i<int(segment.text.size());++i){
+       if(i>=stopAt){if(piece+1<pieces&&glued(piece+1)){++piece;stopAt=pieceEnd(piece);}else break;}
+       const QChar c=segment.text.at(i);if(c=='/'||c=='?'||c=='#'||c.isSpace())break;if(c=='@')last=i;
+      }
+      if(last>end)password=segment.text.mid(m.capturedStart()+colon+1,last-(m.capturedStart()+colon+1));
+     }}
+    if(password.size()<3)continue;
+    // The port check reads the regex's own password: one the scan extended to a later @ is a password
+    // whatever digits it starts with (CodeRabbit on #1967).
+    if(password==text.mid(colon+1)){
      qsizetype d=colon+1;while(d<text.size()&&text.at(d).isDigit()&&d-colon<=5)++d;
      // ...unless the next word starts with the @ ("alice:1234" "@db"): then the digits are a password.
      const int after=int(m.capturedStart()+d);

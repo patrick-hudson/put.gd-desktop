@@ -368,6 +368,21 @@ private slots:
    QTest::newRow("a URL after a variable's name")<<"DATABASE_URL="+pg<<all<<QStringList{"key: DATABASE_URL="+pg};}
   QTest::newRow("URLs with a port and no password stay visible")<<"http://localhost:3000/api ssh://git@github.com:22/x postgres://localhost/db https://example.com:8443"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a connection string with a reference stays visible")<<"postgres://app:${DB_PASSWORD}@db/prod"<<all<<QStringList{};
+  // #1965: a password may hold an @ itself; the last @ before the host ends it. An address and a path's @ are no password.
+  {const auto at=QString("postgres://app:p@ss!w0")+"rd@db.internal:5432/app";
+   QTest::newRow("a connection string whose password holds an @")<<at<<all<<QStringList{"key: "+at};
+   const auto two=QString("DATABASE_URL=mysql://root:Kx9@mQ")+"2z@10.0.0.5/app";
+   QTest::newRow("a connection string whose password starts with a short piece before an @")<<two<<all<<QStringList{"key: "+two};
+   // ...judged on the password alone, in its own word, in one pass (Sol on #1967).
+   const auto query=QString("https://app:Q7v")+"9r@db.test?display=XXXXXX&contact=a@b.test";
+   QTest::newRow("a query's masked value does not hide the password")<<query<<QStringList{"key"}<<QStringList{"key: "+query};
+   QString many=QString("https://app:Q7v")+"9r@db.test?q=";for(int i=0;i<16000;++i)many+=QStringLiteral("a@");
+   QTest::newRow("a long query full of @ keeps the password covered")<<many<<QStringList{"key"}<<QStringList{"key: "+many};
+   const auto lead=QString("postgres://app:@c9")+"v2@db.test/app";
+   QTest::newRow("a password that starts with an @")<<lead<<QStringList{"key"}<<QStringList{"key: "+lead};
+   QTest::newRow("a user with an empty password and its host")<<"postgres://app:@db.test/app"<<QStringList{"key"}<<QStringList{};
+   QTest::newRow("an address later in the sentence makes no password")<<"See https://app:example@host for alice@example.com"<<QStringList{"key"}<<QStringList{};
+   QTest::newRow("an address and a URL with an @ in its path are no password")<<"mail alice@example.com or see https://example.com:8443/a@b and ssh://git@github.com:22/x"<<QStringList{"key"}<<QStringList{};}
   QTest::newRow("a secret-named value in a word")<<"DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<all<<QStringList{"key: DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
   QTest::newRow("a secret-named value after its name")<<"password: "+QString("Hn4!vQ8z")+"R2#wLp"<<all<<QStringList{"key: "+QString("Hn4!vQ8z")+"R2#wLp"};
   QTest::newRow("a quoted value in JSON")<<"\"client_secret\": \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","<<all<<QStringList{"key: \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","};
@@ -830,6 +845,33 @@ private slots:
  }
  // #1941 (Sol on #1952): a wallet's seed phrase beside a numbered list in another window that starts higher up:
  // the wallet's own label, below the list's start, still takes its column; the list stays visible.
+ // #1965: recognition splits a connection string's password at its @ with no space: the password runs on
+ // into the next box (Sol on #1967).
+ void connectionStringPasswordSplitAtItsAt() {
+  const QString first="postgres://app:p@",second=QString("ss!w0")+"rd@db.internal:5432/app";
+  QList<RecognizedWord> page;
+  page.append({first,QRect(10,10,int(first.size())*8,20),90,0});
+  page.append({second,QRect(10+int(first.size())*8+1,10,int(second.size())*8,20),90,0});
+  QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+first+" "+second});
+  // ...digits first, then the rest glued: still a password, not a port (CodeRabbit on #1967).
+  const QString digits="postgres://app:1234",rest=QString("q@x")+"y@db/app";
+  QList<RecognizedWord> glued;
+  glued.append({digits,QRect(10,10,int(digits.size())*8,20),90,0});
+  glued.append({rest,QRect(10+int(digits.size())*8+1,10,int(rest.size())*8,20),90,0});
+  QCOMPARE(found(glued,QStringList{"key"}),QStringList{"key: "+digits+" "+rest});
+  // ...but an @ that starts a word after a space is another word: an address beside a URL is no password.
+  const QString url="https://app:example",mail="@alice@example.com";
+  QList<RecognizedWord> spaced;
+  spaced.append({url,QRect(10,10,int(url.size())*8,20),90,0});
+  spaced.append({mail,QRect(10+int(url.size())*8+8,10,int(mail.size())*8,20),90,0});
+  QCOMPARE(found(spaced,QStringList{"key"}),QStringList{});
+  // ...and a port before a word space keeps the next word's addresses out of it (Sol on #1967).
+  const QString host="http://localhost:3000",list="a@b.co,c@d.co";
+  QList<RecognizedWord> port;
+  port.append({host,QRect(10,10,int(host.size())*8,20),90,0});
+  port.append({list,QRect(10+int(host.size())*8+8,10,int(list.size())*8,20),90,0});
+  QCOMPARE(found(port,QStringList{"key"}),QStringList{});
+ }
  void seedPhraseBesideAnotherList() {
   const QStringList seed{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};
   const QStringList shopping{"apples","bread","milk","eggs","butter","cheese","rice","beans","onions","garlic","lemons","coffee"};
