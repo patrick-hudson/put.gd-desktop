@@ -875,11 +875,13 @@ Before you release:
    were there at acquire are reported but don't block. A matching process counts
    if it runs in the desktop session (`DISPLAY` or `WAYLAND_DISPLAY` is set), or is
    an input agent, test pattern or running `cover_player.py`. When the tool can't read a
-   process's environment (a confined `putgd-ocr` is non-dumpable), it checks the environment of
-   the first readable process among its current parent, that one's parent, and so on, up to
-   eight levels: the editor's helper counts and another session's SSH benchmark helper doesn't
-   (#1938). The process counts when no readable environment turns up before PID 1 or within
-   eight levels, or when a parent can't be looked up or exits during the check. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
+   process's environment (a confined `putgd-ocr` is non-dumpable), it reads the first readable
+   environment among its current parent, that one's parent, and so on, up to eight levels. The
+   process is shared SSH work only when that environment has `SSH_CONNECTION` or `SSH_CLIENT`
+   and no display variable: another session's SSH benchmark helper doesn't block, while the
+   editor's helper, or a helper a subreaper adopted, does (#1938). It also counts when no
+   readable environment turns up before PID 1 or within eight levels, or when a parent can't be
+   looked up or exits during the check. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
    (xvfb-run inside a lab tool's private `/tmp/pg*` TMPDIR) blocks release once
    its parent is PID 1 or `systemd`, that is, once the test that started it has
    gone (#1925). xvfb-run's default `/tmp/xvfb-run.*/Xauthority` never matches.
