@@ -1062,18 +1062,20 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
   // one more word in its column (the file name), never an "=". Anything else ends the rows.
   {const auto columnsOf=[&](const QList<int>& row){QList<int> starts{0};for(int i=1;i<row.size();++i)if(gap(row.at(i-1),row.at(i))>4.0)starts.append(i);return starts;};
    const auto skipNumber=[&](const QList<int>& row,int at,int end){static const QRegularExpression number(QStringLiteral("^\\d{1,5}$"));return at+1<end&&number.match(plain.at(row.at(at))).hasMatch()?at+1:at;};
-   int commandStart=-1;
+   // A line number is skipped on the digest rows only when the command's row has one too (one gutter),
+   // the rows are measured from the command's own column, and an "=" anywhere on a row ends them.
+   int commandStart=-1,commandWord=-1;bool numbered=false;
    for(const int c:columnsOf(line)){
     const int end=column(line,c);const int at=skipNumber(line,c,end);
     QStringList words;for(int i=at;i<end;++i)words.append(plain.at(line.at(i)));
-    if(command.match(words.join(' ')).hasMatch()){commandStart=candidates.at(line.at(at)).rect.left();break;}
+    if(command.match(words.join(' ')).hasMatch()){commandStart=candidates.at(line.at(at)).rect.left();commandWord=at;numbered=at>c;break;}
    }
    if(commandStart>=0){
-    int above=candidates.at(line.first()).rect.top(),height=candidates.at(line.first()).rect.height(),form=-1;
+    int above=candidates.at(line.at(commandWord)).rect.top(),height=candidates.at(line.at(commandWord)).rect.height(),form=-1;
     for(int m=k+1;m<keys.size()&&m<=k+200;++m){
      const auto& row=lines[keys.at(m)];int at=-1,end=0;
      for(const int c:columnsOf(row)){
-      const int e=column(row,c);const int a=skipNumber(row,c,e);
+      const int e=column(row,c);const int a=numbered?skipNumber(row,c,e):c;
       if(std::abs(candidates.at(row.at(a)).rect.left()-commandStart)<=4*glyph(row.at(a))){at=a;end=e;break;}
      }
      if(at<0)break;
@@ -1083,7 +1085,7 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
      if(d==0||at+d<end-1)break;
      const int shape=at+d<end?1:0;
      if(form>=0&&shape!=form)break;
-     if(shape==1&&plain.at(row.at(at+d)).contains('='))break;
+     if(std::any_of(row.cbegin(),row.cend(),[&](int w){return plain.at(w).contains('=');}))break;
      form=shape;above=box.top();height=box.height();
      for(int i=at;i<at+d;++i)mark(row.at(i));
      for(int i=at+d;i<end;++i)known.insert(row.at(i));

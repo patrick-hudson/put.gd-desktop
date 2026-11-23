@@ -591,6 +591,7 @@ private slots:
    QTest::newRow("a receipt AID that reads as letters stays covered")<<"AID A0C1K1Z0M8L1X1W0Y"<<key<<QStringList{"key: AID A0C1K1Z0M8L1X1W0Y"};
    QTest::newRow("digest rows after a numbered command line stay visible")<<"0001 sha256sum web-one | 0002 "+h64+" web-one"<<key<<QStringList{};
    QTest::newRow("a bare hex row after named checksum rows stays covered")<<"$ sha256sum web-one | "+h64+" web-one | "+hexOf("k",64)<<key<<QStringList{"key: "+h64+" web-one "+hexOf("k",64)};
+   QTest::newRow("a numbered hex row after an unnumbered command stays covered")<<"$ sha256sum web-one | 123 "+hexOf("k",64)<<key<<QStringList{"key: 123 "+hexOf("k",64)};
    QTest::newRow("a certificate label over no certificate stays covered")<<"client-certificate-data: "+base64Of("q",60)<<key<<QStringList{"key: client-certificate-data: "+base64Of("q",60)};
    QTest::newRow("an AWS key ID split after its AK stays covered")<<"AK IA"+QString("Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AK IAZ7Q4R2N9KT6HB3XW"};
    QTest::newRow("recovery codes beside a CloudFront ID stay covered")<<"eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="<<key<<QStringList{"key: eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="};
@@ -617,6 +618,10 @@ private slots:
   QList<RecognizedWord> gitPanes{{"$",QRect(0,0,8,20),90,0},{"git",QRect(16,0,24,20),90,0},{"status",QRect(48,0,48,20),90,0},{"$",QRect(1000,0,8,20),90,0},{"sha256sum",QRect(1016,0,72,20),90,0},{"web-one",QRect(1096,0,56,20),90,0},
                                  {secret,QRect(0,30,512,20),90,1},{digest,QRect(1000,30,512,20),90,1},{"web-one",QRect(1520,30,56,20),90,1}};
   QCOMPARE(found(gitPanes,QStringList{"key"}),QStringList{"key: "+secret});
+  // An assignment anywhere on a digest row, however far, ends the rows: the hex before it stays covered.
+  QList<RecognizedWord> tabbed{{"$",QRect(0,0,8,20),90,0},{"sha256sum",QRect(16,0,72,20),90,0},{"web-one",QRect(96,0,56,20),90,0},
+                               {secret,QRect(0,30,512,20),90,1},{"API_KEY=prod",QRect(900,30,96,20),90,1}};
+  QVERIFY(found(tabbed,QStringList{"key"}).join(' ').contains(secret));
  }
  // #1940: a value of no fixed length (a DKIM signature, a kubeconfig certificate) runs on only over rows
  // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
