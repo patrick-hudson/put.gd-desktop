@@ -698,6 +698,20 @@ private slots:
    QTest::newRow("curl's password in double quotes after the user")<<QString("$ curl -")+"u ali"+"ce:\"orch"+QString("ard lantern\" https://example.test")<<key<<QStringList{QString("key: ali")+"ce:\"orch"+"ard lantern\""};
    QTest::newRow("smbclient's password quoted after the user")<<"$ smbclient //nas/share -U alice%'orchard"+QString(" lantern'")<<key<<QStringList{"key: alice%'orchard lantern'"};
    QTest::newRow("a password flag in curly quotes")<<"$ mysqldump --password=“orchard"+QString(" lantern” app")<<key<<QStringList{"key: --password=“orchard lantern”"};
+   // Sol on #1969: a straight closer is preferred to a curly one inside; an apostrophe between letters is no
+   // closer; the whole quoted password is judged; a masked token keeps its first word; outer quotes come off.
+   QTest::newRow("a curly quote inside a straight-quoted password")<<"Password: \"river”"+QString(" orange cedar\" today")<<key<<QStringList{"key: \"river” orange cedar\""};
+   QTest::newRow("a curly quote in a later word of a straight-quoted password")<<"Password: \"Red7fox"+QString(" ri”ver cedar\" today")<<key<<QStringList{"key: \"Red7fox ri”ver cedar\""};
+   QTest::newRow("sshpass with a curly quote inside a straight-quoted password")<<"$ sshpass -p \"river”"+QString(" orange cedar\" ssh host")<<key<<QStringList{"key: \"river” orange cedar\""};
+   QTest::newRow("curl's curly single-quoted password with an apostrophe")<<QString("$ curl -")+"u ali"+"ce:‘it’s"+QString(" Red7 fox’ https://example.test")<<key<<QStringList{QString("key: ali")+"ce:‘it’s Red7 fox’"};
+   QTest::newRow("curl's quoted password with a short first word")<<QString("$ curl -")+"u ali"+"ce:'red"+QString(" blue lantern' https://example.test")<<key<<QStringList{QString("key: ali")+"ce:'red blue lantern'"};
+   QTest::newRow("curl's quoted password whose first word is a placeholder word")<<QString("$ curl -")+"u ali"+"ce:'example"+QString(" lantern' https://example.test")<<key<<QStringList{QString("key: ali")+"ce:'example lantern'"};
+   QTest::newRow("curl's glued user with a quoted password")<<QString("$ curl -")+"uali"+"ce:'red"+QString(" blue lantern' https://example.test")<<key<<QStringList{QString("key: -uali")+"ce:'red blue lantern'"};
+   QTest::newRow("curl's --user= with a quoted password")<<QString("$ curl --")+"user=ali"+"ce:'red"+QString(" blue lantern' https://example.test")<<key<<QStringList{QString("key: --user=ali")+"ce:'red blue lantern'"};
+   QTest::newRow("smbclient's quoted password with a short first word")<<"$ smbclient //nas/share -U alice%'red"+QString(" blue lantern'")<<key<<QStringList{"key: alice%'red blue lantern'"};
+   QTest::newRow("a masked quoted token keeps its first word")<<"$ deploy --token=“river7"+QString("X **** cedar” now")<<key<<QStringList{"key: --token=“river7X"};
+   QTest::newRow("a placeholder in French quotes with spaces")<<"Mot de passe : « TODO » merci"<<key<<QStringList{};
+   QTest::newRow("a version in German quotes")<<"Passwort: „12.3.4“ heute"<<key<<QStringList{};
    QTest::newRow("a quoted password of several words after the word password")<<"password \"Red7fox"+QString(" blue jay\" today")<<key<<QStringList{"key: \"Red7fox blue jay\""};
    QTest::newRow("a recovery code with a misread character")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-g8q/v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-g8q/v"};
    QTest::newRow("a recovery code with a misread character beside its dash")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-/8q7v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-/8q7v"};
