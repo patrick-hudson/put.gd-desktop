@@ -263,7 +263,24 @@ def replay(args):
     specs = [dict(id=r['id'], image=str(d / r['png']), login='lab', realName='Lab Tester', terms=[], profiles=PROFILES,
                   words=words[r['id']], oracleOnly=True) for r in rows if r['id'] in words]
     args.helper = '/bin/false'
-    _execute(args, specs)
+    # The words' own run knew whether recognition failed or was cut; the replay's driver can't, so the
+    # flags are carried over and the report still counts those captures as unfinished.
+    flags = {}
+    for l in open(args.words):
+        r = json.loads(l)
+        kept = {k: r[k] for k in ('truncated', 'error') if r.get(k)}
+        if kept:
+            flags[r['id']] = kept
+    try:
+        _execute(args, specs)
+    finally:
+        out = Path(args.out)
+        if flags and out.exists():
+            rows = [json.loads(l) for l in open(out) if l.strip()]
+            seen = {r['id'] for r in rows}
+            # A capture recognition failed on has no words to replay: its failure stands as it was.
+            rows += [dict(id=i, **f) for i, f in flags.items() if i not in seen and 'error' in f]
+            out.write_text(''.join(json.dumps({**r, **flags.get(r['id'], {})}, ensure_ascii=False) + '\n' for r in rows))
 
 
 # ---------------------------------------------------------------------------------- report
