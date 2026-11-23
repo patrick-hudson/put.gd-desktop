@@ -113,7 +113,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 
 | Step | Rule |
 | --- | --- |
-| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent starts the child first, so the child loads its libraries and confines itself while the strips are written (#1929). The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, closes its own copy, and only then sends the bootstrap; the child opens the input once activated after it. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
+| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent writes the header, then starts the child, so the child loads its libraries and confines itself while the strips are written (#1929). The child's input descriptor is the memfd opened again read-only, so the child can't change what it is about to read. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, closes its own copies, and only then sends the bootstrap; the child opens the input once activated after it. If writing or sealing fails, or the job is cancelled first, the parent ends the child without a bootstrap. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
 | Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
@@ -249,6 +249,9 @@ turned off (#1808).
 - Every pass gets Tesseract's own monitor deadline.
 - Most of a dense page's time is in Tesseract's layout and line finding, which the monitor
   cannot interrupt.
+- Quick redact's second reads have an allowance of their own inside this budget, ending at
+  least a second before it, and wait at most 250 ms for a read ending on its monitor deadline
+  (see "One budget for every second read").
 - The budget is a guarantee. At the deadline, plus one second of grace for a pass that ends on
   its monitor deadline, the main thread closes the hand-over of results under a lock and waits
   only for band copies already in progress. A thread still in an engine's start or in a
@@ -314,23 +317,36 @@ in the window of tiles around it (up to 5 by 5, fewer at an edge), every pixel i
 distance from that background, and the distances are stretched so the local 98th percentile (at
 least 32 levels) is black, on white. One copy reads dark and light pages, low contrast and coloured backgrounds alike. Bands
 are at most four times the height of their tallest uncertain word. A band is read only across its
-words' run of text: their columns grown by four times the tallest word's height, then outward to
-the first gap of 0.6 times that height with no pixel 12 levels from the background in its rows,
-so a full-width row of a 4K terminal is not read across the blank screen beside it. A main read cut
+words' run of text: their columns grown by four times the tallest word's height, then outward,
+whole columns at a time, to the first gap of blank columns at least 0.6 times that height wide
+(rounded down, at least two). A blank column has no pixel 12 or more grey levels from the
+panel's background in the band's rows. With no such gap the band runs to the panel's edge. So a
+full-width row of a 4K terminal is not read across the blank screen beside it. A main read cut
 short skips it. Its words join the candidates after the copied text is made; Copy text is
 unchanged, and a page with no uncertain token does no extra work.
 
 **One budget for every second read (#1929).** The faint-line, unread-row and uncertain-token reads
 go in one queue: the faint and unread bands first, then the token bands least confident first
-across all panels. Every engine the first pass started takes from it, and while time and the
-memory budget allow, more start, up to the job's threads. Together they may take a quarter of the
-first pass's time, at least 400 ms and at most 1 s, and they end at least 1 s before the job's own
-budget. A read whose band would not finish at the slowest pace seen so far is not started, and
-one cut short adds nothing. They never mark the result truncated: `truncated` means the first
-pass did not finish. Their words follow the first read's candidates and are left out, not cut,
-where the result's bounds would cut them: a word over 256 bytes, the 20,000-word cap, or the
-8 MiB output, and they join only a result those bounds left whole. Each engine reads on a thread
-of its own, the first one too, so the job's wait bounds them all. Until #1929 the token read ran on one engine for as long as the first pass
+across all panels.
+- **Engines.** The first engine takes from it, and so does every extra engine that started and
+  whose first-pass thread is done with it (one still starting or overrunning sits out). While
+  time and the memory budget allow, more start, up to the job's threads. The memory check counts
+  each first-pass engine still starting as one engine's cost, and reserves each new engine its
+  cost and 20 bytes a scaled pixel of the largest second-read band. Each engine reads on a thread
+  of its own, the first one too, so the job's wait bounds them all.
+- **Time.** The allowance is a quarter of the first pass's time, at least 400 ms and at most
+  1 s. It is then shortened, or removed, so that every read's deadline ends at least 1 s before
+  the job's own budget. A read whose band would not finish at the slowest pace seen so far is not
+  started, and one cut short adds nothing. After the allowance, the job waits at most 250 ms more
+  for a read ending on its monitor deadline, then closes the handover. A reader still running is
+  left as the first pass's late workers are.
+- **Never truncated by them.** A second read that is skipped, cut short or left out never sets
+  `truncated`. Their words follow the first read's candidates and are left out, not cut, where
+  the result's bounds would cut them: a word over 256 bytes, the 20,000-word cap, or the 8 MiB
+  output. They join only a result those bounds left whole.
+
+`truncated` still means what it did: the first pass did not finish, or the first pass's own
+result was cut at a size bound. Until #1929 the token read ran on one engine for as long as the first pass
 took, which doubled a dense 4K check on a 4-core i5 (5.2 s to 10.3 s). On the 978-image corpus
 test split the one budget covered 1,351 secrets against 1,347 and flagged 642 decoys against
 652, with the copied text identical.
@@ -431,7 +447,8 @@ How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
   - The bands and strips of every panel go into one pool. Results join in task order, never in
     the order the tasks finish. Extra engines start at once, and only while the time left covers
     twice an engine's start plus the slowest task. A banded page or a screen of panels reserves
-    each one its cost and 20 bytes a pixel of its largest task (a dense band grew by 15 to 20),
+    each one its cost and 20 bytes a scaled pixel of its largest task (a dense band grew by 15
+    to 20; the second reads' new engines are reserved the same way for their largest band),
     and once its first task is done starts more as that task's cost allows. Until #1929 such a
     page read its first task alone first, which left three of four cores idle for 1.4 s of a
     dense 4K terminal's 4.6 s first pass on k72.
@@ -440,12 +457,19 @@ How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
     16 MiB: the code and emoji scans beside it fault in the input's mapping, and counting those
     took a dense 4K terminal on m74 from 5.1 s to 6.2 s.
   - **Faster cores.** On a machine of mixed cores the helper keeps its engines to the faster
-    kind and runs one engine for each of those CPUs, when they hold at least four physical cores
-    and slower CPUs are allowed too; otherwise it uses every CPU, as on a uniform machine. It
-    reads sysfs before confinement: Intel's `cpu_core` CPUs when `cpu_atom` lists CPUs too,
-    otherwise each CPU's `acpi_cppc/highest_perf`, then `cpufreq/cpuinfo_max_freq`, cutting
-    groups at a step of a sixth or more and taking every CPU above the slowest group. AMD's
-    ranking of alike cores differs by smaller steps. aurora-amd's Ryzen 5 PRO 8500GE is such a
+    CPUs among those it may use. Their count becomes a further ceiling on the engines; the
+    eight-engine cap, the cgroup quota and the job's other limits still apply. This happens only
+    when those faster CPUs hold at least four physical cores (distinct package and core ids from
+    sysfs topology) and slower CPUs are allowed too. Otherwise, including when topology is
+    missing, the helper keeps the affinity it was given, as on a uniform machine. It reads sysfs
+    before confinement:
+    - Intel's `cpu_core` CPUs, when `cpu_atom` lists CPUs too.
+    - Otherwise each CPU's `acpi_cppc/highest_perf`. Groups are cut at a step of a sixth or
+      more, and every CPU above the slowest group counts as faster. A complete set of values
+      with no such step means a uniform machine. AMD's ranking of alike cores differs by
+      smaller steps.
+    - `cpufreq/cpuinfo_max_freq`, the same way, only when `highest_perf` is missing or invalid
+      for some CPU. aurora-amd's Ryzen 5 PRO 8500GE is such a
     machine: its two Zen 4 cores (four logical CPUs) read 196 and its four Zen 4c cores 144, all
     with the same maximum frequency. With two physical cores it falls back to every CPU, as
     measured on a dense 4K terminal: 2.18 s on the four Zen 4 CPUs, 2.06 s on four Zen 4c cores,
@@ -1247,7 +1271,7 @@ couldn't finish. Don't extend it into a general "are you sure?".
 | Overlaps | `redact` kinds are matched first, together, then each `warn` kind alone, on the same recognized words, so no `warn` kind's match hides another's. A word both find is covered. A `warn` match whose words the covers took entirely asks nothing; one they took only part of still asks. With no `redact` kind, matching is #1804's single pass |
 | Only `redact` kinds found | The helper's Quick redact marks for those kinds are the covers. It exports the document as a sanitized PNG and hands it off as an edit's PNG, with a `covered` count per kind and no prompt. The operation uploads that PNG, and `sensitive` holds `{found: {}, covered: {card: 1}, complete: true}`. The notification adds "Covered 1 card number." |
 | Found | `warn` kinds found: the operation's phase becomes `sensitive_text_found`, and its `sensitive` member holds `{found: {key: 1}, covered: {card: 1}, complete: true, prompt: 1}`, kinds and counts only. `found` lists the `warn` kinds left to decide; `covered` the `redact` kinds already covered. A person sees the panel. An agent decides with `operation.decide` |
-| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit; an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found. This holds with every kind on `redact`: what was found is covered first and the panel opens, focused on **Redact and upload** when a `warn` kind was found (`sensitive.found` not empty) and on **Cancel** otherwise; in report mode an unanswered decision times out to Cancel. **Upload anyway** then keeps the covers |
+| Couldn't finish | Checking that couldn't finish asks too, and never passes silently. That covers: recognition failing or timing out; a result cut at its time or size limit (second reads never cause this); an image over 24 megapixels; an image the helper can't decode; text recognition being unavailable; a pattern from the list that didn't finish; an account lookup that didn't answer; matching cut at its deadline; and a language chosen in Settings with no data installed. `sensitive` then has `complete: false` and a `reason`: `recognition_failed`, `truncated`, `too_large`, `unavailable`, `patterns_skipped`, `name_unchecked`, `matching_unfinished` or `language_missing`. It also lists whatever was found. This holds with every kind on `redact`: what was found is covered first and the panel opens, focused on **Redact and upload** when a `warn` kind was found (`sensitive.found` not empty) and on **Cancel** otherwise; in report mode an unanswered decision times out to Cancel. **Upload anyway** then keeps the covers |
 | No decision possible | A check that fails before it can find anything or ask uploads nothing. That happens when the image can't be staged (over the staging size limit, or a failed disk write), or when the helper is missing, crashes or gives no result within 40 seconds of starting. With **Keep a local copy** on, put.gd then tries to save the capture locally, as Cancel does, and its History item says "Not uploaded: put.gd couldn't check it for sensitive text."; if that save fails too (a full disk), the operation fails. Otherwise the operation fails with `sensitive_check_failed`, whose `details.cause` names what failed. If the helper fails after **Open in editor** opened the editor, the operation also fails with `sensitive_check_failed`, `details.cause` holding the editor's error, and there is no local-copy fallback |
 | Covered export fails | When the helper can't export or stage the covered PNG (an encoding failure, an image over the output limit, a failed disk write), including after **Upload anyway** or **Redact and upload**, the original is never sent in its place: the operation ends as under "No decision possible", saved locally as the original with **Keep a local copy** on, otherwise failed with `sensitive_check_failed` |
 | Local copy | Only a covered upload, with no prompt, after **Upload anyway** or after **Redact and upload**, keeps two copies. With **Keep a local copy** on, its History item and archive copy are the covered PNG. The original is saved to the archive too, beside it, with `-original` added to its name, and `sensitive.original` holds `{status, paths}`. It goes straight to the archive, outside the artifact store and its Waiting uploads budget, and is never uploaded. For a file-manager selection, the original is the user's file, copied only while its device, inode, size and modification time still match the check; a changed file isn't copied. A change in the moment between that comparison and the copy is not caught, and affects only the local copy. A failed save of the original is logged, `status` is `failed`, the notification adds "The original before covering couldn't be saved locally.", and the upload goes on |
