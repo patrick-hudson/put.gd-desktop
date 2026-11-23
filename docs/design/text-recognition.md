@@ -57,6 +57,10 @@ What it does not do:
    | The user changed the clipboard first | Unchanged | "Text not copied: the clipboard changed" |
    | The write failed | Unchanged | "Text could not be copied" |
 
+   When an agent asks for the copy, a code put.gd recognises as holding a secret is copied as a
+   placeholder such as `[2FA QR code withheld]` (see [the editor](#the-editor)'s Quick redact QR codes,
+   #1941 and #1962).
+
    One character reads "1 character" and one code "1 code". Characters are counted as a person
    counts them (grapheme clusters): an emoji with a skin tone, a flag or a family is one. When the result was cut, the
    message adds a second line, "The text was cut at a size or time limit.". When a language
@@ -1012,11 +1016,18 @@ other tool active it does not. The user's side is in the
       sensitive text prompt names it ("a 2FA QR code", "a Wi-Fi QR code", "a QR code with a key"); the
       resident and the notification count it as a key or token. `editor.inspect` and `text.inspect` list
       such a code as `kind: "withheld"` with `withheld` naming its kind, and no `text`. A copy an agent
-      asks for (`text.recognize` with `copy`, `editor.copyText`) puts a placeholder such as
-      `[2FA QR code withheld]` in its place, and `editor.copyCode` refuses it (`code_withheld`). The codes
-      the person sees in the editor's panel, the person's own Copy text and History's Show QR code are
-      unchanged, and so, for now, are `history.copyText` and `action.invoke` with `text`, which can't
-      yet tell an agent from the person (#1962).
+      asks for (`text.recognize` with `copy`, `editor.copyText`, `history.copyText`, `action.invoke` with
+      `text`) puts a placeholder such as `[2FA QR code withheld]` in its place, and `editor.copyCode`
+      refuses it (`code_withheld`). The codes the person sees in the editor's panel, the person's own Copy
+      text (the editor's, History's and the dashboard's) and History's Show QR code are unchanged.
+      History's and the dashboard's Copy text are the person's when the request carries the token the
+      resident gave its own putgd-ui on the private bootstrap pipe (#1962). Any other request is an
+      agent's, and the token is in no reply or log. It needs no kernel feature.
+    - **Threat model.** put.gd's agent-facing interfaces (putgd-cli, the MCP helper, session replies and
+      the copies they ask for) never hand an agent the content of a code put.gd recognises as holding a
+      secret (the shapes above); a code whose secret it doesn't recognise is ordinary content. A malicious same-user
+      process with access to the socket or to `/proc` is out of scope: it can capture the screen and
+      decode the code itself.
     Key matches that share a word are one match.
   - Limits (#1941): short-lived sign-in codes from an authenticator app or a text message (any six
     digits look alike; a list under a one-time or single-use codes heading is read as recovery codes),
