@@ -291,12 +291,15 @@ A desktop clearly darker than a dark editor fails the test, so growth usually st
 window's edge, but it is judged from pixel values: it crosses a window boundary wherever the new
 row or column passes the same checks, as a neighbouring area within 6 levels of the shade does.
 A faint line below a window's last bright line, or running past its text, can then fall inside
-the grown area and go through the faint-row test above (at most eight runs an area). When the image is
+the grown area and go through the faint-row test above. Over a whole window, Otsu's threshold can
+fall below a long faint line beside short bright text, which then counts as ink, not as faint; so
+in a grown area every run of rows outside the rows its panel was read in that holds ink or faint
+ink, half a line to three lines tall, is read again the same way, unless one faint band already
+holds all of it. Faint and unread runs together are at most eight an area; more marks the result
+truncated. When the image is
 split, a window that holds only faint text may have no panel of its own to grow from: panels come
 from grey steps of 32 levels, which other content in the window can supply. A large image whose layout gives no split
-is one panel, the whole image, as is anything under 4 MP. Limit (#1912, still open): a long faint
-line beside short bright text can still be missed at 4K, because over the whole window Otsu's
-threshold counts it as ink, not as faint.
+is one panel, the whole image, as is anything under 4 MP.
 
 One misread character breaks a key or token for Quick redact. A job that asks for candidates
 also reads a second time the lines holding an **uncertain token** (#1911): a word that Tesseract
