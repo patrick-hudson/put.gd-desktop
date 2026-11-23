@@ -148,10 +148,10 @@ private slots:
   QTest::newRow("a tracking number holds no card")<<"Tracking 5744 7621 6827 5217 60 and 9400 1527 3806 7569 1933 50"<<QStringList{"card"}<<QStringList{};
   QTest::newRow("a tracking number after an order number holds no card")<<"13 43358981 5762 9815 7175 3077 6995 30"<<QStringList{"card"}<<QStringList{};
   QTest::newRow("an EAN after a date holds no card")<<"2026-11-22 1043533606843 12"<<QStringList{"card"}<<QStringList{};
-  // A table's full rows read as one wrapped block: each row's card is found. As before #1939, a card may
-  // take the next row's number with it when the rows are read as wrapped (6663 and 20 as 666320).
+  // A table's full rows read as one wrapped block: each row's card is found, without the next row's number.
   QTest::newRow("cards that end the rows of a table")<<"18 Sam +82 10-8045-8908 5294 2317 5284 0376 | 19 Ann +82 10-8045-8909 5219 7028 4410 6663 | 20 Bob +82 10-8045-8910 4444 6185 9101 3565"<<QStringList{"card"}
-   <<QStringList{"card: 5294 2317 5284 0376","card: 5219 7028 4410 6663 20","card: 4444 6185 9101 3565"};
+   <<QStringList{"card: 5294 2317 5284 0376","card: 5219 7028 4410 6663","card: 4444 6185 9101 3565"};
+  QTest::newRow("a card after a signed amount")<<"Refund -123 38520000023237"<<QStringList{"card"}<<QStringList{"card: 38520000023237"};
   QTest::newRow("a diff's card with a three-digit first group")<<"-411 11111 1111 1111"<<QStringList{"card"}<<QStringList{"card: -411 11111 1111 1111"};
   // Sol on #1957: a phone between a CSV-glued address and a key keeps its middle.
   QTest::newRow("a phone between an address and a key")<<"alice@example.com,+1 202 555 0143(postgres://app:"+QString("12@34")+"@db.test/app)"<<QStringList{"email","phone","key"}

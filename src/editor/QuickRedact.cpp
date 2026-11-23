@@ -3086,8 +3086,12 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       }
       if(inner)break;
      }
-     // None: matching goes on after the span, as before.
-     if(!inner){offset=found.capturedEnd();continue;}
+     // None: matching goes on after the span, as before. A span a diff's or an amount's sign started
+     // (-123 38520000023237) resumes at its second word instead, where the earlier rule began (Sol on #1957).
+     if(!inner){
+      const bool signedStart=found.capturedStart()>0&&(joined.text.at(found.capturedStart()-1)=='-'||joined.text.at(found.capturedStart()-1)=='+');
+      offset=signedStart&&starts.size()>1?starts.at(1):found.capturedEnd();continue;
+     }
     }
     offset=start+length;
     if(rule.valid&&!cardValid(start,length))continue;
