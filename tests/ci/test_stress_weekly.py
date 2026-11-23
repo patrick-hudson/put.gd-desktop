@@ -76,6 +76,146 @@ class Quiet(unittest.TestCase):
                     self.assertRaisesRegex(weekly.Skip, 'holds this host.s quiet lease'):
                 self.check(directory)
 
+class Lease(unittest.TestCase):
+    """The run holds the builder's quiet lease from before the fetch to the end, and always gives it back."""
+
+    def run_week(self, root, build_exit=0, while_waiting=None):
+        seen = {}
+
+        def fake_run(command, log, output=None, **options):
+            lease = desktop_lock.Desktop(root / 'locks', 'k72', resource='quiet').state(desktop_lock.now_utc())
+            seen.setdefault(command[0] if command[0] != 'nice' else 'build', lease)
+            if output:
+                output.write_text('build output\n')
+            return build_exit
+
+        def fake_update(tree, ref, sdk_from, log):
+            tree.mkdir(parents=True, exist_ok=True)
+            return 'abc123'
+
+        def idle(log, minutes, dry_run, poll=60):
+            if while_waiting and not seen.get('waited'):
+                seen['waited'] = True
+                while_waiting()
+
+        with mock.patch.object(weekly, 'wait_until_idle', idle), mock.patch.object(weekly, 'run', fake_run), \
+                mock.patch.object(weekly, 'update_tree', fake_update), \
+                mock.patch.object(weekly, 'ensure_disk', lambda *args: None), \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = weekly.main(['--tree', str(root / 'tree'), '--results', str(root / 'results'),
+                                '--state-dir', str(root / 'state'), '--lock-dir', str(root / 'locks'),
+                                '--token-file', str(root / 'token'), '--sdk-from', str(root / 'sdk')])
+        [week] = list((root / 'results').iterdir())
+        return code, seen, json.loads((week / 'weekly.json').read_text()), (week / 'weekly.log').read_text()
+
+    def test_the_lease_is_held_while_it_builds_and_released_after_a_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code, seen, status, log = self.run_week(root, build_exit=2)
+            self.assertEqual((code, status['status']), (1, 'build-failed'))
+            self.assertEqual(seen['cmake']['state'], 'held')
+            self.assertTrue(seen['cmake']['lock']['session'].startswith('putgd-stress-weekly-'))
+            self.assertFalse((root / 'locks/quiet.lock').exists())
+            self.assertIn('quiet lease: released', log)
+            [receipt] = (root / 'locks/history').glob('*-quiet-release.json')
+            self.assertEqual(json.loads(receipt.read_text())['releasedBy'], seen['cmake']['lock']['session'])
+
+    def test_another_sessions_lease_taken_while_it_waited_skips_the_week_and_stays(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            other = desktop_lock.Desktop(root / 'locks', 'k72', resource='quiet')
+            code, seen, status, _log = self.run_week(
+                root, while_waiting=lambda: other.acquire('timer', 'local_timing', 'theme pair', 5))
+            self.assertEqual((code, status['status']), (0, 'skipped'))
+            self.assertIn('could not take the k72 quiet lease', status['reason'])
+            self.assertIn('local_timing', status['reason'])
+            self.assertNotIn('cmake', seen)
+            self.assertEqual(other.held('local_timing')['lock']['owner'], 'timer')
+
+    def wait_for(self, condition):
+        for _ in range(300):
+            if condition():
+                return
+            weekly.time.sleep(.01)
+        self.fail('condition not reached')
+
+    def test_renewals_extend_it_and_a_lost_lease_stops_the_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            locks, lines, lost = Path(directory) / 'locks', [], mock.Mock()
+            lease = weekly.QuietLease(locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
+            lease.acquire()
+            renew = lease.lease.extend
+            renewals = mock.Mock(wraps=renew)
+            lease.lease.extend = renewals
+            self.wait_for(lambda: renewals.call_count >= 2)
+            renewals.assert_called_with(lease.session, 1)
+            # A transient refusal (a busy mutex) is retried while the lease has time left.
+            renewals.side_effect = lease.module.LockError('Another lock operation is still running on this host')
+            self.wait_for(lambda: 'renewal failed' in '\n'.join(lines))
+            lost.assert_not_called()
+            # A lease that is no longer ours stops the run at once.
+            (locks / 'quiet.lock').unlink()
+            lease.thread.join(5)
+            lost.assert_called_once_with()
+            self.assertIn('stopping the run', '\n'.join(lines))
+            self.assertTrue(lease.release())  # nothing of ours is left to release
+
+    def test_a_stopped_command_stops_its_whole_process_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / 'grandchild'
+            # The grandchild ignores SIGTERM and outlives its parent: only the group's SIGKILL stops it.
+            script = ('import subprocess, sys, time; child = subprocess.Popen([sys.executable, "-c", '
+                      '"import signal, sys, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); '
+                      'print(flush=True); time.sleep(60)"], stdout=subprocess.PIPE); child.stdout.readline(); '
+                      'open(sys.argv[1], "w").write(str(child.pid)); time.sleep(60)')
+            def stop_once_started():
+                for _ in range(1000):
+                    if pid_file.is_file() and pid_file.read_text():
+                        break
+                    weekly.time.sleep(.01)
+                weekly.os.kill(weekly.os.getpid(), weekly.signal.SIGUSR1)
+            timer = weekly.threading.Thread(target=stop_once_started)
+
+            def interrupt(_number, _frame):
+                raise KeyboardInterrupt('stop')
+            previous = weekly.signal.signal(weekly.signal.SIGUSR1, interrupt)
+            self.addCleanup(setattr, weekly, 'STOP_GRACE_SECONDS', weekly.STOP_GRACE_SECONDS)
+            weekly.STOP_GRACE_SECONDS = .5
+            try:
+                timer.start()
+                with self.assertRaises(KeyboardInterrupt):  # run() returns only once the whole group is gone
+                    weekly.run([sys.executable, '-c', script, str(pid_file)], lambda line: None,
+                               Path(directory) / 'out.log')
+            finally:
+                timer.join()
+                weekly.signal.signal(weekly.signal.SIGUSR1, previous)
+            grandchild = int(pid_file.read_text())
+            self.assertTrue(gone(grandchild))
+
+    def test_a_lease_file_that_is_not_text_is_retried_like_a_busy_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            locks, lines, lost = Path(directory) / 'locks', [], mock.Mock()
+            lease = weekly.QuietLease(locks, 'k72', lines.append, minutes=1, every=.05, on_lost=lost)
+            lease.acquire()
+            (locks / 'quiet.lock').write_bytes(b'\xff\xfe')
+            self.wait_for(lambda: 'renewal failed' in '\n'.join(lines))
+            lost.assert_not_called()
+            lease.deadline = weekly.time.monotonic()
+            lease.thread.join(5)
+            lost.assert_called_once_with()
+            with mock.patch.object(weekly.time, 'sleep'):
+                self.assertFalse(lease.release())
+            self.assertEqual(sum('release refused' in line for line in lines), 3)
+
+
+def gone(pid):
+    """True once PID has exited (or is a zombie waiting for its reaper)."""
+    try:
+        return Path(f'/proc/{pid}/stat').read_text().split(')')[1].split()[0] == 'Z'
+    except (FileNotFoundError, ProcessLookupError):
+        return True
+
+
 class Suites(unittest.TestCase):
     def test_exact_names_only(self):
         self.assertEqual(weekly.suite_kind('ctest', ['ctest', '--preset', 'dev']), 'ctest')
