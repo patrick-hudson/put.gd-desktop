@@ -837,8 +837,8 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   (owner `putgd-stress-weekly`, session `putgd-stress-weekly-PID`) before it
   fetches. It renews the lease every 5 minutes and releases it when the run
   ends, also after a failed build or a stop. It logs each failed release try.
-  If three tries fail while the lease file still names the lane, it records
-  `leaseReleased: false` in `weekly.json`.
+  If three tries fail while the lease file still names the lane, or can't be
+  read, it records `leaseReleased: false` in `weekly.json`.
 - If another session holds the lease when the lane first checks, or when it
   tries to acquire it, the lane skips the week and leaves that lease alone.
   `PUTGD_LAB_SESSION` doesn't let it through.
