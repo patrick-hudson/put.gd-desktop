@@ -83,6 +83,6 @@ private:
  UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QList<QDateTime> createdAt_;QList<RowFacts> facts_;mutable QStringList dayLabels_;mutable QDate dayLabelsFor_;bool multipleDestinations_=false;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
  QJsonObject categoryTotals_;QHash<QDate,qint64> dayCounts_;QDate continued_;QString countsKey_;QElapsedTimer countsAge_;quint64 countsRequest_=0;
  bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;
- mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable int thumbnailsLoading_=0;mutable quint64 thumbnailGeneration_=0;qint64 timesMinute_=0;
+ mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable int thumbnailsLoading_=0;mutable quint64 thumbnailTicket_=0;mutable QHash<QString,quint64> thumbnailTickets_;mutable quint64 thumbnailGeneration_=0;qint64 timesMinute_=0;
 };
 }

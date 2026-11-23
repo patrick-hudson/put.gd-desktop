@@ -55,13 +55,25 @@ struct Decoder {
         // The decoder refuses any later frame over the limit, whatever the header said.
         video->max_pixels = maxPixels;
         // Two threads leave the desktop its cores. Unhinged mode (#1937) uses one
-        // per CPU, as many as fit in half the child's 2 GiB of address space at
-        // two worst-case frames (16-bit 4:4:4) a thread, never fewer than two.
+        // per CPU up to FFmpeg's own automatic limit of 16, as many as fit in half
+        // the child's 2 GiB of address space at two worst-case frames (16-bit
+        // 4:4:4) a thread, never fewer than two; a decoder that can't open with
+        // that many opens with two.
         const qint64 frameBytes = std::max<qint64>(1, qint64(parameters->width) * parameters->height * 6);
-        video->thread_count = allCores ? int(std::clamp<qint64>((qint64(1) << 30) / (2 * frameBytes), 2, std::max(2, QThread::idealThreadCount()))) : 2;
-        video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
-        if (avcodec_open2(video, decoder, nullptr) < 0) return fail("No decoder for this video");
-        return {};
+        const int threads = allCores ? int(std::clamp<qint64>((qint64(1) << 30) / (2 * frameBytes), 2, std::clamp(QThread::idealThreadCount(), 2, 16))) : 2;
+        for (const int count : {threads, 2}) {
+            if (count != threads) {
+                avcodec_free_context(&video);
+                video = avcodec_alloc_context3(decoder);
+                if (!video || avcodec_parameters_to_context(video, parameters) < 0) return fail("Cannot decode the video");
+                video->max_pixels = maxPixels;
+            }
+            video->thread_count = count;
+            video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+            if (avcodec_open2(video, decoder, nullptr) == 0) return {};
+            if (count == 2) break;
+        }
+        return fail("No decoder for this video");
     }
     qint64 durationUs() const {
         const auto* stream = format->streams[index];
