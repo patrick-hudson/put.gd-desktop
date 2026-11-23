@@ -194,6 +194,27 @@ worker that has read one task reserves only the working memory its next task nee
 largest it has read, and an extra engine is counted without the language data it shares. There is no smaller memory figure for small regions. The helper is transient, and the memory buys
 speed.
 
+### Unhinged mode
+
+`preferences.unhingedMode` (Settings → Advanced → Performance, off by default, [#1937](https://github.com/patrick-hudson/put.gd-desktop/issues/1937)) lifts every CPU limit put.gd sets on itself. Off, every limit is as described in this document and the others. On:
+
+| Limit | Off | On |
+| --- | --- | --- |
+| Recognition engines | At most eight, one per CPU the process may use | One per CPU the process may use. Affinity and the cgroup `cpu.max` quota still apply |
+| Faster cores (#1929) | On a mixed machine, the engines are kept to the faster cores | Every CPU |
+| Memory budget | 320 MiB, 384 MiB at most with other languages; `RLIMIT_DATA` about 1.5 times | 128 MiB plus 64 MiB an engine, never under 320 MiB and never over half of `MemAvailable`, read before confinement; the ceiling is 64 MiB above it and `RLIMIT_DATA` follows |
+| Second-read cap | 25% of the first pass, 0.4 to 1 s | The 1 s cap times the engines over four. Four engines or fewer keep it, so a four-core machine reads exactly as with the switch off |
+| Live recording | x264enc, openh264enc and videoconvert threads: two thirds of the CPUs, bounded | Every CPU |
+| Video posters | Two decode threads, nice +10 | FFmpeg's own count (one per CPU), normal priority, CPU time for every CPU; the address-space bound stays |
+| History previews | One at a time | One per CPU, at most as many as half the free memory holds at 128 MiB each |
+
+What stays, and why:
+- `OMP_THREAD_LIMIT=1`. Each engine already has its own core; Tesseract's OpenMP inside every engine more than doubled a dense 4K screen's time on four cores and cut it short at the budget.
+- Bands and strips are cut as for four engines, so the copied text is the same at any engine count.
+- The emoji scan's 3 s and Quick redact's 2 s matcher bound. They decide how thorough the scan is and stop a runaway pattern; they don't limit CPUs.
+
+The parent passes the switch in the helper's cleared environment as `PUTGD_TEXT_UNHINGED=1`, because the engines, the memory budget and the limits are fixed before confinement. On aurora-amd (12 threads) a dense 4K screen took 1.69 s with the switch on against 1.98 s off, with peak resident memory 371 MiB against 271. On a four-core i5 the times were the same. The copied text was identical on all 277 inputs ([#1948](https://github.com/patrick-hudson/put.gd-desktop/pull/1948)).
+
 **Why 320 MiB (#1808).** The budget was 128 MiB until 2026-11-21. A whole screen's first task
 already used that up, so a GNOME 4K screen ran all 43 of its tasks on one engine and a 1080p
 screen on two of four. The #1805 research measured the corpus in the in-process benchmark with
