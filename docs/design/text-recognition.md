@@ -885,8 +885,10 @@ other tool active it does not. The user's side is in the
     token found by its payload (a wrap inside the header), or a token-shaped run above. A token
     collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
     three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone four
-    in five, and any run that holds 16 `A` in a row (a Twitter bearer token's start, even cut short beside a
-    button). Prose never repeats one letter for so long. Until #1975 the commonest had to be only half,
+    in five. A segment that otherwise qualifies (24 or more letters or digits, nine in ten of its
+    characters, past the noise and mask checks below) and holds 16 `A` in a row needs no share at all:
+    a Twitter bearer token's start, even cut short beside a button (`AAAAAAAAAAAAAAAAA… Regenerate`).
+    Prose never repeats one letter for so long. Until #1975 the commonest had to be only half,
     which took a status page's uptime bars (read as `TEREEERERE…` or `PULUUUUURU CURR`) and drawn
     charts for tokens. A run whose commonest character is `x` or `0`
     is a placeholder, not a token (#1895).
@@ -991,8 +993,8 @@ other tool active it does not. The user's side is in the
         above. It has two digits, or one in six groups or more, or, in capitals as one word or groups of
         one length, none beside words that name a setup key ("Setup key", "Enter this key"). Lowercase
         words fit the alphabet too, so a lowercase run needs two digits, and only digits inside a group
-        that also holds letters count, unless the groups are a key's even groups of three to eight
-        (`jbsw 2345 hpkp xpab`), #1975: a number of its own between lowercase words ("A blank key, or
+        that also holds letters count, unless every group shares one width of three to eight
+        characters, `=` padding left out, the last allowed to be shorter (`jbsw 2345 hpkp xpab`), #1975: a number of its own between lowercase words ("A blank key, or
         one longer than 255 characters") makes no key. Its rest on the row just below is
         covered when that row holds only base32 groups of the same case, four characters or more in all,
         and so are two such rows of groups that make a key only together;
@@ -1141,8 +1143,9 @@ other tool active it does not. The user's side is in the
       whose letters and digits, lowercased and with everything else removed, have eight in ten,
       after the first two, repeating the character two before them and differing from the one before
       (`hahaha`);
-    - a hex run needs one character in eight to be a digit as read, counting the usual confusions for
-      `1` (`l`, `I`, `|`, `!`) but not an `o` or `O` read for zero, so a receipt's leaders
+    - a hex run needs one character in eight to map to a digit (the digits themselves and the hex
+      confusions above, such as `l`, `I`, `i`, `|`, `!` for `1` and `S` for `5`), not counting an `o`
+      or `O` read for zero, so a receipt's leaders
       (`ccooecoo`) and a page's ornament read as `EOEOEOOOOO` (#1975) are no hex;
     - a hash word names a digest only in the run's own segment or in up to three words and 32
       characters on each side of it, stopping at a word with seven hex characters in a row or a gap
@@ -1199,7 +1202,8 @@ other tool active it does not. The user's side is in the
       whose separator recognition lost (`npm` then words): npm's own banner, "npm tokens that bypass
       2FA are being restricted…", is no npm token, while `npm_` then the same words still is one.
   - Limits (#1971, #1972): when recognition splits a token into pieces that happen to pass these
-    tests, the base64 or AWS key ID rule skips it; another rule can still suggest it. We measured the
+    tests, the base64 or AWS key ID rule skips it, and so does a known prefix's rule when recognition
+    also lost the prefix's separator (#1975); another rule can still suggest it. We measured the
     base64 test alone on random base64 tokens split at random points into pieces: it skipped about
     1 in 3,000 of 32-character tokens in four pieces, 1 in 700 in six and 1 in 175 in eight, and
     fewer of longer tokens. A stretch whose other parts hold 20 characters or more is checked as
@@ -1212,16 +1216,19 @@ other tool active it does not. The user's side is in the
     that stay:
     - a page in another script (Chinese, Japanese, Korean, Russian, Hebrew) read with English only
       comes back as random-looking Latin words, which can look like a split token. Recognition reads
-      the languages chosen in Settings → Text recognition, or, with none chosen, the system
-      locale's, so an English-locale user opening such a page reads it with English. Choosing the
-      page's language there fixes it. We tried skipping key candidates made of many short,
+      the languages chosen in Settings → Text recognition, or, with none chosen, the desktop's
+      language when its data is installed, then English, so an English desktop reads such a page with
+      English only. Installing and choosing the page's language there can help; the sweep read in
+      English and didn't measure how much. We tried skipping key candidates made of many short,
       low-confidence words with no prefix, label or secret word: it cleared none of the six such
       pages fully and dropped three true covers in the fuzz scenes, so it was not kept;
     - a row of navigation words run together in mixed case (`GrandTheftAutoVI`, `BAskeTBALL`,
       `ForMULA1`: news trending chips, a sports site's tabs) can be taken for a split token. Counting
       such words as ordinary would loosen the split-token guard of #1971;
     - a token collapsed by recognition into two or three mixed letters with its prefix lost
-      (`APC CCEEEECEEEEC…`) is no longer a key; a token of one repeated character still is;
+      (`APC CCEEEECEEEEC…`) may no longer be a key, or be covered only where one letter makes four in
+      five of a stretch; a run of one repeated character still is, unless the noise or mask checks
+      take it;
     - a bit diagram read as long runs of `0` and `1` (Wikipedia's IPv6 page), a search result's
       breadcrumb URL, and a card-shaped registration or table number (a Chinese ICP filing number,
       a country population table) can still be taken for a key or card;
@@ -1339,10 +1346,13 @@ other tool active it does not. The user's side is in the
     (`10.`, `172.16.`, `192.168.`) still are. An address recognition split at a dot on one line (`148`
     `.98.250.123:443`, `148.98.250.` `123:443`) is joined when the boxes are no more than one and a
     half characters apart and the two make one whole address.
-  - An email address whose last dot recognition lost (`kenji@gmail` `com`, the next word within a
-    line height) gets it back only when that word is a country's two letters written in one case,
-    or a common top-level name in any case (`com`, `CoM`, `net`, `org`, `io`, `dev`, `co`,
-    `invalid`, `test`, `example` and some 30 more); a logo's word after an icon read as `@`
+  - An email address whose last dot recognition lost (`kenji@gmail` `com`) gets it back when the
+    next word is on the same recognized line, within a line height, the `@` word is more than 1.1
+    times as wide as it is tall, and the next word is two to 24 letters that make an ending: any two
+    letters in one case (not checked against assigned country codes), a common top-level name in any
+    case (`com`, `CoM`, `net`, `org`, `io`, `dev`, `co`, `info`, `invalid`, `example` and others), or
+    a name that is also a word (`live`, `page`, `home`, `test`, `local`, `mail` and others) in one
+    case only; a logo's word after an icon read as `@`
     (`cri@Duzz` `Live`, `WViIg@tio` `lieve`) makes no address (#1975). An address on a rarer
     top-level name whose dot was lost (`ops@example` `systems`) is a limit.
   - In a CSV row one word can hold the end of one field and the start of the next

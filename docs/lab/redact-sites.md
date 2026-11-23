@@ -12,7 +12,7 @@ tool, not acceptance evidence for any desktop.
 | --- | --- |
 | `sites.tsv` | The page list, by category: news, finance, video, social, shopping, developer docs and GitHub, registries, Wikipedia, weather, sports, status pages, forums, search, maps, travel, mail and chat landing pages, cloud pricing, government, education and non-English sites. Every page loads without a login. |
 | `sweep.py` | `capture`, `run`, `replay`, `report` and `compare`, described below. |
-| `triage.tsv` | One rule per line: kind, a regular expression on the matched text (or `url=RX text=RX` for one site), verdict `true` or `false`, and the root-cause group. The first rule that matches decides; a match no rule decides counts as `untriaged`, which is false. False verdicts name the pages they were checked on, so a real address or number on a new page shows up untriaged rather than called a misread. |
+| `triage.tsv` | One rule per line: kind, a regular expression on the matched text (or `url=RX text=RX` for one site), verdict `true` or `false`, and the root-cause group. The first rule that matches decides; a match no rule decides counts as `untriaged`, which is false. Most false verdicts name the pages they were checked on, matched against the requested page's host and path (no query or fragment), so a real address or number on a new page shows up untriaged rather than called a misread; the loopback IP rule holds on every page. |
 
 The captures and results hold page text, so they stay out of git and off the workstation. Run on a
 builder, holding your own quiet lease (see [remote builders](remote-builders.md)).
@@ -43,9 +43,16 @@ builder, holding your own quiet lease (see [remote builders](remote-builders.md)
    ```
 
    It stops launching work while `desktop_lock.py guard` refuses. On aurora, run it inside the toolbox.
-3. **Replay.** For a rule change, `replay --words res.jsonl --driver NEW_DRIVER --out rp.jsonl`
-   matches the recognized words again with a driver built from your tree, with no recognition: a few
-   seconds instead of minutes. It passes each word's confidence and second-read flag, so a replay
+3. **Replay.** For a rule change, replay matches the recognized words again with a driver built from
+   your tree, with no recognition: a few seconds instead of minutes.
+
+   ```sh
+   python3 tools/lab/redact_sites/sweep.py replay --shots cap --words res.jsonl --driver NEW_DRIVER \
+     --build-json build-info.json --out rp-REVISION.jsonl
+   ```
+
+   Use a new `--out` file for each matcher revision: a capture that already has a successful row in
+   the file is skipped. It passes each word's confidence and second-read flag, so a replay
    through the driver of the recognition run's own commit gives the run's matches exactly.
 4. **Report.** Pass one `--shots` and `--results` pair per host:
 
@@ -56,10 +63,13 @@ builder, holding your own quiet lease (see [remote builders](remote-builders.md)
    `report` writes `matches.tsv` (every match with its page, browser, scale, theme, verdict, group
    and words around it), `summary.json` and `table.md`. The table gives, per profile and scale, the
    captures with any prompt and those with a false one, the pages with a false prompt in any capture,
-   and false matches per group. A capture the check couldn't finish (recognition failed or cut,
-   matching unfinished) counts as a false prompt in its own group, since the check asks then too.
-   `compare rep-before rep-after` prints both side by side. `run` says `INCOMPLETE` and exits 1 when a
-   capture has no result; run it again to retry those.
+   and false matches per group. A capture counts as a false prompt when any of its matches is false
+   or untriaged, even if another one is genuine. A capture with a result the check couldn't finish
+   (recognition failed or cut, matching unfinished) also counts as a false prompt, in its own group,
+   since the check asks then too. A capture with no result row at all is left out of the report and
+   its totals, so settle `INCOMPLETE` first: `run` says it and exits 1 when a capture has no result
+   or its latest result is an error; run it again to retry those. `compare rep-before rep-after`
+   prints both side by side.
 
 ## Results (#1975)
 
