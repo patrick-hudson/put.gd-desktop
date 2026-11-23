@@ -13,6 +13,8 @@ public:
  using Validator=std::function<Error(const QJsonObject&)>;
  UiProcessController(QString socketPath,QString residentEpoch,QString helperPath,Validator,QObject* parent=nullptr);
  ~UiProcessController() override;
+ // #1962: the resident's secret for the person's own Copy text, sent to putgd-ui on its private pipe only.
+ void setPersonToken(QString token){personToken_=std::move(token);}
  using ShortcutRecordingHandler=std::function<void(bool,Reply)>;
  void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecordingHandler_=std::move(handler);}
  // activationToken: an xdg-activation token for the click that asked for the
@@ -45,7 +47,7 @@ private:
  ShortcutRecordingHandler shortcutRecordingHandler_;
  bool shortcutRecording_=false,recordingRequestActive_=false;
  quint64 recordingGeneration_=0;
- QString socketPath_,epoch_,helperPath_;Validator validate_;
+ QString socketPath_,epoch_,helperPath_,personToken_;Validator validate_;
  QProcess* process_=nullptr;UiControl* control_=nullptr;
  QTimer startup_,stopDeadline_,activationDeadline_,closeDeadline_;
  Phase phase_=Phase::Stopped;

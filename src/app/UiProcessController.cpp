@@ -89,7 +89,7 @@ void UiProcessController::launch(){
   QPointer<UiProcessController> guard(this);
   emit helperPidChanged(child->processId());
   if(!guard||process_!=child||stopping_)return;
-  control_->send("bootstrap",{{"socketPath",socketPath_},{"residentEpoch",epoch_},{"build",build()},{"state",state_}});
+  control_->send("bootstrap",{{"socketPath",socketPath_},{"residentEpoch",epoch_},{"build",build()},{"state",state_},{"personToken",personToken_}});
  });
  connect(child,&QProcess::errorOccurred,this,[this,child,generation](QProcess::ProcessError error){
   if(process_!=child||processGeneration_!=generation)return;

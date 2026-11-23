@@ -35,6 +35,10 @@ public:
  // How long a client waits for this method's reply.
  static int replyDeadlineMs(const QString& method);
  void dispatch(const QJsonObject&,JsonReply);
+ // #1962: the secret this resident hands its own putgd-ui on the private control pipe. A Copy text request
+ // that carries it ("person") is the person's; any other, from putgd-cli, the MCP helper or another client,
+ // is an agent's, and its copy withholds a code that holds a secret. Never part of a reply.
+ QString personToken() const {return personToken_;}
  void setUiActivation(std::function<void(const QString&,std::function<void(Error)>)> callback) {uiActivation_=std::move(callback); }
  // A command for an open interface view; the helper validates its semantics.
  void setUiCommand(std::function<void(const QString&,const QJsonObject&,JsonReply)> callback) {uiCommand_=std::move(callback);}
@@ -63,10 +67,12 @@ private:
  QPointer<UpdateService> updates_;
  QPointer<ErrorLog> errorLog_;
  const QString residentEpoch_;
+ const QString personToken_;
  SettingsService& settings_;
  OperationService& operations_;
  HistoryService& history_;
  LocalIpcServer server_;
  QSet<LocalIpcConnection*> clients_;
+ bool fromPerson(const QJsonObject& params) const;
 };
 }

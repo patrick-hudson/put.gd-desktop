@@ -25,6 +25,10 @@ public:
  QJsonObject diagnostics()const{return diagnostics_;}
  QJsonObject build()const{return build_;}
  QString residentEpoch()const{return epoch_;}
+ // #1962: the resident's secret for the person's own Copy text (History's and the dashboard's), from the
+ // private control pipe. Sent only with those requests; agents never see it.
+ void setPersonToken(QString token){personToken_=std::move(token);}
+ QString personToken()const{return personToken_;}
  // Each destination's last check, as the resident keeps it (#1692): passed, failed or
  // untested against the saved settings, with the connection fingerprint it was for.
  QJsonObject destinationStatus()const{return destinationStatus_;}
@@ -51,6 +55,7 @@ signals:
  void destinationStatusChanged();
  void errorLogChanged();
 private:
+ QString personToken_;
  void applySettings(const QJsonObject&);
  ShortcutRecordingHandler shortcutRecording_;
  SessionClient& client_;

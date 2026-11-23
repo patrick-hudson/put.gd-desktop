@@ -598,6 +598,7 @@ int main(int argc,char* argv[]) {
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);
+ ui.setPersonToken(server.personToken());
  ui.setShortcutRecordingHandler([&](bool active,std::function<void(putgd::Error)> reply){
   // Gate dispatch before asking native services to release their registrations.
   // The adapter acknowledgement, not this flag, makes capture safe to start.
