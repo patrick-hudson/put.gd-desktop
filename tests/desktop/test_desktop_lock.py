@@ -364,13 +364,31 @@ class HostInventory(unittest.TestCase):
                 'dpkg-query': (0, 'ii  0.1.1-dev.369'),
             }
             items, notes = lock.collect_inventory(home, self.fake(outputs), own={100},
-                                                    environment=environments.get)
+                                                    environment=environments.get, parent={}.get)
         self.assertEqual([(item['kind'], item['id']) for item in items], [
             ('process', '200'), ('process', '400'), ('process', '500'), ('flatpak', '2563577312'),
             ('file', str(home / '.local/share/applications/putgd-record-lab.desktop')), ('package', 'putgd')])
         self.assertEqual(len(notes), 1)
         self.assertTrue(notes[0].startswith('2 process(es) outside the desktop session'))
         self.assertTrue(notes[0].endswith(': 300 700'))
+
+    def test_a_confined_helper_is_judged_by_the_process_that_started_it(self):
+        # #1938: putgd-ocr is non-dumpable, so its environment is unreadable; another session's
+        # SSH benchmark helper failed a release check that the editor's helper should still fail.
+        outputs = {'pgrep': (0, '210 /usr/bin/putgd-ocr\n310 /home/patrick/work/r1930/bin/putgd-ocr.n\n'
+                                '410 /usr/bin/putgd-ocr\n510 /usr/bin/putgd-ocr\n610 /usr/bin/putgd-ocr\n'),
+                   'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
+        environments = {'210': None, '200': {'WAYLAND_DISPLAY', 'HOME'},  # the editor's helper
+                        '310': None, '300': None, '301': {'HOME', 'SSH_CONNECTION'},  # SSH harness, two levels up
+                        '410': None,  # orphaned to init: can't be told apart
+                        '510': None, '500': False,  # its parent exited meanwhile
+                        '610': None, '600': {'HOME'}}  # adopted by a subreaper: no sign of SSH
+        parents = {'210': '200', '310': '300', '300': '301', '410': '1', '510': '500', '610': '600'}
+        with tempfile.TemporaryDirectory() as folder:
+            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs), own=set(),
+                                                    environment=environments.get, parent=parents.get)
+        self.assertEqual([item['id'] for item in items], ['210', '410', '510', '610'])
+        self.assertTrue(notes[0].endswith('shared SSH work): 310'))
 
     def test_reports_cover_players_and_orphaned_lab_test_x_servers_but_not_a_running_test_or_users_xvfb(self):
         # #1925: 15 magenta covers and 11 orphaned stress-run Xvfb servers outlived released locks.
