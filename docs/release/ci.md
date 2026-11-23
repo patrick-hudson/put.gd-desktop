@@ -718,7 +718,8 @@ contention and writes a ledger in the same format, with per-test run and
 failure counts:
 
 ```bash
-python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-stress/RUN \
+python3 tools/lab/desktop_lock.py guard && \
+    python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-stress/RUN \
     --iterations 20 --hogs 4 --hog-cpus 0-1 --test-cpus 0-1 --time-scale 3 \
     -- --preset dev -L integration --parallel 12 \
     --resource-spec-file "$HOME/work/put.gd-x/tools/ci/ctest-resources.json"
