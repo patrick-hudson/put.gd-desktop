@@ -113,7 +113,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 
 | Step | Rule |
 | --- | --- |
-| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, starts the child, and closes its own copy once the child has started. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
+| Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent starts the child first, so the child loads its libraries and confines itself while the strips are written (#1929). The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, closes its own copy, and only then sends the bootstrap; the child opens the input once activated after it. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
 | Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
@@ -274,10 +274,10 @@ Otsu's threshold is one for the whole region, so a line of faint ink (comment gr
 editor) disappears whenever brighter text pulls the threshold above it (#1894). The page profile
 also counts faint edge ink per row: pixels at least 12 levels from the background and 8 from the
 pixel before them on the background's side of the threshold. A run of such rows with no ink at
-the threshold, half to three line heights tall (at most eight runs), is read once more by the
-first engine with its band's contrast stretched, darkest pixel to black and paper to white. Only
-a job that asks for candidates (Quick redact and the check before uploading) does this, inside its
-time budget; the words join the candidates after the copied text is made, so Copy text is
+the threshold, half to three line heights tall (at most eight runs), is read once more with its
+band's contrast stretched, darkest pixel to black and paper to white. Only a job that asks for
+candidates (Quick redact and the check before uploading) does this, as one of the second reads
+described below, inside their budget; the words join the candidates after the copied text is made, so Copy text is
 unchanged, and a word where one was already read is left out. When neither this test nor the
 unread-rows test below finds a band, these tests add no extra read.
 
@@ -297,8 +297,10 @@ in a grown area, rows outside the rows its panel was read in whose ink and faint
 together number at least four (or one per 256 pixels of width, when that is more) form runs, and a
 run half a line to three lines tall is read again the same way. Its band adds up to two rows on
 each side, never into the rows the panel was read in, and is skipped only when one faint band
-covers the whole padded band. Faint and unread runs together are at most eight an area; more marks the result
-truncated. When the image is
+covers the whole padded band. Faint and unread runs together are at most eight an area; the rest
+are not read, and the result is not marked truncated for them (#1929: on a grainy dark corpus image
+that took 6.4 s of faint reads and then sent the check before uploading to "couldn't finish").
+When the image is
 split, a window that holds only faint text may have no panel of its own to grow from: panels come
 from grey steps of 32 levels, which other content in the window can supply. A large image whose layout gives no split
 is one panel, the whole image, as is anything under 4 MP.
@@ -311,13 +313,24 @@ contrast copy built on 16 px tiles: each tile's background is the median grey le
 in the window of tiles around it (up to 5 by 5, fewer at an edge), every pixel is replaced by its
 distance from that background, and the distances are stretched so the local 98th percentile (at
 least 32 levels) is black, on white. One copy reads dark and light pages, low contrast and coloured backgrounds alike. Bands
-are at most four times the height of their tallest uncertain word and are read least confident
-first across all panels. The second read may take as long as the recognition before it took,
-faint-line reads included, or 750 ms when that was quicker: each band's recognition gets the
-earlier of that allowance and the job's budget as its deadline, and is skipped when building its
-copy used up the time left. A
-main read cut short skips it. Its words join the candidates after the copied text is made; Copy
-text is unchanged, and a page with no uncertain token does no extra work.
+are at most four times the height of their tallest uncertain word. A band is read only across its
+words' run of text: their columns grown by four times the tallest word's height, then outward to
+the first gap of 0.6 times that height with no pixel 12 levels from the background in its rows,
+so a full-width row of a 4K terminal is not read across the blank screen beside it. A main read cut
+short skips it. Its words join the candidates after the copied text is made; Copy text is
+unchanged, and a page with no uncertain token does no extra work.
+
+**One budget for every second read (#1929).** The faint-line, unread-row and uncertain-token reads
+go in one queue: the faint and unread bands first, then the token bands least confident first
+across all panels. Every engine the first pass started takes from it, and while time and the
+memory budget allow, more start, up to the job's threads. Together they may take a quarter of the
+first pass's time, at least 400 ms and at most 1 s, and they end at least 1 s before the job's own
+budget. A read whose band would not finish at the slowest pace seen so far is not started, and
+one cut short adds nothing. They never mark the result truncated: `truncated` means the first
+pass did not finish. Until #1929 the token read ran on one engine for as long as the first pass
+took, which doubled a dense 4K check on a 4-core i5 (5.2 s to 10.3 s). On the 978-image corpus
+test split the one budget covered 1,351 secrets against 1,347 and flagged 642 decoys against
+652, with the copied text identical.
 
 How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
 - Recognition misses were not specific to dark themes (27% of secrets on dark themes, 28% on
@@ -413,8 +426,27 @@ How this was chosen, on Patrick's 10k secret corpus (test split, 978 images):
     The text was identical on all 176 captures. On k72's four cores nothing changed. The record
     is [put.gd-evidence `records/2026-11-22-issue-1812-ocr-engine-count`](https://github.com/patrick-hudson/put.gd-evidence/tree/03ec9a20f11f719e5ddac17014e32073bf79c6dd/records/2026-11-22-issue-1812-ocr-engine-count).
   - The bands and strips of every panel go into one pool. Results join in task order, never in
-    the order the tasks finish. A screen measures its first task before it shares, and an extra
-    engine starts only while the time left covers twice an engine's start plus the slowest task.
+    the order the tasks finish. Extra engines start at once, and only while the time left covers
+    twice an engine's start plus the slowest task. A banded page or a screen of panels reserves
+    each one its cost and 20 bytes a pixel of its largest task (a dense band grew by 15 to 20),
+    and once its first task is done starts more as that task's cost allows. Until #1929 such a
+    page read its first task alone first, which left three of four cores idle for 1.4 s of a
+    dense 4K terminal's 4.6 s first pass on k72.
+  - The first engine starts on a thread of its own while the codes are read and the page is
+    analysed. Its cost is the rise of the process's private pages over its start, never under
+    16 MiB: the code and emoji scans beside it fault in the input's mapping, and counting those
+    took a dense 4K terminal on m74 from 5.1 s to 6.2 s.
+  - **Faster cores.** On a machine of mixed cores the helper keeps its engines to the faster
+    kind and runs one engine for each of those CPUs, when they hold at least four physical cores
+    and slower CPUs are allowed too; otherwise it uses every CPU, as on a uniform machine. It
+    reads sysfs before confinement: Intel's `cpu_core` CPUs when `cpu_atom` lists CPUs too,
+    otherwise each CPU's `acpi_cppc/highest_perf`, then `cpufreq/cpuinfo_max_freq`, cutting
+    groups at a step of a sixth or more and taking every CPU above the slowest group. AMD's
+    ranking of alike cores differs by smaller steps. aurora-amd's Ryzen 5 PRO 8500GE is such a
+    machine: its two Zen 4 cores (four logical CPUs) read 196 and its four Zen 4c cores 144, all
+    with the same maximum frequency. With two physical cores it falls back to every CPU, as
+    measured on a dense 4K terminal: 2.18 s on the four Zen 4 CPUs, 2.06 s on four Zen 4c cores,
+    1.94 to 2.05 s on any four CPUs, and 1.88 s on eight.
 - **Codes first.** ZXing-cpp reads the full grey image. Then each decoded code's area is
   filled with the background in every band's copy, so a band never needs a code, and code
   modules never leak into the text. Formats read are QR Code, Micro QR Code, Data Matrix and
