@@ -123,6 +123,44 @@ private slots:
   QVERIFY(doc.undo());QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());QVERIFY(!doc.dismissed(at,"email"));
   const auto third=run(window,{"email"});QCOMPARE(third["created"].toArray().size(),1);
  }
+ // #1941: a decoded QR code holding a 2FA enrolment or a Wi-Fi password is covered with Keys and tokens: one
+ // suggested mark over the whole symbol and a fifth of its side around it. The answer names the code's kind,
+ // never its content, and nothing the document keeps holds it; a code that holds no secret stays visible,
+ // and so does every code when Keys and tokens is not chosen.
+ void secretCodesAreCoveredWithKeys() {
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  editor::EditDocument doc(capture());EditorWindow window(doc);
+  window.text().setRunner([seed](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){
+   auto result=found();
+   TextCode otp;otp.format="QRCode";otp.text="otpauth://totp/Example:alice?secret="+seed;otp.length=otp.text.size();otp.quad={QPoint(300,100),QPoint(350,100),QPoint(350,150),QPoint(300,150)};
+   TextCode menu;menu.format="QRCode";menu.text="https://example.com/menu";menu.length=menu.text.size();menu.quad={QPoint(20,120),QPoint(60,120),QPoint(60,160),QPoint(20,160)};
+   result.codes={otp,menu};result.candidates={};return result;
+  });
+  const auto none=run(window,{"email"});QCOMPARE(none["created"].toArray().size(),0);QVERIFY(!none.contains("codes"));
+  // editor.inspect lists the secret code by kind alone; the menu code keeps its text.
+  {const auto inspected=window.text().inspect();const auto json=QJsonDocument(inspected).toJson();
+   QVERIFY2(!json.contains(seed.toLatin1())&&!json.contains("otpauth"),json.constData());QVERIFY(json.contains("https://example.com/menu"));
+   bool withheld=false;for(const auto& code:inspected["codes"].toArray())withheld=withheld||(code.toObject()["withheld"].toString()=="otp"&&!code.toObject().contains("text"));
+   QVERIFY(withheld);
+   // An agent's copy carries the code by its kind; a person's Copy all text keeps it. An agent's copyCode of it is refused.
+   QVERIFY(!window.text().allText(true).contains(seed));QVERIFY(window.text().allText(true).contains("[2FA QR code withheld]"));
+   QVERIFY(window.text().allText(false).contains(seed));
+   int secretIndex=-1;for(int i=0;i<window.text().layer().codes().size();++i)if(!window.text().layer().codes().at(i).secret.isEmpty())secretIndex=i;
+   QVERIFY(secretIndex>=0);Error refused;bool answered=false;
+   window.copyCode(secretIndex,[&](Error e,QJsonObject){refused=e;answered=true;},true);
+   QVERIFY(answered);QCOMPARE(refused.code,QString("code_withheld"));}
+  const auto result=run(window,{"key"});
+  QCOMPARE(result["created"].toArray().size(),1);QCOMPARE(result["counts"].toObject()["key"].toInt(),1);QCOMPARE(result["codes"].toObject(),(QJsonObject{{"otp",1}}));
+  const auto* mark=doc.find(quint64(result["created"].toArray().first().toDouble()));QVERIFY(mark);
+  QCOMPARE(mark->kind,Shape::Kind::Redact);QCOMPARE(mark->suggested,QString("key"));
+  // The symbol (300..349 x 100..149) with 10 px around it, clamped to the image.
+  QVERIFY(mark->rect.contains(QRect(290,90,70,70)));
+  for(const auto& text:{QString::fromUtf8(QJsonDocument(result).toJson()),QString::fromUtf8(QJsonDocument(editor::Commands::state(doc)).toJson()),window.findChild<QLabel*>("quickRedactResult")->text()})
+   QVERIFY2(!text.contains(seed)&&!text.contains("otpauth"),qPrintable(text));
+  // Deleted, it is not suggested again.
+  QVERIFY(doc.remove(mark->id));
+  const auto again=run(window,{"key"});QCOMPARE(again["created"].toArray().size(),0);
+ }
  // Lab finding F1: a later run reads the page with the other marks blacked out, so the
  // recognized boxes move a few pixels and shrink a little. A deleted suggestion is still
  // skipped then, and it is the same only for the same category.

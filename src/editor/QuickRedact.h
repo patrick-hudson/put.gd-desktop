@@ -1,6 +1,7 @@
 #pragma once
 #include "TextLayer.h"
 #include <QImage>
+#include <QJsonArray>
 #include <QList>
 #include <QRect>
 #include <QStringList>
@@ -109,6 +110,18 @@ QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match&,const QR
 // match, in reading order.
 struct MarkBox {QRect mark;QRect words;};
 QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds,const QImage& image={});
+// #1941: whether a decoded code's content holds a secret Quick redact's Keys and tokens covers, and of
+// which kind: "otp" (an otpauth:// 2FA enrolment), "wifi" (a Wi-Fi network's password, WIFI:…;P:…;),
+// "key" (anything the key rules find in it, read as lines of words), or empty. The content is read
+// only to decide; nothing of it is kept or returned.
+QString codeSecret(const QString& content);
+// #1941: codes as text.inspect and editor.inspect return them (textjob::codesJson), with each one whose content
+// holds a secret withheld: its "kind" becomes "withheld", "withheld" names the secret's kind (otp, wifi, key) and
+// it has no "text". What a person shows or copies on screen is not this; agent replies are.
+QJsonArray withholdSecretCodes(QJsonArray codes);
+// #1941: what a copy an agent asked for carries in place of such a code's content: "[2FA QR code withheld]",
+// "[Wi-Fi QR code withheld]" or "[QR code with a key withheld]", for the kinds codeSecret names.
+QString withheldText(const QString& kind);
 // Luhn's check over the digits of `number`.
 bool luhn(const QString& digits);
 }

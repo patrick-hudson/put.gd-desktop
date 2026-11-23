@@ -60,7 +60,7 @@ void EditorTextRecognition::documentChanged() {
  // nothing of the old result is shown, selected, copied or returned.
  signature_=signature;++revision_;
  if(cancel_)cancel_->store(true);
- layer_.clear();candidates_.clear();lineTops_.clear();truncated_=false;state_="idle";error_={};
+ layer_.clear();candidates_.clear();secretCodes_.clear();lineTops_.clear();truncated_=false;state_="idle";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({"edit_stale","A Redact mark or the crop changed before recognition finished",{}});
  if(active_)start();
  emit changed();
@@ -84,24 +84,27 @@ void EditorTextRecognition::run() {
  options.languages=textjob::defaultLanguages(languages_,QLocale::system().name(),textjob::installedLanguages(textjob::dataDirectories(QDir::homePath(),QCoreApplication::applicationDirPath())));
  cancel_=std::make_shared<std::atomic_bool>(false);
  auto result=std::make_shared<TextResult>();auto error=std::make_shared<Error>();
+ // #1941: each decoded code's secret kind (quickRedact::codeSecret), worked out here on the worker, by index.
+ auto kinds=std::make_shared<QStringList>();
  const auto revision=revision_;const auto runner=runner_;const auto cancel=cancel_;
  // The worker starts and reaps the helper, so it outlives it.
- auto* thread=QThread::create([base,crop,redactions,options,runner,cancel,result,error]{
+ auto* thread=QThread::create([base,crop,redactions,options,runner,cancel,result,error,kinds]{
   auto pixels=input(base,crop,redactions);
   if(cancel->load()){*error=textjob::failure("cancelled");return;}
   // Taken by the job, which lets it go once its pixels are written.
   *result=runner(std::move(pixels),options,*error,cancel);
+  for(const auto& code:result->codes)kinds->append(code.binary||cancel->load()?QString():editor::quickRedact::codeSecret(code.text));
  });
  worker_=thread;
- connect(thread,&QThread::finished,this,[this,thread,revision,result,error]{
+ connect(thread,&QThread::finished,this,[this,thread,revision,result,error,kinds]{
   if(worker_==thread)worker_.clear();
   thread->deleteLater();
-  finished(revision,*error,result);
+  finished(revision,*error,result,*kinds);
  });
  thread->start();
  emit changed();
 }
-void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_ptr<TextResult> result) {
+void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_ptr<TextResult> result,const QStringList& kinds) {
  // A result for an older revision is rejected, whatever it holds.
  if(revision!=revision_){if(restart_)run();return;}
  if(error){fail(error.code=="cancelled"?Error{"edit_stale","Recognition was cancelled",{}}:error);return;}
@@ -109,6 +112,8 @@ void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_pt
  auto found=words(result->words,offset);auto every=words(result->candidates,offset);
  QList<editor::RecognizedCode> codes;
  for(const auto& code:result->codes)codes.append({code.format,code.binary,code.binary?QString():code.text,code.length,polygon(code.quad,offset)});
+ secretCodes_.clear();
+ for(qsizetype i=0;i<codes.size()&&i<kinds.size();++i){codes[i].secret=kinds.at(i);if(!kinds.at(i).isEmpty()&&!codes.at(i).quad.isEmpty())secretCodes_.append({kinds.at(i),codes.at(i).quad});}
  QList<editor::RecognizedCode> none;
  editor::TextLayer::exclude(found,codes,redactions);editor::TextLayer::exclude(every,none,redactions);
  layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;languagesSkipped_=result->languagesSkipped;
@@ -122,16 +127,20 @@ void EditorTextRecognition::fail(const Error& error) {
  for(auto& done:std::exchange(waiting_,{}))done(error);
  emit changed();
 }
-QString EditorTextRecognition::allText() const {
+QString EditorTextRecognition::allText(bool withhold) const {
  TextResult copy;const auto& found=layer_.words();
  copy.text=found.isEmpty()?QString():editor::TextLayer::join(found,0,int(found.size())-1);copy.lineTops=lineTops_;
- for(const auto& code:layer_.codes()){TextCode entry;entry.format=code.format;entry.binary=code.binary;entry.text=code.text;entry.length=code.length;for(const auto& point:code.quad)entry.quad.append(point);copy.codes.append(entry);}
+ for(const auto& code:layer_.codes()){TextCode entry;entry.format=code.format;entry.binary=code.binary;entry.text=withhold&&!code.secret.isEmpty()?editor::quickRedact::withheldText(code.secret):code.text;entry.length=code.length;for(const auto& point:code.quad)entry.quad.append(point);copy.codes.append(entry);}
  return textjob::copyText(copy);
 }
 QJsonObject EditorTextRecognition::inspect() const {
  QList<TextWord> found;for(const auto& word:layer_.words())found.append({word.text,word.rect,word.confidence});
  QList<TextCode> codes;for(const auto& code:layer_.codes()){TextCode entry;entry.format=code.format;entry.binary=code.binary;entry.text=code.text;entry.length=code.length;for(const auto& point:code.quad)entry.quad.append(point);codes.append(entry);}
- QJsonObject text{{"state",state_},{"result",layer_.identity()?QJsonValue(double(layer_.identity())):QJsonValue()},{"words",textjob::wordsJson(found)},{"codes",textjob::codesJson(codes)},{"truncated",truncated_},
+ // #1941: a code that holds a secret is listed by kind and corners only; the panel and Copy text the person uses
+ // still show it.
+ auto codesJson=textjob::codesJson(codes);
+ for(qsizetype i=0;i<codesJson.size()&&i<layer_.codes().size();++i)if(const auto& kind=layer_.codes().at(i).secret;!kind.isEmpty()){auto code=codesJson.at(i).toObject();code.remove(QLatin1String("text"));code[QLatin1String("kind")]=QStringLiteral("withheld");code[QLatin1String("withheld")]=kind;codesJson[i]=code;}
+ QJsonObject text{{"state",state_},{"result",layer_.identity()?QJsonValue(double(layer_.identity())):QJsonValue()},{"words",textjob::wordsJson(found)},{"codes",codesJson},{"truncated",truncated_},
   {"selection",layer_.hasSelection()?QJsonValue(QJsonObject{{"from",layer_.first()},{"to",layer_.last()}}):QJsonValue()}};
  if(error_)text["error"]=error_.toJson();
  return text;

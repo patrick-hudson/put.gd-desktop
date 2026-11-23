@@ -1184,7 +1184,7 @@ void OperationService::recognizeText(const QJsonObject& params,JsonReply reply) 
  // A source this desktop cannot read answers with its adapter's error; nothing else is read in its place.
  if(const auto unavailable=textSourceErrors();unavailable.contains(source)){reply(unavailable.value(source),{});return;}
  const auto snapshot=settings_.snapshot();const auto limits=snapshot.limits;const int delay=screen?params["delaySeconds"].toInt():0;
- TextService::Request request;request.source=source;request.copy=params["copy"].toBool();request.keepResult=params["keepResult"].toBool();request.interactive=screen;
+ TextService::Request request;request.source=source;request.copy=params["copy"].toBool();request.keepResult=params["keepResult"].toBool();request.interactive=screen;request.agent=params["agent"].toBool();
  for(const auto& language:params["languages"].toArray())request.languages.append(language.toString());
  QPointer<OperationService> owner(this);auto id=std::make_shared<QString>();
  // Hands what the adapter delivered to the service, on the session thread.

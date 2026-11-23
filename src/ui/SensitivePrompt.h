@@ -40,6 +40,8 @@ public:
   bool redactAllowed=true,editAllowed=true;
   QString destination; // "Upload to S3 · Shared link"
   QString file; // "File 2 of 3: notes.png" for a file-manager selection, or empty
+  // #1941: QR codes Keys and tokens covered, by kind (otp, wifi, key), named apart from the key count.
+  QJsonObject codes;
  };
  explicit SensitivePrompt(Model,QWidget* parent=nullptr);
  QJsonObject state() const;

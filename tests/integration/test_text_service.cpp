@@ -142,6 +142,24 @@ private slots:
  }
  // An agent's result is kept in the resident's memory: one that never left
  // would hold megabytes, and screen text, for as long as the resident runs.
+ // #1941: a kept result lists a code holding a secret (a 2FA enrolment) by kind and corners only: an agent's
+ // text.inspect never reads the seed. An ordinary code keeps its text.
+ void keptSecretCodeIsWithheld() {
+  Resident resident;QVERIFY(resident.start());
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  auto result=recognized();
+  TextCode otp;otp.format="QRCode";otp.text="otpauth://totp/Example:alice?secret="+seed;otp.length=otp.text.size();otp.quad={{6,12},{10,12},{10,15},{6,15}};
+  result.codes.append(otp);resident.backend->result=result;
+  // An agent's recognition that copies: the clipboard gets the code by its kind too, the ordinary code whole.
+  auto agentRequest=request(true,true);agentRequest.agent=true;
+  const auto id=resident.recognize(std::move(agentRequest));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.source.copied.text.contains(seed));QVERIFY(resident.source.copied.text.contains("[2FA QR code withheld]"));QVERIFY(resident.source.copied.text.contains(codeCanary));
+  const auto record=resident.inspect(id);const auto codes=record["codes"].toArray();QCOMPARE(codes.size(),2);
+  QCOMPARE(codes.at(0).toObject()["text"].toString(),QString::fromLatin1(codeCanary));
+  QCOMPARE(codes.at(1).toObject()["kind"].toString(),QString("withheld"));QCOMPARE(codes.at(1).toObject()["withheld"].toString(),QString("otp"));
+  QVERIFY(!codes.at(1).toObject().contains("text"));
+  const auto json=QJsonDocument(record).toJson();QVERIFY2(!json.contains(seed.toLatin1())&&!json.contains("otpauth"),json.constData());
+ }
  void keptResultExpires() {
   Resident resident;QVERIFY(resident.start());resident.operations->text().setResultLifetimeForTesting(50);
   const auto id=resident.recognize(request(false,true));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));

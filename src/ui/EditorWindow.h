@@ -51,12 +51,18 @@ public:
  const editor::TextLayer& layer() const {return layer_;}
  // Every recognized word, unfiltered, with what touches a Redact mark dropped (Quick redact).
  const QList<editor::RecognizedWord>& candidates() const {return candidates_;}
+ // #1941: the decoded codes whose content holds a secret (quickRedact::codeSecret), by kind and corners only,
+ // read from the whole result before codes under a Redact mark are dropped from it: such a code can still
+ // decode through its error correction. For Quick redact; the content itself is not kept here.
+ struct SecretCode {QString kind;QPolygon quad;};
+ const QList<SecretCode>& secretCodes() const {return secretCodes_;}
  bool truncated() const {return truncated_;}
  // Languages asked for that had no data (#1804: the sensitive text check reads that as unfinished).
  QStringList languagesSkipped() const {return languagesSkipped_;}
  // The Copy all text clipboard text: the words by line with each text code
  // on a line of its own (textjob::copyText's rule), rebuilt from what is left.
- QString allText() const;
+ // withhold (#1941): a copy an agent asked for, a secret code's content replaced by quickRedact::withheldText.
+ QString allText(bool withhold=false) const;
  // Recognizes the current revision unless it has a result or a job for it
  // runs; after a failure it tries again.
  void start();
@@ -82,7 +88,7 @@ signals:
  void changed();
 private:
  void run();
- void finished(quint64 revision,Error,std::shared_ptr<TextResult>);
+ void finished(quint64 revision,Error,std::shared_ptr<TextResult>,const QStringList& kinds);
  void fail(const Error&);
  editor::EditDocument& doc_;
  Runner runner_;
@@ -90,6 +96,7 @@ private:
  bool allCores_=false;
  editor::TextLayer layer_;
  QList<editor::RecognizedWord> candidates_;
+ QList<SecretCode> secretCodes_;
  QList<int> lineTops_;
  bool truncated_=false,active_=false,restart_=false;QStringList languagesSkipped_;
  QString state_="idle";Error error_;
@@ -179,8 +186,10 @@ public:
  // Copy selection, Copy all text and a code's Copy and Open link, as the
  // panel's buttons. `done` gets {copyStatus, characters} or the launch result.
  using TextDone=std::function<void(Error,QJsonObject)>;
- void copyRecognizedText(bool all,TextDone done={});
- void copyCode(int index,TextDone done={});
+ // agent (#1941): asked for through a session command, so a code holding a secret is withheld: replaced in
+ // the copied text, refused as a code of its own (code_withheld). A person's own copy keeps it.
+ void copyRecognizedText(bool all,TextDone done={},bool agent=false);
+ void copyCode(int index,TextDone done={},bool agent=false);
  void openCode(int index,TextDone done={});
  // After an agent changed the text selection: the tint and the panel follow.
  void textSelectionEdited();

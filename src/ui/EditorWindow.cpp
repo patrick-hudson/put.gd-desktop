@@ -1194,19 +1194,20 @@ void EditorWindow::textOutcome(const QString& what,Error error,int characters,Te
  Ui::role(textFeedback_,status=="copied"?"secondary":"danger");textFeedback_->show();
  if(done){if(status=="failed")done(error,{});else done({},{{"copyStatus",status},{"characters",characters}});}
 }
-void EditorWindow::copyRecognizedText(bool all,TextDone done){
+void EditorWindow::copyRecognizedText(bool all,TextDone done,bool agent){
  const auto identity=text_->identity();
  if(!identity){if(done)done({"text_unavailable","There is no recognized text to copy",{}},{});return;}
- const auto text=all?text_->allText():text_->layer().selectedText();
+ const auto text=all?text_->allText(agent):text_->layer().selectedText();
  if(text.isEmpty()){if(done)done({"text_unavailable",all?"No text was found":"Select words to copy",{}},{});return;}
  if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
  const int characters=int(textjob::characters(text));const auto what=QLocale().toString(characters)+(characters==1?" character":" characters");
  textCopier_(text,[g=QPointer<EditorWindow>(this),what,characters,done](Error error){if(g)g->textOutcome(what,error,characters,done);else if(done)done(error,{});});
 }
-void EditorWindow::copyCode(int index,TextDone done){
+void EditorWindow::copyCode(int index,TextDone done,bool agent){
  const auto& codes=text_->layer().codes();
  if(index<0||index>=codes.size()){if(done)done({"invalid_request","There is no code with that index",{}},{});return;}
  if(codes.at(index).binary){if(done)done({"code_binary","A binary code is neither copied nor shown",{}},{});return;}
+ if(agent&&!codes.at(index).secret.isEmpty()){if(done)done({"code_withheld","A code that holds a secret is not copied for an agent",{}},{});return;}
  if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
  const auto text=codes.at(index).text;const int characters=int(textjob::characters(text));
  textCopier_(text,[g=QPointer<EditorWindow>(this),characters,done](Error error){if(g)g->textOutcome("the code",error,characters,done);else if(done)done(error,{});});
@@ -1291,12 +1292,15 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   // Matching runs off the UI thread: a pattern can be slow. The document may change meanwhile.
   const auto revision=g->text_->revision();
   const auto candidates=g->text_->candidates();
-  const std::function<void(editor::quickRedact::Result)> applyFound=[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
+  // #1941: the codes recognition decoded on the same page; one whose content holds a 2FA secret, a Wi-Fi
+  // password or a key is covered with Keys and tokens. Its content is read only to decide, here.
+  const auto codes=g->text_->secretCodes();
+  const std::function<void(editor::quickRedact::Result)> applyFound=[g=QPointer<EditorWindow>(g),candidates,codes,categories,revision,done,dragWait](editor::quickRedact::Result found){
    if(!g)return;
    // The marks join the document as one undo step of their own, so they wait for a drag in progress to end.
    // The revision is checked then, not now: a drag can add a Redact mark, and an edit that was undone is still a new revision.
    auto apply=std::make_shared<std::function<void()>>();
-   *apply=[g,candidates,categories,revision,done,dragWait,found,self=std::weak_ptr<std::function<void()>>(apply)]{
+   *apply=[g,candidates,codes,categories,revision,done,dragWait,found,self=std::weak_ptr<std::function<void()>>(apply)]{
     if(!g)return;
     // A drag that outlasts the wait ends it: the agent supervisor has answered editor_timeout by then, and marks added later
     // would be ones nobody asked for.
@@ -1319,6 +1323,19 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
      }
      if(any)counts[match.category]=counts[match.category].toInt()+1;
     }
+    // #1941: a code holding a secret gets one solid mark over the whole symbol, finder patterns and all,
+    // and a fifth of its size around it (at least 4 px), so what is shared cannot be scanned: a code
+    // decodes through damage to part of it. Only its kind is reported, never its content.
+    QJsonObject codeKinds;
+    if(categories.contains(QLatin1String("key")))for(const auto& code:codes){
+     const auto& kind=code.kind;
+     const auto symbol=code.quad.boundingRect();
+     const int margin=qMax(4,qMax(symbol.width(),symbol.height())/5);
+     const auto rect=symbol.adjusted(-margin,-margin,margin,margin).intersected(g->doc_.imageRect());
+     if(rect.isEmpty()||g->doc_.dismissed(symbol,QStringLiteral("key")))continue;
+     editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=QStringLiteral("key");shape.suggestedAt=symbol;created.append(double(g->doc_.add(shape)));
+     counts["key"]=counts["key"].toInt()+1;codeKinds[kind]=codeKinds[kind].toInt()+1;
+    }
     g->doc_.commitGesture();
     const auto added=created.size();
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
@@ -1327,7 +1344,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     if(found.nameUnchecked)lines<<QStringLiteral("My username and name was not checked: the account lookup did not answer in time.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
     g->documentEdited();
-    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;if(found.unfinished)result["unfinished"]=true;
+    QJsonObject result{{"created",created},{"counts",counts}};if(!codeKinds.isEmpty())result["codes"]=codeKinds;if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;if(found.unfinished)result["unfinished"]=true;
     if(done)done({},result);
    };
    (*apply)();
