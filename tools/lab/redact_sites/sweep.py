@@ -91,6 +91,10 @@ def _capture_worker(job):
                     sid = f'{site["index"]:03d}-{browser_name[:2]}-{int(scale * 100)}-{theme[0]}'
                     png = shots / f'{sid}.png'
                     row = dict(id=sid, url=site['url'], category=site['category'], browser=browser_name, scale=scale, theme=theme)
+                    # A capture is reused only for the address it was taken of: an edited list renumbers pages.
+                    stamp = png.with_suffix('.url')
+                    if png.exists() and (not stamp.exists() or stamp.read_text() != site['url']):
+                        png.unlink()
                     if png.exists():
                         row.update(png=str(png.relative_to(out)), status='cached')
                         rows.append(row)
@@ -112,6 +116,7 @@ def _capture_worker(job):
                             pass
                         page.wait_for_timeout(settle)
                         page.screenshot(path=str(png))
+                        stamp.write_text(site['url'])
                         row.update(png=str(png.relative_to(out)), status=resp.status if resp else None, title=page.title()[:120], final=page.url)
                         if theme == 'dark' and light is not None:
                             diff = _differs(light, png)
@@ -189,9 +194,40 @@ def _drive(cmd, jobs_lines, out_fh, env):
     return p
 
 
+def _merge_parts(out, tmp):
+    """Shards an interrupted run left behind join the results; a half-written last line is dropped."""
+    if not tmp.exists():
+        return
+    with open(out, 'a') as dst:
+        for part in sorted(tmp.glob('part-*.jsonl')):
+            for l in part.read_text().splitlines():
+                try:
+                    json.loads(l)
+                except ValueError:
+                    continue
+                dst.write(l + '\n')
+            part.unlink()
+    tmp.rmdir()
+
+
+def _latest(path):
+    """Each capture's last row in a results file (a retry appends a newer one)."""
+    rows = {}
+    for l in open(path):
+        try:
+            r = json.loads(l)
+        except ValueError:
+            continue
+        if 'id' in r:
+            rows[r['id']] = r
+    return rows
+
+
 def _execute(args, specs):
     """specs: one driver job per capture; sharded over --jobs drivers, appended to --out."""
     out = Path(args.out)
+    tmp = out.parent / (out.name + '.parts')
+    _merge_parts(out, tmp)
     done = set()
     if out.exists():
         for l in open(out):
@@ -205,7 +241,6 @@ def _execute(args, specs):
     print(f'{len(todo)} captures to run, {len(specs) - len(todo)} done', flush=True)
     env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
     cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
-    tmp = out.parent / (out.name + '.parts')
     tmp.mkdir(exist_ok=True)
     n = 0
     while todo:
@@ -227,21 +262,13 @@ def _execute(args, specs):
             p.wait()
             fh.close()
         print(f'{len(todo)} left', flush=True)
-    with open(out, 'a') as dst:
-        for part in sorted(tmp.glob('part-*.jsonl')):
-            dst.write(part.read_text())
-            part.unlink()
-    tmp.rmdir()
+    _merge_parts(out, tmp)
     # A driver that died leaves its captures without a result: say so, as fuzz.py run does (Sol S11 on #1976).
-    got = set()
-    for l in open(out):
-        try:
-            got.add(json.loads(l)['id'])
-        except (ValueError, KeyError):
-            pass
-    missing = [s['id'] for s in specs if s['id'] not in got]
+    # Judged on each capture's latest row: a retry that produced nothing leaves its earlier error standing.
+    latest = _latest(out)
+    missing = [s['id'] for s in specs if s['id'] not in latest or 'error' in latest[s['id']]]
     if missing:
-        print(f'INCOMPLETE: {len(missing)} captures have no result (first: {missing[0]}); run again to retry them', flush=True)
+        print(f'INCOMPLETE: {len(missing)} captures have no result or failed (first: {missing[0]}); run again to retry them', flush=True)
         sys.exit(1)
     print('DONE', flush=True)
 
@@ -255,22 +282,19 @@ def run(args):
 
 def replay(args):
     d, rows = _shots(args.shots)
-    words = {}
-    for l in open(args.words):
-        r = json.loads(l)
-        if 'words' in r:
-            words[r['id']] = r['words']  # with confidence and second-read flag, as recognized
+    source = _latest(args.words)
+    # With confidence and second-read flag, as recognized; from each capture's latest row.
+    words = {i: r['words'] for i, r in source.items() if 'words' in r}
     specs = [dict(id=r['id'], image=str(d / r['png']), login='lab', realName='Lab Tester', terms=[], profiles=PROFILES,
                   words=words[r['id']], oracleOnly=True) for r in rows if r['id'] in words]
     args.helper = '/bin/false'
     # The words' own run knew whether recognition failed or was cut; the replay's driver can't, so the
     # flags are carried over and the report still counts those captures as unfinished.
     flags = {}
-    for l in open(args.words):
-        r = json.loads(l)
+    for i, r in source.items():
         kept = {k: r[k] for k in ('truncated', 'error') if r.get(k)}
         if kept:
-            flags[r['id']] = kept
+            flags[i] = kept
     try:
         _execute(args, specs)
     finally:
@@ -300,8 +324,11 @@ def read_triage(path):
 
 
 def triage(rules, kind, text, url):
+    # A page rule matches the address from its host on (scheme and "www." dropped), so it names the
+    # site it was checked on rather than any address that holds the word.
+    place = re.sub(r'^[a-z]+://(www\.)?', '', url)
     for k, urx, rx, verdict, group in rules:
-        if k in ('*', kind) and (urx is None or urx.search(url)) and rx.search(text):
+        if k in ('*', kind) and (urx is None or urx.match(place)) and rx.search(text):
             return verdict, group
     return 'untriaged', ''
 
@@ -318,9 +345,11 @@ def report(args):
         # A run still going keeps its finished shards beside the results file.
         for f in ([res] if res.exists() else []) + sorted(res.parent.glob(res.name + '.parts/*.jsonl')):
             for l in open(f):
-                if l.strip():
+                try:
                     r = json.loads(l)
-                    results[r['id']] = r
+                except ValueError:
+                    continue  # a live shard's last line, still being written
+                results[r['id']] = r
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     lines = []
@@ -341,15 +370,14 @@ def report(args):
             pages.setdefault(prof, set()).add(m['url'])
             # The check asks when it couldn't finish (recognition failed or was cut, matching unfinished):
             # a prompt with nothing found to show, counted as false (Sol S11 on #1976).
-            if 'error' in r or r.get('truncated') or side.get(prof, {}).get('unfinished'):
+            # What it found before stopping is still listed and triaged (Sol S14 on #1976); the capture
+            # counts once.
+            unfinished = 'error' in r or r.get('truncated') or side.get(prof, {}).get('unfinished')
+            if unfinished:
                 t['incomplete'] += 1
-                t['prompted'] += 1
-                t['false'] += 1
-                flagged.setdefault(prof, set()).add(m['url'])
                 why = r.get('error') or ('truncated' if r.get('truncated') else 'matching_unfinished')
                 groups[(prof, 'incomplete: ' + why)] = groups.get((prof, 'incomplete: ' + why), 0) + 1
-                continue
-            verdicts = []
+            verdicts = ['incomplete'] if unfinished else []
             for x in matches:
                 v, g = triage(rules, x['category'], x['text'], m['url'])
                 verdicts.append(v)
@@ -361,7 +389,7 @@ def report(args):
                     gk = (prof, g or 'untriaged:' + x['category'])
                     groups[gk] = groups.get(gk, 0) + 1
                     kinds[(prof, x['category'])] = kinds.get((prof, x['category']), 0) + 1
-            if matches:
+            if verdicts:
                 t['prompted'] += 1
                 if any(v != 'true' for v in verdicts):
                     t['false'] += 1

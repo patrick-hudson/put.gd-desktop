@@ -401,6 +401,12 @@ private slots:
   QTest::newRow("a Korean service number is no span of years")<<"Phone: 1899-1995"<<all<<QStringList{"phone: 1899-1995"};
   QTest::newRow("a dialling form after a tilde is a phone")<<"Tel: ~+1-202-555-0143"<<all<<QStringList{"phone: ~+1-202-555-0143"};
   QTest::newRow("an address whose dot was lost before a mixed-case ending")<<"Write ops@example CoM"<<all<<QStringList{"email: ops@example CoM"};
+  QTest::newRow("a phone after a hash and a bullet is a phone")<<"• #2125550100"<<all<<QStringList{"phone: #2125550100"};
+  QTest::newRow("a run's number after a path and its dot is no phone")<<"go_modules in /. #1709579542 master"<<all<<QStringList{};
+  QTest::newRow("an address whose dot was lost before live")<<"Write support@example live"<<all<<QStringList{"email: support@example live"};
+  QTest::newRow("a page number after scan is no setup key")<<"scan pages 2345 from book"<<all<<QStringList{};
+  QTest::newRow("a setup key in capitals with a group of digits")<<"Scan | JBSW 2345 EHPK XPAB"<<all<<QStringList{"key: JBSW 2345 EHPK XPAB"};
+  QTest::newRow("a masked bearer token is no key")<<"AAAAAAAAAAAAAAAAAAAAAxxxxxxxxxxxxxxxxxxxx"<<all<<QStringList{};
   QTest::newRow("a bearer token's run of A's is a key")<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"};
   QTest::newRow("a UUID split before its last group is no phone")<<"UUID 550e8400-e29b-41d4-a7 16-446655440000 assigned to device VM-07."<<all<<QStringList{};
   // Ordinary lines that resembled tokens or numbers once words were joined.
