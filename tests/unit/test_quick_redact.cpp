@@ -618,6 +618,9 @@ private slots:
   QList<RecognizedWord> gitPanes{{"$",QRect(0,0,8,20),90,0},{"git",QRect(16,0,24,20),90,0},{"status",QRect(48,0,48,20),90,0},{"$",QRect(1000,0,8,20),90,0},{"sha256sum",QRect(1016,0,72,20),90,0},{"web-one",QRect(1096,0,56,20),90,0},
                                  {secret,QRect(0,30,512,20),90,1},{digest,QRect(1000,30,512,20),90,1},{"web-one",QRect(1520,30,56,20),90,1}};
   QCOMPARE(found(gitPanes,QStringList{"key"}),QStringList{"key: "+secret});
+  // A file name in the pane beside a hex run is no evidence that the run is a digest (Sol on #1955).
+  QList<RecognizedWord> named{{secret,QRect(0,0,512,20),90,0},{"ubuntu-26.04-desktop-amd64.iso",QRect(1000,0,240,20),90,0}};
+  QCOMPARE(found(named,QStringList{"key"}),QStringList{"key: "+secret});
   // An assignment anywhere on a digest row, however far, ends the rows: the hex before it stays covered.
   QList<RecognizedWord> tabbed{{"$",QRect(0,0,8,20),90,0},{"sha256sum",QRect(16,0,72,20),90,0},{"web-one",QRect(96,0,56,20),90,0},
                                {secret,QRect(0,30,512,20),90,1},{"API_KEY=prod",QRect(900,30,96,20),90,1}};

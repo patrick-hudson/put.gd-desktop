@@ -1042,9 +1042,10 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
    if(j-i==10){for(int g=i;g<j;++g)mark(line.at(g));}
    i=qMax(i,j-1);
   }
-  // A digest before a ref or a file name, the rest of its column (up to a gap of four characters: a
-  // pane beside it) at most a word in brackets ("(v2.2.1)", git submodule status) or a ref's "^{}".
-  if(const int d=digestAt(line,lead);d>0&&lead+d<n){
+  // A digest before a ref or a file name in its own column (within four characters of it: a file name
+  // in a pane beside it is no evidence), the rest of that column at most a word in brackets
+  // ("(v2.2.1)", git submodule status) or a ref's "^{}".
+  if(const int d=digestAt(line,lead);d>0&&lead+d<n&&gap(line.at(lead+d-1),line.at(lead+d))<=4.0){
    const int end=column(line,lead+d);
    const auto& next=plain.at(line.at(lead+d));
    static const QRegularExpression aside(QStringLiteral("^\\(.*\\)$"));
