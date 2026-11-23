@@ -60,6 +60,12 @@ class Score(unittest.TestCase):
         found = fuzz.score_scene(m, result([], [match('key', 'ABCDEF', (95, 46, 55, 22))]), 'all')  # the oracle covers 5 of 6
         self.assertEqual([(f['type'], f['cause'], f['by_rule']) for f in found], [('FN', 'ocr', 1)])
 
+    def test_a_secret_one_pixel_past_the_edge_is_neither_scored_nor_counted(self):
+        m = meta([span('secret', 'key', 'ABCDEFGHIJ', 100, 50)])
+        m['width'] = 199  # the last character ends at x 200
+        self.assertFalse(fuzz.scoreable(m, m['spans'][0]))
+        self.assertEqual(fuzz.score_scene(m, result([]), 'all'), [])
+
     def test_a_partly_hidden_secret_is_not_scored(self):
         s = span('secret', 'key', 'ABCDEFGHIJ', 100, 50)
         s['clipped'] = True
@@ -81,7 +87,7 @@ class Score(unittest.TestCase):
         self.assertEqual([(f['type'], f['decoy']) for f in found], [('DESIGN', 'ip_address'), ('DESIGN', 'name_part')])
 
     def test_ordinary_text_misread_as_an_ip_stays_a_false_positive(self):
-        for word in ('l.l.l.l', '12:34:56'):
+        for word in ('l.l.l.l', '12:34:56', '01.2.3.4'):
             m = meta([], [[word, 12, 12, 56, 14]])
             found = fuzz.score_scene(m, result([match('ip', '1.1.1.1', (10, 10, 60, 20))]), 'all')
             self.assertEqual([f['type'] for f in found], ['FP'], word)
@@ -112,8 +118,12 @@ class Run(unittest.TestCase):
             out = Path(d)
             rows = [{'id': 'a', 'ocr': {}, 'oracle': {}}, {'id': 'b', 'error': 'text_job_timeout'}, {'id': 'c', 'oracle': {}}]
             (out / 'shard-0000.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+            self.assertEqual(fuzz.completed(out, False, 1), (set(), set()))  # 'a' lacks its profiles: not whole
+            rows[0] = {'id': 'a', 'ocr': {'all': {}, 'check': {}}, 'oracle': {'all': {}, 'check': {}}}
+            rows[2] = {'id': 'c', 'oracle': {'all': {}, 'check': {}}, 'error': 'text_job_timeout'}
+            (out / 'shard-0000.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
             self.assertEqual(fuzz.completed(out, False, 1), ({'a'}, set()))
-            self.assertEqual(fuzz.completed(out, True, 1), ({'a', 'c'}, set()))
+            self.assertEqual(fuzz.completed(out, True, 1), ({'a', 'c'}, set()))  # the oracle stands whatever recognition did
             (out / 'shard-0001.jsonl').write_text(json.dumps(rows[1]) + '\n')
             self.assertEqual(fuzz.completed(out, False, 1), ({'a'}, {'b'}))  # given up on, never counted a success
 
@@ -149,6 +159,17 @@ class ScoreRun(unittest.TestCase):
                 fuzz.score(args)
             totals = json.loads((scenes / 'score' / 'summary.json').read_text())['totals']
             self.assertEqual((totals['scenes'], totals['missing'], totals['incomplete']), (1, 0, 0))
+
+
+class Render(unittest.TestCase):
+    def test_rendering_never_writes_over_a_scene_the_corpus_already_has(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            (out / 'labels.jsonl').write_text(json.dumps({'id': fuzz.safe_name('lab/a') + '-00000'}) + '\n')
+            args = type('A', (), dict(out=str(out), families=None, seed='lab/a', start=0, count=2, jobs=1))
+            with self.assertRaises(SystemExit):
+                fuzz.render(args)
+            self.assertEqual(len((out / 'labels.jsonl').read_text().splitlines()), 1)
 
 
 class Content(unittest.TestCase):

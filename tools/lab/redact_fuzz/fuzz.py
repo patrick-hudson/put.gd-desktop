@@ -188,6 +188,11 @@ def render(args):
     (out / 'images').mkdir(parents=True, exist_ok=True)
     fams = args.families.split(',') if args.families else None
     jobs = [(args.seed, i, str(out), fams) for i in range(args.start, args.start + args.count)]
+    if (out / 'labels.jsonl').exists():
+        have = {json.loads(l)['id'] for l in open(out / 'labels.jsonl') if l.strip()}
+        clash = [f'{safe_name(args.seed)}-{i:05d}' for i in range(args.start, args.start + args.count) if f'{safe_name(args.seed)}-{i:05d}' in have]
+        if clash:
+            sys.exit(f'{out} already holds scene {clash[0]} ({len(clash)} in all): use another seed, --start or --out')
     with open(out / 'labels.jsonl', 'a') as fh, ProcessPoolExecutor(max_workers=args.jobs) as ex:
         for meta in ex.map(render_one, jobs, chunksize=4):
             fh.write(json.dumps(meta, ensure_ascii=False) + '\n')
@@ -221,6 +226,15 @@ def new_shard(out):
             k += 1
 
 
+def whole(r, oracle_only):
+    """A row that holds what its run is for: both profiles of the oracle (an --oracle-only run, whatever recognition
+    did), or both profiles of the recognized and true words with no error. `run` and `score` share this rule."""
+    profiles = ('all', 'check')
+    if oracle_only:
+        return all(p in r.get('oracle', {}) for p in profiles)
+    return not r.get('error') and all(p in r.get('ocr', {}) and p in r.get('oracle', {}) for p in profiles)
+
+
 def completed(out, oracle_only, retries):
     """(ok, exhausted): scene ids with a result holding the run's own output (recognized words, or the oracle alone),
     and those that failed more than `retries` times without one. Any other failed or partial row is run again."""
@@ -233,7 +247,7 @@ def completed(out, oracle_only, retries):
                 r = json.loads(l)
             except ValueError:
                 continue
-            if ('oracle' in r) if oracle_only else ('ocr' in r):
+            if whole(r, oracle_only):
                 ok.add(r['id'])
             else:
                 failures[r.get('id')] = failures.get(r.get('id'), 0) + 1
@@ -323,8 +337,12 @@ IPV4 = re.compile(r'(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[
 def _ip_literal(word):
     """True when the word holds a valid IPv4 or IPv6 address (with a port, a prefix or a zone allowed)."""
     import ipaddress
-    if IPV4.search(word):
-        return True
+    for candidate in IPV4.findall(word):
+        try:
+            ipaddress.IPv4Address(candidate)  # rejects leading zeros such as 01.2.3.4
+            return True
+        except ValueError:
+            pass
     w = word.strip('[](),;"\'')
     w = re.sub(r'\]:\d+$', '', w)
     w = w.split('%')[0].split('/')[0]
@@ -354,6 +372,12 @@ def _box(w):
     return [w[1], w[2], w[1] + w[3], w[2] + w[4]]
 
 
+def scoreable(meta, span):
+    """A secret wholly in the picture: not partly hidden, and no character past the image's edge."""
+    W, H = meta.get('width', 1 << 30), meta.get('height', 1 << 30)
+    return not span.get('clipped') and all(c[2] <= W and c[3] <= H for c in span['chars'])
+
+
 def score_scene(meta, res, profile):
     """Findings for one scene and one profile ('all' or 'check')."""
     findings = []
@@ -365,15 +389,10 @@ def score_scene(meta, res, profile):
     words = res.get('words', [])
     base = dict(scene=meta['id'], family='+'.join(meta['families']), variant=meta.get('variant', ''), theme=meta.get('theme', ''), scale=meta['scale'],
                 font=meta['mono'] + '|' + meta['ui'], size=f"{meta['mono_size']}|{meta['ui_size']}", profile=profile)
-    W, H = meta.get('width', 1 << 30), meta.get('height', 1 << 30)
     for s in meta['spans']:
-        if s['label'] != 'secret' or s.get('clipped'):
-            continue  # partly hidden (under a minimap or the next pane): not a whole secret on screen
-        # characters past the image's edge are not in the picture (scenes rendered before the canvas dropped them)
-        kept = [c for c in s['chars'] if c[2] <= W and c[3] <= H]
-        if len(kept) < len(s['chars']):
-            continue  # cut by the image's edge: what is left is not a whole secret, and recognition rarely reads it
-        s = dict(s, chars=kept)
+        # partly hidden, or cut by the image's edge: not a whole secret on screen, and recognition rarely reads it
+        if s['label'] != 'secret' or not scoreable(meta, s):
+            continue
         kind = s['kind']
         if kind not in want and kind != 'gap':
             continue
@@ -441,10 +460,11 @@ def score(args):
                 r = json.loads(l)
             except ValueError:
                 continue
+            complete = whole(r, args.oracle)
             if args.oracle:  # score the true words' run as if it were the recognized one (an --oracle-only run)
-                r['ocr'] = r.get('oracle', {})
-            whole = not r.get('error') and all(p in r.get('ocr', {}) and p in r.get('oracle', {}) for p in ('all', 'check'))
-            if whole or r['id'] not in results:  # a retry's complete row is never hidden by a failed duplicate
+                r = dict(r, ocr=r.get('oracle', {}), error=None)
+            r['_whole'] = complete
+            if complete or r['id'] not in results:  # a retry's complete row is never hidden by a failed duplicate
                 results[r['id']] = r
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -459,12 +479,12 @@ def score(args):
         if r.get('error'):
             errors[r['error']] = errors.get(r['error'], 0) + 1
             continue
-        if not all(p in r.get('ocr', {}) and p in r.get('oracle', {}) for p in ('all', 'check')):
+        if not r['_whole']:
             totals['incomplete'] += 1  # a profile is missing (an oracle-only row scored without --oracle, or a cut row)
             continue
         totals['scenes'] += 1
         for s in meta['spans']:
-            if s['label'] == 'secret' and not s.get('clipped'):
+            if s['label'] == 'secret' and scoreable(meta, s):
                 totals['secrets'][s['kind']] = totals['secrets'].get(s['kind'], 0) + 1
         for profile in ('all', 'check'):
             totals['marks'][profile] = totals['marks'].get(profile, 0) + len(_marks(r.get('ocr', {}).get(profile, {})))
