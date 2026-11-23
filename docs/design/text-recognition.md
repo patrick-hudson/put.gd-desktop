@@ -1047,10 +1047,9 @@ other tool active it does not. The user's side is in the
     phrase: telling it from the phrase's own second column would uncover that column. A command
     separator glued to a word (`host&&`) doesn't end a quoted flag value's command, and a flag's password
     opened straight and closed curly past an operator inside it (`"red & lantern”`) can stay visible
-    whole (#1964). A connection string's password holding an `@` and after it a `?` or `#` (a query's or a
-    fragment's start) before its last `@` is judged only up to its last `@` before that `?` or `#`,
-    and stays visible when that part doesn't read as a password (`:@jEC?…@cache`); so does one that
-    starts with up to five digits and a `?` (`:1234?lantern@db`), the digits read as a port (#1965).
+    whole (#1964). A connection string's password that holds an `@` and after it a `/`, `?` or `#` (read as
+    the URL's path, query or fragment) can stay visible (`:@jEC?…@cache`), and so can one that starts with
+    up to five digits and a `?` (`:1234?lantern@db`), the digits read as a port (#1965).
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
