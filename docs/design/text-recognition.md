@@ -1226,9 +1226,9 @@ other tool active it does not. The user's side is in the
       `ForMULA1`: news trending chips, a sports site's tabs) can be taken for a split token. Counting
       such words as ordinary would loosen the split-token guard of #1971;
     - a token collapsed by recognition into two or three mixed letters with its prefix lost
-      (`APC CCEEEECEEEEC…`) may no longer be a key, or be covered only where one letter makes four in
-      five of a stretch; a run of one repeated character still is, unless the noise or mask checks
-      take it;
+      (`APC CCEEEECEEEEC…`) may no longer be a key, or be covered only where the ordinary repeated-run
+      rule finds one letter four in five of a stretch (16 `A` in a row need no share, as above); a run
+      of one repeated character still is, unless the noise or mask checks take it;
     - a bit diagram read as long runs of `0` and `1` (Wikipedia's IPv6 page), a search result's
       breadcrumb URL, and a card-shaped registration or table number (a Chinese ICP filing number,
       a country population table) can still be taken for a key or card;

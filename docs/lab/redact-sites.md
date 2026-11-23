@@ -51,8 +51,8 @@ builder, holding your own quiet lease (see [remote builders](remote-builders.md)
      --build-json build-info.json --out rp-REVISION.jsonl
    ```
 
-   Use a new `--out` file for each matcher revision: a capture that already has a successful row in
-   the file is skipped. It passes each word's confidence and second-read flag, so a replay
+   Use a new `--out` file for each matcher revision: a capture whose latest row in the file succeeded is
+   skipped. It passes each word's confidence and second-read flag, so a replay
    through the driver of the recognition run's own commit gives the run's matches exactly.
 4. **Report.** Pass one `--shots` and `--results` pair per host:
 
