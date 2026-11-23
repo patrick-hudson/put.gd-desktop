@@ -853,6 +853,18 @@ private slots:
   page.append({first,QRect(10,10,int(first.size())*8,20),90,0});
   page.append({second,QRect(10+int(first.size())*8+1,10,int(second.size())*8,20),90,0});
   QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+first+" "+second});
+  // ...digits first, then the rest glued: still a password, not a port (CodeRabbit on #1967).
+  const QString digits="postgres://app:1234",rest=QString("q@x")+"y@db/app";
+  QList<RecognizedWord> glued;
+  glued.append({digits,QRect(10,10,int(digits.size())*8,20),90,0});
+  glued.append({rest,QRect(10+int(digits.size())*8+1,10,int(rest.size())*8,20),90,0});
+  QCOMPARE(found(glued,QStringList{"key"}),QStringList{"key: "+digits+" "+rest});
+  // ...but an @ that starts a word after a space is another word: an address beside a URL is no password.
+  const QString url="https://app:example",mail="@alice@example.com";
+  QList<RecognizedWord> spaced;
+  spaced.append({url,QRect(10,10,int(url.size())*8,20),90,0});
+  spaced.append({mail,QRect(10+int(url.size())*8+8,10,int(mail.size())*8,20),90,0});
+  QCOMPARE(found(spaced,QStringList{"key"}),QStringList{});
  }
  void seedPhraseBesideAnotherList() {
   const QStringList seed{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};

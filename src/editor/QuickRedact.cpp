@@ -910,7 +910,9 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
     // host's path, query or fragment, found in one pass; a word after a space (an address in the same
     // sentence) never joins it, and the query is never judged as the password (Sol on #1967).
     {const int end=int(m.capturedEnd());
-     if(end<segment.text.size()&&segment.text.at(end)=='@'){
+     // An @ that starts a box after a word space starts another word: no extension (CodeRabbit on #1967).
+     const bool spaced=pieceStart(segment,end)&&!(pieceAt(segment,end)>0&&glued(pieceAt(segment,end)));
+     if(end<segment.text.size()&&segment.text.at(end)=='@'&&!spaced){
       // The next box is looked at only when the scan reaches the current one's end (Sol on #1967).
       int piece=pieceAt(segment,end),stopAt=pieceEnd(piece),last=end;
       for(int i=end+1;i<int(segment.text.size());++i){
@@ -920,7 +922,9 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
       if(last>end)password=segment.text.mid(m.capturedStart()+colon+1,last-(m.capturedStart()+colon+1));
      }}
     if(password.size()<3)continue;
-    {
+    // The port check reads the regex's own password: one the scan extended to a later @ is a password
+    // whatever digits it starts with (CodeRabbit on #1967).
+    if(password==text.mid(colon+1)){
      qsizetype d=colon+1;while(d<text.size()&&text.at(d).isDigit()&&d-colon<=5)++d;
      // ...unless the next word starts with the @ ("alice:1234" "@db"): then the digits are a password.
      const int after=int(m.capturedStart()+d);
