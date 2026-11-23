@@ -917,7 +917,8 @@ other tool active it does not. The user's side is in the
       says what its argument is, so its value needs no secret's shape (`--password 7654`,
       `--password OrchardLantern`); a very short value, a placeholder, a reference, one public by its
       shape (below) and masks stay visible. A value whose argument opens with a quote runs to its closing
-      quote, up to eight words on (a quote after `curl -u alice:` does not). A token or secret flag's value
+      quote, up to eight words on, and so does one right after the user's `:` or `%` after `curl -u`
+      and `smbclient -U` (`alice:'orchard lantern'`, #1964). A token or secret flag's value
       in the next word also has the shape of a secret: it reads as a password (below), is quoted, or has a
       digit and eight characters or more.
     - **Names glued to their program:** one part ending in a secret word (`PGPASSWORD`, `SSHPASS`,
@@ -931,10 +932,12 @@ other tool active it does not. The user's side is in the
       - `Label: value` (or ` :`, ` =`): the value ends the row, or the row's part before a gap of six
         characters, or reads as a password, or is quoted. After `is` or `was` (`The password is …`) the
         value must read as a password. A quoted value runs to its closing quote, up to
-        eight words on; a quote after an odd run of backslashes (`\"`) closes nothing. So "Password: must
-        be at least 8 characters" stays visible and "Temporary password: Wel2024! (please change it)"
-        does not. A value up to 16 characters away belongs to the label; one up to 80 away only in a
-        form's row, which the label starts and the value ends.
+        eight words on; a quote after an odd run of backslashes (`\"`) closes nothing. Straight, curly,
+        German (`„…“`) and French (`«…»`) quotes count: a straight double quote may close curly (`"…”`),
+        and a straight single quote closes only itself, so an apostrophe inside doesn't end it (#1964). So
+        "Password: must be at least 8 characters" stays visible and "Temporary password: Wel2024! (please
+        change it)" does not. A value up to 16 characters away belongs to the label; one up to 80 away only
+        in a form's row, which the label starts and the value ends.
       - `Label     value` with no colon, the label starting its row and the value three to 80 characters
         away ending it (a router or settings page): the value has a digit or reads as a password, or
         under a Wi-Fi passphrase label is eight characters or more; a password or Wi-Fi passphrase
@@ -1025,8 +1028,8 @@ other tool active it does not. The user's side is in the
       agent's, and the token is in no reply or log. It needs no kernel feature.
     - **Threat model.** put.gd's agent-facing interfaces (putgd-cli, the MCP helper, session replies and
       the copies they ask for) never hand an agent the content of a code put.gd recognises as holding a
-      secret (the shapes above); a code whose secret it doesn't recognise is ordinary content. A malicious same-user
-      process with access to the socket or to `/proc` is out of scope: it can capture the screen and
+      secret (the shapes above); a code whose secret it doesn't recognise is ordinary content. A malicious
+      same-user process with access to the socket or to `/proc` is out of scope: it can capture the screen and
       decode the code itself.
     Key matches that share a word are one match.
   - Limits (#1941): short-lived sign-in codes from an authenticator app or a text message (any six
@@ -1040,7 +1043,10 @@ other tool active it does not. The user's side is in the
     still cover such a value. A QR code is covered only when
     it decodes and its content has one of the shapes above. With nothing beside a seed
     phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
-    phrase: telling it from the phrase's own second column would uncover that column.
+    phrase: telling it from the phrase's own second column would uncover that column. A backslash
+    escape that recognition splits from its quote across a word space (`blue\ " jay"`) ends a quoted
+    value there (#1964). A connection string's password holding a `?` or `#` before its last `@` stays
+    visible: it reads as the URL's query (#1965).
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
