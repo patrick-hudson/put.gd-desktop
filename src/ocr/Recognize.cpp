@@ -2,10 +2,12 @@
 #include "CodeReader.h"
 #include <QElapsedTimer>
 #include <QFile>
+#include <QJsonDocument>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -26,6 +28,14 @@ qint64 residentBytes(){
  if(!statm.open(QIODevice::ReadOnly))return 0;
  const auto fields=statm.readAll().split(' ');
  return fields.value(1).toLongLong()*::sysconf(_SC_PAGESIZE);
+}
+// The resident set less its shared pages (file and shmem, the input memfd's
+// among them): what this process itself allocated, from /proc/self/statm.
+qint64 privateBytes(){
+ QFile statm(QStringLiteral("/proc/self/statm"));
+ if(!statm.open(QIODevice::ReadOnly))return 0;
+ const auto fields=statm.readAll().split(' ');
+ return (fields.value(1).toLongLong()-fields.value(2).toLongLong())*::sysconf(_SC_PAGESIZE);
 }
 void raise(std::atomic<qint64>& value,qint64 seen){qint64 now=value.load();while(seen>now&&!value.compare_exchange_weak(now,seen)){}}
 // Inside a code's corners (in order around it, either way); never inside a
@@ -89,8 +99,70 @@ int workerThreads(int requested){
 }
 JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  JobResult result;QElapsedTimer total;total.start();const auto start=std::chrono::steady_clock::now();
+ // On a machine of mixed cores, this thread and every thread the job starts
+ // (they inherit it) run on the faster ones; this thread's own set comes back
+ // on every way out.
+ struct Affinity {
+  cpu_set_t before;bool kept=false;
+  explicit Affinity(const QList<int>& cpus){
+   if(cpus.isEmpty()||::sched_getaffinity(0,sizeof before,&before)!=0)return;
+   cpu_set_t set;CPU_ZERO(&set);for(const int c:cpus)if(c>=0&&c<CPU_SETSIZE)CPU_SET(c,&set);
+   kept=CPU_COUNT(&set)>0&&::sched_setaffinity(0,sizeof set,&set)==0;
+  }
+  ~Affinity(){if(kept)::sched_setaffinity(0,sizeof before,&before);}
+ } affinity{options.cpus};
  if(!image.valid()||qint64(image.width)*image.height>maximumInputPixels){result.error=QStringLiteral("input_excessive");return result;}
  // Codes first, from the full image; their areas are filled in every band copy.
+ // Everything a worker thread touches lives here, on the heap. When the time
+ // budget ends with a thread still inside an engine's Init or a recognition
+ // that overran, the job ends without it: this is then never freed (the
+ // helper leaves with _exit after its checkpoint), and that thread never
+ // touches the result, the output or anything on this function's stack.
+ struct Shared {
+  explicit Shared(const QStringList& directories):data(directories){}
+  LanguageData data;
+  TextEngine first;
+  std::vector<std::unique_ptr<TextEngine>> extra;
+  // Set when an extra engine's first-pass thread is done with it (main thread
+  // pushes one per engine before its thread starts): only those engines take
+  // second reads, so one still starting or overrunning sits them out.
+  std::deque<std::atomic<bool>> exited;
+  std::mutex lock;std::condition_variable idle;
+  QList<Outcome> outcomes;          // under lock, until closed
+  bool closed=false;                // under lock: nothing is handed over after this
+  std::atomic<bool> closing{false}; // read without the lock before a band copy
+  std::atomic<int> next{0},copying{0},running{0},busy{0};
+  // Extra engines starting now, and started so far: a task's growth is not
+  // measured across an engine's start, whose memory it would count.
+  std::atomic<int> starting{0},started{0};
+  // The emoji scan is running: its memory is not a task's growth either.
+  std::shared_ptr<const std::atomic<bool>> emojiScanning;
+  std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
+  std::vector<qint64> taskPixels;   // scaled pixels of each task
+  std::atomic<bool> stop{false};
+  qint64 gateBudget=0;int budgetMs=0;int taskCount=0;
+  std::chrono::steady_clock::time_point end;
+  int left()const{return budgetMs>0?int(std::chrono::duration_cast<std::chrono::milliseconds>(end-std::chrono::steady_clock::now()).count()):0;}
+  bool roomFor(qint64 bytes)const{return gateBudget<=0||residentBytes()+bytes<=gateBudget;}
+ };
+ auto* shared=new Shared(options.directories);
+ shared->budgetMs=options.budgetMs;shared->end=start+std::chrono::milliseconds(options.budgetMs);
+ // The first engine starts on a thread of its own while the codes are read and
+ // the page is measured and planned (#1929: its start was 115 ms of a 4K
+ // check on a 4-core laptop, after 200 ms of that analysis).
+ qint64 engineStartMs=0,engineRise=0;
+ const qint64 beforeEngine=residentBytes();
+ std::thread starter;
+ {
+  const auto startFirst=[shared,&options,&result,&engineStartMs,&engineRise]{
+   QElapsedTimer clock;clock.start();const qint64 before=privateBytes();
+   result.error=shared->first.start(options.languages,options.strictLanguages,options.engine,result.failedLanguage);
+   engineRise=privateBytes()-before;engineStartMs=clock.elapsed();
+  };
+  // A thread the system refuses: the engine starts here, before the codes, as before.
+  try{starter=std::thread(startFirst);}catch(const std::system_error&){startFirst();}
+ }
+ struct StarterJoin { std::thread& t; ~StarterJoin(){if(t.joinable())t.join();} } starterJoin{starter};
  QElapsedTimer stage;stage.start();
  result.recognition.codes=readCodes(image);
  QList<Quad> areas;for(const auto& code:std::as_const(result.recognition.codes))areas.append(code.quad);
@@ -104,7 +176,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // here, and every way out of this function joins it first.
  EmojiScan emoji;qint64 emojiMs=0;bool emojiInline=false;
  // Read by the workers, which may outlive this function: on the heap.
- const auto scanning=std::make_shared<std::atomic<bool>>(false);
+ const auto scanning=std::make_shared<std::atomic<bool>>(false);shared->emojiScanning=scanning;
  const auto scanEmoji=[&]{
   QElapsedTimer clock;clock.start();
   emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
@@ -165,48 +237,21 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
   limits.forcedScale=std::max(1.0,s*lower);
   p.plan=putgd::ocr::plan(p.rect.width(),p.rect.height(),p.profile,limits);
-  if(!p.plan.error.isEmpty()){result.error=p.plan.error;return result;}
+  if(!p.plan.error.isEmpty()){if(starter.joinable())starter.join();delete shared;result.error=p.plan.error;return result;}
   p.tasks=p.plan.bands;
  }
  stage.restart();
- // Everything a worker thread touches lives here, on the heap. When the time
- // budget ends with a thread still inside an engine's Init or a recognition
- // that overran, the job ends without it: this is then never freed (the
- // helper leaves with _exit after its checkpoint), and that thread never
- // touches the result, the output or anything on this function's stack.
- struct Shared {
-  explicit Shared(const QStringList& directories):data(directories){}
-  LanguageData data;
-  TextEngine first;
-  std::vector<std::unique_ptr<TextEngine>> extra;
-  std::mutex lock;std::condition_variable idle;
-  QList<Outcome> outcomes;          // under lock, until closed
-  bool closed=false;                // under lock: nothing is handed over after this
-  std::atomic<bool> closing{false}; // read without the lock before a band copy
-  std::atomic<int> next{0},copying{0},running{0},busy{0};
-  // Extra engines starting now, and started so far: a task's growth is not
-  // measured across an engine's start, whose memory it would count.
-  std::atomic<int> starting{0},started{0};
-  // The emoji scan is running: its memory is not a task's growth either.
-  std::shared_ptr<const std::atomic<bool>> emojiScanning;
-  std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
-  std::vector<qint64> taskPixels;   // scaled pixels of each task
-  std::atomic<bool> stop{false};
-  qint64 gateBudget=0;int budgetMs=0;int taskCount=0;
-  std::chrono::steady_clock::time_point end;
-  int left()const{return budgetMs>0?int(std::chrono::duration_cast<std::chrono::milliseconds>(end-std::chrono::steady_clock::now()).count()):0;}
-  bool roomFor(qint64 bytes)const{return gateBudget<=0||residentBytes()+bytes<=gateBudget;}
- };
- auto* shared=new Shared(options.directories);shared->emojiScanning=scanning;
- shared->budgetMs=options.budgetMs;shared->end=start+std::chrono::milliseconds(options.budgetMs);
- const qint64 beforeEngine=residentBytes();
- result.error=shared->first.start(options.languages,options.strictLanguages,options.engine,result.failedLanguage);
+ if(starter.joinable())starter.join();
  // What an engine costs: what the resident set rose by over its start, but
  // never under 16 MiB (English's engine measured 16 to 17 MiB on a fresh heap):
  // an engine starting in heap the job freed shows less (3 MiB in the helper on
- // a 24 MP screen of panels, whose analysis had just been freed).
- const qint64 engineCost=std::max<qint64>(16*1024*1024,residentBytes()-beforeEngine);
- result.timings.engineStartMs=stage.elapsed();
+ // a 24 MP screen of panels, whose analysis had just been freed). Only private
+ // pages count: the codes and emoji scans beside it fault in the input's
+ // mapping, and counting those took a dense 4K terminal on m74 from 5.1 s
+ // (the engine started alone) to 6.2 s; counting private pages, 4.9 s. What
+ // the analysis allocates beside it still counts, so the cost reads high, never low.
+ const qint64 engineCost=std::max<qint64>(16*1024*1024,engineRise);
+ result.timings.engineStartMs=engineStartMs;
  if(!result.error.isEmpty()){delete shared;return result;}
  result.used=shared->first.used();result.skipped=shared->first.skipped();result.dataFiles=shared->data.files();
  // Decision 3: the budget grows by the size of the data files beyond English.
@@ -255,10 +300,13 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  const int taskCount=int(tasks.size());
  const int wanted=taskCount>1?std::min(threads,taskCount):1;
- // A banded image or a whole screen of panels measures what its first task
- // costs before it shares: their tasks can be dense in ways a reservation by
- // size does not see (a 24 MP screen in panels reached 136 MiB sharing at once).
- const bool measureFirst=anyBanded||panelList.size()>1;
+ // A banded image or a whole screen of panels can be dense in ways a
+ // reservation of a few bytes a pixel does not see (a 24 MP screen in panels
+ // reached 136 MiB sharing at once): its extra engines start at once with a
+ // reservation for the densest task measured, and more start once the first
+ // task has shown what one costs (#1929: reading that task alone first left
+ // three of four cores idle for 1.4 s of a dense 4K screen's 4.6 s).
+ const bool dense=anyBanded||panelList.size()>1;
  shared->taskCount=taskCount;shared->outcomes.resize(taskCount);
  for(const auto& t:std::as_const(tasks))shared->taskPixels.push_back(t.pixels);
  // One worker: takes tasks until there are none, the budget or memory says
@@ -321,38 +369,43 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    if(afterFirstTask)afterFirstTask();
   }
  };
- std::vector<std::thread> pool;bool startedExtras=false;
- // Extra engines, each on its own thread, started at most once, from this
- // thread, and only while the time left covers twice the first engine's
- // start and the slowest task: an engine that would start too late is not
- // worth the memory. Waiting for them is bounded by the budget regardless.
+ std::vector<std::thread> pool;bool toppedUp=false;
+ // Extra engines, each on its own thread, started from this thread, at most
+ // wanted - 1 in all, and only while the time left covers twice the first
+ // engine's start and the slowest task: an engine that would start too late
+ // is not worth the memory. Waiting for them is bounded by the budget regardless.
  const auto startExtras=[&](int count){
-  startedExtras=true;
+  count=std::min(count,wanted-1-int(shared->extra.size()));
+  if(count<=0)return;
   if(options.budgetMs>0&&shared->left()<2*result.timings.engineStartMs+shared->slowest.load()+250)return;
   for(int w=0;w<count;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
+   auto* exited=&shared->exited.emplace_back(false);
    shared->running.fetch_add(1);shared->starting.fetch_add(1);
    const int worker=int(shared->extra.size());
    // A thread the system refuses (RLIMIT_DATA counts each stack, which the
    // memory gate does not see) ends the pool here; the engines running go on.
    try{
-    pool.emplace_back([shared,engine,work,worker]{
+    pool.emplace_back([shared,engine,work,worker,exited]{
      const bool engineStarted=engine->startLike(shared->first).isEmpty();
      shared->started.fetch_add(1);shared->starting.fetch_sub(1);
      if(engineStarted)work(engine,worker,{});
+     exited->store(true);
      std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
     });
-   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();break;}
+   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();shared->exited.pop_back();break;}
   }
  };
- // How many extra engines fit in the memory budget when each costs this much.
+ // How many more extra engines fit in the memory budget when each costs this
+ // much; an engine still starting has not shown its cost yet, so it counts as one.
  const auto fitting=[&](qint64 each){
   if(shared->gateBudget<=0)return wanted-1;
-  const qint64 room=shared->gateBudget-residentBytes();
-  return std::clamp(int(room/std::max<qint64>(1,each)),0,wanted-1);
+  each=std::max<qint64>(1,each);
+  const qint64 room=shared->gateBudget-residentBytes()-shared->starting.load()*each;
+  return std::clamp(int(room/each),0,wanted-1);
  };
- // A banded image or a screen of panels measures before it shares: once the
- // first task is done, as many engines start as fit in the budget.
+ // Once the first task is done, a banded image or a screen of panels starts
+ // as many more engines as now fit, by what that task cost.
  const std::function<void()> afterFirstTask=[&]{
   // An engine with a task costs what the first one has come to since it
   // started, engine and working memory together, plus room for a task: that
@@ -360,8 +413,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   // since an engine keeps working memory sized to the largest it has read (on
   // a 24 MP screen of 104 panels, whose first was tiny, each extra engine came
   // to about 25 MiB, not 18, and three engines reached 136 MiB).
-  if(measureFirst&&!startedExtras&&wanted>1&&!shared->stop.load())
-   startExtras(fitting(std::max(engineCost,residentBytes()-beforeEngine)+std::max<qint64>(shared->taskGrowth.load(),8*largestTask)));
+  if(dense&&!toppedUp&&wanted>1&&!shared->stop.load()){toppedUp=true;
+   startExtras(fitting(std::max(engineCost,residentBytes()-beforeEngine)+std::max<qint64>(shared->taskGrowth.load(),8*largestTask)));}
  };
  // Strips and panels read in one pass share at once: each extra engine is
  // reserved its own cost and four bytes a pixel of the largest task
@@ -370,14 +423,13 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // the first one's start less those bytes (on m74 the first took 24 MiB with
  // English, each extra about 15; counting 24 each left one core of four idle
  // on a dense 1 MP terminal).
+ // A banded image or a screen of panels reserves 20 bytes a pixel of its
+ // largest task for each, the most a dense band grew by (15 to 20).
  const qint64 extraEngineCost=std::max<qint64>(16*1024*1024,engineCost-shared->data.bytesHanded());
- if(!measureFirst&&wanted>1)startExtras(fitting(extraEngineCost+4*largestTask));
+ if(wanted>1)startExtras(fitting(extraEngineCost+(dense?20:4)*largestTask));
  work(&shared->first,0,afterFirstTask);
- // #1894: lines of faint ink alone (comment grey beside brighter text), which
- // Tesseract's Otsu binarization turns to background, are read once more by the
- // first engine, each with its contrast stretched, for Quick redact's
- // candidates only (a job that asks for them). Pages with none cost nothing.
- // A whole screen of panels is searched window by window (#1912): a faint
+ // Where the faint lines are looked for (#1894; read with the other second
+ // reads below), for Quick redact's candidates only. A whole screen of panels is searched window by window (#1912): a faint
  // line has no grey step of 32 levels, so it can sit outside the trimmed
  // panel, below a window's last bright line. Each panel grows through its
  // window's plain background, never into another panel, and stops at the
@@ -411,43 +463,6 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    }
   }
  }
- struct Faint { QRect rect;double scale=1;Band band;Outcome outcome; };
- QList<Faint> faint;bool faintCut=false;
- if(options.candidates&&!shared->stop.load()){
-  bool engineFailed=false;
-  for(int i=0;i<faintRegions.size()&&!shared->stop.load()&&!engineFailed;++i){
-   const auto& p=faintRegions[i];
-   // At most eight runs a region; one more left unread, or one the budget leaves unread, cut
-   // short or failed, marks the result truncated, so the check before uploading never takes it
-   // for a whole read (Sol on #1904).
-   auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
-   // In a grown panel, also the text outside the rows its panel was read in (#1912).
-   // All of them, before the cap below counts the bands (Sol on #1924); one is
-   // left out only when a faint band holds all of it (CodeRabbit on #1924): read
-   // whole otherwise, a word read twice is dropped when the faint words join.
-   if(p.readBottom>p.readTop){
-    const auto faintOnly=bands;
-    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height()))
-     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return b.top<=u.top&&u.bottom<=b.bottom;}))bands.append(u);
-    std::sort(bands.begin(),bands.end(),[](const Band& a,const Band& b){return a.top<b.top;});
-   }
-   if(bands.size()>8)faintCut=true;
-   for(int b=0;b<bands.size()&&b<8;++b){
-    const auto& band=bands.at(b);
-    if(shared->budgetMs>0&&shared->left()<=0){faintCut=true;break;}
-    auto copy=bandImage(p.view,band,p.scale,options.limits.border,p.codes,p.profile.background,p.invert);
-    stretchContrast(copy,p.invert?255-p.profile.background:p.profile.background);
-    const int deadline=shared->budgetMs>0?shared->left():0;
-    if(shared->budgetMs>0&&deadline<=0){faintCut=true;break;}
-    Faint f{p.rect,p.scale,band,{}};
-    f.outcome.text=shared->first.recognize(copy,p.scale,deadline,&f.outcome.cutShort,&f.outcome.failed);
-    // A failed engine reads nothing more (Sol on #1904); what the main pass read stands.
-    if(f.outcome.failed||f.outcome.cutShort){faintCut=true;if(f.outcome.failed){engineFailed=true;break;}}
-    f.outcome.done=!f.outcome.failed;
-    if(f.outcome.done)faint.append(std::move(f));
-   }
-  }
- }
  // Wait for the extra workers, never past the budget (and a second's grace
  // for a pass ending on its monitor deadline). Then close the handover: a
  // late worker's result is dropped, and once no band copy is running nothing
@@ -473,8 +488,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   for(auto& thread:pool)thread.join();
  }
  const int extraEngines=int(shared->extra.size());
- // The first engine stays for the uncertain tokens' second read (#1911); a
- // late worker's engines are never freed.
+ // The engines stay for the second reads; a late worker's are never freed.
  const auto finish=[&]{if(!late){shared->data.release();delete shared;}};
  result.recognition.parts=taskCount;result.recognition.threads=1+extraEngines;result.recognition.panels=int(panelList.size());
  result.recognition.engineTasks.fill(0,1+extraEngines);
@@ -507,18 +521,41 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
   panelWords.append(int(result.recognition.words.size()));
  }
- // #1911: a line holding a word that looks like a key or token, which
- // recognition was unsure of, is read once more by the first engine from a
- // copy that measures every pixel against its local background, for Quick
- // redact's candidates only. Both readings stay candidates: one misread
- // character breaks a token, and the second read is a second chance. Only the
- // first read is copied, and a page with no such word costs nothing.
- struct Token { int panel=0;Band band;BandText text; };
- QList<Token> tokens;
- // Every panel's bands, the least confident first across the page (Sol on #1920).
- struct Pending { int panel=0;Band band;float confidence=0; };
- QList<Pending> pending;
+ // Second reads, for Quick redact's candidates only (a job that asks for
+ // them), each from a copy of its own, read once more by an engine:
+ // - #1894: lines of faint ink alone (comment grey beside brighter text), which
+ //   Tesseract's Otsu binarization turns to background, with their contrast stretched;
+ // - #1912: in a grown panel, text outside the rows its panel was read in;
+ // - #1911: a line holding a word that looks like a key or token, which
+ //   recognition was unsure of, from a copy that measures every pixel against
+ //   its local background. One misread character breaks a token, and this is a
+ //   second chance; both readings stay candidates.
+ // A page with none costs nothing. They go in one queue, faint and unread
+ // lines first, then the token lines least confident first across the page
+ // (Sol on #1920), on every engine the job has, within one budget (#1929):
+ // a read the budget leaves out or cuts short adds nothing, and the check is
+ // not truncated by it. Only the first read is copied.
+ struct Second { int region=0;Band band;int left=0,right=0;bool faint=false; };
+ QList<Second> seconds;
  if(options.candidates&&!result.truncated){
+  for(int i=0;i<faintRegions.size();++i){
+   const auto& p=faintRegions[i];
+   // At most eight runs a region, as before.
+   auto bands=faintLines(p.profile,p.rect.width(),p.rect.height(),9);
+   // In a grown panel, also the text outside the rows its panel was read in (#1912).
+   // All of them, before the cap below counts the bands (Sol on #1924); one is
+   // left out only when a faint band holds all of it (CodeRabbit on #1924): read
+   // whole otherwise, a word read twice is dropped when the faint words join.
+   if(p.readBottom>p.readTop){
+    const auto faintOnly=bands;
+    for(const auto& u:unreadLines(p.profile,p.rect.width(),p.rect.height(),p.readTop,p.readBottom,p.rect.height()))
+     if(std::none_of(faintOnly.cbegin(),faintOnly.cend(),[&](const Band& b){return b.top<=u.top&&u.bottom<=b.bottom;}))bands.append(u);
+    std::sort(bands.begin(),bands.end(),[](const Band& a,const Band& b){return a.top<b.top;});
+   }
+   for(int b=0;b<bands.size()&&b<8;++b)seconds.append({i,bands.at(b),0,p.rect.width(),true});
+  }
+  struct Pending { int panel=0;TokenBand band; };
+  QList<Pending> pending;
   for(int i=0;i<panelList.size();++i){
    const auto& p=panelList[i];
    QList<TokenWord> unsure;
@@ -526,25 +563,137 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
     const auto& word=result.recognition.words.at(w);
     if(uncertainToken(word.text,word.confidence))unsure.append({word.rect.translated(-p.rect.topLeft()),word.confidence});
    }
-   for(const auto& t:tokenLines(unsure,p.rect.height()))pending.append({i,t.band,t.confidence});
+   for(const auto& t:tokenLines(unsure,p.rect.height()))pending.append({i,t});
   }
-  std::stable_sort(pending.begin(),pending.end(),[](const Pending& a,const Pending& b){return a.confidence<b.confidence;});
+  std::stable_sort(pending.begin(),pending.end(),[](const Pending& a,const Pending& b){return a.band.confidence<b.band.confidence;});
+  for(const auto& t:std::as_const(pending)){
+   const auto& p=panelList[t.panel];
+   // The words' run of text in the band's rows, not the screen's width (#1929).
+   const auto columns=tokenColumns(p.view,t.band.band,t.band.left,t.band.right,p.profile.background,int(tokenMargin*t.band.tallest),std::max(2,int(tokenGap*t.band.tallest)));
+   seconds.append({t.panel,t.band.band,columns.first,columns.second,false});
+  }
  }
- // At most as long as the first pass took (tokenTimeFloorMs when it was quicker),
- // and never past the job's budget: each band's deadline is the nearer of the two.
- const qint64 tokenAllowance=std::max<qint64>(tokenTimeFloorMs,stage.elapsed());QElapsedTimer tokenClock;tokenClock.start();
- for(const auto& b:std::as_const(pending)){
-  const auto& p=panelList[b.panel];
-  const auto remaining=[&]{qint64 d=tokenAllowance-tokenClock.elapsed();if(options.budgetMs>0)d=std::min<qint64>(d,shared->left());return d;};
-  if(remaining()<=0)break;
-  const auto copy=contrastBand(p.view,b.band,p.plan.scale,options.limits.border,p.codes);
-  const qint64 deadline=remaining();
-  if(deadline<=0)break;
-  bool cutShort=false,failed=false;
-  Token t{b.panel,b.band,shared->first.recognize(copy,p.plan.scale,int(deadline),&cutShort,&failed)};
-  // What the first read found stands; a failed or cut second read adds nothing.
-  if(failed)break;
-  if(!cutShort)tokens.append(std::move(t));
+ // The budget: a share of the first pass's time, within the floor and the cap,
+ // ending secondReadMarginMs before the job's own budget at the latest.
+ qint64 secondMs=std::clamp<qint64>(qint64(double(stage.elapsed())*secondReadShare),secondReadFloorMs,secondReadCapMs);
+ if(options.budgetMs>0)secondMs=std::min<qint64>(secondMs,shared->left()-secondReadMarginMs);
+ // Read by the workers, which may outlive this function like the first pass's
+ // (an engine overrunning its deadline): on the heap, never freed then.
+ struct SecondRun {
+  std::mutex lock;std::condition_variable idle;
+  std::atomic<int> next{0},copying{0},running{0};
+  std::atomic<bool> closing{false},stop{false};
+  // The slowest read so far, in nanoseconds a scaled pixel: a read that would
+  // not finish in the time left is not started (one cut short reads nothing).
+  std::atomic<qint64> pace{0};
+  std::vector<qint64> pixels;   // each read's scaled pixels
+  bool closed=false;          // under lock: nothing is handed over after this
+  int count=0;
+  std::chrono::steady_clock::time_point end;
+  QList<Outcome> outcomes;    // under lock, until closed
+  int left()const{return int(std::chrono::duration_cast<std::chrono::milliseconds>(end-std::chrono::steady_clock::now()).count());}
+ };
+ QList<Outcome> secondOutcomes;
+ if(!seconds.isEmpty()&&secondMs>0){
+  auto* run=new SecondRun;run->count=int(seconds.size());run->outcomes.resize(run->count);
+  for(const auto& s:std::as_const(seconds)){
+   const double scale=s.faint?faintRegions[s.region].scale:panelList[s.region].plan.scale;
+   run->pixels.push_back(qint64(std::ceil((s.right-s.left)*scale))*qint64(std::ceil((s.band.bottom-s.band.top)*scale)));
+  }
+  run->end=std::chrono::steady_clock::now()+std::chrono::milliseconds(secondMs);
+  // A second read's copy. It reads the input and this stack, so a worker calls
+  // it only between raising and lowering run->copying, and never once closing
+  // is set; the end of the reads waits for copying to reach zero.
+  const std::function<GreyImage(int,double&)> secondCopy=[&seconds,&faintRegions,&panelList,&options](int index,double& scale){
+   const auto& s=seconds[index];
+   if(s.faint){
+    const auto& p=faintRegions[s.region];scale=p.scale;
+    auto copy=bandImage(p.view,s.band,p.scale,options.limits.border,p.codes,p.profile.background,p.invert);
+    stretchContrast(copy,p.invert?255-p.profile.background:p.profile.background);
+    return copy;
+   }
+   const auto& p=panelList[s.region];scale=p.plan.scale;
+   const GreyView columns{p.view.row(0)+s.left,s.right-s.left,p.view.height,p.view.stride};
+   QList<Quad> codes;
+   for(const auto& q:p.codes){Quad m=q;for(auto& c:m)c.rx()-=s.left;codes.append(m);}
+   return contrastBand(columns,s.band,p.plan.scale,options.limits.border,codes);
+  };
+  const auto readSeconds=[run,secondCopy](TextEngine* engine,int worker){
+   for(;;){
+    if(run->stop.load()||run->closing.load())return;
+    const int index=run->next.fetch_add(1);
+    if(index>=run->count||run->left()<=0)return;
+    if(run->pace.load()*run->pixels[size_t(index)]/1000000>=run->left())continue;
+    run->copying.fetch_add(1);
+    if(run->closing.load()){run->copying.fetch_sub(1);return;}
+    double scale=1;const auto copy=secondCopy(index,scale);
+    run->copying.fetch_sub(1);
+    const int deadline=run->left();
+    if(deadline<=0)return;
+    Outcome outcome;outcome.engine=worker;
+    const auto began=std::chrono::steady_clock::now();
+    outcome.text=engine->recognize(copy,scale,deadline,&outcome.cutShort,&outcome.failed);
+    if(!outcome.cutShort&&!outcome.failed)raise(run->pace,std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-began).count()/std::max<qint64>(1,run->pixels[size_t(index)]));
+    // A failed engine stops every second read (Sol on #1904); what was read stands.
+    if(outcome.failed){run->stop=true;return;}
+    if(outcome.cutShort)return;
+    outcome.done=true;
+    std::lock_guard<std::mutex> guard(run->lock);if(run->closed)return;run->outcomes[index]=std::move(outcome);
+   }
+  };
+  // The engines the first pass started, and, while time and memory allow, as
+  // many more as the queue and the job's threads take, each on its own thread.
+  const int engines=std::min(threads,run->count);
+  std::vector<std::thread> readers;
+  const auto launch=[&](TextEngine* engine,bool start,int worker){
+   run->running.fetch_add(1);
+   try{
+    readers.emplace_back([run,shared,engine,start,worker,readSeconds]{
+     if(!start||engine->startLike(shared->first).isEmpty())readSeconds(engine,worker);
+     std::lock_guard<std::mutex> guard(run->lock);run->running.fetch_sub(1);run->idle.notify_all();
+    });
+    return true;
+   }catch(const std::system_error&){run->running.fetch_sub(1);return false;}
+  };
+  // Every engine reads on a thread of its own, the first one too, so this
+  // thread's wait below bounds them all: Tesseract's layout does not stop at
+  // its deadline (Sol on #1933). A thread the system refuses reads nothing.
+  launch(&shared->first,false,0);
+  // Then the extra engines whose first-pass thread is done (a late one is not) and that started.
+  int launched=1;
+  for(int w=0;w<int(shared->extra.size())&&launched<engines;++w){
+   if(!(shared->exited[size_t(w)].load()&&shared->extra[size_t(w)]->ready()))continue;
+   if(!launch(shared->extra[size_t(w)].get(),false,w+1))break;
+   ++launched;
+  }
+  // And, while time and memory allow, new ones up to the job's threads. The
+  // memory gate counts engines of the first pass still starting as costing one each.
+  int more=std::max(0,engines-launched);
+  if(more>0&&run->left()>2*result.timings.engineStartMs){
+   const qint64 largest=*std::max_element(run->pixels.cbegin(),run->pixels.cend());
+   if(shared->gateBudget>0){
+    const qint64 each=extraEngineCost+20*largest;
+    const qint64 starting=shared->starting.load();  // read before the resident set: an engine done starting then shows in it
+    more=std::clamp(int((shared->gateBudget-residentBytes()-starting*extraEngineCost)/std::max<qint64>(1,each)),0,more);
+   }
+  }else more=0;
+  for(int w=0;w<more;++w){
+   shared->extra.push_back(std::make_unique<TextEngine>());shared->exited.emplace_back(false);
+   if(!launch(shared->extra.back().get(),true,int(shared->extra.size()))){shared->extra.pop_back();shared->exited.pop_back();break;}
+  }
+  // Every engine's read ends at its deadline; a quarter of a second's grace
+  // for one ending on its monitor, never past the job's budget (the margin).
+  bool secondLate=false;
+  {
+   std::unique_lock<std::mutex> guard(run->lock);
+   run->idle.wait_until(guard,run->end+std::chrono::milliseconds(250),[&]{return run->running.load()==0;});
+   run->closed=true;run->closing=true;run->stop=true;
+   secondLate=run->running.load()>0;
+   secondOutcomes=run->outcomes;
+  }
+  while(run->copying.load()>0)std::this_thread::yield();
+  if(secondLate){for(auto& thread:readers)thread.detach();late=true;}
+  else{for(auto& thread:readers)thread.join();delete run;}
  }
  finish();
  result.timings.recognitionMs=stage.elapsed();
@@ -556,34 +705,28 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);
- if(faintCut)result.truncated=true;
  // The faint lines join the words after the copied text is made: they are not
  // copied (kept stays false), and a word where one was already read is left out.
- for(const auto& f:std::as_const(faint)){
-  Recognition part;mergeBand(part,f.outcome.text,f.band,nullptr,0,f.scale,options.limits.border,0,f.rect.width(),f.rect.height());
-  const int lineBase=int(result.recognition.lines.size());
-  const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
-  for(auto line:std::as_const(part.lines)){line.rect.translate(f.rect.topLeft());line.block=block;result.recognition.lines.append(line);}
-  for(auto word:std::as_const(part.words)){
-   word.rect.translate(f.rect.topLeft());word.line+=lineBase;word.kept=false;
-   for(auto& symbol:word.symbols)symbol.rect.translate(f.rect.topLeft());
-   const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
-   if(!seen)result.recognition.words.append(std::move(word));
-  }
- }
  // The tokens' second read joins last, every word of it, marked second: Quick
  // redact matches those words apart from the first read's, since the two
  // readings of one line side by side would be read as one.
- for(const auto& tk:std::as_const(tokens)){
-  const auto& p=panelList[tk.panel];
-  const QPoint origin=p.rect.topLeft();
-  Recognition part;mergeBand(part,tk.text,tk.band,nullptr,0,p.plan.scale,options.limits.border,0,p.rect.width(),p.rect.height());
+ for(const bool faintPass:{true,false})for(int i=0;i<secondOutcomes.size();++i){
+  const auto& s=seconds[i];const auto& outcome=secondOutcomes[i];
+  if(!outcome.done||s.faint!=faintPass)continue;
+  const QRect rect=s.faint?faintRegions[s.region].rect:panelList[s.region].rect;
+  const double scale=s.faint?faintRegions[s.region].scale:panelList[s.region].plan.scale;
+  const QPoint origin=rect.topLeft()+QPoint(s.left,0);
+  Recognition part;mergeBand(part,outcome.text,s.band,nullptr,0,scale,options.limits.border,0,s.right-s.left,rect.height());
   const int lineBase=int(result.recognition.lines.size());
   const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(origin);line.block=block;result.recognition.lines.append(line);}
   for(auto word:std::as_const(part.words)){
-   word.rect.translate(origin);word.line+=lineBase;word.kept=false;word.second=true;
+   word.rect.translate(origin);word.line+=lineBase;word.kept=false;word.second=!s.faint;word.reread=true;
    for(auto& symbol:word.symbols)symbol.rect.translate(origin);
+   if(s.faint){
+    const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
+    if(seen)continue;
+   }
    result.recognition.words.append(std::move(word));
   }
  }
@@ -595,13 +738,31 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
  out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiWaitMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence)),w.second};};
+ // A second read's word that the contract's bounds would cut (too long, or past
+ // the word count) is left out rather than marking the result truncated: they
+ // follow the first read's words, and truncated means the first pass (#1929).
+ QList<TextWord> rereads;
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));
-  if(options.candidates)out.candidates.append(word(w));
+  if(options.candidates&&!w.reread)out.candidates.append(word(w));
+  if(options.candidates&&w.reread&&w.text.toUtf8().size()<=textjob::maximumWordBytes)rereads.append(word(w));
  }
  for(const auto& c:job.recognition.codes){
   TextCode code;code.format=c.format;code.binary=!c.text;code.text=c.text?c.content:QString();code.length=c.length;
   code.quad={c.quad[0],c.quad[1],c.quad[2],c.quad[3]};out.codes.append(code);
+ }
+ // And in the output bytes the rest leaves (each costs its JSON and a comma).
+ if(!rereads.isEmpty()){
+  textjob::Options encoding;encoding.words=options.words;encoding.candidates=options.candidates;
+  // Only into a result the bounds left whole: one they cut is truncated already,
+  // and rereads added to it could cost first-read candidates when it is cut again.
+  const auto encoded=textjob::encodeResult(out,encoding);
+  qint64 room=QJsonDocument::fromJson(encoded).object().value(QStringLiteral("truncated")).toBool(true)?0:textjob::maximumOutputBytes-encoded.size();
+  for(const auto& w:std::as_const(rereads)){
+   const qint64 bytes=QJsonDocument(textjob::wordsJson({w})).toJson(QJsonDocument::Compact).size()-1;
+   if(out.candidates.size()>=textjob::maximumWords||bytes>room)break;
+   room-=bytes;out.candidates.append(w);
+  }
  }
  return out;
 }
