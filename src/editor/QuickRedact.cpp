@@ -264,6 +264,34 @@ bool tokenPiece(const QString& word,bool loose=false) {
  for(qsizetype i=from;i<to;++i){const auto c=word.at(i);if(!tokenCharacter(c)){if(c.isSpace())return false;++noise;}}
  return noise<=qMax(1,int(to-from)/(loose?4:8));
 }
+// #1971/#1972: how a word is shaped, as interface text or not. The word is cut at every character
+// that is neither a letter nor a digit, and a part counts as ordinary when it is a lowercase,
+// capitalized or upper-case word ("system", "House", "STORAGE"), a brand's or product's camel case of
+// up to two humps ("SanDisk", "SKHynix", "NVMe"), a number of up to four digits ("512", "3}"), or
+// such a number with a short unit ("90s", "16K", "512GB"). A part of four letters or more must also
+// read as a word: a vowel (y counts) and no four consonants in a row, so random letters split from a
+// token ("CupHsmkc", "QZKRMNXW"; Sol on #1973) are not ordinary. odd counts the characters of the
+// other parts (a model number "SD8SB8U2", token text), ordinary those of the ordinary ones; spoken is
+// set by an ordinary word of five letters or more, secret by a part that names a secret ("SECRET",
+// "key", "token") or an equals sign (an assignment, "STRIPE_SECRET_KEY=sk_live_…").
+struct WordShape {int odd=0;int ordinary=0;bool spoken=false;bool secret=false;};
+WordShape wordShape(const QString& word) {
+ static const QRegularExpression ordinary(QStringLiteral("^(?:[a-z]+|[A-Z][a-z]+|[A-Z]+|[A-Z]{1,3}[a-z]{2,}(?:[A-Z][a-z]{2,})?|[A-Z]{2,3}[a-z]|\\d{1,4}|\\d{1,4}[A-Za-z]{1,3})$"));
+ static const QRegularExpression readable(QStringLiteral("^(?=.*[aeiouy])(?!.*[b-df-hj-np-tv-xz]{4})"));
+ static const QSet<QString> secrets{"secret","secrets","key","keys","apikey","token","tokens","password","passwd","pwd","pass","passphrase","auth","private","credential","credentials","bearer","session","cookie","signature"};
+ WordShape shape;shape.secret=word.contains('=');qsizetype from=0;
+ for(qsizetype i=0;i<=word.size();++i){
+  if(i<word.size()&&word.at(i).isLetterOrNumber())continue;
+  const auto part=word.mid(from,i-from);from=i+1;
+  if(part.isEmpty())continue;
+  const bool letters=std::all_of(part.cbegin(),part.cend(),[](QChar c){return c.isLetter();});
+  const bool spoken=letters&&part.size()>=4&&readable.match(part.toLower()).hasMatch();
+  if(letters&&secrets.contains(part.toLower()))shape.secret=true;
+  if(!ordinary.match(part).hasMatch()||(letters&&part.size()>=4&&!spoken))shape.odd+=int(part.size());
+  else{shape.ordinary+=int(part.size());shape.spoken=shape.spoken||(spoken&&part.size()>=5);}
+ }
+ return shape;
+}
 // Hex, as recognition misreads it: l, i, I, |, ! for 1; O, o, ©, ° for 0; S
 // for 5; t and £ for f; € for e. At least 32 characters, at most one in twelve
 // outside hex once mapped, and both digits and letters.
@@ -597,6 +625,18 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
     const auto body=candidate.captured(3).left(16);
     if(std::count_if(body.cbegin(),body.cend(),[](QChar c){return c=='0'||c=='1'||c=='8'||c=='9';})*2>=body.size())continue;
    }
+   // #1971: nor is a row of upper-case words after one that reads as the prefix ("US" "ASIA" "EUR"
+   // "BONDS" "OIL" "GOLD", a market page's tabs): a body with no digit in its first 16 characters,
+   // across three words or more, each an ordinary word (see wordShape). A key ID's body is 16 random
+   // characters of A to Z and 2 to 7.
+   if(index==0){
+    const int bodyAt=base+int(candidate.capturedStart(3));const auto body=candidate.captured(3).left(16);
+    const int from=pieceAt(segment,bodyAt),to=pieceAt(segment,bodyAt+int(body.size())-1);
+    const auto pieceText=[&](int p){const int e=p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size());return segment.text.mid(segment.starts.at(p),e-segment.starts.at(p));};
+    bool words=to-from>=2&&!hasDigit(body);
+    for(int p=from;words&&p<=to;++p)words=wordShape(pieceText(p)).odd==0;
+    if(words)continue;
+   }
    // #1875: a JSON web token's payload starts with eyJ after the header's dot, so a token whose
    // header recognition misread past the prefix ("|eyfhbGci….eyJzdWIi…") is found by its payload.
    const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
@@ -687,6 +727,22 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // #1897: each piece looks only as far as 256 characters reach (the window's end moves on with it), so
  // a line of thousands of pieces costs about its length, not its square.
  int bestFirst=-1,bestLast=-1,bestLength=0;
+ // #1971/#1972: a part of a segment joined from several words is interface text run together, and
+ // no base64 run, when fewer than 20 of its characters lie outside ordinary words and numbers, at
+ // least as many lie in them, one of them is a word of five letters or more, and none names a
+ // secret or assigns a value: a drive's model between its size and name ("NVMe" "SSD" "512" "GB"
+ // "SKHynix" "HFS512GD9TNI-L2B0B"), a video title. A token that recognition split keeps most of its
+ // 32 characters or more in odd parts. Judged once on the whole part, so a window inside it can't
+ // leave out the words that show what it is.
+ const bool interfaceText=[&]{
+  if(first==last)return false;
+  WordShape all;
+  for(int p=first;p<=last;++p){
+   const auto shape=wordShape(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size()))-segment.starts.at(p)));
+   all.odd+=shape.odd;all.ordinary+=shape.ordinary;all.spoken=all.spoken||shape.spoken;all.secret=all.secret||shape.secret;
+  }
+  return all.odd<20&&all.ordinary>=all.odd&&all.spoken&&!all.secret;
+ }();
  const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
  int reach=first;
  for(int i=first;i<=last;++i){
@@ -699,7 +755,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   if(to-from<=bestLength||to-from<24)break;
   if(!possible(from,to))continue;
   const auto run=segment.text.mid(from,to-from);
-  if(hexRun(run)||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  if(hexRun(run)||(base64Run(run)&&!interfaceText)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
   }
  }
  if(bestFirst<0)return;
