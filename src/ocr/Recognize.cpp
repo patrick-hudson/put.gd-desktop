@@ -657,8 +657,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   };
   // Every engine reads on a thread of its own, the first one too, so this
   // thread's wait below bounds them all: Tesseract's layout does not stop at
-  // its deadline (Sol on #1933). A thread the system refuses reads here.
-  if(!launch(&shared->first,false,0))readSeconds(&shared->first,0);
+  // its deadline (Sol on #1933). A thread the system refuses reads nothing.
+  launch(&shared->first,false,0);
   // Then the extra engines whose first-pass thread is done (a late one is not) and that started.
   int launched=1;
   for(int w=0;w<int(shared->extra.size())&&launched<engines;++w){
@@ -673,7 +673,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const qint64 largest=*std::max_element(run->pixels.cbegin(),run->pixels.cend());
    if(shared->gateBudget>0){
     const qint64 each=extraEngineCost+20*largest;
-    more=std::clamp(int((shared->gateBudget-residentBytes()-shared->starting.load()*extraEngineCost)/std::max<qint64>(1,each)),0,more);
+    const qint64 starting=shared->starting.load();  // read before the resident set: an engine done starting then shows in it
+    more=std::clamp(int((shared->gateBudget-residentBytes()-starting*extraEngineCost)/std::max<qint64>(1,each)),0,more);
    }
   }else more=0;
   for(int w=0;w<more;++w){
@@ -753,7 +754,10 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  // And in the output bytes the rest leaves (each costs its JSON and a comma).
  if(!rereads.isEmpty()){
   textjob::Options encoding;encoding.words=options.words;encoding.candidates=options.candidates;
-  qint64 room=textjob::maximumOutputBytes-textjob::encodeResult(out,encoding).size();
+  // Only into a result the bounds left whole: one they cut is truncated already,
+  // and rereads added to it could cost first-read candidates when it is cut again.
+  const auto encoded=textjob::encodeResult(out,encoding);
+  qint64 room=QJsonDocument::fromJson(encoded).object().value(QStringLiteral("truncated")).toBool(true)?0:textjob::maximumOutputBytes-encoded.size();
   for(const auto& w:std::as_const(rereads)){
    const qint64 bytes=QJsonDocument(textjob::wordsJson({w})).toJson(QJsonDocument::Compact).size()-1;
    if(out.candidates.size()>=textjob::maximumWords||bytes>room)break;
