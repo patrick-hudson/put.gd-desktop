@@ -49,8 +49,8 @@ your own quiet lease on that host (`desktop_lock.py acquire HOST --resource quie
 4 minutes, released when it ends. From the workstation that is
 `desktop_lock.py acquire HOST --resource quiet --owner NAME --session ID --purpose TEXT --minutes 30`, then
 `heartbeat HOST --resource quiet --session ID` and `release HOST --resource quiet --session ID`; or wrap one stage
-in `desktop_lock.py run HOST --resource quiet --minutes 10 --owner NAME --session ID --purpose TEXT -- CMD`, which
-renews it for you. A short command, such as the build, a probe or a small oracle run, starts with
+in `desktop_lock.py run HOST --resource quiet --minutes 10 --owner NAME --session ID --purpose TEXT --release -- CMD`,
+which renews it while CMD runs and releases it when CMD ends. A short command, such as the build, a probe or a small oracle run, starts with
 `python3 tools/lab/desktop_lock.py guard &&` when you type it on the builder (with no `HOST`: it reads that
 builder's own lock), or with `desktop_lock.py guard HOST &&` in front of the `ssh` on the workstation. Use at most
 4 jobs per host. `run` also checks `guard` before starting each driver and waits while another session holds the
@@ -66,7 +66,8 @@ and `PKG` is the directory the package was unpacked into.
 2. Put a `git archive` of that commit's `src/` next to it, and copy `tools/lab/redact_fuzz` and
    `tools/lab/desktop_lock.py` to the host.
 3. Build the driver, which takes about 40 s at 4 compile jobs:
-   `desktop_lock.py guard HOST && nice -n 10 fuzz.py build --source SRC_TREE --out build`.
+   `python3 tools/lab/desktop_lock.py guard && nice -n 10 fuzz.py build --source SRC_TREE --out build`, typed on the
+   builder.
    On aurora, run it inside the `putgd-build` toolbox. On Mint, Debian and Kubuntu, run it with the distribution's Qt
    development packages.
 4. Render: `fuzz.py render --seed S --count N --out scenes-S`. Pango, Cairo and PyGObject come from the host,
@@ -82,7 +83,8 @@ and `PKG` is the directory the package was unpacked into.
    loop for a rule change. A run started again skips every scene its `--out` directory already holds a result for,
    so give each configuration (driver, helper, language data or mode) its own `--out`; scenes rendered by someone
    else can be reused read-only that way. A scene whose run failed, or that has no result, is tried again
-   (`--retries`, 1 by default, counted across restarts). `run` prints `DONE` only when every scene has a result;
+   (`--retries`, 1 by default). A failure written to the results counts against that budget across restarts; an
+   attempt that left no row at all is tried again within the run and again after a restart. `run` prints `DONE` only when every scene has a result;
    otherwise it prints `INCOMPLETE` with the count and exits 1.
 6. Score: `fuzz.py score --scenes scenes-S --results results-X --out score-X` (add `--oracle` after an
    `--oracle-only` run). This writes `findings.jsonl` (one row per false negative, partial cover, false positive,

@@ -159,7 +159,7 @@ With no arguments, `putgd-build-env` opens a shell in that container. Before a
 host's [quiet lease](#quiet-leases-for-timing-runs). That check doesn't take the lease:
 a build or test run longer than about a minute holds the session's own quiet lease
 too, most simply through `desktop_lock.py run aurora-amd --resource quiet --minutes 10
--- …` from the workstation. The wrapper
+--owner NAME --session ID --purpose TEXT --release -- …` from the workstation. The wrapper
 selects `/var/home/patrick/work/put.gd`, the canonical path to the prepared
 checkout, clears the live graphical session variables for CTest and checks the
 test socket paths under a new short private `TMPDIR`. For an isolated checkout,
@@ -853,13 +853,15 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
   It holds no lease of its own over its build and stress suite yet, so a timing run
   that starts while the lane runs isn't stopped; until it takes one, keep timing work
-  off k72 while the lane's service is active (`systemctl --user
-  is-active putgd-stress-weekly.service` on k72).
+  off k72 while the lane runs: it is a oneshot service, so `systemctl --user show -p
+  ActiveState --value putgd-stress-weekly.service` on k72 reports `activating` while it
+  works.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
   `cmake` run directly, and any other heavy command. Put `desktop_lock.py guard HOST && `
   in front of a short one. A long one (a build, a full `ctest`, a stress suite, a
   corpus or fuzz batch) takes the lease itself, most simply with
-  `desktop_lock.py run HOST --resource quiet --minutes 10 -- CMD`. `guard` exits 1
+  `desktop_lock.py run HOST --resource quiet --minutes 10 --owner NAME --session ID
+  --purpose TEXT --release -- CMD`. `guard` exits 1
   while another session holds the lease. Run on a builder without `HOST`, it reads
   that builder's own lock directory; with `HOST` it reaches the host over the
   workstation's pinned SSH, so use that form only on the workstation.
