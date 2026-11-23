@@ -1648,7 +1648,10 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
   const auto& t=text(i);if(from>=t.size())return i;
   const QChar open=t.at(from);if(!quoteOpeners().contains(open))return i;
   // A closing quote is one not escaped with a backslash ("orchard\" lantern stone"); closingWord says which (#1964).
-  const int w=closingWord(text,n,i,from,open);return w>=0?w:i;
+  // It belongs to this command: the search stops at the next |, ||, &&, ; or & (Sol on #1969).
+  static const QSet<QString> separators{"|","||","&&",";","&"};
+  int stop=i+1;while(stop<n&&!separators.contains(text(stop)))++stop;
+  const int w=closingWord(text,stop,i,from,open);return w>=0?w:i;
  };
  const auto cover=[&](int i,int last=-1){QList<int> words;for(int w=i;w<=qMax(i,last);++w)words.append(line.at(w));out.append(words);};
  // The value from offset `from` of word i through word `last`, as one string (a quoted passphrase is judged whole).
@@ -1656,7 +1659,7 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
  // A flag's value. A password flag says what its argument is, so any value counts but one public by its
  // shape (a hash, a public key, a version); a token or secret flag's value also has a secret's shape: it
  // reads as a password, is quoted, or has a digit and eight characters or more (Sol on #1952).
- const auto flagValue=[](const QString& value,bool password){
+ const auto flagValue=[](const QString& value,bool password,bool closed=false){
   // A run of mask characters among other words is part of the password ("River7 **** orchard"); masking shows only
   // where the value is masks alone (Sol on #1952).
   if(password){
@@ -1664,7 +1667,8 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
    return secretValue(value,true)&&!publicValue(value);
   }
   const auto bare=bareValue(value);
-  return secretValue(value)&&!shownValue(value)&&(strongValue(value)||quotedValue(value)||(bare.size()>=8&&hasDigit(bare)));
+  // closed: the value's closing quote was found (a mixed “…" pair quotedValue doesn't take; Sol on #1969).
+  return secretValue(value)&&!shownValue(value)&&(strongValue(value)||closed||quotedValue(value)||(bare.size()>=8&&hasDigit(bare)));
  };
  // Long flags and Java system properties, on any command.
  for(int i=0;i<n;++i){
@@ -1680,7 +1684,8 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
    const auto ok=[&](int to){const auto value=valueOf(i,dashes+eq+1,to);return passwordName(key)?flagValue(value,true):secretValue(value);};
    if(flagName(key)){if(ok(last))cover(i,last);else if(last>i&&ok(i))cover(i);}continue;}
   if(i+1<n&&flagName(name)&&!text(i+1).startsWith('-')&&gap(i,i+1)<=3){const int last=quoteEnd(i+1,0);
-   if(flagValue(valueOf(i+1,0,last),passwordName(name)))cover(i+1,last);else if(last>i+1&&flagValue(text(i+1),passwordName(name)))cover(i+1);}
+   const bool closed=!text(i+1).isEmpty()&&quoteOpeners().contains(text(i+1).front())&&(last>i+1||closingWord(text,i+2,i+1,0,text(i+1).front())==i+1);
+   if(flagValue(valueOf(i+1,0,last),passwordName(name),closed))cover(i+1,last);else if(last>i+1&&flagValue(text(i+1),passwordName(name)))cover(i+1);}
  }
  // Short flags, after the command that reads them.
  struct Short {QStringList commands;QString flag;bool glued;bool spaced;bool login=false;};
@@ -1722,7 +1727,8 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
    const auto& t=text(i);
    const QChar sep=p?QChar('%'):QChar(':');
    // The password judged whole, through its closing quote: "alice:'red blue lantern'" (Sol on #1969).
-   const auto pair=[&](QString word){while(!word.isEmpty()&&quoteOpeners().contains(word.front()))word.remove(0,1);const auto at=word.indexOf(sep);return at>0&&!word.contains(QLatin1String("//"))&&!word.startsWith(QLatin1String("data:"))&&flagValue(word.mid(at+1),true);};
+   const auto pair=[&](QString word){while(!word.isEmpty()&&quoteOpeners().contains(word.front()))word.remove(0,1);const auto at=word.indexOf(sep);// A URL (http://…) is no user:password; a // inside the password is part of it (Sol on #1969).
+   return at>0&&!word.left(at).contains(QLatin1String("//"))&&!word.mid(at+1).startsWith(QLatin1String("//"))&&!word.startsWith(QLatin1String("data:"))&&flagValue(word.mid(at+1),true);};
    const bool flag=p?(t==QLatin1String("-U")||t==QLatin1String("--user")):(t==QLatin1String("-u")||t==QLatin1String("--user"));
    // The quote may open the argument or the password after the separator (curl -u alice:'orchard lantern', #1964).
    const auto quoted=[&](int w,qsizetype base){const auto& word=text(w);if(base<word.size()&&quoteOpeners().contains(word.at(base)))return quoteEnd(w,base);const auto at=word.indexOf(sep,base);return at>=0&&at+1<word.size()&&quoteOpeners().contains(word.at(at+1))?quoteEnd(w,at+1):w;};
