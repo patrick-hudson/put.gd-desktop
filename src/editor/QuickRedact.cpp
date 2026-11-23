@@ -867,7 +867,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  const auto pieceEnd=[&](int piece){return piece+1<pieces?segment.starts.at(piece+1):int(segment.text.size());};
  // URLs with a password, webhooks and bot tokens.
  static const QList<QRegularExpression> urls{
-  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?!(?=[0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))(?![^\\s/?#@]*@))[^\\s/@]{3,}")),
+  QRegularExpression(QStringLiteral("(?i)(?:jdbc:)?(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|db2|cockroachdb|clickhouse|cassandra|couchdb|neo4j(?:\\+s)?|bolt|nats|kafka|mqtts?|memcached|elasticsearch|snowflake|ftps?|sftp|smtps?|imaps?|pop3s?|ldaps?|https?|wss?|ssh|git|svn|socks5h?|proxy):/{1,2}[^\\s/:@\\[\\]]{0,64}:(?!(?=[0-9]{1,5}(?:[/?#,;\"'`)\\]>\u201D\u2019]|$))(?![^\\s/?#@]*@))(?:[^\\s/@]|@(?=[^\\s/]*@)){3,}")),
   // The credential-bearing path whole: team, hook and secret (Sol on #1903).
   QRegularExpression(QStringLiteral("(?i)hooks[.,]?s[a-z1|]{1,3}ck[.,]?com/(?:services|workflows|triggers)/[A-Za-z0-9]{6,}/[A-Za-z0-9]{6,}/(?:[0-9]{6,}/)?[A-Za-z0-9]{12,}")),
   QRegularExpression(QStringLiteral("(?i)discord(?:app)?[.,]?com/api/webhooks/[0-9]{6,}/[A-Za-z0-9_-]{8,}")),
@@ -898,14 +898,15 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
     if(masked(key.left(key.indexOf('@'))))continue;
     out.append(from(pieceAt(segment,m.capturedStart()),pieces-1));break;
    }
-   // A URL's password as read, from the user's colon to the @ (or the end, the @ lost): a
-   // placeholder or a reference is no secret; digits alone are a password like any other. Digits
-   // after the colon that end a recognized word are a port, the @ never lost (Sol on #1903).
+   // A URL's password as read, from the user's colon to the last @ before the host (or the end, the @
+   // lost): a password may hold an @ itself (#1965). A placeholder or a reference is no secret; digits
+   // alone are a password like any other. Digits after the colon that end a recognized word are a port,
+   // the @ never lost (Sol on #1903).
    if(&pattern==&urls.first()){
     const auto text=m.captured();const auto scheme=text.indexOf(QLatin1String("//"));
-    const auto colon=text.indexOf(':',scheme<0?0:scheme+2);const auto at2=text.indexOf('@',colon);
-    const auto password=text.mid(colon+1,at2<0?-1:at2-colon-1);
-    if(at2<0){
+    const auto colon=text.indexOf(':',scheme<0?0:scheme+2);
+    const auto password=text.mid(colon+1);
+    {
      qsizetype d=colon+1;while(d<text.size()&&text.at(d).isDigit()&&d-colon<=5)++d;
      // ...unless the next word starts with the @ ("alice:1234" "@db"): then the digits are a password.
      const int after=int(m.capturedStart()+d);

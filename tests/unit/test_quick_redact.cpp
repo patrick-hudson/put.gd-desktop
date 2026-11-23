@@ -368,6 +368,12 @@ private slots:
    QTest::newRow("a URL after a variable's name")<<"DATABASE_URL="+pg<<all<<QStringList{"key: DATABASE_URL="+pg};}
   QTest::newRow("URLs with a port and no password stay visible")<<"http://localhost:3000/api ssh://git@github.com:22/x postgres://localhost/db https://example.com:8443"<<QStringList{"key"}<<QStringList{};
   QTest::newRow("a connection string with a reference stays visible")<<"postgres://app:${DB_PASSWORD}@db/prod"<<all<<QStringList{};
+  // #1965: a password may hold an @ itself; the last @ before the host ends it. An address and a path's @ are no password.
+  {const auto at=QString("postgres://app:p@ss!w0")+"rd@db.internal:5432/app";
+   QTest::newRow("a connection string whose password holds an @")<<at<<all<<QStringList{"key: "+at};
+   const auto two=QString("DATABASE_URL=mysql://root:Kx9@mQ")+"2z@10.0.0.5/app";
+   QTest::newRow("a connection string whose password starts with a short piece before an @")<<two<<all<<QStringList{"key: "+two};
+   QTest::newRow("an address and a URL with an @ in its path are no password")<<"mail alice@example.com or see https://example.com:8443/a@b and ssh://git@github.com:22/x"<<QStringList{"key"}<<QStringList{};}
   QTest::newRow("a secret-named value in a word")<<"DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<all<<QStringList{"key: DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
   QTest::newRow("a secret-named value after its name")<<"password: "+QString("Hn4!vQ8z")+"R2#wLp"<<all<<QStringList{"key: "+QString("Hn4!vQ8z")+"R2#wLp"};
   QTest::newRow("a quoted value in JSON")<<"\"client_secret\": \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","<<all<<QStringList{"key: \""+QString("q9Lm2Vx7")+"Tz4Rb8Nc\","};
