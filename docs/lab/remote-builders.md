@@ -156,7 +156,10 @@ Use the installed wrapper on Aurora:
 With no arguments, `putgd-build-env` opens a shell in that container. Before a
 `cmake` or `ctest` command it runs `desktop_lock.py guard` from
 `~/.local/libexec/putgd-builder/` and refuses while another session holds the
-host's [quiet lease](#quiet-leases-for-timing-runs). The wrapper
+host's [quiet lease](#quiet-leases-for-timing-runs). That check doesn't take the lease:
+a build or test run longer than about a minute holds the session's own quiet lease
+too, most simply through `desktop_lock.py run aurora-amd --resource quiet --minutes 10
+-- …` from the workstation. The wrapper
 selects `/var/home/patrick/work/put.gd`, the canonical path to the prepared
 checkout, clears the live graphical session variables for CTest and checks the
 test socket paths under a new short private `TMPDIR`. For an isolated checkout,
@@ -747,8 +750,10 @@ python3 tools/lab/desktop_lock.py run f44 --owner NAME --session ID --purpose TE
 ```
 
 Use `run` for work that needs a lock: desktop work (the default `desktop` lock)
-and timing runs (`--resource quiet`). Shared SSH builds, tests and VMs need no
-lock. `run` is the safe form of "acquire, then work": it takes the lock, or
+and any job longer than about a minute, timing or not (`--resource quiet`). A shared
+SSH build, test or VM needs no desktop lock, but one that runs longer than about a
+minute holds the quiet lease. With `--minutes 10` or less, `run` renews the lease
+every third of it, inside the 3 to 4 minutes the rule asks. `run` is the safe form of "acquire, then work": it takes the lock, or
 confirms that your session already holds it, and only then runs CMD on the
 builder over the same pinned BatchMode SSH, with `PUTGD_LAB_SESSION` set to your
 session. CMD's words reach the builder as you gave them; put a shell expression
@@ -846,11 +851,18 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   anyone else holds the lease. It checks with its desktop-lock guard (at the
   start and again after the build), right before CMake configure, between
   configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+  It holds no lease of its own over its build and stress suite yet, so a timing run
+  that starts while the lane runs isn't stopped; until it takes one, keep timing work
+  off k72 while the lane's service is active (`systemctl --user
+  is-active putgd-stress-weekly.service` on k72).
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
-  `cmake` run directly, and any other heavy command. For those, put
-  `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
-  another session holds the lease. Run on a builder without `HOST`, it reads that
-  builder's own lock directory.
+  `cmake` run directly, and any other heavy command. Put `desktop_lock.py guard HOST && `
+  in front of a short one. A long one (a build, a full `ctest`, a stress suite, a
+  corpus or fuzz batch) takes the lease itself, most simply with
+  `desktop_lock.py run HOST --resource quiet --minutes 10 -- CMD`. `guard` exits 1
+  while another session holds the lease. Run on a builder without `HOST`, it reads
+  that builder's own lock directory; with `HOST` it reaches the host over the
+  workstation's pinned SSH, so use that form only on the workstation.
 - Your own lease doesn't stop your own run in the guarded helpers: set
   `PUTGD_LAB_SESSION` to the lease's session (or pass `guard --session ID`).
 - An expired lease no longer stops heavy work, but its file stays until someone

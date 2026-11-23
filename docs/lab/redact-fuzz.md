@@ -37,8 +37,8 @@ Labels: `secret` spans carry the category that should find them, or `gap` for se
 own name by design, so the scorer records those covers as `DESIGN`, judged on the true words under the cover: an
 `ip` cover over an address, a `name` cover over a part of the user's name. A labelled look-alike under an `ip`
 cover, such as a version number, stops that exemption, and the cover is then an `FP`, or an `OVER` when another
-row of the same match covers a secret. Secrets partly hidden (past the edge, under a minimap or the next pane) are
-not scored.
+row of the same match covers a secret or a neutral span. A row that itself covers a secret or a neutral span is
+no finding at all. Secrets partly hidden (past the edge, under a minimap or the next pane) are not scored.
 
 ## Running it
 
@@ -46,9 +46,15 @@ Run it on a builder, never on the workstation, under the
 [sharing rules](remote-builders.md#sharing-the-lab-between-concurrent-sessions). Every stage expected to run
 longer than about a minute (rendering a few thousand scenes, a recognition run, scoring a large corpus) holds
 your own quiet lease on that host (`desktop_lock.py acquire HOST --resource quiet`), with a heartbeat every 3 to
-4 minutes, released when it ends. A short command, such as the build, a probe or a small oracle run, starts
-with `desktop_lock.py guard HOST &&`. Use at most 4 jobs per host. `run` also checks `guard` before starting each
-driver and waits while another session holds the lease.
+4 minutes, released when it ends. From the workstation that is
+`desktop_lock.py acquire HOST --resource quiet --owner NAME --session ID --purpose TEXT --minutes 30`, then
+`heartbeat HOST --resource quiet --session ID` and `release HOST --resource quiet --session ID`; or wrap one stage
+in `desktop_lock.py run HOST --resource quiet --minutes 10 --owner NAME --session ID --purpose TEXT -- CMD`, which
+renews it for you. A short command, such as the build, a probe or a small oracle run, starts with
+`python3 tools/lab/desktop_lock.py guard &&` when you type it on the builder (with no `HOST`: it reads that
+builder's own lock), or with `desktop_lock.py guard HOST &&` in front of the `ssh` on the workstation. Use at most
+4 jobs per host. `run` also checks `guard` before starting each driver and waits while another session holds the
+lease.
 
 Below, `fuzz.py` means `python3 tools/lab/redact_fuzz/fuzz.py`, run from the directory you copied the tools into,
 and `PKG` is the directory the package was unpacked into.
@@ -75,8 +81,9 @@ and `PKG` is the directory the package was unpacked into.
    `--oracle-only` matches the true words alone, with no recognition: a few seconds a thousand scenes, the quick
    loop for a rule change. A run started again skips every scene its `--out` directory already holds a result for,
    so give each configuration (driver, helper, language data or mode) its own `--out`; scenes rendered by someone
-   else can be reused read-only that way. A scene whose run failed is tried again (`--retries`, 1 by default), and
-   `run` exits with `INCOMPLETE` when some scenes still have no result.
+   else can be reused read-only that way. A scene whose run failed, or that has no result, is tried again
+   (`--retries`, 1 by default, counted across restarts). `run` prints `DONE` only when every scene has a result;
+   otherwise it prints `INCOMPLETE` with the count and exits 1.
 6. Score: `fuzz.py score --scenes scenes-S --results results-X --out score-X` (add `--oracle` after an
    `--oracle-only` run). This writes `findings.jsonl` (one row per false negative, partial cover, false positive,
    over-cover and by-design cover) and `summary.json` (groups by profile, kind, decoy or tag, and cause, with
@@ -105,7 +112,8 @@ At 4 jobs, aurora runs about 200 scenes a minute and a 4-core builder about 100.
 `cause` is an attribution, not a proof. A missed secret is `rule` when at least half of the characters left visible
 are visible in the oracle run too (`by_rule` counts them), and `ocr` otherwise. A row of an extra cover is `rule`
 when the oracle's marks of the same category cover at least half of the true words under it (or, with no word
-under it, half of the row), and a cover of several rows takes the cause of most of its rows (`rule_rows`). `read` holds what recognition made of a missed
+under it, half of the row). A cover of several rows is `rule` when at least half of the rows in that finding are
+(`rule_rows`; a tie counts as `rule`). `read` holds what recognition made of a missed
 secret. `match` holds the matched text of an extra cover.
 
 ## Traps
