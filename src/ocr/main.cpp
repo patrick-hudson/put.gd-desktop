@@ -16,6 +16,7 @@
 #include <QString>
 #include <QStringList>
 #include <cstdlib>
+#include <sys/resource.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -73,7 +74,10 @@ int main(int argc,char** argv){
  const bool unhinged=qgetenv(textjob::unhingedVariable)=="1";
  const auto cpus=unhinged?QList<int>{}:preferredCpus();
  const int threads=unhinged?workerThreads(0,std::numeric_limits<int>::max()):cpus.isEmpty()?workerThreads():std::min(workerThreads(),int(cpus.size()));
- const auto budgets=memoryBudgets(unhinged,threads,unhinged?cpu::memoryAvailable():-1);
+ // The inherited hard RLIMIT_DATA bounds the scaled budget too: a limit the
+ // helper can't raise to would fail its confinement.
+ rlimit inherited{};const qint64 dataLimit=::getrlimit(RLIMIT_DATA,&inherited)==0&&inherited.rlim_max!=RLIM_INFINITY?qint64(inherited.rlim_max):-1;
+ const auto budgets=memoryBudgets(unhinged,threads,unhinged?cpu::memoryAvailable():-1,dataLimit);
  confinement.dataBytes=budgets.ceiling*3/2;confinement.cpuSeconds=cpuSecondsPerThread*threads;
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
  QString failed;int abi=0;

@@ -1,6 +1,7 @@
 #include "Poster.h"
 #include <QFile>
 #include <QList>
+#include <QThread>
 #include <QTransform>
 #include <algorithm>
 #include <cmath>
@@ -27,7 +28,8 @@ struct Decoder {
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
     int index = -1;
-    ~Decoder() {
+    ~Decoder() { close(); }
+    void close() {
         av_frame_free(&frame);
         av_packet_free(&packet);
         if (video) avcodec_free_context(&video);
@@ -52,9 +54,11 @@ struct Decoder {
         if (!video || avcodec_parameters_to_context(video, parameters) < 0) return fail("Cannot decode the video");
         // The decoder refuses any later frame over the limit, whatever the header said.
         video->max_pixels = maxPixels;
-        // Two threads leave the desktop its cores; Unhinged mode (#1937) lets
-        // FFmpeg pick, one per CPU as the export does.
-        video->thread_count = allCores ? 0 : 2;
+        // Two threads leave the desktop its cores. Unhinged mode (#1937) uses one
+        // per CPU, as many as fit in half the child's 2 GiB of address space at
+        // two worst-case frames (16-bit 4:4:4) a thread, never fewer than two.
+        const qint64 frameBytes = std::max<qint64>(1, qint64(parameters->width) * parameters->height * 6);
+        video->thread_count = allCores ? int(std::clamp<qint64>((qint64(1) << 30) / (2 * frameBytes), 2, std::max(2, QThread::idealThreadCount()))) : 2;
         video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
         if (avcodec_open2(video, decoder, nullptr) < 0) return fail("No decoder for this video");
         return {};
@@ -177,7 +181,9 @@ Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& 
     }
     av_frame_free(&frame);
     if (!out.image.isNull()) return {};
-    // Every seek failed: the first decodable frame, read from a fresh start.
+    // Every seek failed: the first decodable frame, read from a fresh start,
+    // after the first decoder's threads and frames are freed.
+    decoder.close();
     Decoder first;
     if (auto error = first.open(input, maxPixels, allCores)) return error;
     frame = av_frame_alloc();

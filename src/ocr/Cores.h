@@ -33,9 +33,10 @@ QList<int> preferredCpus(const QList<int>& allowed,const QString& root=QStringLi
 QList<int> preferredCpus();
 // The job's memory budget and its ceiling with other languages' data (#1937).
 // By default 320 and 384 MiB. In Unhinged mode the budget grows with the
-// engines, 128 MiB and 64 MiB an engine, but never past half the memory
-// available (MemAvailable) and never under the default; the ceiling stays
-// 64 MiB above it. Unknown available memory (-1) keeps the default.
+// engines, 128 MiB and 64 MiB an engine, never under the default. The ceiling,
+// 64 MiB above it, stays within half the memory available (MemAvailable) and
+// its RLIMIT_DATA (one and a half times) within the inherited hard limit
+// (dataLimit, -1 for none). Unknown available memory (-1) keeps the default.
 struct MemoryBudgets { qint64 base=0,ceiling=0; };
-MemoryBudgets memoryBudgets(bool unhinged,int threads,qint64 available);
+MemoryBudgets memoryBudgets(bool unhinged,int threads,qint64 available,qint64 dataLimit=-1);
 }

@@ -10,6 +10,7 @@ public:
  explicit UiSession(SessionClient&,QObject* parent=nullptr);
  // How many History previews decode at once (#1937).
  static int previewWorkers(bool allCores,int cores,qint64 memoryAvailable);
+ int previewWorkers() const {return previews_.maxThreadCount();}
  ~UiSession() override;
  void refreshSnapshot(std::function<void(Error)> callback={});
  void applySnapshot(const QJsonObject&);
