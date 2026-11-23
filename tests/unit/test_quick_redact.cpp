@@ -198,7 +198,8 @@ private slots:
   QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
   QTest::newRow("an order number is no phone")<<"Order #10234567 shipped"<<all<<QStringList{};
   // CodeRabbit on #1957: an order number with its "#" read apart; phones an exemption must not take.
-  QTest::newRow("an order number after a lone hash is no phone")<<"Order # 10234567 shipped"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("an order number after a lone hash is no phone")<<"Order # 10234567 shipped | Order \uFF03 10234568 shipped"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a diff's added year row is no phone")<<"+2023 2024 2025"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("an international phone with counted groups is a phone")<<"Call +44 20 21 22 23 24"<<QStringList{"phone"}<<QStringList{"phone: +44 20 21 22 23 24"};
   QTest::newRow("a phone with its area code in parentheses is a phone")<<"Tel. (030) 123 234"<<QStringList{"phone"}<<QStringList{"phone: (030) 123 234"};
   QTest::newRow("a wrapped card after a row number")<<"18 4111 1111 | 1111 1111 xx | xxxxxxxxxxxx"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
