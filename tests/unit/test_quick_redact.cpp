@@ -909,6 +909,10 @@ private slots:
    QTest::newRow("a Debian kernel version stays visible")<<"Debian GNU/Linux 13 (trixie) · 6.12.107+deb13-amd64"<<key<<QStringList{};
    QTest::newRow("a temporary AWS key ID split after its prefix stays covered")<<"AS"+QString("IA Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AS"+QString("IA Z7Q4R2N9KT6HB3XW")};
    QTest::newRow("a temporary AWS key ID of letters in one word stays covered")<<"AS"+QString("IAQWERTYUIOPASDFGH")<<key<<QStringList{"key: AS"+QString("IAQWERTYUIOPASDFGH")};
+   // Sol on #1973: random letters split from a token don't read as words.
+   QTest::newRow("a base64 key split into word-shaped parts stays covered")<<"CupHsmkc ORgiidsm YU3sGT7a zc9m1AoX"<<key<<QStringList{"key: CupHsmkc ORgiidsm YU3sGT7a zc9m1AoX"};
+   QTest::newRow("a temporary AWS key ID of letters split in its body stays covered")<<"AS"+QString("IA QZKRMNXW LTHCVBPS")<<key<<QStringList{"key: AS"+QString("IA QZKRMNXW LTHCVBPS")};
+   QTest::newRow("an AWS key ID of letters split after its AK and in its body stays covered")<<"AK"+QString(" IAQZKRMNXW LTHCVBPS")<<key<<QStringList{"key: AK"+QString(" IAQZKRMNXW LTHCVBPS")};
    const auto b=base64Of("w",44);
    QTest::newRow("a base64 key split in three stays covered")<<"secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)<<key<<QStringList{"key: secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)};
    QTest::newRow("a base64 key between ordinary words stays covered")<<"The new "+b+" House"<<key<<QStringList{"key: The new "+b+" House"};

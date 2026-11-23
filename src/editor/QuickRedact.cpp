@@ -270,13 +270,21 @@ bool tokenPiece(const QString& word,bool loose=false) {
 // camel case of up to two humps ("SanDisk", "SKHynix", "NVMe", "YouTube"), a number of up to four
 // digits ("512", "3}"), or such a number with a short unit ("90s", "16K", "512GB"). A model or part
 // number ("SD8SB8U2", "HFS512GD9TNI") and random token text are counted whole.
-int oddCharacters(const QString& word) {
+// A word of four letters or more must also read as one: a vowel (y counts) and no four consonants in a
+// row, so random letters split from a token ("CupHsmkc", "QZKRMNXW"; Sol on #1973) stay odd.
+// spoken: set when a part is such a word of five letters or more ("STORAGE", "SanDisk", "House").
+int oddCharacters(const QString& word,bool* spoken=nullptr) {
  static const QRegularExpression ordinary(QStringLiteral("^(?:[a-z]+|[A-Z][a-z]+|[A-Z]+|[A-Z]{1,3}[a-z]{2,}(?:[A-Z][a-z]{2,})?|[A-Z]{2,3}[a-z]|\\d{1,4}|\\d{1,4}[A-Za-z]{1,3})$"));
+ static const QRegularExpression readable(QStringLiteral("^(?=.*[aeiouy])(?!.*[b-df-hj-np-tv-xz]{4})"));
  int odd=0;qsizetype from=0;
  for(qsizetype i=0;i<=word.size();++i){
   if(i<word.size()&&word.at(i).isLetterOrNumber())continue;
   const auto part=word.mid(from,i-from);from=i+1;
-  if(!part.isEmpty()&&!ordinary.match(part).hasMatch())odd+=int(part.size());
+  if(part.isEmpty())continue;
+  const bool letters=std::all_of(part.cbegin(),part.cend(),[](QChar c){return c.isLetter();});
+  const bool word=letters&&part.size()>=4&&readable.match(part.toLower()).hasMatch();
+  if(!ordinary.match(part).hasMatch()||(letters&&part.size()>=4&&!word))odd+=int(part.size());
+  else if(spoken&&word&&part.size()>=5)*spoken=true;
  }
  return odd;
 }
@@ -465,9 +473,10 @@ bool prefixHead(const QString& word) {
 // characters that are not hex once recognition's confusions are mapped, so a window can be ruled out
 // for the run tests in constant time before they read it.
 struct Counts {QList<int> upper,lower,digit,alnum,nonHex,hexDigit;};
-// odd (#1971/#1972): running totals, by piece, of the characters that are not shaped like an interface
-// word (see oddCharacters), filled once per segment when a run is judged.
-struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;mutable QList<int> odd;};
+// odd, spoken (#1971/#1972): running totals, by piece, of the characters that are not shaped like an
+// interface word and of pieces holding a word of five letters or more (see oddCharacters), filled
+// once per segment when a run is judged.
+struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;mutable QList<int> odd,spoken;};
 void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
@@ -719,16 +728,21 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  int bestFirst=-1,bestLast=-1,bestLength=0;
  // #1971/#1972: a base64 run joined from several words is interface text run together when, outside
  // its ordinary words and numbers, fewer than 20 characters are left: a drive's model beside its size
- // and name ("STORAGE" "256" "GB" "SanDisk" "SD8SB8U2" "system"), a video title. A token that
- // recognition split keeps most of its characters in odd parts, as it has 32 or more.
+ // and name ("STORAGE" "256" "GB" "SanDisk" "SD8SB8U2" "system"), a video title, and only with a
+ // word of five letters or more among them. A token that recognition split keeps most of its
+ // characters in odd parts, as it has 32 or more.
  const auto interfaceWords=[&](int i,int j){
   if(i==j)return false;
-  auto& odd=segment.odd;
+  auto& odd=segment.odd;auto& spoken=segment.spoken;
   if(odd.isEmpty()){
-   odd.fill(0,segment.starts.size()+1);
-   for(qsizetype p=0;p<segment.starts.size();++p)odd[p+1]=odd[p]+oddCharacters(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):segment.text.size())-segment.starts.at(p)));
+   odd.fill(0,segment.starts.size()+1);spoken.fill(0,segment.starts.size()+1);
+   for(qsizetype p=0;p<segment.starts.size();++p){
+    bool word=false;
+    odd[p+1]=odd[p]+oddCharacters(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):segment.text.size())-segment.starts.at(p)),&word);
+    spoken[p+1]=spoken[p]+(word?1:0);
+   }
   }
-  return odd.at(j+1)-odd.at(i)<20;
+  return odd.at(j+1)-odd.at(i)<20&&spoken.at(j+1)>spoken.at(i);
  };
  const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
  int reach=first;
