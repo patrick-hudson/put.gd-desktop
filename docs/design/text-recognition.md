@@ -1208,7 +1208,8 @@ other tool active it does not. The user's side is in the
       one smaller day (a month grid beside another, whose rows read as wrapped: `16 17 18 17`), or
       after one week number (1 to 53, in four groups or more) run to the end (`48 28 29 30`).
 
-    A phone number that starts with `+` is never a counted row (`+44 20 21 22 23 24`). A step of
+    A phone number that starts with `+` and a country code of one to three digits is never a
+    counted row (`+44 20 21 22 23 24`; a diff's `+2023 2024 2025` still is). A step of
     zero (`5555 5555`), other steps (`01 23 45 67 89`) and a phone in pairs with a run
     inside it (`06 12 13 14 78`, `06 42 43 44 36`, `06 12 13 14 08`) stay numbers. The check runs on the match's text and, when the match
     has three words or more, on those whole words in their digit view joined by spaces, since the wrapped view glues a row's last cell to the next row's first (`18` and `17`
@@ -1220,8 +1221,8 @@ other tool active it does not. The user's side is in the
   - A phone number is also not:
     - a number immediately after a currency sign (`€ $ £ ¥ ₹`, touching it), or with a currency sign or code
       (`EUR`, `USD`, `GBP`, `CHF`, `JPY`, `kr`, `zł`, `₽`) as the next word on its line (`1 234 567 €`);
-    - an unbroken number immediately after `#` (touching it, or with the `#` read as its own word)
-      that follows an order-type word (`Order #10234567`,
+    - an unbroken number immediately after `#` (touching it, or with the `#` read as its own word
+      on the same line) that follows, on that line, an order-type word (`Order #10234567`,
       `Invoice`, `Ticket` and the like, past a colon read as its own word) or a time (a receipt line,
       `19:54:46 #4091291`); `Phone #`, `Telefon #` and `Account #` keep the rule;
     - a browser's build date in a user agent: an unbroken number in a word that starts with
