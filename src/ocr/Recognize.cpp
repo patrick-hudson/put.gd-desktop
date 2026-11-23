@@ -2,6 +2,7 @@
 #include "CodeReader.h"
 #include <QElapsedTimer>
 #include <QFile>
+#include <QJsonDocument>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -643,18 +644,6 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   // The engines the first pass started, and, while time and memory allow, as
   // many more as the queue and the job's threads take, each on its own thread.
   const int engines=std::min(threads,run->count);
-  // An extra engine whose first-pass thread is done (a late one is not) and that started.
-  const auto idleExtra=[&](size_t w){return w<shared->exited.size()&&shared->exited[w].load()&&shared->extra[w]->ready();};
-  int readyExtras=0;for(size_t w=0;w<shared->extra.size();++w)readyExtras+=idleExtra(w)?1:0;
-  int more=std::max(0,engines-1-readyExtras);
-  if(more>0&&run->left()>2*result.timings.engineStartMs){
-   const qint64 largest=*std::max_element(run->pixels.cbegin(),run->pixels.cend());
-   // Within the memory budget, as an extra engine of the first pass.
-   if(shared->gateBudget>0){
-    const qint64 each=extraEngineCost+20*largest;
-    more=std::clamp(int((shared->gateBudget-residentBytes())/std::max<qint64>(1,each)),0,more);
-   }
-  }else more=0;
   std::vector<std::thread> readers;
   const auto launch=[&](TextEngine* engine,bool start,int worker){
    run->running.fetch_add(1);
@@ -666,17 +655,31 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
     return true;
    }catch(const std::system_error&){run->running.fetch_sub(1);return false;}
   };
-  int launched=0;
-  for(int w=0;w<int(shared->extra.size())&&launched<engines-1;++w){
-   if(!idleExtra(size_t(w)))continue;
+  // Every engine reads on a thread of its own, the first one too, so this
+  // thread's wait below bounds them all: Tesseract's layout does not stop at
+  // its deadline (Sol on #1933). A thread the system refuses reads here.
+  if(!launch(&shared->first,false,0))readSeconds(&shared->first,0);
+  // Then the extra engines whose first-pass thread is done (a late one is not) and that started.
+  int launched=1;
+  for(int w=0;w<int(shared->extra.size())&&launched<engines;++w){
+   if(!(shared->exited[size_t(w)].load()&&shared->extra[size_t(w)]->ready()))continue;
    if(!launch(shared->extra[size_t(w)].get(),false,w+1))break;
    ++launched;
   }
+  // And, while time and memory allow, new ones up to the job's threads. The
+  // memory gate counts engines of the first pass still starting as costing one each.
+  int more=std::max(0,engines-launched);
+  if(more>0&&run->left()>2*result.timings.engineStartMs){
+   const qint64 largest=*std::max_element(run->pixels.cbegin(),run->pixels.cend());
+   if(shared->gateBudget>0){
+    const qint64 each=extraEngineCost+20*largest;
+    more=std::clamp(int((shared->gateBudget-residentBytes()-shared->starting.load()*extraEngineCost)/std::max<qint64>(1,each)),0,more);
+   }
+  }else more=0;
   for(int w=0;w<more;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());shared->exited.emplace_back(false);
    if(!launch(shared->extra.back().get(),true,int(shared->extra.size()))){shared->extra.pop_back();shared->exited.pop_back();break;}
   }
-  readSeconds(&shared->first,0);
   // Every engine's read ends at its deadline; a quarter of a second's grace
   // for one ending on its monitor, never past the job's budget (the margin).
   bool secondLate=false;
@@ -737,13 +740,25 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  // A second read's word that the contract's bounds would cut (too long, or past
  // the word count) is left out rather than marking the result truncated: they
  // follow the first read's words, and truncated means the first pass (#1929).
+ QList<TextWord> rereads;
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));
-  if(options.candidates&&(!w.reread||(out.candidates.size()<textjob::maximumWords&&w.text.toUtf8().size()<=textjob::maximumWordBytes)))out.candidates.append(word(w));
+  if(options.candidates&&!w.reread)out.candidates.append(word(w));
+  if(options.candidates&&w.reread&&w.text.toUtf8().size()<=textjob::maximumWordBytes)rereads.append(word(w));
  }
  for(const auto& c:job.recognition.codes){
   TextCode code;code.format=c.format;code.binary=!c.text;code.text=c.text?c.content:QString();code.length=c.length;
   code.quad={c.quad[0],c.quad[1],c.quad[2],c.quad[3]};out.codes.append(code);
+ }
+ // And in the output bytes the rest leaves (each costs its JSON and a comma).
+ if(!rereads.isEmpty()){
+  textjob::Options encoding;encoding.words=options.words;encoding.candidates=options.candidates;
+  qint64 room=textjob::maximumOutputBytes-textjob::encodeResult(out,encoding).size();
+  for(const auto& w:std::as_const(rereads)){
+   const qint64 bytes=QJsonDocument(textjob::wordsJson({w})).toJson(QJsonDocument::Compact).size()-1;
+   if(out.candidates.size()>=textjob::maximumWords||bytes>room)break;
+   room-=bytes;out.candidates.append(w);
+  }
  }
  return out;
 }
