@@ -185,6 +185,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  request["textLanguages"]=QJsonArray::fromStringList(textjob::validLanguages(textLanguages_)?textLanguages_:QStringList{});
+ if(allCores_)request["allCores"]=true;
  {
   // Only a list the editor would accept, and only when it is not empty.
   const auto sound=[](const QStringList& list,int most,QString(*error)(const QString&)){if(list.isEmpty()||list.size()>most)return false;for(const auto& entry:list)if(!error(entry).isEmpty())return false;return true;};

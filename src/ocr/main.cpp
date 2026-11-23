@@ -8,9 +8,11 @@
 #include "Recognize.h"
 #include "TextJobChild.h"
 #include "core/BuildInfo.h"
+#include "core/CpuShare.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <QString>
 #include <QStringList>
 #include <cstdlib>
@@ -39,8 +41,8 @@ using namespace putgd::ocr;
 // engines on a dense 24 MP page peak at 258 MiB. The helper exits after the
 // job, so the memory is held only while recognition runs.
 // RLIMIT_DATA is about one and a half times the budget.
-constexpr qint64 mib=1024*1024;
-constexpr qint64 baseBudget=320*mib,largestBudget=384*mib;
+// In Unhinged mode (#1937) memoryBudgets() scales both to the engines, within
+// half the memory available.
 // RLIMIT_CPU: just above the parent's 20 s deadline for each recognition thread,
 // since CPU time adds up across threads.
 constexpr int cpuSecondsPerThread=21;
@@ -66,9 +68,13 @@ int main(int argc,char** argv){
  Confinement confinement;confinement.readable=readableDirectories(directories);
  // The engines, counted before confinement: Landlock hides the cgroup's quota.
  // On a machine of mixed cores, one engine for each of the faster CPUs (#1929).
- const auto cpus=preferredCpus();
- const int threads=cpus.isEmpty()?workerThreads():std::min(workerThreads(),int(cpus.size()));
- confinement.dataBytes=largestBudget*3/2;confinement.cpuSeconds=cpuSecondsPerThread*threads;
+ // Unhinged mode (#1937): every CPU, no preference, and the memory budget the
+ // free memory allows, read here too (/proc/meminfo).
+ const bool unhinged=qgetenv(textjob::unhingedVariable)=="1";
+ const auto cpus=unhinged?QList<int>{}:preferredCpus();
+ const int threads=unhinged?workerThreads(0,std::numeric_limits<int>::max()):cpus.isEmpty()?workerThreads():std::min(workerThreads(),int(cpus.size()));
+ const auto budgets=memoryBudgets(unhinged,threads,unhinged?cpu::memoryAvailable():-1);
+ confinement.dataBytes=budgets.ceiling*3/2;confinement.cpuSeconds=cpuSecondsPerThread*threads;
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
  QString failed;int abi=0;
  const bool confined=confine(confinement,failed,abi);
@@ -76,8 +82,10 @@ int main(int argc,char** argv){
   JobOptions job;job.languages=options.languages;job.strictLanguages=options.languagesRequired;
   // Emoji from the colour plane (#1748), named by the templates built in.
   job.colour={image.colour,image.width,image.height,image.colourStride,image.releaseColour};job.emojiTemplates=&EmojiTemplates::builtIn();
-  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.threads=threads;job.memoryBudget=baseBudget;job.memoryCeiling=largestBudget;job.cpus=cpus;
-  if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(baseBudget*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
+  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.threads=threads;job.memoryBudget=budgets.base;job.memoryCeiling=budgets.ceiling;job.cpus=cpus;
+  // More engines, more second reads in the cap: four engines or fewer keep it.
+  if(unhinged)job.secondReadScale=std::max(1.0,threads/4.0);
+  if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(budgets.base*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);
   if(!recognized.error.isEmpty())return {recognized.error,recognized.failedLanguage};
   result=toTextResult(recognized,job);

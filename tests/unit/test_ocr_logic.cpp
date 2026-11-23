@@ -493,6 +493,17 @@ private slots:
    QCOMPARE(preferredCpus({0,1,2,3,4,5,6,7},d.path()),(QList<int>{4,5,6,7}));
   }
  }
+ // #1937: the memory budget is today's with Unhinged mode off, and grows with the
+ // engines within half the free memory with it on.
+ void unhingedMemoryBudgetsScaleWithinFreeMemory(){
+  constexpr qint64 mib=1024*1024;
+  for(const qint64 free:{qint64(-1),qint64(64)*mib,qint64(32768)*mib}){const auto off=memoryBudgets(false,12,free);QCOMPARE(off.base,320*mib);QCOMPARE(off.ceiling,384*mib);}
+  const auto big=memoryBudgets(true,12,qint64(16384)*mib);QCOMPARE(big.base,(128+64*12)*mib);QCOMPARE(big.ceiling,big.base+64*mib);
+  QCOMPARE(memoryBudgets(true,12,qint64(1200)*mib).base,600*mib);
+  QCOMPARE(memoryBudgets(true,12,qint64(400)*mib).base,320*mib);
+  QCOMPARE(memoryBudgets(true,2,qint64(16384)*mib).base,320*mib);
+  QCOMPARE(memoryBudgets(true,12,-1).base,320*mib);
+ }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
   QVERIFY(plan(4898,4898,lines(4898,4898,12,4),{}).error.isEmpty());

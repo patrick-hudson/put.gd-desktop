@@ -96,6 +96,8 @@ public:
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
  // The saved text recognition languages (#1428) for Copy text and Quick redact.
  EditorJob& withTextLanguages(QStringList languages){textLanguages_=std::move(languages);return *this;}
+ // Unhinged mode (#1937): the editor's text recognition uses every CPU.
+ EditorJob& withAllCores(bool allCores){allCores_=allCores;return *this;}
  // #1618: Quick redact's saved words and patterns; each key reaches the editor only when its list is not empty.
  EditorJob& withRedactList(QStringList terms,QStringList patterns){redactTerms_=std::move(terms);redactPatterns_=std::move(patterns);return *this;}
  // #1804: check the image for these Quick redact categories before it uploads.
@@ -128,6 +130,7 @@ private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  CaptureStyle style_;bool styleStart_=false;qint64 styleMaxPixels_=admissionPixels;
  QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_,redactTerms_,redactPatterns_;
+ bool allCores_=false;
  Error submissionError_;
  std::optional<bool> links_;
  std::optional<Check> check_;

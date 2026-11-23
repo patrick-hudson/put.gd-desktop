@@ -31,4 +31,11 @@ QList<int> preferredCpus(const QList<int>& allowed,const QString& root=QStringLi
 // The same for the CPUs this process may run on (its affinity). Read before
 // confinement: Landlock hides sysfs.
 QList<int> preferredCpus();
+// The job's memory budget and its ceiling with other languages' data (#1937).
+// By default 320 and 384 MiB. In Unhinged mode the budget grows with the
+// engines, 128 MiB and 64 MiB an engine, but never past half the memory
+// available (MemAvailable) and never under the default; the ceiling stays
+// 64 MiB above it. Unknown available memory (-1) keeps the default.
+struct MemoryBudgets { qint64 base=0,ceiling=0; };
+MemoryBudgets memoryBudgets(bool unhinged,int threads,qint64 available);
 }
