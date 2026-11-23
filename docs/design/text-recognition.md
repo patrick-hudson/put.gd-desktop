@@ -948,7 +948,9 @@ other tool active it does not. The user's side is in the
       a publishable key, a `data:` URI, a password hash (`$2b$…`, `$argon2id$…`), a digest (`sha256:…`), an
       analytics ID (`G-…`, `UA-…`), a version (`19.1.4+build.107`), a cloud region, a colour, a code
       identifier of three words or more run together, `TODO`, and the shapes `publicRun` names.
-      Code that reads a secret from elsewhere (`std::env::var("DB_PASSWORD")`) is none either.
+      Code that reads a secret from elsewhere (`std::env::var("DB_PASSWORD")`) is none either, but a
+      reference followed by a quoted literal of four characters or more as its fallback
+      (`os.Getenv("DB_PASSWORD")+"…"`, `process.env.KEY||"…"`) shows that literal and is covered.
     - **Cookies:** each value of a `Cookie:` or `Set-Cookie:` header of 16 characters or more of letters
       and digits, with both.
     - **Diff signs:** a key or a setting behind `+`, `-`, `{+` or `[-` at a word's start
@@ -1671,7 +1673,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | --- | --- | --- |
 | `action.invoke` | `action: "text"`, `delaySeconds?` (0, 3, 5 or 10) | `operationId` and `state`. Copies |
 | `text.recognize` | `source` (region, window, monitor, desktop, clipboard, file or history), `path` for `file` only, `historyId` for `history` only, `languages?` (1 to 3 installed identifiers), `copy?` (default false), `delaySeconds?` for the screen sources | `operationId`, `state`. Keeps its result for `text.inspect` |
-| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`) and `error`. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text", "binary" or "withheld", text, length, quad}]` in source pixels (a withheld code, #1941, names its secret's kind in `withheld` and has no `text`). Afterwards `resultExpired: true` |
+| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`) and `error`. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text", "binary" or "withheld", text, length, quad}]` in source pixels (a withheld code, #1941, names its secret's kind in `withheld` and has no `text`; `schemas/text-recognition.schema.json` gives it as `withheldCode`, which only session replies carry). Afterwards `resultExpired: true` |
 | `text.cancel` | `id` | The terminal record. Answers once the running job has stopped, up to 35 s. Nothing is copied |
 | `capabilities` | none | A `text` block: `available`, `error` with the install hint or the missing confinement, `engines`, `landlockAbi`, `languages` `[{id, bytes, kind}]`, and `sources` with `available` and `error` for each source. It starts no helper |
 | `editor.recognize` | `id` | `state` and `result`. Starts recognition for the current revision. `editor.inspect` gains a `text` block |
