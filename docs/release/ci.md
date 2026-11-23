@@ -718,7 +718,8 @@ contention and writes a ledger in the same format, with per-test run and
 failure counts:
 
 ```bash
-python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-stress/RUN \
+python3 tools/lab/desktop_lock.py guard && \
+    python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-stress/RUN \
     --iterations 20 --hogs 4 --hog-cpus 0-1 --test-cpus 0-1 --time-scale 3 \
     -- --preset dev -L integration --parallel 12 \
     --resource-spec-file "$HOME/work/put.gd-x/tools/ci/ctest-resources.json"
@@ -728,8 +729,10 @@ python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-str
 and every test to a CPU subset, and `--time-scale` sets `PUTGD_TEST_TIME_SCALE`.
 It uses a private short `TMPDIR` and `XDG_STATE_HOME`, stops only the
 processes it started, by PID, and removes only its own temporary directory.
-Run it on a builder, one suite per host at a time, after checking
-`tools/lab/desktop_lock.py status` for a quiet-slot lock.
+Run it on a builder, one suite per host at a time, behind
+`python3 tools/lab/desktop_lock.py guard &&` (run there, `guard` reads that
+builder's own locks). It refuses while another session holds the host's quiet
+lease; the weekly lane on k72 holds it while it runs.
 
 Results, `tools/ci/stress_suite.py` on the builders, 2026-10-22. The known set
 is the twelve tests that flaked in CI. Pinning (`--test-cpus`, `--hog-cpus`)
@@ -752,12 +755,18 @@ up. Each run does this:
    - the k72 desktop lock (`tools/lab/desktop_lock.py`) is held for quiet, A/V
      or performance work (its purpose names quiet, recording, A/V, audio,
      video, perf, latency, benchmark, memory, timing or profiling);
+   - another session holds k72's quiet lease (`--resource quiet`);
    - another weekly run holds `~/.local/state/putgd-stress/weekly.lock`;
    - a `ctest` or `stress_suite.py` process (any owner, matched by its exact
      name) is still running, or the load is still above the CPU count, after
      an hour of waiting. It never stops those processes.
 
-   It repeats these checks after the build, before the tests start.
+   Once the host is idle, it takes k72's quiet lease itself and holds it
+   until the run ends, renewing it every 5 minutes, so no timing run can
+   take the lease while the lane holds it
+   ([quiet leases](../lab/remote-builders.md#quiet-leases-for-timing-runs)).
+   After the build, before the tests start, it checks the desktop lock, the
+   quiet lease (its own lease passes), the other suites and the load again.
 2. **It fetches `origin/nightly`** into its own tree, `~/work/put.gd-stress`,
    with `build/sdk` and `build/dependencies` linked to `~/work/put.gd/build/`.
    It configures with `-DPUTGD_TEST_TIMEOUT_SCALE=3` and builds at
