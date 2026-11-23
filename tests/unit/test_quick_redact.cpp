@@ -152,6 +152,10 @@ private slots:
   // take the next row's number with it when the rows are read as wrapped (6663 and 20 as 666320).
   QTest::newRow("cards that end the rows of a table")<<"18 Sam +82 10-8045-8908 5294 2317 5284 0376 | 19 Ann +82 10-8045-8909 5219 7028 4410 6663 | 20 Bob +82 10-8045-8910 4444 6185 9101 3565"<<QStringList{"card"}
    <<QStringList{"card: 5294 2317 5284 0376","card: 5219 7028 4410 6663 20","card: 4444 6185 9101 3565"};
+  QTest::newRow("a diff's card with a three-digit first group")<<"-411 11111 1111 1111"<<QStringList{"card"}<<QStringList{"card: -411 11111 1111 1111"};
+  // Sol on #1957: a phone between a CSV-glued address and a key keeps its middle.
+  QTest::newRow("a phone between an address and a key")<<"alice@example.com,+1 202 555 0143(postgres://app:"+QString("12@34")+"@db.test/app)"<<QStringList{"email","phone","key"}
+   <<QStringList{"email: alice@example.com,+1","phone: 202 555","key: 0143(postgres://app:"+QString("12@34")+"@db.test/app)"};
   QTest::newRow("cards in a diff")<<"-5493-9997-9808-2174 | +4111 1111 1111 1111 | {+5555-5555-5555-4444+}"<<QStringList{"card"}<<QStringList{"card: -5493-9997-9808-2174","card: +4111 1111 1111 1111","card: {+5555-5555-5555-4444+}"};
   QTest::newRow("a dashed card right after a phone")<<"+49 (0)30 6729 7202 5308-0894-0241-1905 Lyon"<<QStringList{"card"}<<QStringList{"card: 5308-0894-0241-1905"};
   QTest::newRow("a card right after a phone ending in four digits")<<"+39 380 719 1173 6011 9949 4130 7983 Porto"<<QStringList{"card"}<<QStringList{"card: 6011 9949 4130 7983"};

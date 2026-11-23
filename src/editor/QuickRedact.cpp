@@ -2337,9 +2337,9 @@ const QList<Rule>& rules() {
   // The last label ends the domain, so a shorter domain is never taken (user@foo.bar.service).
   {"email",QRegularExpression(R"((?<![\p{L}\p{M}\p{N}_.%+@-])[\p{L}\p{N}][\p{L}\p{M}\p{N}._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.(?!(?i:service|socket|mount|automount|timer|slice|scope|device|swap|path|png|jpe?g|gif|svg|webp|ico|bmp|tiff?|avif|heic)(?![\w-]))[A-Za-z]{2,}(?![\w-]|\.[A-Za-z0-9]|:(?!\d+/)[\w.~+-]*(?:/|\.git(?![\w-]))))"),{},3},
   // #1939: a card number is grouped as a card is printed and is no counted row, except after a card
-  // label (findOrdered). A diff's sign may start its word before a group of four
-  // (-5493-9997-9808-2174, {+4111...); a country code (+82 10-...) starts none.
-  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{4}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m);},1},
+  // label (findOrdered). A diff's sign may start its word before three digits or more
+  // (-5493-9997-9808-2174, -411 11111 1111 1111, {+4111...); a country code (+82 10-...) starts none.
+  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m);},1},
   // #1939: a package version shaped as an address is none: after an epoch (1:8.17.4.28) or before a
   // release (8.17.4.28-3.fc45, 2.11.7.54-1ubuntu2). A range (10.0.0.1-10.0.0.255) stays. Each
   // lookbehind has a fixed length: Qt 6.4's PCRE2 rejects variable-length ones.
@@ -3212,20 +3212,17 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
    words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return joined.contains(w);}),words.end());
    // #1941: a phone or card match whose only taken words are a key's keeps the rest while the rest is still a
    // number of its kind: one joined across a column to a recovery code or a seed word ("+91 98828 72263" "21.")
-   // stays covered.
-   if((rule.category=="phone"||rule.category=="card")&&!words.isEmpty()&&std::any_of(words.cbegin(),words.cend(),[&](int w){return keyTaken.contains(w);})
-      &&std::all_of(words.cbegin(),words.cend(),[&](int w){return !taken.contains(w)||keyTaken.contains(w);})){
-    QList<int> rest;QString digitsLeft;for(const int w:words)if(!keyTaken.contains(w)){rest.append(w);for(const auto c:numbers.at(w))if(c.isDigit())digitsLeft+=c;}
-    // The whole number was validated: what the key left of it stays covered (Sol on #1952: "212 555" beside a code).
-    Q_UNUSED(digitsLeft);
-    words=rest;
-   }
-   // #1939: in a CSV row one word may hold the end of one field and the start of the next
-   // (alice@example.com,+1 then 202 555 0143). An earlier match that holds such a word already covers
-   // it, so this match keeps its other words rather than leaving them bare.
-   const auto glued=[&](int w){return taken.contains(w)&&(plain.at(w).contains(',')||plain.at(w).contains(';'));};
-   if(!words.isEmpty()&&rule.category!="email"&&std::any_of(words.cbegin(),words.cend(),glued)&&!std::all_of(words.cbegin(),words.cend(),glued)&&std::none_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w)&&!glued(w);}))
-    words.erase(std::remove_if(words.begin(),words.end(),glued),words.end());
+   // stays covered. The whole number was validated: what the key left of it stays covered (Sol on #1952: "212 555"
+   // beside a code).
+   // #1939: likewise in a CSV row, where one word may hold the end of one field and the start of the next
+   // (alice@example.com,+1 then 202 555 0143): an earlier match that holds such a comma- or semicolon-glued word
+   // already covers it. Both apply in one pass, so a number between an address and a key keeps its middle (Sol
+   // on #1957).
+   {const bool number=rule.category=="phone"||rule.category=="card";
+    const auto released=[&](int w){return taken.contains(w)&&((number&&keyTaken.contains(w))||(rule.category!="email"&&(plain.at(w).contains(',')||plain.at(w).contains(';'))));};
+    if(!words.isEmpty()&&std::any_of(words.cbegin(),words.cend(),released)&&!std::all_of(words.cbegin(),words.cend(),released)
+       &&std::all_of(words.cbegin(),words.cend(),[&](int w){return !taken.contains(w)||released(w);}))
+     words.erase(std::remove_if(words.begin(),words.end(),released),words.end());}
    if(words.isEmpty()||std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
    for(int w:words)taken.insert(w);matches.append({rule.category,words});
    if(!joined.isEmpty())soft.append({int(matches.size())-1,joined});
