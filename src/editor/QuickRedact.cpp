@@ -65,12 +65,21 @@ QString hexView(const QString& word) {
 }
 // An email whose last dot was lost: the word with "@" and no dot after it,
 // followed on its line by a word of letters, reads as one address.
+// #1930: only a word close beside it (a gap no wider than the line is tall)
+// and only from a word wide enough to hold an address. Read off a bar chart,
+// "s@525" and "ia" 648 px apart on one row were taken for s@525.ia; a chart
+// legend's square colour swatch read as "W@W" (a 25 x 25 box) before its label
+// "Egress" for W@W.Egress. Even "i@i" is 1.3 times as wide as it is tall (13 x 10
+// at 10 px).
 QList<QString> emailView(const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
  static const QRegularExpression letters(QStringLiteral("^[A-Za-z]{2,24}$"));
  QList<QString> out=plain;
  for(qsizetype i=0;i+1<plain.size();++i){
   const auto at=plain.at(i).indexOf('@');
-  if(at>0&&!plain.at(i).mid(at).contains('.')&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(plain.at(i+1)).hasMatch())out[i]+='.';
+  const auto& word=candidates.at(i).rect;const auto& next=candidates.at(i+1).rect;
+  const bool beside=next.left()-(word.right()+1)<=qMax(word.height(),next.height());
+  const bool wide=word.width()*10>word.height()*11;
+  if(at>0&&!plain.at(i).mid(at).contains('.')&&beside&&wide&&candidates.at(i+1).line==candidates.at(i).line&&letters.match(plain.at(i+1)).hasMatch())out[i]+='.';
  }
  return out;
 }
