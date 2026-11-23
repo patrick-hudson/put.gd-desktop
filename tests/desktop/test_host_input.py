@@ -98,7 +98,8 @@ class HostInputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = folder + '/agent.sock'
             server = socket.socket(socket.AF_UNIX); server.bind(path); server.listen(4)
-            threading.Thread(target=host_input.accept_clients, args=(server, FakeDevice(), tablet), daemon=True).start()
+            agent = threading.Thread(target=host_input.accept_clients, args=(server, FakeDevice(), tablet), daemon=True)
+            agent.start()
             first = socket.socket(socket.AF_UNIX); first.settimeout(5); first.connect(path)
             first.sendall(json.dumps({'execute': 'input-send-event', 'arguments': {'events': [
                 {'type': 'btn', 'data': {'button': 'left', 'down': True}}]}}).encode() + b'\n')
@@ -107,7 +108,13 @@ class HostInputTests(unittest.TestCase):
             second.sendall(json.dumps({'execute': 'qmp_capabilities', 'id': 9}).encode() + b'\n')
             second.shutdown(socket.SHUT_WR)
             lines = [json.loads(line) for line in second.makefile('rb')]
-            second.close(); server.close()
+            second.close()
+            # Shutting the listener down wakes accept(); the loop must end quietly
+            # rather than outlive the test and crash interpreter shutdown (#1935).
+            server.shutdown(socket.SHUT_RDWR)
+            agent.join(5)
+            server.close()
+        self.assertFalse(agent.is_alive())
         self.assertIn('QMP', lines[0])
         self.assertEqual(lines[1], {'return': {}, 'id': 9})
 
