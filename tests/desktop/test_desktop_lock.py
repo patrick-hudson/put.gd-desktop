@@ -377,10 +377,11 @@ class HostInventory(unittest.TestCase):
         cover = '/usr/bin/python3 /tmp/pgda.PhRUBf/cover_player.py play --title Synthetic storage acceptance test'
         orphan = 'Xvfb :230 -screen 0 1280x800x24 -noreset -nolisten tcp -auth /tmp/pgst._nyllchp/xvfb-run.2vhfjZ/Xauthority'
         running = '/usr/bin/Xvfb :231 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/pgst.7a1k4u9f/xvfb-run.HrftW2/Xauthority'
-        user = 'Xvfb :99 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/xvfb-run.Q1w2e3/Xauthority'
         self.assertRegex(orphan, lock.PROCESS_PATTERN)
         self.assertRegex(running, lock.PROCESS_PATTERN)
-        self.assertNotRegex(user, lock.PROCESS_PATTERN)
+        for user in ('Xvfb :99 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/xvfb-run.Q1w2e3/Xauthority',
+                     'Xvfb :98 -auth /tmp/pgadmin-dev/personal.auth'):
+            self.assertIsNone(lock.LAB_XVFB.match(user))
         outputs = {'pgrep': (0, f'200 {cover}\n300 {orphan}\n400 {running}\n'),
                    'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
         environments = {'200': {'HOME'}, '300': {'HOME'}, '400': {'HOME'}}

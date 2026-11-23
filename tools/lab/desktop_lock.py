@@ -92,12 +92,12 @@ monotonic = time.monotonic  # `run`'s clock for its own lease deadline
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
-PROCESS_PATTERN = 'putgd|host_input|videotestsrc|cover_player|Xvfb .*-auth /tmp/pg'
+PROCESS_PATTERN = 'putgd|host_input|videotestsrc|cover_player|Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\\.'
 # Input agents, test patterns and the magenta test cover, with or without a display (#1925).
 ALWAYS_REPORTED = ('host_input', 'videotestsrc', 'cover_player')
-# A test X server whose xvfb-run auth file sits in a lab tool's private /tmp/pg* folder (stress_suite's
+# A test X server whose xvfb-run auth file sits in a lab tool's private /tmp/pg* TMPDIR (stress_suite's
 # /tmp/pgst.*, for one). A user's own xvfb-run keeps it in /tmp/xvfb-run.*, which doesn't match.
-LAB_XVFB = re.compile(r'(?:\S*/)?Xvfb .*-auth /tmp/pg[^/ ]*/')
+LAB_XVFB = re.compile(r'(?:\S*/)?Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\.[^/ ]+/Xauthority(?: |$)')
 LEFTOVER_PATHS = ('.local/share/applications/*putgd*.desktop',
                   '.local/share/gnome-shell/extensions/putgd@put.gd',
                   '.local/share/putgd', '.cache/putgd', '.config/putgd')

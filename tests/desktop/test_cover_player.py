@@ -43,10 +43,14 @@ class ParentWatch(unittest.TestCase):
         self.assertFalse(check())
         self.assertEqual(quits, [True])
 
-    def test_quits_at_once_when_the_starting_process_exited_before_the_watch(self):
+    def test_a_parent_that_exited_during_startup_is_caught_inside_the_main_loop(self):
+        # Gtk.main_quit() before Gtk.main() does nothing, so the watch must not quit early.
         checks, quits = [], []
-        cover_player.watch_parent(checks.append, lambda: quits.append(True), 4242, getppid=lambda: 1)
-        self.assertEqual((checks, quits), ([], [True]))
+        cover_player.watch_parent(lambda every, check: checks.append(check), lambda: quits.append(True), 4242,
+                                  getppid=lambda: 1)
+        self.assertEqual(quits, [])
+        self.assertFalse(checks[0]())
+        self.assertEqual(quits, [True])
 
     def test_a_player_whose_driver_is_killed_ends_within_seconds(self):
         driver = subprocess.Popen([sys.executable, '-c',

@@ -305,17 +305,16 @@ def precheck(args):
 def watch_parent(timeout_add, quit_player, parent, getppid=os.getppid, every_ms=1000):
     """Call quit_player once PARENT, the process that started this one, exits: getppid() then
     changes to init or a subreaper. Polled, because a parent-death signal fires when the
-    starting thread ends, and a driver may start the player from a short-lived thread."""
+    starting thread ends, and a driver may start the player from a short-lived thread. The
+    first check runs inside the main loop even when PARENT exited during GTK setup, since
+    Gtk.main_quit() does nothing before Gtk.main() starts."""
     def check():
         if getppid() == parent:
             return True
         quit_player()
         return False
 
-    if getppid() != parent:  # it exited while GTK started
-        quit_player()
-    else:
-        timeout_add(every_ms, check)
+    timeout_add(every_ms, check)
 
 
 def play(args):
