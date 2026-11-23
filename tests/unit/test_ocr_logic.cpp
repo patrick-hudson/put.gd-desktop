@@ -484,9 +484,12 @@ private slots:
    QList<int> all;for(int c=0;c<12;++c)all.append(c);
    QVERIFY(preferredCpus(all,d.path()).isEmpty());
   }
-  {  // Without topology, logical CPUs count.
+  {  // Without topology the cores cannot be counted: every CPU (Sol on #1933).
    QTemporaryDir d;
    tree(d.path(),cpus(8,"cpufreq/cpuinfo_max_freq",[](int c){return QByteArray(c<4?"2000000":"3200000");}));
+   QVERIFY(preferredCpus({0,1,2,3,4,5,6,7},d.path()).isEmpty());
+   tree(d.path(),cpus(8,"topology/core_id",[](int c){return QByteArray::number(c);}));
+   tree(d.path(),cpus(8,"topology/physical_package_id",[](int){return QByteArray("0");}));
    QCOMPARE(preferredCpus({0,1,2,3,4,5,6,7},d.path()),(QList<int>{4,5,6,7}));
   }
  }

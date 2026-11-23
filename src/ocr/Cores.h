@@ -21,8 +21,8 @@ QList<int> cpuList(const QByteArray& text);
 QList<int> performanceCpus(const QString& root=QStringLiteral("/sys/devices"));
 // The CPUs a job's engines are kept to: the faster kinds among `allowed`, when
 // they hold at least minimumPreferredCores physical cores (by topology's
-// package and core id; logical CPUs when sysfs has no topology) and `allowed`
-// holds slower ones too; empty otherwise (every CPU, as on a uniform machine).
+// package and core id) and `allowed` holds slower ones too; empty otherwise,
+// and when sysfs has no topology for them (every CPU, as on a uniform machine).
 // Fewer cores lose more than the faster kind gains: on the 8500GE, whose two
 // Zen 4 cores are four logical CPUs, a dense 4K screen read in 2.18 s on those
 // four and in 1.94 to 2.05 s on any four CPUs.

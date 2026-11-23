@@ -71,7 +71,9 @@ QList<int> preferredCpus(const QList<int>& allowed,const QString& root){
  for(const int c:std::as_const(preferred)){
   const QString topology=root+QStringLiteral("/system/cpu/cpu%1/topology/").arg(c);
   const auto package=readSmall(topology+QStringLiteral("physical_package_id")),core=readSmall(topology+QStringLiteral("core_id"));
-  const QByteArray id=package.isEmpty()||core.isEmpty()?QByteArray::number(c)+"/logical":package+'/'+core;
+  // Without topology the cores cannot be counted: every CPU, as on a uniform machine.
+  if(package.isEmpty()||core.isEmpty())return {};
+  const QByteArray id=package+'/'+core;
   if(!cores.contains(id))cores.append(id);
  }
  if(cores.size()<minimumPreferredCores)return {};

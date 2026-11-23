@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -121,6 +122,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   LanguageData data;
   TextEngine first;
   std::vector<std::unique_ptr<TextEngine>> extra;
+  // Set when an extra engine's first-pass thread is done with it (main thread
+  // pushes one per engine before its thread starts): only those engines take
+  // second reads, so one still starting or overrunning sits them out.
+  std::deque<std::atomic<bool>> exited;
   std::mutex lock;std::condition_variable idle;
   QList<Outcome> outcomes;          // under lock, until closed
   bool closed=false;                // under lock: nothing is handed over after this
@@ -374,18 +379,20 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   if(options.budgetMs>0&&shared->left()<2*result.timings.engineStartMs+shared->slowest.load()+250)return;
   for(int w=0;w<count;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
+   auto* exited=&shared->exited.emplace_back(false);
    shared->running.fetch_add(1);shared->starting.fetch_add(1);
    const int worker=int(shared->extra.size());
    // A thread the system refuses (RLIMIT_DATA counts each stack, which the
    // memory gate does not see) ends the pool here; the engines running go on.
    try{
-    pool.emplace_back([shared,engine,work,worker]{
+    pool.emplace_back([shared,engine,work,worker,exited]{
      const bool engineStarted=engine->startLike(shared->first).isEmpty();
      shared->started.fetch_add(1);shared->starting.fetch_sub(1);
      if(engineStarted)work(engine,worker,{});
+     exited->store(true);
      std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
     });
-   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();break;}
+   }catch(const std::system_error&){shared->running.fetch_sub(1);shared->starting.fetch_sub(1);shared->extra.pop_back();shared->exited.pop_back();break;}
   }
  };
  // How many more extra engines fit in the memory budget when each costs this
@@ -529,7 +536,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // not truncated by it. Only the first read is copied.
  struct Second { int region=0;Band band;int left=0,right=0;bool faint=false; };
  QList<Second> seconds;
- if(options.candidates&&!result.truncated&&!late){
+ if(options.candidates&&!result.truncated){
   for(int i=0;i<faintRegions.size();++i){
    const auto& p=faintRegions[i];
    // At most eight runs a region, as before.
@@ -636,7 +643,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   // The engines the first pass started, and, while time and memory allow, as
   // many more as the queue and the job's threads take, each on its own thread.
   const int engines=std::min(threads,run->count);
-  const int readyExtras=int(std::count_if(shared->extra.cbegin(),shared->extra.cend(),[](const auto& e){return e->ready();}));
+  // An extra engine whose first-pass thread is done (a late one is not) and that started.
+  const auto idleExtra=[&](size_t w){return w<shared->exited.size()&&shared->exited[w].load()&&shared->extra[w]->ready();};
+  int readyExtras=0;for(size_t w=0;w<shared->extra.size();++w)readyExtras+=idleExtra(w)?1:0;
   int more=std::max(0,engines-1-readyExtras);
   if(more>0&&run->left()>2*result.timings.engineStartMs){
    const qint64 largest=*std::max_element(run->pixels.cbegin(),run->pixels.cend());
@@ -659,13 +668,13 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   };
   int launched=0;
   for(int w=0;w<int(shared->extra.size())&&launched<engines-1;++w){
-   if(!shared->extra[size_t(w)]->ready())continue;
+   if(!idleExtra(size_t(w)))continue;
    if(!launch(shared->extra[size_t(w)].get(),false,w+1))break;
    ++launched;
   }
   for(int w=0;w<more;++w){
-   shared->extra.push_back(std::make_unique<TextEngine>());
-   if(!launch(shared->extra.back().get(),true,int(shared->extra.size()))){shared->extra.pop_back();break;}
+   shared->extra.push_back(std::make_unique<TextEngine>());shared->exited.emplace_back(false);
+   if(!launch(shared->extra.back().get(),true,int(shared->extra.size()))){shared->extra.pop_back();shared->exited.pop_back();break;}
   }
   readSeconds(&shared->first,0);
   // Every engine's read ends at its deadline; a quarter of a second's grace
@@ -708,7 +717,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const int block=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
   for(auto line:std::as_const(part.lines)){line.rect.translate(origin);line.block=block;result.recognition.lines.append(line);}
   for(auto word:std::as_const(part.words)){
-   word.rect.translate(origin);word.line+=lineBase;word.kept=false;word.second=!s.faint;
+   word.rect.translate(origin);word.line+=lineBase;word.kept=false;word.second=!s.faint;word.reread=true;
    for(auto& symbol:word.symbols)symbol.rect.translate(origin);
    if(s.faint){
     const bool seen=std::any_of(result.recognition.words.cbegin(),result.recognition.words.cend(),[&](const Word& w){const auto both=w.rect.intersected(word.rect);return qint64(both.width())*both.height()*2>=qint64(word.rect.width())*word.rect.height();});
@@ -725,9 +734,12 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
  out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiWaitMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence)),w.second};};
+ // A second read's word that the contract's bounds would cut (too long, or past
+ // the word count) is left out rather than marking the result truncated: they
+ // follow the first read's words, and truncated means the first pass (#1929).
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));
-  if(options.candidates)out.candidates.append(word(w));
+  if(options.candidates&&(!w.reread||(out.candidates.size()<textjob::maximumWords&&w.text.toUtf8().size()<=textjob::maximumWordBytes)))out.candidates.append(word(w));
  }
  for(const auto& c:job.recognition.codes){
   TextCode code;code.format=c.format;code.binary=!c.text;code.text=c.text?c.content:QString();code.length=c.length;

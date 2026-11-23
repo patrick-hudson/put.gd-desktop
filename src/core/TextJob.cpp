@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
+#include <string>
 #ifdef Q_OS_LINUX
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -44,6 +45,13 @@ int memfd(const char* name,bool sealable){
  int fd=int(::syscall(SYS_memfd_create,name,MFD_CLOEXEC|(sealable?MFD_ALLOW_SEALING:0)));
  if(fd>=0&&fd<=textjob::outputDescriptor){const int moved=::fcntl(fd,F_DUPFD_CLOEXEC,textjob::outputDescriptor+1);::close(fd);fd=moved;}
  return fd;
+}
+// The same memfd opened again read-only, above the two fixed child descriptors:
+// what the child gets, since it starts before the pixels are written and sealed.
+int readOnly(int fd){
+ int copy=::open(("/proc/self/fd/"+std::to_string(fd)).c_str(),O_RDONLY|O_CLOEXEC);
+ if(copy>=0&&copy<=textjob::outputDescriptor){const int moved=::fcntl(copy,F_DUPFD_CLOEXEC,textjob::outputDescriptor+1);::close(copy);copy=moved;}
+ return copy;
 }
 bool writeAt(int fd,const char* data,qint64 size,qint64 offset){
  while(size>0){const auto written=::pwrite(fd,data,size_t(size),off_t(offset));if(written<0&&errno==EINTR)continue;if(written<=0)return false;data+=written;size-=written;offset+=written;}
@@ -126,7 +134,9 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
  // Cleared, then only the data path, one OpenMP thread and a C UTF-8 locale.
  QProcessEnvironment environment;environment.insert(textjob::dataPathVariable,dataDirectories().join(':'));environment.insert("OMP_THREAD_LIMIT","1");environment.insert("LC_ALL","C.UTF-8");
  process.setProcessEnvironment(environment);
- const auto parent=::getpid();const int in=input.fd,out=output.fd;
+ Descriptor inputRead{readOnly(input.fd)};
+ if(inputRead.fd<0){error=textjob::failure("text_job_failed");return {};}
+ const auto parent=::getpid();const int in=inputRead.fd,out=output.fd;
  process.setChildProcessModifier([parent,in,out]{
   // Only async-signal-safe calls between fork and exec. dup2 clears close-on-exec.
   if(!dieWithParent(parent,SIGKILL))::_exit(127);
@@ -150,9 +160,10 @@ TextResult TextJob::recognize(QImage image,const Options& options,Error& error,C
  // which goes once they are sealed.
  if(started&&!error&&!writePixels()&&!error)error=textjob::failure("text_job_failed");
  // The child holds its own copy now; the pixels never count in this process again.
- input.reset();image=QImage();
- if(started&&!error&&control.send("bootstrap",textjob::bootstrap(nonce,build(),header,options)).isEmpty())protocolFailed=true;
- while(started&&process.state()!=QProcess::NotRunning&&!protocolFailed&&!flooded&&!stopped())process.waitForReadyRead(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)));
+ input.reset();inputRead.reset();image=QImage();
+ if(started&&!error&&!stopped()&&control.send("bootstrap",textjob::bootstrap(nonce,build(),header,options)).isEmpty())protocolFailed=true;
+ // A job that failed before its bootstrap goes straight to the child's end.
+ while(started&&!error&&process.state()!=QProcess::NotRunning&&!protocolFailed&&!flooded&&!stopped())process.waitForReadyRead(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)));
  if(!error&&protocolFailed)error=textjob::failure("text_incompatible");
  if(!error&&flooded)error=textjob::failure("text_job_failed");
  // The exact child: terminate, then kill.
