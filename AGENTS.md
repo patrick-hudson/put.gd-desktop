@@ -85,12 +85,17 @@ Anthropic for review. This permission does not select an external implementation
 Keep review material bounded to the code/specification needed, excluding secrets and payloads.
 
 Before the first push from any checkout or worktree, run `python3 tools/git-hooks/install.py`.
-It fetches the gitleaks version CI pins into `~/.cache/putgd-tools/`, copies `tools/git-hooks` to
-`putgd-hooks` in the git common directory (so branches without it stay covered) and points this
-worktree's `core.hooksPath` there. The pre-push hook scans only the outgoing commits with
-`.gitleaks.toml` and refuses the push on a finding or when gitleaks is missing; other hooks forward
-to the hooks directory it replaced. `PUTGD_SKIP_GITLEAKS=1 git push` is the emergency override. CI still scans
-every branch's history, so rewrite a flagged commit instead of adding a fix-up commit.
+It fetches the gitleaks version CI pins into `~/.cache/putgd-tools/` (under `XDG_CACHE_HOME` when
+set), copies `tools/git-hooks` to `putgd-hooks` in the git common directory (so branches without it
+stay covered) and points `core.hooksPath` there: for this worktree only when
+`extensions.worktreeConfig` is on, otherwise for every worktree of the repository. The pre-push
+hook scans only the outgoing commits with the checkout's `.gitleaks.toml` and fails closed: it
+refuses the push on a finding, or when that config, the pinned gitleaks or the scan itself fails.
+Other hooks forward to the hooks directory it replaced; rerun the installer after adding one there.
+`PUTGD_SKIP_GITLEAKS=1 git push` is the emergency override; it skips only the scan, not a replaced
+pre-push hook. CI still scans every branch's history, so rewrite a flagged commit instead of
+adding a fix-up commit.
+
 Branch from `nightly` and open pull requests against `nightly`, the default branch
 and integration trunk. Never push to `nightly` or `main` directly; rulesets require
 a pull request and the `CI` check. CI selects jobs from the changed paths, and the
