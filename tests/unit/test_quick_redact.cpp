@@ -391,6 +391,16 @@ private slots:
   QTest::newRow("a Wikipedia temporary account is no phone")<<"(talk) ~2026-61798-25 edited Linux"<<all<<QStringList{};
   QTest::newRow("a phone beside a span of years still counts")<<"Since 1995-2026 call 212-555-0100"<<all<<QStringList{"phone: 212-555-0100"};
   QTest::newRow("a bearer token cut short beside a button is a key")<<"AAAAAAAAAAAAAAAAA… Regenerate"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAA… Regenerate"};
+  // Sol on #1976: the #1975 exemptions keep real secrets.
+  QTest::newRow("an npm token with its separator, split into words, is a key")<<QStringLiteral("np")+QStringLiteral("m_ Ta By eza Faveru Bano fb37HkH5nE4T2s9c4p3")<<all<<QStringList{QStringLiteral("key: np")+QStringLiteral("m_ Ta By eza Faveru Bano fb37HkH5nE4T2s9c4p3")};
+  QTest::newRow("hex with ones read as l is a key")<<"8delacell9be6fdaclbdllfldbbdeacle"<<all<<QStringList{"key: 8delacell9be6fdaclbdllfldbbdeacle"};
+  QTest::newRow("an address in a filter's comparison is an address")<<"filter ip.addr == 192.168.0.1"<<all<<QStringList{"ip: 192.168.0.1"};
+  QTest::newRow("an IPv6 address ending in :: is no loopback")<<"addr 0:0:1:: up"<<all<<QStringList{"ip: 0:0:1::"};
+  QTest::newRow("a phone after a hash alone is a phone")<<"#2125550100"<<all<<QStringList{"phone: #2125550100"};
+  QTest::newRow("a phone after Celular and a hash is a phone")<<"Celular: #912345678"<<all<<QStringList{"phone: #912345678"};
+  QTest::newRow("a Korean service number is no span of years")<<"Phone: 1899-1995"<<all<<QStringList{"phone: 1899-1995"};
+  QTest::newRow("a dialling form after a tilde is a phone")<<"Tel: ~+1-202-555-0143"<<all<<QStringList{"phone: ~+1-202-555-0143"};
+  QTest::newRow("an address whose dot was lost before a mixed-case ending")<<"Write ops@example CoM"<<all<<QStringList{"email: ops@example CoM"};
   QTest::newRow("a bearer token's run of A's is a key")<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"};
   QTest::newRow("a UUID split before its last group is no phone")<<"UUID 550e8400-e29b-41d4-a7 16-446655440000 assigned to device VM-07."<<all<<QStringList{};
   // Ordinary lines that resembled tokens or numbers once words were joined.
@@ -744,7 +754,8 @@ private slots:
    QTest::newRow("a quoted passphrase after a flag")<<"$ deploy --password='correct horse battery staple' --yes"<<key<<QStringList{"key: --password='correct horse battery staple'"};
    QTest::newRow("a region-shaped password under its label")<<"Mot de passe : us-east-1"<<key<<QStringList{"key: us-east-1"};
    QTest::newRow("a passphrase of eight words")<<"wpa_passphrase=one two three four five six seven eight"<<key<<QStringList{"key: wpa_passphrase=one two three four five six seven eight"};
-   QTest::newRow("a setup key of letters alone")<<"Setup key: | JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
+   QTest::newRow("a lowercase setup key with a group of digits")<<"Setup key: | jbsw 2345 hpkp xpab"<<key<<QStringList{"key: jbsw 2345 hpkp xpab"};
+  QTest::newRow("a setup key of letters alone")<<"Setup key: | JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
    QTest::newRow("a setup key over two rows")<<"Enter this key: | JBSW Y3DP | EHPK 3PXP"<<key<<QStringList{"key: JBSW Y3DP EHPK 3PXP"};
    QTest::newRow("recovery codes on the heading's row")<<"Recovery codes: MTAX-CKAP GHRQ-PLKD"<<key<<QStringList{"key: MTAX-CKAP GHRQ-PLKD"};
    const auto sid=QString("12dsfFdsf")+"bn23dsk",letters=QString("KgmBntgvf")+"RQhGHgdKW";
@@ -1677,8 +1688,8 @@ private slots:
  // Sol on #1902: the faster search finds what the plain one did.
  void theFastSearchFindsWhatThePlainOneDid() {
   // A hex run whose digits are partly recognition's confusions (| and O read for 1 and 0).
-  const auto confused=QString("abc4ef||Olab2def")+"a7cdef||Ol9bcdef";
-  QCOMPARE(found(words("value "+confused),QStringList{"key"}),QStringList{"key: "+confused});
+  const auto confused=QString("abcdef||Olabcdef")+"abcdef||Olabcdef";
+  QCOMPARE(found(words("value "+confused),QStringList{"key"}),QStringList{"key: value "+confused});
   // A token wrapped over three lines: the third line is covered, though the first token's wrap budget ends before it.
   const auto stripe=QString("sk")+"_li"+"ve_"+"4eC39HqLyjWDarjtT1zdp7dcQ2",hex=QString("9f86d081884c7d659a2feaa0c55ad015");
   QStringList covered;for(const auto& m:found(words(stripe+" | "+hex+" | x7Kq2Lm9Vb4N"),QStringList{"key"}))covered.append(m);

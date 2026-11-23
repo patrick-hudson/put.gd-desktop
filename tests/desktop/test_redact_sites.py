@@ -52,10 +52,22 @@ class Report(unittest.TestCase):
             args = types.SimpleNamespace(shots=[str(d)], results=[str(d / 'res.jsonl')], triage=str(d / 'triage.tsv'), out=str(d / 'rep'))
             sweep.report(args)
             summary = json.loads((d / 'rep' / 'summary.json').read_text())
-        self.assertEqual(summary['table']['default@1.0'], dict(captures=3, prompted=2, false=1, true_only=1))
+        self.assertEqual(summary['table']['default@1.0'], dict(captures=3, prompted=2, false=1, true_only=1, incomplete=0))
         self.assertEqual(summary['pages']['default']['false'], 1)
         self.assertEqual(summary['groups'], {'default:untriaged:key': 1})
 
+
+    def test_a_capture_the_check_could_not_finish_counts_as_a_prompt(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            shot = dict(id='000-ch-100-l', url='https://a/', category='news', browser='chromium', scale=1.0, theme='light', png='shots/a.png')
+            (d / 'shots.jsonl').write_text(json.dumps(shot) + '\n')
+            (d / 'res.jsonl').write_text(json.dumps({'id': '000-ch-100-l', 'truncated': True, 'ocr': {'default': {'matches': []}, 'all': {'matches': []}}}) + '\n')
+            args = types.SimpleNamespace(shots=[str(d)], results=[str(d / 'res.jsonl')], triage='', out=str(d / 'rep'))
+            sweep.report(args)
+            summary = json.loads((d / 'rep' / 'summary.json').read_text())
+        self.assertEqual(summary['table']['default@1.0'], dict(captures=1, prompted=1, false=1, true_only=0, incomplete=1))
+        self.assertEqual(summary['groups']['default:incomplete: truncated'], 1)
 
 if __name__ == '__main__':
     unittest.main()

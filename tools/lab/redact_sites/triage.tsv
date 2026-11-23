@@ -2,6 +2,8 @@
 # A pattern is a regular expression on the matched text, or "url=RX text=RX" to hold only on pages whose
 # address matches too. Verdict "true" is something the kind is meant to find; anything else is a false
 # prompt and its group names the root cause. Matches no rule decides count as "untriaged" (false).
+# False verdicts name the pages they were checked on, so a real address or number on a new page
+# shows up untriaged instead of being called a misread.
 #
 # --- keys (default kinds)
 key	url=jwt\.io text=.	true	key: jwt.io's sample token (a real token's shape, by design)
@@ -26,14 +28,14 @@ ip	(\d{1,3}\.){3}\d{1,3}|[0-9A-Fa-f]{1,4}::?[0-9A-Fa-f]	true	ip: a real address 
 # --- email addresses
 email	(feedback@slack\.com|you@company\.com)	true	email: a real address on the page
 email	@[a-z0-9-]+\.bsky\.social	false	email: display name then a handle
-email	.	false	email: icon or glyph read as @
+email	url=(cricbuzz|mastodon\.social|finance\.yahoo|pinterest|lichess|superuser|proton\.me|wunderground) text=.	false	email: icon or glyph read as @
 # --- phone numbers
 phone	(888-301-1721|\+44 303 123 7300)	true	phone: a real number on the page
 phone	^\(?(1[89]|20)\d\d-(1[89]|20)\d\d	false	phone: span of years
 phone	~20\d\d-\d	false	phone: Wikipedia temporary account
 phone	#1? ?\d{6,}	false	phone: run or order number after #
-phone	\d{3,}:\d{8,}|^\d{10}\.?$|\d{9,}[,.]?$	false	phone: long ID or count
-phone	%|\d\.\d\d \d|\d,\d{3}	false	phone: price, rate or percentage
-phone	.	false	phone: table, chart or ID numbers joined
+phone	url=(cdc\.gov|aliexpress|premierleague|investing\.com|x-rates|ynet|nhk|yahoo\.co\.jp|ja\.wikipedia|baidu|qq\.com|naver|openstreetmap|espn|coingecko|nasdaq|coindesk|wunderground|bbc\.com/arabic|mastodon\.social|clarin|corriere|youtube|torvalds/linux|flightradar|snapcraft|finance\.yahoo|rubygems|usa\.gov|superuser|gitlab\.com|en\.wikipedia|speedtest|arxiv|askubuntu|amazon|ebay|yandex) text=\d{3,}:\d{8,}|^\d{10}\.?$|\d{9,}[,.]?$	false	phone: long ID or count
+phone	url=(cdc\.gov|aliexpress|premierleague|investing\.com|x-rates|ynet|nhk|yahoo\.co\.jp|ja\.wikipedia|baidu|qq\.com|naver|openstreetmap|espn|coingecko|nasdaq|coindesk|wunderground|bbc\.com/arabic|mastodon\.social|clarin|corriere|youtube|torvalds/linux|flightradar|snapcraft|finance\.yahoo|rubygems|usa\.gov|superuser|gitlab\.com|en\.wikipedia|speedtest|arxiv|askubuntu|amazon|ebay|yandex) text=%|\d\.\d\d \d|\d,\d{3}	false	phone: price, rate or percentage
+phone	url=(cdc\.gov|aliexpress|premierleague|investing\.com|x-rates|ynet|nhk|yahoo\.co\.jp|ja\.wikipedia|baidu|qq\.com|naver|openstreetmap|espn|coingecko|nasdaq|coindesk|wunderground|bbc\.com/arabic|mastodon\.social|clarin|corriere|youtube|torvalds/linux|flightradar|snapcraft|finance\.yahoo|rubygems|usa\.gov|superuser|gitlab\.com|en\.wikipedia|speedtest|arxiv|askubuntu|amazon|ebay|yandex) text=.	false	phone: table, chart or ID numbers joined
 # --- names (the sweep's own made-up user, Lab Tester)
 name	.	true	name: the sweep's made-up user name on the page

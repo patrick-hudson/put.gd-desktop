@@ -20,7 +20,8 @@ once with every kind. `replay` reruns only the matcher on the words a previous `
 
 `report` lists every match with its page, browser, scale and theme, applies the triage rules
 (triage.tsv: kind, regular expression on the matched text or "url=RX text=RX", verdict true/false, group, note; first
-match wins) and writes matches.tsv, summary.json and table.md: pages with a false prompt per
+match wins). A capture the check couldn't finish (recognition failed or cut, matching unfinished)
+counts as a false prompt of its own group, since the check asks then too. It writes matches.tsv, summary.json and table.md: pages with a false prompt per
 profile and scale, and false matches per group. Untriaged matches count as false until a rule
 says otherwise. `compare` prints two reports' tables side by side.
 
@@ -231,6 +232,17 @@ def _execute(args, specs):
             dst.write(part.read_text())
             part.unlink()
     tmp.rmdir()
+    # A driver that died leaves its captures without a result: say so, as fuzz.py run does (Sol S11 on #1976).
+    got = set()
+    for l in open(out):
+        try:
+            got.add(json.loads(l)['id'])
+        except (ValueError, KeyError):
+            pass
+    missing = [s['id'] for s in specs if s['id'] not in got]
+    if missing:
+        print(f'INCOMPLETE: {len(missing)} captures have no result (first: {missing[0]}); run again to retry them', flush=True)
+        sys.exit(1)
     print('DONE', flush=True)
 
 
@@ -301,15 +313,25 @@ def report(args):
         if 'png' not in m:
             continue
         r = results.get(sid)
-        if not r or 'error' in r:
+        if not r:
             continue
         side = r.get('ocr') or r.get('oracle') or {}
         for prof in PROFILES:
             matches = side.get(prof, {}).get('matches', [])
             key = (prof, m['scale'])
-            t = table.setdefault(key, dict(captures=0, prompted=0, false=0, true_only=0))
+            t = table.setdefault(key, dict(captures=0, prompted=0, false=0, true_only=0, incomplete=0))
             t['captures'] += 1
             pages.setdefault(prof, set()).add(m['url'])
+            # The check asks when it couldn't finish (recognition failed or was cut, matching unfinished):
+            # a prompt with nothing found to show, counted as false (Sol S11 on #1976).
+            if 'error' in r or r.get('truncated') or side.get(prof, {}).get('unfinished'):
+                t['incomplete'] += 1
+                t['prompted'] += 1
+                t['false'] += 1
+                flagged.setdefault(prof, set()).add(m['url'])
+                why = r.get('error') or ('truncated' if r.get('truncated') else 'matching_unfinished')
+                groups[(prof, 'incomplete: ' + why)] = groups.get((prof, 'incomplete: ' + why), 0) + 1
+                continue
             verdicts = []
             for x in matches:
                 v, g = triage(rules, x['category'], x['text'], m['url'])
@@ -338,9 +360,9 @@ def report(args):
                    kinds={f'{p}:{k}': n for (p, k), n in sorted(kinds.items())},
                    pages={p: dict(pages=len(pages[p]), false=len(flagged.get(p, ())), urls=sorted(flagged.get(p, ()))) for p in pages})
     (out / 'summary.json').write_text(json.dumps(summary, indent=1))
-    md = ['| Profile | Scale | Captures | Any prompt | False prompt | % false |', '|---|---|---|---|---|---|']
+    md = ['| Profile | Scale | Captures | Any prompt | False prompt | Of which unfinished | % false |', '|---|---|---|---|---|---|---|']
     for (p, s), v in sorted(table.items()):
-        md.append(f'| {p} | {int(s * 100)} % | {v["captures"]} | {v["prompted"]} | {v["false"]} | {100 * v["false"] / max(1, v["captures"]):.1f} |')
+        md.append(f'| {p} | {int(s * 100)} % | {v["captures"]} | {v["prompted"]} | {v["false"]} | {v["incomplete"]} | {100 * v["false"] / max(1, v["captures"]):.1f} |')
     md += ['', '| Profile | Pages | Pages with a false prompt in any capture |', '|---|---|---|']
     for p in sorted(pages):
         md.append(f'| {p} | {len(pages[p])} | {len(flagged.get(p, ()))} |')
