@@ -752,12 +752,16 @@ up. Each run does this:
    - the k72 desktop lock (`tools/lab/desktop_lock.py`) is held for quiet, A/V
      or performance work (its purpose names quiet, recording, A/V, audio,
      video, perf, latency, benchmark, memory, timing or profiling);
+   - another session holds k72's quiet lease (`--resource quiet`);
    - another weekly run holds `~/.local/state/putgd-stress/weekly.lock`;
    - a `ctest` or `stress_suite.py` process (any owner, matched by its exact
      name) is still running, or the load is still above the CPU count, after
      an hour of waiting. It never stops those processes.
 
-   It repeats these checks after the build, before the tests start.
+   Once the host is idle, it takes k72's quiet lease itself and holds it
+   until the run ends, renewing it every 5 minutes, so no timing run starts
+   under its load ([quiet leases](../lab/remote-builders.md#quiet-leases-for-timing-runs)).
+   It repeats the desktop-lock and idle checks after the build, before the tests start.
 2. **It fetches `origin/nightly`** into its own tree, `~/work/put.gd-stress`,
    with `build/sdk` and `build/dependencies` linked to `~/work/put.gd/build/`.
    It configures with `-DPUTGD_TEST_TIMEOUT_SCALE=3` and builds at

@@ -832,10 +832,15 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   `cmake` and `ctest`. A held, blocked or stale lease stops them, and so does an
   unreadable lease written in the last 15 minutes. A free or expired lease
   doesn't.
-- The [weekly stress lane](#weekly-stress-lane-on-k72) skips the week while
-  anyone else holds the lease. It checks with its desktop-lock guard (at the
-  start and again after the build), right before CMake configure, between
-  configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+- The [weekly stress lane](#weekly-stress-lane-on-k72) holds k72's lease
+  itself for its whole run. When the host is idle, it acquires the lease
+  (owner `putgd-stress-weekly`, session `putgd-stress-weekly-PID`) before it
+  fetches. It renews the lease every 5 minutes and releases it when the run
+  ends, also after a failed build or a stop. If another session holds the
+  lease at the start or takes it while the lane waits for an idle host, the
+  lane skips the week and leaves that lease alone. `PUTGD_LAB_SESSION` doesn't
+  let it through. If a renewal fails and the lease would lapse before the next
+  try, the lane stops its run.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
   `cmake` run directly, and any other heavy command. For those, put
   `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
@@ -1174,7 +1179,8 @@ then start again from step 1.
 ## Weekly stress lane on k72
 
 k72 runs the weekly builder stress lane (see [ci.md](../release/ci.md#weekly-run-on-k72)).
-It's headless and takes no desktop lock. These are the user units for
+It's headless and takes no desktop lock, but it holds k72's
+[quiet lease](#quiet-leases-for-timing-runs) while it runs. These are the user units for
 `patrick`, with lingering enabled so they fire while nobody is logged in:
 
 | Unit | Does |
@@ -1238,9 +1244,12 @@ lab desktop needs the same treatment.
   it. From 03:00 on Sundays it takes about 20 minutes after an incremental
   build, and more after a fresh clone (the first full build took 10 minutes).
   Don't start another full suite on k72 then.
+- While a run builds or tests, `desktop_lock.py status k72 --resource quiet`
+  shows the lane's lease. A timing run that finds it held does other work and
+  retries later.
 - To keep the run away from a timing run, hold the k72 quiet lease
-  (`--resource quiet`) while it runs. A desktop lock whose purpose says quiet,
-  A/V or performance work also makes it skip that week.
+  (`--resource quiet`) while the timing runs: the lane skips that week. A desktop lock whose purpose says quiet,
+  A/V or performance work also makes it skip.
 - `stress_weekly.py --dry-run` runs the checks and prints the plan without
   fetching, building or writing anything.
 - To stop a run, use `systemctl --user stop putgd-stress-weekly.service`. It
