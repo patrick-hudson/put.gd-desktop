@@ -378,6 +378,9 @@ private slots:
    QTest::newRow("a query's masked value does not hide the password")<<query<<QStringList{"key"}<<QStringList{"key: "+query};
    QString many=QString("https://app:Q7v")+"9r@db.test?q=";for(int i=0;i<16000;++i)many+=QStringLiteral("a@");
    QTest::newRow("a long query full of @ keeps the password covered")<<many<<QStringList{"key"}<<QStringList{"key: "+many};
+   const auto lead=QString("postgres://app:@c9")+"v2@db.test/app";
+   QTest::newRow("a password that starts with an @")<<lead<<QStringList{"key"}<<QStringList{"key: "+lead};
+   QTest::newRow("a user with an empty password and its host")<<"postgres://app:@db.test/app"<<QStringList{"key"}<<QStringList{};
    QTest::newRow("an address later in the sentence makes no password")<<"See https://app:example@host for alice@example.com"<<QStringList{"key"}<<QStringList{};
    QTest::newRow("an address and a URL with an @ in its path are no password")<<"mail alice@example.com or see https://example.com:8443/a@b and ssh://git@github.com:22/x"<<QStringList{"key"}<<QStringList{};}
   QTest::newRow("a secret-named value in a word")<<"DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<all<<QStringList{"key: DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
@@ -842,6 +845,15 @@ private slots:
  }
  // #1941 (Sol on #1952): a wallet's seed phrase beside a numbered list in another window that starts higher up:
  // the wallet's own label, below the list's start, still takes its column; the list stays visible.
+ // #1965: recognition splits a connection string's password at its @ with no space: the password runs on
+ // into the next box (Sol on #1967).
+ void connectionStringPasswordSplitAtItsAt() {
+  const QString first="postgres://app:p@",second=QString("ss!w0")+"rd@db.internal:5432/app";
+  QList<RecognizedWord> page;
+  page.append({first,QRect(10,10,int(first.size())*8,20),90,0});
+  page.append({second,QRect(10+int(first.size())*8+1,10,int(second.size())*8,20),90,0});
+  QCOMPARE(found(page,QStringList{"key"}),QStringList{"key: "+first+" "+second});
+ }
  void seedPhraseBesideAnotherList() {
   const QStringList seed{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};
   const QStringList shopping{"apples","bread","milk","eggs","butter","cheese","rice","beans","onions","garlic","lemons","coffee"};
