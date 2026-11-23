@@ -139,6 +139,95 @@ private slots:
   QTest::newRow("an email after an em dash")<<QString("Write \u2014alice@example.com now")<<all<<QStringList{QString("email: \u2014alice@example.com")};
   QTest::newRow("two phones joined by an em dash")<<QString("Call 202-555-0143\u2014415-555-0100")<<all<<QStringList{QString("phone: 202-555-0143\u2014415-555-0100")};
   QTest::newRow("a dialling prefix is not a card")<<"Call 0044 207946 0958 now"<<all<<QStringList{"phone: 0044 207946 0958"};
+  // #1939 (#1931 fuzz group 2): a card beside another number on its row is still found.
+  QTest::newRow("a card after a reference number")<<"Reference 12 4111 1111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
+  QTest::newRow("a card before its expiry and CVC")<<"4242 4242 4242 4242 12 / 34 123"<<QStringList{"card"}<<QStringList{"card: 4242 4242 4242 4242"};
+  QTest::newRow("a card after an editor line number")<<"17 4111 1111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
+  QTest::newRow("a card after two short numbers")<<"12 34 4111 1111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
+  QTest::newRow("a card after a phone number")<<"Ada 202-555-0143 5555 5555 5555 4444"<<all<<QStringList{"phone: 202-555-0143","card: 5555 5555 5555 4444"};
+  QTest::newRow("a tracking number holds no card")<<"Tracking 5744 7621 6827 5217 60 and 9400 1527 3806 7569 1933 50"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("a tracking number after an order number holds no card")<<"13 43358981 5762 9815 7175 3077 6995 30"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("an EAN after a date holds no card")<<"2026-11-22 1043533606843 12"<<QStringList{"card"}<<QStringList{};
+  // A table's full rows read as one wrapped block: each row's card is found, without the next row's number.
+  QTest::newRow("cards that end the rows of a table")<<"18 Sam +82 10-8045-8908 5294 2317 5284 0376 | 19 Ann +82 10-8045-8909 5219 7028 4410 6663 | 20 Bob +82 10-8045-8910 4444 6185 9101 3565"<<QStringList{"card"}
+   <<QStringList{"card: 5294 2317 5284 0376","card: 5219 7028 4410 6663","card: 4444 6185 9101 3565"};
+  QTest::newRow("a card after a signed amount")<<"Refund -123 38520000023237"<<QStringList{"card"}<<QStringList{"card: 38520000023237"};
+  QTest::newRow("a diff's card with a three-digit first group")<<"-411 11111 1111 1111"<<QStringList{"card"}<<QStringList{"card: -411 11111 1111 1111"};
+  // Sol on #1957: a phone between a CSV-glued address and a key keeps its middle.
+  QTest::newRow("a phone between an address and a key")<<"alice@example.com,+1 202 555 0143(postgres://app:"+QString("12@34")+"@db.test/app)"<<QStringList{"email","phone","key"}
+   <<QStringList{"email: alice@example.com,+1","phone: 202 555","key: 0143(postgres://app:"+QString("12@34")+"@db.test/app)"};
+  QTest::newRow("cards in a diff")<<"-5493-9997-9808-2174 | +4111 1111 1111 1111 | {+5555-5555-5555-4444+}"<<QStringList{"card"}<<QStringList{"card: -5493-9997-9808-2174","card: +4111 1111 1111 1111","card: {+5555-5555-5555-4444+}"};
+  QTest::newRow("a dashed card right after a phone")<<"+49 (0)30 6729 7202 5308-0894-0241-1905 Lyon"<<QStringList{"card"}<<QStringList{"card: 5308-0894-0241-1905"};
+  QTest::newRow("a card right after a phone ending in four digits")<<"+39 380 719 1173 6011 9949 4130 7983 Porto"<<QStringList{"card"}<<QStringList{"card: 6011 9949 4130 7983"};
+  QTest::newRow("a number after a dash is no card")<<"ID 12-4111111111111111"<<QStringList{"card"}<<QStringList{};
+  // Sol on #1957: what the old rule covered stays covered.
+  QTest::newRow("a card with a digit moved between its groups")<<"4111 111 11111 1111 | 4111 11 111111 1111 | 411 11111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 111 11111 1111","card: 4111 11 111111 1111","card: 411 11111 1111 1111"};
+  QTest::newRow("a card read with its last digits split off")<<"25285945833551 94"<<QStringList{"card"}<<QStringList{"card: 25285945833551 94"};
+  QTest::newRow("a card read with its groups joined, in either order")<<"4111 111111111111 | 411111111111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 111111111111","card: 411111111111 1111"};
+  QTest::newRow("an EAN before a date is no card")<<"6253096961579 2026-12-23"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("an order number after a spaced colon is no phone")<<"Order : #10234567"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a phone after a spaced colon and a hash is a phone")<<"Phone : #2125550100"<<QStringList{"phone"}<<QStringList{"phone: #2125550100"};
+  QTest::newRow("a receipt number after a time is no phone")<<"13/11/2026 19:54:46 #4091291"<<all<<QStringList{};
+  QTest::newRow("an account number that is a phone is a phone")<<"Account #2125550100"<<QStringList{"phone"}<<QStringList{"phone: #2125550100"};
+  QTest::newRow("an Australian mobile before a card")<<"0412 007 273 4344519822181521"<<all<<QStringList{"phone: 0412 007 273","card: 4344519822181521"};
+  QTest::newRow("a card after a long number and before a year")<<"12345678901234567 4111 1111 1111 1111 2026"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
+  QTest::newRow("a phone before a month is a phone")<<"Call 202-555-0143 Nov 22"<<QStringList{"phone"}<<QStringList{"phone: 202-555-0143"};
+  QTest::newRow("a phone after a slash is a phone")<<"Phone/202-555-0143"<<QStringList{"phone"}<<QStringList{"phone: Phone/202-555-0143"};
+  QTest::newRow("a phone after a hash is a phone")<<"Phone #202-555-0143 Telefon #2125550100"<<QStringList{"phone"}<<QStringList{"phone: #202-555-0143","phone: #2125550100"};
+  QTest::newRow("a phone after Total: or a product's slash is a phone")<<"Total: 2125550100 | Mobile/2025550143"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: Mobile/2025550143"};
+  QTest::newRow("a labelled card keeps the earlier rule")<<"Card: 4110 4111 4112 4113"<<QStringList{"card"}<<QStringList{"card: 4110 4111 4112 4113"};
+  QTest::newRow("a full-width card label counts too")<<QString("\uFF23\uFF41\uFF52\uFF44: 4110 4111 4112 4113")<<QStringList{"card"}<<QStringList{"card: 4110 4111 4112 4113"};
+  QTest::newRow("an IPv6 address in two-digit groups with a port")<<"[02:1a:2b:ff:fe:3c:4d:5e]:443"<<QStringList{"ip"}<<QStringList{"ip: [02:1a:2b:ff:fe:3c:4d:5e]:443"};
+  QTest::newRow("an address split after a dot")<<"LISTEN 148.98.250. 123:443"<<QStringList{"ip"}<<QStringList{"ip: 148.98.250. 123:443"};
+  QTest::newRow("a phone after Total: is a phone")<<"Total: +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
+  QTest::newRow("an address and a stray dotted number")<<"IP 192.0.2.1 .5"<<QStringList{"ip"}<<QStringList{"ip: 192.0.2.1"};
+  QTest::newRow("an IPv6 address with an IPv4 tail")<<"Host 2001:db8:0:0:0:0:192.0.2.1"<<QStringList{"ip"}<<QStringList{"ip: 2001:db8:0:0:0:0:192.0.2.1"};
+  QTest::newRow("loopback in eight two-digit groups")<<"IPv6 [00:00:00:00:00:00:00:01]"<<QStringList{"ip"}<<QStringList{"ip: [00:00:00:00:00:00:00:01]"};
+  QTest::newRow("two cards in a row")<<"4111 1111 1111 1111 5555 5555 5555 4444"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111","card: 5555 5555 5555 4444"};
+  // #1939 (groups 5 and 12): counted rows, dates and counts are no cards or phones.
+  QTest::newRow("a calendar week is no card or phone")<<"19 20 21 22 23 24 25"<<all<<QStringList{};
+  QTest::newRow("a calendar week after its week number")<<"47 23 24 25 26 27 28 29"<<all<<QStringList{};
+  QTest::newRow("a month's last days and the next grid's first are no phone")<<"16 17 18 17 and 23 24 25 24"<<all<<QStringList{};
+  QTest::newRow("a partial week after its week number is no phone")<<"48 28 29 30"<<all<<QStringList{};
+  QTest::newRow("calendar rows read as wrapped are no phone")<<"12 13 14 15 16 17 18 | 17 18 19 20 21 22 23 | 24 25 26 27 28 29 30"<<all<<QStringList{};
+  QTest::newRow("a phone in pairs is a phone")<<"Tel 06 12 34 56 78 | Tel 06 12 13 14 78 | Tel +33 6 12 13 14 78 | Tel 06 42 43 44 36 | Tel 06 12 13 14 08"<<all<<QStringList{"phone: 06 12 34 56 78","phone: 06 12 13 14 78","phone: +33 6 12 13 14 78","phone: 06 42 43 44 36","phone: 06 12 13 14 08"};
+  QTest::newRow("year headers are no card or phone")<<"2023 2024 2025 2026"<<all<<QStringList{};
+  QTest::newRow("axis ticks are no phone")<<"0 20 40 60 80 100"<<all<<QStringList{};
+  QTest::newRow("all zeros is no card")<<"0000 0000 0000 0000"<<QStringList{"card"}<<QStringList{};
+  QTest::newRow("a screenshot name is no card or phone")<<"Screenshot From 2026-11-22 14-03-57.png"<<all<<QStringList{};
+  QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
+  QTest::newRow("an order number is no phone")<<"Order #10234567 shipped"<<all<<QStringList{};
+  // CodeRabbit on #1957: an order number with its "#" read apart; phones an exemption must not take.
+  QTest::newRow("an order number after a lone hash is no phone")<<"Order # 10234567 shipped | Order \uFF03 10234568 shipped"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a diff's added year row is no phone")<<"+2023 2024 2025"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("an international phone with counted groups is a phone")<<"Call +44 20 21 22 23 24"<<QStringList{"phone"}<<QStringList{"phone: +44 20 21 22 23 24"};
+  QTest::newRow("a phone with its area code in parentheses is a phone")<<"Tel. (030) 123 234"<<QStringList{"phone"}<<QStringList{"phone: (030) 123 234"};
+  QTest::newRow("a wrapped card after a row number")<<"18 4111 1111 | 1111 1111 xx | xxxxxxxxxxxx"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
+  QTest::newRow("a file size in ls -l is no phone")<<"-rw-r--r-- 1 alice alice 12345678 Nov 22 12:00 big.iso"<<all<<QStringList{};
+  QTest::newRow("a phone in a pane beside a free row is a phone")<<"Swap: 5953869 Telefon: +49 151 2083 0585"<<QStringList{"phone"}<<QStringList{"phone: 5953869","phone: +49 151 2083 0585"};
+  QTest::newRow("a German phone with a slash after its area code")<<"Tel. +49 30 / 813854 or 030 / 813854"<<QStringList{"phone"}<<QStringList{"phone: +49 30 / 813854","phone: 030 / 813854"};
+  QTest::newRow("an EAN under its bar code is no phone")<<"EAN 9 602850 531546"<<all<<QStringList{};
+  QTest::newRow("colour channels are no phone")<<"rgb 147 19 65"<<all<<QStringList{};
+  QTest::newRow("a count with spaced thousands is no phone")<<"Visitors 1 912 615"<<all<<QStringList{};
+  QTest::newRow("a Spanish mobile in threes is a phone")<<"Movil 612 345 678"<<all<<QStringList{"phone: 612 345 678"};
+  QTest::newRow("a tracking number holds no phone")<<"Track 0018 6608 9920 8904 6465 17"<<all<<QStringList{};
+  QTest::newRow("an expiry and CVC are no phone")<<"Expires 04 / 27 CVC 123"<<all<<QStringList{};
+  QTest::newRow("an amount before its currency is no phone")<<"Total 1 234 567 €"<<all<<QStringList{};
+  QTest::newRow("an amount after its currency is no phone")<<"Total £1 234 567"<<all<<QStringList{};
+  // #1939 (group 13): 11-digit mobiles written whole.
+  QTest::newRow("a Chinese mobile written whole")<<"Mobile 13812345678"<<all<<QStringList{"phone: 13812345678"};
+  QTest::newRow("a UK mobile written whole")<<"Mobile 07700900123"<<all<<QStringList{"phone: 07700900123"};
+  QTest::newRow("11 digits that are no mobile stay no phone")<<"Order 98765432101"<<all<<QStringList{};
+  // #1939 (group 14): a CSV word shared by two fields leaves neither half bare.
+  QTest::newRow("a phone after an address in a CSV row")<<"alice@example.com,+1 202 555 0143,Springfield"<<QStringList{"email","phone"}<<QStringList{"email: alice@example.com,+1","phone: 202 555 0143,Springfield"};
+  QTest::newRow("a card after an address in a CSV row")<<"bob@example.com,4111 1111 1111 1111"<<QStringList{"email","card"}<<QStringList{"email: bob@example.com,4111","card: 1111 1111 1111"};
+  // #1939 (group 16): versions and section numbers shaped as addresses.
+  QTest::newRow("a package version after an epoch is no address")<<"openssl 1:8.17.4.28-3.fc45"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a package version before its release is no address")<<"libfoo 8.17.4.28-3.fc45"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a section number is no address")<<"See Section 1.2.3.4 below"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("a version number is no address")<<"Version 2.11.7.54"<<QStringList{"ip"}<<QStringList{};
+  QTest::newRow("an address range stays an address")<<"Pool 10.0.0.1-10.0.0.255"<<QStringList{"ip"}<<QStringList{"ip: 10.0.0.1-10.0.0.255"};
+  QTest::newRow("an address split at a dot")<<"LISTEN 0 4096 148 .98.250.123:443 0.0.0.0:*"<<QStringList{"ip"}<<QStringList{"ip: 148 .98.250.123:443","ip: 0.0.0.0:*"};
   QTest::newRow("hex secret wrapped with a short tail")<<"SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a | 08edc\""<<QStringList{"key"}<<QStringList{"key: SECRET = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a 08edc\""};
   // #1850, Kate on k72: a 64-character hex secret soft-wrapped so its last three letters and the
   // closing quote start the next line. The quote the first line left open closes there.
@@ -172,6 +261,8 @@ private slots:
    QTest::newRow("a JWT part ending in a dot takes no key line")<<"id_token: "+a+" | "+aws<<QStringList{"key"}<<QStringList{"key: "+a,"key: "+aws};
    // ...a card earlier on the line leaves a wrapped JWT whole...
    QTest::newRow("a card before a wrapped JWT")<<"Card 4111 1111 1111 1111 id_token: "+a+" | "+b+" | "+c<<QStringList{"card","key"}<<QStringList{"key: 4111 1111 1111 1111 id_token: "+a+" "+b+" "+c};
+   // Sol on #1957: a labelled card below a token stays a card line.
+   QTest::newRow("a labelled card below a token is a card")<<"Bearer "+token+" | Visa 4110 4111 4112 4113"<<QStringList{"card","key"}<<QStringList{"key: "+token,"card: 4110 4111 4112 4113"};
    // ...a JWT has no length bound...
    QString payload;for(int i=0;i<12;++i)payload+=QString("e")+"yJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkV4YW1wbGUifQ";
    const QString big=jwt.left(37)+payload+"."+jwt.mid(88);
@@ -960,6 +1051,43 @@ private slots:
  // are literal, never a regex, compared ignoring case and accents.
  // Sol on #1826 (S17): two 8-digit phone numbers in table columns read as 4-4-4-4; the wide gap between the
  // columns keeps them two numbers, both found. The same groups evenly spaced are one card-shaped number.
+ // #1939 (#1931 fuzz group 5): numbers stop at a column gap of more than about two characters, so table
+ // and log columns are not one number; a card printed with wide, even gaps is still one card.
+ void numbersStopAtColumnGaps() {
+  const auto row=[](const QList<QPair<QString,int>>& cells){QList<RecognizedWord> out;int x=0;for(const auto& [text,gap]:cells){out.append({text,QRect(x,0,int(text.size())*8,20),90,0});x+=int(text.size())*8+gap;}return out;};
+  // A week of a month view, cells three characters apart: neither a card (Luhn holds) nor a phone.
+  QCOMPARE(found(row({{"19",24},{"20",24},{"21",24},{"22",24},{"23",24},{"24",24},{"25",24}}),all),QStringList{});
+  // An access log's status and size in columns.
+  QCOMPARE(found(row({{"200",40},{"5123",8}}),all),QStringList{});
+  // Two spaces in a monospace font stay a join.
+  QCOMPARE(found(row({{"4111",16},{"1111",16},{"1111",16},{"1111",8}}),QStringList{"card"}),QStringList{"card: 4111 1111 1111 1111"});
+  // Wide, even gaps: one card.
+  QCOMPARE(found(row({{"4111",40},{"1111",40},{"1111",40},{"1111",8}}),QStringList{"card"}),QStringList{"card: 4111 1111 1111 1111"});
+  // A reference number a column before a card.
+  QCOMPARE(found(row({{"12",60},{"4111",8},{"1111",8},{"1111",8},{"1111",8}}),QStringList{"card"}),QStringList{"card: 4111 1111 1111 1111"});
+  // A card with one wider gap (a box a little off) is still a card (Sol on #1957).
+  QCOMPARE(found(row({{"4111",8},{"1111",24},{"1111",8},{"1111",8}}),QStringList{"card"}),QStringList{"card: 4111 1111 1111 1111"});
+  // The values of a free row sit in columns under free's header, each an unbroken count; the same row
+  // without the header is a pane beside a phone column (Sol on #1957), and its numbers stay phones.
+  {auto mem=row({{"Mem:",40},{"16303428",40},{"8123456",40},{"1234567",8}});
+   QCOMPARE(found(mem,QStringList{"phone"}).size(),qsizetype(3));
+   auto header=row({{"total",80},{"used",40},{"free",8}});
+   for(auto& w:mem){w.line=1;w.rect.translate(0,30);}
+   header.append(mem);
+   QCOMPARE(found(header,all),QStringList{});
+   // ...also with the label's colon read as its own word (m74: Mem : 32755180 3379508 ...).
+   auto split=row({{"total",80},{"used",40},{"free",8}});
+   auto mem2=row({{"Mem",4},{":",40},{"32755180",40},{"3379508",40},{"8842284",40},{"1013460",8}});
+   for(auto& w:mem2){w.line=1;w.rect.translate(0,30);}
+   split.append(mem2);
+   QCOMPARE(found(split,all),QStringList{});}
+  // A long numeric row stays fast (Sol on #1957: the card retry once grew with the cube of its length).
+  {QList<QPair<QString,int>> zeros;for(int i=0;i<2048;++i)zeros.append({QStringLiteral("0000"),8});
+   QElapsedTimer timer;timer.start();found(row(zeros),QStringList{"card","phone","ip"});QVERIFY2(timer.elapsed()<2000,qPrintable(QString::number(timer.elapsed())));}
+  // A clipped cell's box overlapping the card, or touching it, is another field.
+  QCOMPARE(found(row({{"6677",8},{"7068",-20},{"5193",8},{"8349",8},{"3122",8},{"9635",8}}),QStringList{"card"}),QStringList{"card: 5193 8349 3122 9635"});
+  QCOMPARE(found(row({{"6011",8},{"0293",8},{"7603",8},{"0105",1},{"23",8}}),QStringList{"card"}),QStringList{"card: 6011 0293 7603 0105"});
+ }
  void columnsOfPhoneNumbersAreNotOneCard() {
   const auto row=[](int gap){QList<RecognizedWord> out;int x=0;for(const auto* text:{"7946","0958","7946","0959"}){out.append({QString::fromLatin1(text),QRect(x,0,32,20),90,0});x+=32+(out.size()==2?gap:8);}return out;};
   QCOMPARE(found(row(120),QStringList{"phone"}),(QStringList{"phone: 7946 0958","phone: 7946 0959"}));

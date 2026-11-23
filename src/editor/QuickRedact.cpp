@@ -167,7 +167,18 @@ bool splitAddress(const QString& left,const QString& right,const QRect& a,const 
 // Every character keeps its word owner. Both views retain an unsupported
 // line boundary; only the wrapped view removes a supported boundary entirely.
 struct Joined {QString text;QList<int> owner;};
-Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full,bool splits=true) {
+// #1939: two words of one line with more than about two characters between them are two fields, not
+// one number: table and log columns, calendar cells (17 18 19 ...), year headers. A word space, and two
+// spaces in a monospace font, stay a join. The gap is measured against the wider glyph of the two words.
+bool columnGap(const QList<QString>& words,const QList<RecognizedWord>& candidates,int i) {
+ if(i<=0||candidates.at(i).line!=candidates.at(i-1).line)return false;
+ const auto& a=candidates.at(i-1).rect;const auto& b=candidates.at(i).rect;
+ // Words of one line stacked rather than side by side (a wrapped row read as one line) are no column.
+ if(b.left()<a.left())return false;
+ const auto glyph=[&](int w){return double(candidates.at(w).rect.width())/qMax<qsizetype>(1,words.at(w).size());};
+ return b.left()-a.right()>2.5*qMax(glyph(i-1),glyph(i));
+}
+Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full,bool splits=true,bool columns=false) {
  Joined joined;
  const auto local=category=="email"?localJoins(words,candidates):QList<bool>(words.size()+1,false);
  for(int i=0;i<words.size();++i){
@@ -176,7 +187,15 @@ Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,
   const bool wrap=wrapped&&evidence;
   // An IPv6 address read as two words split at a colon is one address.
   static const QRegularExpression fragment(QStringLiteral("^[0-9A-Fa-f:]+$"));
-  const bool colon=i>0&&!boundary&&category=="ip"&&(words.at(i-1).endsWith(':')||words.at(i).startsWith(':'))&&fragment.match(words.at(i-1)).hasMatch()&&fragment.match(words.at(i)).hasMatch();
+  bool colon=i>0&&!boundary&&category=="ip"&&(words.at(i-1).endsWith(':')||words.at(i).startsWith(':'))&&fragment.match(words.at(i-1)).hasMatch()&&fragment.match(words.at(i)).hasMatch();
+  // #1939: so is an IPv4 address recognition split at a dot (148 .98.250.123:443), when the two boxes
+  // are no further apart than a word space and together they make one whole address.
+  {static const QRegularExpression piece(QStringLiteral("^[0-9.]+(?:[:/][0-9]{1,5})?$"));
+   if(i>0&&!boundary&&category=="ip"&&(words.at(i-1).endsWith('.')||words.at(i).startsWith('.'))&&piece.match(words.at(i-1)).hasMatch()&&piece.match(words.at(i)).hasMatch()){
+    const auto& l=candidates.at(i-1).rect;const auto& r=candidates.at(i).rect;
+    const double glyph=qMax(double(l.width())/qMax<qsizetype>(1,words.at(i-1).size()),double(r.width())/qMax<qsizetype>(1,words.at(i).size()));
+    static const QRegularExpression whole(QStringLiteral("^\\d{1,3}(?:\\.\\d{1,3}){3}(?:[:/][0-9]{1,5})?$"));
+    if(r.left()>=l.left()&&r.left()-l.right()<=1.5*glyph&&whole.match(words.at(i-1)+words.at(i)).hasMatch())colon=true;}}
   // The email view restored a lost dot after the domain: its last label follows at once.
   // Not after a whole address that ends a sentence ("alice@example.net." then "jane+" "tag@…"),
   // when this word starts a local-part join: then it begins another address.
@@ -187,7 +206,7 @@ Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,
   static const QRegularExpression labels(QStringLiteral("^[0-9][A-Za-z0-9-]*\\.[A-Za-z]"));
   const bool label=i>0&&!words.at(i).isEmpty()&&(words.at(i).front().isLetter()||labels.match(words.at(i)).hasMatch());
   const bool dotted=i>0&&!boundary&&category=="email"&&words.at(i-1).indexOf('@')>0&&words.at(i-1).endsWith('.')&&label&&!(local.value(i+1)&&domain.contains('.'));
-  if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)&&!(splits&&category=="email"&&!boundary&&splitAddress(words.at(i-1),words.at(i),candidates.at(i-1).rect,candidates.at(i).rect))){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
+  if(i>0&&!wrap&&!colon&&!dotted&&!local.at(i)&&!(splits&&category=="email"&&!boundary&&splitAddress(words.at(i-1),words.at(i),candidates.at(i-1).rect,candidates.at(i).rect))){joined.text+=(boundary&&!evidence)||(columns&&columnGap(words,candidates,i))?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }
  return joined;
@@ -2291,6 +2310,75 @@ bool isbn13(const QString& text) {
  int sum=0;for(int i=0;i<13;++i)sum+=d.at(i).digitValue()*(i%2?3:1);
  return sum%10==0;
 }
+// #1939: the digit groups of a number, split at its spaces and dashes.
+QList<QStringView> numberGroups(const QString& text) {
+ QList<QStringView> out;qsizetype start=-1;
+ for(qsizetype i=0;i<=text.size();++i){
+  const bool digit=i<text.size()&&text.at(i).isDigit();
+  if(digit&&start<0)start=i;else if(!digit&&start>=0){out.append(QStringView(text).mid(start,i-start));start=-1;}
+ }
+ return out;
+}
+// #1939: a row of counted numbers is no card or phone: calendar days (17 18 19 20 21), year headers
+// (2023 2024 2025 2026) and axis ticks (0 20 40 60 80). Three groups or more stepping by one, or by a
+// multiple of five, all of them or four in a row (a week number before the days), or calendar days read
+// into the next grid (below). A step of zero is a repeated group (5555 5555 ...) and stays,
+// as do other steps (01 23 45 67 89).
+bool countedRow(const QString& text) {
+ const auto groups=numberGroups(text);
+ if(groups.size()<3)return false;
+ QList<qint64> values;for(const auto& g:groups){if(g.size()>9)return false;values.append(g.toLongLong());}
+ const auto counted=[](qint64 step){return step!=0&&(std::abs(step)==1||std::abs(step)%5==0);};
+ int run=1;qint64 step=0;
+ for(qsizetype i=1;i<values.size();++i){
+  const auto d=values.at(i)-values.at(i-1);
+  if(i>1&&d==step&&counted(d))++run;else run=counted(d)?2:1;
+  step=d;
+  if(run>=4||(run>=3&&run==i+1&&i+1==values.size()))return true;
+ }
+ // Calendar cells read with the next grid's first day (a month beside another wraps into it:
+ // 16 17 18 17): days (1 to 31) that start with three or more in a row, then at most one smaller day,
+ // or after one week number (48 28 29 30) run to the end. A phone in pairs with a run inside it
+ // (06 12 13 14 78, 06 42 43 44 36, 06 12 13 14 08) stays a number.
+ if(std::all_of(groups.cbegin(),groups.cend(),[](QStringView g){return g.size()<=2;})){
+  const auto day=[](qint64 v){return v>=1&&v<=31;};
+  for(const qsizetype from:{0,1}){
+   if(from==1&&(values.size()<4||values.first()<1||values.first()>53))continue;
+   if(!std::all_of(values.cbegin()+from,values.cend(),day))continue;
+   qsizetype days=from+1;while(days<values.size()&&values.at(days)==values.at(days-1)+1)++days;
+   // After a week number the days run to the end; without one, one smaller day may follow.
+   if(days-from>=3&&(days==values.size()||(from==0&&days+1==values.size()&&values.last()<values.at(days-1))))return true;
+  }
+ }
+ return false;
+}
+// #1939: a card read across several words is printed in groups of four or more (4-4-4-4, 4-6-5 and the
+// like, or groups recognition joined: 41111111 1111 1111), with a shorter last group allowed, and
+// recognition may move digits across one space inside it (4111 11 111111 1111, 411 11111 1111 1111):
+// one shorter group of two or three digits (three when it is the first). More short groups (calendar
+// cells, a date and time) are no card. A run of more than eight is the end of a card after groups of
+// four (4111 111111111111) or a card with its tail split off (25285945833551 94, a rotated card on the
+// x3 page; 411111111111 1111); a phone's 273 before a 16-digit card, or an EAN-13 before a date, is
+// none. A number read as one word stays as it was.
+bool cardGrouping(const QString& text) {
+ if(!text.contains(' ')||cardShaped(text))return true;
+ const auto groups=numberGroups(text);
+ int shorter=0;
+ for(qsizetype i=0;i<groups.size();++i){
+  // A run of more than eight: the last group after groups of four or more, or the first with a tail of
+  // at most three split off (four after twelve).
+  if(groups.at(i).size()>8){
+   const bool last=i+1==groups.size()&&std::all_of(groups.cbegin(),groups.cbegin()+i,[](QStringView g){return g.size()>=4;});
+   const bool head=i==0&&groups.size()==2&&(groups.last().size()<=3||(groups.last().size()==4&&groups.first().size()==12));
+   if(!last&&!head)return false;
+  }
+  if(i+1<groups.size()&&groups.at(i).size()<4){if(groups.at(i).size()<(i==0?3:2))return false;++shorter;}
+ }
+ return shorter<=1;
+}
+// A card number as the earlier rule read it: 13 to 19 digits, Luhn-valid, no ISBN-13, and (#1939) not
+// all zeros (0000 0000 0000 0000 passes Luhn).
+bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&luhn(d)&&!isbn13(d);}
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
@@ -2300,12 +2388,18 @@ const QList<Rule>& rules() {
   // a port, @db.internal:5432/app, still ends one, and so does a word, jane@example.com:urgent).
   // The last label ends the domain, so a shorter domain is never taken (user@foo.bar.service).
   {"email",QRegularExpression(R"((?<![\p{L}\p{M}\p{N}_.%+@-])[\p{L}\p{N}][\p{L}\p{M}\p{N}._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.(?!(?i:service|socket|mount|automount|timer|slice|scope|device|swap|path|png|jpe?g|gif|svg|webp|ico|bmp|tiff?|avif|heic)(?![\w-]))[A-Za-z]{2,}(?![\w-]|\.[A-Za-z0-9]|:(?!\d+/)[\w.~+-]*(?:/|\.git(?![\w-]))))"),{},3},
-  // #1941: a dash at a word's start before a card is a diff's sign ("-5224-6668-…"); after anything else it joins a
-  // longer code (SKU-5012…).
-  {"card",QRegularExpression(R"((?<![\d-])(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d)|(?<![^\s])-\K\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&luhn(d)&&!isbn13(d);},1},
-  {"ip",QRegularExpression(R"((?<![\d.vV])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d))"),{},1},
+  // #1939: a card number is grouped as a card is printed and is no counted row, except after a card
+  // label (findOrdered). A diff's sign may start its word before three digits or more
+  // (-5493-9997-9808-2174, -411 11111 1111 1111, {+4111...); a country code (+82 10-...) starts none.
+  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m);},1},
+  // #1939: a package version shaped as an address is none: after an epoch (1:8.17.4.28) or before a
+  // release (8.17.4.28-3.fc45, 2.11.7.54-1ubuntu2). A range (10.0.0.1-10.0.0.255) stays. Each
+  // lookbehind has a fixed length: Qt 6.4's PCRE2 rejects variable-length ones.
+  {"ip",QRegularExpression(R"((?<![\d.vV])(?<!(?<![\w:.])\d:)(?<!(?<![\w:.])\d\d:)(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:/\d{1,2}|:\d{1,5})?(?!\d|\.\d|-\d+[.~+]?[A-Za-z]))"),{},1},
   {"ip",QRegularExpression(R"((?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:]))"),validIpv6,2},
-  {"phone",QRegularExpression(R"((?<![\w+.-])(?<!(?<![A-Za-z0-9])\d\d:)(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
+  // #1939: nor after a currency sign (an order number after "#" is left out in findOrdered). An area
+  // code may end at a slash, as in German (+49 30 / 813854, 030 / 813854).
+  {"phone",QRegularExpression(R"((?<![\w+.$€£¥₹-])(?<!(?<![A-Za-z0-9])\d\d:)(?:\+\d{1,3}[ .-]?(?:\d{1,5} ?/ ?)?|0\d{2,4} ?/ ?)?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}(?:[ .-]?\d{2,4}){1,5}(?![\w-]|\.\d|:\d\d))"),[](const QString& m){
     // At least 7 digits and at most 15 (E.164); a date or an IPv4 address is not a number to call.
     static const QRegularExpression date(R"(^(?:\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4})$)"),dotted(R"(^\d{1,3}(?:\.\d{1,3}){3}$)");
     // Separated by dots alone, a number is a phone in the 3-3-4 grouping or in
@@ -2313,13 +2407,26 @@ const QList<Rule>& rules() {
     static const QRegularExpression dots(R"(^\d+(?:\.\d+)+$)"),grouped(R"(^(?:\d{3}\.\d{3}\.\d{4}|\d{2}(?:\.\d{2}){3,})$)");
     if(dots.match(m).hasMatch()&&!grouped.match(m).hasMatch())return false;
     // More than ten digits unbroken is written only after a "+" (16-446655440000 was a UUID's tail).
-    static const QRegularExpression longGroup(R"(\d{11,})");
-    if(!m.startsWith('+')&&longGroup.match(m).hasMatch())return false;
+    // #1939: except an 11-digit mobile written whole, as China (138...) and the trunk-0 countries (UK
+    // 07700..., Japan 090..., Korea 010...) write them.
+    static const QRegularExpression longGroup(R"(\d{11,})"),mobile(R"(^(?:1[3-9]\d{9}|0[1-9]\d{9})$)");
+    if(!m.startsWith('+')&&longGroup.match(m).hasMatch()&&!mobile.match(m).hasMatch())return false;
     if(cardShaped(m))return false;
     // #1895: an ISBN-13 is no number to call, nor is a date with the hour after it (2026-11-22 14,
     // cut at the time's colon). A ZIP+4 code is left out where its line says so (findOrdered).
-    static const QRegularExpression dated(R"(^\d{4}-\d{1,2}-\d{1,2}(?:[ T]\d{1,2})?$)");
-    if(isbn13(m)||dated.match(m).hasMatch())return false;
+    // #1939: nor a date with a dashed time after it (Screenshot From 2026-11-22 14-03-59.png), nor a
+    // counted row (calendar days, year headers).
+    static const QRegularExpression dated(R"(^\d{4}-\d{1,2}-\d{1,2}(?:[ T_]\d{1,2}(?:[-.]\d{2}){0,2})?$)");
+    // A number with its international "+" and a country code of one to three digits is a number to call
+    // whatever its groups (+44 20 21 22 23 24); a diff's added year row (+2023 2024 2025) is none.
+    static const QRegularExpression dialled(R"(^\+\d{1,3}(?!\d))");
+    if(isbn13(m)||dated.match(m).hasMatch()||(!dialled.match(m).hasMatch()&&countedRow(m)))return false;
+    // #1939: nor an EAN-13 as printed under its bar code (9 602850 531546), three colour channels
+    // (rgb 247 177 121) or a count with spaces between its thousands (1 912 615).
+    static const QRegularExpression ean(R"(^\d \d{6} \d{6}$)"),thousands(R"(^\d{1,2}(?: \d{3}){2,3}$)");
+    if(ean.match(m).hasMatch()||thousands.match(m).hasMatch())return false;
+    {const auto groups=numberGroups(m);
+     if(!m.startsWith('+')&&!m.contains('(')&&groups.size()==3&&std::all_of(groups.cbegin(),groups.cend(),[](QStringView g){return g.size()<=3&&g.toInt()<=255;}))return false;}
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
@@ -2338,7 +2445,11 @@ bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<
   // must not read as an address and stop the key's cover (Sol on #1956).
   const auto joined=join(rule.view==1?numbers:email,boxes,false,rule.category,{},false);
   for(auto it=rule.pattern.globalMatch(joined.text);it.hasNext();){
-   const auto m=it.next();if(rule.valid&&!rule.valid(m.captured()))continue;
+   const auto m=it.next();
+   // #1939: the key rule keeps the card check it had (the earlier card rule), not the grouping and
+   // counted-row checks the card kind adds.
+   if(rule.category=="card"){if(!cardNumber(m.captured()))continue;}
+   else if(rule.valid&&!rule.valid(m.captured()))continue;
    found=true;if(!cards||rule.category!="card")return true;
    for(const int i:owners(joined,m.capturedStart(),m.capturedLength()))cards->insert(words.at(i));
   }
@@ -2914,12 +3025,19 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  for(const auto& rule:rules()){
   if(!chosen.contains(rule.category))continue;
   QList<QList<int>> pending;
-  for(const bool wrapped:{false,true}){
-   const auto joined=join(*views[rule.view],candidates,wrapped,rule.category,full);
+  // #1939: card and phone numbers stop at a column gap (columnGap). A card printed with wide, even gaps
+  // between its groups is still one card: a last card pass joins across columns and takes only those.
+  const bool number=rule.category=="phone"||rule.category=="card";
+  struct Pass {bool wrapped;bool columns;};
+  const QList<Pass> passes=!number?QList<Pass>{{false,false},{true,false}}:rule.category=="card"?QList<Pass>{{false,true},{true,true},{false,false}}:QList<Pass>{{false,true},{true,true}};
+  for(const auto& [wrapped,columns]:passes){
+   const auto joined=join(*views[rule.view],candidates,wrapped,rule.category,full,true,columns);
+   const bool spaced=number&&!columns;
    qsizetype offset=0;
    while(offset<joined.text.size()){
     auto found=rule.pattern.match(joined.text,offset);if(!found.hasMatch())break;
     auto length=found.capturedLength();
+    qsizetype start=found.capturedStart();
     // A greedy phone span may contain two separate numbers. Retry prefixes at
     // word boundaries, then resume at the accepted prefix's end.
     // A card-grouped run whose words are evenly spaced is one printed number, not two to split; a wider
@@ -2930,7 +3048,9 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      for(qsizetype i=1;i<words.size();++i){const auto& a=candidates.at(words.at(i-1)).rect;const auto& b=candidates.at(words.at(i)).rect;if(a.y()!=b.y()&&a.bottom()<b.top())return false;const int gap=qMax(0,b.left()-a.right());widest=qMax(widest,gap);narrowest=qMin(narrowest,gap);}
      return words.size()<2||widest<=2*qMax(narrowest,2)+2;
     };
-    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!(cardShaped(found.captured())&&evenlySpaced())){
+    // #1939: nor is a longer run of four-digit groups printed evenly (a tracking number).
+    const auto fours=[&]{const auto text=found.captured();const auto groups=numberGroups(text);for(qsizetype i=0;i+1<groups.size();++i)if(groups.at(i).size()!=4)return false;return groups.size()>2&&!found.captured().contains('-');};
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!((cardShaped(found.captured())||fours())&&evenlySpaced())){
      const auto accept=[&](qsizetype end){
       const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
       const auto shorter=rule.pattern.match(prefix);
@@ -2949,17 +3069,112 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       if(shorter.hasMatch()&&shorter.capturedStart()==0&&shorter.capturedLength()==prefix.size()&&rule.valid(prefix)){length=prefix.size();break;}
      }
     }
-    offset=found.capturedStart()+length;
-    if(rule.valid&&!rule.valid(joined.text.mid(found.capturedStart(),length)))continue;
-    auto words=owners(joined,found.capturedStart(),length);
+    // #1939: a card beside another number on its row (a reference number, a line number, the expiry
+    // after it) fails as one span; the card inside it is tried at the span's word boundaries, from the
+    // earliest start and the longest span. Such a card has 15 digits or more, and the span's other words
+    // are other fields: a group of four before it, or any group after it, printed with the card's own
+    // spacing would continue one longer number (a tracking number, 9362 0664 7516 8861 60), unless an
+    // expiry's slash follows (4242 4242 4242 4242 12 / 34).
+    // The run of digit groups the span sits in: the pattern stops at 19 digits, so a card may lie past
+    // its end (12 34 4111 1111 1111 1111).
+    // #1939: after a card label (Card:, Visa, CC number) a number keeps the earlier card rule alone: the
+    // label outweighs its grouping or a counted look (Card: 4110 4111 4112 4113).
+    const auto cardValid=[&](qsizetype from,qsizetype length){
+     const auto text=joined.text.mid(from,length);
+     if(rule.valid(text))return true;
+     if(rule.category!="card"||!cardNumber(text)||from>=joined.owner.size()||joined.owner.at(from)<0)return false;
+     static const QRegularExpression label(QStringLiteral("^(?:card|cards|visa|mastercard|mc|amex|discover|jcb|diners|maestro|unionpay|cc|ccn|pan|credit|debit|kreditkarte|karte|carte|tarjeta)[:.#]*$"),QRegularExpression::CaseInsensitiveOption);
+     const int w=joined.owner.at(from);
+     for(int k=w-1;k>=0&&k>=w-2&&candidates.at(k).line==candidates.at(w).line;--k)if(label.match(plain.at(k)).hasMatch())return true;
+     return false;
+    };
+    const bool retry=rule.category=="card"&&rule.valid&&!cardValid(found.capturedStart(),found.capturedLength());
+    qsizetype region=found.capturedEnd();
+    if(retry)while(region+1<joined.text.size()&&region-found.capturedEnd()<48&&(joined.text.at(region)==' '||joined.text.at(region)=='-')&&joined.text.at(region+1).isDigit()){++region;while(region<joined.text.size()&&joined.text.at(region).isDigit())++region;}
+    const auto apart=[&](qsizetype from,qsizetype to){
+     const auto inside=owners(joined,from,to-from);
+     // A card read as one word (5308-0894-0241-1905) has no spacing of its own to continue.
+     if(inside.size()<2)return true;
+     int widest=0,narrowest=INT_MAX;
+     for(qsizetype i=1;i<inside.size();++i){const int gap=candidates.at(inside.at(i)).rect.left()-candidates.at(inside.at(i-1)).rect.right();widest=qMax(widest,gap);narrowest=qMin(narrowest,gap);}
+     // A word on another line, or not to the right, is never part of the same printed number, nor is one
+     // whose box overlaps or sits closer than the card's own groups (a clipped cell beside it).
+     const auto even=[&](int a,int b){const auto& l=candidates.at(a);const auto& r=candidates.at(b);if(l.line!=r.line||r.rect.left()<=l.rect.left())return false;const int gap=r.rect.left()-l.rect.right();return gap>=0&&gap>=narrowest-narrowest/4-2&&gap<=widest+widest/4+2;};
+     if(from>found.capturedStart()){
+      const int before=joined.owner.at(from-2);
+      // ...a group of four, unless a phone's shorter group comes before it: the phone before a card
+      // (+39 380 719 1173) ends in a group of four too.
+      qsizetype head=from-2;while(head>found.capturedStart()&&joined.owner.at(head-1)==before)--head;
+      const int earlier=head-2>=found.capturedStart()?joined.owner.at(head-2):-1;
+      const auto four=[&](int w){return w>=0&&numbers.at(w).size()==4&&digits(numbers.at(w))==4;};
+      const bool phone=earlier>=0&&digits(numbers.at(earlier))>=1&&digits(numbers.at(earlier))<=3&&digits(numbers.at(earlier))==numbers.at(earlier).size()-(numbers.at(earlier).startsWith('+')?1:0);
+      if(four(before)&&!phone&&even(before,inside.first()))return false;
+     }
+     if(to<region){
+      const int after=joined.owner.at(to+1);
+      qsizetype k=region;while(k<joined.text.size()&&joined.text.at(k)==' ')++k;
+      const bool expiry=k<joined.text.size()&&joined.text.at(k)=='/';
+      if(after>=0&&!expiry&&even(inside.last(),after))return false;
+     }
+     return true;
+    };
+    if(retry){
+     // Word starts in the span (later ones are reached by matching on after it); from each, the spans
+     // of 15 to 19 digits in the run, longest first.
+     QList<qsizetype> starts;
+     for(qsizetype k=found.capturedStart();k<found.capturedEnd();++k)if(k==found.capturedStart()||joined.text.at(k-1)==' ')starts.append(k);
+     bool inner=false;
+     for(const auto from:std::as_const(starts)){
+      QList<qsizetype> ends;int count=0;
+      for(qsizetype k=from;k<=region&&count<=19;++k){
+       if((k==region||joined.text.at(k)==' ')&&count>=15)ends.prepend(k);
+       if(k<region&&joined.text.at(k).isDigit())++count;
+      }
+      for(const auto to:std::as_const(ends)){
+       if(from==found.capturedStart()&&to==found.capturedEnd())continue;
+       // On one line, or across a wrap the wrapped view accepted: a card beside another number shares
+       // its row.
+       {const auto inside=owners(joined,from,to-from);if(!wrapped&&std::any_of(inside.cbegin(),inside.cend(),[&](int w){return candidates.at(w).line!=candidates.at(inside.first()).line;}))continue;}
+       const auto part=joined.text.mid(from,to-from);
+       const auto again=rule.pattern.match(part);
+       if(again.hasMatch()&&again.capturedStart()==0&&again.capturedLength()==part.size()&&cardValid(from,to-from)&&apart(from,to)){start=from;length=to-from;inner=true;break;}
+      }
+      if(inner)break;
+     }
+     // None: matching goes on after the span, as before. A span a diff's or an amount's sign started
+     // (-123 38520000023237) resumes at its second word instead, where the earlier rule began (Sol on #1957).
+     if(!inner){
+      const bool signedStart=found.capturedStart()>0&&(joined.text.at(found.capturedStart()-1)=='-'||joined.text.at(found.capturedStart()-1)=='+');
+      offset=signedStart&&starts.size()>1?starts.at(1):found.capturedEnd();continue;
+     }
+    }
+    offset=start+length;
+    if(rule.valid&&!cardValid(start,length))continue;
+    auto words=owners(joined,start,length);
     if(words.isEmpty())continue;
+    // #1939: a counted row judged on its words as read: the wrapped view glues a row's last cell to
+    // the next row's first (18 and 17 as 1817), which hides calendar cells from the text's groups.
+    if(number&&words.size()>=3&&!(rule.category=="card"&&cardValid(start,length)&&!rule.valid(joined.text.mid(start,length)))
+       &&!(rule.category=="phone"&&QRegularExpression(QStringLiteral("^\\+\\d{1,3}(?!\\d)")).match(joined.text.mid(start,length)).hasMatch())){
+     QStringList cells;for(const int w:std::as_const(words))cells.append(numbers.at(w));
+     if(countedRow(cells.join(' ')))continue;
+    }
+    // The pass across columns takes only a number grouped as a card is printed whose gaps are even, or
+    // no wider than four characters (a box a little off). A looser grouping across columns is a table.
+    if(spaced){
+     if(!cardShaped(joined.text.mid(start,length))||words.size()<2)continue;
+     int widest=0,narrowest=INT_MAX;double glyph=0;
+     for(const int w:std::as_const(words))glyph=qMax(glyph,double(candidates.at(w).rect.width())/qMax<qsizetype>(1,numbers.at(w).size()));
+     for(qsizetype i=1;i<words.size();++i){const auto& a=candidates.at(words.at(i-1)).rect;const auto& b=candidates.at(words.at(i)).rect;const int gap=qMax(0,b.left()-a.right());widest=qMax(widest,gap);narrowest=qMin(narrowest,gap);}
+     if(widest>narrowest+narrowest/4+2&&widest>4*glyph)continue;
+    }
     // #1895: a ZIP+4-shaped number after a ZIP word or a state code, and any number on a line that
     // names an ISBN, are no phone numbers; 9XXXX-XXXX alone stays one (a Brazilian mobile).
     if(rule.category=="phone"){
      static const QRegularExpression zip(R"(^\d{5}-\d{4}$)"),zipWord(QStringLiteral("^(?:zip|zip:|zipcode|zip-code|postal|postcode)$"),QRegularExpression::CaseInsensitiveOption);
      static const QSet<QString> states{"AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC","PR"};
      const int first=words.first();const int line=candidates.at(first).line;
-     const auto number=joined.text.mid(found.capturedStart(),length);
+     const auto number=joined.text.mid(start,length);
      if(zip.match(number).hasMatch()){
       // A ZIP+4 is no phone, except one shaped as a Brazilian mobile (9XXXX-XXXX) with no ZIP word or
       // state code before it.
@@ -2979,6 +3194,56 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
         const auto& t=candidates.at(v).text;if(t.endsWith(',')||t.endsWith(';')||t.endsWith('.')||count==10||count==13)break;}
       }
       if(!isbnWords.isEmpty()&&std::all_of(words.cbegin(),words.cend(),[&](int w){return isbnWords.contains(w);}))continue;}
+     // #1939: a count, not a number to call: a size in an `ls -l` row (a month and day follow it), a
+     // row of `free` (Mem:, Swap:), an amount before its currency (1 234 567 €).
+     {static const QSet<QString> months{"jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"};
+      static const QSet<QString> meters{"mem:","swap:","total:","-/+","mem","swap","total"};
+      static const QRegularExpression currency(QStringLiteral("^(?:[\\x{20ac}$\\x{00a3}\\x{00a5}\\x{20b9}\\x{20bd}]|EUR|USD|GBP|CHF|JPY|kr|z\\x{0142})[.,;]?$"),QRegularExpression::CaseInsensitiveOption);
+      const int last=words.last();
+      const QString after=last+1<candidates.size()&&candidates.at(last+1).line==line?candidates.at(last+1).text:QString();
+      const QString next=last+2<candidates.size()&&candidates.at(last+2).line==line?candidates.at(last+2).text:QString();
+      static const QRegularExpression day(QStringLiteral("^\\d{1,2}$"));
+      // Each of these is one unbroken run of digits, which a number to call written that way also is, so
+      // each needs its own context.
+      static const QRegularExpression unbroken(QStringLiteral("^\\d+$"));
+      const bool bare=unbroken.match(number).hasMatch();
+      // An `ls -l` size: the row starts with a file mode (-rw-r--r--) and a month and day follow.
+      static const QRegularExpression mode(QStringLiteral("^[-dlcbps][-rwxsStT]{9}[.+@]?$"));
+      int head=first;while(head>0&&candidates.at(head-1).line==line)--head;
+      if(bare&&mode.match(candidates.at(head).text).hasMatch()&&months.contains(after.toLower())&&day.match(next).hasMatch())continue;
+      // A `free` row: the row starts with Mem:, Swap:, Total: or -/+, only numbers lie between, the row
+      // holds at least three counts, and free's header is above it.
+      {static const QRegularExpression count(QStringLiteral("^[0-9.,]+[KMGTi]?$"));
+       int label=first-1;while(label>=0&&candidates.at(label).line==line&&count.match(candidates.at(label).text).hasMatch())--label;
+       // A colon recognition read as its own word (Mem :).
+       if(label>head&&candidates.at(label).text==QLatin1String(":"))--label;
+       int counts=0;for(int w=head;w<candidates.size()&&candidates.at(w).line==line;++w)if(count.match(candidates.at(w).text).hasMatch())++counts;
+       // ...under free's own header (total used free) a few rows up.
+       bool header=false;
+       for(int w=head-1;w>=0&&candidates.at(w).line>=line-3&&!header;--w)if(candidates.at(w).text.compare(QLatin1String("used"),Qt::CaseInsensitive)==0)
+        for(int v=w+1;v<candidates.size()&&candidates.at(v).line==candidates.at(w).line;++v)if(candidates.at(v).text.compare(QLatin1String("free"),Qt::CaseInsensitive)==0)header=true;
+       if(bare&&label>=0&&label==head&&counts>=3&&header&&meters.contains(candidates.at(label).text.toLower()))continue;}
+      // An order number: "#" right before an unbroken run, after a word that names one (Order #10234567)
+      // or right after a time (a receipt's line, 19:54:46 #4091291). Telefon # or Account # keeps it.
+      {const auto& word=candidates.at(first).text;const auto at=word.indexOf(QRegularExpression(QStringLiteral("\\d")));
+       static const QRegularExpression orderLabel(QStringLiteral("^(?:order|orders|invoice|receipt|ticket|issue|bug|case|ref|reference|po|item|transaction|txn|confirmation|booking|reservation|shipment|pr|build|job|run)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
+       // The word before, past a colon recognition read as its own word (Order : #10234567).
+       // A "#" read as its own word counts too (Order # 10234567).
+       const bool loneHash=at==0&&first>head&&plain.at(first-1)==QLatin1String("#");
+       int before=loneHash?first-2:first-1;if(before>=head&&before>=0&&candidates.at(before).text==QLatin1String(":"))--before;
+       const QString label=at>1?word.left(at-1):before>=head&&before>=0?candidates.at(before).text:QString();
+       static const QRegularExpression time(QStringLiteral("^\\d{1,2}:\\d{2}(?::\\d{2})?$"));
+       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()))continue;}
+      if(currency.match(after).hasMatch())continue;
+      // A browser's build date in a user agent (Gecko/20100101).
+      static const QRegularExpression product(QStringLiteral("^[(\\[]?Gecko/\\d"));
+      if(bare&&product.match(candidates.at(first).text).hasMatch())continue;}
+    }
+    // #1939: a section or a version numbered in four parts is no address (Section 1.2.3.4, Version 2.11.7.54).
+    if(rule.category=="ip"&&rule.view==1){
+     static const QRegularExpression label(QStringLiteral("^(?:section|sect\\.?|\\x{00a7}|chapter|clause|article|rule|version|ver\\.?|release|build|firmware|kernel|revision|rev\\.?)[:.]?$"),QRegularExpression::CaseInsensitiveOption);
+     const int first=words.first();
+     if(first>0&&candidates.at(first-1).line==candidates.at(first).line&&label.match(candidates.at(first-1).text).hasMatch())continue;
     }
     // #1942: a mail header's message identifiers (Message-ID, In-Reply-To, References)
     // are shaped like addresses and are none.
@@ -3009,14 +3274,17 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
    words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return joined.contains(w);}),words.end());
    // #1941: a phone or card match whose only taken words are a key's keeps the rest while the rest is still a
    // number of its kind: one joined across a column to a recovery code or a seed word ("+91 98828 72263" "21.")
-   // stays covered.
-   if((rule.category=="phone"||rule.category=="card")&&!words.isEmpty()&&std::any_of(words.cbegin(),words.cend(),[&](int w){return keyTaken.contains(w);})
-      &&std::all_of(words.cbegin(),words.cend(),[&](int w){return !taken.contains(w)||keyTaken.contains(w);})){
-    QList<int> rest;QString digitsLeft;for(const int w:words)if(!keyTaken.contains(w)){rest.append(w);for(const auto c:numbers.at(w))if(c.isDigit())digitsLeft+=c;}
-    // The whole number was validated: what the key left of it stays covered (Sol on #1952: "212 555" beside a code).
-    Q_UNUSED(digitsLeft);
-    words=rest;
-   }
+   // stays covered. The whole number was validated: what the key left of it stays covered (Sol on #1952: "212 555"
+   // beside a code).
+   // #1939: likewise in a CSV row, where one word may hold the end of one field and the start of the next
+   // (alice@example.com,+1 then 202 555 0143): an earlier match that holds such a comma- or semicolon-glued word
+   // already covers it. Both apply in one pass, so a number between an address and a key keeps its middle (Sol
+   // on #1957).
+   {const bool number=rule.category=="phone"||rule.category=="card";
+    const auto released=[&](int w){return taken.contains(w)&&((number&&keyTaken.contains(w))||(rule.category!="email"&&(plain.at(w).contains(',')||plain.at(w).contains(';'))));};
+    if(!words.isEmpty()&&std::any_of(words.cbegin(),words.cend(),released)&&!std::all_of(words.cbegin(),words.cend(),released)
+       &&std::all_of(words.cbegin(),words.cend(),[&](int w){return !taken.contains(w)||released(w);}))
+     words.erase(std::remove_if(words.begin(),words.end(),released),words.end());}
    if(words.isEmpty()||std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
    for(int w:words)taken.insert(w);matches.append({rule.category,words});
    if(!joined.isEmpty())soft.append({int(matches.size())-1,joined});
