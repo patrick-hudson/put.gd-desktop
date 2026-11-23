@@ -1165,6 +1165,37 @@ other tool active it does not. The user's side is in the
     private key), mangled C++ symbols, and base64 of plain text (a decoded sentence can be a
     passphrase). A label or a hex dump's groups that recognition misreads past these rules get no
     exemption either.
+  - Interface words run together are no key (#1971, #1972):
+    - the base64 rule skips a stretch of a segment that it searches when the stretch holds two or
+      more recognized words and reads as interface text. Each word is cut into parts at every
+      character that is neither a letter nor a digit; those characters count for neither side. A
+      part is ordinary when it is a lowercase, capitalized or upper-case word, a product's camel case
+      of up to two humps (`SanDisk`, `SKHynix`, `NVMe`), a number of up to four digits, or such a
+      number with a unit of up to three letters (`90s`, `16K`, `512GB`). A part of four letters or
+      more must also read as a word: a vowel (`y` counts) and no four consonants in a row, so random
+      letters split from a token (`CupHsmkc`, `QZKRMNXW`) are not ordinary. The stretch is interface
+      text when its other parts hold fewer than 20 characters, its ordinary parts at least as many,
+      one ordinary part is a word of five letters or more, no word holds `=`, and no part is, ignoring
+      case, one of `secret`, `secrets`, `key`, `keys`, `apikey`, `token`, `tokens`, `password`,
+      `passwd`, `pwd`, `pass`, `passphrase`, `auth`, `private`, `credential`, `credentials`,
+      `bearer`, `session`, `cookie` or `signature`. The test is made once on the whole stretch, and
+      when it holds, no base64 run is taken anywhere in it, including one inside a single word of
+      that stretch; a window inside it can't leave out the words that show what it is. A stretch of
+      one recognized word, and the hex and repeated-run rules, are unchanged. So a video title and a
+      drive's model between its size and name (`NVMe SSD 512 GB SKHynix HFS512GD9TNI-L2B0B`) stay
+      visible, while a split token keeps most of its 32 or more characters in other parts;
+    - an AWS key ID's prefix is skipped when the first 16 characters of its body (or fewer, when the
+      match is shorter) hold no digit and touch three or more recognized words, and each whole word
+      they touch, with anything attached to it such as the prefix or text after the body, has only
+      ordinary parts (`US ASIA EUR BONDS OIL GOLD`, a market page's tabs). A body in one or two
+      words goes through the usual key ID checks.
+  - Limits (#1971, #1972): when recognition splits a token into pieces that happen to pass these
+    tests, the base64 or AWS key ID rule skips it; another rule can still suggest it. We measured the
+    base64 test alone on random base64 tokens split at random points into pieces: it skipped about
+    1 in 3,000 of 32-character tokens in four pieces, 1 in 700 in six and 1 in 175 in eight, and
+    fewer of longer tokens. A stretch whose other parts hold 20 characters or more is checked as
+    before, so a drive's model with a firmware version beside it
+    (`SKHynix HFS512GD9TNI-L2B0B FW 1.3.0A1`) can still be taken for a key.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
