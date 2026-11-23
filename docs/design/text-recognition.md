@@ -278,8 +278,8 @@ the threshold, half to three line heights tall (at most eight runs), is read onc
 first engine with its band's contrast stretched, darkest pixel to black and paper to white. Only
 a job that asks for candidates (Quick redact and the check before uploading) does this, inside its
 time budget; the words join the candidates after the copied text is made, so Copy text is
-unchanged, and a word where one was already read is left out. A page with no such rows does no
-extra work.
+unchanged, and a word where one was already read is left out. When neither this test nor the
+unread-rows test below finds a band, these tests add no extra read.
 
 On a whole screen of 4 MP or more, read in panels, a panel is trimmed to its text, and a faint
 line has no grey step of 32 levels, so it can sit outside its panel (#1912). For the faint lines,
@@ -291,12 +291,17 @@ A desktop clearly darker than a dark editor fails the test, so growth usually st
 window's edge, but it is judged from pixel values: it crosses a window boundary wherever the new
 row or column passes the same checks, as a neighbouring area within 6 levels of the shade does.
 A faint line below a window's last bright line, or running past its text, can then fall inside
-the grown area and go through the faint-row test above (at most eight runs an area). When the image is
+the grown area and go through the faint-row test above. Over a whole window, Otsu's threshold can
+fall below a long faint line beside short bright text, which then counts as ink, not as faint; so
+in a grown area, rows outside the rows its panel was read in whose ink and faint-ink pixels
+together number at least four (or one per 256 pixels of width, when that is more) form runs, and a
+run half a line to three lines tall is read again the same way. Its band adds up to two rows on
+each side, never into the rows the panel was read in, and is skipped only when one faint band
+covers the whole padded band. Faint and unread runs together are at most eight an area; more marks the result
+truncated. When the image is
 split, a window that holds only faint text may have no panel of its own to grow from: panels come
 from grey steps of 32 levels, which other content in the window can supply. A large image whose layout gives no split
-is one panel, the whole image, as is anything under 4 MP. Limit (#1912, still open): a long faint
-line beside short bright text can still be missed at 4K, because over the whole window Otsu's
-threshold counts it as ink, not as faint.
+is one panel, the whole image, as is anything under 4 MP.
 
 One misread character breaks a key or token for Quick redact. A job that asks for candidates
 also reads a second time the lines holding an **uncertain token** (#1911): a word that Tesseract
