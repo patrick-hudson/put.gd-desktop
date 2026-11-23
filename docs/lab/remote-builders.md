@@ -839,8 +839,9 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   ends, also after a failed build or a stop. If another session holds the
   lease at the start or takes it while the lane waits for an idle host, the
   lane skips the week and leaves that lease alone. `PUTGD_LAB_SESSION` doesn't
-  let it through. If a renewal fails and the lease would lapse before the next
-  try, the lane stops its run.
+  let it through. If the lease stops being the lane's, or a renewal fails and the
+  lease would lapse before the next try, the lane stops its run, children
+  included, before it lets the lease go.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
   `cmake` run directly, and any other heavy command. For those, put
   `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
