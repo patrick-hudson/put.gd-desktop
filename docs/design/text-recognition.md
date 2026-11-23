@@ -196,14 +196,14 @@ speed.
 
 ### Unhinged mode
 
-`preferences.unhingedMode` (Settings → Advanced → Performance, off by default, [#1937](https://github.com/patrick-hudson/put.gd-desktop/issues/1937)) raises the concurrency limits put.gd sets on four kinds of work: text recognition, live recording's software encode, History's poster frames for videos, and History's thumbnails. Each keeps its other bounds (deadline, memory, output). With the switch off, the engine, faster-core, memory and second-read figures elsewhere in this document are the ones that apply.
+`preferences.unhingedMode` (Settings → Advanced → Performance, off by default, [#1937](https://github.com/patrick-hudson/put.gd-desktop/issues/1937)) raises the concurrency limits put.gd sets on four kinds of work: text recognition, live recording's colour conversion and software encoders, History's poster frames for videos, and History's thumbnails. Each keeps its deadline and output bounds; the memory and CPU-time limits that follow the thread count grow with it, as below. With the switch off, the engine, faster-core, memory and second-read figures elsewhere in this document are the ones that apply.
 
 | Limit | Off | On |
 | --- | --- | --- |
 | Recognition engines | At most eight, one per CPU the process may use | At most one per CPU the process may use. Affinity and the cgroup `cpu.max` quota still apply. As with the switch off, fewer start when the tasks, the time left or the memory budget allow fewer |
 | Faster cores (#1929) | On a mixed machine, the engines keep to the faster CPUs when those hold at least four physical cores and slower CPUs are allowed too | Not applied: every allowed CPU |
-| Memory budget | 320 MiB, 384 MiB at most with other languages; `RLIMIT_DATA` 1.5 times the ceiling, lowered to 1.5 times the budget for English-only jobs | 128 MiB plus 64 MiB an engine, never under 320 MiB. Above that floor, the ceiling (the budget plus 64 MiB for other languages) stays within half of `MemAvailable`, and 1.5 times the ceiling within any inherited hard `RLIMIT_DATA`. Both are read before confinement. If `MemAvailable` can't be read, the 320/384 MiB defaults apply. `RLIMIT_DATA` is set and lowered as with the switch off |
-| Second-read cap | 25% of the first pass, at least 0.4 s and at most 1 s, ending 1 s before the job's own budget | The same share, floor and margin, with the 1 s cap multiplied by the larger of 1 and the engines ÷ 4. Second reads run only for candidates (Quick redact and the check before uploading), so only those get the extra time |
+| Memory budget | 320 MiB, 384 MiB at most with other languages; `RLIMIT_DATA` 1.5 times the ceiling, lowered to 1.5 times the budget for English-only jobs | 128 MiB plus 64 MiB for each engine the job may start (whether or not it starts them all), never under 320 MiB. Above that floor, the ceiling (the budget plus 64 MiB for other languages) stays within half of `MemAvailable`, and 1.5 times the ceiling within any inherited hard `RLIMIT_DATA`. Both are read before confinement. If `MemAvailable` can't be read, the 320/384 MiB defaults apply. `RLIMIT_DATA` is set and lowered as with the switch off |
+| Second-read cap | 25% of the first pass, at least 0.4 s and at most 1 s, ending 1 s before the job's own budget | The same share, floor and margin, with the 1 s cap multiplied by the larger of 1 and the engines the job may start ÷ 4. As with the switch off, the time left can shorten second reads or leave none. Second reads run only for jobs that ask for candidates (the editor's text recognition, Quick redact and the check before uploading), so only those get the extra time |
 | Live recording | `x264enc` threads two thirds of the CPUs within 2–8, `openh264enc` and `videoconvert` within 2–4 | Those three elements use every logical CPU, at least two threads |
 
 What stays, and why:
@@ -211,7 +211,7 @@ What stays, and why:
 - Bands and strips are cut as for at most four engines, so with four or more engines the tasks are the same at any count.
 - The emoji scan's 3 s and Quick redact's 2 s matcher bound. They decide how thorough the scan is and stop a runaway pattern; they don't limit CPUs.
 
-The posters and thumbnails are in [History poster frames](recording/history-posters.md#history-poster-frames): posters decode on more threads at normal priority, and History decodes stored thumbnails in parallel, up to one a logical CPU and as many as half of `MemAvailable` holds at 128 MiB each (one when it can't be read).
+The posters and thumbnails are in [History poster frames](recording/history-posters.md#history-poster-frames): posters decode on more threads without the extra nice +10, and History decodes stored thumbnails in parallel, up to one a logical CPU and as many as half of `MemAvailable` holds at 128 MiB each, but always at least one (one when it can't be read).
 
 The parent passes the switch in the helper's cleared environment as `PUTGD_TEXT_UNHINGED=1`, because the engines, the memory budget and the limits are fixed before confinement. On aurora-amd (12 threads), a dense 4K screen took 1.69 s with the switch on against 1.98 s off, with peak resident memory of 371 MiB against 271. On a four-core i5 the times were the same. The copied text was identical on all 277 measured inputs ([#1948](https://github.com/patrick-hudson/put.gd-desktop/pull/1948)).
 

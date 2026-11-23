@@ -29,8 +29,9 @@ queues one item at a time and, for each video item without a preview, runs
   zero file-size limit, and is killed at the 10 s deadline or on shutdown;
   FFmpeg decodes on two threads;
 - with [Unhinged mode](../text-recognition.md#unhinged-mode) on, the resident
-  adds `--all-cores`. The child then keeps its parent's priority and gets
-  the deadline's CPU time once for each logical CPU. It decodes on the
+  adds `--all-cores`. The child then keeps the resident's priority (no
+  extra nice) and its CPU time is the larger of 21 s and the deadline times
+  the logical CPUs, in whole seconds, plus one second. It decodes on the
   smaller of the logical CPUs and 16 threads, as many as fit in 1 GiB at two
   worst-case frames (16-bit 4:4:4) each, and at least two, and retries with
   two if the decoder won't open with more. The address-space limit stays;
