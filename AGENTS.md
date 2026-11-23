@@ -84,6 +84,12 @@ The user grants standing permission to send implementation and planning material
 Anthropic for review. This permission does not select an external implementation engine.
 Keep review material bounded to the code/specification needed, excluding secrets and payloads.
 
+Before the first push from any checkout or worktree, run `python3 tools/git-hooks/install.py`.
+It fetches the gitleaks version CI pins into `~/.cache/putgd-tools/` and sets `core.hooksPath`
+to `tools/git-hooks`. The pre-push hook there scans only the outgoing commits with `.gitleaks.toml`
+and refuses the push on a finding or when gitleaks is missing; other hooks forward to the hooks
+directory it replaced. `PUTGD_SKIP_GITLEAKS=1 git push` is the emergency override. CI still scans
+every branch's history, so rewrite a flagged commit instead of adding a fix-up commit.
 Branch from `nightly` and open pull requests against `nightly`, the default branch
 and integration trunk. Never push to `nightly` or `main` directly; rulesets require
 a pull request and the `CI` check. CI selects jobs from the changed paths, and the
