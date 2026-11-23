@@ -1,5 +1,6 @@
 #include "TextService.h"
 #include "core/BuildInfo.h"
+#include "editor/QuickRedact.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
@@ -160,7 +161,10 @@ void TextService::recognized(const QString& id,Error error,std::shared_ptr<TextR
  if(cancel_->load()||error.code=="cancelled"){terminate({},true);return;}
  if(error){terminate(error,false);return;}
  if(!request_.copy){complete(id,result,"not_requested");return;}
- const auto text=textjob::copyText(*result);
+ // #1941: an agent's copy carries a code holding a secret by its kind alone.
+ auto copied=*result;
+ if(request_.agent)for(auto& code:copied.codes)if(!code.binary)if(const auto kind=editor::quickRedact::codeSecret(code.text);!kind.isEmpty())code.text=editor::quickRedact::withheldText(kind);
+ const auto text=textjob::copyText(copied);
  // Nothing found: the clipboard stays as it is.
  if(text.isEmpty()){complete(id,result,"no_result");return;}
  auto timer=std::make_shared<QElapsedTimer>();timer->start();QPointer<TextService> guard(this);
@@ -202,7 +206,10 @@ void TextService::end(QJsonObject record,const QString& notification){
 void TextService::keep(const QString& id,const TextResult& result){
  // The text first, then codes, then as many words as fit.
  auto words=result.words;bool cut=result.truncated;QByteArray bytes;
- const auto serialize=[&]{return QJsonDocument(QJsonObject{{"text",result.text},{"codes",textjob::codesJson(result.codes)},{"words",textjob::wordsJson(words)},{"truncated",cut}}).toJson(QJsonDocument::Compact);};
+ // #1941: a code that holds a secret (a 2FA enrolment, a Wi-Fi password, a key) is kept by kind and corners only:
+ // an agent's text.inspect never reads its content.
+ const auto codes=editor::quickRedact::withholdSecretCodes(textjob::codesJson(result.codes));
+ const auto serialize=[&]{return QJsonDocument(QJsonObject{{"text",result.text},{"codes",codes},{"words",textjob::wordsJson(words)},{"truncated",cut}}).toJson(QJsonDocument::Compact);};
  bytes=serialize();
  while(bytes.size()>resultCacheBytes&&!words.isEmpty()){cut=true;words.resize(words.size()/2);bytes=serialize();}
  if(bytes.size()>resultCacheBytes)return; // the helper's own bounds keep text and codes far below this

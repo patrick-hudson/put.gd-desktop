@@ -62,6 +62,20 @@
    "allOf": [{"if": {"properties": {"kind": {"const": "binary"}}}, "then": {"not": {"required": ["text"]}}, "else": {"required": ["text"]}}],
    "description": "One decoded code. Binary content is reported by kind and length only; it is never copied, shown or returned. Text content is at most 8 KiB."
   },
+  "withheldCode": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["format", "kind", "withheld", "length", "quad"],
+   "properties": {
+    "format": {"enum": ["QRCode", "MicroQRCode", "DataMatrix", "Aztec"]},
+    "kind": {"const": "withheld"},
+    "withheld": {"enum": ["otp", "wifi", "key"], "description": "What the content holds: a 2FA enrolment (otpauth), a Wi-Fi network's password, or anything Quick redact's Keys and tokens finds."},
+    "length": {"type": "integer", "minimum": 0, "maximum": 65536, "description": "Bytes of content."},
+    "quad": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/point"}}
+   },
+   "description": "#1941: a decoded code whose content holds a secret, in a session reply (text.inspect, editor.inspect): listed by kind and corners, its content never returned. The helper's own output never carries it."
+  },
+  "sessionCode": {"oneOf": [{"$ref": "#/$defs/code"}, {"$ref": "#/$defs/withheldCode"}]},
   "copyStatus": {
    "enum": ["copied", "suppressed", "failed", "no_result", "not_requested"],
    "description": "copied, suppressed (the user changed the clipboard after acceptance, or a later explicit copy took its place) or failed; no_result when nothing was found or the operation did not complete; not_requested with copy false."
@@ -261,7 +275,7 @@
       "operationId": {"$ref": "#/$defs/operationId"},
       "state": {"$ref": "#/$defs/state"},
       "source": {"$ref": "#/$defs/source"},
-      "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/code"}},
+      "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/sessionCode"}},
       "copyStatus": {"$ref": "#/$defs/copyStatus"},
       "truncated": {"type": "boolean"},
       "banded": {"type": "boolean"},
@@ -377,7 +391,7 @@
       "state": {"enum": ["idle", "recognizing", "completed", "failed"]},
       "result": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 2147483647}, {"type": "null"}]},
       "words": {"type": "array", "maxItems": 20000, "items": {"$ref": "#/$defs/word"}},
-      "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/code"}},
+      "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/sessionCode"}},
       "selection": {
        "oneOf": [
         {"type": "null"},

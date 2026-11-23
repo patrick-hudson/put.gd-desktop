@@ -102,9 +102,14 @@ add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/ErrorLogPage.cpp src/ui
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp src/ui/QrCodeWindow.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_capture_style_render putgd_s3_wire putgd_host_open putgd_shortcut_keyboard putgd_preview_reader)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
-add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp src/editor/HighlightFilter.cpp src/editor/TextLayer.cpp src/editor/QuickRedact.cpp)
+# #1941: Quick redact's matcher alone (Qt Core and Gui, no widgets), so the resident can withhold a decoded code
+# that holds a secret from text.inspect.
+add_library(putgd_quick_redact STATIC src/editor/QuickRedact.cpp)
+target_include_directories(putgd_quick_redact PUBLIC src)
+target_link_libraries(putgd_quick_redact PUBLIC Qt6::Gui putgd_build_options)
+add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp src/editor/HighlightFilter.cpp src/editor/TextLayer.cpp)
 target_include_directories(putgd_editor PUBLIC src)
-target_link_libraries(putgd_editor PUBLIC Qt6::Widgets putgd_build_options putgd_visual putgd_capture_style_render)
+target_link_libraries(putgd_editor PUBLIC Qt6::Widgets putgd_build_options putgd_visual putgd_capture_style_render putgd_quick_redact)
 add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp src/ui/EditorText.cpp src/ui/AccountName.cpp src/ui/QuickRedactRunner.cpp src/ui/SensitivePrompt.cpp)
 target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual PRIVATE putgd_host_open)
 add_library(putgd_ui_application STATIC src/ui/UiApplicationController.cpp)

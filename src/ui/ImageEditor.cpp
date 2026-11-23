@@ -118,6 +118,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
  // #1820: what the check covered on its own (redact kinds), counted by kind; the warn kinds are in findings.
  QList<QPair<QString,int>> covered;
+ // #1941: the QR codes Keys and tokens covered, by kind alone, for the prompt's wording.
+ QJsonObject codeKinds;
  SensitiveFindings findings;std::unique_ptr<SensitivePrompt> prompt;
  // An agent's decision waits this long; then the capture is treated as Cancel.
  QTimer decisionDeadline;decisionDeadline.setSingleShot(true);decisionDeadline.setInterval(5*60*1000);
@@ -286,8 +288,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     return {{"result",double(layer.identity())},{"selection",layer.hasSelection()?QJsonValue(QJsonObject{{"from",layer.first()},{"to",layer.last()}}):QJsonValue()}};
    }
    deferred=true;
-   if(name=="copyText")window->copyRecognizedText(params["all"].toBool(),replyText(done));
-   else if(name=="copyCode")window->copyCode(params["index"].toInt(),replyText(done));
+   // #1941: an agent's copy withholds a code that holds a secret.
+   if(name=="copyText")window->copyRecognizedText(params["all"].toBool(),replyText(done),true);
+   else if(name=="copyCode")window->copyCode(params["index"].toInt(),replyText(done),true);
    else window->openCode(params["index"].toInt(),replyText(done));
    return {};
   }
@@ -386,7 +389,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(const auto counts=coveredJson(covered);!counts.isEmpty())frame["covered"]=counts;
   if(control.send("checked",frame).isEmpty()){fail();return;}
   if(!checkPrompt){decisionDeadline.start();return;}
-  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=redactOffered();model.editAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;
+  SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=redactOffered();model.editAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;model.codes=codeKinds;
   // The capture as Redact and upload sends it and Open in editor opens it: every suggestion painted black.
   if(document)model.preview=document->render();
   prompt=std::make_unique<SensitivePrompt>(std::move(model));
@@ -532,7 +535,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     // #1820: the kinds covered automatically are matched first, so another kind never takes their words.
     window->quickRedact(checkCategories,[&,truncated,languageMissing](Error error,QJsonObject result){
      checking=false;if(terminal)return;
-     findings={};covered.clear();
+     findings={};covered.clear();codeKinds=result["codes"].toObject();
      const auto counts=result["counts"].toObject();
      // #1820: a redact kind's matches are covered already; only the warn kinds are left to decide.
      for(const auto& category:checkCategories)(checkCover.contains(category)?covered:findings.found).append({category,counts[category].toInt()});

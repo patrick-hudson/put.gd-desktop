@@ -15,9 +15,22 @@ QString describeSensitive(const QList<QPair<QString,int>>& found,bool counted){
   else if(category=="ip")parts<<(one?a("an ")+"IP address":n+" IP addresses");
   else if(category=="name")parts<<QStringLiteral("your username or name");
   else if(category=="list")parts<<(one?a("an ")+"entry from your redaction list":n+" entries from your redaction list");
+  else if(category=="qr_otp")parts<<(one?a("a ")+"2FA QR code":n+" 2FA QR codes");
+  else if(category=="qr_wifi")parts<<(one?a("a ")+"Wi-Fi QR code":n+" Wi-Fi QR codes");
+  else if(category=="qr_key")parts<<(one?a("a ")+"QR code with a key":n+" QR codes with keys");
  }
  if(parts.size()<2)return parts.join(QString());
  const auto last=parts.takeLast();return parts.join(", ")+" and "+last;
+}
+QList<QPair<QString,int>> withCodes(QList<QPair<QString,int>> found,const QJsonObject& codes){
+ int total=0;for(const auto* kind:{"otp","wifi","key"})total+=qMax(0,codes[kind].toInt());
+ if(total<1)return found;
+ for(auto& [category,count]:found)if(category=="key"&&count>=total){
+  count-=total;
+  for(const auto* kind:{"otp","wifi","key"})if(codes[kind].toInt()>0)found.append({QStringLiteral("qr_")+QLatin1String(kind),codes[kind].toInt()});
+  break;
+ }
+ return found;
 }
 QString coveredSentence(const QJsonObject& covered){
  // In the editor's order, whatever order the counts arrive in.

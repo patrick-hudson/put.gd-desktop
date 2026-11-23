@@ -77,6 +77,8 @@ public:
   // keepResult). False keeps counts only and asks the helper for no words.
   bool keepResult=false;
   bool interactive=false;
+  // #1941: an agent's text.recognize: a code holding a secret is withheld from the clipboard copy too.
+  bool agent=false;
   // Called on the session thread at acceptance, before anything is journaled:
   // where an adapter freezes its target or shows its selector. It may deliver
   // early (Escape in the selector), which ends the operation; optional.

@@ -45,7 +45,9 @@ ALLOWED = {
     'storage/proton': {'core', 'storage/worker'},
     'storage/s3': {'core', 'ipc', 'secrets', 'storage/worker'},
     'storage/sftp': {'core', 'secrets', 'storage/worker'},
-    'app': {'client', 'core', 'ipc', 'secrets'},
+    # #1941: the resident withholds a decoded code holding a secret from text.inspect with Quick redact's matcher
+    # alone (the putgd_quick_redact library: Qt Core and Gui, no widgets); editor includes only core.
+    'app': {'client', 'core', 'editor', 'ipc', 'secrets'},
     # The edit document reads capture style data and geometry (#1893); core never includes the editor.
     'editor': {'core'},
     'ui': {'client', 'core', 'ipc', 'platform'},

@@ -1405,5 +1405,32 @@ def twofa(R, cv, th, ctx):
     return {'variant': 'setup'}
 
 
-FAMILIES.update({'csv': (csv_editor, 2), 'panes': (split_panes, 1), 'cli': (cli_secrets, 3), 'sysinfo': (sysinfo, 2), 'codelike': (code_lookalikes, 2), 'twofa': (twofa, 1)})
+def wordlists(R, cv, th, ctx):
+    """#1941: numbered lists of short lowercase words that are not seed phrases (shopping, ingredients, spelling
+    and vocabulary words, tags), 12 to 24 items, one to four a row, under their own heading: what a seed phrase's
+    shape alone would take. Quick redact needs a phrase label above a numbered list before it covers one."""
+    f, size = ctx['ui'], ctx['ui_size']
+    pools = {
+        'shopping': (['Shopping list', 'Groceries', 'To buy'], 'apples bread milk eggs butter cheese rice beans onions garlic lemons coffee pasta flour sugar salt honey yogurt carrots spinach olives peppers tea juice'),
+        'ingredients': (['Ingredients', 'You will need'], 'flour sugar salt yeast water butter milk eggs vanilla cocoa honey cream nuts oats raisins lemon ginger cinnamon nutmeg basil thyme garlic onion tomato'),
+        'spelling': (['Spelling words for Friday', 'Vocabulary - week 3', 'Words to practise'], 'because friend enough through thought caught island answer believe receive weird height measure scissors calendar library people minute promise favour neighbour separate grammar rhythm'),
+        'tags': (['Popular tags', 'Topics'], 'linux rust python docker cloud security backend testing release design network mobile kernel shell editor wayland gnome plasma budgie cinnamon systemd flatpak debian fedora'),
+    }
+    form = R.choice(list(pools))
+    titles, words = pools[form]
+    words = words.split()
+    n = R.choice([12, 12, 15, 18, 24])
+    picked = R.sample(words, min(n, len(words)))
+    cols = R.choice([1, 2, 3, 4])
+    marker = R.choice(['. ', ') ', '. '])
+    y = 24
+    cv.text(24, y, R.choice(titles), f, size + 6, th['fg'], weight='bold')
+    y += 50
+    cw = (cv.w - 48) / cols
+    for i, w in enumerate(picked):
+        cv.text(36 + (i % cols) * cw, y + (i // cols) * (size + 16), [f'{i + 1}{marker}', dec(w, 'wordlist', form)], f, size, th['fg'])
+    return {'variant': form}
+
+
+FAMILIES.update({'csv': (csv_editor, 2), 'panes': (split_panes, 1), 'cli': (cli_secrets, 3), 'sysinfo': (sysinfo, 2), 'codelike': (code_lookalikes, 2), 'twofa': (twofa, 1), 'wordlists': (wordlists, 1)})
 TERMINAL |= {'cli', 'sysinfo'}

@@ -235,6 +235,17 @@ private slots:
    QCOMPARE(prompt.choices(),(QStringList{"edit","upload","cancel"}));QVERIFY(!prompt.choose("redact_upload"));
   }
  }
+ // #1941: QR codes Keys and tokens found are named by their kind, apart from the other keys, never by content.
+ void sensitivePromptNamesSecretCodesByKind(){
+  SensitivePrompt::Model model;model.findings.found={{"card",1},{"key",3}};model.codes={{"otp",1},{"wifi",1}};
+  SensitivePrompt prompt(model);
+  QCOMPARE(prompt.findChild<QLabel*>("sensitiveSummary")->text(),QString("This capture shows a card number, a key or token, a 2FA QR code and a Wi-Fi QR code. It hasn't been uploaded."));
+  // What the resident is told stays kinds and counts of the categories.
+  QCOMPARE(prompt.state()["found"].toObject(),(QJsonObject{{"card",1},{"key",3}}));
+  auto covered=model;covered.findings.found={};covered.covered={{"key",1}};covered.codes={{"key",1}};covered.findings.complete=true;
+  SensitivePrompt automatic(covered);
+  QVERIFY2(automatic.findChild<QLabel*>("sensitiveSummary")->text().contains("put.gd already covered a QR code with a key."),qPrintable(automatic.findChild<QLabel*>("sensitiveSummary")->text()));
+ }
 };
 QTEST_MAIN(EditorWindowTest)
 #include "test_editor_window.moc"

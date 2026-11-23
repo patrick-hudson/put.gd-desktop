@@ -5,6 +5,9 @@
 #include "core/SanitizedPng.h"
 #include "core/SensitiveText.h"
 #include "core/AllocatorPolicy.h"
+#include "core/QrImage.h"
+#include "core/TextJob.h"
+#include <QDirIterator>
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
 #include <algorithm>
@@ -281,6 +284,65 @@ private slots:
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(!kept.isNull());QVERIFY(blackShare(kept,digits(0))<0.4);
   QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+ }
+ // #1941: a QR code holding a 2FA secret or a Wi-Fi password is covered with Keys and tokens before the upload: one
+ // solid cover over the whole symbol, so the real putgd-ocr finds no code in what was uploaded (it reads the one in
+ // the original). The code's content is used only to decide: it reaches no operation record, History, file or
+ // notification line, and only its kind and count are reported.
+ void aSecretQrCodeIsCoveredBeforeUpload_data(){
+  QTest::addColumn<QByteArray>("content");QTest::addColumn<QByteArray>("secret");QTest::addColumn<bool>("warn");
+  const QByteArray seed=QByteArray("JBSWY3DP")+"EHPK3PXP"+"KZ4TQ7MA";
+  const QByteArray otp="otpauth://totp/Example:alice@example.com?secret="+seed+"&issuer=Example";
+  QTest::newRow("2FA enrolment, covered automatically")<<otp<<seed<<false;
+  const QByteArray password=QByteArray("orchard")+"-Lantern-"+"4271";
+  QTest::newRow("Wi-Fi network, covered automatically")<<("WIFI:T:WPA;S:HomeNet;P:"+password+";;")<<password<<false;
+  // Keys and tokens on Warn beside a card on Redact automatically: Redact and upload covers both (Sol on #1952).
+  QTest::newRow("2FA enrolment, Redact and upload")<<otp<<seed<<true;
+ }
+ void aSecretQrCodeIsCoveredBeforeUpload(){
+  QFETCH(QByteArray,content);QFETCH(QByteArray,secret);QFETCH(bool,warn);
+  qr::Matrix matrix;QVERIFY(!qr::encode(content,matrix));
+  const int scale=6;const auto code=qr::image(matrix,scale);
+  // page()'s text, then the code below it.
+  auto capture=page({warn?card.first():QStringLiteral("Scan to connect")});
+  capture=capture.copy(0,0,capture.width(),capture.height()+code.height()+40);
+  {QPainter painter(&capture);painter.fillRect(0,150,capture.width(),capture.height()-150,Qt::white);painter.drawImage(40,150,code);}
+  const QRect symbol(40+qr::quietZone*scale,150+qr::quietZone*scale,matrix.size*scale,matrix.size*scale);
+  Fixture f(capture,true,true,warn?kinds({{"key","warn"},{"card","redact"}}):kinds({{"key","redact"}}));PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto id=f.start();QVERIFY(!id.isEmpty());
+  if(warn){
+   QVERIFY(f.reaches(id,"sensitive_text_found",60000));
+   const auto found=f.inspect(id)["sensitive"].toObject();
+   QCOMPARE(found["found"].toObject(),(QJsonObject{{"key",1}}));QCOMPARE(found["covered"].toObject(),(QJsonObject{{"card",1}}));
+   const auto decided=call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);});QVERIFY2(!decided.error,qPrintable(decided.error.code));
+   QVERIFY(putgd::test::waitFor([&]{return !Operation::activeState(f.inspect(id)["state"].toString());},30000));
+  }else{
+   bool asked=false;
+   QVERIFY(putgd::test::waitFor([&]{const auto op=f.inspect(id);asked=asked||op["phase"]=="sensitive_text_found";return !Operation::activeState(op["state"].toString());},60000));
+   QVERIFY(!asked);
+  }
+  QCOMPARE(f.inspect(id)["state"].toString(),QString("completed"));QCOMPARE(f.provider->uploads.load(),1);
+  const auto sensitive=f.inspect(id)["sensitive"].toObject();
+  QCOMPARE(sensitive["covered"].toObject(),warn?(QJsonObject{{"card",1},{"key",1}}):(QJsonObject{{"key",1}}));
+  QCOMPARE(coveredSentence(sensitive["covered"].toObject()),warn?QString("Covered 1 card number and 1 key or token."):QString("Covered 1 key or token."));
+  // Solid over the whole symbol, finder patterns and all, and past it.
+  const auto image=uploaded(*f.operations,id);QVERIFY(!image.isNull());
+  QCOMPARE(blackShare(image,symbol.adjusted(-scale,-scale,scale,scale)),1.0);
+  // Read back with the real decoder: the original holds the code, the upload holds none.
+  TextJob job(QCoreApplication::applicationDirPath()+"/putgd-ocr");
+  QStringList data;for(const auto& d:{QStringLiteral("/usr/share/tesseract-ocr/5/tessdata"),QStringLiteral("/usr/share/tesseract/tessdata"),QStringLiteral("/usr/share/tessdata")})if(QFileInfo::exists(d+"/eng.traineddata"))data.append(d);
+  if(data.isEmpty())QSKIP("English language data is not installed");
+  job.setDataDirectories(data);TextJob::Options options;options.languages={"eng"};
+  Error error;const auto before=job.recognize(capture,options,error);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(before.codes.size(),1);QCOMPARE(before.codes.first().text.toUtf8(),content);
+  const auto after=job.recognize(image,options,error);QVERIFY2(!error,qPrintable(error.code));QVERIFY(after.codes.isEmpty());
+  // Nothing of the content anywhere the resident writes or answers: the operation, and every file under its data
+  // and configuration (History's database and journal, logs, the local copies' names and metadata).
+  const auto record=QJsonDocument(f.inspect(id)).toJson();
+  for(const QByteArray& part:{secret,QByteArray("otpauth"),QByteArray("WIFI:")})QVERIFY2(!record.contains(part),record.constData());
+  for(QDirIterator it(f.dir.path(),QDir::Files|QDir::Hidden,QDirIterator::Subdirectories);it.hasNext();){
+   QFile file(it.next());if(!file.open(QIODevice::ReadOnly))continue;
+   const auto bytes=file.readAll();QVERIFY2(!bytes.contains(secret),qPrintable(it.filePath()));QVERIFY2(!it.fileName().contains(QString::fromLatin1(secret)),qPrintable(it.filePath()));
+  }
  }
  // #1893: with Capture style on too, the check reads the capture as it was and the style goes around the covered image:
  // the cover sits on the digits, offset by the padding, and the original kept is the one from before covering.

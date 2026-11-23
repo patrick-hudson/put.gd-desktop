@@ -23,6 +23,7 @@ struct RecognizedCode {
  QString text;
  qint64 length=0;
  QPolygon quad;
+ QString secret; // #1941: the secret its content holds (quickRedact::codeSecret: otp, wifi, key), or empty
 };
 
 class TextLayer {

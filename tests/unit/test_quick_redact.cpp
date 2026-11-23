@@ -542,6 +542,142 @@ private slots:
   QTest::newRow("a long path is not a run")<<"cd /usr/share/tesseract-ocr/5/tessdata/configs"<<all<<QStringList{};
   QTest::newRow("only the categories asked for")<<"mail a@example.com or call +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
   QTest::newRow("Unicode digits and full-width forms")<<"Call ٥٥٥ ١٢٣ ٤٥٦٧ or ５５５-１２３-４５６７"<<all<<QStringList{"phone: ٥٥٥ ١٢٣ ٤٥٦٧","phone: ５５５-１２３-４５６７"};
+  // #1941 (fuzz groups 1, 4, 8 and 10): secrets in forms the setting rule did not read. Built in pieces
+  // at run time: the repository's secret scan reads every branch.
+  {const auto pw=QString("Crane")+"7"+"Queue",strong=QString("Wel")+"come"+"2024!";const QStringList key{"key"};
+   QTest::newRow("a MySQL password glued to -p")<<"$ mysql -u root -p"+pw+" -h db"<<key<<QStringList{"key: -p"+pw};
+   QTest::newRow("a password flag with an equals sign")<<"$ mysqldump --user=app --password="+pw+" shop"<<key<<QStringList{"key: --password="+pw};
+   QTest::newRow("a token flag and its value")<<"$ deploy --token "+pw+" --region eu"<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a password-stdin flag names no value")<<"$ docker login --password-stdin registry.example.com"<<key<<QStringList{};
+   const auto user=QString("alice")+":"+pw,fetch=QString("cu")+"rl";
+   QTest::newRow("curl's user and password")<<"$ "+fetch+" -u "+user+" https://api.example.com/v1/me"<<key<<QStringList{"key: "+user};
+   QTest::newRow("docker's user and group are no password")<<"$ docker run -u 1000:1000 alpine"<<key<<QStringList{};
+   QTest::newRow("redis-cli -a")<<"$ redis-cli -h cache -a "+pw+" ping"<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a registry login's -p")<<"$ docker login -u alice -p "+pw+" registry.example.com"<<key<<QStringList{"key: "+pw};
+   QTest::newRow("sshpass -p")<<"$ sshpass -p "+pw+" ssh deploy@nas"<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a Java system property")<<"$ java -Dspring.datasource.password="+pw+" -jar app.jar"<<key<<QStringList{"key: -Dspring.datasource.password="+pw};
+   QTest::newRow("nmcli's password word")<<"$ nmcli device wifi connect HomeNet password "+pw<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a .netrc password")<<"machine api.github.com login alice password "+pw<<key<<QStringList{"key: "+pw};
+   QTest::newRow("SQL WITH PASSWORD")<<"CREATE USER app WITH PASSWORD '"+pw+"';"<<key<<QStringList{"key: '"+pw+"';"};
+   QTest::newRow("a name glued to its program")<<"$ PGPASSWORD="+pw+" psql -h db"<<key<<QStringList{"key: PGPASSWORD="+pw};
+   QTest::newRow("a word ending in pass is no name")<<"BYPASS=enabled"<<key<<QStringList{};
+   const auto shortValue=QString("708dWgW5")+"kQ2z"+"P9mLx4"+"Rt7Bv",uuid=QString("4e4cff2d")+"-1a2b-4c3d-9e8f-"+"0a1b2c3d4e5f",secretLabel=QString("Secret")+" Ke"+"y: ",apiLabel=QString("API")+" Ke"+"y: ";
+   QTest::newRow("a two-word label with a short value")<<secretLabel+shortValue<<key<<QStringList{"key: "+shortValue};
+   QTest::newRow("a two-word label with a UUID")<<apiLabel+uuid<<key<<QStringList{"key: "+uuid};
+   QTest::newRow("a password before more words")<<"Temporary password: "+strong+" (please change it)"<<key<<QStringList{"key: "+strong};
+   QTest::newRow("a password before the sentence goes on")<<"Your temporary password is "+strong+". Change it soon."<<key<<QStringList{"key: "+strong+"."};
+   QTest::newRow("a quoted password inside an object")<<"{ password: \""+pw+"\", port: 5432 }"<<key<<QStringList{"key: \""+pw+"\","};
+   QTest::newRow("a password rule in prose stays visible")<<"Password: must be at least 8 characters"<<key<<QStringList{};
+   QTest::newRow("a password policy stays visible")<<"The password policy requires 12 characters"<<key<<QStringList{};
+   QTest::newRow("a Wi-Fi psk")<<"802-11-wireless-security.psk: orchard-lantern"<<key<<QStringList{"key: orchard-lantern"};
+   QTest::newRow("a passphrase of words")<<"wpa_passphrase=correct horse battery staple"<<key<<QStringList{"key: wpa_passphrase=correct horse battery staple"};
+   QTest::newRow("a German label")<<"Passwort: "+pw<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a French label of three words")<<"Mot de passe : "+strong<<key<<QStringList{"key: "+strong};
+   QTest::newRow("a Russian label")<<QString::fromUtf8("Пароль: ")+pw<<key<<QStringList{"key: "+pw};
+   QTest::newRow("a Chinese label glued to its value")<<QString::fromUtf8("密码：")+pw<<key<<QStringList{QString::fromUtf8("key: 密码：")+pw};
+   QTest::newRow("a Polish label")<<QString::fromUtf8("Hasło: ")+pw<<key<<QStringList{"key: "+pw};
+   QTest::newRow("an Arabic label")<<QString::fromUtf8("كلمة المرور: ")+pw<<key<<QStringList{"key: "+pw};
+   const auto session=QString("k3j4h5g6f7d8s9a0")+"q1w2e3r4t5y6u7i8";
+   QTest::newRow("a session cookie")<<"Cookie: sessionid="+session+";"<<key<<QStringList{"key: sessionid="+session+";"};
+   // Group 4: diff signs.
+   const auto aws=QString("AK")+"IAIOSFODNN7EXAMPL3";
+   QTest::newRow("a key behind a diff's minus")<<"-"+aws<<key<<QStringList{"key: -"+aws};
+   QTest::newRow("a key in a word diff")<<"{+"+aws+"+} [-REDACTED-]"<<key<<QStringList{"key: {+"+aws+"+}"};
+   QTest::newRow("a setting behind a diff's plus")<<"+DB_PASSWORD="+pw+"!"<<key<<QStringList{"key: +DB_PASSWORD="+pw+"!"};
+   // Group 10: token formats.
+   const auto discord=QString("MTEyMzQ1Njc4OTAxMjM0NTY3")+".GhIjKl."+"aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789ab";
+   QTest::newRow("a Discord bot token")<<"client.run('"+discord+"')"<<key<<QStringList{"key: client.run('"+discord+"')"};
+   QTest::newRow("a dotted name is no Discord token")<<"see Microsoft.Extensions.ConfigurationBinderAndMore"<<key<<QStringList{};
+   const auto age=QString("AGE-SECRET")+"-KEY-1"+"QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7LQPZRY9X8GF2TVDW0S3JN54KHCE6MUA7LQPZRY9";
+   QTest::newRow("an age secret key")<<age<<key<<QStringList{"key: "+age};
+   const auto tailscale=QString("tskey")+"-auth-"+"kAbc123Def456GhiJ-AbcDef123456GhiJkl789MnoPqr012StuVwx";
+   QTest::newRow("a Tailscale key")<<"$ tailscale up --authkey "+tailscale<<key<<QStringList{"key: "+tailscale};
+   const auto bootstrap=QString("abcdef")+"."+"0123456789abcdef";
+   QTest::newRow("a kubeadm token")<<"kubeadm token create printed "+bootstrap<<key<<QStringList{"key: "+bootstrap};
+   // Group 8: 2FA setup keys, recovery codes and seed phrases.
+   const auto totp=QString("JBSW Y3DP")+" EHPK 3PXP";
+   QTest::newRow("a TOTP setup key under its label")<<"Can't scan it? Enter this key: | "+totp+" "+totp<<key<<QStringList{"key: "+totp+" "+totp};
+   QTest::newRow("capitals with no key label stay visible")<<"Status | "+totp+" "+totp<<key<<QStringList{};
+   QTest::newRow("recovery codes under their heading")<<"Recovery codes | 9f3k2-x7m1q ab4c5-dd8e2 | 4821 9034 | Download"<<key<<QStringList{"key: 9f3k2-x7m1q ab4c5-dd8e2","key: 4821 9034"};
+   QTest::newRow("prose after a recovery heading stays visible")<<"Recovery codes | Store them somewhere safe."<<key<<QStringList{};
+   QStringList seed,expected;const QStringList phrase{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};
+   for(int i=0;i<phrase.size();++i){seed<<QString::number(i+1)+". "+phrase.at(i);expected<<"key: "+QString::number(i+1)+". "+phrase.at(i);if(i%3==2&&i+1<phrase.size())seed<<"|";}
+   QTest::newRow("a numbered seed phrase")<<"Your recovery phrase | "+seed.join(' ')<<key<<expected;
+   QTest::newRow("a short numbered list stays visible")<<"1. apples 2. bread 3. milk"<<key<<QStringList{};
+   // Sol on #1952.
+   const auto tail=QString("-ZXQ4")+"V7A=",wrapped=QString("Q7Z1hMJZ")+"pR4tW9xL2kV8nB3cD6fG1hJ5mK0qS7uY";
+   QTest::newRow("a base64 tail starting with a dash stays with its token")<<"SIGNING_KEY="+wrapped+" | "+tail<<key<<QStringList{"key: SIGNING_KEY="+wrapped+" "+tail};
+   QTest::newRow("a setting about a method is still a secret's")<<"API_TOKEN_METHOD=orchard"<<key<<QStringList{"key: API_TOKEN_METHOD=orchard"};
+   QTest::newRow("a password flag's plain value")<<"$ deploy --password OrchardLantern"<<key<<QStringList{"key: OrchardLantern"};
+   QTest::newRow("a password flag's digits")<<"$ deploy --password 7654"<<key<<QStringList{"key: 7654"};
+   QTest::newRow("a quoted passphrase after a flag")<<"$ deploy --password='correct horse battery staple' --yes"<<key<<QStringList{"key: --password='correct horse battery staple'"};
+   QTest::newRow("a region-shaped password under its label")<<"Mot de passe : us-east-1"<<key<<QStringList{"key: us-east-1"};
+   QTest::newRow("a passphrase of eight words")<<"wpa_passphrase=one two three four five six seven eight"<<key<<QStringList{"key: wpa_passphrase=one two three four five six seven eight"};
+   QTest::newRow("a setup key of letters alone")<<"Setup key: | JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
+   QTest::newRow("a setup key over two rows")<<"Enter this key: | JBSW Y3DP | EHPK 3PXP"<<key<<QStringList{"key: JBSW Y3DP EHPK 3PXP"};
+   QTest::newRow("recovery codes on the heading's row")<<"Recovery codes: MTAX-CKAP GHRQ-PLKD"<<key<<QStringList{"key: MTAX-CKAP GHRQ-PLKD"};
+   const auto sid=QString("12dsfFdsf")+"bn23dsk",letters=QString("KgmBntgvf")+"RQhGHgdKW";
+   QTest::newRow("a cookie after a direction marker")<<"> Cookie: sid="+sid<<key<<QStringList{"key: sid="+sid};
+   QTest::newRow("a cookie of letters alone")<<"Cookie: sid="+letters<<key<<QStringList{"key: sid="+letters};
+   const auto lettersOnly=QString("AK")+"IA"+"PQRSTUVWXYZABCDE";
+   QTest::newRow("a letters-only key behind a diff's minus")<<"-"+lettersOnly<<key<<QStringList{"key: -"+lettersOnly};
+   const auto lettersToken=QString("abcdef")+"."+"abcdefghijklmnop";
+   QTest::newRow("a card behind a diff's minus")<<"-4111-1111-1111-1111"<<QStringList{"card"}<<QStringList{"card: -4111-1111-1111-1111"};
+   // Sol round 2 on #1952.
+   const auto quoteTail=QString("-ABCD")+"EFG=\"";
+   QTest::newRow("a tail ending in padding and a quote stays with its token")<<"SIGNING_KEY=\""+wrapped+" | "+quoteTail<<key<<QStringList{"key: SIGNING_KEY=\""+wrapped+" "+quoteTail};
+   QTest::newRow("a quoted passphrase of short words after a flag")<<"$ deploy --password='go ahead and continue'"<<key<<QStringList{"key: --password='go ahead and continue'"};
+   QTest::newRow("a password that starts like a call")<<"Mot de passe : getPassword()"+QString("Crane7!")<<key<<QStringList{"key: getPassword()Crane7!"};
+   QTest::newRow("a passphrase with a slash")<<"wpa_passphrase=orchard lantern/river stone"<<key<<QStringList{"key: wpa_passphrase=orchard lantern/river stone"};
+   QTest::newRow("a setup key after lowercase words")<<"enter this key JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
+   const auto first=QString("Orchard")+"123",second=QString("alice:")+"lantern9";
+   QTest::newRow("two commands on one line")<<"$ sshpass -p "+first+" "+fetch+" -u "+second+" https://example.test"<<key<<QStringList{"key: "+first,"key: "+second};
+   {QStringList repeated,expected;for(int i=1;i<=12;++i){const auto w=i<12?QStringLiteral("abandon"):QStringLiteral("about");repeated<<QString::number(i)+". "+w;expected<<"key: "+QString::number(i)+". "+w;if(i%3==0&&i<12)repeated<<"|";}
+    QTest::newRow("a seed phrase with repeated words")<<"Secret Recovery Phrase | "+repeated.join(' ')<<key<<expected;}
+   QTest::newRow("a phone beside a recovery code")<<"Recovery codes: MTAX-CKAP Phone: 212 555 0100"<<QStringList{"key","phone"}<<QStringList{"key: MTAX-CKAP","phone: 212 555 0100"};
+   // Sol round 3 on #1952.
+   QTest::newRow("a quoted password with an escaped quote")<<"$ sshpass -p \"orchard\\\" lantern stone\" ssh nas"<<key<<QStringList{"key: \"orchard\\\" lantern stone\""};
+   QTest::newRow("a call with mismatched quotes is a password")<<"Mot de passe : check(\"Crane7!')"<<key<<QStringList{"key: check(\"Crane7!')"};
+   QTest::newRow("a password with a run of asterisks in it")<<"$ sshpass -p 'River7 **** orchard' ssh nas"<<key<<QStringList{"key: 'River7 **** orchard'"};
+   QTest::newRow("a setup key after its heading in capitals")<<"ENTER THIS KEY JBSW YDPE HPKP XPAB"<<key<<QStringList{"key: JBSW YDPE HPKP XPAB"};
+   QTest::newRow("recovery codes after a colon of its own")<<"Recovery codes : MTAX-CKAP GHRQ-PLKD"<<key<<QStringList{"key: MTAX-CKAP GHRQ-PLKD"};
+   QTest::newRow("numbered recovery codes on the heading's row")<<"Recovery codes: 1. MTAX-CKAP 2. GHRQ-PLKD"<<key<<QStringList{"key: MTAX-CKAP GHRQ-PLKD"};
+   // Numbered lists of short lowercase words with no phrase label stay visible (Sr Manager on #1941).
+   {const auto numbered=[](const QStringList& items,int perRow){QStringList out;for(int i=0;i<items.size();++i){out<<QString::number(i+1)+". "+items.at(i);if((i+1)%perRow==0&&i+1<items.size())out<<"|";}return out.join(' ');};
+    const QStringList shopping{"apples","bread","milk","eggs","butter","cheese","rice","beans","onions","garlic","lemons","coffee"};
+    const QStringList cooking{"flour","sugar","salt","yeast","water","butter","milk","eggs","vanilla","cocoa","honey","cream","nuts","oats"};
+    const QStringList spelling{"because","friend","enough","through","thought","caught","island","answer","believe","receive","weird","height"};
+    const QStringList tags{"linux","rust","python","docker","cloud","security","backend","testing","release","design","network","mobile"};
+    QTest::newRow("a shopping list stays visible")<<"Shopping list | "+numbered(shopping,1)<<key<<QStringList{};
+    QTest::newRow("ingredients stay visible")<<"Ingredients | "+numbered(cooking,2)<<key<<QStringList{};
+    QTest::newRow("a spelling list stays visible")<<"Spelling words for Friday | "+numbered(spelling,3)<<key<<QStringList{};
+    QTest::newRow("a tag list stays visible")<<"Popular tags | "+numbered(tags,4)<<key<<QStringList{};
+    QStringList expected;for(int i=0;i<shopping.size();++i)expected<<"key: "+QString::number(i+1)+". "+shopping.at(i);
+    QTest::newRow("the same words under a phrase label are covered")<<"Write down your 12-word phrase | "+numbered(shopping,3)<<key<<expected;}
+   // Sol round 4 on #1952, and #1940's find.
+   QTest::newRow("a quote after an escaped backslash closes the password")<<"$ sshpass -p \"orchard\\\\\" lantern"<<key<<QStringList{"key: \"orchard\\\\\""};
+   QTest::newRow("a setup key with a group that reads as a word")<<"Setup key: | JBSW SCAN HPKP XPAB"<<key<<QStringList{"key: JBSW SCAN HPKP XPAB"};
+   QTest::newRow("a qualified call with mismatched quotes is a password")<<"Mot de passe : os.check(\"Crane7!')"<<key<<QStringList{"key: os.check(\"Crane7!')"};
+   QTest::newRow("a password flag's value with asterisks in it")<<"$ deploy --password='River7 **** orchard' --yes"<<key<<QStringList{"key: --password='River7 **** orchard'"};
+   const auto fallback=QString("Crane7")+"Queue";
+   QTest::newRow("a hardcoded fallback after an environment read")<<"db_password = os.Getenv(\"DB_PASSWORD\")+\""+fallback+"\""<<key<<QStringList{"key: os.Getenv(\"DB_PASSWORD\")+\""+fallback+"\""};
+   QTest::newRow("a fallback after process.env")<<"API_KEY=process.env.KEY||\""+fallback+"99\""<<key<<QStringList{"key: API_KEY=process.env.KEY||\""+fallback+"99\""};
+   QTest::newRow("a fallback ending in an escaped quote")<<"API_KEY=process.env.KEY||\""+fallback+"\\\"\""<<key<<QStringList{"key: API_KEY=process.env.KEY||\""+fallback+"\\\"\""};
+   QTest::newRow("a fallback holding an escaped quote")<<"API_KEY=process.env.KEY||\"a\\\""+fallback+"\""<<key<<QStringList{"key: API_KEY=process.env.KEY||\"a\\\""+fallback+"\""};
+   QTest::newRow("a quoted password of several words")<<"Password: \"Red7fox"+QString(" blue jay\" today")<<key<<QStringList{"key: \"Red7fox blue jay\""};
+   QTest::newRow("a quoted passphrase after a password label")<<"Password: \"correct horse battery staple\" today"<<key<<QStringList{"key: \"correct horse battery staple\""};
+   // A quote a backslash escapes closes nothing, in a later word or the first (CodeRabbit on #1952).
+   QTest::newRow("a quoted password holding an escaped quote")<<"Password: \"Red7fox"+QString(" blue\\\" jay\" today")<<key<<QStringList{"key: \"Red7fox blue\\\" jay\""};
+   QTest::newRow("a quoted password whose first word ends in an escaped quote")<<"Password: \"Red7fox"+QString("\\\" blue jay\" today")<<key<<QStringList{"key: \"Red7fox\\\" blue jay\""};
+   // The closing quote matches the opening one, and an escape recognition split off still escapes (Sol on #1952).
+   QTest::newRow("a quoted password holding an apostrophe")<<"Password: \"rockin'"+QString(" blue jay\" today")<<key<<QStringList{"key: \"rockin' blue jay\""};
+   QTest::newRow("a quoted password whose escape is a word of its own")<<"Password: \"Red7fox"+QString(" blue \\ \" jay\" today")<<key<<QStringList{"key: \"Red7fox blue \\ \" jay\""};
+   QTest::newRow("a quoted password of several words after the word password")<<"password \"Red7fox"+QString(" blue jay\" today")<<key<<QStringList{"key: \"Red7fox blue jay\""};
+   QTest::newRow("a recovery code with a misread character")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-g8q/v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-g8q/v"};
+   QTest::newRow("a recovery code with a misread character beside its dash")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-/8q7v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-/8q7v"};
+   QTest::newRow("a fallback with an apostrophe")<<"db_password = os.Getenv(\"DB_PASSWORD\")+\"it's"+QString("private7")+"\""<<key<<QStringList{"key: os.Getenv(\"DB_PASSWORD\")+\"it'sprivate7\""};
+   QTest::newRow("an environment read alone stays visible")<<"db_password = os.Getenv(\"DB_PASSWORD\")"<<key<<QStringList{};
+   QTest::newRow("a kubeadm token of letters")<<"kubeadm join worker --token "+lettersToken<<key<<QStringList{"key: "+lettersToken};}
   QTest::newRow("ordinary prose matches nothing")<<"The quick brown fox jumps over 3 lazy dogs in 2026. | Version 1.2 shipped on Monday."<<all<<QStringList{};
   // #1940 (#1931 fuzz groups 3, 6, 17, 19): public hashes, IDs, signatures and noise are no keys; what
   // looks the same beside a secret's name, or with a word that makes no label, stays covered.
@@ -663,6 +799,90 @@ private slots:
  void categoriesMatchTheirShapes() {
   QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(QStringList,expected);
   QCOMPARE(found(words(page),categories),expected);
+ }
+ // #1941: a value a column away from its label, in a form's or router's row, and a value under its label
+ // (a password manager's field). A tiled window's word beside a label is not its value.
+ void labelledValuesBesideAndBelow() {
+  const auto pw=QString("tuna salad ")+"77",strong=QString("Sum")+"mer"+"2024!";
+  const auto placed=[](const QList<QPair<QString,int>>& row,int line){QList<RecognizedWord> out;for(const auto& [text,x]:row)out.append({text,QRect(x,line*40,int(text.size())*8,20),90,line});return out;};
+  QCOMPARE(found(placed({{"Password",24},{"tuna",280},{"salad",320},{"77",368}},0),QStringList{"key"}),QStringList{"key: "+pw});
+  const auto lantern=QString("orchard-")+"lantern-"+"42";
+  QCOMPARE(found(placed({{"WPA",24},{QString("Ke")+"y",56},{lantern,280}},0),QStringList{"key"}),QStringList{"key: "+lantern});
+  // A word with no digit far from a label is no value ("Password    Show").
+  QCOMPARE(found(placed({{"Password",24},{"Show",280}},0),QStringList{"key"}),QStringList{});
+  // A label and its value below it, in a field.
+  auto field=placed({{"Password",28}},0)+placed({{strong,38}},1);
+  QCOMPARE(found(field,QStringList{"key"}),QStringList{"key: "+strong});
+  // Not a value a column away or far below.
+  field.last().rect.translate(400,0);QCOMPARE(found(field,QStringList{"key"}),QStringList{});
+  auto far=placed({{"Password",28}},0)+placed({{strong,38}},4);QCOMPARE(found(far,QStringList{"key"}),QStringList{});
+  // A translated label above its value (Sol on #1952).
+  QCOMPARE(found(placed({{QString::fromUtf8("Hasło:"),28}},0)+placed({{strong,38}},1),QStringList{"key"}),QStringList{"key: "+strong});
+  QCOMPARE(found(placed({{QString::fromUtf8("Mật"),28},{QString::fromUtf8("khẩu"),64}},0)+placed({{strong,38}},1),QStringList{"key"}),QStringList{"key: "+strong});
+  // A right-to-left label alone on its row, written visually with its colon first.
+  QCOMPARE(found(placed({{QString::fromUtf8(":סיסמה"),28}},0)+placed({{strong,38}},1),QStringList{"key"}),QStringList{"key: "+strong});
+  // ...with its colon read as a word of its own.
+  QCOMPARE(found(placed({{":",28},{QString::fromUtf8("סיסמה"),40}},0)+placed({{strong,38}},1),QStringList{"key"}),QStringList{"key: "+strong});
+  // "Forgot password?" under a label is a link, not a value.
+  QCOMPARE(found(placed({{"Password",28}},0)+placed({{"Forgot",38},{"password?",94}},1),QStringList{"key"}),QStringList{});
+  // A label ending a tiled window's row: the other window's word is not its value.
+  QCOMPARE(found(placed({{"git",10},{"log",42},{"token:",74},{"expired",800}},0),QStringList{"key"}),QStringList{});
+ }
+ // #1941 (Sol on #1952): a wallet's seed phrase beside a numbered list in another window that starts higher up:
+ // the wallet's own label, below the list's start, still takes its column; the list stays visible.
+ void seedPhraseBesideAnotherList() {
+  const QStringList seed{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};
+  const QStringList shopping{"apples","bread","milk","eggs","butter","cheese","rice","beans","onions","garlic","lemons","coffee"};
+  QList<RecognizedWord> page;
+  const auto put=[&](const QString& text,int x,int line){page.append({text,QRect(x,line*40,int(text.size())*8,20),90,line});};
+  for(int i=0;i<12;++i){put(QString::number(i+1)+".",20,i);put(shopping.at(i),44,i);}
+  put("Secret",900,2);put("Recovery",956,2);put("Phrase",1028,2);
+  for(int i=0;i<12;++i){const int row=3+i/3,col=i%3;put(QString::number(i+1)+".",900+col*200,row);put(seed.at(i),924+col*200,row);}
+  QStringList expected;for(int i=0;i<12;++i)expected<<"key: "+QString::number(i+1)+". "+seed.at(i);
+  QCOMPARE(found(page,QStringList{"key"}),expected);
+  // ...and with the other window on the right, nothing beside the label, and a "0." of its own.
+  QList<RecognizedWord> right;
+  const auto at=[&](const QString& text,int x,int line){right.append({text,QRect(x,line*40,int(text.size())*8,20),90,line});};
+  at("Secret",24,0);at("Recovery",80,0);at("Phrase",152,0);
+  for(int i=0;i<12;++i){const int row=1+i/3,col=i%3;at(QString::number(i+1)+".",24+col*200,row);at(seed.at(i),48+col*200,row);}
+  at("0.",900,2);at("note",924,2);for(int i=0;i<5;++i){at(QString::number(i+1)+".",900,3+i);at(shopping.at(i),924,3+i);}
+  QCOMPARE(found(right,QStringList{"key"}),expected);
+  // ...and that window's list going on past 24 (CodeRabbit on #1952).
+  at("25.",900,8);at("note",924,8);
+  QCOMPARE(found(right,QStringList{"key"}),expected);
+  // The m74 and k72 page: the phrase one word a row under its label, a shopping list beside it under its own
+  // heading, whose "10." to "12." start left of the single-digit numbers.
+  QList<RecognizedWord> page2;
+  const auto put2=[&](const QString& text,int x,int line,int width=-1){page2.append({text,QRect(x,line*26,width<0?int(text.size())*9:width,20),90,line});};
+  put2("Secret",30,0);put2("Recovery",118,0);put2("Phrase",239,0);put2("Shopping",416,0);put2("list",542,0);
+  for(int i=0;i<12;++i){put2(QString::number(i+1)+".",i<9?36:28,1+i);put2(seed.at(i),60,1+i);put2(QString::number(i+1)+".",i<9?424:411,1+i);put2(shopping.at(i),452,1+i);}
+  QCOMPARE(found(page2,QStringList{"key"}),expected);
+  // ...and a phrase column just left of the next window's heading stays the phrase's: only a two-digit number
+  // beside that window's own one-digit numbers is the other list's (Sol on #1952).
+  QList<RecognizedWord> page3;
+  const auto put3=[&](const QString& text,int x,int line){page3.append({text,QRect(x,line*26,int(text.size())*9,20),90,line});};
+  put3("Secret",30,0);put3("Recovery",92,0);put3("Phrase",173,0);put3("Notes",416,0);
+  for(int i=0;i<12;++i){const int row=1+i/3,col=i%3;put3(QString::number(i+1)+".",30+col*185,row);put3(seed.at(i),54+col*185,row);}
+  QCOMPARE(found(page3,QStringList{"key"}),expected);
+ }
+ // #1941: a code's content holds a secret Keys and tokens covers: a 2FA enrolment, a Wi-Fi network's
+ // password, or a key the rules find. An open network, a link or plain text is none.
+ void codesHoldingSecrets() {
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  QCOMPARE(quickRedact::codeSecret("otpauth://totp/Example:alice@example.com?secret="+seed+"&issuer=Example"),QString("otp"));
+  QCOMPARE(quickRedact::codeSecret("otpauth-migration://offline?data="+seed),QString("otp"));
+  QCOMPARE(quickRedact::codeSecret("WIFI:T:WPA;S:HomeNet;P:"+QString("orchard")+"\\;lantern;;"),QString("wifi"));
+  // A later empty P or T:nopass does not clear a password a reader takes (Sol on #1952).
+  QCOMPARE(quickRedact::codeSecret("WIFI:T:WPA;P:"+QString("orchard")+"-lantern;S:HomeNet;P:;T:nopass;;"),QString("wifi"));
+  // An escaped semicolon in the network's name makes no password field of its own.
+  QVERIFY(quickRedact::codeSecret("WIFI:T:WPA;S:Cafe\\;P:decoy;;")!=QString("wifi"));
+  // The whole content is read, however many lines it has.
+  QCOMPARE(quickRedact::codeSecret("header"+QString(401,'\n')+"PASSWORD="+QString("Crane")+"7Queue"),QString("key"));
+  QCOMPARE(quickRedact::codeSecret("WIFI:T:nopass;S:Cafe;P:;;"),QString());
+  QCOMPARE(quickRedact::codeSecret("WIFI:S:Cafe;T:nopass;;"),QString());
+  QCOMPARE(quickRedact::codeSecret("GITHUB_TOKEN="+QString("gh")+"p_"+"aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5"),QString("key"));
+  QCOMPARE(quickRedact::codeSecret("https://example.com/menu"),QString());
+  QCOMPARE(quickRedact::codeSecret("Table 12, ask for the wine list"),QString());
  }
  // #1618, decision 3: the account's names and the user's own list. Words
  // are literal, never a regex, compared ignoring case and accents.

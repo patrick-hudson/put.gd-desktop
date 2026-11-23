@@ -255,7 +255,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(valid&&p.contains("languages")){for(const auto& language:p["languages"].toArray()){valid=valid&&language.isString();languages.append(language.toString());}valid=valid&&textjob::validLanguages(languages);}
   if(!valid){reply(invalid(),{});return;}
   // An agent's recognition keeps its result for text.inspect; copying is its choice.
-  auto params=p;params["keepResult"]=true;
+  auto params=p;params["keepResult"]=true;params["agent"]=true;
   operations_.recognizeText(params,reply);return;
  }
  if(method=="text.inspect"||method=="text.cancel") {

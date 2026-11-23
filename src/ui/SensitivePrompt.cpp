@@ -57,9 +57,9 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  title->setObjectName("sensitiveTitle");title->setWordWrap(true);heading->addWidget(title,1);box->addLayout(heading);
  QString body;
  const auto subject=model_.file.isEmpty()?QStringLiteral("This capture"):QStringLiteral("This image");
- if(any)body=QStringLiteral("%1 shows %2.").arg(subject,describeSensitive(model_.findings.found));
+ if(any)body=QStringLiteral("%1 shows %2.").arg(subject,describeSensitive(withCodes(model_.findings.found,model_.codes)));
  // #1820: what was covered on its own stays covered, whichever choice is made but Cancel.
- const auto covers=describeSensitive(model_.covered);
+ const auto covers=describeSensitive(withCodes(model_.covered,model_.codes));
  if(!covers.isEmpty())body=(body.isEmpty()?QString():body+" ")+QStringLiteral("put.gd already covered %1.").arg(covers);
  if(!complete)body=(body.isEmpty()?QString():body+" ")+sensitiveReasonText(model_.findings.reason);
  body+=model_.file.isEmpty()?QStringLiteral(" It hasn't been uploaded."):QStringLiteral(" Nothing has been uploaded yet.");
