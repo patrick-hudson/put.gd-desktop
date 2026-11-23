@@ -24,7 +24,10 @@ recordings showed the host user's desktop (#165). This tool replaces it:
       exits 3. The marker clip (--media, looped without gaps) or a scrolling
       pattern (--pattern) plays at --video-size in the middle of the cover.
       Reads commands on stdin: `media` starts the video (unless --media-now),
-      `quit` (or end of input) closes the window.
+      `quit` (or end of input) closes the window. The window also closes within
+      a second of the process that started it exiting, so a driver that dies
+      can't leave the desktop covered (#1925); --detached turns that off for a
+      launcher that exits at once and stops the player by its PID itself.
   cover_player.py precheck --port 5900 [--output NAME] [--min-fraction 0.98]
       Grabs one frame from the host's loopback VNC tile, keeps it in memory
       only, and checks that the chosen output's rectangle is the cover colour.
@@ -299,7 +302,24 @@ def precheck(args):
     return 0 if ok else EXIT_UNCOVERED
 
 
+def watch_parent(timeout_add, quit_player, parent, getppid=os.getppid, every_ms=1000):
+    """Call quit_player once PARENT, the process that started this one, exits: getppid() then
+    changes to init or a subreaper. Polled, because a parent-death signal fires when the
+    starting thread ends, and a driver may start the player from a short-lived thread."""
+    def check():
+        if getppid() == parent:
+            return True
+        quit_player()
+        return False
+
+    if getppid() != parent:  # it exited while GTK started
+        quit_player()
+    else:
+        timeout_add(every_ms, check)
+
+
 def play(args):
+    parent = os.getppid()  # before the slow output probe and GTK start, so an early exit counts too
     try:
         target = choose_output(session_monitors(), args.output)
     except ValueError as error:
@@ -395,6 +415,8 @@ def play(args):
     GLib.io_add_watch(GLib.IOChannel.unix_new(sys.stdin.fileno()), GLib.PRIORITY_DEFAULT, GLib.IOCondition.IN | GLib.IOCondition.HUP, on_stdin)
     for signal_number in (2, 15):
         GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal_number, quit_player)
+    if not args.detached:
+        watch_parent(GLib.timeout_add, quit_player, parent)
     Gtk.main()
     return state['code']
 
@@ -479,6 +501,8 @@ def main(argv=None):
     p.add_argument('--audio-device')
     p.add_argument('--title', default='put.gd lab cover')
     p.add_argument('--place-timeout', type=int, default=10)
+    p.add_argument('--detached', action='store_true',
+                   help='keep playing after the process that started it exits (its launcher stops it by PID)')
     p.add_argument('--pointer', action='store_true',
                    help="keep the pointer visible over the cover (click runs: labwc reports a pointer's position only while it is shown)")
     c = sub.add_parser('precheck')

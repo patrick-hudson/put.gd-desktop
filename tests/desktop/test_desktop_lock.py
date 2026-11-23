@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import threading
@@ -170,6 +171,21 @@ class ReleaseCleanupCheck(LockTest):
         receipt = json.loads(Path(reply['receipt']).read_text())
         self.assertEqual((receipt['event'], receipt['releasedBy']), ('release', 'local_a'))
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
+
+    def test_release_refuses_while_a_cover_player_runs_and_passes_once_it_is_stopped(self):
+        pgrep = [(1, '')]
+        run = lambda argv: pgrep[0] if argv[0] == 'pgrep' else (1, '')
+        home = self.directory.parent
+        desktop = lock.Desktop(self.directory, 'k72', self.clock,
+                               lambda: lock.collect_inventory(home, run, own=set(), environment=lambda pid: {'HOME'}))
+        self.acquire(desktop=desktop)
+        pgrep[0] = (0, '900 /usr/bin/python3 /tmp/pgd.BANaL2/cover_player.py play --title Synthetic test\n')
+        with self.assertRaises(lock.LockError) as refused:
+            desktop.release('local_a', verified_clean=True)
+        self.assertEqual([item['id'] for item in refused.exception.details['check']['left']], ['900'])
+        pgrep[0] = (1, '')
+        desktop.release('local_a', verified_clean=True)
+        self.assertFalse((self.directory / 'desktop.lock').exists())
 
     def test_a_reused_pid_is_not_mistaken_for_a_preexisting_process(self):
         self.items = [process(11)]
@@ -355,6 +371,38 @@ class HostInventory(unittest.TestCase):
         self.assertEqual(len(notes), 1)
         self.assertTrue(notes[0].startswith('2 process(es) outside the desktop session'))
         self.assertTrue(notes[0].endswith(': 300 700'))
+
+    def test_reports_cover_players_and_orphaned_lab_test_x_servers_but_not_a_running_test_or_users_xvfb(self):
+        # #1925: 15 magenta covers and 11 orphaned stress-run Xvfb servers outlived released locks.
+        cover = '/usr/bin/python3 /tmp/pgda.PhRUBf/cover_player.py play --title Synthetic storage acceptance test'
+        orphan = 'Xvfb :230 -screen 0 1280x800x24 -noreset -nolisten tcp -auth /tmp/pgst._nyllchp/xvfb-run.2vhfjZ/Xauthority'
+        running = '/usr/bin/Xvfb :231 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/pgst.7a1k4u9f/xvfb-run.HrftW2/Xauthority'
+        user = 'Xvfb :99 -screen 0 1280x800x24 -nolisten tcp -auth /tmp/xvfb-run.Q1w2e3/Xauthority'
+        self.assertRegex(orphan, lock.PROCESS_PATTERN)
+        self.assertRegex(running, lock.PROCESS_PATTERN)
+        self.assertNotRegex(user, lock.PROCESS_PATTERN)
+        outputs = {'pgrep': (0, f'200 {cover}\n300 {orphan}\n400 {running}\n'),
+                   'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
+        environments = {'200': {'HOME'}, '300': {'HOME'}, '400': {'HOME'}}
+        with tempfile.TemporaryDirectory() as folder:
+            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs), own=set(),
+                                                    environment=environments.get, orphaned={'300'}.__contains__)
+        self.assertEqual([(item['kind'], item['id']) for item in items], [('process', '200'), ('process', '300')])
+        self.assertTrue(notes[0].endswith('shared SSH work): 400'))
+
+    def test_a_process_is_orphaned_once_its_parent_exits(self):
+        self.assertFalse(lock.process_orphaned(os.getpid()))
+        self.assertFalse(lock.process_orphaned(2**31))
+        child = subprocess.Popen([sys.executable, '-c', 'import os,subprocess,sys\n'
+                                  'p=subprocess.Popen([sys.executable,"-c","import time;time.sleep(30)"])\n'
+                                  'print(p.pid,flush=True)'], stdout=subprocess.PIPE, text=True)
+        grandchild = int(child.stdout.readline())
+        child.stdout.close()
+        child.wait(10)
+        try:
+            self.assertTrue(lock.process_orphaned(grandchild))
+        finally:
+            os.kill(grandchild, 15)
 
     def test_reads_environment_names_and_tells_an_exited_process_from_an_unreadable_one(self):
         self.assertIn('PATH', lock.process_environment(os.getpid()))

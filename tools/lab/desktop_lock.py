@@ -92,8 +92,12 @@ monotonic = time.monotonic  # `run`'s clock for its own lease deadline
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
-PROCESS_PATTERN = 'putgd|host_input|videotestsrc'
-ALWAYS_REPORTED = ('host_input', 'videotestsrc')  # input agents and test patterns, with or without a display
+PROCESS_PATTERN = 'putgd|host_input|videotestsrc|cover_player|Xvfb .*-auth /tmp/pg'
+# Input agents, test patterns and the magenta test cover, with or without a display (#1925).
+ALWAYS_REPORTED = ('host_input', 'videotestsrc', 'cover_player')
+# A test X server whose xvfb-run auth file sits in a lab tool's private /tmp/pg* folder (stress_suite's
+# /tmp/pgst.*, for one). A user's own xvfb-run keeps it in /tmp/xvfb-run.*, which doesn't match.
+LAB_XVFB = re.compile(r'(?:\S*/)?Xvfb .*-auth /tmp/pg[^/ ]*/')
 LEFTOVER_PATHS = ('.local/share/applications/*putgd*.desktop',
                   '.local/share/gnome-shell/extensions/putgd@put.gd',
                   '.local/share/putgd', '.cache/putgd', '.config/putgd')
@@ -210,11 +214,23 @@ def process_environment(pid):
     return {entry.partition(b'=')[0].decode(errors='replace') for entry in data.split(b'\0') if entry}
 
 
-def collect_inventory(home, run=execute, own=None, environment=process_environment):
+def process_orphaned(pid):
+    """True once the process that started PID has exited: PID now belongs to init or to a
+    systemd subreaper. False while its parent runs, or when PID can't be read."""
+    try:
+        parent = Path(f'/proc/{pid}/stat').read_text().rpartition(')')[2].split()[1]
+        return parent == '1' or Path(f'/proc/{parent}/comm').read_text().strip() == 'systemd'
+    except (OSError, IndexError):
+        return False
+
+
+def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned):
     """List what a desktop session can leave on this host: matching processes in the desktop
-    session (or that can't be told apart), input agents and test patterns, Flatpak instances,
-    user desktop entries, extension copies and data, and a putgd package. Matching processes
-    without DISPLAY or WAYLAND_DISPLAY are shared SSH work (builds, syncs, collectors)."""
+    session (or that can't be told apart), input agents, test patterns and cover players,
+    orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
+    data, and a putgd package. Other matching processes without DISPLAY or WAYLAND_DISPLAY are
+    shared SSH work (builds, syncs, collectors), and so is a lab test X server whose test still
+    runs."""
     own = {os.getpid(), os.getppid()} if own is None else own
     items, notes = [], []
 
@@ -229,6 +245,12 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     for line in output.splitlines():
         pid, _, command = line.strip().partition(' ')
         if not pid.isdigit() or int(pid) in own:
+            continue
+        if LAB_XVFB.match(command):
+            if not orphaned(pid):
+                shared.append(pid)
+                continue
+            add('process', pid, f'process:{pid}:{process_start(pid)}', command)
             continue
         names = environment(pid)
         if names is False:

@@ -88,11 +88,12 @@ def pattern(scope, text=None):
     fifo=scope.root+'/pattern.fifo'
     scope.python('import os\nos.mkfifo('+repr(fifo)+',0o600)')
     # A child holds the FIFO open; no leaked shell, implicit desktop input or
-    # kill-by-name. Scope.launch owns this PID and its exact start identity.
+    # kill-by-name. Scope.launch owns this PID and its exact start identity, and its
+    # launcher exits at once, so the player runs --detached.
     code='''import os,sys
 fd=os.open(FIFO,os.O_RDWR)
 os.dup2(fd,0)
-os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture'])
+os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture','--detached'])
 '''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
     scope.launch(['python3','-c',code],name='pattern',environment={'GTK_USE_PORTAL':'0'})
     def ready():
