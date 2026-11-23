@@ -1,0 +1,7 @@
+#!/bin/sh
+# Refuse a push whose new commits gitleaks flags (#1959); see hooklib.py.
+# install.py copies this directory out of the tree, so a checkout of a branch without
+# tools/git-hooks still runs it; the checked-out copy wins when it exists.
+d=$(git rev-parse --show-toplevel 2>/dev/null)/tools/git-hooks
+[ -f "$d/hooklib.py" ] || d=$(dirname "$0")
+exec python3 "$d/hooklib.py" pre-push "$@"

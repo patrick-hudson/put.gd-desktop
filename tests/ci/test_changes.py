@@ -29,7 +29,7 @@ class Selection(unittest.TestCase):
                             'tests/releases/test_publish.py', 'tests/ci/test_changes.py',
                             'tests/performance/observe_cold_family.py', 'tools/mcp/share_mcp/server.py',
                             '.github/renovate.json', '.github/dependabot.yml', 'tools/maintenance/refresh_pins.py',
-                            '.gitleaks.toml'],
+                            '.gitleaks.toml', 'tools/git-hooks/hooklib.py'],
                            False, False)
 
     def test_surface_driver_pin_and_classifier_render_the_catalog(self):
