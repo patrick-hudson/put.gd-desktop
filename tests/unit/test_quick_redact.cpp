@@ -1117,6 +1117,12 @@ private slots:
   // #1930: a word of letters far along the row is no lost last label (read off a bar chart, 648 px apart).
   const QList<RecognizedWord> far{{"ops@example",QRect(237,1227,104,24),0,0},{"ia",QRect(1211,1226,24,24),52,0}};
   QCOMPARE(found(far,QStringList{"email"}),QStringList{});
+  // ...nor after a legend's square colour swatch read as "W@W", its label beside it.
+  const QList<RecognizedWord> swatch{{"W@W",QRect(343,597,25,25),47,0},{"Egress",QRect(384,604,80,29),92,0},{"$25,794",QRect(481,604,100,25),93,0}};
+  QCOMPARE(found(swatch,QStringList{"email"}),QStringList{});
+  // A short address that lost its dot is still wide enough: "i@x" "io".
+  const QList<RecognizedWord> narrow{{"i@x",QRect(0,0,30,20),90,0},{"io",QRect(36,0,16,20),90,0}};
+  QCOMPARE(found(narrow,QStringList{"email"}),QStringList{"email: i@x io"});
   const QList<RecognizedWord> handle{{"@support.",QRect(0,0,72,20),90,0},{"jane+",QRect(80,0,40,20),90,0},{"tag@example.com",QRect(119,0,120,20),90,0}};
   QCOMPARE(found(handle,QStringList{"email"}),QStringList{"email: @support. jane+ tag@example.com"});
   const QList<RecognizedWord> dash{{"-to",QRect(0,0,24,20),90,0},{"bob@example.com",QRect(23,0,120,20),90,0}};
