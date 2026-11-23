@@ -116,6 +116,10 @@ struct Settings {
     // preferences.fileManagerMenu (#1105): the AppImage's per-user menu entries;
     // DEB and RPM entries are system files and always on.
     bool fileManagerMenu = true;
+    // preferences.unhingedMode (#1937): heavy work (text recognition, recording
+    // encode, video posters, History previews) uses every CPU instead of a share,
+    // at normal priority. Memory guards stay, scaled to the RAM available. Off by default.
+    bool unhingedMode = false;
     // preferences.textRecognitionLanguages (#1428): up to three Tesseract language
     // identifiers for Copy text, in order. Empty: the desktop locale's language
     // when its data is installed, then English.

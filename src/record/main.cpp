@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
         std::fputc('\n', stdout);
         return 0;
     }
-    if (argc == 3 && std::strcmp(argv[1], "--poster") == 0) {
+    if ((argc == 3 || (argc == 4 && std::strcmp(argv[3], "--all-cores") == 0)) && std::strcmp(argv[1], "--poster") == 0) {
         // History's poster frame for a finished video (#112). The resident opens
         // the stored file and passes it as standard input; the PNG (long edge at
         // most 256 px, duration in a text chunk) goes to standard output. The
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
         const qint64 maxPixels = QByteArray(argv[2]).toLongLong(&ok);
         if (!ok || maxPixels < 1) return 2;
         record::Poster poster;
-        if (const auto error = record::renderPoster(QStringLiteral("/proc/self/fd/0"), 256, maxPixels, poster)) return error.code == "input_excessive" ? 3 : 1;
+        if (const auto error = record::renderPoster(QStringLiteral("/proc/self/fd/0"), 256, maxPixels, poster, argc == 4)) return error.code == "input_excessive" ? 3 : 1;
         poster.image.setText(QStringLiteral("putgd-duration-ms"), QString::number(poster.durationUs / 1000));
         QByteArray png;
         QBuffer buffer(&png);

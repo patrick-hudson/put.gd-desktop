@@ -1753,7 +1753,7 @@ void OperationService::queuePosters(const Operation& op) {
  for(const auto& item:op.items) {
   if(item.artifact.category!="videos"||!item.artifact.previewPath.isEmpty())continue;
   if(std::any_of(posterQueue_.cbegin(),posterQueue_.cend(),[&](const PosterTask& task){return task.itemId==item.artifact.id;}))continue;
-  PosterTask task;task.operationId=op.id;task.itemId=item.artifact.id;task.budget=op.settings.previewCacheBytes;task.maximumPixels=op.settings.limits.imagePixels;task.waiting.start();
+  PosterTask task;task.operationId=op.id;task.itemId=item.artifact.id;task.budget=op.settings.previewCacheBytes;task.maximumPixels=op.settings.limits.imagePixels;task.allCores=op.settings.unhingedMode;task.waiting.start();
   posterQueue_.append(std::move(task));
  }
  pumpPosters();
@@ -1769,7 +1769,7 @@ void OperationService::makePreview(const QString& id,JsonReply reply,bool retry)
  for(auto& task:posterQueue_)if(task.itemId==id&&task.onDemand){task.replies.append(std::move(reply));return;}
  const auto onDemand=std::count_if(posterQueue_.cbegin(),posterQueue_.cend(),[](const PosterTask& task){return task.onDemand;});
  if(onDemand>=maximumQueuedPreviews){reply({"preview_busy","Other previews are being made; select the item again shortly",{}},{});return;}
- PosterTask task;task.itemId=id;task.onDemand=true;task.budget=snapshot.previewCacheBytes;task.maximumPixels=snapshot.limits.imagePixels;task.waiting.start();task.replies.append(std::move(reply));
+ PosterTask task;task.itemId=id;task.onDemand=true;task.budget=snapshot.previewCacheBytes;task.maximumPixels=snapshot.limits.imagePixels;task.allCores=snapshot.unhingedMode;task.waiting.start();task.replies.append(std::move(reply));
  // Ahead of after-operation posters, behind earlier selections; an
  // after-operation task for the same item becomes this one.
  posterQueue_.removeIf([&](const PosterTask& queued){return queued.itemId==id;});
@@ -1815,7 +1815,7 @@ void OperationService::pumpPosters() {
   }
   if(from.isEmpty()){e={"preview_source_missing","Neither the stored file nor a local copy is available",{}};return QJsonObject{};}
   ArtifactStore artifacts(root+"/artifacts");Error failure;QString made;
-  if(category=="videos")made=artifacts.poster(source,task.budget,task.maximumPixels,cancelled,&failure);
+  if(category=="videos")made=artifacts.poster(source,task.budget,task.maximumPixels,cancelled,&failure,task.allCores);
   else if(!cancelled->load()){made=artifacts.preview(source,task.budget,task.maximumPixels);if(made.isEmpty())failure={"preview_failed","The image preview could not be made",{}};}
   else failure={"cancelled","Preview cancelled",{}};
   if(made.isEmpty()){e=failure;return QJsonObject{};}

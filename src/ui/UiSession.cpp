@@ -1,4 +1,5 @@
 #include "UiSession.h"
+#include "core/CpuShare.h"
 #include <QPointer>
 #include <QRunnable>
 #include <utility>
@@ -6,7 +7,12 @@ namespace putgd {
 UiSession::UiSession(SessionClient& client,QObject* parent):QObject(parent),client_(client){previews_.setMaxThreadCount(1);previews_.setExpiryTimeout(1000);}
 UiSession::~UiSession(){previews_.clear();previews_.waitForDone();}
 SessionClient::RequestId UiSession::request(const QString& method,const QJsonObject& params,QObject* receiver,SessionClient::Reply reply){return client_.request(method,params,receiver,std::move(reply));}
-void UiSession::applySettings(const QJsonObject& settings){document_=settings["document"].toObject();metadata_=settings["metadata"].toObject();}
+// History's previews decode one at a time, leaving the desktop its cores. Unhinged
+// mode (#1937) decodes one per CPU, as many as half the free memory holds at the
+// largest preview (16 megapixels, 64 MiB decoded, twice over while it is scaled).
+int UiSession::previewWorkers(bool allCores,int cores,qint64 available){return allCores?cpu::workersWithin(cores,available,128LL*1024*1024):1;}
+void UiSession::applySettings(const QJsonObject& settings){document_=settings["document"].toObject();metadata_=settings["metadata"].toObject();
+ const bool allCores=document_["preferences"].toObject()["unhingedMode"].toBool(false);previews_.setMaxThreadCount(previewWorkers(allCores,cpu::logicalCpus(),allCores?cpu::memoryAvailable():-1));}
 void UiSession::applySnapshot(const QJsonObject& data){const auto previous=revision();const auto wasReady=ready_;applySettings(data["settings"].toObject());diagnostics_=data["diagnostics"].toObject();build_=data["build"].toObject();epoch_=data["residentEpoch"].toString();ready_=data["operationsReady"].toBool();{const auto e=data["operationsError"].toObject();journalError_=ready_?Error{}:Error{e["code"].toString(),e["message"].toString(),e["details"].toObject()};}if(previous!=revision())emit accepted(revision());emit statusChanged();if(!wasReady&&ready_)emit initialized();emit operationsChanged();
  // A credential read or store ended in the resident, whoever started it (#600).
  if(const auto credentials=data["credentials"].toObject();credentials.contains("generation")){const auto previous=std::exchange(credentialGeneration_,credentials["generation"].toInteger());if(previous>=0&&previous!=credentialGeneration_)emit credentialsChanged();}

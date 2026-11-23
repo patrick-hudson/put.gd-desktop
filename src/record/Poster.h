@@ -19,5 +19,6 @@ struct Poster {
 // Picks a frame about 1 s in (half-way into shorter clips), then 25% and 50%
 // in when that frame is flat (black, a fade or a solid fill), then the first
 // decodable frame. Frames larger than maxPixels are refused before decoding.
-Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out);
+// allCores (Unhinged mode, #1937) decodes on every CPU instead of two threads.
+Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out, bool allCores = false);
 }

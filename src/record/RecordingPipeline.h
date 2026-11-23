@@ -68,6 +68,7 @@ public:
         qint64 budgetBytes = 0;      // stop automatically near this file size; 0 = none
         QStringList encoders;        // preference order of GStreamer H.264 encoders
         QStringList audioEncoders;   // preference order of AAC encoders
+        bool allCores = false;       // Unhinged mode (#1937): encode and convert on every CPU
     };
     explicit RecordingPipeline(QObject* parent = nullptr);
     ~RecordingPipeline() override;

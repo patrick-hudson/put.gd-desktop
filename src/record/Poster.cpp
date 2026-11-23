@@ -33,7 +33,7 @@ struct Decoder {
         if (video) avcodec_free_context(&video);
         if (format) avformat_close_input(&format);
     }
-    Error open(const QString& path, qint64 maxPixels) {
+    Error open(const QString& path, qint64 maxPixels, bool allCores) {
         if (!packet || !frame) return fail("Out of memory");
         AVDictionary* options = nullptr;
         av_dict_set(&options, "protocol_whitelist", "file", 0);
@@ -52,7 +52,9 @@ struct Decoder {
         if (!video || avcodec_parameters_to_context(video, parameters) < 0) return fail("Cannot decode the video");
         // The decoder refuses any later frame over the limit, whatever the header said.
         video->max_pixels = maxPixels;
-        video->thread_count = 2;
+        // Two threads leave the desktop its cores; Unhinged mode (#1937) lets
+        // FFmpeg pick, one per CPU as the export does.
+        video->thread_count = allCores ? 0 : 2;
         video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
         if (avcodec_open2(video, decoder, nullptr) < 0) return fail("No decoder for this video");
         return {};
@@ -149,10 +151,10 @@ bool flat(const QImage& image) {
 }
 }
 
-Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out) {
+Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out, bool allCores) {
     out = {};
     Decoder decoder;
-    if (auto error = decoder.open(input, maxPixels)) return error;
+    if (auto error = decoder.open(input, maxPixels, allCores)) return error;
     const auto* stream = decoder.format->streams[decoder.index];
     out.durationUs = decoder.durationUs();
     out.size = QSize(stream->codecpar->width, stream->codecpar->height);
@@ -177,7 +179,7 @@ Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& 
     if (!out.image.isNull()) return {};
     // Every seek failed: the first decodable frame, read from a fresh start.
     Decoder first;
-    if (auto error = first.open(input, maxPixels)) return error;
+    if (auto error = first.open(input, maxPixels, allCores)) return error;
     frame = av_frame_alloc();
     if (frame && first.frameAt(0, frame)) out.image = toImage(frame, aspect, rotation, maxEdge);
     av_frame_free(&frame);
