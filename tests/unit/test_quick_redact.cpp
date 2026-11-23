@@ -373,6 +373,12 @@ private slots:
    QTest::newRow("a connection string whose password holds an @")<<at<<all<<QStringList{"key: "+at};
    const auto two=QString("DATABASE_URL=mysql://root:Kx9@mQ")+"2z@10.0.0.5/app";
    QTest::newRow("a connection string whose password starts with a short piece before an @")<<two<<all<<QStringList{"key: "+two};
+   // ...judged on the password alone, in its own word, in one pass (Sol on #1967).
+   const auto query=QString("https://app:Q7v")+"9r@db.test?display=XXXXXX&contact=a@b.test";
+   QTest::newRow("a query's masked value does not hide the password")<<query<<QStringList{"key"}<<QStringList{"key: "+query};
+   QString many=QString("https://app:Q7v")+"9r@db.test?q=";for(int i=0;i<16000;++i)many+=QStringLiteral("a@");
+   QTest::newRow("a long query full of @ keeps the password covered")<<many<<QStringList{"key"}<<QStringList{"key: "+many};
+   QTest::newRow("an address later in the sentence makes no password")<<"See https://app:example@host for alice@example.com"<<QStringList{"key"}<<QStringList{};
    QTest::newRow("an address and a URL with an @ in its path are no password")<<"mail alice@example.com or see https://example.com:8443/a@b and ssh://git@github.com:22/x"<<QStringList{"key"}<<QStringList{};}
   QTest::newRow("a secret-named value in a word")<<"DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"<<all<<QStringList{"key: DB_PASSWORD="+QString("Tr0ub4dor")+"&3xyz!Q"};
   QTest::newRow("a secret-named value after its name")<<"password: "+QString("Hn4!vQ8z")+"R2#wLp"<<all<<QStringList{"key: "+QString("Hn4!vQ8z")+"R2#wLp"};
