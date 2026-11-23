@@ -933,7 +933,9 @@ other tool active it does not. The user's side is in the
       and `bh=` when `DKIM-Signature`, `ARC-` or `bh=` appears on its row or the six above. No
       certificate field is one. The value is the label's alphabet up to its usual length, at most 15
       percent and two characters more. A word counts as in the alphabet after quotes and a trailing
-      comma or semicolon are trimmed, with at most one character in eight outside it and no colon. A
+      comma or semicolon are trimmed, with at most one character in eight outside it and no colon; the
+      hex alphabet takes dashes and needs a digit after recognition's confusions are mapped, and the
+      base64 one takes `+`, `/`, `_`, `-` and `=` padding at the end. A
       label of no fixed length (`b=`, `X-Google-Smtp-Source`) runs on over the rows below whose every
       word is in its alphabet that way, each right below the one before, starting
       within four characters of the label's row or the value's start, while each row it leaves
@@ -946,9 +948,9 @@ other tool active it does not. The user's side is in the
       integrity prefix (`sha256-`, `sha384-`, `sha512-`, the number as read too: `shaS12-`,
       `sha51i2-`) with the base64 words joined after it while their total stays within the digest's
       length plus four (the first word itself has no cap). Separately, a run that holds an exact
-      `sha256-`, `sha384-` or `sha512-` followed by base64, at its start or after any character that
-      is not a letter or digit, is public as a whole, as before #1940 (the run may hold more than the
-      digest); so is one that does after up to two short label words (`4` `integrity`).
+      `sha256-`, `sha384-` or `sha512-` and one base64 character after it, at the run's start or after
+      any character that is not an ASCII letter or digit, is public as a whole, as before #1940: the
+      rest of the run is not checked, so it may hold more than the digest; so is one that does after up to two short label words (`4` `integrity`).
     Fallback, failing closed: a segment of the line as it would be without skipping, holding a
     skipped word, is matched as if nothing in it were skipped when it also holds a word that is not
     skipped, not a label or evidence for one, and looks like a secret of its own (eight letters and
@@ -964,7 +966,7 @@ other tool active it does not. The user's side is in the
       from a meter's bars (`I l L i T | E F t f j J`, htop and btop) or all from a receipt's dotted
       leaders in lowercase (`c e o s n m r u v w t`); a run whose letters and digits are 85 percent
       `0` and `1`, or 60 percent with `0b` followed by at least 16 binary digits in it; and a run
-      whose letters and digits, case folded and with everything else removed, have eight in ten,
+      whose letters and digits, lowercased and with everything else removed, have eight in ten,
       after the first two, repeating the character two before them and differing from the one before
       (`hahaha`);
     - a hex run needs one character in eight to be a digit as read, not counting a lowercase `o`, so
