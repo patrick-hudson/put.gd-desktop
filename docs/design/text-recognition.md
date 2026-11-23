@@ -902,6 +902,64 @@ other tool active it does not. The user's side is in the
     public-key blocks; data URIs; JSON web tokens signed with `alg: none`; subresource integrity
     digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); Twilio account SIDs; and base64 that
     decodes to text with spaces in it.
+  - Public data by what is around it (#1940, from the #1931 fuzz report's groups 3, 6, 9, 17, 19 and
+    21). These words take no part in the hex, base64 and repeated runs, though a known prefix's token
+    or a JSON web token in one is still found, and so are secret-named settings, password URLs and
+    PEM blocks:
+    - a hex dump's row: an offset (one misread character allowed) and six byte or word groups or
+      more, or twelve byte groups without one; its text column is the row's own bytes. A
+      fingerprint of exactly ten groups of four hex;
+    - a digest (32, 40, 56, 64, 96 or 128 hex, two characters more or less as read) that starts its
+      row before a ref (`refs/…`, `HEAD`) or a file name, the rest of its column at most a word in
+      brackets; and the digest rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`, `b3sum`,
+      `cksum`, as read too: `mdSsum`), a git plumbing command (`rev-parse`, `show-ref`, `ls-remote`,
+      `rev-list`, `cat-file`, `submodule` and the like) or `podman`/`docker` with `--no-trunc`,
+      `inspect` or `--digests`, up to the first row that isn't one or holds an `=`;
+    - the value of a label that says it is an identifier, a public key, a certificate or a signature:
+      `Event ID`, `ID`, `trace_id`, `span_id`, `request_id`, `req`, `correlation_id`, `Boot ID`,
+      `Machine ID`, `x-amz-request-id`, `traceparent` and `Change-Id` (hex and dashes); git's `tree`,
+      `parent` and `object` at a row's start; `x-amz-id-2`, `X-Amz-Cf-Id`, `PublicKey`, `public key`,
+      go.sum's `h1:`, `Message-ID`, `X-Google-Smtp-Source`, a DKIM header's `b=` and `bh=` (with
+      `DKIM-Signature`, `ARC-` or `bh=` within six rows above) and kubeconfig's
+      `certificate-authority-data`, `client-certificate-data`, `tls.crt` and `ca.crt` (base64). The
+      value is the label's alphabet up to its usual length (at most 15 percent more); a label of no
+      fixed length runs on over the rows below that hold its alphabet alone, while each row it leaves
+      reaches the block's right edge, as a wrap leaves it. An unlisted word before `ID` or `Key`
+      (`Secret ID:`, `Access Key:`) makes no label. The usual misreads of these labels count: a
+      doubled `x` (`xX-amz-id-2`), `i` read as `t`, `1` or `l` before the final `d` (`x-amz-td-2`,
+      `tracelId`, `traceld`, `requestiId`);
+    - a W3C `traceparent` value and an Itanium-mangled C++ symbol (`_ZN9…`) as a word of its own,
+      and a subresource integrity digest with its base64 words up to the digest's length, its `512`
+      as read too (`shaS12-`, `sha51i2-`).
+    Fails closed: where a public word would have joined a token segment with a word that is none of
+    these, not their label or evidence, and looks like a secret of its own (eight letters and digits
+    or more with both, after any label in the word; not a timestamp, a date, an algorithm name or a
+    `0x` address of up to 16 hex), the whole segment is matched as before. So is a segment that ends its
+    row when the next row's first segment holds such a word, which a wrap would make its remainder.
+  - Not keys either (#1940): base64 that decodes whole to at least 18 bytes of printable ASCII, half
+    of them letters and one in sixteen a space, after any label in its first word (one misread
+    character breaks the decoding and the run stays covered); a run that recognition made of drawn
+    noise, whose commonest letters as read (up to four, making 85 percent of its letters, which are
+    four in five of its letters and digits) are all from a meter's bars (`I l L i T | E F t f j J`,
+    htop and btop) or all lowercase from a receipt's dotted leaders (`c e o s n m r u v w t`), a run
+    that is 85 percent `0` and `1` (or 60 percent with a `0b` literal in it), or one two-letter syllable
+    repeated (`hahaha`); and a hex run that is hex only through a lowercase `o` read as `0`, so needs
+    one character in eight to be another digit. A hash word names a digest only in the run's own
+    segment or within three words and 32 characters beside it, none holding hex of its own and none
+    a column away (30 characters), so a `commit <sha>` in another window on the same row leaves a hex
+    secret covered; a secret word anywhere on the row still keeps every run covered. A secret-named
+    setting shows no secret when its value reads it from where it is kept (`std::env::var(`,
+    `os.Getenv(`, `Environment.GetEnvironmentVariable(`, `ENV.fetch(`, `import.meta.env.`,
+    `Deno.env.get(`), is a type (`Option<String>`, `String`, `str`, `string` and the like) or, for a
+    name that isn't a password's, a count with thousands commas (`total_tokens: 12,450`). An AWS key
+    ID's prefix read across two words (`AK` `IA…`) needs a body under three quarters digits or `O`,
+    `Q` and `D`, so a receipt's `AID A0000000031010` is no key; a Telegram bot ID has no leading zero,
+    so an `xxd` row is no bot token.
+  - Limits (#1940): left covered on purpose, because the shape is a secret's too: bcrypt hashes,
+    `0x` and 64 hex (a transaction hash and a private key look the same), sample passwords in
+    `.env.example`, and bare base64 or hex with no label. Recognition misreads that break a label or
+    a hex dump's groups leave the value covered. A hash word in another window within 30 characters
+    of a hex run, with no hex between, still names it a digest.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
