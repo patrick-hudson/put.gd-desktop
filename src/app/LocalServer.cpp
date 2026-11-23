@@ -115,8 +115,9 @@ void LocalServer::accept() {
 }
 void LocalServer::setUiProcess(qint64 pid) {uiPid_=pid>0?pid:0;uiStart_=uiPid_?processStartTime(uiPid_):0;}
 bool LocalServer::fromUi(const LocalPeer& peer) const {
- // The same process, not a later one given its PID: the start time must match, and an unknown one is no match.
- return uiPid_>0&&uiStart_!=0&&peer.pid==uiPid_&&peer.start==uiStart_&&peer.uid==uint(::getuid());
+ // The same process, not a later one given its PID: the peer held by its pidfd while its start time was
+ // read, and that start time the UI's. An unknown one, or a kernel without SO_PEERPIDFD, is no match.
+ return uiPid_>0&&uiStart_!=0&&peer.pinned&&peer.pid==uiPid_&&peer.start==uiStart_&&peer.uid==uint(::getuid());
 }
 void LocalServer::dispatch(const QJsonObject& request,JsonReply reply,bool person) {
  reply=[guarded=QPointer<LocalServer>(this),reply=std::move(reply),method=request["method"].toString().left(64),params=request["params"].toObject()](Error error,QJsonObject result){if(error)logRejection(method,error);if(guarded)guarded->noteOutcome(method,params,error);reply(std::move(error),std::move(result));};

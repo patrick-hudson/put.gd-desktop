@@ -6,6 +6,7 @@
 #include "core/Log.h"
 #include "app/LocalServer.h"
 #include <QLocalSocket>
+#include <QProcess>
 #include <QDirIterator>
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -189,14 +190,20 @@ private slots:
    const auto id=QJsonDocument::fromJson(reply).object()["result"].toObject()["operationId"].toString();
    return !id.isEmpty()&&waitFor([&]{return resident.ended(id);})?id:QString();
   };
+  // Another process standing in for putgd-ui: a caller that is not it is an agent even while a UI runs.
+  QProcess ui;ui.start(QStringLiteral("sleep"),{QStringLiteral("60")});QVERIFY(ui.waitForStarted(5000));
+  const auto stop=qScopeGuard([&ui]{ui.kill();ui.waitForFinished(5000);});
   struct Case {QString method;QJsonObject params;};
   const QList<Case> cases{{"history.copyText",{{"id","text-item"}}},{"action.invoke",{{"action","text"}}}};
   for(const auto& c:cases){
-   // An agent (no putgd-ui, or another process): the clipboard gets the code by its kind, the ordinary code whole.
-   server.setUiProcess(0);
-   QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
-   QVERIFY2(!resident.source.copied.text.contains(seed),qPrintable(c.method));QVERIFY2(resident.source.copied.text.contains("[2FA QR code withheld]"),qPrintable(c.method));
-   QVERIFY(resident.source.copied.text.contains(codeCanary));
+   // An agent, with no putgd-ui and with another process as putgd-ui: the clipboard gets the code by its kind,
+   // the ordinary code whole.
+   for(const qint64 registered:{qint64(0),qint64(ui.processId())}){
+    server.setUiProcess(registered);
+    QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
+    QVERIFY2(!resident.source.copied.text.contains(seed),qPrintable(c.method));QVERIFY2(resident.source.copied.text.contains("[2FA QR code withheld]"),qPrintable(c.method));
+    QVERIFY(resident.source.copied.text.contains(codeCanary));
+   }
    // The person's putgd-ui (here, this process): their own copy keeps it.
    server.setUiProcess(QCoreApplication::applicationPid());
    QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
