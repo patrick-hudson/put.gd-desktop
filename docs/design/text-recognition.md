@@ -900,8 +900,8 @@ other tool active it does not. The user's side is in the
     `api` and the like); publishable keys (`pk_live_`, `pk_test_`, `pk.ey…`, `sb_publishable_`;
     Stripe's `pk_` is not a key prefix); the base64 of an SSH public key line; certificate and
     public-key blocks; data URIs; JSON web tokens signed with `alg: none`; subresource integrity
-    digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); Twilio account SIDs; and base64 that
-    decodes to text with spaces in it.
+    digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); and Twilio account
+    SIDs.
   - Public data by what is around it (#1940, from the #1931 fuzz report's groups 3, 6, 9, 17, 19 and
     21). These words take no part in the hex, base64 and repeated runs, though a known prefix's token
     or a JSON web token in one is still found, and so are secret-named settings, password URLs and
@@ -914,9 +914,11 @@ other tool active it does not. The user's side is in the
       brackets; and the digest rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`, `b3sum`,
       `cksum`, as read too: `mdSsum`), a git plumbing command (`rev-parse`, `show-ref`, `ls-remote`,
       `rev-list`, `cat-file`, `submodule` and the like) or `podman`/`docker` with `--no-trunc`,
-      `inspect` or `--digests`, in the command's own column (each digest starting within four
-      characters of where the command's column starts, right below the row before, so a row of
-      another pane is not one), up to the first row that isn't one or holds an `=`;
+      `inspect` or `--digests`, in the command's own column: the row is cut into columns at gaps of
+      four characters (panes side by side), the column whose words after a line number hold the whole
+      command starts it, and each digest row has its digest where that column starts (after a line
+      number), right below the row before, in the first row's form (a digest alone, or a digest and
+      one more word, never one with an `=`); anything else ends the rows;
     - the value of a label that says it is an identifier, a public key, a certificate or a signature:
       `Event ID`, `ID`, `trace_id`, `span_id`, `request_id`, `req`, `correlation_id`, `Boot ID`,
       `Machine ID`, `x-amz-request-id`, `traceparent` and `Change-Id` (hex and dashes); git's `tree`,
@@ -939,11 +941,7 @@ other tool active it does not. The user's side is in the
     JSON web token (one split at its prefix), the whole segment is matched as before. So is a segment
     that ends its row when the next row's first segment holds such a word, which a wrap would make
     its remainder.
-  - Not keys either (#1940): base64 that decodes whole, after any label in its first word, to prose:
-    at least 18 bytes and six words of letters, spaces and plain punctuation (no digit, no `:`, `=`,
-    `@` or `/`), half of them letters and one in sixteen a space, and no word that names a credential
-    (`password`, `pin`, `secret`, `token`, `key`, `auth`, `bearer`, `private`, `code` and the like).
-    One misread character breaks the decoding and the run stays covered; a run that recognition made of drawn
+  - Not keys either (#1940): a run that recognition made of drawn
     noise, whose commonest letters as read (up to four, making 85 percent of its letters, which are
     four in five of its letters and digits) are all from a meter's bars (`I l L i T | E F t f j J`,
     htop and btop) or all lowercase from a receipt's dotted leaders (`c e o s n m r u v w t`), a run
@@ -956,18 +954,19 @@ other tool active it does not. The user's side is in the
     setting (never a URL's password) shows no secret when its value is a whole call that reads it by
     name from where it is kept, with nothing after it but `.unwrap()`, `.expect(…)`, `?` or `;`
     (`std::env::var("DB_PASSWORD")`, `os.Getenv(…)`, `Environment.GetEnvironmentVariable(…)`,
-    `ENV.fetch(…)`, `Deno.env.get(…)`, `import.meta.env.X`), an unquoted type (`Option<String>`,
-    `String`, `str`, `string` and the like), or, for a token count a model reports (`total_tokens`,
+    `ENV.fetch(…)`, `Deno.env.get(…)`, `import.meta.env.X`), a type in a declaration (after `:`,
+    unquoted: `api_key: Option<String>`; `API_KEY=Bytes` and `"Bytes"` are values), or, for a token count a model reports (`total_tokens`,
     `prompt_tokens`, `max_tokens` and the like) and a name that isn't a password's, an unquoted number
     with thousands commas (`total_tokens: 12,450`). An AWS key ID's prefix read across two words
-    (`AK` `IA…`) is a key, except a card receipt's: the word `AID` alone, then a body half `0`, `1`,
-    `8` and `9`, which an AWS key never holds (`AID A0000000031010`). A Telegram bot ID has no leading
+    (`AK` `IA…`) is a key, except a card receipt's: the word `AID` alone, then a card AID as printed
+    (`A` and digits) whose body is half `0`, `1`, `8` and `9`, which an AWS key never holds
+    (`AID A0000000031010`). A Telegram bot ID has no leading
     zero, so an `xxd` row is no bot token.
   - Limits (#1940): left covered on purpose, because the shape is a secret's too: bcrypt hashes,
     `0x` and 64 hex (a transaction hash and a private key look the same), sample passwords in
     `.env.example`, bare base64 or hex with no label, kubeconfig and Kubernetes certificate data
-    (the same field can hold a private key), and mangled C++ symbols (one can't be told from a token
-    cheaply). Recognition misreads that break a label or
+    (the same field can hold a private key), mangled C++ symbols (one can't be told from a token
+    cheaply), and base64 of plain text (a decoded sentence can be a passphrase). Recognition misreads that break a label or
     a hex dump's groups leave the value covered. A hash word in another window within 30 characters
     of a hex run, with no hex between, still names it a digest.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
