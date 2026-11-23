@@ -549,7 +549,6 @@ private slots:
    QTest::newRow("a go.sum hash stays visible")<<"golang.org/x/text v0.14.0 h1:"+b44<<key<<QStringList{};
    QTest::newRow("a DKIM signature stays visible")<<"h=to:subject:message-id:date:from:mime-version; bh="+b44+"; | b="+base64Of("d",60)+" | "+base64Of("f",60)<<key<<QStringList{};
    QTest::newRow("a traceparent stays visible")<<"traceparent: 00-"+h32+"-"+hexOf("z",16)+"-01"<<key<<QStringList{};
-   QTest::newRow("a mangled C++ symbol stays visible")<<"#0 0x4a34d54d92037984 in _ZN8PlTeiDiEY4938EkHJxw2PO71TuIBzEbrwKqTSEv"<<key<<QStringList{};
    QTest::newRow("a misread integrity digest stays visible")<<"4 integrity shaS12-"+base64Of("i",86)+"=="<<key<<QStringList{};
    const auto text=QString::fromLatin1(QByteArray("Test for ready meeting score rose and the plan we made").toBase64());
    QTest::newRow("base64 of plain text stays visible")<<"payload: "+text<<key<<QStringList{};
@@ -569,6 +568,18 @@ private slots:
    QTest::newRow("container IDs below podman ps --no-trunc stay visible")<<"$ podman ps --no-trunc --format {{.ID}} | "+h64+" web-1"<<key<<QStringList{};
    QTest::newRow("a JSON checksum stays visible")<<"\"checksum\": \""+h64+"\","<<key<<QStringList{};
    QTest::newRow("a Ruby hash setting stays visible")<<"ENV['hash'] ||= '"+h64+"'"<<key<<QStringList{};
+   // Sol on #1954.
+   QTest::newRow("a URL password that reads as a type stays covered")<<"postgres://alice:bytes@db/app"<<key<<QStringList{"key: postgres://alice:bytes@db/app"};
+   QTest::newRow("an environment read with a literal fallback stays covered")<<"let db_password = std::env::var(\"DB\").unwrap_or(\"Crane7Queue\");"<<key<<QStringList{"key: std::env::var(\"DB\").unwrap_or(\"Crane7Queue\");"};
+   QTest::newRow("a token with thousands commas stays covered")<<"API_TOKEN=123,456,789"<<key<<QStringList{"key: API_TOKEN=123,456,789"};
+   {const auto body=base64Of("g",36).replace('+','a').replace('/','b');
+    QTest::newRow("a token split at its prefix after a public label stays covered")<<"PublicKey = gh"+QString("p_ ")+body<<key<<QStringList{"key: PublicKey = gh"+QString("p_ ")+body};}
+   {const auto credential=QString::fromLatin1((QByteArray("DB_PASS")+QByteArray("WORD=correct horse battery staple")).toBase64());
+    QTest::newRow("base64 of a credential stays covered")<<"payload: "+credential<<key<<QStringList{"key: "+credential};}
+   QTest::newRow("an AWS key ID with a legal body split after its AK stays covered")<<"AK IAQ"+QString("234567234567K7Z")<<key<<QStringList{"key: AK IAQ234567234567K7Z"};
+   QTest::newRow("a word that only starts like a mangled symbol stays covered")<<"in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"<<key<<QStringList{"key: in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"};
+   QTest::newRow("a mangled C++ symbol in full stays visible")<<"#0 0x4a34d54d92037984 in _ZN4core3ptr13drop_in_place17h3a9c0e1b2d4f6a8cE"<<key<<QStringList{};
+   QTest::newRow("a certificate label over no certificate stays covered")<<"client-certificate-data: "+base64Of("q",60)<<key<<QStringList{"key: client-certificate-data: "+base64Of("q",60)};
    QTest::newRow("an AWS key ID split after its AK stays covered")<<"AK IA"+QString("Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AK IAZ7Q4R2N9KT6HB3XW"};
    QTest::newRow("recovery codes beside a CloudFront ID stay covered")<<"eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="<<key<<QStringList{"key: eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="};
    QTest::newRow("a token in a run with an integrity digest stays covered")<<"+API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""<<key<<QStringList{"key: +API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""};
@@ -589,7 +600,7 @@ private slots:
  // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
  // not the certificate's.
  void aPublicValueRunsOnOnlyOverWrappedRows() {
-  const auto cert=base64Of("c",60),tail=base64Of("t",20),key=base64Of("p",60);
+  const auto cert=QString("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t")+base64Of("c",24),tail=base64Of("t",20),key=base64Of("p",60);
   QList<RecognizedWord> rows{{"client-certificate-data:",QRect(0,0,192,20),90,0},{cert,QRect(200,0,480,20),90,0},
                              {tail,QRect(0,30,160,20),90,1},{key,QRect(0,60,480,20),90,2}};
   QCOMPARE(found(rows,QStringList{"key"}),QStringList{"key: "+key});
@@ -1124,6 +1135,8 @@ private slots:
   QTest::newRow("URL schemes in one word")<<repeat("postgres://u:",2000);
   QTest::newRow("a long base64 word")<<repeat("aB3dE5fG7hJ9kL1mN3pQ+/",1000);
   QTest::newRow("many token-shaped words")<<repeat("aB3dE5fG7h ",4000);
+  // #1940 (Sol on #1954): many short segments on one row, each with a run, beside hash words.
+  QTest::newRow("many separated runs beside hash words")<<repeat("sha256 ~~ 9f86d081884c7d659a2feaa0c55ad015 ~~ ",1500);
   QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",300);
   QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
  }
