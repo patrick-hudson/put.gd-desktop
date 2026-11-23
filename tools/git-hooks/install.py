@@ -22,13 +22,9 @@ def main(argv=None):
     # repository's and applies to every worktree of it.
     shared = hooklib.git('config', '--bool', '--get', 'extensions.worktreeConfig', check=False).stdout.strip()
     scope = '--worktree' if shared == 'true' else '--local'
-    # The copy outside the tree keeps the hooks running on branches that predate tools/git-hooks;
-    # where the checkout has them, the copy hands over to the checkout's own files.
-    target = hooklib.install_copy()
-    hooklib.git('-C', top, 'config', scope, 'core.hooksPath', str(target))
-    previous = hooklib.previous_hooks_dir()
-    print(f'core.hooksPath={target} set ({scope[2:]}) in {top}; '
-          f'other hooks still forward to {previous}')
+    target, previous = hooklib.enable(scope)
+    print(f'core.hooksPath={target} set ({scope[2:]}) in {top}; other hooks forward to {previous}. '
+          'Run this again after adding a hook there.')
     return 0
 
 

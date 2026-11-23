@@ -33,12 +33,13 @@ class PrePush(unittest.TestCase):
         self.work, self.remote, previous = root / 'work', root / 'remote.git', root / 'previous'
         previous.mkdir()
         # The hooks directory being replaced: its hooks must keep running.
-        for name in ('pre-push', 'commit-msg'):
+        for name in ('pre-push', 'commit-msg', 'post-commit'):
             hook = previous / name
             hook.write_text(f'#!/bin/sh\necho ran >> "{root}/{name}.ran"\n')
             hook.chmod(0o755)
         global_config = root / 'gitconfig'
-        global_config.write_text(f'[core]\n\thooksPath = {previous}\n')
+        # Forced colour must not hide patches from the scanner.
+        global_config.write_text(f'[core]\n\thooksPath = {previous}\n[color]\n\tui = always\n')
         self.env = dict(os.environ, GIT_CONFIG_GLOBAL=str(global_config), GIT_CONFIG_NOSYSTEM='1',
                         GITLEAKS_BIN=self.binary, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                         GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
@@ -48,10 +49,9 @@ class PrePush(unittest.TestCase):
         self.git('init', '-q', '-b', 'work', str(self.work), cwd=root)
         # As install.py does: a copy outside the tree, here on a branch with no tools/git-hooks.
         copy = subprocess.run([sys.executable, '-c', 'import sys; sys.path.insert(0, sys.argv[1]); import hooklib; '
-                               'print(hooklib.install_copy())', str(HOOKS)], cwd=self.work, env=self.env,
+                               'print(hooklib.enable("--local")[0])', str(HOOKS)], cwd=self.work, env=self.env,
                               capture_output=True, text=True, check=True).stdout.strip()
         self.assertEqual(Path(copy), (self.work / '.git/putgd-hooks').resolve())
-        self.git('config', 'core.hooksPath', copy)
         self.git('remote', 'add', 'origin', str(self.remote))
         shutil.copy(ROOT / '.gitleaks.toml', self.work / '.gitleaks.toml')
         self.commit('base.txt', 'scratch fixture')
@@ -80,14 +80,27 @@ class PrePush(unittest.TestCase):
         self.assertEqual(clean.returncode, 0, clean.stderr)
         self.assertIn('over 1 outgoing commit\n', clean.stderr)
         self.assertTrue((self.root / 'pre-push.ran').exists(), 'the replaced pre-push must still run')
-        self.assertTrue((self.root / 'commit-msg.ran').exists(), 'the replaced commit-msg must still run')
+        for name in ('commit-msg', 'post-commit'):
+            self.assertTrue((self.root / f'{name}.ran').exists(), f'the replaced {name} must still run')
 
         # Assembled at runtime so this source is not itself a finding.
         planted = self.commit('aws.txt', 'synthetic aws_key = "' + 'AKIA' + 'QWERTYUI' + 'ASDFGHJK' + '"')
         refused = self.push()
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn('found a secret-shaped value', refused.stderr)
+        self.assertIn('aws-access-token: aws.txt:1', refused.stderr)
         self.assertNotIn('QWERTYUI', refused.stderr + refused.stdout, 'findings must be redacted')
+        self.assertFalse(self.on_remote(planted))
+
+        # Another remote already having the commit does not excuse it for this one.
+        other = self.root / 'other.git'
+        subprocess.run(['git', 'init', '-q', '--bare', str(other)], check=True, env=self.env)
+        self.git('remote', 'add', 'other', str(other))
+        self.git('push', '-q', '--no-verify', 'other', 'work')
+        self.assertNotEqual(self.push().returncode, 0)
+        # A ref name git allows but a whitespace split would break up.
+        odd = self.git('push', '-q', 'origin', 'work:refs/heads/odd\u00a0name', check=False)
+        self.assertNotEqual(odd.returncode, 0)
         self.assertFalse(self.on_remote(planted))
 
         missing = self.push(GITLEAKS_BIN=str(self.root / 'absent'))
