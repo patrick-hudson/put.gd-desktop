@@ -56,7 +56,8 @@ private slots:
    out.append({b,QRect(1,1,int(b.size())*8,20),70,0,mark});
    return out;
   };
-  const QString sha=QStringLiteral("SHORT_SHA=")+QStringLiteral("2f6424a");
+  // Ten hex digits a read: a doubled seven-digit one is too little run together to be a key (#1971).
+  const QString sha=QStringLiteral("SHORT_SHA=")+QStringLiteral("2f6424a9c1");
   QCOMPARE(found(twice(sha,sha,false),all),QStringList{"key: "+sha+" "+sha});
   QCOMPARE(found(twice(sha,sha,true),all),QStringList{});
   const QString token=QStringLiteral("gh")+QStringLiteral("p_")+QStringLiteral("a1B2c3D4e5").repeated(3)+QStringLiteral("F6g7H8");
@@ -894,6 +895,27 @@ private slots:
    QTest::newRow("recovery codes beside a CloudFront ID stay covered")<<"eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="<<key<<QStringList{"key: eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="};
    QTest::newRow("a token in a run with an integrity digest stays covered")<<"+API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""<<key<<QStringList{"key: +API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""};
    QTest::newRow("an AWS key ID in one word stays covered")<<"ID A"+QString("KIA")+"Z7Q4R2N9KT6HB3XW"<<key<<QStringList{"key: ID A"+QString("KIA")+"Z7Q4R2N9KT6HB3XW"};}
+  // #1971/#1972: interface words run together are no key: a market page's tabs after "ASIA", a drive's
+  // model between its size and name, a video title, a kernel version. Prices, changes and percentages
+  // are no phone.
+  {const auto key=QStringList{"key"};
+   QTest::newRow("a market page's tabs stay visible")<<"US ASIA EUR BONDS OIL GOLD FX CRYPTO PRE-MKT"<<key<<QStringList{};
+   QTest::newRow("a drive's model beside its size stays visible")<<"STORAGE SSD 256 GB SanDisk SD8SB8U2 system"<<key<<QStringList{};
+   QTest::newRow("a drive's part number after its maker stays visible")<<"STORAGE NVMe SSD 512 GB SKHynix HFS512GD9TNI-L2B0B"<<key<<QStringList{};
+   QTest::newRow("a drive's maker and part number read as one word stay visible")<<"STORAGE NVMe SSD 512 GB SKHynix_HFS512GD9TNI-L2BOB"<<key<<QStringList{};
+   QTest::newRow("two drive models on a row stay visible")<<"STORAGE NVMe SSD 512 GB SSDPEMKF512G8 NVMe INTEL 512GB system"<<key<<QStringList{};
+   QTest::newRow("a video title stays visible")<<"3} The Abandoned HOME ALONE House - 90s Time Capsule Full"<<key<<QStringList{};
+   QTest::newRow("a kernel version stays visible")<<"Dell Precision 5540 · Fedora Linux 45 (KDE Plasma Desktop Edition) · 7.3.3-300.fc45.x86_64"<<key<<QStringList{};
+   QTest::newRow("a Debian kernel version stays visible")<<"Debian GNU/Linux 13 (trixie) · 6.12.107+deb13-amd64"<<key<<QStringList{};
+   QTest::newRow("a temporary AWS key ID split after its prefix stays covered")<<"AS"+QString("IA Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AS"+QString("IA Z7Q4R2N9KT6HB3XW")};
+   QTest::newRow("a temporary AWS key ID of letters in one word stays covered")<<"AS"+QString("IAQWERTYUIOPASDFGH")<<key<<QStringList{"key: AS"+QString("IAQWERTYUIOPASDFGH")};
+   const auto b=base64Of("w",44);
+   QTest::newRow("a base64 key split in three stays covered")<<"secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)<<key<<QStringList{"key: secret "+b.left(15)+" "+b.mid(15,14)+" "+b.mid(29)};
+   QTest::newRow("a base64 key between ordinary words stays covered")<<"The new "+b+" House"<<key<<QStringList{"key: The new "+b+" House"};
+   QTest::newRow("a market strip is no phone")<<"DJIA 49,672.53 +1,525.20 +3.17%"<<all<<QStringList{};
+   QTest::newRow("a market strip's changes are no phone")<<"NASDAQ 100 26,763.517 +1,734.535 +6.93% | RUSS 2K* 2,658.924 +77.135 +2.99%"<<all<<QStringList{};
+   QTest::newRow("a change read without its dot is no phone")<<"A +77135 +2.99% | A +1,517.467 +6.71%"<<all<<QStringList{};
+   QTest::newRow("phones beside a market strip stay phones")<<"+1,525.20 +3.17% +1 555 123 4567 | +1 (555) 123-4567 +44 20 7946 0958"<<QStringList{"phone"}<<QStringList{"phone: +1 555 123 4567","phone: +1 (555) 123-4567","phone: +44 20 7946 0958"};}
  }
  // #1940 (#1931 fuzz group 9): in tiled windows a hash word in one pane names no digest in another on
  // the same row: "commit <sha>" on the left leaves a hex secret on the right covered, while its own sha
