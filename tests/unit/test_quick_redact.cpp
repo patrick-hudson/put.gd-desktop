@@ -578,7 +578,13 @@ private slots:
     QTest::newRow("base64 of a credential stays covered")<<"payload: "+credential<<key<<QStringList{"key: "+credential};}
    QTest::newRow("an AWS key ID with a legal body split after its AK stays covered")<<"AK IAQ"+QString("234567234567K7Z")<<key<<QStringList{"key: AK IAQ234567234567K7Z"};
    QTest::newRow("a word that only starts like a mangled symbol stays covered")<<"in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"<<key<<QStringList{"key: in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"};
-   QTest::newRow("a mangled C++ symbol in full stays visible")<<"#0 0x4a34d54d92037984 in _ZN4core3ptr13drop_in_place17h3a9c0e1b2d4f6a8cE"<<key<<QStringList{};
+   QTest::newRow("a quoted value that reads as a type stays covered")<<"password=\"bytes\""<<key<<QStringList{"key: password=\"bytes\""};
+   QTest::newRow("access tokens with thousands commas stay covered")<<"ACCESS_TOKENS=123,456,789"<<key<<QStringList{"key: ACCESS_TOKENS=123,456,789"};
+   {const auto pin=QString::fromLatin1(QByteArray("PIN: 123456 for the front door and spare office").toBase64());
+    QTest::newRow("base64 of a PIN stays covered")<<"payload: "+pin<<key<<QStringList{"key: "+pin};}
+   {const auto prose=QString::fromLatin1(QByteArray("The author wrote a chapter on the history of public gardens").toBase64());
+    QTest::newRow("base64 of prose with author in it stays visible")<<"payload: "+prose<<key<<QStringList{};}
+   QTest::newRow("an AWS key ID read with 0, 1 and 8 split after its AK stays covered")<<"AK IA0"+QString("C1K1Z0M8L1X1W0Y")<<key<<QStringList{"key: AK IA0C1K1Z0M8L1X1W0Y"};
    QTest::newRow("a certificate label over no certificate stays covered")<<"client-certificate-data: "+base64Of("q",60)<<key<<QStringList{"key: client-certificate-data: "+base64Of("q",60)};
    QTest::newRow("an AWS key ID split after its AK stays covered")<<"AK IA"+QString("Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AK IAZ7Q4R2N9KT6HB3XW"};
    QTest::newRow("recovery codes beside a CloudFront ID stay covered")<<"eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="<<key<<QStringList{"key: eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="};
@@ -595,14 +601,20 @@ private slots:
   // A secret word anywhere on the row still keeps every run covered.
   row.append({"token",QRect(1600,0,40,20),90,0});
   QCOMPARE(found(row,QStringList{"key"}),(QStringList{"key: commit "+sha,"key: "+hex}));
+  // A checksum command in the right pane names the digest rows below it in that pane only (Sol on #1954):
+  // a hex secret below in the left pane stays covered, the right pane's digest stays visible.
+  const auto digest=hexOf("d",64),secret=hexOf("s",64);
+  QList<RecognizedWord> panes{{"$",QRect(0,0,8,20),90,0},{"ls",QRect(16,0,16,20),90,0},{"$",QRect(1000,0,8,20),90,0},{"sha256sum",QRect(1016,0,72,20),90,0},{"a.iso",QRect(1096,0,40,20),90,0},
+                              {secret,QRect(0,30,512,20),90,1},{digest,QRect(1000,30,512,20),90,1},{"a.iso",QRect(1520,30,40,20),90,1}};
+  QCOMPARE(found(panes,QStringList{"key"}),QStringList{"key: "+secret});
  }
  // #1940: a value of no fixed length (a DKIM signature, a kubeconfig certificate) runs on only over rows
  // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
  // not the certificate's.
  void aPublicValueRunsOnOnlyOverWrappedRows() {
-  const auto cert=QString("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t")+base64Of("c",24),tail=base64Of("t",20),key=base64Of("p",60);
-  QList<RecognizedWord> rows{{"client-certificate-data:",QRect(0,0,192,20),90,0},{cert,QRect(200,0,480,20),90,0},
-                             {tail,QRect(0,30,160,20),90,1},{key,QRect(0,60,480,20),90,2}};
+  const auto signature="b="+base64Of("c",60),tail=base64Of("t",20),key=base64Of("p",60);
+  QList<RecognizedWord> rows{{"DKIM-Signature:",QRect(0,0,120,20),90,0},{"v=1;",QRect(128,0,32,20),90,0},{signature,QRect(0,30,496,20),90,1},
+                             {tail,QRect(0,60,160,20),90,2},{key,QRect(0,90,480,20),90,3}};
   QCOMPARE(found(rows,QStringList{"key"}),QStringList{"key: "+key});
  }
  void categoriesMatchTheirShapes() {

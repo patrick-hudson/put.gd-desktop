@@ -537,10 +537,10 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
    static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
    const bool afterSeparator=!pieceStart(segment,at);
-   // #1940: an AWS key ID's prefix read across two words (recognition splits "AK" "IA…" often) is a key
-   // unless its body is half 0, 1, 8 and 9, which a key's alphabet (A-Z and 2-7) never holds: a receipt's
-   // label and value ("AID" "A0000000031010") joined into AIDA….
-   if(index==0&&pieceAt(segment,at)!=pieceAt(segment,at+int(candidate.capturedLength(1))-1)){
+   // #1940: an AWS key ID's prefix read across two words (recognition splits "AK" "IA…" often) is a key,
+   // except a card receipt's label and value: the word "AID" alone, then a body half 0, 1, 8 and 9
+   // ("AID" "A0000000031010" joined into AIDA…).
+   if(index==0&&pieceAt(segment,at)!=pieceAt(segment,at+int(candidate.capturedLength(1))-1)&&[&]{const int p=pieceAt(segment,at);const int e=p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size());return segment.text.mid(segment.starts.at(p),e-segment.starts.at(p))==QLatin1String("AID");}()){
     const auto body=candidate.captured(3).left(16);
     if(std::count_if(body.cbegin(),body.cend(),[](QChar c){return c=='0'||c=='1'||c=='8'||c=='9';})*2>=body.size())continue;
    }
@@ -661,27 +661,10 @@ bool publicRun(const QString& run) {
  static const QRegularExpression anchored(QStringLiteral("^(?:[A-Za-z_-]{1,24}[:=])?[\"']?0[0-9a-f]-[0-9a-f]{32}-[0-9a-f]{16}-0[0-9a-f][\"',;]*$"));
  return anchored.match(run).hasMatch();
 }
-// #1940: a C++ symbol's Itanium mangling, a nested name in full: _ZN, qualifiers, two or more names each
-// its length and then exactly that many identifier characters, E, and parameter codes of letters, digits
-// and underscores (_ZN4core3ptr13drop_in_place17h…E, _ZNK3Foo3barEv). Anything else is no symbol.
-bool mangledSymbol(const QString& word) {
- if(!word.startsWith(QLatin1String("_ZN")))return false;
- qsizetype i=3;while(i<word.size()&&QStringLiteral("rVKL").contains(word.at(i)))++i;
- int names=0;
- while(i<word.size()&&word.at(i).isDigit()){
-  qsizetype length=0;while(i<word.size()&&word.at(i).isDigit()&&length<1000){length=length*10+word.at(i).digitValue();++i;}
-  if(length==0||i+length>word.size())return false;
-  for(qsizetype k=i;k<i+length;++k){const auto c=word.at(k);if(!(c.isLetterOrNumber()&&c.unicode()<128)&&c!='_'&&c!='$')return false;}
-  i+=length;++names;
- }
- if(names<2||i>=word.size()||word.at(i)!='E')return false;
- for(++i;i<word.size();++i){const auto c=word.at(i);if(!(c.isLetterOrNumber()&&c.unicode()<128)&&c!='_')return false;}
- return true;
-}
 // #1940: base64 of plain text is no key (the documented "decodes to text with spaces"): the run, after
-// any label of its first piece, decodes whole to at least 18 bytes, every one printable ASCII or a line
-// break, at least half of them letters and one in sixteen a space. One misread character breaks the
-// decoding or adds a byte outside that, and the run stays covered.
+// any label of its first piece, decodes whole to at least 18 bytes of prose (below), at least half of
+// them letters and one in sixteen a space. One misread character breaks the decoding or adds a byte
+// outside that, and the run stays covered.
 bool textBase64(const QString& run) {
  auto body=run;
  {static const QRegularExpression separator(QStringLiteral("[:=](?=[A-Za-z0-9+/])"));const auto label=body.indexOf(separator);if(label>0&&label<=24)body=body.mid(label+1);}
@@ -700,10 +683,11 @@ bool textBase64(const QString& run) {
   else if(c<0x21||c>0x7e)return false;
   if((c>='a'&&c<='z')||(c>='A'&&c<='Z'))++letters;
  }
- // ...and text that names or holds a credential is no plain text (DB_PASSWORD=correct horse battery
- // staple, user:pass).
- static const QRegularExpression credential(QStringLiteral("(?i)pass|pwd|secret|token|key|auth|credential|bearer|private|\\S:\\S|\\S=\\S"));
- if(credential.match(QString::fromLatin1(bytes)).hasMatch())return false;
+ // ...and only prose: six words or more of letters with plain punctuation, no digit and no ":", "=", "@"
+ // or "/" (a PIN, user:pass, DB_PASSWORD=…), and no word that names a credential (password, PIN, key).
+ const auto text=QString::fromLatin1(bytes);
+ static const QRegularExpression prose(QStringLiteral("^[A-Za-z][A-Za-z ,.!?'\\n-]*$")),credential(QStringLiteral("(?i)\\b(?:pass(?:word|phrase|wd)?|pwd|pin|secrets?|tokens?|keys?|auth|credentials?|bearer|private|otp|code)\\b"));
+ if(!prose.match(text).hasMatch()||credential.match(text).hasMatch()||text.split(' ',Qt::SkipEmptyParts).size()<6)return false;
  return letters*2>=bytes.size()&&spaces*16>=bytes.size();
 }
 // A JSON web token that carries no signature: its header decodes to JSON with "alg":"none" and its
@@ -792,6 +776,7 @@ bool passwordName(const QString& name) {
 // password.
 bool secretValue(QString value,bool numeric=false,const QString& name={}) {
  static const QString quotes=QStringLiteral("\"'`“”‘’");
+ const bool quoted=!value.isEmpty()&&quotes.contains(value.front());
  while(!value.isEmpty()&&(quotes.contains(value.back())||value.back()==','||value.back()==';'))value.chop(1);
  while(!value.isEmpty()&&quotes.contains(value.front()))value.remove(0,1);
  if(value.size()<4||placeholder(value)||masked(value))return false;
@@ -803,15 +788,15 @@ bool secretValue(QString value,bool numeric=false,const QString& name={}) {
  if(reference.match(value).hasMatch())return false;
  // #1940: a setting's value (never a URL's password) shows no secret when it is a whole call that reads
  // the secret by name from where it is kept, with nothing after it but error handling
- // (std::env::var("DB_PASSWORD")?;, os.Getenv("API_KEY"), never …unwrap_or("hunter2")), a type in a
- // declaration (api_key: Option<String>, password: string;), or, for a count of tokens
- // (total_tokens: 12,450), a number with thousands separators.
- if(!name.isEmpty()){
+ // (std::env::var("DB_PASSWORD")?;, os.Getenv("API_KEY"), never …unwrap_or("hunter2")), an unquoted type
+ // in a declaration (api_key: Option<String>, password: string;; "bytes" in quotes is a value), or, for
+ // a count of tokens a model reports (total_tokens: 12,450), an unquoted number with thousands separators.
+ if(!name.isEmpty()&&!quoted){
   static const QRegularExpression code(QStringLiteral("^(?:(?:std::)?env::var(?:_os)?|os\\.(?:Getenv|LookupEnv)|Environment\\.GetEnvironmentVariable|ENV\\.fetch|Deno\\.env\\.get)\\([\"'][A-Za-z_][A-Za-z0-9_]*[\"']\\)(?:\\.unwrap\\(\\)|\\.expect\\([\"'][^\"']*[\"']\\))?[?;,)]*$|^import\\.meta\\.env\\.[A-Za-z_][A-Za-z0-9_]*[;,]?$"));
   if(code.match(value).hasMatch())return false;
   static const QRegularExpression type(QStringLiteral("^&?(?:'static )?(?:(?:Option|Optional|Vec|Box|Arc|Rc|Cow|Secret|SecretBox|Result|List|Mapping)<[A-Za-z0-9_&<>:', ]+>|String|str|string|bytes|Bytes|SecretString|SecretStr|QString|std::string|char\\*|int|number|bool|any|object)[?]?[,;]?$"));
   if(type.match(value).hasMatch())return false;
-  static const QRegularExpression thousands(QStringLiteral("^\\d{1,3}(?:,\\d{3})+$")),counted(QStringLiteral("(?i)tokens$"));
+  static const QRegularExpression thousands(QStringLiteral("^\\d{1,3}(?:,\\d{3})+$")),counted(QStringLiteral("(?i)^(?:[a-z0-9]+[_.-])*(?:total|prompt|completion|max|input|output|cached|reasoning)[_.-]?tokens$"));
   if(!numeric&&counted.match(name).hasMatch()&&thousands.match(value).hasMatch())return false;
  }
  // A URL with no password in it (redis://localhost:6379/0) is an address, not a secret; one with a
@@ -991,9 +976,9 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
 //    before a ref (refs/…, HEAD) or a file name (sha256sum's "<hex>  name.iso"), and the digest rows that
 //    follow a checksum or git plumbing command (sha256sum, git rev-parse, show-ref, ls-remote…) up to
 //    the first row of anything else;
-//  - the value of a label that says it is an identifier, a public key, a certificate or a signature
-//    (Event ID:, trace_id=, x-amz-id-2:, Change-Id:, tree, parent, PublicKey =, h1:, a DKIM header's
-//    b= and bh=, certificate-authority-data:), in that label's alphabet and up to its usual length; a
+//  - the value of a label that says it is an identifier, a public key or a signature (Event ID:,
+//    trace_id=, x-amz-id-2:, Change-Id:, tree, parent, PublicKey =, h1:, a DKIM header's b= and bh=),
+//    in that label's alphabet and up to its usual length; a
 //    label of no fixed length runs on over the rows below it that hold its alphabet alone. A qualifier
 //    before "ID" or "Key" that is not in the list ("Secret ID:", "Access Key:") makes no label.
 QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
@@ -1037,10 +1022,10 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
  static const QRegularExpression file(QStringLiteral("^\\*?[^\\s=:]*[A-Za-z0-9_)-]\\.[A-Za-z][A-Za-z0-9]{0,11}$|^[^\\s=:]*/[^\\s=:]+$"));
  for(int k=0;k<keys.size();++k){
   const auto& line=lines[keys.at(k)];const int n=int(line.size());const int lead=leadOf(line);
-  // A C++ symbol's Itanium mangling (mangledSymbol()) and a W3C traceparent, each a word of its own.
+  // A W3C traceparent, a word of its own.
   for(const int w:line){
    static const QRegularExpression shape(QStringLiteral("^[\"']?0[0-9a-f]-[0-9a-f]{32}-[0-9a-f]{16}-0[0-9a-f][\"',;]*$"));
-   if(mangledSymbol(plain.at(w))||shape.match(plain.at(w)).hasMatch())mark(w);
+   if(shape.match(plain.at(w)).hasMatch())mark(w);
   }
   // A subresource integrity digest (sha512-…, its 512 as recognition reads it: shaS12-, sha51i2-) and the
   // words of its base64 joined after it, up to the digest's length.
@@ -1093,16 +1078,26 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
   // The digest rows after a checksum or git plumbing command.
   {QStringList words;for(const int w:line)words.append(plain.at(w));
    if(command.match(words.join(' ')).hasMatch()){
-    // ...in the command's own column: each row right below the one before (within two and a half of
-    // its heights) and starting within four characters of the command row's start, so a row of
-    // another pane is not one.
-    const auto& start=candidates.at(line.first()).rect;
+    // ...in the command's own column: the column starts where the command's column starts on its row
+    // (its first word after a gap of four characters or more: a prompt in a pane beside another), and
+    // each digest row's digest starts there (within four characters), right below the row before
+    // (within two and a half of its heights). A row of another pane is not one.
+    int from=0;
+    {const auto commandWord=[&](int i){return command.match(plain.at(line.at(i))).hasMatch()||plain.at(line.at(i))==QLatin1String("git")||plain.at(line.at(i))==QLatin1String("podman")||plain.at(line.at(i))==QLatin1String("docker");};
+     int c=0;while(c<n&&!commandWord(c))++c;
+     if(c==n)c=0;
+     from=c;while(from>0&&gap(line.at(from-1),line.at(from))<=4.0)--from;}
+    const int start=candidates.at(line.at(from)).rect.left();int above=candidates.at(line.at(from)).rect.top(),height=candidates.at(line.at(from)).rect.height();
     for(int m=k+1;m<keys.size()&&m<=k+200;++m){
-     const auto& row=lines[keys.at(m)];const int at=leadOf(row);const int d=digestAt(row,at);
+     const auto& row=lines[keys.at(m)];
+     int at=0;while(at<row.size()&&std::abs(candidates.at(row.at(at)).rect.left()-start)>4*glyph(row.at(at)))++at;
+     if(at==row.size())break;
+     const auto& box=candidates.at(row.at(at)).rect;
+     if(box.top()<=above||box.top()-above>2.5*qMax(height,box.height()))break;
+     const int d=digestAt(row,at);
      if(d==0)break;
-     const auto& above=candidates.at(lines[keys.at(m-1)].first()).rect;const auto& first=candidates.at(row.first()).rect;
-     if(first.top()<=above.top()||first.top()-above.top()>2.5*qMax(above.height(),first.height())||std::abs(first.left()-start.left())>4*glyph(row.first()))break;
-     bool assignment=false;for(int i=at+d;i<row.size();++i)assignment=assignment||plain.at(row.at(i)).contains('=');
+     above=box.top();height=box.height();
+     bool assignment=false;for(int i=at+d;i<column(row,at+d);++i)assignment=assignment||plain.at(row.at(i)).contains('=');
      if(assignment)break;
      for(int i=at;i<at+d;++i)mark(row.at(i));
      for(int i=at+d;i<column(row,at+d);++i)known.insert(row.at(i));
@@ -1115,7 +1110,7 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
    {"correlationid",{0,36}},{"xcorrelationid",{0,36}},{"bootid",{0,36}},{"machineid",{0,36}},{"invocationid",{0,36}},{"xamzrequestid",{0,36}},{"traceparent",{0,56}},{"changeid",{0,42}},
    {"tree",{0,64,false,true}},{"parent",{0,64,false,true}},{"object",{0,64,false,true}},{"rev",{0,64}},{"revision",{0,64}},
    {"xamzid2",{1,80}},{"xamzcfid",{1,60}},{"publickey",{1,48}},{"pubkey",{1,48}},{"h1",{1,48}},{"xgooglesmtpsource",{1,0}},{"bh",{1,48,true}},{"b",{1,0,true}},
-   {"messageid",{1,100}},{"certificateauthoritydata",{1,0}},{"clientcertificatedata",{1,0}},{"tlscrt",{1,0}},{"cacrt",{1,0}},
+   {"messageid",{1,100}},
   };
   const auto normal=[](const QString& name){QString out;for(const auto c:name)if(c.isLetterOrNumber())out+=c.toLower();return out;};
   const auto inAlphabet=[&](QString t,int kind){
@@ -1170,14 +1165,6 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
    if(label.dkim&&!dkim())continue;
    if(first.isEmpty())first=plain.at(line.at(valueWord));
    if(!inAlphabet(first,label.kind))continue;
-   // A certificate is one: base64 of "-----BEGIN CERTIFICATE" (kubeconfig and Kubernetes Secrets hold
-   // PEM). Any other value under these labels stays covered.
-   static const QSet<QString> certificates{"certificateauthoritydata","clientcertificatedata","tlscrt","cacrt"};
-   if(certificates.contains(it.key())){
-    QString head=first;while(!head.isEmpty()&&!head.front().isLetterOrNumber())head.remove(0,1);
-    for(int j=valueWord+1;j<n&&head.size()<28;++j)head+=plain.at(line.at(j));
-    if(!head.startsWith(QLatin1String("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS")))continue;
-   }
    qsizetype total=first.size();const auto bound=[&](qsizetype more){return label.length==0||total+more<=label.length*115/100+2;};
    if(!bound(0))continue;
    QList<int> value{line.at(valueWord)};int j=valueWord+1;
