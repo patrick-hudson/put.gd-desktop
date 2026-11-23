@@ -729,8 +729,9 @@ and every test to a CPU subset, and `--time-scale` sets `PUTGD_TEST_TIME_SCALE`.
 It uses a private short `TMPDIR` and `XDG_STATE_HOME`, stops only the
 processes it started, by PID, and removes only its own temporary directory.
 Run it on a builder, one suite per host at a time, behind
-`tools/lab/desktop_lock.py guard HOST &&`, which refuses while another session
-holds the host's quiet lease (the weekly lane on k72 holds it while it runs).
+`python3 tools/lab/desktop_lock.py guard &&` (run there, `guard` reads that
+builder's own locks). It refuses while another session holds the host's quiet
+lease; the weekly lane on k72 holds it while it runs.
 
 Results, `tools/ci/stress_suite.py` on the builders, 2026-10-22. The known set
 is the twelve tests that flaked in CI. Pinning (`--test-cpus`, `--hog-cpus`)
