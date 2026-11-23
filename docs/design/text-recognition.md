@@ -1160,17 +1160,114 @@ other tool active it does not. The user's side is in the
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
-    phone number only with a leading `+`, so the tail of a UUID is not taken for one. A number
+    phone number only with a leading `+`, or as an 11-digit mobile written whole (below), so the
+    tail of a UUID is not taken for one. A number
     grouped as a card is printed (4-4-4-4 with an optional fifth group of one to three digits, or
     4-6-5, with one separator and a first digit from 1 to 9) is never a phone number, so a card
     number that fails the Luhn check is not suggested as one. A phone candidate of more than 15
-    digits is retried as shorter numbers, except a card-grouped one whose words are evenly spaced;
+    digits is retried as shorter numbers, except an evenly spaced card-grouped one, or (#1939) an
+    evenly spaced run of three groups or more, each but the last of four digits, with no hyphen;
     the retry tries the widest gap between its words first (two phone numbers in table columns)
     and can fall back to another word boundary (#1820). A card number doesn't start right after a
     digit and a dot (`198.51.100.7 5555-…` reads the card from `5555`), but may after a label such
-    as `No.`. A card candidate that fails the Luhn check is skipped whole, so a valid card that
-    starts inside its span can be missed. Between two digits a hyphen-like dash or a minus sign
-    reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
+    as `No.`, or after a `-`, `+` or `{+` at the start of its word (a diff's sign) when three digits
+    or more follow (a country code such as `+82` before a phone's groups is no card start). Between
+    two digits a hyphen-like dash or a minus sign reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
+  - Number columns (#1939). Phone and card numbers stop at a gap of more than two and a half
+    characters (the wider glyph of the two words) between two words of a line, so table and log
+    columns, calendar cells and year headers are not read as one number. A word space, and two
+    spaces in a monospace font, still join. A card grouped as printed (4-4-4-4, 4-6-5, a fifth group
+    of one to three) is still found across wider gaps when they are even (within a quarter of the
+    narrowest plus 2 px) or no wider than four characters.
+  - A card candidate that fails as one span (a reference or line number before it, the expiry
+    after it, a phone in the next cell) is tried again from each word start inside the span, over
+    spans of 15 to 19 digits in the run of digit groups it sits in (the run crosses a separator less than
+    48 characters past the span and reads the group after it to its end), longest
+    first; spans stay on one
+    line except across a wrap the wrapped view accepted. The other words in the run must be other
+    fields: a group of four right before it or any group right after it, on the same line and
+    spaced like the card's own groups (no closer than its narrowest gap less a quarter and 2 px, no
+    wider than its widest gap plus a quarter and 2 px), makes one longer number of it (a tracking number such as
+    `9362 0664 7516 8861 60`), unless a slash follows (an expiry, `4242 4242 4242 4242 12 / 34`) or
+    the group of four ends a phone whose group before it has one to three digits
+    (`+39 380 719 1173`). A box that overlaps the card or sits closer than its own groups is another
+    cell. When no span is a card, matching goes on after the failed span, as before.
+  - A card read across several words is grouped as a card is printed, or close to it: groups of
+    four or more with a shorter last group, plus at most one group of two or three digits where
+    recognition moved a digit across a space (three when it is the first: `4111 11 111111 1111`,
+    `411 11111 1111 1111`). A run of more than eight digits is the end of a card after groups of
+    four or more (`4111 111111111111`), or the start of one with a tail of up to three digits, or four
+    after twelve, split off (`25285945833551 94`, `411111111111 1111`); a phone's `273` before a
+    16-digit number and an EAN-13 before a date are no card. A number read as one word keeps the
+    earlier rule. A card number is never all zeros.
+  - A counted row is no card or phone number:
+    - three groups or more of up to nine digits, stepping up or down by the same one or multiple
+      of five, all of them, or four in a row (calendar days after a week number, `2023 2024 2025
+      2026`, axis ticks `0 20 40 60 80`);
+    - days (1 to 31, one or two digits each) that start with three or more in a row, then at most
+      one smaller day (a month grid beside another, whose rows read as wrapped: `16 17 18 17`), or
+      after one week number (1 to 53, in four groups or more) run to the end (`48 28 29 30`).
+
+    A step of zero (`5555 5555`), other steps (`01 23 45 67 89`) and a phone in pairs with a run
+    inside it (`06 12 13 14 78`, `06 42 43 44 36`, `06 12 13 14 08`) stay numbers. The check runs on the match's text and, when the match
+    has three words or more, on those whole words in their digit view joined by spaces, since the wrapped view glues a row's last cell to the next row's first (`18` and `17`
+    as `1817`). A number only a card label lets through is exempt.
+  - After a card label up to two words before it on its line (`Card:`, `Visa`, `Mastercard`,
+    `Amex`, `CC`, `PAN`, `Credit`, `Debit` and their kin), a number needs only the earlier card
+    check (13 to 19 digits, Luhn, no ISBN, not all zeros), so its grouping and a counted look don't
+    count against it (`Card: 4110 4111 4112 4113`).
+  - A phone number is also not:
+    - a number immediately after a currency sign (`€ $ £ ¥ ₹`, touching it), or with a currency sign or code
+      (`EUR`, `USD`, `GBP`, `CHF`, `JPY`, `kr`, `zł`, `₽`) as the next word on its line (`1 234 567 €`);
+    - an unbroken number immediately after `#` (touching it) that follows an order-type word (`Order #10234567`,
+      `Invoice`, `Ticket` and the like, past a colon read as its own word) or a time (a receipt line,
+      `19:54:46 #4091291`); `Phone #`, `Telefon #` and `Account #` keep the rule;
+    - a browser's build date in a user agent: an unbroken number in a word that starts with
+      `Gecko/` and a digit, optionally after `(` or `[` (`Gecko/20100101`, `Gecko/20100101)`);
+    - a date with a dashed time (`2026-11-22 14-03-57`, a GNOME screenshot name);
+    - an EAN-13 as printed under its bar code (1-6-6);
+    - three groups of at most three digits up to 255, with no leading `+` (colour channels);
+    - a count with spaced thousands (`1 912 615`, one or two digits then two or three groups of
+      three);
+    - an unbroken size in an `ls -l` row (the row starts with a file mode, a month and day follow);
+    - an unbroken number in a `free` row: the row starts with `Mem`, `Swap` or `Total` (with its
+      colon attached, read as its own word, or missing) or `-/+`, only counts lie between, the row holds three counts or more, and free's header (`used`,
+      `free`) is within three lines above;
+    - a longer evenly spaced run of four-digit groups (a tracking number), which is not split into
+      shorter numbers.
+
+    An 11-digit mobile number written whole is a phone number (`1[3-9]` and 9 digits for China,
+    `0[1-9]` and 9 digits for the trunk-0 countries such as `07700…`, `090…` and `010…`), and so is
+    a German area code that ends at a slash (`+49 30 / 813854`, `030 / 813854`).
+  - An IPv4 address is not taken after a standalone package epoch of one or two digits
+    (`1:8.17.4.28`; the IPv4 tail of an IPv6 address stays one), before a release suffix of a dash,
+    digits, an optional `.`, `~` or `+`, and a letter (`8.17.4.28-3.fc45`, `-1ubuntu2`), or right after a section or version
+    label on its line (`Section 1.2.3.4`, `Version 2.11.7.54`); a range (`10.0.0.1-10.0.0.255`)
+    stays two addresses. An address recognition split at a dot on one line (`148`
+    `.98.250.123:443`, `148.98.250.` `123:443`) is joined when the boxes are no more than one and a
+    half characters apart and the two make one whole address.
+  - In a CSV row one word can hold the end of one field and the start of the next
+    (`alice@example.com,+1` then `202 555 0143`). A later match keeps its other words instead of
+    being dropped when at least one of them is unclaimed and every word it shares with earlier
+    matches either holds a comma or a semicolon (a literal check, with no CSV parsing; for any kind
+    but email) or, for a card or phone, belongs to a key match. Both apply together, so a phone
+    between a glued address and a key keeps its middle.
+  - Known limits of these rules (#1939):
+    - A card number read across words with more than one short group, a one-digit group, or a
+      two-digit first group (its last group aside) isn't recognised unless a card label precedes
+      it. Card numbers aren't printed that way; calendars and tables are.
+    - A card whose grouping recognition shifted and that also has a gap wider than four characters
+      inside it (`4111 111 11111 1111` with a wide gap) can be missed, even after a card label,
+      since looser groupings across columns are what tables of numbers look like.
+    - A phone number in a tiled window that lines up exactly with a `free -t` Total row beside it
+      is taken for a count.
+    - A cropped calendar row with a week number and the next month's first day
+      (`05 29 30 31 01`) can be suggested as a phone; the same shape is a mobile number in pairs
+      (`06 12 13 14 08`).
+    - Eight two-digit groups with `ff:fe` in the middle (an EUI-64) are still covered as an IPv6
+      address.
+    - A garbled address (`219..31.175.7`) next to other numbers in `ss` output is no longer covered
+      by chance as part of a phone number.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
     `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs;
@@ -1423,8 +1520,14 @@ other tool active it does not. The user's side is in the
       taken stays within half again its usual length. A JSON web token has no such bound. Each
       remainder also stays within the token's own run's length plus two, as before.
     - The run is not taken when it holds a card number or an email address as the card and email
-      rules read them (with a dot recognition lost restored), or a prefixed token, so each of
-      those stays its own match. A hex or base64 run there has no prefix and can be taken. One
+      rules read them (for an address, with a dot recognition lost restored, but without the
+      gap-based joins of split addresses or the message-header checks of the email kind; for a
+      card, the card pattern, including a diff's `-` at the start of a word before three digits or more,
+      with the card check before #1939: 13 to 19 digits, Luhn, no ISBN, not all zeros), or a prefixed
+      token. This only stops the token taking that line: the card rule decides on its own whether
+      the line is a card (a counted row such as `4110 4111 4112 4113` without a label is not one).
+      Finding an address or a prefixed token there likewise stops the token taking that run; what
+      covers it is left to the kinds chosen. A hex or base64 run there has no prefix and can be taken. One
       exception is a heuristic for a JWT wrapped just after one of its dots: when the part taken
       so far ends with a dot (or a comma read for one), a JWT-shaped match on the next line, such
       as an `eyJ` payload, is taken as the same token's next part.
