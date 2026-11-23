@@ -193,6 +193,9 @@ def guard_ok(session):
 def run(args):
     scenes = Path(args.scenes)
     labels = [json.loads(l) for l in open(scenes / 'labels.jsonl')]
+    if args.families:
+        keep = set(args.families.split(','))
+        labels = [m for m in labels if keep & set(m['families'])]
     out = Path(args.out or scenes / 'results')
     out.mkdir(exist_ok=True)
     done = set()
@@ -219,7 +222,7 @@ def run(args):
             lines = []
             for m in part:
                 job = dict(id=m['id'], image=str(Path(m['image']).resolve()), login=m['login'], realName=m['realName'], terms=TERMS,
-                           profiles={'all': ALL, 'check': CHECK}, words=m['words'])
+                           profiles={'all': ALL, 'check': CHECK}, words=m['words'], oracleOnly=args.oracle_only)
                 lines.append(json.dumps(job, ensure_ascii=False))
             fh = open(out / f'shard-{shard:04d}.jsonl', 'w')
             shard += 1
@@ -350,13 +353,16 @@ def score(args):
         m = json.loads(l)
         labels[m['id']] = m
     results = {}
-    files = [Path(args.results)] if args.results else sorted((scenes / 'results').glob('shard-*.jsonl'))
+    where = Path(args.results) if args.results else scenes / 'results'
+    files = sorted(where.glob('shard-*.jsonl')) if where.is_dir() else [where]
     for f in files:
         for l in open(f):
             try:
                 r = json.loads(l)
             except ValueError:
                 continue
+            if args.oracle:  # score the true words' run as if it were the recognized one (an --oracle-only run)
+                r['ocr'] = r.get('oracle', {})
             results[r['id']] = r
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -466,10 +472,13 @@ def main():
     u.add_argument('--jobs', type=int, default=4)
     u.add_argument('--batch', type=int, default=10)
     u.add_argument('--session')
-    u.add_argument('--out')
+    u.add_argument('--out', help='results directory (default SCENES/results); give your own to reuse scenes read-only')
+    u.add_argument('--families', help='run only scenes holding one of these families (comma-separated)')
+    u.add_argument('--oracle-only', action='store_true', help='match the true words only: no recognition, seconds per thousand scenes')
     s = sub.add_parser('score')
     s.add_argument('--scenes', required=True)
-    s.add_argument('--results')
+    s.add_argument('--results', help='a results file or directory of shard-*.jsonl (default SCENES/results)')
+    s.add_argument('--oracle', action='store_true', help='score the true-word run (after run --oracle-only)')
     s.add_argument('--out', required=True)
     s.add_argument('--top', type=int, default=40)
     q = sub.add_parser('probe')
