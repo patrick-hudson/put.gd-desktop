@@ -81,9 +81,14 @@ class Score(unittest.TestCase):
         self.assertEqual([(f['type'], f['decoy']) for f in found], [('DESIGN', 'ip_address'), ('DESIGN', 'name_part')])
 
     def test_ordinary_text_misread_as_an_ip_stays_a_false_positive(self):
-        m = meta([], [['l.l.l.l', 12, 12, 56, 14]])
-        found = fuzz.score_scene(m, result([match('ip', '1.1.1.1', (10, 10, 60, 20))]), 'all')
-        self.assertEqual([f['type'] for f in found], ['FP'])
+        for word in ('l.l.l.l', '12:34:56'):
+            m = meta([], [[word, 12, 12, 56, 14]])
+            found = fuzz.score_scene(m, result([match('ip', '1.1.1.1', (10, 10, 60, 20))]), 'all')
+            self.assertEqual([f['type'] for f in found], ['FP'], word)
+
+    def test_an_ipv6_address_with_a_port_or_zone_is_an_address(self):
+        for word in ('[2001:db8::1]:443', 'fe80::3e22:fbff:fe9a:1e07%wlp2s0', '::1', '10.0.0.5:6443'):
+            self.assertTrue(fuzz._ip_literal(word), word)
 
     def test_the_upload_check_profile_skips_kinds_it_does_not_look_for(self):
         m = meta([span('secret', 'email', 'jane@example.com', 100, 50), span('secret', 'card', '4111 1111 1111 1111', 100, 90)])
@@ -107,14 +112,43 @@ class Run(unittest.TestCase):
             out = Path(d)
             rows = [{'id': 'a', 'ocr': {}, 'oracle': {}}, {'id': 'b', 'error': 'text_job_timeout'}, {'id': 'c', 'oracle': {}}]
             (out / 'shard-0000.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
-            self.assertEqual(fuzz.completed(out, False, 1), {'a'})
-            self.assertEqual(fuzz.completed(out, True, 1), {'a', 'c'})
+            self.assertEqual(fuzz.completed(out, False, 1), ({'a'}, set()))
+            self.assertEqual(fuzz.completed(out, True, 1), ({'a', 'c'}, set()))
             (out / 'shard-0001.jsonl').write_text(json.dumps(rows[1]) + '\n')
-            self.assertEqual(fuzz.completed(out, False, 1), {'a', 'b'})
+            self.assertEqual(fuzz.completed(out, False, 1), ({'a'}, {'b'}))  # given up on, never counted a success
 
-    def test_a_seed_never_becomes_a_path(self):
-        self.assertEqual(fuzz.safe_name('../../etc/x'), '_.._etc_x')
-        self.assertEqual(fuzz.safe_name('/abs'), '_abs')
+    def test_a_relative_image_path_from_an_older_corpus_still_finds_its_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            scenes = Path(d) / 'corpus'
+            (scenes / 'images').mkdir(parents=True)
+            (scenes / 'images' / 's.png').write_bytes(b'x')
+            for recorded in ('images/s.png', 'corpus/images/s.png', '/gone/corpus/images/s.png'):
+                self.assertEqual(fuzz.scene_image(scenes, {'image': recorded}), (scenes / 'images' / 's.png').resolve(), recorded)
+
+    def test_a_seed_never_becomes_a_path_and_two_seeds_never_share_a_name(self):
+        for seed in ('../../etc/x', '/abs', 'lab/a'):
+            self.assertRegex(fuzz.safe_name(seed), r'^[A-Za-z0-9_][A-Za-z0-9_.-]*$')
+        self.assertEqual(fuzz.safe_name('a1'), 'a1')
+        self.assertNotEqual(fuzz.safe_name('lab/a'), fuzz.safe_name('lab_a'))
+
+
+class ScoreRun(unittest.TestCase):
+    def test_a_failed_duplicate_never_hides_a_complete_result(self):
+        with tempfile.TemporaryDirectory() as d:
+            scenes = Path(d)
+            (scenes / 'labels.jsonl').write_text(json.dumps(meta([span('secret', 'key', 'ABCDEFGHIJ', 100, 50)])) + '\n')
+            res = scenes / 'results'
+            res.mkdir()
+            whole = {'id': 't-00000', 'words': [], 'ocr': {'all': {'matches': []}, 'check': {'matches': []}},
+                     'oracle': {'all': {'matches': []}, 'check': {'matches': []}}}
+            (res / 'shard-0002.jsonl').write_text(json.dumps(whole) + '\n')
+            (res / 'shard-0003.jsonl').write_text(json.dumps({'id': 't-00000', 'error': 'text_job_timeout'}) + '\n')
+            args = type('A', (), dict(scenes=str(scenes), results=None, oracle=False, out=str(scenes / 'score'), top=0))
+            import contextlib, io
+            with contextlib.redirect_stdout(io.StringIO()):
+                fuzz.score(args)
+            totals = json.loads((scenes / 'score' / 'summary.json').read_text())['totals']
+            self.assertEqual((totals['scenes'], totals['missing'], totals['incomplete']), (1, 0, 0))
 
 
 class Content(unittest.TestCase):

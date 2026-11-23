@@ -238,7 +238,8 @@ class Canvas:
             box = ((ox + x0) * sc, (oy + y0) * sc, (ox + x1) * sc, (oy + y1) * sc)
             # a character drawn past the image's edge is not in the picture: neither seen nor read
             right = self.surface.get_width() if self.clip_x is None else self.clip_x * sc
-            if box[0] >= right - 1 or box[1] >= self.surface.get_height() - 1 or box[2] <= 0 or box[3] <= 0:
+            # a glyph cut by the edge, a minimap or the next pane is not whole in the picture either
+            if box[2] > right + 1 or box[3] > self.surface.get_height() + 1 or box[0] < -1 or box[1] < -1:
                 chars.append(None)
                 continue
             chars.append((li,) + box)

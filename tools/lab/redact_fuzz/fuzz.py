@@ -128,8 +128,14 @@ def make_scene(seed, idx, families=None):
 
 
 def safe_name(seed):
-    """The seed as it may appear in a file name: letters, digits, '.', '_' and '-' only, never a path."""
-    return re.sub(r'[^A-Za-z0-9_.-]', '_', str(seed)).lstrip('.') or '_'
+    """The seed as it may appear in a file name: letters, digits, '.', '_' and '-' only, never a path. A seed that
+    needed changing gets a short hash of itself, so two seeds never share a name."""
+    seed = str(seed)
+    safe = re.sub(r'[^A-Za-z0-9_.-]', '_', seed).lstrip('.') or '_'
+    if safe != seed:
+        import hashlib
+        safe += '-' + hashlib.sha1(seed.encode()).hexdigest()[:8]
+    return safe
 
 
 def _post_marks(R, cv, th):
@@ -199,9 +205,10 @@ def guard_ok(session):
 def scene_image(scenes, meta):
     """A scene's image: recorded relative to the corpus; older corpora recorded an absolute path, which may have moved."""
     image = Path(meta['image'])
-    if not image.is_absolute():
-        return (scenes / image).resolve()
-    return image if image.exists() else (scenes / 'images' / image.name).resolve()
+    for candidate in ((scenes / image) if not image.is_absolute() else image, Path.cwd() / image):
+        if candidate.exists():
+            return candidate.resolve()
+    return (scenes / 'images' / image.name).resolve()
 
 
 def new_shard(out):
@@ -215,8 +222,8 @@ def new_shard(out):
 
 
 def completed(out, oracle_only, retries):
-    """Scene ids whose result is final: it holds the run's own output (recognized words, or the oracle alone), or it
-    failed more than `retries` times. A failed or partial row is otherwise run again."""
+    """(ok, exhausted): scene ids with a result holding the run's own output (recognized words, or the oracle alone),
+    and those that failed more than `retries` times without one. Any other failed or partial row is run again."""
     ok, failures = set(), {}
     for f in out.glob('shard-*.jsonl'):
         with open(f) as fh:
@@ -230,7 +237,7 @@ def completed(out, oracle_only, retries):
                 ok.add(r['id'])
             else:
                 failures[r.get('id')] = failures.get(r.get('id'), 0) + 1
-    return ok | {i for i, n in failures.items() if n > retries}
+    return ok, {i for i, n in failures.items() if n > retries and i not in ok}
 
 
 def run(args):
@@ -241,9 +248,9 @@ def run(args):
         labels = [m for m in labels if keep & set(m['families'])]
     out = Path(args.out or scenes / 'results')
     out.mkdir(exist_ok=True)
-    done = completed(out, args.oracle_only, args.retries)
-    todo = [m for m in labels if m['id'] not in done]
-    print(f'{len(todo)} scenes to run, {len(labels) - len(todo)} done', flush=True)
+    ok, gave_up = completed(out, args.oracle_only, args.retries)
+    todo = [m for m in labels if m['id'] not in ok | gave_up]
+    print(f'{len(todo)} scenes to run, {len(labels) - len(todo)} done or given up', flush=True)
     env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
     cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
     for attempt in range(args.retries + 1):
@@ -277,13 +284,14 @@ def run(args):
                 p.wait()
                 fh.close()
             print(f'{len(todo)} left', flush=True)
-        done = completed(out, args.oracle_only, args.retries)
-        todo = [m for m in labels if m['id'] not in done]
+        ok, gave_up = completed(out, args.oracle_only, args.retries)
+        todo = [m for m in labels if m['id'] not in ok | gave_up]
         if not todo:
             break
         print(f'{len(todo)} scenes have no result yet: running them again', flush=True)
-    if todo:
-        print(f'INCOMPLETE: {len(todo)} scenes have no result', flush=True)
+    missing = [m['id'] for m in labels if m['id'] not in ok]
+    if missing:
+        print(f'INCOMPLETE: {len(missing)} scenes have no result (first: {missing[0]})', flush=True)
         sys.exit(1)
     print('DONE', flush=True)
 
@@ -312,7 +320,21 @@ def _marks(profile):
 
 
 IPV4 = re.compile(r'(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.]*\d)')
-IPV6 = re.compile(r'(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}')
+def _ip_literal(word):
+    """True when the word holds a valid IPv4 or IPv6 address (with a port, a prefix or a zone allowed)."""
+    import ipaddress
+    if IPV4.search(word):
+        return True
+    w = word.strip('[](),;"\'')
+    w = re.sub(r'\]:\d+$', '', w)
+    w = w.split('%')[0].split('/')[0]
+    if w.count(':') >= 2:
+        try:
+            ipaddress.IPv6Address(w)
+            return True
+        except ValueError:
+            return False
+    return False
 
 
 def _by_design(meta, category, under, decoys):
@@ -320,7 +342,7 @@ def _by_design(meta, category, under, decoys):
     the true words under the cover, never on what recognition read."""
     text = ' '.join(under)
     if category == 'ip' and not decoys:
-        return bool(IPV4.search(text) or any(IPV6.fullmatch(w.strip('[](),;')) and w.count(':') >= 2 for w in under))
+        return any(_ip_literal(w) for w in under)
     if category == 'name':
         flat = re.sub(r'[^a-z0-9]', '', text.lower())
         parts = [p for p in re.split(r'[^a-z0-9]+', (meta['realName'] + ' ' + meta['login']).lower()) if len(p) >= 3]
@@ -421,7 +443,9 @@ def score(args):
                 continue
             if args.oracle:  # score the true words' run as if it were the recognized one (an --oracle-only run)
                 r['ocr'] = r.get('oracle', {})
-            results[r['id']] = r
+            whole = not r.get('error') and all(p in r.get('ocr', {}) and p in r.get('oracle', {}) for p in ('all', 'check'))
+            if whole or r['id'] not in results:  # a retry's complete row is never hidden by a failed duplicate
+                results[r['id']] = r
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     findings = []
@@ -440,7 +464,7 @@ def score(args):
             continue
         totals['scenes'] += 1
         for s in meta['spans']:
-            if s['label'] == 'secret':
+            if s['label'] == 'secret' and not s.get('clipped'):
                 totals['secrets'][s['kind']] = totals['secrets'].get(s['kind'], 0) + 1
         for profile in ('all', 'check'):
             totals['marks'][profile] = totals['marks'].get(profile, 0) + len(_marks(r.get('ocr', {}).get(profile, {})))
@@ -506,15 +530,13 @@ def probe(args):
                 words.append([part, 10 + x * 8, 10 + i * 20, len(part) * 8, 14])
             x += len(part)
     import tempfile
-    private = tempfile.mkdtemp(prefix='redact-probe-')
-    image = Path(private) / 'blank.png'
-    image.write_bytes(blank_png(max([20 + 8 * len(line) for line in lines] + [200]), 30 + 20 * len(lines)))
-    job = dict(id='probe', image=str(image.resolve()), login=args.login, realName=args.real_name, terms=TERMS, oracleOnly=True,
-               profiles={'all': ALL, 'check': CHECK}, words=words)
-    out = subprocess.run([args.driver, '--helper', '/bin/false', '--build-json', args.build_json], input=json.dumps(job) + '\n',
-                         capture_output=True, text=True, env=dict(os.environ, QT_QPA_PLATFORM='offscreen')).stdout
-    image.unlink()
-    os.rmdir(private)
+    with tempfile.TemporaryDirectory(prefix='redact-probe-') as private:
+        image = Path(private) / 'blank.png'
+        image.write_bytes(blank_png(max([20 + 8 * len(line) for line in lines] + [200]), 30 + 20 * len(lines)))
+        job = dict(id='probe', image=str(image.resolve()), login=args.login, realName=args.real_name, terms=TERMS, oracleOnly=True,
+                   profiles={'all': ALL, 'check': CHECK}, words=words)
+        out = subprocess.run([args.driver, '--helper', '/bin/false', '--build-json', args.build_json], input=json.dumps(job) + '\n',
+                             capture_output=True, text=True, env=dict(os.environ, QT_QPA_PLATFORM='offscreen')).stdout
     res = json.loads(out)
     for prof in ('all', 'check'):
         for m in res['oracle'][prof]['matches']:
