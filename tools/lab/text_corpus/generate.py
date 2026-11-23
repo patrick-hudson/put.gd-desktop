@@ -31,12 +31,19 @@ def card(prefix='999999000000000'):
 
 def sensitive():
     # Construct the synthetic shapes, avoiding literal credential-like source strings.
-    run = lambda c, n: c * n
+    # #1975: bodies are deterministic but random-looking, as real tokens are; a run of one repeated letter
+    # is not what a provider issues, and the matcher no longer takes a token collapsed into two or three
+    # letters for a key.
+    def run(seed, n, alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'):
+        digest = b''
+        while len(digest) < n:
+            digest += hashlib.sha256((seed + str(len(digest))).encode()).digest()
+        return ''.join(alphabet[b % len(alphabet)] for b in digest[:n])
     jwt = '.'.join(base64.urlsafe_b64encode(x).decode().rstrip('=') for x in
                    (b'{"alg":"none"}', b'{"sub":"synthetic-invalid"}', b'not-a-signature'))
     return [('email', 'corpus@example.invalid'), ('phone', '+1 202 555 0142'),
             ('phone', '020 7946 0958'), ('address', '192.0.2.42'), ('address', '2001:db8::42'),
-            ('card', card()), ('token', 'AK' + 'IA' + run('A', 16)),
+            ('card', card()), ('token', 'AK' + 'IA' + run('A', 16, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567')),
             ('token', 'gh' + 'p_' + run('a', 36)), ('token', 'gl' + 'pat-' + run('b', 20)),
             ('token', 'xo' + 'xb-' + '000000000000-' * 2 + run('c', 24)),
             ('token', 'sk_' + 'test_' + run('d', 24)), ('token', jwt),
