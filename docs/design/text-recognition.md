@@ -915,14 +915,111 @@ other tool active it does not. The user's side is in the
     across words to its closing quote (#1915). A hash whose label recognition reads too far from it can
     still be covered.
   - Not secrets (#1894, #1895): a prefixed token whose body is mask characters; a hex run with a
-    hash word on its line (`sha`, `sha1` to `sha512`, `md5`, `commit`, `digest`, `checksum`, `hash`,
-    `etag`, `integrity`, `blake2b`, `blake3`, a label cell or `sha256:` included) and no secret word
-    (`secret`, `key`, `token`, `password`, `signing`, `private`, `hmac`, `auth`, `credential`,
-    `api` and the like); publishable keys (`pk_live_`, `pk_test_`, `pk.ey…`, `sb_publishable_`;
+    hash word beside it (`sha`, `sha1` to `sha512`, `md5`, `commit`, `digest`, `checksum`, `hash`,
+    `etag`, `integrity`, `blake2b`, `blake3`, the checksum tools' names such as `sha256sum` and
+    `MD5sum`, a label cell or `sha256:` included; where it may sit is below) and no secret word on
+    its row (`secret`, `key`, `token`, `password`, `signing`, `private`, `hmac`, `auth`,
+    `credential`, `api` and the like): that secret word vetoes this hash-word rule only, not the
+    public-data rules below; publishable keys (`pk_live_`, `pk_test_`, `pk.ey…`, `sb_publishable_`;
     Stripe's `pk_` is not a key prefix); the base64 of an SSH public key line; certificate and
     public-key blocks; data URIs; JSON web tokens signed with `alg: none`; subresource integrity
-    digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); Twilio account SIDs; and base64 that
-    decodes to text with spaces in it.
+    digests (`sha512-…`); Ethereum addresses (`0x` and 40 hex); and Twilio account
+    SIDs.
+  - Public data by what is around it (#1940, from the #1931 fuzz report's groups 3, 6, 9, 17, 19 and
+    21). These words are skipped by the hex, base64 and repeated-run rules; a word holding a known
+    prefix's token or a JSON web token is never skipped, and secret-named settings, password URLs and
+    PEM blocks are matched over every word as before:
+    - a hex dump's row: an offset (four to ten hex characters, one of them may be misread) and six
+      byte or word groups or more, or twelve byte groups or more without one; the groups (and the
+      offset) are skipped, while the text column after them is only evidence for the fallback below
+      and is still matched. A fingerprint of exactly ten groups of four hex is skipped;
+    - a digest: up to four words joined, 129 characters at most, 32, 40, 56, 64, 96 or 128 hex
+      characters within two as read. It is skipped when it starts its row (after a line number)
+      before a ref (`refs/…`, `HEAD`) or a file name in its own column (within four characters of it,
+      not in a pane beside it, #1958), the rest of that column at most a word in brackets. It is also skipped on the rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`,
+      `b3sum`, `cksum`, as read too: `mdSsum`), a git plumbing command (`rev-parse`, `show-ref`,
+      `ls-remote`, `rev-list`, `cat-file`, `submodule` and the like) or `podman`/`docker` with
+      `--no-trunc`, `inspect` or `--digests`. The row is cut into columns at gaps of more than four
+      characters; the first column whose words (after a line number) hold the whole command anchors
+      the rows. Each later row needs a column starting within four characters of the anchor (after a
+      line number only when the command's row has one), right below the row before (within two and a
+      half heights), a digest there followed by nothing or one more word, the first row's form, and
+      no `=` anywhere on the row; anything else, or 200 rows, ends them;
+    - the value of a label that names an identifier, a public key or a signature, from these
+      families: request, trace and event identifiers in hex and dashes (`ID`, `Event ID`, `trace_id`,
+      `span_id`, `request_id`, `req`, `correlation_id`, `Boot ID`, `Machine ID`,
+      `x-amz-request-id`, `traceparent`, `Change-Id` and their spellings); git's `tree`, `parent` and
+      `object` at a row's start; and in base64 `x-amz-id-2`, `X-Amz-Cf-Id`, `PublicKey` and
+      `public key`, go.sum's `h1:`, `Message-ID`, `X-Google-Smtp-Source`, and a DKIM signature's `b=`
+      and `bh=` when `DKIM-Signature`, `ARC-` or `bh=` appears on its row or the six above. No
+      certificate field is one. The value is the label's alphabet up to its usual length, at most 15
+      percent and two characters more. A word counts as in the alphabet after quotes and a trailing
+      comma or semicolon are trimmed, with at most one character in eight outside it and no colon; the
+      hex alphabet takes dashes and needs a digit after recognition's confusions are mapped, and the
+      base64 one takes `+`, `/`, `_`, `-` and `=` padding at the end. A
+      label of no fixed length (`b=`, `X-Google-Smtp-Source`) runs on over the rows below whose every
+      word is in its alphabet that way, each right below the one before, starting
+      within four characters of the label's row or the value's start, while each row it leaves
+      reaches the block's right edge. `ID` and `Key` take the word before them as part of the label
+      when it is letters alone, 16 or fewer, within one and a half characters; a qualifier not in the
+      families (`Secret ID:`, `Access Key:`) makes no label. Recognition's usual misreads of the label
+      count: a doubled `x` (`xX-amz-id-2`), and `i` read as `t`, `1` or `l` before the final `d`
+      (`x-amz-td-2`, `tracelId`, `traceld`, `requestiId`);
+    - a W3C `traceparent` value as a word of its own; and a word starting with a subresource
+      integrity prefix (`sha256-`, `sha384-`, `sha512-`, the number as read too: `shaS12-`,
+      `sha51i2-`) with the base64 words joined after it while their total stays within the digest's
+      length plus four (the first word itself has no cap). Separately, a run that holds an exact
+      `sha256-`, `sha384-` or `sha512-` and one base64 character after it, at the run's start or after
+      any character that is not an ASCII letter or digit, is public as a whole, as before #1940: the
+      rest of the run is not checked, so it may hold more than the digest; so is one that does after up to two short label words (`4` `integrity`).
+    Fallback, failing closed: a segment of the line as it would be without skipping, holding a
+    skipped word, is matched as if nothing in it were skipped when it also holds a word that is not
+    skipped, not a label or evidence for one, and looks like a secret of its own (eight letters and
+    digits or more with both, after any label in the word; a timestamp, a date, a `0x` address of up
+    to 16 hex and a word containing an algorithm's name, `sha2`, `md5`, `rsa`, `ed25519`, `x86_64` or
+    `aarch64`, are not such words), or when the segment joined holds a known prefix's token or a JSON
+    web token. The same holds for a segment that ends its row when the next row's first segment
+    starts at that row's first word and holds such a word. This restores the ordinary matching of
+    those words; it doesn't by itself guarantee a mark.
+  - Not keys either (#1940):
+    - the repeated-run rule (above) skips a run whose commonest letters as read (up to four, making
+      85 percent of its letters, when letters are four in five of its letters and digits) are all
+      from a meter's bars (`I l L i T | E F t f j J`, htop and btop) or all from a receipt's dotted
+      leaders in lowercase (`c e o s n m r u v w t`); a run whose letters and digits are 85 percent
+      `0` and `1`, or 60 percent with `0b` followed by at least 16 binary digits in it; and a run
+      whose letters and digits, lowercased and with everything else removed, have eight in ten,
+      after the first two, repeating the character two before them and differing from the one before
+      (`hahaha`);
+    - a hex run needs one character in eight to be a digit as read, not counting a lowercase `o`, so
+      a receipt's leaders (`ccooecoo`) are no hex;
+    - a hash word names a digest only in the run's own segment or in up to three words and 32
+      characters on each side of it, stopping at a word with seven hex characters in a row or a gap
+      wider than 30 characters, so a `commit <sha>` in another window on the same row leaves a hex
+      secret on the far side covered, while a hash word in another window within those limits still
+      counts;
+    - a secret-named setting's value (never a URL's password) shows no secret when it is a whole call
+      that reads the secret by its quoted name, `std::env::var("…")`, `std::env::var_os("…")`,
+      `os.Getenv("…")`, `os.LookupEnv("…")`, `Environment.GetEnvironmentVariable("…")`,
+      `ENV.fetch("…")` or `Deno.env.get("…")`, then at most `.unwrap()` or `.expect("…")` and `?`,
+      `;`, `,` or `)`, or `import.meta.env.NAME`; this is apart from the older reference prefixes
+      (`os.getenv` and the like, above), which accept anything after them. It shows none when it is a
+      type after `:` and unquoted (`api_key: Option<String>`; `API_KEY=Bytes` and `"Bytes"` are
+      values), or, for a model's token count (`total_tokens`, `prompt_tokens`, `max_tokens` and the
+      like) and a name that isn't a password's, an unquoted number with thousands commas
+      (`total_tokens: 12,450`);
+    - an AWS key ID's prefix read across two words (`AK` `IA…`) is a key, except a card receipt's:
+      its first word exactly `AID`, the next word `A` and 9 to 31 digits (`O`, `Q` and `D` read for
+      `0`), and at least half of the body's first 16 characters `0`, `1`, `8` or `9`
+      (`AID A0000000031010`);
+    - a Telegram bot ID can't start with `0`, so an `xxd` row whose offset starts with zeros is no bot
+      token.
+  - Limits (#1940): these get no special exemption, so ordinary matching decides them (they are
+    usually covered, since their shape is a secret's too): bcrypt hashes, `0x` and 64 hex (a
+    transaction hash and a private key look the same), sample passwords in `.env.example`, bare
+    base64 or hex with no label, kubeconfig and Kubernetes certificate data (the same field can hold a
+    private key), mangled C++ symbols, and base64 of plain text (a decoded sentence can be a
+    passphrase). A label or a hex dump's groups that recognition misreads past these rules get no
+    exemption either.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
