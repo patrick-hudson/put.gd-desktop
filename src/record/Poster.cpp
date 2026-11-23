@@ -1,6 +1,7 @@
 #include "Poster.h"
 #include <QFile>
 #include <QList>
+#include <QThread>
 #include <QTransform>
 #include <algorithm>
 #include <cmath>
@@ -27,13 +28,14 @@ struct Decoder {
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
     int index = -1;
-    ~Decoder() {
+    ~Decoder() { close(); }
+    void close() {
         av_frame_free(&frame);
         av_packet_free(&packet);
         if (video) avcodec_free_context(&video);
         if (format) avformat_close_input(&format);
     }
-    Error open(const QString& path, qint64 maxPixels) {
+    Error open(const QString& path, qint64 maxPixels, bool allCores) {
         if (!packet || !frame) return fail("Out of memory");
         AVDictionary* options = nullptr;
         av_dict_set(&options, "protocol_whitelist", "file", 0);
@@ -52,10 +54,26 @@ struct Decoder {
         if (!video || avcodec_parameters_to_context(video, parameters) < 0) return fail("Cannot decode the video");
         // The decoder refuses any later frame over the limit, whatever the header said.
         video->max_pixels = maxPixels;
-        video->thread_count = 2;
-        video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
-        if (avcodec_open2(video, decoder, nullptr) < 0) return fail("No decoder for this video");
-        return {};
+        // Two threads leave the desktop its cores. Unhinged mode (#1937) uses one
+        // per CPU up to FFmpeg's own automatic limit of 16, as many as fit in half
+        // the child's 2 GiB of address space at two worst-case frames (16-bit
+        // 4:4:4) a thread, never fewer than two; a decoder that can't open with
+        // that many opens with two.
+        const qint64 frameBytes = std::max<qint64>(1, qint64(parameters->width) * parameters->height * 6);
+        const int threads = allCores ? int(std::clamp<qint64>((qint64(1) << 30) / (2 * frameBytes), 2, std::clamp(QThread::idealThreadCount(), 2, 16))) : 2;
+        for (const int count : {threads, 2}) {
+            if (count != threads) {
+                avcodec_free_context(&video);
+                video = avcodec_alloc_context3(decoder);
+                if (!video || avcodec_parameters_to_context(video, parameters) < 0) return fail("Cannot decode the video");
+                video->max_pixels = maxPixels;
+            }
+            video->thread_count = count;
+            video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+            if (avcodec_open2(video, decoder, nullptr) == 0) return {};
+            if (count == 2) break;
+        }
+        return fail("No decoder for this video");
     }
     qint64 durationUs() const {
         const auto* stream = format->streams[index];
@@ -149,10 +167,10 @@ bool flat(const QImage& image) {
 }
 }
 
-Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out) {
+Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& out, bool allCores) {
     out = {};
     Decoder decoder;
-    if (auto error = decoder.open(input, maxPixels)) return error;
+    if (auto error = decoder.open(input, maxPixels, allCores)) return error;
     const auto* stream = decoder.format->streams[decoder.index];
     out.durationUs = decoder.durationUs();
     out.size = QSize(stream->codecpar->width, stream->codecpar->height);
@@ -175,9 +193,11 @@ Error renderPoster(const QString& input, int maxEdge, qint64 maxPixels, Poster& 
     }
     av_frame_free(&frame);
     if (!out.image.isNull()) return {};
-    // Every seek failed: the first decodable frame, read from a fresh start.
+    // Every seek failed: the first decodable frame, read from a fresh start,
+    // after the first decoder's threads and frames are freed.
+    decoder.close();
     Decoder first;
-    if (auto error = first.open(input, maxPixels)) return error;
+    if (auto error = first.open(input, maxPixels, allCores)) return error;
     frame = av_frame_alloc();
     if (frame && first.frameAt(0, frame)) out.image = toImage(frame, aspect, rotation, maxEdge);
     av_frame_free(&frame);

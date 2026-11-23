@@ -114,12 +114,12 @@ QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 max
  return cache(artifact.id,png,budget);
 }
 void ArtifactStore::setPosterHelperForTesting(const QString& path) {std::lock_guard lock(posterHelperMutex);posterHelper=path;}
-QString ArtifactStore::poster(const Artifact& artifact,qint64 budget,qint64 maxPixels,std::shared_ptr<std::atomic_bool> cancelled,Error* failure) {
+QString ArtifactStore::poster(const Artifact& artifact,qint64 budget,qint64 maxPixels,std::shared_ptr<std::atomic_bool> cancelled,Error* failure,bool allCores) {
  if(budget<=0||artifact.category!="videos"||QUuid(artifact.id).isNull())return {};
  QString helper;{std::lock_guard lock(posterHelperMutex);helper=posterHelper;}
  // A codec or helper this package lacks, or a corrupt, truncated or oversized
  // file, leaves no preview: History then says "Preview unavailable".
- Error error;const auto png=PosterJob(helper).render(artifact.path,maxPixels,budget,error,std::move(cancelled));
+ Error error;const auto png=PosterJob(helper,10000,allCores).render(artifact.path,maxPixels,budget,error,std::move(cancelled));
  const auto path=error||png.isEmpty()?QString{}:cache(artifact.id,png,budget);
  if(failure)*failure=error?error:path.isEmpty()?Error{"artifact_io","Cannot store the video preview",{}}:Error{};
  return path;

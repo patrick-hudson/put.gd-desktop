@@ -4,7 +4,8 @@
 // builders; never part of a package. The peak is the largest of every helper
 // this process has reaped (RUSAGE_CHILDREN), so give one image per invocation
 // for a per-job figure.
-//   test_ocr_run --helper PATH [--data DIR]... [--lang L]... [--words] [--candidates] [--text] IMAGE
+//   test_ocr_run --helper PATH [--data DIR]... [--lang L]... [--words] [--candidates] [--all-cores] [--text] IMAGE
+// --all-cores runs the job in Unhinged mode (#1937).
 #include "core/TextJob.h"
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -29,6 +30,7 @@ int main(int argc,char** argv){
   else if(a=="--required")options.languagesRequired=true;
   else if(a=="--words")options.words=true;
   else if(a=="--candidates")options.candidates=true;
+  else if(a=="--all-cores")options.allCores=true;
   else if(a=="--text")printText=true;
   else images.append(a);
  }

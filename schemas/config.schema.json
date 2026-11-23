@@ -1168,6 +1168,11 @@
           "default": false,
           "description": "Draw a ring at the pointer on each click in recordings, where the desktop offers the clicks (recording.capabilities reports it). Omitted means off."
         },
+        "unhingedMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Unhinged mode: text recognition, recording encode, video posters and History previews use every CPU core instead of a share of them, at normal priority, so heavy work finishes sooner and other apps may slow down meanwhile. Memory limits stay, scaled to the memory available. Omitted means off."
+        },
         "fileManagerFolders": {
           "enum": [
             "zip",

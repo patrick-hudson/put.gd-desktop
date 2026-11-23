@@ -115,7 +115,7 @@ a package audit can identify it without a control pipe or any data. `--version` 
 | --- | --- |
 | Input | A sealed memfd. The parent decodes the image and applies the crop and every Redact mark. In strips of 256 rows it flattens alpha onto white, at the image's own pixels whatever its device pixel ratio (a scaled screen's capture has one), and writes each strip twice: as 8-bit grey and as 8-bit RGB, the colour that finds emoji. The memfd holds a 32-byte header (the bytes `PGTJ`, version 2, width, height, stride, colour stride and two zero words, little-endian), the grey plane, then the colour plane. Rows are packed: the header is refused unless the stride is the width and the colour stride three times it. The parent writes the header, then starts the child, so the child loads its libraries and confines itself while the strips are written (#1929). The child's input descriptor is the memfd opened again read-only, so the child can't change what it is about to read. The parent lets the image go once the strips are written, adds the seals `F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW` and `F_SEAL_SEAL`, closes its own copies, and only then sends the bootstrap; the child opens the input once activated after it. If writing or sealing fails, or the job is cancelled first, the parent ends the child without a bootstrap. The mapping never counts in the parent again. The child maps it read-only, and checks the seals and the exact size first. It reads the colour plane row by row and lets each run of rows go as it passes them. It reads rows again only inside a large coloured region (a chat bubble) and around each colour glyph it examines (to find its background, grow its box and match it), and lets those go too, so the colour plane never sits whole in its resident set |
 | Descriptors | The child gets the input at descriptor 3 and the output at descriptor 4, set by `dup2` in the child-process modifier. Every other descriptor is closed on `exec`, and the helper closes the rest itself before it does anything. Descriptor 2 stays a capped pipe that the parent discards |
-| Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8` |
+| Environment | Cleared. The child gets only `PUTGD_TEXT_DATA` (the language data directories, in lookup order), `OMP_THREAD_LIMIT=1` and `LC_ALL=C.UTF-8`, plus `PUTGD_TEXT_UNHINGED=1` when [Unhinged mode](#unhinged-mode) is on |
 | Output | A second memfd the parent opened. The helper writes JSON of at most 8 MiB only through that inherited descriptor, never by a path. The parent reads it only after the authenticated checkpoint (its byte count and SHA-256 must match) and a zero exit, through its own descriptor |
 | Staging | None. Recognized text never reaches a disk, and neither do pixels from the screen, from the clipboard image or from a PNG file. A JPEG from the `file`, `clipboard` or `history` source is decoded by the image worker, which stages a copy of that file under `/tmp` as it does for every import |
 | Lifetime | One job, then exit. `PR_SET_PDEATHSIG` ends the helper with its parent. The parent starts and waits for the helper on one thread that outlives it, because the signal follows the starting thread |
@@ -193,6 +193,27 @@ resident set stays under the budget, so the budget decides how many cores a job 
 worker that has read one task reserves only the working memory its next task needs beyond the
 largest it has read, and an extra engine is counted without the language data it shares. There is no smaller memory figure for small regions. The helper is transient, and the memory buys
 speed.
+
+### Unhinged mode
+
+`preferences.unhingedMode` (Settings → Advanced → Performance, off by default, [#1937](https://github.com/patrick-hudson/put.gd-desktop/issues/1937)) raises the concurrency limits put.gd sets on four kinds of work: text recognition, live recording's colour conversion and software encoders, History's poster frames for videos, and History's thumbnails. Each keeps its deadline and output bounds; the memory and CPU-time limits that follow the thread count grow with it, as below. With the switch off, the engine, faster-core, memory and second-read figures elsewhere in this document are the ones that apply.
+
+| Limit | Off | On |
+| --- | --- | --- |
+| Recognition engines | At most eight, one per CPU the process may use | At most one per CPU the process may use. Affinity and the cgroup `cpu.max` quota still apply. As with the switch off, fewer start when the tasks, the time left or the memory budget allow fewer |
+| Faster cores (#1929) | On a mixed machine, the engines keep to the faster CPUs when those hold at least four physical cores and slower CPUs are allowed too | Not applied: every allowed CPU |
+| Memory budget | 320 MiB, 384 MiB at most with other languages; `RLIMIT_DATA` 1.5 times the ceiling, lowered to 1.5 times the budget for English-only jobs | 128 MiB plus 64 MiB for each engine the job may start (whether or not it starts them all), never under 320 MiB. Above that floor, the ceiling (the budget plus 64 MiB for other languages) stays within half of `MemAvailable`, and 1.5 times the ceiling within any inherited hard `RLIMIT_DATA`. Both are read before confinement. If `MemAvailable` can't be read, the 320/384 MiB defaults apply. `RLIMIT_DATA` is set and lowered as with the switch off |
+| Second-read cap | 25% of the first pass, at least 0.4 s and at most 1 s, ending 1 s before the job's own budget | The same share, floor and margin, with the 1 s cap multiplied by the larger of 1 and the engines the job may start ÷ 4. As with the switch off, the time left can shorten second reads or leave none. Second reads run only for jobs that ask for candidates (the editor's text recognition, Quick redact and the check before uploading), so only those get the extra time |
+| Live recording | `x264enc` threads two thirds of the CPUs within 2–8, `openh264enc` and `videoconvert` within 2–4 | Those three elements use every logical CPU, at least two threads |
+
+What stays, and why:
+- `OMP_THREAD_LIMIT=1`. Every engine already runs on its own thread, so Tesseract's OpenMP inside each engine oversubscribes the CPUs. On a four-core i5 it more than doubled a dense 4K screen's time and cut every run short at the budget.
+- Bands and strips are cut as for at most four engines, so with four or more engines the tasks are the same at any count.
+- The emoji scan's 3 s and Quick redact's 2 s matcher bound. They decide how thorough the scan is and stop a runaway pattern; they don't limit CPUs.
+
+The posters and thumbnails are in [History poster frames](recording/history-posters.md#history-poster-frames): posters decode on more threads without the extra nice +10, and History decodes stored thumbnails in parallel, up to one a logical CPU and as many as half of `MemAvailable` holds at 128 MiB each, but always at least one (one when it can't be read).
+
+The parent passes the switch in the helper's cleared environment as `PUTGD_TEXT_UNHINGED=1`, because the engines, the memory budget and the limits are fixed before confinement. On aurora-amd (12 threads), a dense 4K screen took 1.69 s with the switch on against 1.98 s off, with peak resident memory of 371 MiB against 271. On a four-core i5 the times were the same. The copied text was identical on all 277 measured inputs ([#1948](https://github.com/patrick-hudson/put.gd-desktop/pull/1948)).
 
 **Why 320 MiB (#1808).** The budget was 128 MiB until 2026-11-21. A whole screen's first task
 already used that up, so a GNOME 4K screen ran all 43 of its tasks on one engine and a 1080p
@@ -1906,6 +1927,19 @@ and 54 and 56 wrong, and the third 1,268 right.
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
+- With the matching kind chosen, Quick redact and the upload check can leave these visible. Each was found by
+  the [sensitive-text fuzz harness](../lab/redact-fuzz.md) (#1931) and kept as a limit:
+  - An IP address that recognition misreads: a comma read for a dot (`192.168,36.135`), a digit
+    inserted (`192.168.408.230`), or a character inserted into an IPv6 group so that it is longer than four
+    (`fdOO0::2efb` for `fd00::2efb`). In 6,500 rendered scenes this left 270 addresses visible, mostly in 11 to
+    13 px monospace logs.
+  - Text that recognition doesn't find at all. Grey text on light grey at about 2.6:1 contrast is often not
+    read, though people can read it (it is below the WCAG minimum), so nothing in it is checked.
+  - A phone number in a right-to-left paragraph with no direction marks. It is shown with its digit groups in
+    reverse order (`5388 555 (210) 1+` for `+1 (210) 555 5388`), and only part of it is covered.
+  - One-time codes, licence and product keys, a card's CVC, and the path of a share link. No built-in rule
+    looks for them, since none has a shape of its own; a word or pattern in the user's redaction list can
+    still find one.
 - Emoji with no colour (👀, 💀, 🖤, 🤍 and 💬 as Noto draws them) are not found. In desktop
   acceptance, 🇬🇧 at the tested editors' default size and Noto's ☕ on white at 150% zoom were
   missed too. Plain-shape emoji (🔴, 🟩, keycaps, ➡️) are never named, and emoji that an app

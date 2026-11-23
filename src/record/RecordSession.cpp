@@ -450,6 +450,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     id_ = params["id"].toString();
     target_ = target;
     reviewOptions_ = params["reviewOptions"].toObject();
+    allCores_ = params["allCores"].toBool(false);
     window_ = target_.kind == "window" ? params["window"].toObject() : QJsonObject{};
     config_ = config;
     staging_ = staging;
@@ -884,6 +885,7 @@ void RecordSession::begin(Reply reply) {
     monitor_.close();
     options.output = workingClip_;
     options.budgetBytes = config_.budgetBytes;
+    options.allCores = allCores_;
     options.encoders = available(videoEncoders);
     options.audioEncoders = available(audioEncoders);
     if (options.encoders.isEmpty()) { enterPhase(HelperPhase::Ready); showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }

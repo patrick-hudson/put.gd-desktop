@@ -230,9 +230,11 @@ const QHash<QChar,QChar>& hexConfusions() {
 bool hexRun(const QString& run) {
  const auto& confused=hexConfusions();
  if(run.size()<32)return false;
- int other=0,digits=0,letters=0;
- for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;}
- return other*12<=run.size()&&digits*5>=run.size()&&letters*10>=run.size();
+ int other=0,digits=0,letters=0,read=0;
+ for(const auto raw:run){const auto c=confused.value(raw,raw);if(c>='0'&&c<='9')++digits;else if((c>='a'&&c<='f')||(c>='A'&&c<='F'))++letters;else ++other;if(c>='0'&&c<='9'&&raw!='o')++read;}
+ // #1940: and one character in eight a digit other than a lowercase o: a receipt's leaders read as
+ // "ccooecoo" are hex only through their o, while hex keeps its digits 2 to 9 however 0 and 1 are read.
+ return other*12<=run.size()&&digits*5>=run.size()&&letters*10>=run.size()&&read*8>=run.size();
 }
 // Base64 or base64url of random bytes: upper and lower case and digits, and a
 // change of character class at least every third character on average.
@@ -249,6 +251,25 @@ bool repeatedRun(const QString& run) {
  std::array<int,128> ascii{};QHash<QChar,int> other;int characters=0;
  for(const auto raw:run)if(raw.isLetterOrNumber()){const auto c=raw.toLower();if(c.unicode()<128)++ascii[c.unicode()];else ++other[c];++characters;}
  if(characters<24||characters*10<int(run.size())*9)return false;
+ // #1940: what recognition makes of drawn noise is no token: its commonest letters as read (case kept,
+ // up to four of them making 85 % of its letters, which are four in five of its letters and digits) all
+ // from one of these: a meter's bars (htop and btop's [|||||] read as IIIITTTT EEE) or a receipt's dotted
+ // leaders (ccooecoo, eeeneeee: small round letters, lowercase), a price or a percentage beside them;
+ // a binary literal (0 and 1 85 % of it, or 60 % with a 0b literal in it: "mask = 0b1111…0000"); or one
+ // two-letter syllable repeated (hahaha, OROROR). A token whose recognition collapsed (above) repeats
+ // other letters: a, d, h, C ("oho aeaaaaaaeae aad", "APC CCEEEECEEEEC").
+ {QString kept;QHash<QChar,int> exact;int letters=0,binary=0;
+  for(const auto c:run)if(c.isLetterOrNumber()){kept+=c;if(c.isLetter()){++exact[c];++letters;}if(c=='0'||c=='1')++binary;}
+  static const QRegularExpression literal(QStringLiteral("0b[01]{16,}"));
+  if(binary*100>=kept.size()*85||(binary*10>=kept.size()*6&&literal.match(run).hasMatch()))return false;
+  QList<QPair<int,QChar>> ranked;for(auto it=exact.cbegin();it!=exact.cend();++it)ranked.append({it.value(),it.key()});
+  std::sort(ranked.begin(),ranked.end(),[](const auto& a,const auto& b){return a.first>b.first||(a.first==b.first&&a.second<b.second);});
+  QString top;int share=0;for(const auto& [count,c]:std::as_const(ranked)){if(share*100>=letters*85||top.size()==4)break;top+=c;share+=count;}
+  if(letters*5>=kept.size()*4&&share*100>=letters*85)for(const auto& set:{QStringLiteral("IlLiT|EFtfjJ"),QStringLiteral("ceosnmruvwt")})
+   if(std::all_of(top.cbegin(),top.cend(),[&](QChar c){return set.contains(c);}))return false;
+  const auto lower=kept.toLower();qsizetype alternating=0;
+  for(qsizetype i=2;i<lower.size();++i)if(lower.at(i)==lower.at(i-2)&&lower.at(i)!=lower.at(i-1))++alternating;
+  if(alternating*10>=(lower.size()-2)*8)return false;}
  QHash<QChar,int> counts=other;for(int i=0;i<128;++i)if(ascii[size_t(i)])counts.insert(QChar(i),ascii[size_t(i)]);
  // #1895: but a run almost all of mask characters (x or 0, nine in ten) is a placeholder, not a token: see placeholder().
  for(const QChar mask:{QChar('x'),QChar('0')})if(counts.value(mask)*10>=characters*9)return false;
@@ -392,12 +413,14 @@ struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;b
 // three and a third), while a table's label cell ("Git SHA", "AWS") sits a column away from its value
 // (14 and 24 characters on Patrick's decoy page).
 bool prefixHead(const QString& word);
-QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const QList<RecognizedWord>& candidates,bool loose=false) {
+// skip (#1940): words that are public by what the screen shows around them (publicWords()) end a
+// segment as a word outside the token alphabet does.
+QList<Segment> segments(const QList<int>& line,const QList<QString>& plain,const QList<RecognizedWord>& candidates,bool loose=false,const QSet<int>* skip=nullptr) {
  QList<Segment> out;Segment current;
  const auto close=[&]{if(!current.words.isEmpty())out.append(current);current={};};
  const auto glyph=[&](int w){return double(candidates.at(w).rect.width())/qMax<qsizetype>(1,plain.at(w).size());};
  for(const int index:line){
-  if(!tokenPiece(plain.at(index),loose)){close();continue;}
+  if((skip&&skip->contains(index))||!tokenPiece(plain.at(index),loose)){close();continue;}
   if(!current.words.isEmpty()){
    const int previous=current.words.last();
    const int gap=candidates.at(index).rect.left()-candidates.at(previous).rect.right();
@@ -514,6 +537,18 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
    // Curly quotes too: an editor's string literal reads as "“AKIA…" (#1820).
    static const QString separators=QStringLiteral("=:/@\"'([`\u201C\u201D\u2018\u2019\u00AB\u00BB");
    const bool afterSeparator=!pieceStart(segment,at);
+   // #1940: an AWS key ID's prefix read across two words (recognition splits "AK" "IA…" often) is a key,
+   // except a card receipt's label and value: the word "AID" alone, then a card AID as printed and a
+   // body half 0, 1, 8 and 9 ("AID" "A0000000031010" joined into AIDA…).
+   if(index==0&&pieceAt(segment,at)!=pieceAt(segment,at+int(candidate.capturedLength(1))-1)&&[&]{const int p=pieceAt(segment,at);const int e=p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size());if(segment.text.mid(segment.starts.at(p),e-segment.starts.at(p))!=QLatin1String("AID"))return false;
+    // ...and the next word a card AID as printed: A, then digits (0 as read: O, Q, D) and nothing else.
+    static const QRegularExpression aid(QStringLiteral("^A[0-9OQD]{9,31}$"));
+    const int q=p+1;if(q>=segment.starts.size())return false;
+    const int f=q+1<segment.starts.size()?segment.starts.at(q+1):int(segment.text.size());
+    return aid.match(segment.text.mid(segment.starts.at(q),f-segment.starts.at(q))).hasMatch();}()){
+    const auto body=candidate.captured(3).left(16);
+    if(std::count_if(body.cbegin(),body.cend(),[](QChar c){return c=='0'||c=='1'||c=='8'||c=='9';})*2>=body.size())continue;
+   }
    // #1875: a JSON web token's payload starts with eyJ after the header's dot, so a token whose
    // header recognition misread past the prefix ("|eyfhbGci….eyJzdWIi…") is found by its payload.
    const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
@@ -625,7 +660,11 @@ bool otherMatch(const QList<int>& words,const QList<QString>& plain,const QList<
 // 32 hex, an identifier).
 bool publicRun(const QString& run) {
  static const QRegularExpression shapes(QStringLiteral("(?:^|[^A-Za-z0-9])(?:sha(?:256|384|512)-[A-Za-z0-9+/]|0x[0-9a-fA-F]{40}(?![0-9a-fA-F])|AC[0-9a-f]{32}(?![0-9a-f]))"));
- return shapes.match(run).hasMatch();
+ if(shapes.match(run).hasMatch())return true;
+ // #1940: from the run's start, or after a label's ":" or "=" there: a W3C traceparent (version, trace
+ // ID, span ID and flags, nothing after them).
+ static const QRegularExpression anchored(QStringLiteral("^(?:[A-Za-z_-]{1,24}[:=])?[\"']?0[0-9a-f]-[0-9a-f]{32}-[0-9a-f]{16}-0[0-9a-f][\"',;]*$"));
+ return anchored.match(run).hasMatch();
 }
 // A JSON web token that carries no signature: its header decodes to JSON with "alg":"none" and its
 // signature part is empty (Sol on #1903). Anything recognition garbled is no such token.
@@ -642,7 +681,9 @@ bool unsignedJwt(const QString& text) {
 // Whether a line names a digest (a part of one of its words, split at anything but a letter or digit
 // and at a lowercase-to-capital change, is a hash word) and no secret.
 bool digestLine(const QList<int>& line,const QList<QString>& plain) {
- static const QSet<QString> hashes{"sha","sha1","sha224","sha256","sha384","sha512","md5","commit","digest","checksum","hash","etag","integrity","blake2b","blake3"};
+ static const QSet<QString> hashes{"sha","sha1","sha224","sha256","sha384","sha512","md5","commit","digest","checksum","hash","etag","integrity","blake2b","blake3",
+  // #1940: the checksum tools' own names (MD5sum: in an ISO's page, sha256sum in its command).
+  "md5sum","sha1sum","sha224sum","sha256sum","sha384sum","sha512sum","shasum","b2sum","b3sum","cksum"};
  static const QSet<QString> secrets{"secret","key","token","password","passwd","pwd","signing","private","hmac","auth","credential","credentials","apikey","api"};
  // A secret word counts inside a camelCase name too (clientSecret, clientAPISecret); a hash word only
  // as a word of its own, so a token's tail such as "shaB7m2…" is no label (Sol on #1901).
@@ -707,8 +748,12 @@ bool passwordName(const QString& name) {
  return lower.contains(QLatin1String("pass"))||lower.contains(QLatin1String("pwd"))||lower.contains(QLatin1String("pin"));
 }
 // numeric: a value of digits alone counts (a password-family name, a URL's password; Sol on #1903).
-bool secretValue(QString value,bool numeric=false) {
+// name (#1940): the setting's name, for the checks that only a setting's value takes; empty for a URL's
+// password.
+// declaration (#1940): the value follows a name and a ":" unquoted, as a type follows a field's name.
+bool secretValue(QString value,bool numeric=false,const QString& name={},bool declaration=false) {
  static const QString quotes=QStringLiteral("\"'`“”‘’");
+ const bool quoted=!value.isEmpty()&&quotes.contains(value.front());
  while(!value.isEmpty()&&(quotes.contains(value.back())||value.back()==','||value.back()==';'))value.chop(1);
  while(!value.isEmpty()&&quotes.contains(value.front()))value.remove(0,1);
  if(value.size()<4||placeholder(value)||masked(value))return false;
@@ -718,6 +763,19 @@ bool secretValue(QString value,bool numeric=false) {
  // os.environ[…], ENV['…'], getenv(…), a 1Password op:// or Vault reference, a cloud secret's ARN.
  static const QRegularExpression reference(QStringLiteral("^(?:\\$[({]|\\{\\{|<|%[A-Za-z_][A-Za-z0-9_]*%$|\\$[A-Za-z_][A-Za-z0-9_]*$|process\\.env\\b|os\\.environ|os\\.getenv|ENV\\[|(?:System\\.)?getenv\\(|env\\(|op://|vault:|arn:aws:)"),QRegularExpression::CaseInsensitiveOption);
  if(reference.match(value).hasMatch())return false;
+ // #1940: a setting's value (never a URL's password) shows no secret when it is a whole call that reads
+ // the secret by name from where it is kept, with nothing after it but error handling
+ // (std::env::var("DB_PASSWORD")?;, os.Getenv("API_KEY"), never …unwrap_or("hunter2")), a type in a
+ // declaration (api_key: Option<String>, password: string; never API_KEY=Bytes or "bytes"), or, for
+ // a count of tokens a model reports (total_tokens: 12,450), an unquoted number with thousands separators.
+ if(!name.isEmpty()&&!quoted){
+  static const QRegularExpression code(QStringLiteral("^(?:(?:std::)?env::var(?:_os)?|os\\.(?:Getenv|LookupEnv)|Environment\\.GetEnvironmentVariable|ENV\\.fetch|Deno\\.env\\.get)\\([\"'][A-Za-z_][A-Za-z0-9_]*[\"']\\)(?:\\.unwrap\\(\\)|\\.expect\\([\"'][^\"']*[\"']\\))?[?;,)]*$|^import\\.meta\\.env\\.[A-Za-z_][A-Za-z0-9_]*[;,]?$"));
+  if(code.match(value).hasMatch())return false;
+  static const QRegularExpression type(QStringLiteral("^&?(?:'static )?(?:(?:Option|Optional|Vec|Box|Arc|Rc|Cow|Secret|SecretBox|Result|List|Mapping)<[A-Za-z0-9_&<>:', ]+>|String|str|string|bytes|Bytes|SecretString|SecretStr|QString|std::string|char\\*|int|number|bool|any|object)[?]?[,;]?$"));
+  if(declaration&&type.match(value).hasMatch())return false;
+  static const QRegularExpression thousands(QStringLiteral("^\\d{1,3}(?:,\\d{3})+$")),counted(QStringLiteral("(?i)^(?:[a-z0-9]+[_.-])*(?:total|prompt|completion|max|input|output|cached|reasoning)[_.-]?tokens$"));
+  if(!numeric&&counted.match(name).hasMatch()&&thousands.match(value).hasMatch())return false;
+ }
  // A URL with no password in it (redis://localhost:6379/0) is an address, not a secret; one with a
  // password is matched as a URL.
  // A URL with a key in its userinfo (a Sentry DSN, https://<key>@host/1) is a secret (acceptance on #1903).
@@ -778,7 +836,8 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   // this place in the list: sentry below names it.
   QRegularExpression(QStringLiteral("(?i)https?:/{1,2}[0-9a-f]{12,}(?::[0-9a-f]+)?@(?:[A-Za-z0-9.-]{0,100}[.])?sentry[.,]io/[0-9]+")),
   // A Telegram bot token: the bot's id, a colon and 35 characters (core.telegram.org/bots/api).
-  QRegularExpression(QStringLiteral("(?<![0-9])[0-9]{6,12}:[A-Za-z0-9_-]{30,}")),
+  // #1940: a bot's id has no leading zero; an xxd row's offset ("00000010:" and its groups) does.
+  QRegularExpression(QStringLiteral("(?<![0-9])[1-9][0-9]{5,11}:[A-Za-z0-9_-]{30,}")),
  };
  // The Sentry DSN pattern: its scheme starts a word as a password URL's does, its key is judged on its
  // own (not on any query after it), and one match a segment is enough (Sol on #1903).
@@ -846,7 +905,8 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
    // After a comma (a CSV row) the value needs a digit and a letter, so "Password,please" stays visible.
    const auto value=pattern==&bare?m.captured(3):!m.captured(3).isEmpty()?m.captured(3):!m.captured(4).isEmpty()?m.captured(4):m.captured(5);
    if(m.captured(2)==QLatin1String(",")&&!(hasDigit(value)&&std::any_of(value.cbegin(),value.cend(),[](QChar c){return c.isLetter();})))continue;
-   if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)))){
+   const bool declared=m.captured(2)==QLatin1String(":")&&(pattern==&inner?m.capturedLength(5)>0:!QStringLiteral("\"'").contains(text.at(qMax(0,m.capturedStart(3)-1))));
+   if(secretName(m.captured(1))&&secretValue(value,passwordName(m.captured(1)),m.captured(1),declared)){
     int last=p;while(last+1<pieces&&glued(last+1))++last;
     // A quoted value whose closing quote is in a later word ("N4!&v" "blue-lake\"}") runs to it (Sol on #1916).
     const QChar quote=m.capturedLength(3)>0?QChar('"'):QChar('\'');
@@ -865,7 +925,7 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   const int valueAt=segment.starts.at(p)+int(m.capturedEnd());
   if(valueAt<pieceEnd(p)){
    int last=p;while(last+1<pieces&&glued(last+1))++last;
-   if(!secretValue(segment.text.mid(valueAt,pieceEnd(last)-valueAt),passwordName(m.captured(1))))continue;
+   if(!secretValue(segment.text.mid(valueAt,pieceEnd(last)-valueAt),passwordName(m.captured(1)),m.captured(1),m.captured(2)==QLatin1String(":")))continue;
    out.append(from(p,last));continue;
   }
   // The value in the next piece (after a lone "=" or ":" piece too), the last on the segment. A name
@@ -880,8 +940,283 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
   if(m.captured(1).compare(QLatin1String("authorization"),Qt::CaseInsensitive)==0&&first+1<pieces&&schemes.contains(plain.at(segment.words.at(first)).toLower()))++first;
   int last=first;while(last+1<pieces&&glued(last+1))++last;
   if(last!=pieces-1)continue;
-  if(!secretValue(segment.text.mid(segment.starts.at(first),pieceEnd(last)-segment.starts.at(first)),passwordName(m.captured(1))))continue;
+  const bool declared=m.captured(2)==QLatin1String(":")||(lone&&plain.at(segment.words.at(p+1))==QLatin1String(":"));
+  if(!secretValue(segment.text.mid(segment.starts.at(first),pieceEnd(last)-segment.starts.at(first)),passwordName(m.captured(1)),m.captured(1),declared))continue;
   out.append(from(first,last));
+ }
+ return out;
+}
+// #1940: words that show public data rather than a key, by what the screen shows around them. They take
+// no part in the hex, base64 and repeated runs; a known prefix's token or a JSON web token in one is
+// never public, and a secret-named setting, a password URL and a PEM block are found as before.
+//  - a hex dump's row: an offset (00000010:, 0010) and six byte or word groups or more (xxd, hexdump,
+//    Wireshark), or twelve byte groups or more without one; and a fingerprint of ten groups of four;
+//  - a digest (32, 40, 56, 64, 96 or 128 hex characters, one more or less as read) that starts its row
+//    before a ref (refs/…, HEAD) or a file name (sha256sum's "<hex>  name.iso"), and the digest rows that
+//    follow a checksum or git plumbing command (sha256sum, git rev-parse, show-ref, ls-remote…) up to
+//    the first row of anything else;
+//  - the value of a label that says it is an identifier, a public key or a signature (Event ID:,
+//    trace_id=, x-amz-id-2:, Change-Id:, tree, parent, PublicKey =, h1:, a DKIM header's b= and bh=),
+//    in that label's alphabet and up to its usual length; a
+//    label of no fixed length runs on over the rows below it that hold its alphabet alone. A qualifier
+//    before "ID" or "Key" that is not in the list ("Secret ID:", "Access Key:") makes no label.
+QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
+ QSet<int> out;
+ const auto keys=lines.keys();
+ const auto mapped=[](const QString& word){QString m=word;for(auto& c:m){c=hexConfusions().value(c,c);if(c==QChar('@'))c=QChar('0');}return m;};
+ const auto isHex=[](QChar c){return (c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F');};
+ const auto hexish=[&](const QString& word){const auto m=mapped(word);if(m.isEmpty())return false;qsizetype other=0;for(const auto c:m)if(!isHex(c))++other;return other*8<=m.size();};
+ const auto allHex=[&](const QString& word){const auto m=mapped(word);return !m.isEmpty()&&std::all_of(m.cbegin(),m.cend(),isHex);};
+ const auto prefixed=[&](int w){
+  Segment one;one.words={w};one.starts={0};one.text=plain.at(w);QList<Found> found;segmentMatches(one,0,0,found);
+  return std::any_of(found.cbegin(),found.cend(),[](const Found& f){return f.length>0;});
+ };
+ const auto mark=[&](int w){if(!prefixed(w))out.insert(w);};
+ // Words that are the evidence for a public one (its label, the file name or ref after a digest): they
+ // are no unknown neighbour (below).
+ QSet<int> known;
+ const auto glyph=[&](int w){return double(candidates.at(w).rect.width())/qMax<qsizetype>(1,plain.at(w).size());};
+ const auto gap=[&](int a,int b){return double(candidates.at(b).rect.left()-candidates.at(a).rect.right())/qMax(1.0,qMax(glyph(a),glyph(b)));};
+ // The words of a row from `from` on, up to a gap of four characters (a column or a pane beside it).
+ const auto column=[&](const QList<int>& row,int from){int end=from;while(end<row.size()&&(end==from||gap(row.at(end-1),row.at(end))<=4.0))++end;return end;};
+ // The first word after an editor's line number or a lone mark.
+ const auto leadOf=[&](const QList<int>& line){
+  static const QRegularExpression number(QStringLiteral("^\\d{1,5}$"));
+  if(line.size()>1&&(number.match(plain.at(line.first())).hasMatch()||std::none_of(plain.at(line.first()).cbegin(),plain.at(line.first()).cend(),[](QChar c){return c.isLetterOrNumber();})))return 1;
+  return 0;
+ };
+ // The words of a digest starting at word i: up to four, joined while hex, to a digest's length.
+ const auto digestAt=[&](const QList<int>& line,int i){
+  QString joined;
+  for(int j=i;j<line.size()&&j<i+4;++j){
+   const auto& t=plain.at(line.at(j));
+   if(!hexish(t)||(j>i&&gap(line.at(j-1),line.at(j))>1.5))return 0;
+   joined+=t;
+   if(joined.size()>129)return 0;
+   for(const int length:{32,40,56,64,96,128})if(std::abs(int(joined.size())-length)<=2&&hasDigit(mapped(joined)))return j-i+1;
+  }
+  return 0;
+ };
+ static const QRegularExpression command(QStringLiteral("\\b(?:md[5S]|sha[0-9SlI]{0,3}|b2|b3|ck)sum\\b|\\bgit\\b.*\\b(?:rev-parse|show-ref|ls-remote|rev-list|merge-base|hash-object|write-tree|cat-file|submodule)\\b|\\b(?:podman|docker)\\b.*(?:--no-trunc|\\binspect\\b|--digests)"),QRegularExpression::CaseInsensitiveOption);
+ static const QRegularExpression file(QStringLiteral("^\\*?[^\\s=:]*[A-Za-z0-9_)-]\\.[A-Za-z][A-Za-z0-9]{0,11}$|^[^\\s=:]*/[^\\s=:]+$"));
+ for(int k=0;k<keys.size();++k){
+  const auto& line=lines[keys.at(k)];const int n=int(line.size());const int lead=leadOf(line);
+  // A W3C traceparent, a word of its own.
+  for(const int w:line){
+   static const QRegularExpression shape(QStringLiteral("^[\"']?0[0-9a-f]-[0-9a-f]{32}-[0-9a-f]{16}-0[0-9a-f][\"',;]*$"));
+   if(shape.match(plain.at(w)).hasMatch())mark(w);
+  }
+  // A subresource integrity digest (sha512-…, its 512 as recognition reads it: shaS12-, sha51i2-) and the
+  // words of its base64 joined after it, up to the digest's length.
+  for(int i=0;i<n;++i){
+   static const QRegularExpression sri(QStringLiteral("^[\"'{(]?(?:integrity:)?sha(256|384|512|[0-9SlIi|]{3,4})-([A-Za-z0-9+/=]*)[\"',;})]*$"));
+   const auto m=sri.match(plain.at(line.at(i)));if(!m.hasMatch())continue;
+   const int length=m.captured(1)==QLatin1String("256")?44:m.captured(1)==QLatin1String("384")?64:88;
+   qsizetype total=m.capturedLength(2);mark(line.at(i));
+   static const QRegularExpression piece(QStringLiteral("^[A-Za-z0-9+/=]+[\"',;})]*$"));
+   for(int j=i+1;j<n&&gap(line.at(j-1),line.at(j))<=2.0&&piece.match(plain.at(line.at(j))).hasMatch()&&total+plain.at(line.at(j)).size()<=length+4;++j){total+=plain.at(line.at(j)).size();mark(line.at(j));i=j;}
+  }
+  // A hex dump's row.
+  {// The offset as read: one character of it may be misread ("Q0O0bO" for 000000b0).
+   const auto offsetWord=[&](const QString& word){
+    auto m=mapped(word);if(m.endsWith(':'))m.chop(1);
+    if(m.size()<4||m.size()>10||!hasDigit(m))return false;
+    return std::count_if(m.cbegin(),m.cend(),[&](QChar c){return !isHex(c);})<=1;
+   };
+   const bool hasOffset=lead<n&&offsetWord(plain.at(line.at(lead)));
+   const int start=hasOffset?lead+1:lead;int groups=0,fours=0,odd=0,j=start;
+   for(;j<n;++j){
+    const auto& t=plain.at(line.at(j));
+    if((t.size()==2||t.size()==4)&&allHex(t)){++groups;fours+=t.size()==4?1:0;continue;}
+    if(t.size()<=4&&(odd+1)*4<=groups+4){++odd;continue;}
+    break;
+   }
+   // The words after the groups, in their column, are the row's own bytes as text (the ASCII column),
+   // however read.
+   if((hasOffset&&groups>=6)||(!hasOffset&&groups>=12&&fours==0)){for(int i=hasOffset?lead:start;i<j;++i)mark(line.at(i));for(int i=j;i<column(line,j);++i)known.insert(line.at(i));}}
+  // A fingerprint: ten groups of four, no more.
+  for(int i=0;i+10<=n;++i){
+   const auto four=[&](int at){return at>=0&&at<n&&plain.at(line.at(at)).size()==4&&allHex(plain.at(line.at(at)));};
+   if(four(i-1))continue;
+   int j=i;while(four(j))++j;
+   if(j-i==10){for(int g=i;g<j;++g)mark(line.at(g));}
+   i=qMax(i,j-1);
+  }
+  // A digest before a ref or a file name, the rest of its column (up to a gap of four characters: a
+  // pane beside it) at most a word in brackets ("(v2.2.1)", git submodule status) or a ref's "^{}".
+  if(const int d=digestAt(line,lead);d>0&&lead+d<n){
+   const int end=column(line,lead+d);
+   const auto& next=plain.at(line.at(lead+d));
+   static const QRegularExpression aside(QStringLiteral("^\\(.*\\)$"));
+   const bool rest=end==lead+d+1||(end==lead+d+2&&aside.match(plain.at(line.at(lead+d+1))).hasMatch());
+   if(rest&&(next.startsWith(QLatin1String("refs/"))||next.startsWith(QLatin1String("HEAD"))||file.match(next).hasMatch())){
+    for(int i=lead;i<lead+d;++i)mark(line.at(i));
+    for(int i=lead+d;i<end;++i)known.insert(line.at(i));
+   }
+  }
+  // The digest rows after a checksum or git plumbing command, in the command's own column: the row is
+  // cut into columns at gaps of four characters (panes side by side), and a column whose words, after a
+  // line number, hold the whole command starts it. Each digest row below has its digest where that
+  // column starts (within four characters, after a line number), right below the row before (within
+  // two and a half of its heights), and the same form as the first: a digest alone, or a digest and
+  // one more word in its column (the file name), never an "=". Anything else ends the rows.
+  {const auto columnsOf=[&](const QList<int>& row){QList<int> starts{0};for(int i=1;i<row.size();++i)if(gap(row.at(i-1),row.at(i))>4.0)starts.append(i);return starts;};
+   const auto skipNumber=[&](const QList<int>& row,int at,int end){static const QRegularExpression number(QStringLiteral("^\\d{1,5}$"));return at+1<end&&number.match(plain.at(row.at(at))).hasMatch()?at+1:at;};
+   // A line number is skipped on the digest rows only when the command's row has one too (one gutter),
+   // the rows are measured from the command's own column, and an "=" anywhere on a row ends them.
+   int commandStart=-1,commandWord=-1;bool numbered=false;
+   for(const int c:columnsOf(line)){
+    const int end=column(line,c);const int at=skipNumber(line,c,end);
+    QStringList words;for(int i=at;i<end;++i)words.append(plain.at(line.at(i)));
+    if(command.match(words.join(' ')).hasMatch()){commandStart=candidates.at(line.at(at)).rect.left();commandWord=at;numbered=at>c;break;}
+   }
+   if(commandStart>=0){
+    int above=candidates.at(line.at(commandWord)).rect.top(),height=candidates.at(line.at(commandWord)).rect.height(),form=-1;
+    for(int m=k+1;m<keys.size()&&m<=k+200;++m){
+     const auto& row=lines[keys.at(m)];int at=-1,end=0;
+     for(const int c:columnsOf(row)){
+      const int e=column(row,c);const int a=numbered?skipNumber(row,c,e):c;
+      if(std::abs(candidates.at(row.at(a)).rect.left()-commandStart)<=4*glyph(row.at(a))){at=a;end=e;break;}
+     }
+     if(at<0)break;
+     const auto& box=candidates.at(row.at(at)).rect;
+     if(box.top()<=above||box.top()-above>2.5*qMax(height,box.height()))break;
+     const int d=digestAt(row,at);
+     if(d==0||at+d<end-1)break;
+     const int shape=at+d<end?1:0;
+     if(form>=0&&shape!=form)break;
+     if(std::any_of(row.cbegin(),row.cend(),[&](int w){return plain.at(w).contains('=');}))break;
+     form=shape;above=box.top();height=box.height();
+     for(int i=at;i<at+d;++i)mark(row.at(i));
+     for(int i=at+d;i<end;++i)known.insert(row.at(i));
+    }
+   }}
+  // Labelled public values: kind 0 hex (with dashes: UUIDs), kind 1 base64; a length of 0 runs on.
+  struct Label {int kind;int length;bool dkim=false;bool bare=false;};
+  static const QHash<QString,Label> labels{
+   {"id",{0,36}},{"eventid",{0,36}},{"traceid",{0,36}},{"spanid",{0,36}},{"parentspanid",{0,36}},{"parentid",{0,36}},{"requestid",{0,36}},{"xrequestid",{0,36}},{"req",{0,36}},{"reqid",{0,36}},
+   {"correlationid",{0,36}},{"xcorrelationid",{0,36}},{"bootid",{0,36}},{"machineid",{0,36}},{"invocationid",{0,36}},{"xamzrequestid",{0,36}},{"traceparent",{0,56}},{"changeid",{0,42}},
+   {"tree",{0,64,false,true}},{"parent",{0,64,false,true}},{"object",{0,64,false,true}},{"rev",{0,64}},{"revision",{0,64}},
+   {"xamzid2",{1,80}},{"xamzcfid",{1,60}},{"publickey",{1,48}},{"pubkey",{1,48}},{"h1",{1,48}},{"xgooglesmtpsource",{1,0}},{"bh",{1,48,true}},{"b",{1,0,true}},
+   {"messageid",{1,100}},
+  };
+  const auto normal=[](const QString& name){QString out;for(const auto c:name)if(c.isLetterOrNumber())out+=c.toLower();return out;};
+  const auto inAlphabet=[&](QString t,int kind){
+   static const QString quotes=QStringLiteral("\"'`“”‘’");
+   while(!t.isEmpty()&&(quotes.contains(t.back())||t.back()==','||t.back()==';'))t.chop(1);
+   while(!t.isEmpty()&&quotes.contains(t.front()))t.remove(0,1);
+   if(t.isEmpty()||t.contains(':'))return false;
+   qsizetype other=0;
+   if(kind==0){const auto m=mapped(t);for(const auto c:m)if(!isHex(c)&&c!='-')++other;return other*8<=m.size()&&hasDigit(m);}
+   for(qsizetype i=0;i<t.size();++i){const auto c=t.at(i);if(!(c.isLetterOrNumber()&&c.unicode()<128)&&!QStringLiteral("+/_-").contains(c)&&!(c=='='&&t.mid(i).count('=')==t.size()-i))++other;}
+   return other*8<=t.size();
+  };
+  const auto dkim=[&]{
+   for(int m=qMax(0,k-6);m<=k;++m){QStringList words;for(const int w:lines[keys.at(m)])words.append(plain.at(w));const auto text=words.join(' ');
+    if(text.contains(QLatin1String("DKIM-Signature"),Qt::CaseInsensitive)||text.contains(QLatin1String("ARC-"))||text.contains(QLatin1String("bh=")))return true;}
+   return false;
+  };
+  for(int i=lead;i<n;++i){
+   const auto& t=plain.at(line.at(i));
+   // The label's name, and where its value starts: in this word after its ":" or "=", or the next word
+   // (after a lone "=" or ":").
+   qsizetype sep=-1;for(qsizetype c=0;c<t.size()&&sep<0;++c)if(t.at(c)==':'||t.at(c)=='=')sep=c;
+   QString name;int valueWord=-1;QString first;
+   if(sep>0&&sep+1<t.size()){name=t.left(sep);valueWord=i;first=t.mid(sep+1);}
+   else if(sep>0&&sep+1==t.size()){name=t.left(sep);valueWord=i+1;}
+   else if(sep<0&&i+2<n&&(plain.at(line.at(i+1))==QLatin1String("=")||plain.at(line.at(i+1))==QLatin1String(":"))){name=t;valueWord=i+2;}
+   else if(sep<0&&i==lead&&i+1<n){name=t;valueWord=i+1;}
+   else continue;
+   if(valueWord>=n)continue;
+   auto key=normal(name);int labelStart=i;
+   // "Event" "ID:", "public" "key =": the word before qualifies the label; an unknown one makes none.
+   if(i>lead&&(key==QLatin1String("id")||key==QLatin1String("key"))){
+    const auto& before=plain.at(line.at(i-1));
+    if(std::all_of(before.cbegin(),before.cend(),[](QChar c){return c.isLetter();})&&before.size()<=16&&gap(line.at(i-1),line.at(i))<=1.5){
+     key=normal(before)+key;if(!labels.contains(key))continue;
+     labelStart=i-1;
+    }
+   }
+   // Recognition's usual misreads of these labels: a doubled x (xX-amz-id-2), i read as t, 1 or l
+   // (x-amz-td-2, tracelId, traceld), and an I read beside an i (requestiId).
+   auto it=labels.constFind(key);
+   if(it==labels.cend()){
+    auto fuzzy=key;
+    if(fuzzy.startsWith(QLatin1String("xx")))fuzzy.remove(0,1);
+    static const QRegularExpression id(QStringLiteral("(?:[itl1]{1,2}|li|il)d(?=2?$)"));
+    fuzzy.replace(id,QStringLiteral("id"));
+    it=labels.constFind(fuzzy);
+   }
+   if(it==labels.cend())continue;
+   const auto& label=it.value();
+   if(label.bare!=(sep<0&&valueWord==i+1))continue;
+   if(label.dkim&&!dkim())continue;
+   if(first.isEmpty())first=plain.at(line.at(valueWord));
+   if(!inAlphabet(first,label.kind))continue;
+   qsizetype total=first.size();const auto bound=[&](qsizetype more){return label.length==0||total+more<=label.length*115/100+2;};
+   if(!bound(0))continue;
+   QList<int> value{line.at(valueWord)};int j=valueWord+1;
+   for(;j<n;++j){
+    const auto& w=plain.at(line.at(j));
+    if(gap(line.at(j-1),line.at(j))>2.0||!inAlphabet(w,label.kind)||!bound(w.size()))break;
+    total+=w.size();value.append(line.at(j));
+   }
+   for(const int w:value)mark(w);
+   for(int l=labelStart;l<valueWord;++l)known.insert(line.at(l));
+   // A value of no fixed length that ends its row runs on over the rows of its alphabet alone below, as
+   // a wrap leaves them: each row it leaves reaches the right edge of the rows around it (within three
+   // characters), so a row after a short last one ("client-key-data:" read without its label) is not.
+   if(j==n&&label.length==0){
+    int right=candidates.at(line.last()).rect.right();
+    for(int m=k+1;m<keys.size()&&m<=k+60;++m)right=qMax(right,candidates.at(lines[keys.at(m)].last()).rect.right());
+    const auto full=[&](const QList<int>& row){return candidates.at(row.last()).rect.right()>=right-3*glyph(row.last());};
+    // ...each right below the one before (within two and a half of its heights) and starting within four
+    // characters of the label's row or of the value's start, never in another pane.
+    const auto& labelBox=candidates.at(line.first()).rect;const auto& valueBox=candidates.at(line.at(valueWord)).rect;
+    for(int m=k+1;m<keys.size()&&m<=k+60&&full(lines[keys.at(m-1)]);++m){
+     const auto& row=lines[keys.at(m)];
+     const auto& above=candidates.at(lines[keys.at(m-1)].first()).rect;const auto& box=candidates.at(row.first()).rect;const double g=glyph(row.first());
+     if(box.top()<=above.top()||box.top()-above.top()>2.5*qMax(above.height(),box.height())||(std::abs(box.left()-labelBox.left())>4*g&&std::abs(box.left()-valueBox.left())>4*g))break;
+     if(!std::all_of(row.cbegin(),row.cend(),[&](int w){return inAlphabet(plain.at(w),label.kind);}))break;
+     for(const int w:row)mark(w);
+    }
+   }
+   i=qMax(i,j-1);
+  }
+ }
+ // Fails closed: where a public word would have joined a token segment with a word that is neither
+ // public nor its evidence and looks like a secret of its own (eight letters and digits or more, with
+ // both, after any label in it: a recovery code, a UUID after "API Key:"), that segment's words all stay
+ // as they were, so what covered the unknown word before still covers it. A timestamp and an algorithm's
+ // name (rsa-sha256) or a memory address (0x4a34d54d92037984) are no such word.
+ // A segment that ends its row counts the next row's first segment with it, when that starts its row:
+ // a token's wrapped remainder ("KO4T-GZUD" below an X-Amz-Cf-Id at a row's end) was covered with it.
+ // Judged on the words as first found, so one segment put back does not make its neighbours' words unknown.
+ const auto found=out;
+ const auto unknownWord=[&](int w){
+  if(found.contains(w)||known.contains(w))return false;
+  static const QRegularExpression label(QStringLiteral("^[\"'`“]?[A-Za-z_][A-Za-z0-9_.-]{0,40}[\"'`”]?\\s?[=:]")),time(QStringLiteral("\\d\\d:\\d\\d")),algorithm(QStringLiteral("(?i)sha\\d|md5|rsa|ed25519|x86_64|aarch64|^@?0x[0-9a-f]{1,16}$"));
+  auto value=plain.at(w);const auto m=label.match(value);if(m.hasMatch())value=value.mid(m.capturedLength());
+  static const QRegularExpression date(QStringLiteral("^\\d{4}-\\d{1,2}-\\d"));
+  if(time.match(value).hasMatch()||date.match(value).hasMatch()||algorithm.match(value).hasMatch())return false;
+  int alnum=0;bool digit=false,letter=false;for(const auto c:value)if(c.isLetterOrNumber()){++alnum;digit=digit||c.isDigit();letter=letter||c.isLetter();}
+  return alnum>=8&&digit&&letter;
+ };
+ QHash<int,QList<Segment>> plainSegments;for(const int key:keys)plainSegments.insert(key,segments(lines[key],plain,candidates));
+ for(int k=0;k<keys.size();++k){
+  const auto& line=lines[keys.at(k)];const auto& rowSegments=plainSegments[keys.at(k)];
+  for(const auto& segment:rowSegments){
+   if(std::none_of(segment.words.cbegin(),segment.words.cend(),[&](int w){return found.contains(w);}))continue;
+   bool unknown=std::any_of(segment.words.cbegin(),segment.words.cend(),unknownWord);
+   // A known prefix's token or a JSON web token in the segment as joined ("ghp_" "<body>" split by
+   // recognition after a public label) keeps it as it was too.
+   if(!unknown){QList<Found> tokens;segmentMatches(segment,0,int(segment.words.size())-1,tokens);unknown=std::any_of(tokens.cbegin(),tokens.cend(),[](const Found& f){return f.length>0;});}
+   if(!unknown&&segment.words.last()==line.last()&&k+1<keys.size()){
+    const auto& next=plainSegments[keys.at(k+1)];
+    if(!next.isEmpty()&&next.first().words.first()==lines[keys.at(k+1)].first())unknown=std::any_of(next.first().words.cbegin(),next.first().words.cend(),unknownWord);
+   }
+   if(unknown)for(const int w:segment.words)out.remove(w);
+  }
  }
  return out;
 }
@@ -890,6 +1225,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
  static const QRegularExpression begin(QStringLiteral("[-—–~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*PRIVATE ?KEY")),end(QStringLiteral("[-—–~_=.]{2,} ?END\\b[A-Z0-9 ]*PRIVATE ?KEY"));
  QList<QList<int>> out;
+ const auto shown=publicWords(lines,plain,candidates);
  // #1897: what a line gives the wrap checks is the same whichever token above reaches it, so it is
  // worked out once: its segments, whether its first holds a card or an address, and that segment's
  // own matches. Every line still starts its own chain (Sol on #1902), at the cost of these lookups.
@@ -901,7 +1237,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
  const auto factsOf=[&](int key)->LineFacts&{
   auto it=facts.find(key);
   if(it==facts.end()){
-   LineFacts f;f.segments=segments(lines[key],plain,candidates);
+   LineFacts f;f.segments=segments(lines[key],plain,candidates,false,&shown);
    const auto& line=lines[key];
    // A wrapped remainder ends where an inline comment starts ("…Ui5" "=" "#" "development"): the
    // comment's words neither join the cover nor decide whether the line is a remainder (Sol on #1916).
@@ -984,7 +1320,15 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     if(closed){k=j;continue;}
    }}
   for(const auto& segment:segments(line,plain,candidates,true))out+=structuralMatches(segment,plain,candidates);
-  for(const auto& segment:segments(line,plain,candidates)){
+  const auto lineSegments=segments(line,plain,candidates,false,&shown);
+  // Whether the row names a digest at all, worked out once; where each word sits on it, for the label
+  // beside a run (below).
+  std::optional<bool> rowDigest;QHash<int,int> position;
+  // Whether the row holds an SSH public key's type word, worked out once (Sol on #1954: a row of thousands
+  // of segments read it once a segment).
+  const bool sshPublic=std::any_of(line.cbegin(),line.cend(),[&](int w){static const QRegularExpression ssh(QStringLiteral("^[\"'`\u201C\u2018]?(?:ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-|sk-(?:ssh|ecdsa)-)"));return ssh.match(plain.at(w)).hasMatch();});
+  for(int s=0;s<lineSegments.size();++s){
+   const auto& segment=lineSegments.at(s);
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
    // "sha256:") is a digest, not a key, unless a secret word is on the line too. With no word either
@@ -993,7 +1337,6 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    // prefix (pk_live_, pk_test_, sb_publishable_, Mapbox's pk.) or inside a data: URI, and the base64
    // of an SSH public key (ssh-ed25519 AAAA…).
    {static const QRegularExpression publishable(QStringLiteral("(?:pk[_,.](?:live|test)[_,.]|sb[_,.]publishable[_,.]|(?:^|[^A-Za-z0-9])pk[.,]|data:[a-z/+.-]+;base64,)$"),QRegularExpression::CaseInsensitiveOption);
-    const bool sshPublic=std::any_of(line.cbegin(),line.cend(),[&](int w){static const QRegularExpression ssh(QStringLiteral("^[\"'`\u201C\u2018]?(?:ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-|sk-(?:ssh|ecdsa)-)"));return ssh.match(plain.at(w)).hasMatch();});
     found.erase(std::remove_if(found.begin(),found.end(),[&](const Found& f){
      if(f.length>0&&!f.dotted)return false;
      const int at=f.prefix>=0?f.prefix:segment.starts.at(f.from);
@@ -1005,13 +1348,45 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      // Each exemption only for the public payload itself: the publishable prefix in the run's first
      // piece, an SSH key's AAAA… blob (Sol on #1903).
      static const QRegularExpression blob(QStringLiteral("^[\"'`]?(?:ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-[a-z0-9]+|sk-(?:ssh|ecdsa)-[a-z0-9@.-]+)?AAAA[A-Za-z0-9+/]"));
-     return publishable.match(segment.text.left(at)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||(f.length==0&&publicRun(run))||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
+     // #1940: a public run may follow up to two short label words the run took in ("4" "integrity"
+     // "sha512-…"): letters or digits alone, under 12, lowercase after the first.
+     bool shown=f.length==0&&publicRun(run);
+     for(int p=f.from;!shown&&f.length==0&&p<f.to&&p<f.from+2;++p){
+      static const QRegularExpression label(QStringLiteral("^[A-Za-z0-9][a-z0-9]{0,11}$"));
+      if(!label.match(plain.at(segment.words.at(p))).hasMatch())break;
+      const auto rest=segment.text.mid(segment.starts.at(p+1),qMax(0,runEnd-segment.starts.at(p+1)));
+      shown=publicRun(rest);
+     }
+     return publishable.match(segment.text.left(at)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
     }),found.end());}
-   if(digestLine(line,plain))found.erase(std::remove_if(found.begin(),found.end(),[&](const Found& f){
+   // #1940: a hash word names a digest in the run's own segment or in the label beside it: up to three
+   // words and 32 characters either side ("SHA-256", "Git SHA", "checksum":, ENV['hash'] ||=), none
+   // holding hex of its own and none a column away (30 characters), never in another window on the same
+   // row (tmux, tiling: a "commit <sha>" left of a hex secret ends at its sha). A secret word anywhere on
+   // the row still keeps the run covered.
+   if(!found.isEmpty()&&!rowDigest)rowDigest=digestLine(line,plain);
+   if(!found.isEmpty()&&*rowDigest){
+   if(position.isEmpty())for(int j=0;j<line.size();++j)position.insert(line.at(j),j);
+   QList<int> near=segment.words;
+   {static const QRegularExpression hex(QStringLiteral("[0-9a-fA-F]{7,}"));
+    const auto glyphOf=[&](int w){return double(candidates.at(w).rect.width())/qMax<qsizetype>(1,plain.at(w).size());};
+    const auto beside=[&](int from,int step){
+     qsizetype characters=0;
+     for(int j=from+step,count=0;j>=0&&j<line.size()&&count<3;j+=step,++count){
+      const int w=line.at(j),inner=line.at(j-step);
+      const int gap=step<0?candidates.at(inner).rect.left()-candidates.at(w).rect.right():candidates.at(w).rect.left()-candidates.at(inner).rect.right();
+      characters+=plain.at(w).size();
+      if(hex.match(plain.at(w)).hasMatch()||characters>32||gap>30*qMax(glyphOf(w),glyphOf(inner)))break;
+      if(step<0)near.prepend(w);else near.append(w);
+     }
+    };
+    beside(position.value(segment.words.first()),-1);beside(position.value(segment.words.last()),1);}
+   if(digestLine(near,plain))found.erase(std::remove_if(found.begin(),found.end(),[&](const Found& f){
     if(f.length>0)return false;
     const int from=segment.starts.at(f.from),to=f.to+1<segment.starts.size()?segment.starts.at(f.to+1):int(segment.text.size());
     return hexRun(segment.text.mid(from,to-from));
    }),found.end());
+   }
    if(found.isEmpty())continue;
    // A segment with a token in it is marked whole: recognition splits a token
    // into pieces whose ends often fail a test on their own. Only ordinary words

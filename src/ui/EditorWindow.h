@@ -38,6 +38,8 @@ public:
  ~EditorTextRecognition() override;
  void setRunner(Runner);
  void setLanguages(QStringList languages) {languages_=std::move(languages);}
+ // Unhinged mode (#1937): recognition uses every CPU.
+ void setAllCores(bool allCores) {allCores_=allCores;}
  // idle (nothing for this revision), recognizing, done, failed.
  QString state() const {return state_;}
  Error error() const {return error_;}
@@ -85,6 +87,7 @@ private:
  editor::EditDocument& doc_;
  Runner runner_;
  QStringList languages_;
+ bool allCores_=false;
  editor::TextLayer layer_;
  QList<editor::RecognizedWord> candidates_;
  QList<int> lineTops_;

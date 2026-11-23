@@ -5,6 +5,7 @@
 #include "WaylandAcquisition.h"
 #include "SourceDescription.h"
 #include "core/RecordingModel.h"
+#include "core/CpuShare.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -28,10 +29,8 @@ int bitrateKbps(const QSize& size, int fps) {
 }
 // Threads for the CPU stages: enough to keep up with the frame rate, never
 // the whole machine, so the desktop being recorded keeps its own cores.
-int cpuThreads(int minimum, int maximum) {
-    const int cores = std::max(1, QThread::idealThreadCount());
-    return std::clamp(cores * 2 / 3, minimum, maximum);
-}
+// Unhinged mode (#1937) gives them every CPU.
+int cpuThreads(int minimum, int maximum, bool allCores) { return cpu::share(minimum, maximum, allCores); }
 // x264's presets at the pixel rate: a 1080p30 region takes veryfast; above
 // about 1440p30 or 1080p60 superfast, above 1440p60 ultrafast, so a software
 // encode stays real time on the lab's four-core machines at 60 fps too.
@@ -45,7 +44,7 @@ QString x264Preset(const QSize& size, int fps) {
 // input PTS said (vaapih264enc, x264enc and openh264enc keep the input PTS),
 // so a capture that drops repeats must restore each output buffer's time.
 bool encoderRestamps(const QString& name) { return name == "vah264lpenc" || name == "vah264enc"; }
-QString encoderDescription(const QString& name, int kbps, int fps, const QSize& size) {
+QString encoderDescription(const QString& name, int kbps, int fps, const QSize& size, bool allCores) {
     const int keyint = std::max(1, fps * 2);
     if (encoderRestamps(name)) return QStringLiteral("%1 bitrate=%2 key-int-max=%3 b-frames=0").arg(name).arg(kbps).arg(keyint);
     // Intel's iHD driver refuses CBR and VBR for this element; constant QP is the one mode every VA driver has.
@@ -54,8 +53,8 @@ QString encoderDescription(const QString& name, int kbps, int fps, const QSize& 
     // per thread) and a short lookahead encode far more frames per second
     // than zerolatency's two sliced threads did, which stalled the capture at
     // 1080p and above and made clips choppy. EOS flushes the frames in flight.
-    if (name == "x264enc") return QStringLiteral("x264enc speed-preset=%1 bitrate=%2 key-int-max=%3 bframes=0 threads=%4 sliced-threads=false rc-lookahead=10 sync-lookahead=0").arg(x264Preset(size, fps)).arg(kbps).arg(keyint).arg(cpuThreads(2, 8));
-    if (name == "openh264enc") return QStringLiteral("openh264enc bitrate=%1 gop-size=%2 complexity=low multi-thread=%3").arg(qint64(kbps) * 1000).arg(keyint).arg(cpuThreads(2, 4));
+    if (name == "x264enc") return QStringLiteral("x264enc speed-preset=%1 bitrate=%2 key-int-max=%3 bframes=0 threads=%4 sliced-threads=false rc-lookahead=10 sync-lookahead=0").arg(x264Preset(size, fps)).arg(kbps).arg(keyint).arg(cpuThreads(2, 8, allCores));
+    if (name == "openh264enc") return QStringLiteral("openh264enc bitrate=%1 gop-size=%2 complexity=low multi-thread=%3").arg(qint64(kbps) * 1000).arg(keyint).arg(cpuThreads(2, 4, allCores));
     return name;
 }
 // Capture and encoding run in their own threads. The capture queue leaks its
@@ -68,7 +67,7 @@ QString encoderDescription(const QString& name, int kbps, int fps, const QSize& 
 // output is queued before the muxer, which also waits on the audio branch.
 QString captureQueue() { return QStringLiteral(" ! queue name=cq leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
 QString encodeQueue() { return QStringLiteral(" ! queue name=eq max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
-QString convert() { return QStringLiteral(" ! videoconvert n-threads=%1").arg(cpuThreads(2, 4)); }
+QString convert(bool allCores) { return QStringLiteral(" ! videoconvert n-threads=%1").arg(cpuThreads(2, 4, allCores)); }
 QString encoderFormat(const QString& name) { return name.startsWith("va") ? QStringLiteral("NV12") : QStringLiteral("I420"); }
 QString audioDescription(const QString& name) {
     if (name == "avenc_aac" || name == "fdkaacenc" || name == "voaacenc") return name + " bitrate=128000";
@@ -479,7 +478,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         description = imageCopySourceDescription(options.imageCopy->caps()) + QStringLiteral(" ! videoscale ! video/x-raw,width=%1,height=%2,pixel-aspect-ratio=1/1")
             .arg(options.rect.width()).arg(options.rect.height()) + captureQueue();
         if (options.crop.isValid()) description += cropDescription(options.rect.size(), options.crop);
-        description += convert();
+        description += convert(options.allCores);
     } else if (options.pipewireNode) {
         // The stream arrives at the compositor's pace; videorate after the
         // conversion holds the configured frame rate, and a region is cropped
@@ -498,7 +497,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // stretches the new size onto the canvas instead of adding borders.
         if (options.canvas.isValid()) description += QStringLiteral(" ! video/x-raw,pixel-aspect-ratio=1/1");
         if (options.followCrop) description += QStringLiteral(" ! videocrop name=wcrop");
-        description += convert();
+        description += convert(options.allCores);
         if (options.canvas.isValid()) description += QStringLiteral(" ! videoscale add-borders=true ! video/x-raw,width=%1,height=%2,pixel-aspect-ratio=1/1").arg(options.canvas.width()).arg(options.canvas.height());
     } else {
         // ximagesrc skips frame numbers when a grab runs late, leaving gaps in
@@ -507,14 +506,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // skipped frame (a 10 s capture played in 7 s on a three-monitor X11
         // desktop). videorate fills the gaps with repeats, as on Wayland.
         // Recordings draw the cursor in; the scroll capture's frame tap does not.
-        description = x11SourceDescription(options.rect, options.window, options.fps, true) + captureQueue() + convert();
+        description = x11SourceDescription(options.rect, options.window, options.fps, true) + captureQueue() + convert(options.allCores);
     }
     // The pause probes sit on the encoders' sink pads (raw frames and samples):
     // dropping encoded buffers would leave P-frames whose references are gone,
     // which strict decoders (OpenH264 on Fedora) refuse while FFmpeg's conceals.
     // videorate after the conversion holds the configured rate for both sources.
     description += QStringLiteral(" ! videorate ! video/x-raw,format=%1,framerate=%2/1").arg(encoderFormat(encoder)).arg(options.fps) + encodeQueue() + QStringLiteral(" ! %1 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%2")
-        .arg(encoderDescription(encoder, kbps, options.fps, encoded), shellQuote(options.output));
+        .arg(encoderDescription(encoder, kbps, options.fps, encoded, options.allCores), shellQuote(options.output));
     const bool mixed = options.audio && options.microphone && !audioEncoder.isEmpty();
     if (mixed)
         description += QStringLiteral(" audiomixer name=amix latency=150000000") + audioEncodeBranch(audioEncoder)

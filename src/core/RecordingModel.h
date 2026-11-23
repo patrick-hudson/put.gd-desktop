@@ -44,6 +44,7 @@ struct RecordingConfig {
     bool clickHighlights = false;
     std::optional<int> maxEdge;  // explicit user downscale of the output's long edge
     qint64 budgetBytes = 0;      // set by the resident: stop before the admitted file limit
+    bool allCores = false;       // set by the resident from Unhinged mode (#1937); not part of the JSON
     QString mime() const;
     QString extension() const;
     bool animation() const { return format == "gif" || format == "webp"; }

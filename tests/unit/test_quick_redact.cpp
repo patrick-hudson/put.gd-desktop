@@ -3,6 +3,7 @@
 // categories asked for, and every match expected as "category: words".
 #include "editor/QuickRedact.h"
 #include "fixtures/Waits.h"
+#include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QPainter>
 #include <QtTest>
@@ -27,6 +28,15 @@ QStringList found(const QList<RecognizedWord>& candidates,const quickRedact::Res
  QStringList out;
  for(const auto& match:result.matches){QStringList text;for(const int w:match.words)text.append(candidates.at(w).text);out.append(match.category+": "+text.join(' '));}
  return out;
+}
+// #1940: hex and base64 that no scanner reads as a secret in source, made at run time from a seed.
+QString hexOf(const char* seed,int length) {
+ QByteArray out;for(int i=0;out.size()<length;++i)out+=QCryptographicHash::hash(QByteArray(seed)+QByteArray::number(i),QCryptographicHash::Sha256).toHex();
+ return QString::fromLatin1(out.left(length));
+}
+QString base64Of(const char* seed,int length) {
+ QByteArray out;for(int i=0;out.size()<length;++i)out+=QCryptographicHash::hash(QByteArray(seed)+QByteArray::number(i),QCryptographicHash::Sha256).toBase64(QByteArray::OmitTrailingEquals);
+ return QString::fromLatin1(out.left(length));
 }
 quickRedact::Sources account(const QString& login,const QString& realName) {quickRedact::Sources s;s.login=login;s.realName=realName;return s;}
 quickRedact::Sources terms(const QStringList& list) {quickRedact::Sources s;s.terms=list;return s;}
@@ -508,6 +518,119 @@ private slots:
   QTest::newRow("only the categories asked for")<<"mail a@example.com or call +1 202 555 0143"<<QStringList{"phone"}<<QStringList{"phone: +1 202 555 0143"};
   QTest::newRow("Unicode digits and full-width forms")<<"Call ٥٥٥ ١٢٣ ٤٥٦٧ or ５５５-１２３-４５６７"<<all<<QStringList{"phone: ٥٥٥ ١٢٣ ٤٥٦٧","phone: ５５５-１２３-４５６７"};
   QTest::newRow("ordinary prose matches nothing")<<"The quick brown fox jumps over 3 lazy dogs in 2026. | Version 1.2 shipped on Monday."<<all<<QStringList{};
+  // #1940 (#1931 fuzz groups 3, 6, 17, 19): public hashes, IDs, signatures and noise are no keys; what
+  // looks the same beside a secret's name, or with a word that makes no label, stays covered.
+  {const auto key=QStringList{"key"};
+   const auto h32=hexOf("e",32),h40=hexOf("c",40),h64=hexOf("s",64),b44=base64Of("w",43)+"=",b76=base64Of("x",76);
+   const auto uuid=hexOf("u",8)+"-"+hexOf("v",4)+"-4"+hexOf("v",3)+"-8"+hexOf("q",3)+"-"+hexOf("r",12);
+   QTest::newRow("a hexdump row stays visible")<<"00000010 79 af 00 36 a6 c6 cd 45 2e c1 88 12 44 b6 b0 01 |y..6...E....D...|"<<key<<QStringList{};
+   QTest::newRow("an xxd row stays visible")<<"00000010: cbc5 c7c6 75eb 2000 fa90 888b 0427 7ae7 ....u..."<<key<<QStringList{};
+   QTest::newRow("a Wireshark row read with misread groups stays visible")<<"@010 8d de 16 d5 9d 10 e7 2c 1d ec 35 Ob de df 49 67"<<key<<QStringList{};
+   QTest::newRow("a hex dump row without its offset stays visible")<<"1f 1c 5a 6b dd ba bd e8 e3 98 7c e4 82 41 6f 9a ..Zk......|..Ao."<<key<<QStringList{};
+   QTest::newRow("a GPG fingerprint stays visible")<<"5978 DD4D B993 16BF 6C5D 43D4 DF67 319C DA35 2C4E"<<key<<QStringList{};
+   QTest::newRow("sha256sum output below its command stays visible")<<"$ sha256sum web-1 web-2 | "+h64+" web-1 | "+hexOf("t",64)+" web-2"<<key<<QStringList{};
+   QTest::newRow("a digest before its file name stays visible")<<h64+" ubuntu-26.04-desktop-amd64.iso"<<key<<QStringList{};
+   QTest::newRow("a ref line stays visible")<<h40+" refs/heads/main"<<key<<QStringList{};
+   QTest::newRow("a hex run after the checksum rows is covered")<<"$ sha256sum web-1 | "+h64+" web-1 | $ openssl rand -hex 32 | "+hexOf("k",64)<<key<<QStringList{"key: "+hexOf("k",64)};
+   QTest::newRow("a hex run before a word that is no file stays covered")<<h64+" production"<<key<<QStringList{"key: "+h64+" production"};
+   QTest::newRow("a Sentry event ID stays visible")<<"Event ID: "+h32+" 2026-11-03T18:33:29.939Z"<<key<<QStringList{};
+   QTest::newRow("a log line's request and trace IDs stay visible")<<"2026-11-18T14:59:59.196Z DEBUG req="+uuid+" trace_id="+h32<<key<<QStringList{};
+   QTest::newRow("a JSON log's trace ID stays visible")<<"\"traceId\": \""+h32+"\","<<key<<QStringList{};
+   QTest::newRow("an S3 request ID header stays visible")<<"x-amz-id-2: "+b76<<key<<QStringList{};
+   QTest::newRow("a security token header stays covered")<<"x-amz-security-token: "+b76<<key<<QStringList{"key: x-amz-security-token: "+b76};
+   QTest::newRow("a Gerrit Change-Id stays visible")<<"Change-Id: I"+h40<<key<<QStringList{};
+   QTest::newRow("git's tree and parent lines stay visible")<<"tree "+h40+" | parent "+hexOf("p",40)<<key<<QStringList{};
+   QTest::newRow("a boot ID stays visible")<<"Boot ID: "+h32<<key<<QStringList{};
+   QTest::newRow("a secret ID stays covered")<<"Secret ID: "+h32<<key<<QStringList{"key: Secret ID: "+h32};
+   // Fails closed: a public ID beside a word that looks like a secret of its own stays covered with it.
+   QTest::newRow("a token after an ID stays covered")<<"Event ID: "+h32+" "+QString("gh")+"p_"+base64Of("g",36).replace('+','a').replace('/','b')<<key<<QStringList{"key: Event ID: "+h32+" gh"+QString("p_")+base64Of("g",36).replace('+','a').replace('/','b')};
+   QTest::newRow("a WireGuard public key stays visible")<<"PublicKey = "+b44<<key<<QStringList{};
+   QTest::newRow("a WireGuard private key stays covered")<<"PrivateKey = "+b44<<key<<QStringList{"key: PrivateKey = "+b44};
+   QTest::newRow("a go.sum hash stays visible")<<"golang.org/x/text v0.14.0 h1:"+b44<<key<<QStringList{};
+   QTest::newRow("a DKIM signature stays visible")<<"h=to:subject:message-id:date:from:mime-version; bh="+b44+"; | b="+base64Of("d",60)+" | "+base64Of("f",60)<<key<<QStringList{};
+   QTest::newRow("a traceparent stays visible")<<"traceparent: 00-"+h32+"-"+hexOf("z",16)+"-01"<<key<<QStringList{};
+   QTest::newRow("a misread integrity digest stays visible")<<"4 integrity shaS12-"+base64Of("i",86)+"=="<<key<<QStringList{};
+   const auto text=QString::fromLatin1(QByteArray("Test for ready meeting score rose and the plan we made").toBase64());
+   // Sol on #1954: nothing shows that a decoded sentence is public (a passphrase is a sentence too), so
+   // base64 of text stays covered.
+   QTest::newRow("base64 of plain text stays covered")<<"payload: "+text<<key<<QStringList{"key: payload: "+text};
+   QTest::newRow("htop bars stay visible")<<"TLTTTT TTT T TTT T TTT T TTT T TTT T TTT 78 | SOIIIITILIITTEEETTEEEEEEEEEEEEEEEEE"<<key<<QStringList{};
+   QTest::newRow("receipt leaders stay visible")<<"Croissant ccooecoocoocoocoocococooccooo 3.20"<<key<<QStringList{};
+   QTest::newRow("laughter stays visible")<<"11 lol hahahahahahahahahahahahaha"<<key<<QStringList{};
+   QTest::newRow("a binary mask stays visible")<<"mask = 0b11111111111111111111111100000000"<<key<<QStringList{};
+   QTest::newRow("a type after a key's name stays visible")<<"pub api_key: Option<String>,"<<key<<QStringList{};
+   QTest::newRow("reading a password from the environment stays visible")<<"let db_password = std::env::var(\"DB_PASSWORD\")?;"<<key<<QStringList{};
+   QTest::newRow("a token count stays visible")<<"total_tokens: 12,450"<<key<<QStringList{};
+   QTest::newRow("a receipt's AID stays visible")<<"AID A0000000031010"<<key<<QStringList{};
+   // Recognition's misreads of the same rows (#1931 recognized words).
+   QTest::newRow("a hex dump row with a misread offset and text column stays visible")<<"Q0O0bO 42 8a 37 b9 a7 b5 a2 di b7 da 3a 6b Ff8 54 04 F7 B.7.......:K.T.. US300000000000c"<<key<<QStringList{};
+   QTest::newRow("a doubled x in an S3 header stays visible")<<"xX-amz-id-2: "+b76<<key<<QStringList{};
+   QTest::newRow("a trace ID label read with an l stays visible")<<"\"tracelId\": \""+h32+"\","<<key<<QStringList{};
+   QTest::newRow("md5sum read as mdSsum still names its rows")<<"$ mdSsum a.iso | "+h32+" a.iso"<<key<<QStringList{};
+   QTest::newRow("container IDs below podman ps --no-trunc stay visible")<<"$ podman ps --no-trunc --format {{.ID}} | "+h64+" web-1"<<key<<QStringList{};
+   QTest::newRow("a JSON checksum stays visible")<<"\"checksum\": \""+h64+"\","<<key<<QStringList{};
+   QTest::newRow("a Ruby hash setting stays visible")<<"ENV['hash'] ||= '"+h64+"'"<<key<<QStringList{};
+   // Sol on #1954.
+   QTest::newRow("a URL password that reads as a type stays covered")<<"postgres://alice:bytes@db/app"<<key<<QStringList{"key: postgres://alice:bytes@db/app"};
+   QTest::newRow("an environment read with a literal fallback stays covered")<<"let db_password = std::env::var(\"DB\").unwrap_or(\"Crane7Queue\");"<<key<<QStringList{"key: std::env::var(\"DB\").unwrap_or(\"Crane7Queue\");"};
+   QTest::newRow("a token with thousands commas stays covered")<<"API_TOKEN=123,456,789"<<key<<QStringList{"key: API_TOKEN=123,456,789"};
+   {const auto body=base64Of("g",36).replace('+','a').replace('/','b');
+    QTest::newRow("a token split at its prefix after a public label stays covered")<<"PublicKey = gh"+QString("p_ ")+body<<key<<QStringList{"key: PublicKey = gh"+QString("p_ ")+body};}
+   {const auto credential=QString::fromLatin1((QByteArray("DB_PASS")+QByteArray("WORD=correct horse battery staple")).toBase64());
+    QTest::newRow("base64 of a credential stays covered")<<"payload: "+credential<<key<<QStringList{"key: "+credential};}
+   QTest::newRow("an AWS key ID with a legal body split after its AK stays covered")<<"AK IAQ"+QString("234567234567K7Z")<<key<<QStringList{"key: AK IAQ234567234567K7Z"};
+   QTest::newRow("a word that only starts like a mangled symbol stays covered")<<"in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"<<key<<QStringList{"key: in _ZN9BgqRCJC4uqcdgOHvIZSoPYCce9auIA2mEv"};
+   QTest::newRow("a quoted value that reads as a type stays covered")<<"password=\"bytes\""<<key<<QStringList{"key: password=\"bytes\""};
+   QTest::newRow("access tokens with thousands commas stay covered")<<"ACCESS_TOKENS=123,456,789"<<key<<QStringList{"key: ACCESS_TOKENS=123,456,789"};
+   {const auto pin=QString::fromLatin1(QByteArray("PIN: 123456 for the front door and spare office").toBase64());
+    QTest::newRow("base64 of a PIN stays covered")<<"payload: "+pin<<key<<QStringList{"key: "+pin};}
+   QTest::newRow("an AWS key ID read with 0, 1 and 8 split after its AK stays covered")<<"AK IA0"+QString("C1K1Z0M8L1X1W0Y")<<key<<QStringList{"key: AK IA0C1K1Z0M8L1X1W0Y"};
+   {const auto typed=QString("API_")+"KEY"+QString("=")+"Bytes";
+    QTest::newRow("a type after an equals sign stays covered")<<typed<<key<<QStringList{"key: "+typed};}
+   QTest::newRow("a quoted JSON value that reads as a type stays covered")<<"{\"role\":\"admin\",\"authorization\":\"Bytes\"}"<<key<<QStringList{"key: {\"role\":\"admin\",\"authorization\":\"Bytes\"}"};
+   QTest::newRow("a receipt AID that reads as letters stays covered")<<"AID A0C1K1Z0M8L1X1W0Y"<<key<<QStringList{"key: AID A0C1K1Z0M8L1X1W0Y"};
+   QTest::newRow("digest rows after a numbered command line stay visible")<<"0001 sha256sum web-one | 0002 "+h64+" web-one"<<key<<QStringList{};
+   QTest::newRow("a bare hex row after named checksum rows stays covered")<<"$ sha256sum web-one | "+h64+" web-one | "+hexOf("k",64)<<key<<QStringList{"key: "+h64+" web-one "+hexOf("k",64)};
+   QTest::newRow("a numbered hex row after an unnumbered command stays covered")<<"$ sha256sum web-one | 123 "+hexOf("k",64)<<key<<QStringList{"key: 123 "+hexOf("k",64)};
+   QTest::newRow("a certificate label over no certificate stays covered")<<"client-certificate-data: "+base64Of("q",60)<<key<<QStringList{"key: client-certificate-data: "+base64Of("q",60)};
+   QTest::newRow("an AWS key ID split after its AK stays covered")<<"AK IA"+QString("Z7Q4R2N9KT6HB3XW")<<key<<QStringList{"key: AK IAZ7Q4R2N9KT6HB3XW"};
+   QTest::newRow("recovery codes beside a CloudFront ID stay covered")<<"eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="<<key<<QStringList{"key: eoc6s-2itl4 n7asb-p8uxz X-Amz-Cf-Id: "+base64Of("y",54)+"=="};
+   QTest::newRow("a token in a run with an integrity digest stays covered")<<"+API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""<<key<<QStringList{"key: +API_TOKEN="+hexOf("a",40)+" \"shaS12-"+base64Of("i",86)+"==\""};
+   QTest::newRow("an AWS key ID in one word stays covered")<<"ID A"+QString("KIA")+"Z7Q4R2N9KT6HB3XW"<<key<<QStringList{"key: ID A"+QString("KIA")+"Z7Q4R2N9KT6HB3XW"};}
+ }
+ // #1940 (#1931 fuzz group 9): in tiled windows a hash word in one pane names no digest in another on
+ // the same row: "commit <sha>" on the left leaves a hex secret on the right covered, while its own sha
+ // stays visible.
+ void aHashWordInAnotherPaneIsNoLabel() {
+  const auto hex=hexOf("k",64),sha=hexOf("c",40);
+  QList<RecognizedWord> row{{"commit",QRect(0,0,48,20),90,0},{sha,QRect(56,0,320,20),90,0},{hex,QRect(1000,0,512,20),90,0}};
+  QCOMPARE(found(row,QStringList{"key"}),QStringList{"key: "+hex});
+  // A secret word anywhere on the row still keeps every run covered.
+  row.append({"token",QRect(1600,0,40,20),90,0});
+  QCOMPARE(found(row,QStringList{"key"}),(QStringList{"key: commit "+sha,"key: "+hex}));
+  // A checksum command in the right pane names the digest rows below it in that pane only (Sol on #1954):
+  // a hex secret below in the left pane stays covered, the right pane's digest stays visible.
+  const auto digest=hexOf("d",64),secret=hexOf("s",64);
+  QList<RecognizedWord> panes{{"$",QRect(0,0,8,20),90,0},{"ls",QRect(16,0,16,20),90,0},{"$",QRect(1000,0,8,20),90,0},{"sha256sum",QRect(1016,0,72,20),90,0},{"a.iso",QRect(1096,0,40,20),90,0},
+                              {secret,QRect(0,30,512,20),90,1},{digest,QRect(1000,30,512,20),90,1},{"a.iso",QRect(1520,30,40,20),90,1}};
+  QCOMPARE(found(panes,QStringList{"key"}),QStringList{"key: "+secret});
+  // ...and a git command in the other pane anchors nothing for it.
+  QList<RecognizedWord> gitPanes{{"$",QRect(0,0,8,20),90,0},{"git",QRect(16,0,24,20),90,0},{"status",QRect(48,0,48,20),90,0},{"$",QRect(1000,0,8,20),90,0},{"sha256sum",QRect(1016,0,72,20),90,0},{"web-one",QRect(1096,0,56,20),90,0},
+                                 {secret,QRect(0,30,512,20),90,1},{digest,QRect(1000,30,512,20),90,1},{"web-one",QRect(1520,30,56,20),90,1}};
+  QCOMPARE(found(gitPanes,QStringList{"key"}),QStringList{"key: "+secret});
+  // An assignment anywhere on a digest row, however far, ends the rows: the hex before it stays covered.
+  QList<RecognizedWord> tabbed{{"$",QRect(0,0,8,20),90,0},{"sha256sum",QRect(16,0,72,20),90,0},{"web-one",QRect(96,0,56,20),90,0},
+                               {secret,QRect(0,30,512,20),90,1},{"API_KEY=prod",QRect(900,30,96,20),90,1}};
+  QVERIFY(found(tabbed,QStringList{"key"}).join(' ').contains(secret));
+ }
+ // #1940: a value of no fixed length (a DKIM signature, a kubeconfig certificate) runs on only over rows
+ // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
+ // not the certificate's.
+ void aPublicValueRunsOnOnlyOverWrappedRows() {
+  const auto signature="b="+base64Of("c",60),tail=base64Of("t",20),key=base64Of("p",60);
+  QList<RecognizedWord> rows{{"DKIM-Signature:",QRect(0,0,120,20),90,0},{"v=1;",QRect(128,0,32,20),90,0},{signature,QRect(0,30,496,20),90,1},
+                             {tail,QRect(0,60,160,20),90,2},{key,QRect(0,90,480,20),90,3}};
+  QCOMPARE(found(rows,QStringList{"key"}),QStringList{"key: "+key});
  }
  void categoriesMatchTheirShapes() {
   QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(QStringList,expected);
@@ -1039,6 +1162,8 @@ private slots:
   QTest::newRow("URL schemes in one word")<<repeat("postgres://u:",2000);
   QTest::newRow("a long base64 word")<<repeat("aB3dE5fG7hJ9kL1mN3pQ+/",1000);
   QTest::newRow("many token-shaped words")<<repeat("aB3dE5fG7h ",4000);
+  // #1940 (Sol on #1954): many short segments on one row, each with a run, beside hash words.
+  QTest::newRow("many separated runs beside hash words")<<repeat("sha256 ~~ 9f86d081884c7d659a2feaa0c55ad015 ~~ ",1500);
   QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",300);
   QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
  }

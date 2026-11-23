@@ -27,6 +27,14 @@ queues one item at a time and, for each video item without a preview, runs
 - the child runs at nice 10 with 2 GiB of address space (none under
   sanitizers), 21 s of CPU time, 64 file descriptors, no core file and a
   zero file-size limit, and is killed at the 10 s deadline or on shutdown;
+  FFmpeg decodes on two threads;
+- with [Unhinged mode](../text-recognition.md#unhinged-mode) on, the resident
+  adds `--all-cores`. The child then keeps the resident's priority (no
+  extra nice) and its CPU time is the larger of 21 s and the deadline times
+  the logical CPUs, in whole seconds, plus one second. It decodes on the
+  smaller of the logical CPUs and 16 threads, as many as fit in 1 GiB at two
+  worst-case frames (16-bit 4:4:4) each, and at least two, and retries with
+  two if the decoder won't open with more. The address-space limit stays;
 - FFmpeg may use only the `file` protocol and the MP4/QuickTime,
   Matroska/WebM, AVI and Ogg demuxers, so a crafted file can't make it open a
   playlist, a URL or another file; frames over `limits.imagePixels` are
