@@ -1325,12 +1325,23 @@ bool escapedAt(const QString& text,qsizetype at) {
 }
 // #1941: a value written in quotes, its closing quote in the same word ('Crane7Queue';, "…",).
 // The closing quote matches the opening one ("rockin' blue jay" is not closed by its apostrophe).
+// #1964: a value pasted from a document or a chat opens or closes with a curly quote: a straight double quote
+// may close curly (recognition and editors swap them), and German „…“ and French «…» quote too. A straight
+// single quote closes only itself: an apostrophe inside ("it’s") is no closing quote.
+const QString& quoteOpeners() {static const QString openers=QStringLiteral("\"'`\u201C\u2018\u201E\u00AB\u2039");return openers;}
 QString closingQuotes(QChar open) {
- return open==QChar(0x201C)?QStringLiteral("\u201D\""):open==QChar(0x2018)?QStringLiteral("\u2019'"):QString(open);
+ switch(open.unicode()){
+  case 0x201C:return QStringLiteral("\u201D\"");
+  case 0x2018:return QStringLiteral("\u2019'");
+  case 0x201E:return QStringLiteral("\u201C\u201D\"");
+  case 0x00AB:return QStringLiteral("\u00BB");
+  case 0x2039:return QStringLiteral("\u203A");
+  case '"':return QStringLiteral("\"\u201D");
+  default:return QString(open);
+ }
 }
 bool quotedValue(const QString& raw) {
- static const QString open=QStringLiteral("\"'`“‘");
- if(raw.size()<6||!open.contains(raw.front()))return false;
+ if(raw.size()<6||!quoteOpeners().contains(raw.front()))return false;
  qsizetype end=raw.size();while(end>1&&QStringLiteral(",;)]}").contains(raw.at(end-1)))--end;
  return end>5&&closingQuotes(raw.front()).contains(raw.at(end-1))&&!escapedAt(raw,end-1);
 }
@@ -1529,8 +1540,8 @@ QList<QList<int>> labelledMatches(const QList<int>& line,const QList<int>& below
   // A quoted value runs to its closing quote, however many words it holds ("Red7fox blue jay" today; CodeRabbit
   // on #1952), at most eight words on.
   bool quotedSpan=quotedValue(text(k));
-  {const auto& t=text(k);static const QString opens=QStringLiteral("\"'`\u201C\u2018");
-   if(!t.isEmpty()&&opens.contains(t.front())&&!quotedValue(t)){
+  {const auto& t=text(k);
+   if(!t.isEmpty()&&quoteOpeners().contains(t.front())&&!quotedValue(t)){
     const QString closes=closingQuotes(t.front());
     // A quote escaped by a backslash recognition read as the word before is escaped too.
     for(int w=k+1;w<n&&w<=k+8;++w){const auto& u=text(w);bool closed=false;for(qsizetype i=0;i<u.size();++i)closed=closed||(closes.contains(u.at(i))&&!(i==0?escapedAt(text(w-1)+u,text(w-1).size()):escapedAt(u,i)));if(closed){last=qMax(last,w);quotedSpan=true;break;}}
@@ -1606,10 +1617,12 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
  // horse battery staple'), at most eight words further (Sol on #1952).
  const auto quoteEnd=[&](int i,qsizetype from){
   const auto& t=text(i);if(from>=t.size())return i;
-  const QChar open=t.at(from);if(open!='"'&&open!='\''&&open!='`')return i;
-  // A closing quote is one not escaped with a backslash ("orchard\" lantern stone").
+  const QChar open=t.at(from);if(!quoteOpeners().contains(open))return i;
+  // A closing quote is one not escaped with a backslash ("orchard\" lantern stone"), straight or curly as
+  // closingQuotes says (#1964).
   // ...an odd run of backslashes escapes it, an even one escapes itself (Sol on #1952).
-  const auto closes=[&](const QString& word,qsizetype start){for(qsizetype c=start;c<word.size();++c){if(word.at(c)!=open)continue;qsizetype slashes=0;for(qsizetype b=c-1;b>=0&&word.at(b)=='\\';--b)++slashes;if(slashes%2==0)return true;}return false;};
+  const QString closers=closingQuotes(open);
+  const auto closes=[&](const QString& word,qsizetype start){for(qsizetype c=start;c<word.size();++c){if(!closers.contains(word.at(c)))continue;qsizetype slashes=0;for(qsizetype b=c-1;b>=0&&word.at(b)=='\\';--b)++slashes;if(slashes%2==0)return true;}return false;};
   if(closes(t,from+1))return i;
   for(int j=i+1;j<n&&j<=i+8;++j)if(closes(text(j),0))return j;
   return i;
@@ -1684,8 +1697,10 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
    const QChar sep=p?QChar('%'):QChar(':');
    const auto pair=[&](QString word){while(!word.isEmpty()&&(word.front()=='"'||word.front()=='\''))word.remove(0,1);const auto at=word.indexOf(sep);return at>0&&!word.contains(QLatin1String("//"))&&!word.startsWith(QLatin1String("data:"))&&secretValue(word.mid(at+1),true)&&!publicValue(word.mid(at+1));};
    const bool flag=p?(t==QLatin1String("-U")||t==QLatin1String("--user")):(t==QLatin1String("-u")||t==QLatin1String("--user"));
-   if(flag&&i+1<end&&pair(text(i+1)))cover(i+1,quoteEnd(i+1,0));
-   else if(!flag&&(t.startsWith(p?QLatin1String("-U"):QLatin1String("-u"))||t.startsWith(QLatin1String("--user=")))&&t.size()>2&&pair(t.mid(t.startsWith(QLatin1String("--user="))?7:2)))cover(i,quoteEnd(i,t.startsWith(QLatin1String("--user="))?7:2));
+   // The quote may open the argument or the password after the separator (curl -u alice:'orchard lantern', #1964).
+   const auto quoted=[&](int w,qsizetype base){const auto& word=text(w);if(base<word.size()&&quoteOpeners().contains(word.at(base)))return quoteEnd(w,base);const auto at=word.indexOf(sep,base);return at>=0&&at+1<word.size()&&quoteOpeners().contains(word.at(at+1))?quoteEnd(w,at+1):w;};
+   if(flag&&i+1<end&&pair(text(i+1)))cover(i+1,quoted(i+1,0));
+   else if(!flag&&(t.startsWith(p?QLatin1String("-U"):QLatin1String("-u"))||t.startsWith(QLatin1String("--user=")))&&t.size()>2&&pair(t.mid(t.startsWith(QLatin1String("--user="))?7:2)))cover(i,quoted(i,t.startsWith(QLatin1String("--user="))?7:2));
   }
  }
  // A kubeadm bootstrap token (six and sixteen lowercase letters and digits), on a line that names

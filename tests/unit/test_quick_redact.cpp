@@ -687,6 +687,17 @@ private slots:
    // The closing quote matches the opening one, and an escape recognition split off still escapes (Sol on #1952).
    QTest::newRow("a quoted password holding an apostrophe")<<"Password: \"rockin'"+QString(" blue jay\" today")<<key<<QStringList{"key: \"rockin' blue jay\""};
    QTest::newRow("a quoted password whose escape is a word of its own")<<"Password: \"Red7fox"+QString(" blue \\ \" jay\" today")<<key<<QStringList{"key: \"Red7fox blue \\ \" jay\""};
+   // #1964: quotes pasted from a document or a chat: straight opened and curly closed, curly, German and French;
+   // a straight single quote is not closed by an apostrophe inside.
+   QTest::newRow("a password opened straight and closed curly")<<"Password: \"Red7fox"+QString(" blue jay” today")<<key<<QStringList{"key: \"Red7fox blue jay”"};
+   QTest::newRow("a password in curly quotes")<<"Password: “Red7fox"+QString(" blue jay” today")<<key<<QStringList{"key: “Red7fox blue jay”"};
+   QTest::newRow("a password in German quotes")<<"Passwort: „Red7fox"+QString(" blaue Katze“ heute")<<key<<QStringList{"key: „Red7fox blaue Katze“"};
+   QTest::newRow("a password in French quotes")<<"Mot de passe : «Red7fox"+QString(" bleu geai» merci")<<key<<QStringList{"key: «Red7fox bleu geai»"};
+   QTest::newRow("an apostrophe does not close a single-quoted password")<<"Password: 'it’s"+QString(" Red7 fox' ok")<<key<<QStringList{"key: 'it’s Red7 fox'"};
+   QTest::newRow("curl's password quoted after the user")<<QString("$ curl -")+"u ali"+"ce:'orch"+QString("ard lantern' https://example.test")<<key<<QStringList{QString("key: ali")+"ce:'orch"+"ard lantern'"};
+   QTest::newRow("curl's password in double quotes after the user")<<QString("$ curl -")+"u ali"+"ce:\"orch"+QString("ard lantern\" https://example.test")<<key<<QStringList{QString("key: ali")+"ce:\"orch"+"ard lantern\""};
+   QTest::newRow("smbclient's password quoted after the user")<<"$ smbclient //nas/share -U alice%'orchard"+QString(" lantern'")<<key<<QStringList{"key: alice%'orchard lantern'"};
+   QTest::newRow("a password flag in curly quotes")<<"$ mysqldump --password=“orchard"+QString(" lantern” app")<<key<<QStringList{"key: --password=“orchard lantern”"};
    QTest::newRow("a quoted password of several words after the word password")<<"password \"Red7fox"+QString(" blue jay\" today")<<key<<QStringList{"key: \"Red7fox blue jay\""};
    QTest::newRow("a recovery code with a misread character")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-g8q/v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-g8q/v"};
    QTest::newRow("a recovery code with a misread character beside its dash")<<"Recovery codes | 9f3k2-x7m1q 6p4w2-/8q7v"<<key<<QStringList{"key: 9f3k2-x7m1q 6p4w2-/8q7v"};
