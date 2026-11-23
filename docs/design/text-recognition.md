@@ -958,29 +958,40 @@ other tool active it does not. The user's side is in the
       40 characters after dots), an age secret key (`AGE-SECRET-KEY-1` and upper-case bech32), a Tailscale
       key (`tskey-auth-`, `tskey-client-`…), and a kubeadm bootstrap token (six and sixteen lowercase
       letters and digits) on a line that names kubeadm or a token.
-    - **2FA and wallets:** a TOTP setup key (base32 of 16 characters or more with two digits, or one in
-      six groups of four, as one word or groups) with a key, secret, setup, authenticator, 2FA, OTP or
-      scan word before it on its row or the two rows above, and its wrapped rest below; recovery and
-      backup codes under a heading that says so, each code-shaped word on the rows below in the
-      heading's column, until a row holds more other words than codes; and a seed phrase written as
-      numbered words, 1 to 12 (or up to 24), each a lowercase word of three to eight letters as BIP39's
-      are, nearly all of the numbers there (eight under a heading about a recovery, seed or secret
-      phrase). The BIP39 word list itself is not used.
+    - **2FA and wallets:**
+      - a TOTP setup key: base32 of 16 characters or more, as one word or groups, after a key, secret,
+        setup, authenticator, 2FA, OTP or scan word on its row or the two rows above. It has two digits,
+        or one in six groups or more, or, in capitals as one word or groups of one length, none beside
+        words that name a setup key ("Setup key", "Enter this key"). Lowercase words fit the alphabet too,
+        so a lowercase run needs two digits. Its rest on the row below is covered, and so are two rows of
+        groups that make a key only together;
+      - recovery and backup codes under a heading that says so, on the heading's own row after it and
+        on the rows below in the heading's column, until a row holds more other words than codes;
+      - a seed phrase written as numbered words, 1 to 12 (or up to 24), each a lowercase word of three
+        to eight letters as BIP39's are, with list numbers ("1.") or several to a row, at least eight of
+        the numbers there, and only under a label within six rows above: a recovery, seed, secret,
+        backup or wallet phrase or words, a mnemonic, "write down", or a 12- to 24-word phrase. A
+        shopping, ingredient or spelling list of short words looks the same and stays visible. The BIP39
+        word list itself is not used.
     - **QR codes.** With Keys and tokens chosen, a decoded code whose content starts with `otpauth://`
       or `otpauth-migration://`, a `WIFI:` code with a password (`P:`) on a network that isn't open, or
       any content the key rules find when read as lines of words, gets one solid suggested Redact mark
       over the whole symbol, finder patterns and all, and a fifth of its side around it (at least 4 px):
-      a code decodes through damage to part of it. It counts as a Keys and tokens match. The content is
-      read in the editor only to decide and is kept nowhere: Quick redact's answer gives the code's kind
-      (`codes: {otp: 1}`, also `wifi` and `key`) and the mark's box; the sensitive text prompt names
-      it ("a 2FA QR code", "a Wi-Fi QR code", "a QR code with a key"); the resident and the
-      notification count it as a key or token. Copy text and History's Show QR code are unchanged.
+      a code decodes through damage to part of it. A code that touches a Redact mark already is covered
+      too, since it can still decode. It counts as a Keys and tokens match. The content is read only to
+      decide, on the recognition worker, and is kept nowhere: Quick redact's answer gives the code's
+      kind (`codes: {otp: 1}`, also `wifi` and `key`) and the mark's box; the sensitive text prompt
+      names it ("a 2FA QR code", "a Wi-Fi QR code", "a QR code with a key"); the resident and the
+      notification count it as a key or token. `editor.inspect` and `text.inspect` list such a code as
+      `kind: "withheld"` with `withheld` naming its kind, and no `text`. The codes the person sees in
+      the editor's panel, Copy text and History's Show QR code are unchanged.
     Key matches that share a word are one match.
   - Limits (#1941): one-time codes (short-lived, and any six digits look alike), licence keys, a card's
-    CVC and share-link paths are not looked for. A letters-only password after a flag, a value with no
-    digit far from its label, and a password whose label recognition reads too far from it can stay
-    visible. A secret shaped like a public key, a version or a code identifier stays visible under any
-    label.
+    CVC and share-link paths are not looked for. A value with no digit far from its label, a password
+    whose label recognition reads too far from it, and a seed phrase with no label above it can stay
+    visible. A secret shaped like a public key, a password hash, a digest or a version stays visible
+    under any label; after a token flag, a Bearer scheme or in a cookie, so does one shaped like a cloud
+    region, a colour or a code identifier of three words run together.
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
@@ -1660,7 +1671,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | --- | --- | --- |
 | `action.invoke` | `action: "text"`, `delaySeconds?` (0, 3, 5 or 10) | `operationId` and `state`. Copies |
 | `text.recognize` | `source` (region, window, monitor, desktop, clipboard, file or history), `path` for `file` only, `historyId` for `history` only, `languages?` (1 to 3 installed identifiers), `copy?` (default false), `delaySeconds?` for the screen sources | `operationId`, `state`. Keeps its result for `text.inspect` |
-| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`) and `error`. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text" or "binary", text, length, quad}]` in source pixels. Afterwards `resultExpired: true` |
+| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`) and `error`. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text", "binary" or "withheld", text, length, quad}]` in source pixels (a withheld code, #1941, names its secret's kind in `withheld` and has no `text`). Afterwards `resultExpired: true` |
 | `text.cancel` | `id` | The terminal record. Answers once the running job has stopped, up to 35 s. Nothing is copied |
 | `capabilities` | none | A `text` block: `available`, `error` with the install hint or the missing confinement, `engines`, `landlockAbi`, `languages` `[{id, bytes, kind}]`, and `sources` with `available` and `error` for each source. It starts no helper |
 | `editor.recognize` | `id` | `state` and `result`. Starts recognition for the current revision. `editor.inspect` gains a `text` block |
