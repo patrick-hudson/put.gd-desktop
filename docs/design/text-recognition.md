@@ -327,7 +327,10 @@ memory budget allow, more start, up to the job's threads. Together they may take
 first pass's time, at least 400 ms and at most 1 s, and they end at least 1 s before the job's own
 budget. A read whose band would not finish at the slowest pace seen so far is not started, and
 one cut short adds nothing. They never mark the result truncated: `truncated` means the first
-pass did not finish. Until #1929 the token read ran on one engine for as long as the first pass
+pass did not finish. Their words follow the first read's candidates and are left out, not cut,
+where the result's bounds would cut them: a word over 256 bytes, the 20,000-word cap, or the
+8 MiB output, and they join only a result those bounds left whole. Each engine reads on a thread
+of its own, the first one too, so the job's wait bounds them all. Until #1929 the token read ran on one engine for as long as the first pass
 took, which doubled a dense 4K check on a 4-core i5 (5.2 s to 10.3 s). On the 978-image corpus
 test split the one budget covered 1,351 secrets against 1,347 and flagged 642 decoys against
 652, with the copied text identical.
