@@ -921,8 +921,10 @@ other tool active it does not. The user's side is in the
       of about 30 languages (`Passwort`, `Mot de passe`, `Пароль`, `密码`, `パスワード`, `Hasło`, `كلمة المرور`,
       `סיסמה`…), their words a word space apart. Then:
       - `Label: value` (or ` :`, ` =`, `is`): the value ends the row, or the row's part before a gap of six
-        characters, or reads as a password, or is quoted. So "Password: must be at least 8 characters"
-        stays visible and "Temporary password: Wel2024! (please change it)" does not. A value up to
+        characters, or reads as a password, or is quoted. A quoted value runs to its closing quote, up to
+        eight words on; a quote after an odd run of backslashes (`\"`) closes nothing. So "Password: must
+        be at least 8 characters" stays visible and "Temporary password: Wel2024! (please change it)"
+        does not. A value up to
         16 characters away belongs to the label; one up to 80 away only in a form's row, which the label
         starts and the value ends.
       - `Label     value` with no colon, the label starting its row and the value at least three characters
@@ -968,12 +970,15 @@ other tool active it does not. The user's side is in the
         so a lowercase run needs two digits. Its rest on the row below is covered, and so are two rows of
         groups that make a key only together;
       - recovery and backup codes under a heading that says so, on the heading's own row after it and
-        on the rows below in the heading's column, until a row holds more other words than codes;
+        on the rows below in the heading's column, until a row holds more other words than codes. A
+        grouped code with one character misread as `/`, `|` or `!` is still a code;
       - a seed phrase written as numbered words, 1 to 12 (or up to 24), each a lowercase word of three
         to eight letters as BIP39's are, with list numbers ("1.") or several to a row, at least eight of
         the numbers there, in the label's column (from its words' left edge to where its row goes on in
-        another window), and only under a label within six rows above: a recovery, seed, secret,
-        backup or wallet phrase or words, a mnemonic, "write down", or a 12- to 24-word phrase. A
+        another window, less two characters, since a list's `10.` starts left of its `9.`), one word a
+        number (the one nearest the label's column), never a `0.` or a number past 24, and only under a
+        label within six rows above: a recovery, seed, secret, backup or wallet phrase or words, a
+        mnemonic, "write down", or a 12- to 24-word phrase. A
         shopping, ingredient or spelling list of short words looks the same and stays visible. The BIP39
         word list itself is not used.
     - **QR codes.** With Keys and tokens chosen, a decoded code whose content starts with `otpauth://`
@@ -994,7 +999,9 @@ other tool active it does not. The user's side is in the
     whose label recognition reads too far from it, and a seed phrase with no label above it can stay
     visible. A secret shaped like a public key, a password hash, a digest or a version stays visible
     under any label; after a token flag, a Bearer scheme or in a cookie, so does one shaped like a cloud
-    region, a colour or a code identifier of three words run together.
+    region, a colour or a code identifier of three words run together. With nothing beside a seed
+    phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
+    phrase: telling it from the phrase's own second column would uncover that column.
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
