@@ -46,7 +46,7 @@ for group in outputs['logical']:
  assert len(group['rect'])==4 and all(isinstance(n,int) for n in group['rect'])
  assert group['rect'][2]>=640 and group['rect'][3]>=320 and group['names']
 print(json.dumps({'record_helper':str(helper),'logical':outputs['logical']}))
-'''.replace('APP',repr(scope.ctx.target.app_executable)).replace('BUILD',repr(build)).replace('COVER',repr(scope.root+'/cover.py')))
+'''.replace('APP',repr(scope.ctx.target.app_executable)).replace('BUILD',repr(build)).replace('COVER',repr(scope.root+'/cover_player.py')))
     return value
 
 
@@ -82,18 +82,20 @@ def pattern(scope, text=None):
                                    'shaded-background=true ! videoconvert ! gtksink name=video')
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
-    scope.write(scope.root+'/cover.py',source.encode())
+    scope.write(scope.root+'/cover_player.py',source.encode())
     media_preflight(scope)
     desktop=desktop_contract(scope)
     fifo=scope.root+'/pattern.fifo'
     scope.python('import os\nos.mkfifo('+repr(fifo)+',0o600)')
     # A child holds the FIFO open; no leaked shell, implicit desktop input or
-    # kill-by-name. Scope.launch owns this PID and its exact start identity.
+    # kill-by-name. Scope.launch owns this PID and its exact start identity, and its
+    # launcher exits at once, so the player runs --detached. The copy keeps the name
+    # cover_player.py, so a lock release check still sees one left behind.
     code='''import os,sys
 fd=os.open(FIFO,os.O_RDWR)
 os.dup2(fd,0)
-os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture'])
-'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
+os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture','--detached'])
+'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover_player.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
     scope.launch(['python3','-c',code],name='pattern',environment={'GTK_USE_PORTAL':'0'})
     def ready():
         result=scope.ctx.shell('cat '+shlex.quote(scope.root+'/pattern.log'))
