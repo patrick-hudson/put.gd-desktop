@@ -1,0 +1,3 @@
+#!/bin/sh
+# Run the same hook from the directory core.hooksPath=tools/git-hooks replaced.
+exec python3 "$(dirname "$0")/hooklib.py" forward "$(basename "$0")" "$@"

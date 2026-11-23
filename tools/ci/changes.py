@@ -22,7 +22,7 @@ DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGEL
 
 # Python and lab inputs that no compiled target, CTest registration or package
 # reads. The contracts job runs their suites on every pull request.
-CONTRACT_PREFIXES = ('tools/lab/', 'tools/maintenance/', 'tools/mcp/',
+CONTRACT_PREFIXES = ('tools/lab/', 'tools/maintenance/', 'tools/mcp/', 'tools/git-hooks/',
                      'tests/ci/', 'tests/releases/', 'tests/maintenance/')
 CONTRACT_SUFFIXES = {'tests/desktop': ('.py', '.yaml'), 'tests/performance': ('.py',)}
 # Dependency-bot settings and the contracts job's secret-scan allowlist.

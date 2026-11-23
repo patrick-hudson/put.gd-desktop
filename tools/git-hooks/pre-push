@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refuse a push whose new commits gitleaks flags (#1959); see hooklib.py.
+exec python3 "$(dirname "$0")/hooklib.py" pre-push "$@"
