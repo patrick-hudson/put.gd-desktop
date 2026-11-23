@@ -1170,8 +1170,8 @@ other tool active it does not. The user's side is in the
     the retry tries the widest gap between its words first (two phone numbers in table columns)
     and can fall back to another word boundary (#1820). A card number doesn't start right after a
     digit and a dot (`198.51.100.7 5555-…` reads the card from `5555`), but may after a label such
-    as `No.`, or after a `-`, `+` or `{+` at the start of its word (a diff's sign) when three digits
-    or more follow (a country code such as `+82` before a phone's groups is no card start). Between
+    as `No.`, or after a `+` or `{+` (as before), or after a diff's `-` at the start of its word when
+    three digits or more follow. Between
     two digits a hyphen-like dash or a minus sign reads as a hyphen (`4111–1111–1111–1111`); an em dash, and dashes anywhere else, stay as read.
   - Number columns (#1939). Phone and card numbers stop at a gap of more than two and a half
     characters (the wider glyph of the two words) between two words of a line, so table and log
@@ -1253,7 +1253,8 @@ other tool active it does not. The user's side is in the
     but email) or, for a card or phone, belongs to a key match. Both apply together, so a phone
     between a glued address and a key keeps its middle.
   - Known limits of these rules (#1939):
-    - A card number read across words with more than one short group, a one-digit group, or a
+    - A card number whose matched text has spaces (a wrap can join two words without one) with more
+      than one short group, a one-digit group, or a
       two-digit first group (its last group aside) isn't recognised unless a card label precedes
       it. Card numbers aren't printed that way; calendars and tables are.
     - A card whose grouping recognition shifted and that also has a gap wider than four characters
@@ -1523,7 +1524,8 @@ other tool active it does not. The user's side is in the
       rules read them (for an address, with a dot recognition lost restored, but without the
       gap-based joins of split addresses or the message-header checks of the email kind; for a
       card, the card pattern, including a diff's `-` at the start of a word before three digits or more,
-      with the card check before #1939: 13 to 19 digits, Luhn, no ISBN, not all zeros), or a prefixed
+      with the basic card check: 13 to 19 digits, Luhn, no ISBN, not all zeros, without the
+      grouping and counted-row checks of the card kind), or a prefixed
       token. This only stops the token taking that line: the card rule decides on its own whether
       the line is a card (a counted row such as `4110 4111 4112 4113` without a label is not one).
       Finding an address or a prefixed token there likewise stops the token taking that run; what
