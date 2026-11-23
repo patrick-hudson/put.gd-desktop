@@ -341,10 +341,11 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   looped A/V marker at 1280x720 in its middle. It prints `covered` only after
   GTK sees the window full screen on that output at its size. Without
   `--output` it refuses on a desktop with more than one distinct output
-  (mirrored outputs count once). `cover_player.py outputs` lists them. The
-  window closes within a second of the process that started it exiting, so a
-  driver that dies can't leave the desktop covered; `--detached` turns that off
-  for a launcher that exits at once and stops the player by its PID itself.
+  (mirrored outputs count once). `cover_player.py outputs` lists them. Once a
+  second the player checks whether the process that started it is still
+  running, and closes when it has exited, so a driver that dies can't leave
+  the desktop covered. `--detached` turns that check off; whoever starts a
+  detached player must stop it by its PID.
 - `cover_player.py precheck --port 5900` (5901 on f44) reads one frame from the
   host's loopback VNC tile, in memory, and fails unless the output is at least
   98% cover colour. Run it before recording anything.
@@ -874,12 +875,13 @@ Before you release:
    were there at acquire are reported but don't block. A matching process counts
    if it runs in the desktop session (`DISPLAY` or `WAYLAND_DISPLAY` is set), is
    an input agent, test pattern or running `cover_player.py`, or has an environment the tool
-   can't read. A test X server whose xvfb-run auth file is in a lab tool's
-   private `/tmp/pg*` TMPDIR (`/tmp/pg*/xvfb-run.*/Xauthority`) counts once the test that started it has exited
-   (#1925); a user's own `xvfb-run` keeps it in `/tmp/xvfb-run.*` and never
-   counts. Anything else, including a lab test X server whose test still runs,
-   is shared SSH work, such as another session's build or memory collector, and
-   is only counted. If a new item belongs to another session (its
+   can't read. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
+   (xvfb-run inside a lab tool's private `/tmp/pg*` TMPDIR) blocks release once
+   its parent is PID 1 or `systemd`, that is, once the test that started it has
+   gone (#1925). xvfb-run's default `/tmp/xvfb-run.*/Xauthority` never matches.
+   Every other matching process, including a lab `Xvfb` whose parent still runs,
+   is shared SSH work, such as another session's build or memory collector: it
+   appears only in the summary and doesn't block release. If a new item belongs to another session (its
    notes or its owner say so), name it with `--not-mine ID`; the receipt records
    it. Never use `--not-mine` for your own items.
    Leave the putgd package as acquire found it: the same version, or none.
