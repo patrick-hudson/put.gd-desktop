@@ -1353,8 +1353,7 @@ QString fallbackQuotes(QChar open) {
 // or -1: an unescaped closer (an odd run of backslashes escapes it, also one the word before ends with,
 // recognition having split it off), never an apostrophe between letters ("it’s"), the opener's own closers
 // before its fallbacks.
-int closingWord(const std::function<QString(int)>& text,int n,int first,qsizetype from,QChar open) {
- const auto pass=[&](const QString& closers)->int{
+int closingWordIn(const std::function<QString(int)>& text,int n,int first,qsizetype from,const QString& closers) {
   if(closers.isEmpty())return -1;
   for(int w=first;w<n&&w<=first+8;++w){
    const auto u=text(w);const auto before=w>first?text(w-1):QString();
@@ -1366,9 +1365,10 @@ int closingWord(const std::function<QString(int)>& text,int n,int first,qsizetyp
    }
   }
   return -1;
- };
- const int primary=pass(closingQuotes(open));
- return primary>=0?primary:pass(fallbackQuotes(open));
+}
+int closingWord(const std::function<QString(int)>& text,int n,int first,qsizetype from,QChar open) {
+ const int primary=closingWordIn(text,n,first,from,closingQuotes(open));
+ return primary>=0?primary:closingWordIn(text,n,first,from,fallbackQuotes(open));
 }
 bool quotedValue(const QString& raw) {
  if(raw.size()<6||!quoteOpeners().contains(raw.front()))return false;
@@ -1648,10 +1648,13 @@ QList<QList<int>> commandMatches(const QList<int>& line,const QList<QString>& pl
   const auto& t=text(i);if(from>=t.size())return i;
   const QChar open=t.at(from);if(!quoteOpeners().contains(open))return i;
   // A closing quote is one not escaped with a backslash ("orchard\" lantern stone"); closingWord says which (#1964).
-  // It belongs to this command: the search stops at the next |, ||, &&, ; or & (Sol on #1969).
+  // The opener's own closer may sit past an operator inside the quotes ('red & lantern'), but a fallback
+  // closer in this command wins over one in the next ("river” … && printf "%s"; Sol on #1969).
   static const QSet<QString> separators{"|","||","&&",";","&"};
   int stop=i+1;while(stop<n&&!separators.contains(text(stop)))++stop;
-  const int w=closingWord(text,stop,i,from,open);return w>=0?w:i;
+  const int own=closingWordIn(text,n,i,from,closingQuotes(open)),fallback=closingWordIn(text,stop,i,from,fallbackQuotes(open));
+  if(own>=0&&(own<stop||fallback<0))return own;
+  return fallback>=0?fallback:i;
  };
  const auto cover=[&](int i,int last=-1){QList<int> words;for(int w=i;w<=qMax(i,last);++w)words.append(line.at(w));out.append(words);};
  // The value from offset `from` of word i through word `last`, as one string (a quoted passphrase is judged whole).
