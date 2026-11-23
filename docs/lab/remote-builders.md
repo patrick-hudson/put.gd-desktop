@@ -873,9 +873,17 @@ Before you release:
    doesn't release yet. Once nothing of yours is left, run it again with
    `--verified-clean`; the lock is released only if the check passes. Items that
    were there at acquire are reported but don't block. A matching process counts
-   if it runs in the desktop session (`DISPLAY` or `WAYLAND_DISPLAY` is set), is
-   an input agent, test pattern or running `cover_player.py`, or has an environment the tool
-   can't read. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
+   if it runs in the desktop session (`DISPLAY` or `WAYLAND_DISPLAY` is set), or is
+   an input agent, test pattern or running `cover_player.py`. When the tool can't read a
+   process's environment (a confined `putgd-ocr` is non-dumpable), it reads the first readable
+   environment among its current parent, that one's parent, and so on, up to eight levels. The
+   process is shared SSH work only when that environment has `SSH_CONNECTION` or `SSH_CLIENT`
+   and no display variable: another session's SSH benchmark helper doesn't block, while the
+   editor's helper does (#1938). The check sees only the current parents, so a helper adopted by
+   a subreaper is judged by that subreaper; put.gd configures its helper to receive `SIGKILL`
+   when the thread that launched it exits. It also counts when no
+   readable environment turns up before PID 1 or within eight levels, or when a parent can't be
+   looked up or exits during the check. An `Xvfb` whose auth file is `/tmp/pg*/xvfb-run.*/Xauthority`
    (xvfb-run inside a lab tool's private `/tmp/pg*` TMPDIR) blocks release once
    its parent is PID 1 or `systemd`, that is, once the test that started it has
    gone (#1925). xvfb-run's default `/tmp/xvfb-run.*/Xauthority` never matches.
