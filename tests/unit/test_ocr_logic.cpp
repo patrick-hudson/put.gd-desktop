@@ -1,14 +1,20 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
 // strips cut between lines and joined in page order, faint lines read again (#1894) in each
-// window of a screen grown past its trimmed text (#1912), uncertain tokens' lines read again (#1911), the input limit, and
+// window of a screen grown past its trimmed text (#1912), uncertain tokens' lines read again (#1911)
+// in their run of text only (#1929), the faster CPUs of a machine of mixed cores (#1929), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
 // confident letters. The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
+#include "ocr/Cores.h"
 #include "ocr/Layout.h"
 #include "ocr/Words.h"
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QTest>
 #include <cmath>
+#include <functional>
 #include <iterator>
 
 using namespace putgd::ocr;
@@ -369,6 +375,123 @@ private slots:
   columns.words={word("left",{QRect(0,12,40,16)},95),right};
   placeEmoji(columns,{{face,QRect(43,10,20,20),0.02,0},{face,QRect(79,10,20,20),0.02,0}});
   QCOMPARE(copiedText(columns),"left"+face+"\n"+face+" right");
+ }
+ // #1929: a token band is read in its words' run of text, not across the
+ // screen: its columns grow from its words to the first gap between runs of
+ // text, never through a word, and never past the image.
+ void tokenBandsKeepTheirRunOfText(){
+  const auto bands=tokenLines({{QRect(300,104,100,12),20},{QRect(10,100,200,12),50}},200);
+  QCOMPARE(bands.size(),qsizetype(1));
+  QCOMPARE(bands[0].left,10);QCOMPARE(bands[0].right,400);QCOMPARE(bands[0].tallest,12);
+  // Two runs of words on dark paper, 600 px apart; words 40 px, spaces 8 px.
+  const int width=2000,height=40,paper=30;
+  QByteArray grey(width*height,char(paper));
+  const auto word=[&](int x0){for(int y=12;y<26;++y)for(int x=x0;x<x0+40;++x)grey[y*width+x]=char(200);};
+  for(int x=100;x<700;x+=48)word(x);    // first run: [100, 716)
+  for(int x=1300;x<1700;x+=48)word(x);  // second run: [1300, 1724)
+  const GreyView view{reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width};
+  // A token in the middle of the first run: the whole run and the gap's first columns, no more.
+  const auto [left,right]=tokenColumns(view,{8,30,false},388,428,paper,48,10);
+  QVERIFY2(left<=100&&left>=80,qPrintable(QString::number(left)));
+  QVERIFY2(right>=716&&right<=736,qPrintable(QString::number(right)));
+  // Columns starting inside a word go on to the run's ends, never cutting it.
+  const auto [l2,r2]=tokenColumns(view,{8,30,false},1350,1360,paper,0,10);
+  QVERIFY2(l2<=1300&&l2>=1280,qPrintable(QString::number(l2)));QVERIFY2(r2>=1724&&r2<=1744,qPrintable(QString::number(r2)));
+  // At the edges, the image's.
+  const auto [l3,r3]=tokenColumns(view,{8,30,false},0,width,paper,48,10);
+  QCOMPARE(l3,0);QCOMPARE(r3,width);
+ }
+ // #1929: the faster CPUs of a machine of mixed cores, from fake sysfs trees.
+ void fasterCpusOfMixedMachines(){
+  QCOMPARE(cpuList("0-3,8,10-11\n"),(QList<int>{0,1,2,3,8,10,11}));
+  QCOMPARE(cpuList("3,1-2,2"),(QList<int>{1,2,3}));
+  QVERIFY(cpuList("").isEmpty());QVERIFY(cpuList("1-x").isEmpty());QVERIFY(cpuList("4-2").isEmpty());QVERIFY(cpuList("1-2-3").isEmpty());
+  const auto tree=[](const QString& root,const QList<std::pair<QString,QByteArray>>& files){
+   for(const auto& [path,text]:files){
+    QDir().mkpath(QFileInfo(root+'/'+path).path());
+    QFile f(root+'/'+path);QVERIFY(f.open(QIODevice::WriteOnly));f.write(text);
+   }
+  };
+  const auto cpus=[](int n,const QString& file,const std::function<QByteArray(int)>& value){
+   QList<std::pair<QString,QByteArray>> out;
+   for(int c=0;c<n;++c)out.append({QStringLiteral("system/cpu/cpu%1/").arg(c)+file,value(c)});
+   return out;
+  };
+  {  // Intel hybrid: cpu_core and cpu_atom.
+   QTemporaryDir d;
+   tree(d.path(),{{"cpu_core/cpus","0-7\n"},{"cpu_atom/cpus","8-15\n"}});
+   QCOMPARE(performanceCpus(d.path()),(QList<int>{0,1,2,3,4,5,6,7}));
+  }
+  {  // An Intel machine of one kind lists cpu_core only.
+   QTemporaryDir d;
+   tree(d.path(),{{"cpu_core/cpus","0-7\n"}});
+   QVERIFY(performanceCpus(d.path()).isEmpty());
+  }
+  {  // AMD mixed (Ryzen 5 8500GE): highest_perf 196 and 144, the same maximum frequency.
+   QTemporaryDir d;
+   tree(d.path(),cpus(12,"acpi_cppc/highest_perf",[](int c){return QByteArray(c%6==0||c%6==4?"196\n":"144\n");}));
+   tree(d.path(),cpus(12,"cpufreq/cpuinfo_max_freq",[](int){return QByteArray("5088520\n");}));
+   QCOMPARE(performanceCpus(d.path()),(QList<int>{0,4,6,10}));
+  }
+  {  // AMD uniform with preferred cores: rankings a few points apart.
+   QTemporaryDir d;
+   tree(d.path(),cpus(16,"acpi_cppc/highest_perf",[](int c){return QByteArray::number(196+5*(c%8));}));
+   QVERIFY(performanceCpus(d.path()).isEmpty());
+  }
+  {  // Without CPPC: grouped by maximum frequency (big and little).
+   QTemporaryDir d;
+   tree(d.path(),cpus(8,"cpufreq/cpuinfo_max_freq",[](int c){return QByteArray(c<4?"2000000":"3200000");}));
+   QCOMPARE(performanceCpus(d.path()),(QList<int>{4,5,6,7}));
+  }
+  {  // Uniform frequencies.
+   QTemporaryDir d;
+   tree(d.path(),cpus(4,"cpufreq/cpuinfo_max_freq",[](int){return QByteArray("3100000");}));
+   QVERIFY(performanceCpus(d.path()).isEmpty());
+  }
+  {  // One CPU without the value (offline, unreadable): not told.
+   QTemporaryDir d;
+   tree(d.path(),cpus(7,"cpufreq/cpuinfo_max_freq",[](int c){return QByteArray(c<4?"2000000":"3200000");}));
+   QDir().mkpath(d.path()+"/system/cpu/cpu7");
+   QVERIFY(performanceCpus(d.path()).isEmpty());
+   QFile unreadable(d.path()+"/system/cpu/cpu7/cpufreq/cpuinfo_max_freq");
+   QDir().mkpath(d.path()+"/system/cpu/cpu7/cpufreq");QVERIFY(unreadable.open(QIODevice::WriteOnly));unreadable.write("3200000");unreadable.close();
+   unreadable.setPermissions({});
+   if(!QFile(unreadable.fileName()).open(QIODevice::ReadOnly))QVERIFY(performanceCpus(d.path()).isEmpty());
+  }
+  {  // No sysfs at all.
+   QTemporaryDir d;
+   QVERIFY(performanceCpus(d.path()+"/missing").isEmpty());
+   QVERIFY(preferredCpus({0,1,2,3,4,5,6,7},d.path()+"/missing").isEmpty());
+  }
+  // Kept to the faster CPUs only with four physical cores of them, and slower
+  // ones allowed too.
+  {  // Intel hybrid: 4 P cores with SMT (0-7), 8 E cores (8-15).
+   QTemporaryDir d;
+   tree(d.path(),{{"cpu_core/cpus","0-7\n"},{"cpu_atom/cpus","8-15\n"}});
+   tree(d.path(),cpus(16,"topology/core_id",[](int c){return QByteArray::number(c<8?c/2:c);}));
+   tree(d.path(),cpus(16,"topology/physical_package_id",[](int){return QByteArray("0");}));
+   QList<int> all;for(int c=0;c<16;++c)all.append(c);
+   QCOMPARE(preferredCpus(all,d.path()),(QList<int>{0,1,2,3,4,5,6,7}));
+   QVERIFY(preferredCpus({0,1,2,3,8,9},d.path()).isEmpty());          // two P cores allowed
+   QVERIFY(preferredCpus({0,1,2,3,4,5,6,7},d.path()).isEmpty());      // no E core allowed: nothing to prefer over
+   QCOMPARE(preferredCpus({0,2,4,6,8},d.path()),(QList<int>{0,2,4,6})); // one thread of each P core
+  }
+  {  // The 8500GE: its faster kind is two cores, four logical CPUs.
+   QTemporaryDir d;
+   tree(d.path(),cpus(12,"acpi_cppc/highest_perf",[](int c){return QByteArray(c%6==0||c%6==4?"196\n":"144\n");}));
+   tree(d.path(),cpus(12,"topology/core_id",[](int c){return QByteArray::number(c%6);}));
+   tree(d.path(),cpus(12,"topology/physical_package_id",[](int){return QByteArray("0");}));
+   QList<int> all;for(int c=0;c<12;++c)all.append(c);
+   QVERIFY(preferredCpus(all,d.path()).isEmpty());
+  }
+  {  // Without topology the cores cannot be counted: every CPU (Sol on #1933).
+   QTemporaryDir d;
+   tree(d.path(),cpus(8,"cpufreq/cpuinfo_max_freq",[](int c){return QByteArray(c<4?"2000000":"3200000");}));
+   QVERIFY(preferredCpus({0,1,2,3,4,5,6,7},d.path()).isEmpty());
+   tree(d.path(),cpus(8,"topology/core_id",[](int c){return QByteArray::number(c);}));
+   tree(d.path(),cpus(8,"topology/physical_package_id",[](int){return QByteArray("0");}));
+   QCOMPARE(preferredCpus({0,1,2,3,4,5,6,7},d.path()),(QList<int>{4,5,6,7}));
+  }
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

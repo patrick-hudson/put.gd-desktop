@@ -5,9 +5,13 @@
 //   bench_ocr_method [--data DIR] [--lang L] [--psm N] [--threshold N] [--no-dict]
 //     [--no-invert-lines] [--no-invert] [--scale S] [--max-scale N] [--border N]
 //     [--dpi N] [--cap MP] [--band MP] [--confidence F] [--contrast N] [--words]
-//     [--no-emoji] [--emoji-templates FILE] [--emoji-distance D] [--symbols] IMAGE...
+//     [--no-emoji] [--emoji-templates FILE] [--emoji-distance D] [--symbols]
+//     [--candidates] [--cpus LIST] IMAGE...
+// --candidates also runs Quick redact's second reads; --cpus keeps the job's
+// threads to those CPUs ("0-3,8"), as the helper does on a machine of mixed cores.
 // Emoji (#1748) are looked for in the image's colour, with the built-in
 // templates unless --emoji-templates names a file.
+#include "ocr/Cores.h"
 #include "ocr/Recognize.h"
 #include <QGuiApplication>
 #include <QFile>
@@ -50,6 +54,8 @@ int main(int argc,char** argv){
   else if(a=="--confidence")options.filter.confidence=next().toFloat();
   else if(a=="--contrast")options.filter.contrast=next().toInt();
   else if(a=="--words")words=true;
+  else if(a=="--candidates")options.candidates=true;
+  else if(a=="--cpus")options.cpus=putgd::ocr::cpuList(next().toLatin1());
   else if(a=="--no-emoji")emoji=false;
   else if(a=="--emoji-templates")templatesPath=next();
   else if(a=="--emoji-distance")options.emoji.distance=next().toDouble();

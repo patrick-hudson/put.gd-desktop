@@ -39,7 +39,7 @@ endif()
 
 # The engine-free parts: scale and bands, band copies, words, emoji and the
 # copied text. The contract (putgd_text_protocol) owns the sanitizers and the result.
-add_library(putgd_ocr_logic STATIC src/ocr/Layout.cpp src/ocr/Words.cpp src/ocr/Emoji.cpp)
+add_library(putgd_ocr_logic STATIC src/ocr/Layout.cpp src/ocr/Words.cpp src/ocr/Emoji.cpp src/ocr/Cores.cpp)
 target_include_directories(putgd_ocr_logic PUBLIC src)
 target_link_libraries(putgd_ocr_logic PUBLIC putgd_text_protocol Qt6::Core putgd_build_options)
 # The emoji templates (#1748), built into the binary that links this. The

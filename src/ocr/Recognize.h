@@ -37,6 +37,9 @@ struct JobOptions {
  // cut into strips at blank row gaps that run in parallel. Results join in
  // page order, by task index.
  int threads=0;
+ // The CPUs the job's threads run on (preferredCpus(), #1929); empty: any.
+ // The calling thread's own affinity is restored when the job returns.
+ QList<int> cpus;
  qint64 parallelPixels=500000;
  // A single pass is cut into about this many strips a thread. Smaller
  // strips use less memory (a dense 1 MP terminal at 2x: four engines peaked at
