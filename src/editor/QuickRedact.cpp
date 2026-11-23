@@ -3319,12 +3319,11 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
        int before=loneHash?first-2:first-1;if(before>=head&&before>=0&&candidates.at(before).text==QLatin1String(":"))--before;
        const QString label=at>1?word.left(at-1):before>=head&&before>=0?candidates.at(before).text:QString();
        static const QRegularExpression time(QStringLiteral("^\\d{1,2}:\\d{2}(?::\\d{2})?$"));
-       // #1975: and after any other word with a letter than one that names a number to call or an account: a
+       // #1975: and after any other word than one that names a number to call or an account: a
        // run's or an order's number ("helpers #1714797062", GitHub Actions; "Delivered #523878536"). With
        // no word before it, it stays a phone (Sol S6 on #1976).
        static const QRegularExpression calling(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|t\\x{00e9}l\\x{00e9}phone|tlf|phone|ph|mobile|mobil|mob|movil|m\\x{00f3}vil|cell|cel|celular|handy|fax|whatsapp|call|contact|kontakt|account|acct|konto|number|num|no|nr)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
-       static const QRegularExpression wordOf(QStringLiteral("\\p{L}"));
-       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()||(wordOf.match(label).hasMatch()&&!calling.match(label).hasMatch())))continue;}
+       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()||(!label.isEmpty()&&!calling.match(label).hasMatch())))continue;}
       if(currency.match(after).hasMatch())continue;
       // A browser's build date in a user agent (Gecko/20100101).
       static const QRegularExpression product(QStringLiteral("^[(\\[]?Gecko/\\d"));
