@@ -156,7 +156,10 @@ Use the installed wrapper on Aurora:
 With no arguments, `putgd-build-env` opens a shell in that container. Before a
 `cmake` or `ctest` command it runs `desktop_lock.py guard` from
 `~/.local/libexec/putgd-builder/` and refuses while another session holds the
-host's [quiet lease](#quiet-leases-for-timing-runs). The wrapper
+host's [quiet lease](#quiet-leases-for-timing-runs). That check doesn't take the lease:
+a build or test run longer than about a minute holds the session's own quiet lease
+too, most simply through `desktop_lock.py run aurora-amd --resource quiet --minutes 10
+--owner NAME --session ID --purpose TEXT --release -- …` from the workstation. The wrapper
 selects `/var/home/patrick/work/put.gd`, the canonical path to the prepared
 checkout, clears the live graphical session variables for CTest and checks the
 test socket paths under a new short private `TMPDIR`. For an isolated checkout,
@@ -540,13 +543,17 @@ waiting for the lock, over a probe process left behind by a finished test.
 - **SSH builds, tests and VMs on the builders are shared.** Run builds with
   `nice -n 10` and a bounded `-j`. Check `uptime` before you start another heavy
   job on a host whose load is already above its core count; k72 and m74 have four cores.
-- **Timing runs hold the host's quiet lease.** Recording, capture-latency,
-  memory and other timing runs take `desktop_lock.py acquire HOST --resource
-  quiet` when they are ready to start, and release it the moment the timing
-  ends. While another session holds it, don't start new heavy SSH jobs on that
-  host (builds, full ctest, replays, benchmarks). The guarded lab helpers refuse
-  to; for anything else, use `desktop_lock.py guard`. Jobs already running may finish. See [Quiet leases for timing
-  runs](#quiet-leases-for-timing-runs).
+- **Long jobs hold the host's quiet lease.** Any builder job that runs longer than
+  about a minute (a build, a corpus, fuzz or OCR batch, a timing run) takes
+  `desktop_lock.py acquire HOST --resource quiet` when it is ready to start, holds it
+  for its whole run with a heartbeat every 3 to 4 minutes, and releases it when it
+  ends. `guard` only checks the moment it runs, and on 2026-11-22/23 three timing runs
+  were spoiled by heavy jobs that started under a clean `guard` or before the timing
+  took its lease. Prefix a short command with `desktop_lock.py guard HOST &&`. While
+  another session holds the lease, start no new heavy job on that host; the guarded
+  lab helpers refuse to. Run at most 4 jobs per host, and with several campaigns
+  running hold one quiet lease at a time unless the coordinator says otherwise. See
+  [Quiet leases](#quiet-leases-for-timing-runs).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
   plasma, xorg, mesa, GPU drivers, pipewire or xdg-desktop-portal*. Read every
@@ -743,8 +750,10 @@ python3 tools/lab/desktop_lock.py run f44 --owner NAME --session ID --purpose TE
 ```
 
 Use `run` for work that needs a lock: desktop work (the default `desktop` lock)
-and timing runs (`--resource quiet`). Shared SSH builds, tests and VMs need no
-lock. `run` is the safe form of "acquire, then work": it takes the lock, or
+and any job longer than about a minute, timing or not (`--resource quiet`). A shared
+SSH build, test or VM needs no desktop lock, but one that runs longer than about a
+minute holds the quiet lease. With `--minutes 10` or less, `run` renews the lease
+every third of it, inside the 3 to 4 minutes the rule asks. `run` is the safe form of "acquire, then work": it takes the lock, or
 confirms that your session already holds it, and only then runs CMD on the
 builder over the same pinned BatchMode SSH, with `PUTGD_LAB_SESSION` set to your
 session. CMD's words reach the builder as you gave them; put a shell expression
@@ -798,10 +807,16 @@ not checked.
 ### Quiet leases for timing runs
 
 The `desktop` lock means "I'm driving this desktop session". The quiet lease
-(`--resource quiet`, `~/putgd-lab/locks/quiet.lock`) means "don't load this
-host's CPU". They are independent: a timing run on a desktop holds both, a desktop
-acceptance run usually holds only `desktop`, and a headless benchmark over SSH
-holds only `quiet`.
+(`--resource quiet`, `~/putgd-lab/locks/quiet.lock`) means "this session is loading
+this host's CPU, or needs it unloaded". Every builder job longer than about a
+minute holds it, timing or not: builds, corpus, fuzz and OCR batches, and timing
+runs. `guard` checks only the moment it runs, so a short command uses it and a long
+job takes the lease; on 2026-11-22/23 three timing runs were spoiled that way. The
+two locks are independent: a timing run on a desktop holds both, a desktop
+acceptance run usually holds only `desktop`, and a headless benchmark or fuzz run
+over SSH holds only `quiet`. At most 4 jobs per host, and with several campaigns
+running a session holds one quiet lease at a time unless the coordinator says
+otherwise.
 
 There are no clock windows and no private marker files. On 2026-11-22 a booked
 "aurora is quiet 02:30-02:50Z" window failed both ways: a build that didn't know
@@ -816,9 +831,9 @@ python3 tools/lab/desktop_lock.py release aurora-amd --resource quiet --session 
 python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
 ```
 
-- Take the lease when the timing work is ready to start, never ahead of it, and
-  release it the moment the timing ends. Heartbeat, extend, status and break work
-  as for the desktop lock. Release needs no `--verified-clean`: there is nothing
+- Take the lease when the work is ready to start, never ahead of it, heartbeat it
+  every 3 to 4 minutes, and release it the moment the work ends. Heartbeat, extend,
+  status and break work as for the desktop lock. Release needs no `--verified-clean`: there is nothing
   on screen to check.
 - Acquire records the host's load averages and CPU count in the lease. When the
   1-minute load is above the CPU count it says so: find the heavy work before you
@@ -836,11 +851,20 @@ python3 tools/lab/desktop_lock.py guard aurora-amd [--session ID]
   anyone else holds the lease. It checks with its desktop-lock guard (at the
   start and again after the build), right before CMake configure, between
   configure and the build, and right before the stress suite. `PUTGD_LAB_SESSION` doesn't let it through.
+  It holds no lease of its own over its build and stress suite yet, so a timing run
+  that starts while the lane runs isn't stopped; until it takes one, keep timing work
+  off k72 while the lane runs: it is a oneshot service, so `systemctl --user show -p
+  ActiveState --value putgd-stress-weekly.service` on k72 reports `activating` while it
+  works.
 - Nothing else checks the lease. This includes `stress_suite.py`, `ctest` or
-  `cmake` run directly, and any other heavy command. For those, put
-  `desktop_lock.py guard HOST && ` in front of the command. `guard` exits 1 while
-  another session holds the lease. Run on a builder without `HOST`, it reads that
-  builder's own lock directory.
+  `cmake` run directly, and any other heavy command. Put `desktop_lock.py guard HOST && `
+  in front of a short one. A long one (a build, a full `ctest`, a stress suite, a
+  corpus or fuzz batch) takes the lease itself, most simply with
+  `desktop_lock.py run HOST --resource quiet --minutes 10 --owner NAME --session ID
+  --purpose TEXT --release -- CMD`. `guard` exits 1
+  while another session holds the lease. Run on a builder without `HOST`, it reads
+  that builder's own lock directory; with `HOST` it reaches the host over the
+  workstation's pinned SSH, so use that form only on the workstation.
 - Your own lease doesn't stop your own run in the guarded helpers: set
   `PUTGD_LAB_SESSION` to the lease's session (or pass `guard --session ID`).
 - An expired lease no longer stops heavy work, but its file stays until someone
