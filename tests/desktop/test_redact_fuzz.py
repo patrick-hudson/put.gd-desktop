@@ -170,6 +170,7 @@ class Render(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 fuzz.render(args)
             self.assertEqual(len((out / 'labels.jsonl').read_text().splitlines()), 1)
+            self.assertFalse((out / 'images').exists())
 
 
 class Content(unittest.TestCase):

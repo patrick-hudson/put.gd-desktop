@@ -185,14 +185,14 @@ def render_one(job):
 
 def render(args):
     out = Path(args.out)
-    (out / 'images').mkdir(parents=True, exist_ok=True)
-    fams = args.families.split(',') if args.families else None
-    jobs = [(args.seed, i, str(out), fams) for i in range(args.start, args.start + args.count)]
-    if (out / 'labels.jsonl').exists():
+    if (out / 'labels.jsonl').exists():  # checked before anything is written
         have = {json.loads(l)['id'] for l in open(out / 'labels.jsonl') if l.strip()}
         clash = [f'{safe_name(args.seed)}-{i:05d}' for i in range(args.start, args.start + args.count) if f'{safe_name(args.seed)}-{i:05d}' in have]
         if clash:
             sys.exit(f'{out} already holds scene {clash[0]} ({len(clash)} in all): use another seed, --start or --out')
+    (out / 'images').mkdir(parents=True, exist_ok=True)
+    fams = args.families.split(',') if args.families else None
+    jobs = [(args.seed, i, str(out), fams) for i in range(args.start, args.start + args.count)]
     with open(out / 'labels.jsonl', 'a') as fh, ProcessPoolExecutor(max_workers=args.jobs) as ex:
         for meta in ex.map(render_one, jobs, chunksize=4):
             fh.write(json.dumps(meta, ensure_ascii=False) + '\n')
