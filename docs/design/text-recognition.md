@@ -934,7 +934,8 @@ other tool active it does not. The user's side is in the
         value must read as a password. A quoted value runs to its closing quote, up to
         eight words on; a quote after an odd run of backslashes (`\"`) closes nothing. Straight, curly,
         German (`„…“`) and French (`«…»`) quotes count: a straight double quote may close curly (`"…”`),
-        and a straight single quote closes only itself, so an apostrophe inside doesn't end it (#1964). So
+        and a straight single quote closes only itself; an apostrophe between letters in one recognized word
+        doesn't end it (`'it’s Red7 fox'`), one ending a word does (`'rockin' blue jay'`; #1964). So
         "Password: must be at least 8 characters" stays visible and "Temporary password: Wel2024! (please
         change it)" does not. A value up to 16 characters away belongs to the label; one up to 80 away only
         in a form's row, which the label starts and the value ends.
@@ -1043,12 +1044,12 @@ other tool active it does not. The user's side is in the
     still cover such a value. A QR code is covered only when
     it decodes and its content has one of the shapes above. With nothing beside a seed
     phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
-    phrase: telling it from the phrase's own second column would uncover that column. A backslash
-    escape that recognition splits from its quote across a word space (`blue\ " jay"`) ends a quoted
-    value there, and a command separator glued to a word (`host&&`) doesn't end a quoted flag value's
-    command, and a password opened straight and closed curly past an operator inside it (`"red & lantern”`)
-    ends at the operator (#1964). A connection string's password holding a `?` or `#` before its last `@`
-    stays visible: it reads as the URL's query (#1965).
+    phrase: telling it from the phrase's own second column would uncover that column. A command
+    separator glued to a word (`host&&`) doesn't end a quoted flag value's command, and a flag's password
+    opened straight and closed curly past an operator inside it (`"red & lantern”`) can stay visible
+    whole (#1964). A connection string's password with an `@` and then a `?` or `#` before its last `@`
+    (`:@jEC?…@cache`) stays visible, the `?` read as a query's start and `#` as a fragment's; so does one
+    that starts with up to five digits and a `?` (`:1234?lantern@db`), the digits read as a port (#1965).
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
