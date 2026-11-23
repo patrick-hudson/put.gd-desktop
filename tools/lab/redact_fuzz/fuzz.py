@@ -545,7 +545,7 @@ def probe(args):
     words = []
     for i, line in enumerate(lines):
         x = 0
-        for part in re.split(r'( +)', line):
+        for part in re.split(r'(\s+)', line):  # any whitespace ends a word, as on the canvas
             if part and not part.isspace():
                 words.append([part, 10 + x * 8, 10 + i * 20, len(part) * 8, 14])
             x += len(part)

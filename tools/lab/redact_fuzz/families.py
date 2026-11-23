@@ -7,6 +7,7 @@ either way (`'neutral'`). Unlabelled text is ordinary: a cover over it is a fals
 `ctx` holds the scene's user (login, real name), host name and fonts.
 """
 import base64
+import dataclasses
 
 import content as C
 from canvas import MONO, SERIF, UI_SANS, pick
@@ -65,10 +66,11 @@ def _selection(R, segs, th):
     if isinstance(segs, (str, Val)) or R.random() > 0.08:
         return None
     pos = 0
-    for sg in segs:
+    for i, sg in enumerate(segs):
         t = sg.text if isinstance(sg, Val) else sg
         if isinstance(sg, Val) and sg.label == S and len(t) >= 8:
-            sg.tag = (sg.tag + '+selected').lstrip('+')
+            # a copy: one Val can be drawn on several rows, and only this occurrence is selected
+            segs[i] = dataclasses.replace(sg, tag=(sg.tag + '+selected').lstrip('+'))
             return (pos + len(t) // 3, pos + len(t), th['sel'])
         pos += len(t)
     return None
@@ -553,10 +555,10 @@ def ide(R, cv, th, ctx, body=None, lang=None):
         if y > cv.h - 40:
             break
         cv.text(6, y, str(i + 1).rjust(3), f, size, th['muted'])
-        w, _ = cv.text(gutter_w + 8, y, segs, f, size, th['fg'] if i % 3 else th['st'], features=ctx.get('features'), highlight=_selection(R, segs, th),
-                       width=ctx.get('softwrap'), wrap='char')
-        if ctx.get('softwrap') and w >= ctx['softwrap'] - 2:
-            y += lh(size) * (int(cv.measure(segs, f, size)[0] // ctx['softwrap']))
+        w, hgt = cv.text(gutter_w + 8, y, segs, f, size, th['fg'] if i % 3 else th['st'], features=ctx.get('features'), highlight=_selection(R, segs, th),
+                         width=ctx.get('softwrap'), wrap='char')
+        if ctx.get('softwrap'):  # a soft-wrapped row takes as many lines as it was laid out on
+            y += max(0, hgt - lh(size))
         if i == blame_line and R.random() < 0.5:
             fn, ln = C.person(R)
             cv.text(gutter_w + 8 + w + 30, y, f'{fn} {ln}, {R.randint(2, 11)} days ago • {C.sentence(R, 3)}', ctx['ui'], size - 1, th['com'], italic=True)
@@ -655,15 +657,16 @@ def chat(R, cv, th, ctx):
             msg = ['@', R.choice(C.FIRST).lower(), ' ', C.sentence(R, 5), ' ', R.choice(['😂', '🙏', '❤️', '🔥', '👀'])]
         else:
             msg = [C.sentence(R, R.randint(4, 14)), R.choice(['', '', ' 😅', ' 🎉', ' 👍'])]
-        cv.text(nx, y + size + 8, msg, f, size, th['fg'], width=cv.w - nx - 30)
+        _, mh = cv.text(nx, y + size + 8, msg, f, size, th['fg'], width=cv.w - nx - 30)
+        bottom = y + size + 8 + max(mh, size)  # a wrapped message pushes the next one down
         if R.random() < 0.2:
             rx = nx
             for emo in R.sample(['👍', '❤️', '😂', '🎉', '👀', '✅'], R.randint(1, 3)):
-                cv.rect(rx, y + 2 * size + 20, 46, 22, th['panel'], radius=10)
-                cv.text(rx + 6, y + 2 * size + 21, f'{emo} {R.randint(1, 12)}', f, size - 2, th['fg'])
+                cv.rect(rx, bottom + 6, 46, 22, th['panel'], radius=10)
+                cv.text(rx + 6, bottom + 7, f'{emo} {R.randint(1, 12)}', f, size - 2, th['fg'])
                 rx += 54
-            y += 28
-        y += 2 * size + 34
+            bottom += 30
+        y = bottom + 20
     return {'variant': 'sidebar' if side else 'plain'}
 
 
@@ -708,8 +711,8 @@ def email_client(R, cv, th, ctx):
         body.append(['Mot de passe : ', sec(R.choice(['prairie-lune', 'Soleil2026!', 'chat-noir-42']), 'key', 'fr_password')])
     body += ['', ['Best,'], [f'{fn} {ln}'], [R.choice(['Head of Ops', 'Support', 'Account Manager'])], ['M ', C.phone(R)], ['T ', C.phone(R)], [C.email(R, fn, ln)]]
     for segs in body:
-        cv.text(x, y, segs, f, size, th['fg'], width=cv.w - x - 30)
-        y += lh(size) + 2
+        _, hgt = cv.text(x, y, segs, f, size, th['fg'], width=cv.w - x - 30)
+        y += max(lh(size), hgt) + 2
     return {'variant': form}
 
 
@@ -873,8 +876,8 @@ def crypto(R, cv, th, ctx):
                          ('Solana', neu(C.b58(R, 44), 'sol_address')), ('Ethereum', neu('0x' + C.rs(R, C.HEX + 'ABCDEF', 40), 'eth_address')),
                          ('Last transaction', dec('0x' + C.sha(R, 64), 'eth_tx')), ('Signature', dec(C.b58(R, 88), 'sol_signature'))]:
         cv.text(24, y, label, f, size - 1, th['muted'])
-        cv.text(24, y + size + 6, value, ctx['mono'], size, th['fg'], width=cv.w - 60, wrap='char')
-        y += 2 * size + 34
+        _, hgt = cv.text(24, y + size + 6, value, ctx['mono'], size, th['fg'], width=cv.w - 60, wrap='char')
+        y += size + 6 + max(hgt, size) + 26
     return {'variant': form}
 
 
@@ -1196,7 +1199,7 @@ def http_headers(R, cv, th, ctx):
 def configs(R, cv, th, ctx):
     form = R.choice(['env', 'env_example', 'k8s', 'kubeconfig', 'compose'])
     if form == 'env' and R.random() < 0.4:
-        ctx['softwrap'] = R.choice([300, 360, 420])
+        ctx = dict(ctx, softwrap=R.choice([300, 360, 420]))  # this pane only, never the next tiled one
     if form == 'env':
         lines = [['DATABASE_URL=postgres://app:', sec(C.password(R), 'key', 'db_url_password'), '@db.internal:5432/app'], ['STRIPE_SECRET_KEY=', C.token(R, 'stripe')], ['SESSION_SECRET=', sec(C.rs(R, C.ALNUM, 24), 'key', 'env_secret')],
                  'PORT=3000', 'LOG_LEVEL=info', ['SENTRY_DSN=https://', sec(C.sha(R, 32), 'key', 'sentry_dsn'), '@o', str(R.randint(10**5, 10**6)), '.ingest.sentry.io/', str(R.randint(10**5, 10**7))],
