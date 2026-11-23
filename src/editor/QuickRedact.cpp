@@ -2365,13 +2365,14 @@ const QList<Rule>& rules() {
     // #1939: nor a date with a dashed time after it (Screenshot From 2026-11-22 14-03-59.png), nor a
     // counted row (calendar days, year headers).
     static const QRegularExpression dated(R"(^\d{4}-\d{1,2}-\d{1,2}(?:[ T_]\d{1,2}(?:[-.]\d{2}){0,2})?$)");
-    if(isbn13(m)||dated.match(m).hasMatch()||countedRow(m))return false;
+    // A number with its international "+" is a number to call whatever its groups (+44 20 21 22 23 24).
+    if(isbn13(m)||dated.match(m).hasMatch()||(!m.startsWith('+')&&countedRow(m)))return false;
     // #1939: nor an EAN-13 as printed under its bar code (9 602850 531546), three colour channels
     // (rgb 247 177 121) or a count with spaces between its thousands (1 912 615).
     static const QRegularExpression ean(R"(^\d \d{6} \d{6}$)"),thousands(R"(^\d{1,2}(?: \d{3}){2,3}$)");
     if(ean.match(m).hasMatch()||thousands.match(m).hasMatch())return false;
     {const auto groups=numberGroups(m);
-     if(!m.startsWith('+')&&groups.size()==3&&std::all_of(groups.cbegin(),groups.cend(),[](QStringView g){return g.size()<=3&&g.toInt()<=255;}))return false;}
+     if(!m.startsWith('+')&&!m.contains('(')&&groups.size()==3&&std::all_of(groups.cbegin(),groups.cend(),[](QStringView g){return g.size()<=3&&g.toInt()<=255;}))return false;}
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
@@ -3099,7 +3100,8 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     if(words.isEmpty())continue;
     // #1939: a counted row judged on its words as read: the wrapped view glues a row's last cell to
     // the next row's first (18 and 17 as 1817), which hides calendar cells from the text's groups.
-    if(number&&words.size()>=3&&!(rule.category=="card"&&cardValid(start,length)&&!rule.valid(joined.text.mid(start,length)))){
+    if(number&&words.size()>=3&&!(rule.category=="card"&&cardValid(start,length)&&!rule.valid(joined.text.mid(start,length)))
+       &&!(rule.category=="phone"&&joined.text.mid(start,length).startsWith('+'))){
      QStringList cells;for(const int w:std::as_const(words))cells.append(numbers.at(w));
      if(countedRow(cells.join(' ')))continue;
     }
@@ -3172,10 +3174,12 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       {const auto& word=candidates.at(first).text;const auto at=word.indexOf(QRegularExpression(QStringLiteral("\\d")));
        static const QRegularExpression orderLabel(QStringLiteral("^(?:order|orders|invoice|receipt|ticket|issue|bug|case|ref|reference|po|item|transaction|txn|confirmation|booking|reservation|shipment|pr|build|job|run)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
        // The word before, past a colon recognition read as its own word (Order : #10234567).
-       int before=first-1;if(before>=head&&before>=0&&candidates.at(before).text==QLatin1String(":"))--before;
+       // A "#" read as its own word counts too (Order # 10234567).
+       const bool loneHash=at==0&&first>head&&candidates.at(first-1).text==QLatin1String("#");
+       int before=loneHash?first-2:first-1;if(before>=head&&before>=0&&candidates.at(before).text==QLatin1String(":"))--before;
        const QString label=at>1?word.left(at-1):before>=head&&before>=0?candidates.at(before).text:QString();
        static const QRegularExpression time(QStringLiteral("^\\d{1,2}:\\d{2}(?::\\d{2})?$"));
-       if(bare&&at>=1&&word.at(at-1)=='#'&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()))continue;}
+       if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()))continue;}
       if(currency.match(after).hasMatch())continue;
       // A browser's build date in a user agent (Gecko/20100101).
       static const QRegularExpression product(QStringLiteral("^[(\\[]?Gecko/\\d"));
