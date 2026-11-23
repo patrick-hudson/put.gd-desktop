@@ -625,8 +625,9 @@ def weekly_run(args, log):
         signal.signal(signal.SIGTERM, signal.SIG_IGN)  # a stop now must not interrupt the release
         if lease and not lease.release():
             status['leaseReleased'] = False
-            log(f'quiet lease: still held by {lease.session}; break it once it expires: desktop_lock.py break '
-                f'{args.host} --resource quiet --session YOUR-SESSION --reason TEXT')
+            log(f'quiet lease: {args.lock_dir / "quiet.lock"} may still name {lease.session}; once it expires, break '
+                f'it: desktop_lock.py break {args.host} --resource quiet --session YOUR-SESSION --reason TEXT '
+                '(if break cannot read the file either, ask the lab coordinator)')
         signal.signal(signal.SIGTERM, previous)
         status['ended'] = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
         (out / 'weekly.json').write_text(json.dumps(status, indent=1) + '\n')
