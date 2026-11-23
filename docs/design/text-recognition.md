@@ -912,9 +912,10 @@ other tool active it does not. The user's side is in the
       `-U user%password` after `smbclient`, `-u user:password` after `curl` and `wget`. A password flag
       says what its argument is, so its value needs no secret's shape (`--password 7654`,
       `--password OrchardLantern`); a very short value, a placeholder, a reference, one public by its
-      shape (below) and masks stay visible. A quoted value runs to its closing quote, up to eight words
-      on. A token or secret flag's value in the next word also has the shape of a secret: it reads as a
-      password (below), is quoted, or has a digit and eight characters or more.
+      shape (below) and masks stay visible. A value whose argument opens with a quote runs to its closing
+      quote, up to eight words on (a quote after `curl -u alice:` does not). A token or secret flag's value
+      in the next word also has the shape of a secret: it reads as a password (below), is quoted, or has a
+      digit and eight characters or more.
     - **Names glued to their program:** one part ending in a secret word (`PGPASSWORD`, `SSHPASS`,
       `VAULTTOKEN`), not a word that only ends in `pass` (`BYPASS`, `COMPASS`). Also `psk`, `sessionid`,
       `csrftoken`, `PHPSESSID`, `JSESSIONID`, and WPA, PRE-SHARED, NETWORK, WIRELESS, SECURITY, SETUP,
@@ -933,7 +934,7 @@ other tool active it does not. The user's side is in the
       - `Label     value` with no colon, the label starting its row and the value three to 80 characters
         away ending it (a router or settings page): the value has a digit or reads as a password, or
         under a Wi-Fi passphrase label is eight characters or more; a password or Wi-Fi passphrase
-        runs on over the words after it, adding up to 80 characters.
+        runs on over the words after it to the row's or window's end, 80 characters in all.
       - A password word straight before a quoted value or one that reads as a password (`.netrc`'s
         `password …`, nmcli's `password …`, SQL's `PASSWORD '…'`).
       - A label alone on its row, made of words (not a sentence naming a setting), or an assignment with
@@ -979,8 +980,8 @@ other tool active it does not. The user's side is in the
         above. It has two digits, or one in six groups or more, or, in capitals as one word or groups of
         one length, none beside words that name a setup key ("Setup key", "Enter this key"). Lowercase
         words fit the alphabet too, so a lowercase run needs two digits. Its rest on the row just below is
-        covered when that row holds only base32 groups of the same case, four characters or more, and so
-        are two such rows of groups that make a key only together;
+        covered when that row holds only base32 groups of the same case, four characters or more in all,
+        and so are two such rows of groups that make a key only together;
       - recovery and backup codes under a heading that says so (recovery, backup, emergency, one-time or
         single-use codes or keys), on the heading's own row after it up to the first other word, and on
         the rows below in the heading's column, at most 24 rows, until a row there holds no codes or more
@@ -993,9 +994,9 @@ other tool active it does not. The user's side is in the
         number past 24, and only under a label within six rows above: a recovery, seed, secret, backup or
         wallet phrase or words, a mnemonic, "write down", or a 12- to 24-word phrase. A two-digit entry
         within two characters left of the next window's edge (`10.` starts left of `9.`) is that window's
-        when a one-digit entry starts at or right of that edge, within two characters of it. A shopping,
-        ingredient or spelling list of short words looks the same, and with no such label this rule leaves
-        it alone. The BIP39 word list itself is not used.
+        when a one-digit entry starts at or right of that edge, within two characters of the two-digit one.
+        A shopping, ingredient or spelling list of short words looks the same, and with no such label this
+        rule leaves it alone. The BIP39 word list itself is not used.
     - **QR codes.** With Keys and tokens chosen, a decoded code whose content starts with `otpauth://`
       or `otpauth-migration://`, a `WIFI:` code with a nonempty password (`P:`, whatever its `T:` says), or
       any content the key rules find when read as lines of words, gets one solid suggested Redact mark
@@ -1021,10 +1022,11 @@ other tool active it does not. The user's side is in the
     digits look alike; a list under a one-time or single-use codes heading is read as recovery codes),
     licence keys, a card's CVC and share-link paths are not looked for. A value with no digit far from its
     label, a password whose label recognition reads too far from it, and a seed phrase with no label above
-    it can stay visible. A secret shaped like a public key, a password hash, a digest or a version stays
-    visible under any label; after a token or secret flag with its value in the next word, a Bearer scheme or
-    in a cookie, so does one shaped like a cloud
-    region, a colour or a code identifier of three words run together. A QR code is covered only when
+    it can stay visible. A secret shaped like a public key, a password hash, a digest or a version can
+    stay visible under a label of this section; after a token or secret flag with its value in the next
+    word, a Bearer scheme or in a cookie, so can one shaped like a cloud region, a colour or a code
+    identifier of three words run together. The older setting rules check values their own way and may
+    still cover such a value. A QR code is covered only when
     it decodes and its content has one of the shapes above. With nothing beside a seed
     phrase's label, a numbered entry 13 to 24 of a list in the window beside it can be covered with the
     phrase: telling it from the phrase's own second column would uncover that column.
