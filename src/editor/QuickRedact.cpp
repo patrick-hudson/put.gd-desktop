@@ -1909,7 +1909,9 @@ QList<QList<int>> twoFactorMatches(const QMap<int,QList<int>>& lines,const QList
    // blank key, or one longer than 255 characters", "scan pages 2345 from book"), while "jbsw 2345 hpkp
    // xpab" keeps its digit group (Sol S2 and S15 on #1976).
    bool uniform=words.size()>1;
-   for(int k=1;uniform&&k<words.size();++k){const auto a=plain.at(words.at(0)).size(),b=plain.at(words.at(k)).size();uniform=a>=3&&a<=8&&(b==a||(k==words.size()-1&&b<a));}
+   // Widths without base32's "=" padding, as above.
+   const auto width=[&](int k){const auto& t=plain.at(words.at(k));return t.size()-t.count('=');};
+   for(int k=1;uniform&&k<words.size();++k){const auto a=width(0),b=width(k);uniform=a>=3&&a<=8&&(b==a||(k==words.size()-1&&b<a));}
    int digits=0;for(const int w:words){const auto& t=plain.at(w);if(words.size()==1||uniform||std::any_of(t.cbegin(),t.cend(),[](QChar c){return c.isLetter();}))digits+=int(std::count_if(t.cbegin(),t.cend(),[](QChar c){return c.isDigit();}));}
    const int letters=int(std::count_if(run.cbegin(),run.cend(),[](QChar c){return c.isLetter();}));
    if(run.size()<16||letters<8)return false;
@@ -3332,7 +3334,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
        // over to the word before it.
        QString context=label;
        {static const QRegularExpression mark(QStringLiteral("[\\p{L}\\p{N}]"));
-        if(at<=1&&!mark.match(context).hasMatch()){context.clear();for(int k=before-1;k>=head&&k>=0;--k)if(mark.match(candidates.at(k).text).hasMatch()){context=candidates.at(k).text;break;}}}
+        if(!mark.match(context).hasMatch()){context.clear();for(int k=at>1?first-1:before-1;k>=head&&k>=0;--k)if(mark.match(candidates.at(k).text).hasMatch()){context=candidates.at(k).text;break;}}}
        static const QRegularExpression calling(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|t\\x{00e9}l\\x{00e9}phone|tlf|phone|ph|mobile|mobil|mob|movil|m\\x{00f3}vil|cell|cel|celular|handy|fax|whatsapp|call|contact|kontakt|account|acct|konto|number|num|no|nr)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
        if(bare&&((at>=1&&word.at(at-1)=='#')||loneHash)&&(orderLabel.match(label).hasMatch()||time.match(label).hasMatch()||(!context.isEmpty()&&!calling.match(context).hasMatch())))continue;}
       if(currency.match(after).hasMatch())continue;

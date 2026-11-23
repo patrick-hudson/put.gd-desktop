@@ -11,14 +11,14 @@ key	url=(githubstatus\.com|status\.openai\.com|isitdownrightnow\.com)/ text=.	fa
 key	url=(ria\.ru|ynet\.co\.il|qq\.com|sina\.com\.cn|baidu\.com)/ text=.	false	key: non-Latin text read with English recognition
 key	url=kakaku\.com/ text=[A-Za-z]{2,} [A-Za-z=]	false	key: non-Latin text read with English recognition
 key	url=kakaku\.com/ text=.	false	key: drawn ornament or chart read as letters
-key	url=(linkedin\.com/company/microsoft|cdc\.gov|ted\.com/talks|coindesk\.com/price|en\.wikipedia\.org/wiki/(Telephone_numbering|IPv6_address)|theguardian\.com/international) text=^(?!.*\d{8})	false	key: drawn ornament or chart read as letters
-key	url=en\.wikipedia\.org/wiki/IPv6_address text=\d{8}	false	key: bit diagram read as digits
+key	url=(linkedin\.com/company/microsoft|cdc\.gov|ted\.com/talks|coindesk\.com/price/bitcoin|en\.wikipedia\.org/wiki/(Telephone_numbering_plan|IPv6_address)|theguardian\.com/international)/ text=^(?!.*\d{8})	false	key: drawn ornament or chart read as letters
+key	url=en\.wikipedia\.org/wiki/IPv6_address/ text=\d{8}	false	key: bit diagram read as digits
 key	url=(apnews\.com|flashscore\.com)/ text=.	false	key: navigation words run together
 key	url=npmjs\.com/ text=tokens	false	key: prose naming a secret
 key	url=search\.brave\.com/ text=https?://	false	key: search result breadcrumb
 # --- cards (default kinds)
 card	url=baidu\.com/ text=.	false	card: registration number read as a card
-card	url=en\.wikipedia\.org/wiki/List_of_countries_by_population text=.	false	card: table numbers joined
+card	url=en\.wikipedia\.org/wiki/List_of_countries_by_population_\(United_Nations\)/ text=.	false	card: table numbers joined
 # --- IP addresses
 ip	^'?127\.	false	ip: loopback address
 ip	url=rubygems\.org/ text=8\.1\.4\.1	false	ip: version number
@@ -31,7 +31,7 @@ email	url=(cricbuzz\.com|mastodon\.social|finance\.yahoo\.com|pinterest\.com|lic
 # --- phone numbers
 phone	(888-301-1721|\+44 303 123 7300)	true	phone: a real number on the page
 phone	url=(wikidata\.org|ebay\.com|amazon\.(com|de)|aliexpress\.com|askubuntu\.com|nhk\.or\.jp)/ text=^\(?(1[89]|20)\d\d-(1[89]|20)\d\d	false	phone: span of years
-phone	url=en\.wikipedia\.org/wiki/Special:RecentChanges text=~20\d\d-\d	false	phone: Wikipedia temporary account
+phone	url=en\.wikipedia\.org/wiki/Special:RecentChanges/ text=~20\d\d-\d	false	phone: Wikipedia temporary account
 phone	url=(github\.com/kubernetes|proton\.me)/ text=#1? ?\d{6,}	false	phone: run or order number after #
 phone	url=(cdc\.gov|aliexpress\.com|premierleague\.com|investing\.com|x-rates\.com|ynet\.co\.il|nhk\.or\.jp|yahoo\.co\.jp|ja\.wikipedia\.org|baidu\.com|qq\.com|naver\.com|openstreetmap\.org|espn\.com|coingecko\.com|nasdaq\.com|coindesk\.com|wunderground\.com|bbc\.com/arabic|mastodon\.social|clarin\.com|corriere\.it|youtube\.com|github\.com/torvalds/linux|flightradar24\.com|snapcraft\.io|finance\.yahoo\.com|rubygems\.org|usa\.gov|superuser\.com|gitlab\.com|en\.wikipedia\.org|speedtest\.net|arxiv\.org|askubuntu\.com|amazon\.(com|de)|ebay\.com|yandex\.com)/ text=\d{3,}:\d{8,}|^\d{10}\.?$|\d{9,}[,.]?$	false	phone: long ID or count
 phone	url=(cdc\.gov|aliexpress\.com|premierleague\.com|investing\.com|x-rates\.com|ynet\.co\.il|nhk\.or\.jp|yahoo\.co\.jp|ja\.wikipedia\.org|baidu\.com|qq\.com|naver\.com|openstreetmap\.org|espn\.com|coingecko\.com|nasdaq\.com|coindesk\.com|wunderground\.com|bbc\.com/arabic|mastodon\.social|clarin\.com|corriere\.it|youtube\.com|github\.com/torvalds/linux|flightradar24\.com|snapcraft\.io|finance\.yahoo\.com|rubygems\.org|usa\.gov|superuser\.com|gitlab\.com|en\.wikipedia\.org|speedtest\.net|arxiv\.org|askubuntu\.com|amazon\.(com|de)|ebay\.com|yandex\.com)/ text=%|\d\.\d\d \d|\d,\d{3}	false	phone: price, rate or percentage

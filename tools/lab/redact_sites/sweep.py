@@ -92,10 +92,9 @@ def _capture_worker(job):
                     png = shots / f'{sid}.png'
                     row = dict(id=sid, url=site['url'], category=site['category'], browser=browser_name, scale=scale, theme=theme)
                     # A capture is reused only for the address it was taken of: an edited list renumbers pages.
+                    # Another one is taken into a new file and replaces it only once it succeeds.
                     stamp = png.with_suffix('.url')
-                    if png.exists() and (not stamp.exists() or stamp.read_text() != site['url']):
-                        png.unlink()
-                    if png.exists():
+                    if png.exists() and stamp.exists() and stamp.read_text() == site['url']:
                         row.update(png=str(png.relative_to(out)), status='cached')
                         rows.append(row)
                         if theme == 'light':
@@ -115,7 +114,9 @@ def _capture_worker(job):
                         except Exception:
                             pass
                         page.wait_for_timeout(settle)
-                        page.screenshot(path=str(png))
+                        fresh = png.with_suffix('.new.png')
+                        page.screenshot(path=str(fresh))
+                        os.replace(fresh, png)
                         stamp.write_text(site['url'])
                         row.update(png=str(png.relative_to(out)), status=resp.status if resp else None, title=page.title()[:120], final=page.url)
                         if theme == 'dark' and light is not None:
@@ -228,15 +229,8 @@ def _execute(args, specs):
     out = Path(args.out)
     tmp = out.parent / (out.name + '.parts')
     _merge_parts(out, tmp)
-    done = set()
-    if out.exists():
-        for l in open(out):
-            try:
-                r = json.loads(l)
-            except ValueError:
-                continue
-            if 'error' not in r:
-                done.add(r['id'])
+    # Done means the capture's latest row succeeded: a later error is retried (Sol S11 on #1976).
+    done = {i for i, r in _latest(out).items() if 'error' not in r} if out.exists() else set()
     todo = [s for s in specs if s['id'] not in done]
     print(f'{len(todo)} captures to run, {len(specs) - len(todo)} done', flush=True)
     env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
@@ -295,6 +289,10 @@ def replay(args):
         kept = {k: r[k] for k in ('truncated', 'error') if r.get(k)}
         if kept:
             flags[i] = kept
+    failed = [i for i, f in flags.items() if 'error' in f]
+    if failed:
+        print(f'{len(failed)} captures failed in the run that read the words (first: {failed[0]}); '
+              'their errors are carried over, and the report counts them as unfinished', flush=True)
     try:
         _execute(args, specs)
     finally:
@@ -327,6 +325,8 @@ def triage(rules, kind, text, url):
     # A page rule matches the address from its host on (scheme and "www." dropped), so it names the
     # site it was checked on rather than any address that holds the word.
     place = re.sub(r'^[a-z]+://(www\.)?', '', url)
+    if not place.endswith('/'):
+        place += '/'  # so a rule's host or path ends at "/" whether the address has one or not
     for k, urx, rx, verdict, group in rules:
         if k in ('*', kind) and (urx is None or urx.match(place)) and rx.search(text):
             return verdict, group

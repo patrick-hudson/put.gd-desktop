@@ -406,6 +406,8 @@ private slots:
   QTest::newRow("an address whose dot was lost before live")<<"Write support@example live"<<all<<QStringList{"email: support@example live"};
   QTest::newRow("a page number after scan is no setup key")<<"scan pages 2345 from book"<<all<<QStringList{};
   QTest::newRow("a setup key in capitals with a group of digits")<<"Scan | JBSW 2345 EHPK XPAB"<<all<<QStringList{"key: JBSW 2345 EHPK XPAB"};
+  QTest::newRow("a phone after a bracketed hash is a phone")<<"(#2125550100)"<<all<<QStringList{"phone: (#2125550100)"};
+  QTest::newRow("a padded setup key with a group of digits")<<"Scan | jbsw 2345 hpkp xpab jbsw hpkp xpaa===="<<all<<QStringList{"key: jbsw 2345 hpkp xpab jbsw hpkp xpaa===="};
   QTest::newRow("a masked bearer token is no key")<<"AAAAAAAAAAAAAAAAAAAAAxxxxxxxxxxxxxxxxxxxx"<<all<<QStringList{};
   QTest::newRow("a bearer token's run of A's is a key")<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"<<all<<QStringList{"key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"};
   QTest::newRow("a UUID split before its last group is no phone")<<"UUID 550e8400-e29b-41d4-a7 16-446655440000 assigned to device VM-07."<<all<<QStringList{};
