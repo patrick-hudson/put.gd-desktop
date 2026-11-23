@@ -904,7 +904,83 @@ other tool active it does not. The user's side is in the
       publishable key, or a known prefix with a body under 24 characters;
     - a webhook URL its holder can post with (Slack, Discord, Microsoft Teams, Zapier, Google Chat,
       Azure Logic Apps) and a Telegram bot token.
+  - Secrets in other forms (#1941), read on each visual row's words with their boxes:
+    - **Flags.** A flag that names a secret on any command (`--password=…`, `--token …`, `-D…password=…`),
+      but not one about it (`--password-stdin`, `--token-ttl`), and short flags only after the program that
+      reads them: `-p…` after the MySQL and MariaDB clients, `-p` after `sshpass` and a registry `login`
+      (docker, podman and the like), `-a` after `redis-cli`, `-P` after `sqlcmd`, `-w` after the LDAP tools,
+      `-U user%password` after `smbclient`, `-u user:password` after `curl` and `wget`. A flag's value in
+      the next word has the shape of a secret: it reads as a password (below), is quoted, or has a digit
+      and eight characters or more.
+    - **Names glued to their program:** one part ending in a secret word (`PGPASSWORD`, `SSHPASS`,
+      `VAULTTOKEN`), not a word that only ends in `pass` (`BYPASS`, `COMPASS`). Also `psk`, `sessionid`,
+      `csrftoken`, `PHPSESSID`, `JSESSIONID`, and WPA, PRE-SHARED, NETWORK, WIRELESS, SECURITY, SETUP,
+      RECOVERY and SDK before KEY.
+    - **Labels.** One to four words that name a secret (by the setting-name rule, `Secret Key`,
+      `Client secret`, `Wi-Fi Password`), a 2FA code (`Recovery code`, `Setup key`) or a password in one
+      of about 30 languages (`Passwort`, `Mot de passe`, `Пароль`, `密码`, `パスワード`, `Hasło`, `كلمة المرور`,
+      `סיסמה`…), their words a word space apart. Then:
+      - `Label: value` (or ` :`, ` =`, `is`): the value ends the row, or the row's part before a gap of six
+        characters, or reads as a password, or is quoted. So "Password: must be at least 8 characters"
+        stays visible and "Temporary password: Wel2024! (please change it)" does not. A value up to
+        16 characters away belongs to the label; one up to 80 away only in a form's row, which the label
+        starts and the value ends.
+      - `Label     value` with no colon, the label starting its row and the value at least three characters
+        away ending it (a router or settings page): the value has a digit or reads as a password; a
+        password or Wi-Fi passphrase may be several words.
+      - A password word straight before a quoted value or one that reads as a password (`.netrc`'s
+        `password …`, nmcli's `password …`, SQL's `PASSWORD '…'`).
+      - A label alone on its row, made of words (not a sentence naming a setting), or an assignment with
+        nothing after its `=`, and the value alone on the row below, starting under it (a password
+        manager's field): it reads as a password, or has a digit and eight characters or more, or is a
+        long token-shaped word. A prompt or a command below is no value.
+      - Right-to-left labels read their value on their left.
+      - Authorization's scheme word stays visible; its credential is covered when it is 16 characters or
+        more with a digit, or reads as a password.
+      - A Wi-Fi passphrase assigned in one word runs on through the words after it to the row's end
+        (`wpa_passphrase=correct horse battery staple`).
+      A row of windows side by side is read whole and also window by window (parts six characters or
+      more apart), each part with the part of the row below that starts under it.
+    - A value **reads as a password** with six characters or more, a letter, a digit, and a capital or a
+      symbol, or ten or more mixing cases irregularly with a symbol and no digit; never a URL, a path, an
+      address, a version, a time or a call (`varchar(255)`).
+    - A value **shows no secret by its shape**, whatever its label says: an SSH, age or PEM public key,
+      a publishable key, a `data:` URI, a password hash (`$2b$…`, `$argon2id$…`), a digest (`sha256:…`), an
+      analytics ID (`G-…`, `UA-…`), a version (`19.1.4+build.107`), a cloud region, a colour, a code
+      identifier of three words or more run together, `TODO`, and the shapes `publicRun` names.
+      Code that reads a secret from elsewhere (`std::env::var("DB_PASSWORD")`) is none either.
+    - **Cookies:** each value of a `Cookie:` or `Set-Cookie:` header of 16 characters or more of letters
+      and digits, with both.
+    - **Diff signs:** a key or a setting behind `+`, `-`, `{+` or `[-` at a word's start
+      (`-AKIA…`, `+DB_PASSWORD=…`, `{+AKIA…+}`). A wrapped token's next line ends at a diff's setting
+      line (`+PORT=3000`) and at a line starting with a shell or SQL prompt.
+    - **Token shapes:** a Discord bot token (the bot's id as base64 of 17 to 20 digits, then 6 and 27 to
+      40 characters after dots), an age secret key (`AGE-SECRET-KEY-1` and upper-case bech32), a Tailscale
+      key (`tskey-auth-`, `tskey-client-`…), and a kubeadm bootstrap token (six and sixteen lowercase
+      letters and digits) on a line that names kubeadm or a token.
+    - **2FA and wallets:** a TOTP setup key (base32 of 16 characters or more with two digits, or one in
+      six groups of four, as one word or groups) with a key, secret, setup, authenticator, 2FA, OTP or
+      scan word before it on its row or the two rows above, and its wrapped rest below; recovery and
+      backup codes under a heading that says so, each code-shaped word on the rows below in the
+      heading's column, until a row holds more other words than codes; and a seed phrase written as
+      numbered words, 1 to 12 (or up to 24), each a lowercase word of three to eight letters as BIP39's
+      are, nearly all of the numbers there (eight under a heading about a recovery, seed or secret
+      phrase). The BIP39 word list itself is not used.
+    - **QR codes.** With Keys and tokens chosen, a decoded code whose content starts with `otpauth://`
+      or `otpauth-migration://`, a `WIFI:` code with a password (`P:`) on a network that isn't open, or
+      any content the key rules find when read as lines of words, gets one solid suggested Redact mark
+      over the whole symbol, finder patterns and all, and a fifth of its side around it (at least 4 px):
+      a code decodes through damage to part of it. It counts as a Keys and tokens match. The content is
+      read in the editor only to decide and is kept nowhere: Quick redact's answer gives the code's kind
+      (`codes: {otp: 1}`, also `wifi` and `key`) and the mark's box; the sensitive text prompt names
+      it ("a 2FA QR code", "a Wi-Fi QR code", "a QR code with a key"); the resident and the
+      notification count it as a key or token. Copy text and History's Show QR code are unchanged.
     Key matches that share a word are one match.
+  - Limits (#1941): one-time codes (short-lived, and any six digits look alike), licence keys, a card's
+    CVC and share-link paths are not looked for. A letters-only password after a flag, a value with no
+    digit far from its label, and a password whose label recognition reads too far from it can stay
+    visible. A secret shaped like a public key, a version or a code identifier stays visible under any
+    label.
   - Limits: a secret with no shape of its own (Twilio auth tokens, Datadog, Algolia, Postmark, Snyk,
     Heroku, Mistral, Vercel and Segment keys: hex, UUID or plain alphanumeric strings) is found only
     through the secret-named setting it belongs to; alone it looks like a hash or an ID. AWS's
@@ -1042,8 +1118,11 @@ other tool active it does not. The user's side is in the
     PyPI, SendGrid, DigitalOcean, Shopify, Twilio, Mailgun, Square, Docker Hub, Grafana, Vault,
     Postman, New Relic, Linear, Atlassian and Sentry tokens (shapes as in gitleaks' default rules);
     passwords in connection strings; values of secret-named settings; webhook URLs and Telegram bot
-    tokens; JWTs; PEM private-key blocks; and unbroken hex or base64 runs of 32 characters or more,
-    except digests beside a hash word. `name` and `list` are described below.
+    tokens; JWTs; PEM private-key blocks; unbroken hex or base64 runs of 32 characters or more,
+    except digests beside a hash word; Discord bot tokens, age secret keys, Tailscale keys and kubeadm
+    tokens; passwords in command-line flags and cookies; values beside or below a password, key or
+    Wi-Fi label, in several languages; 2FA setup keys, recovery codes and numbered seed phrases; and QR
+    codes holding a 2FA secret, a Wi-Fi password or a key. `name` and `list` are described below.
   - Speed (#1897): each segment is scanned once with one pattern of every prefix's head, and a
     prefix's own pattern runs only where its head occurs; the run search looks only as far as 256
     characters reach from each word and rules a window out from running counts before reading it.
