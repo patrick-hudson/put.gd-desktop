@@ -910,8 +910,11 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
     // host's path, query or fragment, found in one pass; a word after a space (an address in the same
     // sentence) never joins it, and the query is never judged as the password (Sol on #1967).
     {const int end=int(m.capturedEnd());
-     // An @ that starts a box after a word space starts another word: no extension (CodeRabbit on #1967).
-     const bool spaced=pieceStart(segment,end)&&!(pieceAt(segment,end)>0&&glued(pieceAt(segment,end)));
+     // The password and its @ must be one word: every box boundary from the user's colon to the @ joined with
+     // no space. An @ in a word after a space starts another word ("localhost:3000" "a@b.co,c@d.co"), and
+     // there is no extension (CodeRabbit and Sol on #1967).
+     bool spaced=false;
+     for(int p=pieceAt(segment,m.capturedStart()+colon)+1;p<=pieceAt(segment,end)&&!spaced;++p)spaced=!glued(p);
      if(end<segment.text.size()&&segment.text.at(end)=='@'&&!spaced){
       // The next box is looked at only when the scan reaches the current one's end (Sol on #1967).
       int piece=pieceAt(segment,end),stopAt=pieceEnd(piece),last=end;

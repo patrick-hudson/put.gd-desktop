@@ -865,6 +865,12 @@ private slots:
   spaced.append({url,QRect(10,10,int(url.size())*8,20),90,0});
   spaced.append({mail,QRect(10+int(url.size())*8+8,10,int(mail.size())*8,20),90,0});
   QCOMPARE(found(spaced,QStringList{"key"}),QStringList{});
+  // ...and a port before a word space keeps the next word's addresses out of it (Sol on #1967).
+  const QString host="http://localhost:3000",list="a@b.co,c@d.co";
+  QList<RecognizedWord> port;
+  port.append({host,QRect(10,10,int(host.size())*8,20),90,0});
+  port.append({list,QRect(10+int(host.size())*8+8,10,int(list.size())*8,20),90,0});
+  QCOMPARE(found(port,QStringList{"key"}),QStringList{});
  }
  void seedPhraseBesideAnotherList() {
   const QStringList seed{"abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident"};
