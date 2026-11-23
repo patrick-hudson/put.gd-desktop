@@ -4,6 +4,8 @@
 #include "fixtures/FakeTextBackend.h"
 #include "fixtures/Waits.h"
 #include "core/Log.h"
+#include "app/LocalServer.h"
+#include <QLocalSocket>
 #include <QDirIterator>
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -159,6 +161,47 @@ private slots:
   QCOMPARE(codes.at(1).toObject()["kind"].toString(),QString("withheld"));QCOMPARE(codes.at(1).toObject()["withheld"].toString(),QString("otp"));
   QVERIFY(!codes.at(1).toObject().contains("text"));
   const auto json=QJsonDocument(record).toJson();QVERIFY2(!json.contains(seed.toLatin1())&&!json.contains("otpauth"),json.constData());
+ }
+ // #1962: History's Copy text and the Copy text action, asked for over the socket, withhold a code holding a
+ // secret unless the request comes from the putgd-ui process this resident started.
+ void agentHistoryAndActionCopiesWithholdSecretCodes() {
+  Resident resident;QVERIFY(resident.start());
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  auto result=recognized();
+  TextCode otp;otp.format="QRCode";otp.text="otpauth://totp/Example:alice?secret="+seed;otp.length=otp.text.size();otp.quad={{6,12},{10,12},{10,15},{6,15}};
+  result.codes.append(otp);resident.backend->result=result;
+  // A History image with its retained local copy, and the region the action reads.
+  QImage image(32,16,QImage::Format_RGB32);image.fill(Qt::white);
+  const auto path=resident.dir.filePath("kept.png");QVERIFY(image.save(path,"PNG"));
+  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();file.close();
+  Operation operation;operation.id="text-operation";operation.restore(OperationState::Completed);
+  operation.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);operation.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="text-item";item.artifact.name="kept.png";item.artifact.mime="image/png";item.artifact.bytes=bytes.size();
+  item.artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
+  item.local.status="saved";item.local.path=path;item.uploadStatus="uploaded";operation.items={item};
+  {HistoryStore store(resident.operations->databasePath());QVERIFY(!store.saveOperation(operation));}
+  resident.source.payload.kind="image";resident.source.payload.image=image;
+  HistoryService history(*resident.operations);LocalServer server(*resident.settings,*resident.operations,history);QVERIFY(!server.listen(resident.dir.filePath("runtime")).error);
+  const auto call=[&](const QString& method,const QJsonObject& params)->QString{
+   QLocalSocket socket;socket.connectToServer(server.socketPath());if(!socket.waitForConnected(1000))return {};
+   socket.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"requestId","copy-1962"},{"session",server.socketPath()},{"method",method},{"params",params}}).toJson(QJsonDocument::Compact)+'\n');
+   QByteArray reply;if(!waitFor([&]{socket.waitForReadyRead(50);reply+=socket.readAll();return reply.endsWith('\n');}))return {};
+   const auto id=QJsonDocument::fromJson(reply).object()["result"].toObject()["operationId"].toString();
+   return !id.isEmpty()&&waitFor([&]{return resident.ended(id);})?id:QString();
+  };
+  struct Case {QString method;QJsonObject params;};
+  const QList<Case> cases{{"history.copyText",{{"id","text-item"}}},{"action.invoke",{{"action","text"}}}};
+  for(const auto& c:cases){
+   // An agent (no putgd-ui, or another process): the clipboard gets the code by its kind, the ordinary code whole.
+   server.setUiProcess(0);
+   QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
+   QVERIFY2(!resident.source.copied.text.contains(seed),qPrintable(c.method));QVERIFY2(resident.source.copied.text.contains("[2FA QR code withheld]"),qPrintable(c.method));
+   QVERIFY(resident.source.copied.text.contains(codeCanary));
+   // The person's putgd-ui (here, this process): their own copy keeps it.
+   server.setUiProcess(QCoreApplication::applicationPid());
+   QVERIFY2(!call(c.method,c.params).isEmpty(),qPrintable(c.method));
+   QVERIFY2(resident.source.copied.text.contains(seed),qPrintable(c.method));
+  }
  }
  void keptResultExpires() {
   Resident resident;QVERIFY(resident.start());resident.operations->text().setResultLifetimeForTesting(50);

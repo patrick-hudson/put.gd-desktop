@@ -327,7 +327,7 @@ QJsonObject OperationService::currentObservation(QJsonObject document)const{
  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();const auto observed=observedItems.constFind(item["artifact"].toObject()["id"].toString());if(observed!=observedItems.cend()){item["phase"]=(*observed)["phase"];item["uploadProgress"]=(*observed)["uploadProgress"]; }items[i]=item;}
  document["items"]=items;return document;
 }
-void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& requested) {
+void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& requested,bool agent) {
  // A tray click's xdg-activation token brings an open editor forward (#657);
  // only the tray passes it, session requests cannot.
  auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
@@ -353,7 +353,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  if(action==Settings::textActionName()) {
   const auto delay=options["delaySeconds"];
   if((!options.isEmpty()&&!(options.size()==1&&options.contains("delaySeconds")))||(!delay.isUndefined()&&(!delay.isDouble()||delay.toDouble()!=delay.toInt()||!Settings::captureDelayChoices().contains(delay.toInt())))){reply({"invalid_request","The text action takes delaySeconds 0, 3, 5 or 10",{}},{});return;}
-  QJsonObject params{{"source","region"},{"copy",true}};if(delay.toInt()>0)params["delaySeconds"]=delay.toInt();
+  QJsonObject params{{"source","region"},{"copy",true},{"agent",agent}};if(delay.toInt()>0)params["delaySeconds"]=delay.toInt();
   recognizeText(params,std::move(reply));return;
  }
  return invokeCapture(action,std::move(reply),options,activationToken,sensitiveMode);

@@ -109,11 +109,16 @@ void LocalServer::accept() {
    if(bytes.indexOf('\n')!=bytes.size()-1) {send({},invalid(),{});return;}
    QJsonParseError parseError;auto doc=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!doc.isObject()) {send({}, {"invalid_json","Request must be a JSON object",{}},{});return;}
    auto request=doc.object();const auto id=request["requestId"].toString();QPointer<LocalIpcConnection> guarded(socket);
-   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');}});
+   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');}},fromUi(socket->peer()));
   });
  }
 }
-void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
+void LocalServer::setUiProcess(qint64 pid) {uiPid_=pid>0?pid:0;uiStart_=uiPid_?processStartTime(uiPid_):0;}
+bool LocalServer::fromUi(const LocalPeer& peer) const {
+ // The same process, not a later one given its PID: the start time must match, and an unknown one is no match.
+ return uiPid_>0&&uiStart_!=0&&peer.pid==uiPid_&&peer.start==uiStart_&&peer.uid==uint(::getuid());
+}
+void LocalServer::dispatch(const QJsonObject& request,JsonReply reply,bool person) {
  reply=[guarded=QPointer<LocalServer>(this),reply=std::move(reply),method=request["method"].toString().left(64),params=request["params"].toObject()](Error error,QJsonObject result){if(error)logRejection(method,error);if(guarded)guarded->noteOutcome(method,params,error);reply(std::move(error),std::move(result));};
  if(!fields(request,{"schemaVersion","requestId","session","method","params"})||!string(request,"requestId",128)||!string(request,"method",64)||!request["params"].isObject()||!request["session"].isString()) {reply(invalid(),{});return;}
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
@@ -209,7 +214,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle"})||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
-  auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
+  auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options,!person);return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
  // client resolves URIs first. A menu entry's client names its installation and
@@ -285,7 +290,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="history.copyText") {
   if(!fields(p,{"id"},{"keepResult"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())){reply(invalid(),{});return;}
   // History's Copy text: the retained local copy, one clipboard write; counts only unless asked to keep the result.
-  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()}},reply);return;
+  // #1962: an agent's copy withholds a code that holds a secret; the person's History keeps it.
+  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()},{"agent",!person}},reply);return;
  }
  // save needs an absolute path and may overwrite; copy and show take neither.
  if(method=="history.qr") {

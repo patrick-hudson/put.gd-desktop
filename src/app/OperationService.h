@@ -39,7 +39,8 @@ public:
  // Any action takes sensitiveText (#1804): "prompt" shows the sensitive text
  // prompt to a person; "report" (the default for session requests) pauses the
  // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
- void invoke(const QString& action,JsonReply,const QJsonObject& options={});
+ // agent: an agent's request, whose Copy text withholds a code that holds a secret (#1962).
+ void invoke(const QString& action,JsonReply,const QJsonObject& options={},bool agent=false);
  // #1804, #1898: settles an operation waiting in sensitive_text_found: redact_upload, edit, upload or cancel.
  // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
  void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);

@@ -25,6 +25,6 @@
   set_tests_properties(scroll_service_integration PROPERTIES TIMEOUT 60)
   # Text recognition (#1428) through the resident's journal, log and copy queue, with a fake backend.
   add_executable(test_text_service tests/integration/test_text_service.cpp)
-  target_link_libraries(test_text_service PRIVATE putgd_app Qt6::Test)
+  target_link_libraries(test_text_service PRIVATE putgd_app Qt6::Network Qt6::Test)
   add_test(NAME text_service_integration COMMAND test_text_service)
   set_tests_properties(text_service_integration PROPERTIES TIMEOUT 60)

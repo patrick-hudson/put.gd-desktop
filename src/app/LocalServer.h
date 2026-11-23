@@ -34,7 +34,12 @@ public:
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
  // How long a client waits for this method's reply.
  static int replyDeadlineMs(const QString& method);
- void dispatch(const QJsonObject&,JsonReply);
+ // person: the request came from the putgd-ui process this resident started (#1962). Every other
+ // client, putgd-cli and the MCP helper among them, is an agent's: a copy it asks for withholds a
+ // code that holds a secret.
+ void dispatch(const QJsonObject&,JsonReply,bool person=false);
+ // The putgd-ui process this resident started, or 0 (#1962). Its start time pins it against PID reuse.
+ void setUiProcess(qint64 pid);
  void setUiActivation(std::function<void(const QString&,std::function<void(Error)>)> callback) {uiActivation_=std::move(callback); }
  // A command for an open interface view; the helper validates its semantics.
  void setUiCommand(std::function<void(const QString&,const QJsonObject&,JsonReply)> callback) {uiCommand_=std::move(callback);}
@@ -68,5 +73,7 @@ private:
  HistoryService& history_;
  LocalIpcServer server_;
  QSet<LocalIpcConnection*> clients_;
+ qint64 uiPid_=0;quint64 uiStart_=0;
+ bool fromUi(const LocalPeer&) const;
 };
 }

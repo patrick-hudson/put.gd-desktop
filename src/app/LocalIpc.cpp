@@ -147,7 +147,9 @@ struct LocalIpcConnection::State {
  QByteArray output;
  qsizetype sent=0;
  bool requestHandled=false;
+ LocalPeer peer;
  State(LocalIpcConnection* q,int handle):owner(q),fd(handle),readable(new QSocketNotifier(fd,QSocketNotifier::Read,q)),writable(new QSocketNotifier(fd,QSocketNotifier::Write,q)) {
+  peer=peerOf(fd);
   writable->setEnabled(false);
   QObject::connect(readable,&QSocketNotifier::activated,q,[this]{
    if(requestHandled)discardInput();else emit owner->readyRead();
@@ -192,6 +194,7 @@ struct LocalIpcConnection::State {
 };
 LocalIpcConnection::LocalIpcConnection(qintptr handle,QObject* parent):QObject(parent),state_(std::make_unique<State>(this,int(handle))){}
 LocalIpcConnection::~LocalIpcConnection()=default;
+const LocalPeer& LocalIpcConnection::peer() const{return state_->peer;}
 void LocalIpcConnection::setReadBufferSize(qsizetype size){state_->limit=size;}
 QByteArray LocalIpcConnection::readAll() {
  QByteArray bytes;
@@ -311,11 +314,12 @@ LocalExchange exchangeLocalSession(const QString& path,const QByteArray& request
  exchange(socket,request,deadline,maximumResponse,result.sent,result.response,result.errorCode);
  return result;
 }
-struct LocalIpcConnection::State {QLocalSocket* socket;explicit State(QLocalSocket* value):socket(value){}};
+struct LocalIpcConnection::State {QLocalSocket* socket;LocalPeer peer;explicit State(QLocalSocket* value):socket(value){}};
 LocalIpcConnection::LocalIpcConnection(qintptr handle,QObject* parent):QObject(parent),state_(std::make_unique<State>(reinterpret_cast<QLocalSocket*>(handle))) {
  state_->socket->setParent(this);connect(state_->socket,&QLocalSocket::readyRead,this,&LocalIpcConnection::readyRead);connect(state_->socket,&QLocalSocket::disconnected,this,&LocalIpcConnection::disconnected);
 }
 LocalIpcConnection::~LocalIpcConnection()=default;
+const LocalPeer& LocalIpcConnection::peer() const{return state_->peer;}
 void LocalIpcConnection::setReadBufferSize(qsizetype size){state_->socket->setReadBufferSize(size);}
 QByteArray LocalIpcConnection::readAll(){return state_->socket->readAll();}
 void LocalIpcConnection::stopReading(){QObject::disconnect(state_->socket,&QLocalSocket::readyRead,this,&LocalIpcConnection::readyRead);}

@@ -620,7 +620,7 @@ int main(int argc,char* argv[]) {
 #endif
   reply(active?putgd::Error{"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}}:putgd::Error{});
  });
- QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
+ QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);server.setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
 #ifdef PUTGD_NATIVE_X11
  if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);

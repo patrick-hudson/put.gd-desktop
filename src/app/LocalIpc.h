@@ -35,6 +35,8 @@ public:
  void stopReading();
  void sendAndClose(QByteArray bytes);
  void disconnectFromServer();
+ // The connecting process, read with SO_PEERCRED when the connection was accepted (#1962).
+ const LocalPeer& peer() const;
 signals:
  void readyRead();
  void disconnected();
