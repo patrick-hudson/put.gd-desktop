@@ -202,6 +202,14 @@ class Promotion(unittest.TestCase):
             self.assertIsNone(promote.open_pulls(self.root, promotion))
         self.assertEqual([command[4] for command in calls], ['main'])
 
+    def test_a_change_list_over_githubs_body_limit_is_linked_instead(self):
+        section = '## [Unreleased]\n\n' + '- Entry ([#1](https://example.invalid/1))\n' * 4000
+        text = promote.body('26.1124.1', section, 'https://example.invalid/pull/9')
+        self.assertLess(len(text), 65536)
+        self.assertIn('too long for a pull request body', text)
+        self.assertIn('https://example.invalid/pull/9', text)
+        self.assertIn('- Entry', promote.body('26.1124.1', '## [Unreleased]\n\n- Entry\n'))
+
     def test_nothing_to_promote_is_refused(self):
         with self.assertRaisesRegex(ValueError, 'nothing to promote'):
             self.plan()

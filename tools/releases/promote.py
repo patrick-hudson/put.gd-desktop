@@ -103,8 +103,16 @@ def named_section(existing, version, date, link):
     return '\n'.join(lines) + '\n'
 
 
+# GitHub refuses a pull request body over 65,536 characters; leave room for the rest of the body.
+CHANGES_LIMIT = 60000
+
+
 def body(source, section, changelog_pull=None):
     changes = section.split('\n', 2)[2] if section.count('\n') >= 2 else ''
+    if len(changes) > CHANGES_LIMIT:
+        where = changelog_pull or f'`{CHANGELOG}` on `nightly`'
+        changes = (f'The change list is too long for a pull request body ({len(changes):,} characters). '
+                   f'Read and curate it in {where}.\n')
     lines = [f'Promotes `nightly` (`{source}-nightly`) into `main`.', '',
              'Merging (with a merge commit) tags the stable release `vYY.MDD.N`, the merge commit\'s '
              'UTC date and commit count, and stages its draft.', '']
