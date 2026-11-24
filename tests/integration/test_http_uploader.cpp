@@ -70,6 +70,15 @@ public:
         for (const auto& e : state()["events"].toArray()) if (e.toObject()["call"] == call) out.append(e);
         return out;
     }
+    // Each look at the link answered by phase (#1393). The link answers a whole same-host
+    // redirect, which the helper follows; the address it leads to answers `before` until a
+    // deletion of the file has been asked for, and `after` from then on, however often it is
+    // asked. A reply cut off there may be asked for again by Qt Network itself: while a request
+    // is still waiting for its reply, QHttpNetworkConnectionChannel takes a closed connection for
+    // a dead keep-alive one and sends the request again. The helper's own looks are the requests
+    // for the link, counted exactly; Qt's resends land only on the address it leads to.
+    void phased(const QJsonObject& before, const QJsonObject& after) { rules({{{"call", "file"}, {"phased", QJsonObject{{"before", before}, {"after", after}}}}}); }
+    int looks(const QString& phase) { int count = 0; for (const auto& e : events("look")) if (e.toObject().value("phase").toString() == phase) ++count; return count; }
     int stored() { int count = 0; for (const auto& file : state()["files"].toObject()) if (!file.toObject()["deleted"].toBool()) ++count; return count; }
     Artifact artifact(const QString& name, const QByteArray& bytes, const QString& mime, const QString& category) {
         Artifact out;
@@ -449,9 +458,10 @@ private slots:
         const auto artifact = large ? f.artifact("large.bin", QByteArray(4 * 1024 * 1024 + 64 * 1024, 'x'), "application/octet-stream", "other") : f.image();
         const auto uploaded = f.upload(artifact, destination);
         QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
-        if (!large) f.rules({{{"call", "file"}, {"cut", "length"}}, {{"call", "file"}, {"status", 200}, {"body", "another file entirely"}, {"cut", "length"}}});
+        if (!large) f.phased({{"cut", "length"}}, {{"status", 200}, {"body", "another file entirely"}, {"cut", "length"}});
         const auto result = f.remove(uploaded.receipt);
         QCOMPARE(f.events("file").size(), 2);
+        if (!large) QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
@@ -489,12 +499,11 @@ private slots:
         if (shape == "login-page") f.rules({{{"call", "file"}, {"status", 302}, {"location", otherHost("/__state")}}, serve});
         else if (shape == "cdn-gone") { f.rules({toCdn, serve, toCdn, {{"call", "file"}, {"status", 404}, {"body", "gone"}}}); checks = 4; }
         else if (shape == "cdn-same") { f.rules({toCdn, serve, toCdn, serve}); checks = 4; }
-        else f.rules({serve, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
+        // "cut-404" goes through the same host's phased address (HttpFixture::phased), which Qt may ask again.
+        else f.phased({}, {{"status", 404}, {"body", "gone"}, {"cut", "length"}});
         const auto result = f.remove(uploaded.receipt);
-        // The helper looks at the link `checks` times. Qt may also send a GET again when the
-        // connection closes under a reply that was cut off, so each cut reply may be asked for once more.
-        const int cuts = shape == "cut-404" ? 1 : 0;
-        QVERIFY2(f.events("file").size() >= checks && f.events("file").size() <= checks + cuts, qPrintable(QString("%1 requests for the file, expected %2 to %3").arg(f.events("file").size()).arg(checks).arg(checks + cuts)));
+        QCOMPARE(f.events("file").size(), checks);
+        if (shape == "cut-404") QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
@@ -620,10 +629,11 @@ private slots:
         destination.settings = f.settings("pretend");
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
-        const QJsonObject whole{{"call", "file"}}, empty{{"call", "file"}, {"cut", "empty"}};
-        f.rules({beforeEmpty ? empty : whole, beforeEmpty ? whole : empty});
+        const QJsonObject whole, empty{{"cut", "empty"}};
+        f.phased(beforeEmpty ? empty : whole, beforeEmpty ? whole : empty);
         const auto result = f.remove(uploaded.receipt);
         QCOMPARE(f.events("file").size(), 2);
+        QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
