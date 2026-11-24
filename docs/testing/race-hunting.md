@@ -93,8 +93,8 @@ and check the socket path first: a seed's session socket is `<out>/s<seed>/r/rt/
 and a Unix socket path has at most 107 bytes.
 
 ```sh
-d=$(mktemp -d) && out="$d/tsan" &&   # a private parent (mode 0700) and a new child; race_loop.py refuses an existing --out
-python3 -c 'import sys; p = sys.argv[1] + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
+d=$(python3 tools/lab/scratch.py tsan.) && out="$d/tsan" &&   # a private parent on disk (~/work/tmp) and a new child; race_loop.py refuses an existing --out
+python3 -c 'import os, sys; p = os.path.realpath(sys.argv[1]) + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
   ACTION_FUZZ_SLOW=4 python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt \
     --tsan-prefix work/sanitizer-diagnosis --out "$out" \
     --first-seed 1 --steps 120 --hours 3 --stress 2
@@ -179,6 +179,8 @@ absolute paths:
 
 A per-user quota on `/dev/shm` (k72) can run out under rr traces: a seed then fails with
 "Disk quota exceeded" and its trace stays incomplete. Use a tmpfs without one, such as `/tmp` on k72.
+That tmpfs is the builder's RAM, which the nightly guests need: move the traces you keep to disk, or
+`rr rm` them, as soon as you have them (#1978).
 
 **Time.** rr is several times slower, so a test's own time budgets can expire:
 

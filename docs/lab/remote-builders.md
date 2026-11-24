@@ -554,6 +554,18 @@ waiting for the lock, over a probe process left behind by a finished test.
   lab helpers refuse to. Run at most 4 jobs per host, and with several campaigns
   running hold one quiet lease at a time unless the coordinator says otherwise. See
   [Quiet leases](#quiet-leases-for-timing-runs).
+- **Keep scratch on disk, in `~/work/tmp`, not in `/tmp`.** `/tmp` on f44, d69, k72
+  and aurora-amd is a tmpfs: what is left there stays in RAM until a reboot. On
+  2026-11-22 and 11-23, campaign scratch there (5.7 GB on k72, 4.5 GB on f44) left too
+  little memory for the nightly guests, and the k72 and f44 rows ran nothing (#1978).
+  Make a scratch directory with `python3 tools/lab/scratch.py PREFIX` from a checkout,
+  or `mkdir -p -m 700 ~/work/tmp && d=$(mktemp -d ~/work/tmp/PREFIX.XXXXXX)` without
+  one; the lab tools make theirs there too. With a short prefix the path leaves room for a
+  session socket inside it; still check the resolved socket path's length before launch. Once
+  a run is done and its evidence is kept ([evidence retention](../testing/evidence-retention.md)),
+  remove its scratch. A run that must use a tmpfs, such as an rr recording, moves the traces
+  it keeps to disk, or removes them, as soon as it has them.
+  `release` and `status --check` list your large `/tmp` entries (below).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
   plasma, xorg, mesa, GPU drivers, pipewire or xdg-desktop-portal*. Read every
@@ -617,6 +629,19 @@ GNOME has no tray host, so the Fedora GNOME row installs Fedora's AppIndicator e
 waits for a registered StatusNotifier host before put.gd starts (`tray-host-ready.json`).
 ⚪ means not run or no valid result: setup or infrastructure failures, checks that could not
 decide, and cells the harness cannot drive on a desktop, each with the reason.
+
+A row whose cells all stay ⚪ because of its builder (too little memory, load at or above the
+core count, too little disk, no KVM, a missing golden, an occupied port, a lease or guest slot
+held by another session or by a live or unverified nightly worker, or no SSH) in two
+published runs in a row, on different UTC dates, is a host problem: on
+11-22 and 11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and
+nothing said so (#1978). A row counts when every cell that isn't ➖ is ⚪ with no attempt. The
+controller compares each row with the last published results: when that row was also blocked,
+the count (`hostBlockedNights` in the row's receipt) goes up by one if the UTC date that row
+was last counted on (`hostBlockedDate`, carried over by a filtered recheck of other rows)
+differs, and stays the same for a rerun on the same date. From a count of two it puts a warning naming the row and the reason at the top of #1003 and of the row's
+receipt comment, and the table's Not run cell starts with ⚠️ and the count. Fix the builder
+before the next run. Like any ⚪, it opens no issue.
 
 On trays without AT-SPI the Tray menu cell finds put.gd's icon by its pixels. The template is
 what the running resident publishes at that moment: its `IconPixmap` frames, which must read
@@ -897,7 +922,15 @@ Before you release:
    `pgrep -u patrick -af` for `putgd`, `host_input`, `videotestsrc`, `cover_player` and lab test
    `Xvfb` servers (`desktop_lock.py` `PROCESS_PATTERN` has the exact pattern), and checks for user
    putgd desktop entries, extension copies and data, and an installed `putgd`
-   package. It lists anything that appeared since you acquired the lock and
+   package. Where `/tmp` is a tmpfs, it lists each top-level `/tmp` entry of yours
+   whose files take 256 MiB or more, and notes the total of your files there (with the
+   memory still available, when it can read it) once it reaches 1 GiB (#1978). "Yours"
+   means owned by the builder account, which every session shares: move to `~/work/tmp`
+   or remove only the scratch your run made, and name another session's new entry with
+   `--not-mine PATH`. The walk has a 10 s budget, checked as it walks each directory entry; when it
+   runs out, a note says the sizes are lower bounds. The nightly's own lease reports a new
+   large entry in its receipt but is not held by it, since the entry may be another session's.
+   It lists anything that appeared since you acquired the lock and
    doesn't release yet. Once nothing of yours is left, run it again with
    `--verified-clean`; the lock is released only if the check passes. Items that
    were there at acquire are reported but don't block. A matching process counts
@@ -1225,10 +1258,12 @@ It uses these paths on k72:
 the version you want, then delete the checkout:
 
 ```bash
-src=$(mktemp -d /tmp/pgsw-install.XXXXXX)
-git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd"
-sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
-rm -rf -- "$src"
+src=$(mkdir -p -m 700 ~/work/tmp && mktemp -d ~/work/tmp/pgsw-install.XXXXXX) && [ -n "$src" ] &&
+  git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd" &&
+  sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
+status=$?
+[ -n "$src" ] && rm -rf -- "$src"
+(exit "$status")   # the clone's or installer's result, not the cleanup's
 ```
 
 The installer copies the wrapper and the units, runs `daemon-reload`, enables
