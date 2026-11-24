@@ -439,6 +439,14 @@ def load_policy(path=POLICY):
     for entry in policy['ignore']:
         if 'scope' in entry and entry['component'] != policy['scopes'][entry['scope']]['component']:
             raise ValueError('Acceptance component differs from its scope: ' + entry['id'])
+    # Official upstream advisories (audit_assets.py) that Grype does not see; one exact version each.
+    for entry in policy.get('upstreamAdvisories', []):
+        if (set(entry) - {'issue', 'evidence'} != {'id', 'component', 'version', 'reason', 'expires'}
+                or not all(isinstance(entry[key], str) and entry[key].strip()
+                           for key in ('id', 'component', 'version', 'reason', 'expires'))):
+            raise ValueError('Upstream advisory acceptances need id, component, version, a reason and an expiry: '
+                             + json.dumps(entry))
+        datetime.date.fromisoformat(entry['expires'])
     return policy
 
 

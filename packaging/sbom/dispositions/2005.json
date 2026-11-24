@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/2005",
+  "reviewDate": "2026-11-24",
+  "id": "GHSA-p268-p2w7-qr8x",
+  "severity": "High",
+  "component": "bun",
+  "version": "1.4.4",
+  "fixedIn": "1.4.5",
+  "advisory": "https://github.com/oven-sh/bun/security/advisories/GHSA-p268-p2w7-qr8x",
+  "scope": "Only this advisory, for Bun 1.4.4 embedded in putgd-proton-runtime. Does not waive other advisories, other Bun versions or any Grype finding.",
+  "affected": [
+    "Bun.serve({ http3: true })",
+    "node:quic",
+    "fetch(url, { protocol: \"http3\" }) or --experimental-http3-fetch"
+  ],
+  "assessment": "Not reached. putgd-proton-runtime is a stdio JSON client of put.gd: it starts no server, accepts no connections and talks to Proton over fetch with the default HTTP/1.1 and HTTP/2. No source file of the helper or of its bundled dependencies names http3, node:quic or Bun.serve; the only matches are type declarations (bun-types, @types/bun, @types/node), which bun build does not bundle. put.gd launches the helper without BUN_OPTIONS or Bun command-line flags.",
+  "method": {
+    "host": "Debian 13 physical builder 192.168.68.69 (SSH only)",
+    "input": "putgd-proton-helper-rebuild.tar.gz from the v26.1124.6905-nightly Proton corresponding source (putgd-proton-corresponding-source.tar.gz parts 1 and 2, downloaded and verified by audit_assets.py)",
+    "inputSha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+    "tree": "build-source/: 7395 files, 5398 JavaScript or TypeScript (.js .mjs .cjs .ts .mts .cts), 18 top-level node_modules entries, including @protontech/drive-sdk and its nested node_modules",
+    "commands": [
+      "grep -rIl -E 'http3|node:quic|Bun\\.serve|experimental-http3' --exclude-dir=bun-types --exclude-dir=@types build-source",
+      "grep -rIn -i -E 'quic|http3|h3-|alt-svc' --exclude-dir=bun-types --exclude-dir=@types --exclude='*.map' build-source",
+      "grep -rn -E 'BUN_|experimental-http3|http3' src/ tools/proton/*.ts tools/proton/*.py (application launch path)"
+    ],
+    "results": [
+      "No file outside the type declaration packages matched.",
+      "Every match is unrelated text: 'quick', 'Quick', 'video/quicktime'.",
+      "No match."
+    ],
+    "typeDeclarationMatches": [
+      "node_modules/bun-types/bun.d.ts",
+      "node_modules/bun-types/serve.d.ts",
+      "node_modules/bun-types/globals.d.ts",
+      "node_modules/@types/node/quic.d.ts",
+      "node_modules/@types/node/process.d.ts",
+      "node_modules/@types/node/perf_hooks.d.ts"
+    ]
+  },
+  "expires": "2027-01-15",
+  "followUp": "Ship Bun 1.4.5: helper rebuild, SOURCES.json rebind, native relink and offline replay proofs (#2005)."
+}

@@ -1,5 +1,6 @@
 """Exact download checks fail closed on missing, extra or changed release bytes."""
 import hashlib
+import datetime
 import json
 from pathlib import Path
 import sys
@@ -213,6 +214,29 @@ class AdvisoryRanges(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]['packages'], ['appimage', 'debian13'])
         self.assertEqual(findings[0]['fixedIn'], '1.4.4')
+
+    def test_upstream_acceptance_covers_only_its_exact_unexpired_advisory(self):
+        policy = {'severities': ['Critical', 'High'], 'requireFix': True, 'upstreamAdvisories': [
+            {'id': 'GHSA-test', 'component': 'bun', 'version': '1.4.4', 'reason': 'not reached',
+             'expires': '2027-01-15', 'issue': 1, 'evidence': 'packaging/sbom/dispositions/1.json'}]}
+        def finding(**changes):
+            return {'ghsa_id': 'GHSA-test', 'severity': 'high', 'component': 'bun', 'version': '1.4.4',
+                    'fixedIn': '1.4.5', **changes}
+        accepted, other_id, other_version, low = (finding(), finding(ghsa_id='GHSA-new'),
+                                                  finding(version='1.4.3'), finding(severity='low'))
+        blocking = audit_assets.upstream_blocking([accepted, other_id, other_version, low], policy,
+                                                  datetime.date(2027, 1, 15))
+        self.assertEqual(blocking, [other_id, other_version])
+        self.assertEqual(accepted['status'], 'accepted until 2027-01-15')
+        self.assertEqual(accepted['acceptance']['issue'], 1)
+        self.assertEqual(low['status'], 'reported')
+        expired = finding()
+        self.assertEqual(audit_assets.upstream_blocking([expired], policy, datetime.date(2027, 1, 16)), [expired])
+        self.assertEqual(expired['status'], 'blocking (acceptance expired 2027-01-15)')
+        self.assertNotIn('acceptance', expired)
+        unaccepted = finding()
+        self.assertEqual(audit_assets.upstream_blocking([unaccepted], {**policy, 'upstreamAdvisories': []},
+                                                        datetime.date(2026, 11, 24)), [unaccepted])
 
     def test_fixed_boundary_and_union(self):
         self.assertTrue(audit_assets.version_in_range('1.4.2', '>= 1.0.21, < 1.4.4'))

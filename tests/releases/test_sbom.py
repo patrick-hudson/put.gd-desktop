@@ -303,6 +303,18 @@ class Policy(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     sbom.load_policy(path)
 
+    def test_policy_requires_complete_upstream_advisory_acceptances(self):
+        complete = {'id': 'GHSA-1', 'component': 'bun', 'version': '1.4.4', 'reason': 'r', 'expires': '2027-01-15'}
+        with tempfile.TemporaryDirectory() as work:
+            path = Path(work) / 'policy.json'
+            for rule in ({k: v for k, v in complete.items() if k != 'version'}, {**complete, 'reason': ' '},
+                         {**complete, 'expires': 'soon'}, {**complete, 'scope': 'any'}):
+                path.write_text(json.dumps({**self.policy([]), 'upstreamAdvisories': [rule]}))
+                with self.subTest(rule=rule), self.assertRaises(ValueError):
+                    sbom.load_policy(path)
+            path.write_text(json.dumps({**self.policy([]), 'upstreamAdvisories': [complete]}))
+            self.assertEqual(sbom.load_policy(path)['upstreamAdvisories'], [complete])
+
     def scoped_policy(self):
         policy = self.policy([{'id': 'CVE-2026-1', 'component': 'libpng', 'reason': 'synthetic audited build',
                                'expires': '2027-01-21', 'scope': 'audited'}])
@@ -387,6 +399,11 @@ class Policy(unittest.TestCase):
         for entry in policy['ignore']:
             self.assertIn(entry['scope'], policy['scopes'])
             self.assertEqual(entry['evidence'], 'packaging/sbom/dispositions/511.json')
+        bun = json.loads((sbom.ROOT / 'tools/proton/runtime-lock.json').read_text())['bunVersion']
+        for entry in policy.get('upstreamAdvisories', []):
+            # An acceptance names one embedded Bun; a Bun change must remove or reassess it.
+            self.assertEqual((entry['component'], entry['version']), ('bun', bun))
+            self.assertTrue((sbom.ROOT / entry['evidence']).is_file())
         lock = json.loads(sbom.TOOLS_LOCK.read_text())
         self.assertEqual({tool['name'] for tool in lock['tools']}, {'syft', 'grype'})
         for tool in lock['tools']:
