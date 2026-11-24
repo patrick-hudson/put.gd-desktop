@@ -364,6 +364,10 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
     lastSkipped_ = r.status == TrackStatus::Skipped;
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
+    // And whether it proved it: not a frame the tracker let through as still
+    // without proving it (hintsKept). Only such a frame shows the rest the
+    // first distance per notch is measured between (#1535).
+    lastProvedStill_ = (r.status == TrackStatus::NoMovement && !r.hintsKept) || (r.status == TrackStatus::Placed && r.offset == 0);
     // A jump up under auto-scroll is the user's scrolling only if the next
     // frame agrees: the page stays up, or goes on up. A frame that falls back
     // down onto auto-scroll's way was one picture out of place. On a starved
@@ -618,8 +622,11 @@ void ScrollSession::autoTick() {
         const int notches = planNotches();
         // Sent before the visit: the frames of the visit already belong to this step.
         stepSentAt_ = now;
-        // Only a step that began with the page at rest measures the distance per notch.
-        stepFromRest_ = restedBefore_;
+        // Only a step that began with the page at rest measures the distance
+        // per notch; the first one only from a rest a frame proved. After a
+        // step that settled unmeasured, the page may still have been on its
+        // way: 29 px seen, then 171 after the next 100 px notch (#1535).
+        stepFromRest_ = restedBefore_ && (stats_.pxPerNotch > 0 || lastProvedStill_);
         stepNotches_ = notches;
         stepMoved_ = 0;
         lastStepMove_ = 0;
@@ -646,23 +653,19 @@ void ScrollSession::autoTick() {
             // after its first frame, at 27 px a notch instead of 100, the next
             // went 8 notches, past what a frame can follow, and the page was
             // lost (#1535). It waits for a fresh frame, no longer than the
-            // step has left, and only one that shows the page where the last
-            // placed frame had it measures the distance. A step whose time runs
-            // out with no frame settles unmeasured: the next goes one notch
-            // and measures again. Later steps keep the distance within bounds
-            // of the first one.
+            // step has left. Only a frame that proves the page still measures
+            // the distance (settled); a step whose time runs out without one,
+            // with frames or none, settles unmeasured and a later step
+            // measures again. Later steps keep the distance within bounds of
+            // the first one.
             const bool measuring = phase_ == Phase::Settle && stepFromRest_ && stepNotches_ > 0 && stats_.pxPerNotch <= 0;
-            if (measuring && quiet && !rested) {
-                if (timedOut) {
-                    settled(now, false);
-                    return;
-                }
+            if (measuring && quiet && !rested && !timedOut) {
                 const int64_t movedAt = lastMoveAt_;
                 const int wait = int(std::min<int64_t>(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500, opts_.stepTimeoutMs - (now - stepSentAt_)));
                 auto fresh = source_.freshFrame(std::max(1, wait));
                 if (fresh) feed(*fresh);
                 if (!auto_ || phase_ != Phase::Settle || lastMoveAt_ != movedAt) return;  // it moved on: not at rest yet
-                if (fresh && lastShowedStill_) settled(clock_.nowMs());
+                if (fresh && lastProvedStill_) settled(clock_.nowMs());
                 return;  // no frame, or one that proves nothing: wait on, until the step's time is up
             }
             settled(now);
@@ -739,10 +742,13 @@ void ScrollSession::dropOwed() {
     chainHinted_ = true;
 }
 
-void ScrollSession::settled(int64_t now, bool measured) {
+void ScrollSession::settled(int64_t now) {
     if (stepFirstMoveAt_ >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(stepFirstMoveAt_ - stepSentAt_));
     dropOwed();
-    const bool measure = stepFromRest_ && measured;
+    // The first distance per notch only from a step that ends on a frame
+    // that proves the page still: not one whose time ran out while the page
+    // moved on, nor one the tracker let through as still unproved (#1535).
+    const bool measure = stepFromRest_ && (stats_.pxPerNotch > 0 || lastProvedStill_);
     restedBefore_ = true;
     if (phase_ == Phase::Settle && measure && stepNotches_ > 0 && stepMoved_ > 0) {
         const double sample = double(stepMoved_) / stepNotches_;

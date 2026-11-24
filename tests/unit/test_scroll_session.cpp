@@ -602,9 +602,11 @@ void testStallInTheFirstStep() {
   std::printf("A source that stalls in the first step\n");
   const Document doc = page(96);
   // 150 ms: a fresh frame comes and shows the page moving on. 1,700 ms: no
-  // fresh frame within its wait; the step waits on, and must not measure the
-  // distance from what it saw before the stall (Sol on #1995).
-  for (const int stall : {150, 1700}) {
+  // fresh frame within its wait; the step waits on (Sol on #1995). 3,500 ms:
+  // longer than the step's 3 s, which settles unmeasured; the next notch's
+  // movement must not be measured together with what the stall hid of the
+  // first (29 px seen, then 171: Sol's round 2).
+  for (const int stall : {150, 1700, 3500}) {
     Harness h;
     FakeAppSpec as;
     as.pxPerNotch = 100;
@@ -615,6 +617,20 @@ void testStallInTheFirstStep() {
            h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch,
            (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
   }
+  // Frames keep coming while the page is still on its way at the step's
+  // time limit (Sol's round 2): the distance it has gone by then, a third
+  // of its animation, is no distance per notch.
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 100;
+  as.animMinMs = as.animMaxMs = 600;
+  SessionOptions so = options(true);
+  so.stepTimeoutMs = 200;
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a first step still moving at its time limit measures nothing: no distance per notch from a page on its way",
+         h.end == SessionEnd::PageEnd && wrong.empty() && (h.stats.pxPerNotch <= 0 || std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch),
+         wrong.empty() ? counts(h) : wrong);
 }
 
 // "Scroll to the top first" with a strip under the first wheel point that
