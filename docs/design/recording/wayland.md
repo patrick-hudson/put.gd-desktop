@@ -137,9 +137,10 @@ start fails as `recording_start_failed` with the source's error in
 `details.sourceError` and `details.reason` `pipewire_stopped` ("PipeWire
 stopped while the recording was starting") when the daemon hung up, or
 `source_failed` ("The screen stream ended while the recording was starting")
-when it didn't. A restart through systemd's socket unit usually gives
-`source_failed`: the helper's connection reaches the new daemon, where the
-compositor's stream no longer exists. Otherwise the start fails as
+when it didn't. A restart through systemd's socket unit can give
+`source_failed`: the helper's connection can reach the new daemon, where the
+compositor's stream no longer exists, so the source fails without a hang-up
+(all four such tries on Fedora 44 GNOME did). Otherwise the start fails as
 `recording_helper_timeout` (a `start` request) or
 `recording_helper_unresponsive` (the bar). A start whose failure comes back
 before then keeps its own error.

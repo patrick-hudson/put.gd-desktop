@@ -27,8 +27,10 @@ child's pipes, mirroring the capture and editor helpers:
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`. A missed deadline
   answers the request with `recording_helper_timeout` and keeps the helper. What happens
   to the session depends on the command. A late `pause` or `resume` leaves the state
-  as it was, and a late success still moves it (`lateResult`). A late `export` returns the
-  session to `reviewing` with the clip kept and the timeout in `lastExport.error`. A missed
+  as it was; a late success (`lateResult`) still moves a session that is still `recording`
+  (pause) or `paused` (resume). A late `export` returns the session to `reviewing` at the
+  deadline with the clip kept and the timeout in `lastExport.error`; the helper takes edits
+  and another export again once it answers. A missed
   `prepare` or `start`, or a `stop` before any reviewable clip arrived, fails the session,
   and the discard below ends the helper. A `start` whose PipeWire source failure is still
   marked at the deadline (`sourceTrouble`, [Wayland](wayland.md#wayland-acquisition))
