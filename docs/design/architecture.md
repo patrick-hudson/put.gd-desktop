@@ -238,7 +238,10 @@ set and journals it before network work. Mutations serialize by provider-owned
 destination/object identity, without adopting replacements. Drivers await durable
 checkpoint acknowledgement before each destructive step. Failed, unknown or
 partial deletion retains its original receipt and versioned opaque progress for
-explicit retry. Cancellation cannot undo a sent mutation. Shutdown cancels queued
+explicit retry. Each record follows its newest deletion: a new deletion takes a
+record over, in the transaction that journals it, only from one that sent nothing
+for it, and an older deletion's later retry sends nothing for a record taken over
+and leaves its state alone. Cancellation cannot undo a sent mutation. Shutdown cancels queued
 targets and drains sent work before history services are destroyed. Browser/CDN
 cache invalidation is outside this pipeline.
 
