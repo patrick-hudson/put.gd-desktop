@@ -32,7 +32,8 @@ child's pipes, mirroring the capture and editor helpers:
   `prepare` or `start`, or a `stop` before any reviewable clip arrived, fails the session,
   and the discard below ends the helper. A `start` whose PipeWire source failure is still
   marked at the deadline (`sourceTrouble`, [Wayland](wayland.md#wayland-acquisition))
-  fails as `recording_start_failed` with `details.reason: pipewire_stopped` instead. The session
+  fails as `recording_start_failed` with `details.reason` `pipewire_stopped` or
+  `source_failed` instead. The session
   methods that wait on a command reply only after the helper answers, so
   `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`
   and `action.invoke`, which can toggle Stop, 30 s for the other recording
@@ -53,7 +54,9 @@ child's pipes, mirroring the capture and editor helpers:
   stuck: the session fails with
   `recording_helper_unresponsive` (`details.step` names the state, `silentMs`
   the limit), or, while starting with a source failure still marked, as
-  `recording_start_failed` with `details.reason: pipewire_stopped`.
+  `recording_start_failed` (`pipewire_stopped` or `source_failed`). On GNOME the
+  bar can take Record while the Shell is still placing it; `starting` is
+  followed from then too.
   Nothing is kept, and the discard below ends that helper (#1994). A stuck
   helper can't read `shutdown`, so it is killed when the 2 s deadline runs out.
 - `appearance {scheme: dark|light}` from the resident whenever the resolved

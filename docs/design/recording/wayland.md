@@ -127,14 +127,19 @@ failure can wait on the element's streaming thread past the start deadline
 (GNOME on Fedora 44 with PipeWire 1.6.9, 4 of 5 tries, the published nightly
 too; Plasma on Kubuntu 26.04, 1 of 4). When the source fails with a resource
 error on the helper's own connection, the helper sends `sourceTrouble
-{message}` before that teardown, and the same event with an empty message once
-the teardown has returned. A `start` request's deadline (15 s), or for
+{message, daemonGone}` before that teardown (`daemonGone`: the daemon hung up
+on that connection), and the same event with an empty message once the
+teardown has returned. A `start` request's deadline (15 s), or for
 Record on the helper's own bar the 30 s silence limit
 ([process boundary](process-boundary.md#process-boundary)), ends the helper.
 If the source failure is still marked then (its teardown never returned), the
-start fails as `recording_start_failed` with `details.reason:
-pipewire_stopped` ("PipeWire stopped while the recording was starting") and
-the source's error in `details.sourceError`; otherwise it fails as
+start fails as `recording_start_failed` with the source's error in
+`details.sourceError` and `details.reason` `pipewire_stopped` ("PipeWire
+stopped while the recording was starting") when the daemon hung up, or
+`source_failed` ("The screen stream ended while the recording was starting")
+when it didn't. A restart through systemd's socket unit usually gives
+`source_failed`: the helper's connection reaches the new daemon, where the
+compositor's stream no longer exists. Otherwise the start fails as
 `recording_helper_timeout` (a `start` request) or
 `recording_helper_unresponsive` (the bar). A start whose failure comes back
 before then keeps its own error.
