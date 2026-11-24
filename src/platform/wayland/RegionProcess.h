@@ -14,7 +14,8 @@
 
 namespace putgd {
 // Owns one geometry-only helper. No callback can authorize capture before its
-// fenced unmap/result handshake and normal zero exit have both completed.
+// fenced unmap/result handshake has completed and the helper has exited:
+// normally with zero, or by the resident's own deadline SIGKILL after accept.
 class WaylandRegionProcess final: public QObject {
  Q_OBJECT
 public:
