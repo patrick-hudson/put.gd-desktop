@@ -1,5 +1,6 @@
 #include "Script.h"
 #include "Layout.h"
+#include <QRegularExpression>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -109,8 +110,10 @@ bool keepFirstReading(const QList<Word>& first,const QList<Word>& second){
                                  QStringLiteral("auth"),QStringLiteral("bearer"),QStringLiteral("basic"),QStringLiteral("credential"),QStringLiteral("otp")};
  for(const auto& w:first){
   if(uncertainToken(w.text,0))return true;
-  const auto lower=w.text.toLower();
-  for(const auto& l:labels)if(lower.contains(l))return true;
+  // A label starts the word or one of its pieces (DB_PASSWORD, x-api-key), so
+  // English garbage with "api" or "otp" inside a word does not count.
+  for(const auto& piece:w.text.toLower().split(QRegularExpression(QStringLiteral("[^a-z]+")),Qt::SkipEmptyParts))
+   for(const auto& l:labels)if(piece.startsWith(l))return true;
  }
  return false;
 }
