@@ -24,8 +24,13 @@ child's pipes, mirroring the capture and editor helpers:
   `preview`, `export`, `review` (the review window's controls, #283) and
   `click` (a pointer press the desktop reported, for click highlights, #1364: `{x, y, button, window?}`, or `{button, pointer: true}` for the helper to place at its capture's pointer). Deadlines (`recording::helper*Ms` in
   `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
-  `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
-  `recording_helper_timeout` and leaves the session where it was. The session
+  `prepare` (a hands-on drag selection or OS consent), 600 s for `export`. A missed deadline
+  answers the request with `recording_helper_timeout` and keeps the helper. What happens
+  to the session depends on the command: a late `pause`, `resume` or `export` leaves it
+  where it was, while a missed `prepare` or `start`, or a `stop` before any reviewable clip
+  arrived, fails it, and the discard below ends the helper. A `start` whose PipeWire
+  source failed first reports `pipewire_stopped` instead
+  ([Wayland](wayland.md#wayland-acquisition)). The session
   methods that wait on a command reply only after the helper answers, so
   `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`
   and `action.invoke`, which can toggle Stop, 30 s for the other recording
@@ -35,13 +40,15 @@ child's pipes, mirroring the capture and editor helpers:
   the service with the session ID; an unexpected exit fails the session with
   `recording_helper_crashed` (or `recording_helper_exited`) and never uploads.
   While the capture records or is paused, the helper sends `progress` every
-  second from its main thread. When no event at all arrives for twice the
-  command deadline (30 s), the service takes the helper as stuck: the session
-  fails with `recording_helper_unresponsive` (`details.step` is `recording` or
-  `paused`, `silentMs` the limit), nothing is kept, and the discard below ends
-  that helper (#1994). A stuck helper can't read `shutdown`, so it is killed
-  when the 2 s deadline runs out. A missed `start` or `prepare` deadline fails
-  the session the same way, so a helper stuck there is killed too.
+  second from its main thread. Record on the helper's own bar starts inside the
+  helper with no command to time it, so the helper first sends `starting` and
+  the session moves to `starting`. When no event at all arrives for twice the
+  command deadline (30 s) while the session is starting, recording or paused,
+  the service takes the helper as stuck: the session fails with
+  `recording_helper_unresponsive` (`details.step` names the state, `silentMs`
+  the limit), or with `pipewire_stopped` for a start whose source failed first.
+  Nothing is kept, and the discard below ends that helper (#1994). A stuck
+  helper can't read `shutdown`, so it is killed when the 2 s deadline runs out.
 - `appearance {scheme: dark|light}` from the resident whenever the resolved
   interface scheme changes while the helper runs; the bar, review window and
   selector restyle at once (#198, [appearance](../appearance.md#recording-overlays)).
