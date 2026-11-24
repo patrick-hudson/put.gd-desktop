@@ -632,7 +632,8 @@ decide, and cells the harness cannot drive on a desktop, each with the reason.
 
 A row whose cells all stay ⚪ because of its builder (too little memory, load at or above the
 core count, too little disk, no KVM, a missing golden, an occupied port, a lease or guest slot
-held by another session, or no SSH) in two published runs in a row is a host problem: on
+held by another session or by a live or unverified nightly worker, or no SSH) in two
+published runs in a row, on different UTC dates, is a host problem: on
 11-22 and 11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and
 nothing said so (#1978). A row counts when every cell that isn't ➖ is ⚪ with no attempt. The
 controller compares each row with the last published results: when that row was also blocked,
@@ -925,7 +926,7 @@ Before you release:
    memory still available, when it can read it) once it reaches 1 GiB (#1978). "Yours"
    means owned by the builder account, which every session shares: move to `~/work/tmp`
    or remove only the scratch your run made, and name another session's new entry with
-   `--not-mine PATH`. The walk has a 10 s budget, checked between directories; when it
+   `--not-mine PATH`. The walk has a 10 s budget, checked as it walks each directory entry; when it
    runs out, a note says the sizes are lower bounds. The nightly's own lease reports a new
    large entry in its receipt but is not held by it, since the entry may be another session's.
    It lists anything that appeared since you acquired the lock and
@@ -1259,7 +1260,9 @@ the version you want, then delete the checkout:
 src=$(mkdir -p -m 700 ~/work/tmp && mktemp -d ~/work/tmp/pgsw-install.XXXXXX) && [ -n "$src" ] &&
   git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd" &&
   sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
+status=$?
 [ -n "$src" ] && rm -rf -- "$src"
+(exit "$status")   # the clone's or installer's result, not the cleanup's
 ```
 
 The installer copies the wrapper and the units, runs `daemon-reload`, enables

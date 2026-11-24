@@ -81,11 +81,11 @@ The application's icon target (`packaging/linux/icons`) also needs Qt Svg, which
 build. Do not edit the checkout for it. Build the thread checks from a disposable source export
 outside any git checkout, and drop the icons there:
 
-```sh
+```bash
 checkout=$PWD
 # On disk (~/work/tmp), not inside a git checkout. Every step needs the one before; stop on any failure.
 export_dir=$(python3 tools/lab/scratch.py putgd-tsan-src.) && [ -n "$export_dir" ] &&
-  git archive --format=tar HEAD | tar -x -C "$export_dir" &&
+  ( set -o pipefail; git archive --format=tar HEAD | tar -x -C "$export_dir" ) &&
   sed -i 's/^add_subdirectory(icons)$/# add_subdirectory(icons)  # no instrumented Qt Svg/' "$export_dir/packaging/linux/CMakeLists.txt" &&
   mkdir -p "$export_dir/build" &&
   ln -s "$checkout/work" "$export_dir/work" &&          # the instrumented dependencies built above
