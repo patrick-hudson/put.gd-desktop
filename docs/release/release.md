@@ -339,13 +339,13 @@ in the image's notice inventory.
 ### Text recognition dependencies (#1428)
 
 Copy text and the editor's text tools ([design](../design/text-recognition.md)) run in the
-temporary `putgd-ocr` helper, which links Tesseract 5 (LSTM engine only), Leptonica and ZXing-cpp.
+temporary `putgd-ocr` helper, which links Tesseract 5 (recognition on the LSTM engine; the legacy engine, where the build has it, runs only script detection, #1981), Leptonica and ZXing-cpp.
 These are hard dependencies of every package, because one complete package is the house rule:
 
 | Package kind | English data and libraries it requires | Build packages |
 | --- | --- | --- |
-| DEB | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF dependency scan | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
-| RPM | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF dependency scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
+| DEB | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF dependency scan. Recommends `tesseract-ocr-osd` and the nine script languages (#1981), which `native.py` checks | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
+| RPM | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF dependency scan. Recommends `tesseract-osd` and the nine script languages (#1981), which `native.py` checks | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
 | pacman and the AUR recipe | `tesseract-data-eng`, `tesseract`, `zxing-cpp`, in that order: with the data first pacman does not ask which of 128 `tessdata` packages to use or add Afrikaans by default. `arch.py` refuses the other order. It also refuses a package whose linked OpenSSL soname differs from `arch_libcrypto` in `packaging/install.sh`, which the installer uses to choose between this package and the AppImage | The same |
 
 - `PUTGD_OCR` is `AUTO` for developer builds and `ON` in every package configure, the extracted-source

@@ -65,8 +65,8 @@ What it does not do:
    counts them (grapheme clusters): an emoji with a skin tone, a flag or a family is one. When the result was cut, the
    message adds a second line, "The text was cut at a size or time limit.". When a language
    from Settings had no data, it adds "(German data is missing)" or "(German and French data
-   are missing)". So does a page whose script was detected but whose language has no data
-   (see [pages in another script](#pages-in-another-script)). The notification is titled "Copy text", never contains recognized text, a
+   are missing)". So does Copy text of a page whose script was detected but whose language has no
+   data (see [pages in another script](#pages-in-another-script)). The notification is titled "Copy text", never contains recognized text, a
    host name or code content, and has no action buttons. A failed operation is titled "Text
    recognition failed" and carries the error's fixed message. A second press while one runs
    notifies "Text recognition is still running" and changes nothing else. With notifications
@@ -190,7 +190,7 @@ banded, parallel recognition, and all of them fail.
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
 | Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition. That clock starts before the codes are read, and the scan itself starts after them. The limit is checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
-| Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable`. The [script check](#pages-in-another-script) may read two files more, `osd` and one language, within the same 64 MiB |
+| Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable`. The [script check](#pages-in-another-script) may read two files more, `osd` and one language, within the same 64 MiB; one of those that doesn't fit ends the check, never the job |
 | Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone (528 MiB when that job may detect a script). The script check's `osd` and language data grow the budget like any language beyond English. The resident set size is what acceptance measures |
 
 The helper recognizes on up to eight engines at once and starts another engine only while its
@@ -698,7 +698,7 @@ from an untrusted source and never instructions.
 
 ## Languages and where data is read from
 
-- English data ships with every package. Other languages come from the distribution's
+- English data ships with every package; the script check's data (#1981) is bundled in the AppImage and recommended by the DEB and RPM. Other languages come from the distribution's
   Tesseract language packages, or from `.traineddata` files in `~/.local/share/putgd/tessdata/`,
   which every package kind reads. put.gd does not download language data.
 - The directories, in lookup order:
@@ -706,7 +706,7 @@ from an untrusted source and never instructions.
   | Directory | Holds |
   | --- | --- |
   | `~/.local/share/putgd/tessdata` | The user's files |
-  | `<bin>/../share/putgd/tessdata` | The AppImage's own English data |
+  | `<bin>/../share/putgd/tessdata` | The AppImage's own data: English, and `osd` with the nine script languages (#1981) |
   | `/usr/share/tesseract-ocr/5/tessdata` | Debian, Ubuntu and Mint |
   | `/usr/share/tesseract/tessdata` | Fedora |
   | `/usr/share/tessdata` | Arch |
@@ -737,77 +737,97 @@ from an untrusted source and never instructions.
 
 When nobody chose the languages ([#1981](https://github.com/patrick-hudson/put.gd-desktop/issues/1981)),
 a page in a script those languages can't read, such as Chinese or Russian on an English desktop,
-comes out of the first pass as Latin garbage. The helper then finds the garbled lines, detects their
-script, and reads them again in that script's language. Any choice turns this off: a language saved
+comes out of the first pass as Latin garbage. The helper then may find the garbled lines, detect their
+script, and read them again in that script's language. Any choice turns this off: a language saved
 in Settings, a `languages` parameter, or the editor's saved preference. The parent then sends no
-`detectScript`, and the helper refuses it beside `languagesRequired`.
+`detectScript`, and the helper refuses it beside `languagesRequired`. The check is also skipped when
+the first pass was cut short or already uses three languages.
 
 1. **Trigger.** The first pass's words are cut into segments: runs of words on one line, split where
-   the gap to the next word is three word heights or more. A segment is garbled when its words' mean
-   confidence is under 50 and at least three of them hold an ASCII letter. A job triggers when its
-   garbled segments hold at least 25% of its words and there are at least two. This costs a walk over
-   the words and nothing else.
-2. **Detect.** Tesseract's orientation and script detection (OSD, `osd.traineddata`, the legacy
-   engine) reads a composite of the 60 widest garbled segments, each grown by a third of its height
-   and stacked on white at its own pixels, dark panels inverted. On a whole screen OSD was wrong
-   (ynet's Hebrew came back as Thai) or found nothing (BBC Arabic); on the composite it was right on
-   every non-Latin sweep page but one Baidu capture.
-3. **Map.** One language a script: Han to `chi_sim`, Japanese, Hiragana and Katakana to `jpn`,
-   Hangul to `kor`, Cyrillic to `rus`, Arabic to `ara`, Hebrew to `heb`, Devanagari to `hin`, Thai
-   to `tha`, Greek to `ell`. Latin, no script, or any other script ends the check.
-4. **Reread.** Only when that language's data is installed (or bundled) and is not already one of the
+   the gap to the next word is three times the taller of the two words or more. A segment is garbled
+   when its words' mean confidence is under 50 and at least three of them hold an ASCII letter. A job
+   triggers when its garbled segments hold at least 25% of its words and there are at least two. This
+   costs a walk over the words and nothing else.
+2. **Detect.** Tesseract's orientation and script detection (OSD, `osd.traineddata`, which runs on the
+   legacy engine) reads a composite of up to 60 of the widest garbled segments, as many as fit in 4
+   megapixels. Each is grown by a third of its height, dark panels are inverted, code areas are
+   filled, and they are stacked on white at their own pixels. In the research, OSD on a whole screen
+   was wrong (ynet's Hebrew came back as Thai) or found nothing (BBC Arabic). On the composite, the final
+   sweep detected and kept Chinese, Japanese, Korean, Russian, Hebrew, Arabic and Hindi pages; Thai gave
+   no script (see [known limits](#known-limits)).
+3. **Map.** One language a script: Han to `chi_sim`; Japanese, Hiragana and Katakana to `jpn`;
+   Hangul and Korean to `kor`; Cyrillic to `rus`; Arabic to `ara`; Hebrew to `heb`; Devanagari to
+   `hin`; Thai to `tha`; Greek to `ell`. Latin, no script, or any other script ends the check.
+4. **Reread.** Only when that language's data is installed (or bundled) and isn't already one of the
    job's languages. The garbled segments are read with `[language, eng]` from composites at their
    panels' scale, in groups of about 1.5 megapixels and 16 megapixels in all, on as many engines as
    the job's threads and the memory budget allow.
-5. **Keep.** The new reading replaces the first only when its mean confidence is at least 15 points
-   higher on the same segments. In the research, rereads in the right language rose 29 to 56 points
-   and rereads in a wrong one at most 12.
+5. **Keep.** The mean confidence is compared over the garbled segments that gave words in both
+   readings. The new reading replaces theirs only when it is at least 15 points higher. In the
+   research, rereads in the right language rose 29 to 56 points and rereads in a wrong one at most 12.
 6. **The rest of the page.** Once the language is kept, the page's other segments are read in it too,
    on the same engines and threads, as time and memory allow. A segment whose second reading is mostly
-   Latin takes it when it is surer. One the second reading turns into the page's script takes it only
-   when its mean confidence rises by 15 points too, like the garbled ones: a line the trigger passed
-   over, such as a few characters of the script beside English, is garbled too.
+   Latin (at least half its letters are Latin script) takes it when its mean confidence is higher. Any
+   other second reading, one with no letters too, takes over only when its mean confidence rises by 15
+   points, as the garbled segments' did. A line the trigger passed over, such as a few characters of the
+   script beside English, can be garbled as well.
 7. **Quick redact.** A garbled segment's English reading is gone: that is what clears the false
-   prompts. A replaced segment that the first pass read with some confidence keeps its first words as
-   second-read candidates, matched apart from the rest. The page's script can rewrite a Latin key,
-   password or cookie on a mixed line into look-alikes with a large rise in confidence, and a secret the
-   check misses costs more than a prompt (Sr Manager, 2026-11-24). The copied text never holds both.
+   prompts. A replaced segment that didn't meet the garbled test keeps its first words as second-read
+   candidates, matched apart from the rest, within the candidates' usual limits. The page's script can
+   rewrite a Latin key, password or cookie on a mixed line into look-alikes with a large rise in
+   confidence, and a secret the check misses costs more than a prompt (Sr Manager, 2026-11-24). The
+   copied text never holds both.
 
 Chinese, Japanese and Thai words that touch, or nearly (a gap under a character's height), are joined
 without a space in the copied text, since Tesseract splits such text into words of a character or a few.
-Fullwidth Latin letters and digits keep their spaces. The check starts only with 1.5 s of the time budget
-left, ends 1 s before the budget, and is not counted as a second read: Quick redact's second reads
-keep their own share of the first pass's time, and a token line read in the detected language is not
-read again as an English token.
+Fullwidth Latin letters and digits keep their spaces. The check is not counted as a second read: Quick
+redact's second reads keep their own share of the first pass's time, and a token line read in the
+detected language is not read again as an English token.
 
-The result, `text.recognize`'s record, `editor.inspect`'s `text` member and the MCP inspect tool carry
-`detection` `{script, language, outcome}` when the check ran. `outcome` is `kept`, `discarded`,
-`language_missing` (no data for that language: the notification names it), `detector_missing` (no
-`osd` data), `unknown_script`, `no_time` or `no_memory`. A kept language is listed in `languagesUsed`.
+A completed operation that attempted the check carries `detection` `{script, language, outcome}`: in the
+helper's result, in `text.inspect`'s record (also through `putgd-cli` and the MCP inspect tool) and in
+`editor.inspect`'s `text` member. `script` and `language` are empty when the check stopped before it knew
+them. `outcome` is one of these:
+
+| Outcome | Meaning |
+| --- | --- |
+| `kept` | The garbled segments' second reading was kept. Some segments may still hold their first reading: those that gave no words, and others the rest-of-page pass didn't replace or had no time or memory for. The language is listed in `languagesUsed` |
+| `discarded` | Read again, but the rise was under 15 points, nothing was read, the language is already one of the job's, or its data didn't load |
+| `language_missing` | That language's data isn't installed. Copy text's notification names it |
+| `detector_missing` | No `osd` data |
+| `unknown_script` | OSD found no script, Latin, or one without a language here |
+| `no_time` | Too little of the time budget was left to start, or OSD didn't finish |
+| `no_memory` | The memory budget had no room for OSD, the first reread engine or its composites, or an allocation failed while the readers ran |
+
+The job never fails for the check: whatever stopped it, the first reading stands where nothing was kept.
 
 **Measured on the #1975 sweep** (`tools/lab/redact_sites`, 265 public pages, 1,701 captures, all on
-aurora-amd with the same helper, the check off and then on; recognition read Chinese, Japanese, Korean,
-Russian, Hindi and the rest again on 79 captures). The pages with a false prompt from the default
-kinds fell from 15 to 12: sina.com.cn, kakaku.com and the Japanese Wikipedia cleared, and no page gained
-one. The prompts from non-Latin text read in English fell from 16 to 7 (see [known limits](#known-limits)).
-With every kind on, the pages fell from 54 to 53; one Hindi page gained a phone match on two years, which a
-default check doesn't ask about. No capture failed. The 10,000-record matcher corpus and the x3 scan
-pages scored exactly as before. On the 4,000 fuzz scenes the true-word matches were unchanged, and with
-recognition the check's missed keys fell from 291 to 273 and from 234 to 225, and its false keys from
-1,423 to 1,399 and from 1,553 to 1,544. Those scenes include passwords in Chinese, Japanese, Russian,
-Hebrew, Arabic and Greek.
+aurora-amd with the same helper, the check off and then on). The check ran on 136 captures and kept a
+reread on 79. The pages with a false prompt from the default kinds fell from 15 to 12: sina.com.cn,
+kakaku.com and the Japanese Wikipedia cleared, and no page gained one. The prompts from non-Latin text
+read in English fell from 16 to 7 (see [known limits](#known-limits)). With every kind on, the pages fell
+from 54 to 53; one Hindi page gained a phone match on two years, which a default check doesn't ask about.
+No capture failed. The 10,000-record matcher corpus and the x3 scan pages scored exactly as before. On
+the 4,000 fuzz scenes the true-word matches were unchanged, and with recognition the check's missed keys
+fell from 291 to 273 and from 234 to 225, and its false keys from 1,423 to 1,399 and from 1,553 to
+1,544. Those scenes include passwords in Chinese, Japanese, Russian, Hebrew, Arabic and Greek.
 
 **Memory and time.** The OSD composite is at most 4 megapixels and the rereads' composites at most
-16 in all, in groups of about 1.5. OSD is counted at 48 MiB before it starts, and every reread engine
-at its cost and 20 bytes a pixel of its largest group. An engine that reads the rest of the page counts
-only 12 bytes a pixel beyond the largest group it has read itself, as first-pass workers do, since it
-keeps its own thread across both batches. What doesn't fit ends the check with `no_memory`, and the
-first reading stands. So does an allocation that fails while the readers run. OSD and every reread
-stop 1 s before the job's own time budget, and a reread that finishes after that publishes nothing.
+16 in all, in groups of about 1.5. OSD is counted at 48 MiB before it starts. Each new reread engine is
+counted at its cost and 20 bytes a pixel of its largest group, and the first batch's composites are
+counted too. An engine that reads the rest of the page counts only 12 bytes a pixel beyond the largest
+group it has read itself, as first-pass workers do, since it keeps its own thread across both batches;
+one that read none counts 20. When the budget has room for fewer engines, fewer read; when it has none
+for the rest of the page, that pass is skipped and `kept` stands. The check starts only with 1.5 s of
+the job's time budget left. It waits for OSD and the rereads until 1 s before the budget (the rereads
+get a quarter of a second's grace for a read ending on its deadline) and then uses what is done: groups
+read in time count, and a reader still running publishes nothing more. A thread still running is left,
+as the first pass leaves its engines, and the helper exits after the job.
 
 OSD and the languages are read like any language: from the same directories, through the same
 resolver and Landlock rules, counted against the 64 MiB data limit, with two more files allowed than
-the job's own three. The memory budget grows by their size as for any language beyond English.
+the job's own three. A script file that would cross the limit doesn't load, and the check ends there
+without failing the job. The memory budget grows by their size as for any language beyond English.
 Measured costs are under [performance and memory](#performance-and-memory).
 
 ## Operations, journal and clipboard
@@ -1293,11 +1313,10 @@ other tool active it does not. The user's side is in the
     check's default kinds and on 66 with every kind on. After #1975's rules, 15 and 54. Known limits
     that stay:
     - a page in another script (Chinese, Japanese, Korean, Russian, Hebrew) read with English only
-      comes back as random-looking Latin words, which can look like a split token. Recognition reads
-      the languages chosen in Settings → Text recognition, or, with none chosen, the desktop's
-      language when its data is installed, then English, so an English desktop reads such a page with
-      English only. Installing and choosing the page's language there can help; the sweep read in
-      English and didn't measure how much. We tried skipping key candidates made of many short,
+      comes back as random-looking Latin words, which can look like a split token. This was the
+      baseline, read in English only. Since #1981, with no language chosen, garbled lines are read
+      again in their script's language ([pages in another script](#pages-in-another-script)), and the
+      default-kind pages fell from 15 to 12. We tried skipping key candidates made of many short,
       low-confidence words with no prefix, label or secret word: it cleared none of the six such
       pages fully and dropped three true covers in the fuzz scenes, so it was not kept;
     - a row of navigation words run together in mixed case (`GrandTheftAutoVI`, `BAskeTBALL`,
@@ -2134,8 +2153,9 @@ the house rule.
   most of it that model, and the roughly 12 MB native estimate does not hold there.
 - **Script data (#1981).** The script check needs `osd` and one language per script. They are
   weak dependencies of the DEB and RPM, which apt and dnf install by default, and optional on Arch;
-  without them a page in another script is read with the job's own languages, as before, and a
-  missing language is named in the notification. The native audit refuses a DEB or RPM that does
+  without them a page in another script is read with the job's own languages, as before. When the
+  check finds a script whose language is missing, Copy text's notification names it; without `osd` it
+  can't find one. The native audit refuses a DEB or RPM that does
   not recommend all ten. The AppImage carries them.
 - **AppImage.** It builds Leptonica (no image-format libraries at all), Tesseract (with its legacy
   engine, which only OSD uses: recognition stays LSTM only; no curl, no archive, no OpenMP, no
@@ -2312,9 +2332,12 @@ Tesseract 5.5.4 built from source.
 
 ### Script check cost (#1981)
 
-Measured on 2026-11-24 with CI packages of #1986 (each host's own Tesseract; aurora-amd the AppImage), one
-job per driver, the check off and on in turn, median of 5. Each image here is a whole window or screen.
-A region of a few lines costs less.
+Measured on 2026-11-24 with the CI packages of #1986 at head `4aad3e35c` (CI run 45320004396; each
+host's own Tesseract, aurora-amd the AppImage), one job per driver, the check off and on in turn, median
+of 5. Each image here is a whole window or screen; a region of a few lines costs less. The later commits
+of #1986 change only which confident lines the rest-of-page pass replaces and what Quick redact keeps.
+The raw rows are in the evidence record's
+[timing](https://github.com/patrick-hudson/put.gd-evidence/tree/3f2fd18f3b17fab7d2df5ce4b6fc288827b58991/records/2026-11-24-issue-1981-script-detection/timing).
 
 | Median, off → on (ms) | aurora-amd | m74 (i5-6500T) | f44 | k72 | d69 |
 | --- | --- | --- | --- | --- | --- |
@@ -2326,14 +2349,16 @@ A region of a few lines costs less.
 | Chinese 4K screen | 1,385 → 4,566 | 3,776 → 8,243 | 3,012 → 9,095 | 3,879 → 11,211 | 3,955 → 11,419 |
 
 - **Latin pages pay nothing measurable.** On the 176 ordinary captures of #1428, none triggered on any
-  host. The whole set took 0.997× as long with the check on as off on aurora-amd, 1.0007× on m74,
-  1.0005× on f44, 0.996× on k72 and 1.004× on d69, with a median paired ratio of 1.000. A Latin page
-  that does trigger (46 of the 1,611 Latin sweep captures) pays for OSD, about 0.25 to 1 s, and for a
-  reread that is then discarded.
+  host. The whole set took 0.997× as long with the check on as off on aurora-amd (at `4aad3e35c`), and
+  1.0007× on m74, 1.0005× on f44, 0.996× on k72 and 1.004× on d69 (at `78d7987e2`, whose Latin path is
+  the same), with a median paired ratio of 1.000. A Latin capture that does trigger (53 of the final
+  sweep's 1,611) pays for OSD, about 0.25 to 1 s in the research, and when OSD names a supported script,
+  for a reread as well.
 - **Non-Latin pages** read every Russian and Chinese repetition again in its language (`kept`), inside
-  the 16 s budget everywhere, never truncated. The slowest was a 4K Chinese screen on d69, at 11.4 s.
-- **Memory.** Peak resident memory on a Chinese page reached 320 to 324 MiB (aurora-amd 4K 331,468 KiB,
-  d69 327,848 KiB, m74 326,276 KiB) against 129 to 150 MiB with the check off. That is inside the
+  the 16 s budget everywhere, never truncated. The slowest median was a 4K Chinese screen on d69, at
+  11.4 s.
+- **Memory.** Peak resident memory on a Chinese page reached 313 to 324 MiB (aurora-amd 4K 331,468 KiB,
+  d69 327,848 KiB, m74 326,276 KiB, k72 320,356 KiB) against 129 to 150 MiB with the check off. That is inside the
   budget of 320 MiB plus the data beyond English, `osd` and `chi_sim` (about 332 MiB). Russian pages
   peaked under 180 MiB. Latin pages' peaks were unchanged.
 - Raw rows and the five-desktop acceptance are in the evidence record
@@ -2490,11 +2515,13 @@ and 54 and 56 wrong, and the third 1,268 right.
 - **Pages in another script (#1981).** The sensitive-text check on everyday non-Latin pages still
   asks on some captures. ria.ru's and qq.com's menus, read confidently in English and then correctly
   in Russian or Chinese, keep their English reading for Quick redact, because the second reading
-  can't tell a credential on a mixed line from garbage. On some Baidu captures too few lines are
-  garbled to trigger, and on ynet's Hebrew page OSD named the script Cyrillic, so the reread was
-  discarded. Thai and BBC Arabic gave OSD no script. Choosing the page's language in Settings → Capture →
-  Text recognition reads such a page in it from the start, with no check and no prompt from English
-  garbage.
+  can't tell a credential on a mixed line from garbage. On one ynet capture OSD named the Hebrew page
+  Cyrillic, so its reread was discarded, and Thai (thairath.co.th) gave OSD no script. On 4 of the
+  sweep's 1,611 Latin captures (YouTube, Walmart, Steam, Home Depot), garbled lines, most likely
+  pictures or ornaments read as letters, were read again in another script and kept, against the
+  research's finding that a wrong script rises at most 12 points; none of their prompts changed.
+  Choosing the page's language in Settings → Capture → Text recognition reads such a page in it from
+  the first pass, with no check and no prompt from English garbage.
 - Forced delivery of an obsolete editor result, one that arrives after the revision changed, was not
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
