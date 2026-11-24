@@ -4,12 +4,14 @@ cmake_minimum_required(VERSION 3.24)
 # that temporary, so an auto variable initialized from it outlives what it
 # refers to. Settings::validate crashed the Debian 13 resident this way. GCC's
 # AddressSanitizer does not poison full-expression temporaries and reported
-# nothing, so this contract rejects the pattern in source instead. Use
-# .value(key) / .at(index), or convert in the same expression.
+# nothing, so this contract rejects the pattern in source instead. A call that
+# returns a JSON object by value and is indexed by a string key is the same
+# defect: a test's hover helper read freed memory that way and flaked (#1845).
+# Use .value(key) / .at(index), or convert in the same expression.
 if(NOT DEFINED REPO_ROOT)
   message(FATAL_ERROR "REPO_ROOT is required")
 endif()
-set(pattern [==[(^|[^A-Za-z0-9_])auto[ &]+[A-Za-z_][A-Za-z0-9_]*[ ]*=[^;{}]*\.(toObject|toArray|object|array)\(\)[ ]*\[[^;{}]*\][ ]*[;:]]==])
+set(pattern [==[(^|[^A-Za-z0-9_])auto[ &]+[A-Za-z_][A-Za-z0-9_]*[ ]*=[^;{}]*(\.(toObject|toArray|object|array)\(\)[ ]*\[[^;{}]*\]|\)[ ]*\[[ ]*"[^"]*"[ ]*\])[ ]*[;:]]==])
 function(matches text output)
   string(REGEX MATCH "${pattern}" found "${text}")
   set(${output} "${found}" PARENT_SCOPE)
@@ -18,7 +20,8 @@ endfunction()
 foreach(bad
     [==[const auto value = doc["actions"].toObject()[name];]==]
     [==[auto value=draft_["limits"].toObject().contains(k)?draft_["limits"].toObject()[k]:draft_["retention"].toObject()[k];]==]
-    [==[const auto& first = QJsonDocument::fromJson(bytes).array()[0];]==])
+    [==[const auto& first = QJsonDocument::fromJson(bytes).array()[0];]==]
+    [==[const auto hover = t->inspect()["hover"];]==])
   matches("${bad}" found)
   if(found STREQUAL "")
     message(FATAL_ERROR "The lifetime rule no longer matches: ${bad}")
@@ -29,7 +32,10 @@ foreach(good
     [==[auto action=doc["actions"].toObject()[name].toObject();]==]
     [==[const auto id=profiles[index].toObject()["id"].toString();]==]
     [==[const QJsonValue value=retention?defaults["retention"].toObject()[key]:defaults["limits"].toObject()[key];]==]
-    [==[if(!folder(archive["folders"].toObject()[category], true)) return;]==])
+    [==[if(!folder(archive["folders"].toObject()[category], true)) return;]==]
+    [==[return t->inspect().value("hover").toObject().value("kind").toString();]==]
+    [==[const auto kind = t->inspect()["hover"].toObject();]==]
+    [==[auto action=path.split('/')[2];]==])
   matches("${good}" found)
   if(NOT found STREQUAL "")
     message(FATAL_ERROR "The lifetime rule rejects a safe expression: ${good}")
