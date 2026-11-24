@@ -319,8 +319,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
   up still is); the tracker's expected offset stays within what a step owes when its first frames
-  show the page still; a source that stalls in the first step still measures the distance per notch
-  whole (#1535); a blank stretch under a pinned header and footer is not called the end; the
+  show the page still; a source that stalls in the first step still gives a pixel-exact capture to the
+  end, with the final distance per notch within 10% of the fixture's setting (#1535); a blank
+  stretch under a pinned header and footer is not called the end; the
   end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
   lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
   image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
@@ -339,8 +340,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
   while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
   the exact page; that auto-scroll left alone runs to the end with every row exact and finishes
-  `end_of_content`, or `done` with `reachedEnd` where a starved runner's tracker skipped a frame it
-  could not place among the ruler's look-alike rows (#1535); on failure it prints the result (for a
+  `end_of_content`, or `done` with `reachedEnd` and `framesSkipped` above 0, accepted whatever the
+  reason for the skips (on a starved runner the tracker was seen to skip a frame it could not
+  place among the ruler's look-alike rows, #1535); on failure it prints the result (for a
   capture that never ended, its last progress), the helper's `scroll: ended` line and every time
   auto-scroll let go of the wheel, from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
   Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,

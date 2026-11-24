@@ -205,8 +205,8 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   may have fewer: a match with at least half of them, agreeing in every lane, is taken
   when it is the only one where auto-scroll's hint says the page is.
 - A place found again needs `recoverCells` (0.95) agreement from its layer's cells and `recoverKeepShare` (0.80) agreement over its candidate tile area, with `keepShare` as a floor. Another place fitting within `recoverTie` (0.05) makes it ambiguous.
-- Under auto-scroll's hint, a place off the hint (further from what the hint says than its uncertainty) needs `recoverCells` from its cells as well, as a place found again does; otherwise the frame is skipped. A page that went further than a frame is tall has no true place: on the ruler page of the X11 test, a look-alike 506 rows on, where the hint said 8 and the page had gone 746, fitted at 0.74 of its cells and was written into the image ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
-- One movement that explains the whole frame is the page's layer, whatever the column vote says: its cells and bands agree in 0.99, and no more than 2% of the tiles neither move with it nor stand still. The vote measures each candidate against its own overlap, so a far look-alike that overlaps a few rows spans them as fully as the page spans its own. On the ruler page such a look-alike 452 rows up, at 0.75 of its cells, beat the page's own place at 1.00, and the image kept 425 rows of it on top while the capture still ended `end_of_content` ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
+- Under auto-scroll's hint, an offset outside the range the tracker has summed from the hints since its last placed frame (the hint's offset and its uncertainty) needs at least 95% agreement (`recoverCells`), as a place found again does: in the moving layer's cells for a frame-to-frame match, in all compared cells for a lookup in the image. A failed check rejects only that candidate: the tracker may still take the frame as still, or place it at another match that qualifies, and skips it otherwise. Before this rule (#1995), a page that went further than a frame is tall, which has no true place, was written at a look-alike: on the ruler page of the X11 test, 506 rows on where the hint said 8 and the page had gone 746, at 0.74 of its cells ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
+- When the tracker finds several layers and exactly one of them has a match that explains the whole frame, that layer is the page, whatever the column vote says. Such a match agrees in at least 99% of both its cells and its bands, and no more than 2% of the tiles in its overlap that show content neither move with it nor stand still. The vote measures each candidate against its own overlap, so a far look-alike that overlaps a few rows spans them as fully as the page spans its own. Before this rule (#1995), on the ruler page such a look-alike 452 rows up, at 0.75 of its cells, beat the page's own place at 1.00: the image kept 425 extra rows of it on top, and the capture still ended `end_of_content` ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
 - After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The tracker stays lost and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
 - With no hint, no skipped frames in a row and a placed move before it, a pair match that turns back against that move by more than half the frame's height loses to another accepted match that goes on the way the page went. The other match must reach `recoverCells`, score no more than `recoverTie` below the turn back, move at least as many tiles, and share at least half the moving columns of whichever match has fewer. A turn back that passes the whole-overlap check (`wholeAgrees`) stays where it is. For example, a person flicking back hard after a pause is placed where the page went. On GitHub's pull request page with frames dropped, the turn back was a look-alike one table away, and taking it left every later frame a table short ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - Frames narrower or lower than 16 px (two cells, two block rows) are refused.
@@ -255,17 +255,21 @@ over 1.5 times the one it has is ignored: a page that lays itself out anew durin
 40% of the frame's height (at least one notch, at most 12), so the frames of its animation
 overlap well: the tracker places small steps where 600 px bursts sometimes do not.
 
-The first step's rest is seen on the screen. When its stream has sent nothing for 100 ms, a
-fresh frame is taken first, and if the page moved on, so does the step. A starved X server's
-grabs stalled 80 ms in every 100 in the middle of the step. Taken as settled after its first
-frame, the step measured 27 px a notch instead of 100, the next step of 8 notches went past what
-a frame can follow, the page was lost and the wheel was handed back to nobody ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
+The first step's rest is seen on the screen. While a forward step that started at rest, has
+already moved and still sets the first distance per notch has seen no frame for 100 ms, and
+neither a still frame nor the 3 s timeout has settled it yet, the session asks for a fresh
+frame. If that frame shows more movement, the step keeps waiting; if it shows none, or no frame
+comes, the step settles. Before this rule (#1995), a starved X server's grabs stalled 80 ms in
+every 100 in the middle of the step. Taken as settled after its first frame, the step measured
+27 px a notch instead of 100, the next step of 8 notches went past what a frame can follow, and
+the page was lost ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
 
 The next step goes only once the page has been seen at rest, as it is when a person
 scrolls: a frame that shows what the last placed frame showed, at least 150 ms after the
-page last moved, or no frame at all for 100 ms after the last one that moved. The second
-rule is for streams that send a frame only when the picture changes (KWin, Mutter, image
-copy). A page that never rests gets 3 s per step.
+page last moved, or no frame at all for 100 ms after the last one that moved (for the first
+step, only once a fresh frame shows no more movement, as above). The second rule is for
+streams that send a frame only when the picture changes (KWin, Mutter, image copy). A page
+that never rests gets 3 s per step.
 
 Why: while a scroll runs on, Chrome leaves tiles of the page undrawn for a moment, black at a
 fixed place in the viewport. When the next step went at 85% of the last one's way, Python's
@@ -309,9 +313,9 @@ capture follows the user. **Auto-scroll** (once the mouse has been still for 500
 scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
 (**Nothing scrolled here**). A jump up counts as yours only if the next frame agrees: the
 page stays up or goes on up. One frame placed far up and then the page back on
-auto-scroll's way was a picture out of place. On a starved X server the tracker placed a
-frame of the X11 test's ruler page at a look-alike far up, and the wheel was handed back to
-nobody
+auto-scroll's way was a picture out of place: in a run before #1995 on a starved X server,
+the tracker placed a frame of the X11 test's ruler page at a look-alike far up, and auto-scroll
+paused although nobody had scrolled
 ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)). It also hands it back when the tracker is lost and five steps
 back do not find the page. Each step back is judged on at least three frames and 2.5 s,
 because a lost tracker takes about a second per frame. It does the same after more than
