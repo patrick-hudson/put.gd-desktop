@@ -785,6 +785,18 @@ The result, `text.recognize`'s record, `editor.inspect`'s `text` member and the 
 `language_missing` (no data for that language: the notification names it), `detector_missing` (no
 `osd` data), `unknown_script`, `no_time` or `no_memory`. A kept language is listed in `languagesUsed`.
 
+**Measured on the #1975 sweep** (`tools/lab/redact_sites`, 265 public pages, 1,701 captures, all on
+aurora-amd with the same helper, the check off and then on; recognition read Chinese, Japanese, Korean,
+Russian, Hindi and the rest again on 79 captures). The pages with a false prompt from the default
+kinds fell from 15 to 12: sina.com.cn, kakaku.com and the Japanese Wikipedia cleared, and no page gained
+one. The prompts from non-Latin text read in English fell from 16 to 7 (see [known limits](#known-limits)).
+With every kind on, the pages fell from 54 to 53; one Hindi page gained a phone match on two years, which a
+default check doesn't ask about. No capture failed. The 10,000-record matcher corpus and the x3 scan
+pages scored exactly as before. On the 4,000 fuzz scenes the true-word matches were unchanged, and with
+recognition the check's missed keys fell from 291 to 273 and from 234 to 225, and its false keys from
+1,423 to 1,399 and from 1,553 to 1,544. Those scenes include passwords in Chinese, Japanese, Russian,
+Hebrew, Arabic and Greek.
+
 **Memory and time.** The OSD composite is at most 4 megapixels and the rereads' composites at most
 16 in all, in groups of about 1.5. OSD is counted at 48 MiB before it starts, and every reread engine
 at its cost and 20 bytes a pixel of its largest group. An engine that reads the rest of the page counts
