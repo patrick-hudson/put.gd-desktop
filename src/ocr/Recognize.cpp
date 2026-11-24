@@ -70,6 +70,9 @@ struct ScriptRun {
  std::atomic<int> next{0},running{0};
  std::atomic<bool> closing{false};
  std::vector<std::unique_ptr<TextEngine>> engines;
+ // The largest group each engine has read, in pixels (0: none yet), one per
+ // engine in the same order; a deque, so a reader's entry never moves.
+ std::deque<std::atomic<qint64>> readPixels;
  QStringList languages;EngineOptions engine;
  std::chrono::steady_clock::time_point end;
  int left()const{return int(std::chrono::duration_cast<std::chrono::milliseconds>(end-std::chrono::steady_clock::now()).count());}
@@ -158,7 +161,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  // The segments of one reading, in groups of about scriptGroupPixels at
  // their panels' scale, in reading order, within what is left of scriptPixels.
  struct Batch { QList<int> segments;QList<QList<int>> members;QList<QList<PieceSource>> pieces;std::vector<double> scales;qint64 largest=0,total=0; };
- qint64 budgetPixels=scriptPixels,used=0,readLargest=0;
+ qint64 budgetPixels=scriptPixels,used=0;
  const auto batchOf=[&](const QList<Segment>& segs,const QList<int>& which){
   // Counted as composite() allocates them: the widest piece times every
   // piece and gap, so one wide line among narrow ones is not undercounted.
@@ -189,28 +192,35 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  const auto readBatch=[&](const Batch& b,bool first){
   // The memory first, before any composite is built, and with the last
   // batch's composites gone: this batch's composites (a byte a pixel) and,
-  // for each engine, its working memory: 20 bytes a pixel of the largest
-  // group, plus its own cost, for a new engine; for one that has read a
-  // batch, as in the first pass, only 12 bytes a pixel beyond the largest
-  // group it has read, whose working memory it keeps.
+  // summed over the engines that read it, each one's working memory: for a
+  // new engine its own cost and 20 bytes a pixel of the largest group; for
+  // one that has read a group, as in the first pass, 12 bytes a pixel beyond
+  // the largest group it read itself, whose working memory it keeps (one
+  // that read none counts 20 bytes a pixel).
   run->groups.clear();run->texts.clear();run->done.clear();
   const int groups=int(b.pieces.size());
-  const qint64 each=first?std::max<qint64>(16*1024*1024,in.engineCost)+20*b.largest:12*std::max<qint64>(0,b.largest-readLargest);
-  int engines=0;
-  if(first)engines=std::min<int>(in.threads,groups);
-  else for(const auto& engine:run->engines)if(engine->ready())++engines;
-  engines=std::min(engines,groups);
-  for(int k=0;k<engines;++k)if(!in.roomFor(b.total+each*(k+1))){engines=k;break;}
+  std::vector<int> chosen;  // the reused engines, most working memory first
+  if(!first){
+   for(int j=0;j<int(run->engines.size());++j)if(run->engines[size_t(j)]->ready())chosen.push_back(j);
+   std::stable_sort(chosen.begin(),chosen.end(),[&](int x,int y){return run->readPixels[size_t(x)].load()>run->readPixels[size_t(y)].load();});
+  }
+  const auto need=[&](int k)->qint64{
+   if(first)return std::max<qint64>(16*1024*1024,in.engineCost)+20*b.largest;
+   const qint64 read=run->readPixels[size_t(chosen[size_t(k)])].load();
+   return read>0?12*std::max<qint64>(0,b.largest-read):20*b.largest;
+  };
+  int engines=first?std::min<int>(in.threads,groups):std::min<int>(int(chosen.size()),groups);
+  qint64 reserved=0;
+  for(int k=0;k<engines;++k){reserved+=need(k);if(!in.roomFor(b.total+reserved)){engines=k;break;}}
   if(engines==0)return true;
-  readLargest=std::max(readLargest,b.largest);
   for(int g=0;g<groups;++g)run->groups.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
   run->texts=QList<BandText>(run->groups.size());run->done=QList<bool>(run->groups.size(),false);run->next=0;run->closing=false;
   const auto scales=b.scales;
   std::vector<std::thread> readers;
-  const auto launch=[&](TextEngine* engine,bool start){
+  const auto launch=[&](TextEngine* engine,std::atomic<qint64>* read,bool start){
    run->running.fetch_add(1);
    try{
-    readers.emplace_back([run,engine,start,scales]{
+    readers.emplace_back([run,engine,read,start,scales]{
      if(!start||engine->startAlso(run->languages,run->engine).isEmpty()){
       for(;;){
        if(run->closing.load())break;
@@ -218,7 +228,9 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
        if(index>=run->groups.size())break;
        const int deadline=run->left();if(deadline<=0)break;
        bool cut=false,failed=false;
-       auto text=engine->recognize(run->groups[index].image,scales[size_t(index)],deadline,&cut,&failed);
+       const auto& image=run->groups[index].image;
+       auto text=engine->recognize(image,scales[size_t(index)],deadline,&cut,&failed);
+       raise(*read,qint64(image.width)*image.height);
        if(failed||cut)break;
        std::lock_guard<std::mutex> guard(run->lock);if(run->closing.load())break;
        run->texts[index]=std::move(text);run->done[index]=true;
@@ -231,12 +243,11 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   };
   if(first){
    for(int k=0;k<engines;++k){
-    run->engines.push_back(std::make_unique<TextEngine>());
-    if(!launch(run->engines.back().get(),true)){run->engines.pop_back();break;}
+    run->engines.push_back(std::make_unique<TextEngine>());auto* read=&run->readPixels.emplace_back(0);
+    if(!launch(run->engines.back().get(),read,true)){run->engines.pop_back();run->readPixels.pop_back();break;}
    }
   }else{
-   int launched=0;
-   for(auto& engine:run->engines)if(engine->ready()&&launched<engines){if(!launch(engine.get(),false))break;++launched;}
+   for(int k=0;k<engines;++k){const int j=chosen[size_t(k)];if(!launch(run->engines[size_t(j)].get(),&run->readPixels[size_t(j)],false))break;}
   }
   bool late=false;
   {
