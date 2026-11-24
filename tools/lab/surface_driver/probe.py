@@ -1370,6 +1370,10 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3, display=No
             'obscuring_window': reason, 'obscuring_window_id': None}
 
 
+class AmbiguousNotification(RuntimeError):
+    """Several same-size shell notification windows match one banner node: it is drawn, its place unknown."""
+
+
 class WaylandPlacement:
     """Wayland clients report AT-SPI extents relative to their own window.
 
@@ -1444,6 +1448,11 @@ class WaylandPlacement:
         if unmapped:
             raise RuntimeError('compositor window for %r (pid %s) is not mapped after %g s (empty frame)%s'
                                % (title, pid, self.MAP_SETTLE, self.same_process(pid)))
+        if len(found) > 1 and not title and all(w.get('notification') for w in found):
+            # Two banners of one size from the shell (#1003: put.gd's first-run notice under
+            # "Upload complete"): each is drawn, but which one this node is can't be told.
+            raise AmbiguousNotification('%d shell notification windows of %dx%d (pid %s): this banner is drawn, '
+                                        'but which one it is is unknown' % (len(found), width, height, pid))
         if len(found) != 1:
             raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)%s'
                                % (title, pid, width, height, len(found), self.same_process(pid)))
@@ -1666,6 +1675,8 @@ def accessible(query, toplevel=False, detail=True):
                 if top is None:
                     return 'window-relative', 'top-level window %r was not observed' % row['window']
                 where = placement.toplevel(row['pid'], row['window'], top)
+        except AmbiguousNotification as error:
+            return 'ambiguous-notification', str(error)
         except RuntimeError as error:
             return 'window-relative', str(error)
         placed = shift(row['rect'], where)

@@ -1261,6 +1261,9 @@ def _drawn_notice(ctx, notice, *, by_body=False):
             rect = node.get('rect')
             if isinstance(rect, dict):
                 rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
+            if not rect and node.get('coordinate_space') == 'ambiguous-notification':
+                # One of several same-size banners the compositor shows (#1003): drawn, place unknown.
+                return True
             if not rect and unplaced:
                 # A layer-shell popup the compositor gives no position (labwc): showing is all there is to prove.
                 return node.get('coordinate_space') == 'window-relative'

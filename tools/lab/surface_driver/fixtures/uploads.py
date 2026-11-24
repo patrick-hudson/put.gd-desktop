@@ -1,4 +1,6 @@
 """Seed real operation/history state through the production editor pipeline."""
+import json
+
 from ..api import RecipeBlocked, RecipeFailed
 from .base import Fixture
 from .destinations import control
@@ -17,6 +19,43 @@ def cancel(scope, identity):
         raise RecipeFailed('fixture operation cleanup transport unavailable')
     return scope.ctx.wait(lambda:(s if (s:=scope.ctx.call('operation.inspect',{'id':identity})).get('state') in TERMINAL else None),
                           'owned operation settles before fixture cleanup',timeout=SETTLE_TIMEOUT)
+
+
+EDITOR='putgd-ui --edit-image'
+# The resident's last records about the editor helper and any core dump it left, read before
+# cleanup removes the private log (#1003, 2026-11-24: an editor_exit left no other trace).
+TRACE=r'''import glob,json,os,subprocess
+keep=('exitCode','signal','requested','supervisorKill','reason','stream')
+rows=[]
+for path in glob.glob(os.environ['XDG_STATE_HOME']+'/putgd/logs/*.jsonl'):
+ for line in open(path,errors='replace'):
+  try:r=json.loads(line)
+  except ValueError:continue
+  f=r.get('fields') if isinstance(r.get('fields'),dict) else {}
+  if r.get('process')==EDITOR or f.get('helper')==EDITOR:
+   row={'t':r.get('time'),'level':r.get('level'),'message':str(r.get('message'))[:300]}
+   row.update({k:f[k] for k in keep if k in f})
+   if 'crash' in f:row['crash']=str(f['crash'])[:600]
+   rows.append(row)
+rows.sort(key=lambda r:str(r['t']))
+dumps=[]
+try:
+ p=subprocess.run(['coredumpctl','--no-pager','--no-legend','list','--since=-15min'],capture_output=True,text=True,timeout=10)
+ dumps=[' '.join(l.split())[:200] for l in p.stdout.splitlines() if 'putgd-ui' in l]
+except (OSError,subprocess.SubprocessError):pass
+print(json.dumps({'editor':rows[-8:],'coredumps':dumps[-3:]}))
+'''.replace('EDITOR',repr(EDITOR))
+
+
+def editor_trace(ctx):
+    """'; editor trace=<json>' for a failure message, or the reason it is missing. Never raises."""
+    try:
+        result=ctx.shell("python3 - <<'SD_TRACE'\n"+TRACE+'SD_TRACE\n',timeout=20)
+        if result['returncode']:
+            return '; editor trace unavailable (exit '+str(result['returncode'])+')'
+        return '; editor trace='+json.dumps(json.loads(result['stdout']),separators=(',',':'))
+    except Exception as error:  # Diagnosis only: the failure being reported stays the failure.
+        return '; editor trace unavailable ('+type(error).__name__+')'
 
 
 def track(scope, method, identity):
@@ -67,7 +106,8 @@ def submit(scope, *, remote=False, local_failure=False, active=False, failure=Fa
             items=state.get('items')
             errors=[state.get('error'),*(i.get('error') for i in items if isinstance(i,dict))] if isinstance(items,list) else [state.get('error')]
             codes=sorted({e['code'] for e in errors if isinstance(e,dict) and e.get('code')})
-            raise RecipeFailed('synthetic fixture operation ended '+state['state']+''.join(': '+c for c in codes))
+            trace=editor_trace(ctx) if any(c.startswith('editor_') for c in codes) else ''
+            raise RecipeFailed('synthetic fixture operation ended '+state['state']+''.join(': '+c for c in codes)+trace)
     rows=ctx.call('history.list',{'limit':100}).get('records',[])
     row=next((r for r in rows if r.get('operationId')==operation),None)
     if not row:
