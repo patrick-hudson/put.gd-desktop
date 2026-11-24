@@ -246,8 +246,10 @@ hidden_version_retained, or it saved a `phase` checkpoint without a final
 outcome), and while any deletion keeping the record in History can't let it go.
 A read-only lookup saves no destructive checkpoint, but the outcome it leaves
 (`unknown`, for example) can still refuse a takeover and keep the record. An
-older deletion's later retry sends nothing for a record taken over, keeps any
-outcome it had already recorded and leaves the record's state alone. Cancellation cannot undo a sent mutation. Shutdown cancels queued
+older deletion's later retry sends nothing for a record taken over and leaves
+the record's state alone. In its own journal it keeps a final outcome (removed,
+already_missing, changed) it had already recorded for that record, and marks any
+other `taken_over`. Cancellation cannot undo a sent mutation. Shutdown cancels queued
 targets and drains sent work before history services are destroyed. Browser/CDN
 cache invalidation is outside this pipeline.
 
