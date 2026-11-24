@@ -404,7 +404,8 @@ def audit(args):
                     raise ValueError('AppImage file hashes differ from deployed CI audit')
                 if json.loads((root / 'usr/share/putgd/build-info.json').read_text()) != expected:
                     raise ValueError('AppImage installed manifest differs from release')
-                environment = {**os.environ, 'LD_LIBRARY_PATH': str(root / 'usr/lib') + ':' + str(root / 'usr/lib/putgd')}
+                from portable_appimage import image_library_path
+                environment = {**os.environ, 'LD_LIBRARY_PATH': image_library_path(root)}
                 observed['compiledIdentities'] = {}
                 for program in receipt['postDeploymentAudit']['identityMatchedPrograms']:
                     identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env={} if program == 'putgd-ocr' else environment, timeout=30))

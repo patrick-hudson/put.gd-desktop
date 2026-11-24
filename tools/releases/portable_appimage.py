@@ -373,6 +373,28 @@ def relocate_media(appdir: Path, plugins: list[Path], scanner: Path) -> dict[str
     return origins
 
 
+def host_has_library(soname: str) -> bool:
+    """AppRun's test: the host's linker cache lists this x86-64 library."""
+    try:
+        cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True, capture_output=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return any(" => " in line and line.split()[0] == soname and "x86-64" in line for line in cache.splitlines())
+
+
+def image_library_path(appdir: Path, private: str = "usr/lib/putgd") -> str:
+    """LD_LIBRARY_PATH for running the image's programs as AppRun does.
+
+    AppRun adds usr/lib/putgd-host-fallback only on a host without libva.so.2;
+    a probe that leaves it out fails with exit 127 on such a host (ubuntu-24.04
+    runner image 20261116, release run 45418222553)."""
+    parts = [str(appdir / "usr/lib"), str(appdir / private)]
+    fallback = media_layout(appdir)["fallback"]
+    if fallback.is_dir() and not host_has_library("libva.so.2"):
+        parts.append(str(fallback))
+    return ":".join(parts)
+
+
 def stage_host_fallbacks(appdir: Path, media: dict) -> list[str]:
     """Bundle the host-preferred libraries AppRun adds only when the host lacks them.
 
@@ -609,8 +631,7 @@ def audit_ocr_runtime(appdir: Path) -> dict:
 
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
-    environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
-                       str(appdir / inventory["privateLibraryDirectory"]))
+    environment = dict(os.environ, LD_LIBRARY_PATH=image_library_path(appdir, inventory["privateLibraryDirectory"]))
     identities = []
     for name in inventory["programs"]:
         if name == "putgd-launcher":
