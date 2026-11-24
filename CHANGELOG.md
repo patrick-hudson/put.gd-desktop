@@ -11,7 +11,7 @@ pull requests merged since the previous stable release, curated in its
 published, `promote.py --finalize vYY.MDD.N` names the section after it; the
 date is the day it was published.
 
-## [Unreleased]
+## [26.1124.6926] - 2026-11-24
 
 New places to upload, an optional check that looks for passwords, keys and card numbers before an image uploads, styled screenshots, text reading in more languages, and many reliability fixes. The AppImage's bundled FFmpeg moves to 9.0.2.
 
@@ -25,7 +25,7 @@ New places to upload, an optional check that looks for passwords, keys and card 
 - **Expiring links:** S3 links can expire, and S3 and B2 links can be renewed from History.
 - **Sensitive text check** (off by default): before a capture, clipboard image or image file uploads, put.gd looks for card numbers, keys and tokens, email addresses, phone numbers, IP addresses, your username and name, and your own words or patterns. Each kind is Off, Warn or Redact automatically. A warning on a single image offers **Redact and upload**, **Open in editor** (when the image can be edited), **Upload anyway** and **Cancel**. The user guide lists which uploads are checked.
 - **Quick redact** covers connection-string passwords, secret-named values, passwords in flags, labels and diffs, webhooks, two-factor secrets, QR codes that hold a secret, many more providers' keys, and your own list.
-- **Capture style** (off by default): a backdrop, padding, rounded corners and a shadow, with Graphite, Amber, Paper, Clear and Custom looks and a Style tool in the editor.
+- **Capture style** (off by default): a backdrop, padding, rounded corners and a shadow, with a dark grey gradient, Amber, Paper, Clear and Custom looks and a Style tool in the editor.
 - **Text in other scripts:** with no language set, text recognition can detect Chinese, Russian and other supported non-Latin scripts and read them again in their own language, when that language's data is installed.
 - **Unhinged mode** (off by default): text recognition, recording and History thumbnails may use every processor core.
 - **Scrolling capture:** capture a page taller than the screen, scrolled by you or by put.gd's auto-scroll.
@@ -111,5 +111,5 @@ For anyone moving from the nightly builds:
 - **GNOME 50:** needs the put.gd Shell extension. After installing a DEB or RPM, log out and back in, then enable it. The AppImage needs the matching extension installed separately; see the [GNOME desktop notes](docs/desktops/gnome.md).
 - **Fedora recording:** needs extra encoder packages. See the [recording guide](docs/design/recording.md).
 
-[Unreleased]: https://github.com/patrick-hudson/put.gd-desktop/compare/v26.1105.3906...nightly
+[26.1124.6926]: https://github.com/patrick-hudson/put.gd-desktop/compare/v26.1105.3906...v26.1124.6926
 [26.1105.3906]: https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1105.3906
