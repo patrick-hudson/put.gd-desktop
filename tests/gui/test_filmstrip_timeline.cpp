@@ -62,11 +62,12 @@ class FilmstripTimelineTest : public QObject {
         QMouseEvent event(QEvent::MouseMove, QPointF(at), QPointF(w->mapToGlobal(at)), Qt::NoButton, Qt::LeftButton, modifiers);
         QApplication::sendEvent(w, &event);
     }
-    // What the pointer hovers at a point: a parts() kind, or empty.
+    // What the pointer hovers at a point: a parts() kind, or empty. Read by
+    // value: inspect() returns a temporary, and its operator[] would hand back
+    // a reference into it that dangles once the statement ends (#1845).
     static QString hoverAt(FilmstripTimeline* t, QPoint at) {
         QTest::mouseMove(t, at);
-        const auto hover = t->inspect()["hover"];
-        return hover.isNull() ? QString() : hover.toObject()["kind"].toString();
+        return t->inspect().value("hover").toObject().value("kind").toString();
     }
     // Back to the fixture's edit as an answer, so nothing pending eases back: a
     // revision that moves every item answers any outstanding proposal (T4), then
