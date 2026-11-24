@@ -8,6 +8,7 @@
 #include "core/QrImage.h"
 #include "core/TextJob.h"
 #include <QDirIterator>
+#include <QUuid>
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
 #include <algorithm>
@@ -64,7 +65,7 @@ QJsonObject keptOriginal(const Fixture& f,const QJsonObject& sensitive){
 }
 // The operation's JSON with each value put.gd or the fixture generated for it put aside, at its own place and only
 // when it equals what was learned elsewhere: the id from the start call; the artifact and publication ids from the
-// journal; the PNG's size and SHA-256 from the file; the revisions from the settings; the file id, revision id,
+// journal, the artifact id only as a v4 UUID and the publication id only as the provider issued it; the PNG's size and SHA-256 from the file; the revisions from the settings; the file id, revision id,
 // tokens and link from the receipt the fixture's provider issued (or, before one, the file id its name check
 // gives); and the fixture's folder at the start of each path. They are random hex or numbers and hold 4111 by
 // chance (#1889). A value that matches nothing stays, and is scanned with the rest.
@@ -86,15 +87,17 @@ QString withoutGeneratedValues(Fixture& f,const QString& id,QJsonObject operatio
   StorageReceipt issued;
   {QMutexLocker lock(&f.provider->mutex);for(const auto& r:std::as_const(f.provider->objects))if(!known.publicationId.isEmpty()&&r.publicationId==known.publicationId)issued=r;}
   within(item,"artifact",[&](QJsonObject& a){
-   mask(a,"id",known.artifact.id);
+   // The journal is what inspect() reads too, so the artifact id must also be the v4 UUID ArtifactStore makes.
+   const auto uuid=QUuid::fromString(known.artifact.id);
+   if(uuid.version()==QUuid::Random&&uuid.toString(QUuid::WithoutBraces)==known.artifact.id)mask(a,"id",known.artifact.id);
    QFile file(known.artifact.path);
    if(file.open(QIODevice::ReadOnly)){const auto bytes=file.readAll();mask(a,"bytes",double(bytes.size()));mask(a,"sha256",QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));}
    mask(a,"previewPath",f.dir.filePath("data/artifacts/../previews/")+known.artifact.id+".png");
   });
-  mask(item,"publicationId",known.publicationId);mask(item,"concurrencyToken",issued.concurrencyToken);
+  mask(item,"publicationId",issued.publicationId);mask(item,"concurrencyToken",issued.concurrencyToken);
   within(item,"objectReference",[&](QJsonObject& r){mask(r,"fileId",issued.publicationId.isEmpty()?QJsonValue(OpaqueProvider::fileId(known.candidate)):issued.objectReference.value("fileId"));});
   within(item,"receipt",[&](QJsonObject& r){
-   mask(r,"publicationId",known.publicationId);mask(r,"concurrencyToken",issued.concurrencyToken);mask(r,"directUrl",issued.directUrl);
+   mask(r,"publicationId",issued.publicationId);mask(r,"concurrencyToken",issued.concurrencyToken);mask(r,"directUrl",issued.directUrl);
    within(r,"objectReference",[&](QJsonObject& o){mask(o,"fileId",issued.objectReference.value("fileId"));mask(o,"revisionId",issued.objectReference.value("revisionId"));});
    within(r,"destination",[&](QJsonObject& d){mask(d,"profileRevision",revision);});
   });
