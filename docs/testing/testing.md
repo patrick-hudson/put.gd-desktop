@@ -301,7 +301,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   `tests/fixtures/ScrollSynthetic.*`; no display): the matching engine. A frame placed at another
   offset than the page's own, a pinned part in the image more than once, a row lost or doubled at a
   seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)); a page's last lines above
-  a blank tail under a header and a footer placed where the page is, never unmatched.
+  a blank tail under a header and a footer placed where the page is, never unmatched; a frame of the
+  X11 test's ruler page that moved further than auto-scroll's hint placed where the page is, or not
+  at all (#1535).
 - `scroll_session_contract` (`tests/unit/test_scroll_session.cpp`, on the synthetic application in
   `tests/fixtures/ScrollSynthetic.*`, with the helper's spool file; no display): the session loop. A
   person's scrolling as a script (slow, fast, still, back up, to the end) gives the exact page and not
@@ -317,7 +319,8 @@ design is in [scrolling capture](../design/scroll-capture.md).
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
   up still is); the tracker's expected offset stays within what a step owes when its first frames
-  show the page still; a blank stretch under a pinned header and footer is not called the end; the
+  show the page still; a source that stalls in the first step still measures the distance per notch
+  whole (#1535); a blank stretch under a pinned header and footer is not called the end; the
   end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
   lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
   image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
@@ -336,9 +339,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
   while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
   the exact page; that auto-scroll left alone runs to the end with every row exact and finishes
-  `end_of_content`, or `done` with `reachedEnd` where a starved runner's grab caught the fixture half
-  repainted and that frame was skipped (#1535); on failure it prints the result and the helper's
-  `scroll: ended` line from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
+  `end_of_content`, or `done` with `reachedEnd` where a starved runner's tracker skipped a frame it
+  could not place among the ruler's look-alike rows (#1535); on failure it prints the result (for a
+  capture that never ended, its last progress), the helper's `scroll: ended` line and every time
+  auto-scroll let go of the wheel, from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
   Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,
   and the pointer is put back; the end of the control pipe stops injection at once. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
