@@ -108,6 +108,12 @@ private slots:
   const auto words=[](std::initializer_list<const char16_t*> texts){QList<Word> out;for(const auto* t:texts){Word w;w.text=QString::fromUtf16(t);out.append(w);}return out;};
   QVERIFY(mostlyLatin(words({u"--password",u"hunter",u"2"})));QVERIFY(mostlyLatin(words({u"NBA",u"体育"})));
   QVERIFY(!mostlyLatin(words({u"В",u"мире",u"Экономика"})));QVERIFY(!mostlyLatin(words({u"新浪网新闻",u"NBA"})));QVERIFY(!mostlyLatin(words({u"123",u"!"})));
+  // ria.ru's menu, read in English then in Russian, is dropped; a Latin key
+  // reread in Cyrillic look-alikes, or a labelled line, keeps its first words (Sol S16 on #1986).
+  QVERIFY(!keepFirstReading(words({u"Bmupe",u"SkoHomuKa",u"O6wectBo",u"Mpoucwectsua"}),words({u"В",u"мире",u"Экономика",u"Общество"})));
+  QVERIFY(keepFirstReading(words({u"FAKE7QW3RTY5UOP2X4C"}),words({u"ҒАКЕ7ОШЗКТУ5ОР2Х4С"})));
+  QVERIFY(keepFirstReading(words({u"Password:",u"hunter"}),words({u"Разѕшогd:",u"һuпtег"})));
+  QVERIFY(keepFirstReading(words({u"--password",u"hunter"}),words({u"--password",u"hunter"})));
   QVERIFY(takeOther(readings[3]));QVERIFY(!takeOther(readings[1]));QVERIFY(!takeOther({true,90*4,80*4,4,4}));QVERIFY(!takeOther({false,10,90,1,1}));
  }
  // #1981: a composite's pieces map back to their own source pixels, at any

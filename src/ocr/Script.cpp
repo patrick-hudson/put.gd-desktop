@@ -101,6 +101,16 @@ bool mostlyLatin(const QList<Word>& words){
  }
  return letters>0&&2*latin>=letters;
 }
+bool keepFirstReading(const QList<Word>& first,const QList<Word>& second){
+ if(mostlyLatin(second))return true;
+ static const QStringList labels{QStringLiteral("pass"),QStringLiteral("token"),QStringLiteral("secret"),QStringLiteral("key"),QStringLiteral("api")};
+ for(const auto& w:first){
+  if(uncertainToken(w.text,0))return true;
+  const auto lower=w.text.toLower();
+  for(const auto& l:labels)if(lower.contains(l))return true;
+ }
+ return false;
+}
 bool takeOther(const SegmentReading& r){return r.read&&r.afterCount>0&&r.beforeCount>0&&r.after/r.afterCount>r.before/r.beforeCount;}
 QRect paddedPiece(const QRect& rect,const QRect& bounds){
  const int pad=std::max(4,rect.height()/3);
