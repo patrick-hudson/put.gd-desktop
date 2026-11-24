@@ -495,6 +495,27 @@ class NaFinalBytes(Base):
                          'final-receipt-audit-failed')
 
 
+    def test_the_stub_still_replaces_the_receipt_when_quarantine_is_unavailable(self):
+        from tools.lab.surface_driver import redact
+        ctx = self.context()
+        ctx._probe = FakeDesktop()
+        ctx.sensitive(SHARE)
+        original = runner.write_receipts
+        def poisoned(out, environment, rows, campaign, coverage, **kwargs):
+            original(out, environment, rows, campaign, coverage, **kwargs)
+            if kwargs.get('scan') is not None:
+                path = Path(out)/'receipt.json'
+                path.write_text(path.read_text().replace('"schemaVersion"', '"leak": "'+SHARE_TOKEN+'", "schemaVersion"', 1))
+        unavailable = RuntimeError('no private quarantine directory outside the export root; nothing was moved')
+        with patch.object(runner, 'write_receipts', side_effect=poisoned), \
+                patch.object(redact, 'quarantine_files', side_effect=unavailable):
+            rows = runner.run_recipes(ctx, [Recipe(('editor.undo',), lambda c: None, destinations=('s3',))], self.env,
+                                      self.out, 'na', self.out/'coverage.json')
+        self.assertEqual(rows[0].functional, 'failed')
+        self.assertEqual(self.leaked(SHARE_TOKEN), [])
+        self.assertEqual(json.loads((self.out/'receipt.json').read_text())['secret_scan']['findings'][0]['kind'],
+                         'final-receipt-audit-failed')
+
 class NbSharedCoverage(Base):
     OTHER = {'interaction': 'tray.open', 'desktop': 'ubuntu-gnome-wayland', 'package': 'deb', 'host': 'boat',
              'placement': 'boat', 'guest': 'gnome', 'destination': 's3', 'recipe': 'other', 'build': 'abcdef',
