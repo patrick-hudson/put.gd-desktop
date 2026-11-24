@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "core/ScrollTracker.h"
+#include "fixtures/ScrollRulerPattern.h"
 #include "fixtures/ScrollSynthetic.h"
 
 using namespace putgd::scroll;
@@ -1601,6 +1602,80 @@ void testRepeatAtStep() {
          fmt("%d placed, %d wrong%s", placed, wrong, first.c_str()));
 }
 
+// The ruler page of the X11 scroll test (fixtures/ScrollRulerPattern.h) at
+// scroll position `pos`, drawn as its fixture draws it: the code cells, a
+// mark per row in the label column (the fixture writes the row's number
+// there) and the scrollbar's thumb.
+Image rulerFrame(int pos, int rows = 60, int W = 640, int H = 600) {
+  namespace ruler = putgd::test::ruler;
+  const uint32_t light = ruler::light & 0xFFFFFF, dark = ruler::dark & 0xFFFFFF;
+  Image f(W, H, light);
+  const int cell = ruler::cellWidth(W), left = ruler::codeLeft();
+  for (int y = 0; y < H; ++y) {
+    const int line = pos + y, row = line / ruler::rowHeight, within = line % ruler::rowHeight;
+    if (row >= rows) break;
+    const uint16_t bits = ruler::pattern(row, within);
+    for (int c = 0; c < ruler::cells; ++c)
+      if (bits & (0x8000 >> c))
+        for (int x = left + c * cell; x < left + (c + 1) * cell; ++x) f.at(x, y) = dark;
+    // The row's number: a bar per digit, as long as the digit is big.
+    if (within >= 8 && within < 26)
+      for (int k = 0, n = row; k < 2; ++k, n /= 10)
+        if ((within - 8) < 2 * (n % 10) + 2)
+          for (int x = 30 - 12 * k; x < 38 - 12 * k; ++x) f.at(x, y) = dark;
+  }
+  const int total = rows * ruler::rowHeight, maxScroll = std::max(1, total - H);
+  const int thumb = std::max(24, H * H / std::max(H, total)), thumbTop = pos * (H - thumb) / maxScroll;
+  for (int y = 0; y < H; ++y)
+    for (int x = W - ruler::scrollbarWidth; x < W; ++x)
+      f.at(x, y) = y >= thumbTop && y < thumbTop + thumb && x >= W - ruler::scrollbarWidth + 2 && x < W - 2 ? 0x808080 : 0xE0E0E0;
+  return f;
+}
+
+// The X11 scroll test's ruler page under auto-scroll, when a frame moved
+// further than the hint said (#1535, #1999). Its rows are near look-alikes: every
+// row's separator and most of its number agree with any other row's, so far
+// offsets that overlap only a few rows fit at three quarters of their cells.
+// On a starved X server the frames of the first step came late and in
+// bursts: one at 27, the next 5 ms later at 95, against a hint of 13 +- 17.
+// The tracker placed it 452 rows up, where it agreed in 0.75 of its cells
+// against 1.00 at 95, and the image kept 425 rows of it on top. And once
+// the page went further than a frame is tall (746 rows where the hint said
+// 8), a look-alike 506 rows on was written into the image.
+void testRulerPastTheHint() {
+  std::printf("\n[ruler past the hint] a frame further than auto-scroll's hint: where the page is, or not at all\n");
+  {
+    MemoryCanvas canvas(640);
+    ScrollTracker tracker(canvas);
+    const std::vector<int> pos{0, 0, 0, 0, 0, 27, 95};
+    TrackResult last;
+    for (size_t i = 0; i < pos.size(); ++i)
+      last = tracker.addFrame(rulerFrame(pos[i]).view(), i + 1 == pos.size() ? TrackerHint{true, 13, 17} : TrackerHint{});
+    report("the first step's frame past its hint is placed where the page is",
+           last.status == TrackStatus::Placed && last.position == 95 && tracker.top() == 0,
+           fmt("%s at %lld, image rows %lld to %lld", toString(last.status), last.position, tracker.top(), tracker.bottom()));
+  }
+  {
+    MemoryCanvas canvas(640);
+    ScrollTracker tracker(canvas);
+    int wrong = 0;
+    std::string first;
+    const auto add = [&](int p, TrackerHint hint) {
+      const TrackResult t = tracker.addFrame(rulerFrame(p).view(), hint);
+      if (t.status == TrackStatus::Placed && t.position != p && first.empty()) first = fmt(", page at %d placed at %lld", p, t.position);
+      wrong += t.status == TrackStatus::Placed && t.position != p;
+      return t;
+    };
+    add(0, {});
+    for (int p = 50; p <= 900; p += 50) add(p, {true, 50, 22});
+    const long long bottom = tracker.bottom();
+    const TrackResult jump = add(900 + 746, {true, 8, 7});
+    report("a frame further than a frame is tall off the hint writes nothing",
+           wrong == 0 && jump.status != TrackStatus::Placed && tracker.bottom() == bottom,
+           fmt("%d wrong%s; the jump %s, the image to %lld (was %lld)", wrong, first.c_str(), toString(jump.status), tracker.bottom(), bottom));
+  }
+}
+
 // A jump past the reference over look-alike tables (#1515's re-check on
 // Cinnamon): while frames were skipped the page moved more than a frame
 // tall, and the pair, against the last placed frame, found the look-alike a
@@ -2856,6 +2931,7 @@ int main() {
   testLookAlikes();
   testRepeatAtStep();
   testJumpPastLookAlikes();
+  testRulerPastTheHint();
   testLostGuessMarksNothing();
   testEdgeLine();
   testTurnBackLookAlike();
