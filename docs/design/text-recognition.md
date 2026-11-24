@@ -763,11 +763,19 @@ in Settings, a `languages` parameter, or the editor's saved preference. The pare
    higher on the same segments. In the research, rereads in the right language rose 29 to 56 points
    and rereads in a wrong one at most 12.
 6. **The rest of the page.** Once the language is kept, the page's other segments are read in it too,
-   as time allows, and each one keeps whichever reading has the higher mean confidence. A line the
-   trigger passed over, such as a few characters of the script beside English, is garbled too.
+   on the same engines and threads, as time and memory allow. A segment whose second reading is mostly
+   Latin takes it when it is surer. One the second reading turns into the page's script takes it only
+   when its mean confidence rises by 15 points too, like the garbled ones: a line the trigger passed
+   over, such as a few characters of the script beside English, is garbled too.
+7. **Quick redact.** A garbled segment's English reading is gone: that is what clears the false
+   prompts. A replaced segment that the first pass read with some confidence keeps its first words as
+   second-read candidates, matched apart from the rest. The page's script can rewrite a Latin key,
+   password or cookie on a mixed line into look-alikes with a large rise in confidence, and a secret the
+   check misses costs more than a prompt (Sr Manager, 2026-11-24). The copied text never holds both.
 
-Chinese, Japanese and Thai words are joined without spaces in the copied text, since Tesseract splits
-such text into words of a character or a few. The check starts only with 1.5 s of the time budget
+Chinese, Japanese and Thai words that touch, or nearly (a gap under a character's height), are joined
+without a space in the copied text, since Tesseract splits such text into words of a character or a few.
+Fullwidth Latin letters and digits keep their spaces. The check starts only with 1.5 s of the time budget
 left, ends 1 s before the budget, and is not counted as a second read: Quick redact's second reads
 keep their own share of the first pass's time, and a token line read in the detected language is not
 read again as an English token.
@@ -775,7 +783,15 @@ read again as an English token.
 The result, `text.recognize`'s record, `editor.inspect`'s `text` member and the MCP inspect tool carry
 `detection` `{script, language, outcome}` when the check ran. `outcome` is `kept`, `discarded`,
 `language_missing` (no data for that language: the notification names it), `detector_missing` (no
-`osd` data), `unknown_script` or `no_time`. A kept language is listed in `languagesUsed`.
+`osd` data), `unknown_script`, `no_time` or `no_memory`. A kept language is listed in `languagesUsed`.
+
+**Memory and time.** The OSD composite is at most 4 megapixels and the rereads' composites at most
+16 in all, in groups of about 1.5. OSD is counted at 48 MiB before it starts, and every reread engine
+at its cost and 20 bytes a pixel of its largest group. An engine that reads the rest of the page counts
+only 12 bytes a pixel beyond the largest group it has read itself, as first-pass workers do, since it
+keeps its own thread across both batches. What doesn't fit ends the check with `no_memory`, and the
+first reading stands. So does an allocation that fails while the readers run. OSD and every reread
+stop 1 s before the job's own time budget, and a reread that finishes after that publishes nothing.
 
 OSD and the languages are read like any language: from the same directories, through the same
 resolver and Landlock rules, counted against the 64 MiB data limit, with two more files allowed than
@@ -2282,6 +2298,35 @@ Tesseract 5.5.4 built from source.
   120 MiB for a dense 24 MP page, and three languages (53,117,539 bytes) 155 to 81 MiB and 180 to 115
   MiB.
 
+### Script check cost (#1981)
+
+Measured on 2026-11-24 with CI packages of #1986 (each host's own Tesseract; aurora-amd the AppImage), one
+job per driver, the check off and on in turn, median of 5. Each image here is a whole window or screen.
+A region of a few lines costs less.
+
+| Median, off → on (ms) | aurora-amd | m74 (i5-6500T) | f44 | k72 | d69 |
+| --- | --- | --- | --- | --- | --- |
+| Latin page (bbc.com) | 414 → 410 | 1,069 → 1,069 | 882 → 937 | 1,052 → 1,051 | 1,044 → 1,046 |
+| Latin 4K screen | 1,291 → 1,293 | 3,586 → 3,607 | 2,921 → 2,895 | 3,463 → 3,459 | 3,570 → 3,548 |
+| Russian page (ria.ru) | 344 → 981 | 988 → 2,818 | 745 → 2,087 | 892 → 2,520 | 879 → 2,497 |
+| Chinese page (sina.com.cn) | 524 → 2,142 | 1,514 → 6,303 | 1,185 → 4,786 | 1,298 → 5,166 | 1,296 → 5,241 |
+| Russian 4K screen | 839 → 1,866 | 2,249 → 5,000 | 1,768 → 4,043 | 2,181 → 4,875 | 2,233 → 4,953 |
+| Chinese 4K screen | 1,385 → 4,566 | 3,776 → 8,243 | 3,012 → 9,095 | 3,879 → 11,211 | 3,955 → 11,419 |
+
+- **Latin pages pay nothing measurable.** On the 176 ordinary captures of #1428, none triggered on any
+  host. The whole set took 0.997× as long with the check on as off on aurora-amd, 1.0007× on m74,
+  1.0005× on f44, 0.996× on k72 and 1.004× on d69, with a median paired ratio of 1.000. A Latin page
+  that does trigger (46 of the 1,611 Latin sweep captures) pays for OSD, about 0.25 to 1 s, and for a
+  reread that is then discarded.
+- **Non-Latin pages** read every Russian and Chinese repetition again in its language (`kept`), inside
+  the 16 s budget everywhere, never truncated. The slowest was a 4K Chinese screen on d69, at 11.4 s.
+- **Memory.** Peak resident memory on a Chinese page reached 320 to 324 MiB (aurora-amd 4K 331,468 KiB,
+  d69 327,848 KiB, m74 326,276 KiB) against 129 to 150 MiB with the check off. That is inside the
+  budget of 320 MiB plus the data beyond English, `osd` and `chi_sim` (about 332 MiB). Russian pages
+  peaked under 180 MiB. Latin pages' peaks were unchanged.
+- Raw rows and the five-desktop acceptance are in the evidence record
+  [2026-11-24-issue-1981-script-detection](https://github.com/patrick-hudson/put.gd-evidence/tree/0b96d3c677abc293a5781329027f8a70b426d4e3/records/2026-11-24-issue-1981-script-detection).
+
 ### Quality
 
 Quality is scored per engine build and per target class, never pooled. The fixed corpus is 178 images:
@@ -2430,6 +2475,14 @@ and 54 and 56 wrong, and the third 1,268 right.
   session's own environment (`XDG_MENU_PREFIX=plasma-`), and a restart of the KDE portal services. The driver
   had omitted that variable and generated the wrong `applications.menu` cache. Which of the steps was needed
   was not isolated.
+- **Pages in another script (#1981).** The sensitive-text check on everyday non-Latin pages still
+  asks on some captures. ria.ru's and qq.com's menus, read confidently in English and then correctly
+  in Russian or Chinese, keep their English reading for Quick redact, because the second reading
+  can't tell a credential on a mixed line from garbage. On some Baidu captures too few lines are
+  garbled to trigger, and on ynet's Hebrew page OSD named the script Cyrillic, so the reread was
+  discarded. Thai and BBC Arabic gave OSD no script. Choosing the page's language in Settings → Capture →
+  Text recognition reads such a page in it from the start, with no check and no prompt from English
+  garbage.
 - Forced delivery of an obsolete editor result, one that arrives after the revision changed, was not
   driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
