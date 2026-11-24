@@ -374,12 +374,13 @@ def relocate_media(appdir: Path, plugins: list[Path], scanner: Path) -> dict[str
 
 
 def host_has_library(soname: str) -> bool:
-    """AppRun's test: the host's linker cache lists this x86-64 library."""
-    try:
-        cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True, capture_output=True).stdout
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    return any(" => " in line and line.split()[0] == soname and "x86-64" in line for line in cache.splitlines())
+    """AppRun's test: the first ldconfig found (PATH, /sbin, /usr/sbin) lists this x86-64 library."""
+    for tool in (shutil.which("ldconfig"), "/sbin/ldconfig", "/usr/sbin/ldconfig"):
+        if tool and os.access(tool, os.X_OK):
+            # Like AppRun's `"$tool" -p 2>/dev/null | awk ...`: its exit status is ignored.
+            cache = subprocess.run([tool, "-p"], text=True, capture_output=True).stdout
+            return any(line.split()[:1] == [soname] and "x86-64" in line for line in cache.splitlines())
+    return False
 
 
 def image_library_path(appdir: Path, private: str = "usr/lib/putgd") -> str:
