@@ -239,9 +239,12 @@ destination/object identity, without adopting replacements. Drivers await durabl
 checkpoint acknowledgement before each destructive step. Failed, unknown or
 partial deletion retains its original receipt and versioned opaque progress for
 explicit retry. Each record follows its newest deletion: a new deletion takes a
-record over, in the transaction that journals it, only from one that sent nothing
-for it, and an older deletion's later retry sends nothing for a record taken over
-and leaves its state alone. Cancellation cannot undo a sent mutation. Shutdown cancels queued
+record over in the transaction that journals it. That transaction refuses while
+the record's current deletion may still need its own retry: its outcome is
+pending, deleting, unknown, changed or hidden_version_retained, or it saved a
+`phase` checkpoint without a final outcome. Read-only checks alone don't keep a
+record. An older deletion's later retry sends nothing for a record taken over and
+leaves its state alone. Cancellation cannot undo a sent mutation. Shutdown cancels queued
 targets and drains sent work before history services are destroyed. Browser/CDN
 cache invalidation is outside this pipeline.
 
