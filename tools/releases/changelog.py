@@ -62,12 +62,16 @@ def previous_tag(root, tag, released=None):
     return _latest(root, tag, 'nightly' if identity.channel == 'nightly' else 'stable', released)
 
 
-def previous_stable(root, ref, released=None):
-    """Return the newest stable tag reachable from ref (a promotion's base), or None."""
-    return _latest(root, ref, 'stable', released)
+def previous_stable(root, ref, released=None, include_ref=False):
+    """Return the newest stable tag reachable from ref, or None.
+
+    A promotion passes main with include_ref: main's merge commits carry the
+    stable tags and never reach nightly, and main's HEAD is usually the last one.
+    """
+    return _latest(root, ref, 'stable', released, include_ref)
 
 
-def _latest(root, ref, wanted, released=None):
+def _latest(root, ref, wanted, released=None, include_ref=False):
     commit = git(root, 'rev-parse', ref + '^{commit}')
     found = []
     for name in git(root, 'tag', '--merged', commit, '--list', 'v*').splitlines():
@@ -77,7 +81,7 @@ def _latest(root, ref, wanted, released=None):
             continue
         if name == ref or other.channel != wanted or (released is not None and name not in released):
             continue
-        if git(root, 'rev-parse', name + '^{commit}') == commit:
+        if not include_ref and git(root, 'rev-parse', name + '^{commit}') == commit:
             continue
         found.append((other.key, name))
     return max(found)[1] if found else None
