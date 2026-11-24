@@ -69,6 +69,13 @@ struct ScriptRun {
  QList<BandText> texts;QList<bool> done;
  std::atomic<int> next{0},running{0};
  std::atomic<bool> closing{false};
+ // The readers stay across both batches, one thread per engine, so an
+ // engine's working memory stays in its own thread's heap (Sol S12 on #1986):
+ // each batch is a phase; a reader takes part when its slot is in takes.
+ std::condition_variable wake;
+ int phase=0;                // under lock
+ std::vector<char> takes;    // under lock, one per engine
+ std::vector<double> scales; // the batch's group scales, set while no reader reads
  std::vector<std::unique_ptr<TextEngine>> engines;
  // The largest group each engine has read, in pixels (0: none yet), one per
  // engine in the same order; a deque, so a reader's entry never moves.
@@ -185,19 +192,59 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   b.total=scriptPixels-budgetPixels-used;used=scriptPixels-budgetPixels;
   return b;
  };
- // Reads a batch on the run's engines: the first reading starts them, the
- // first always and more while the memory budget holds each; a later one
- // reuses those that started. Returns false when one is still running at the
+ // Reads a batch on the run's engines: the first batch starts them, each on
+ // a thread of its own that then waits for the next batch, the first always
+ // and more while the memory budget holds each; the second batch reuses
+ // those that started. Returns false when a reader is still busy at the
  // deadline (late).
+ std::vector<std::thread> readers;
+ const auto reader=[run](int slot,TextEngine* engine,std::atomic<qint64>* read){
+  const bool ok=engine->startAlso(run->languages,run->engine).isEmpty();
+  int seen=0;
+  std::unique_lock<std::mutex> guard(run->lock);
+  for(;;){
+   run->wake.wait(guard,[&]{return run->closing.load()||run->phase>seen;});
+   if(run->closing.load())break;
+   seen=run->phase;
+   if(!run->takes[size_t(slot)])continue;
+   if(ok){
+    guard.unlock();
+    for(;;){
+     if(run->closing.load())break;
+     const int index=run->next.fetch_add(1);
+     if(index>=run->groups.size())break;
+     const int deadline=run->left();if(deadline<=0)break;
+     bool cut=false,failed=false;
+     const auto& image=run->groups[index].image;
+     auto text=engine->recognize(image,run->scales[size_t(index)],deadline,&cut,&failed);
+     raise(*read,qint64(image.width)*image.height);
+     if(failed||cut)break;
+     std::lock_guard<std::mutex> stored(run->lock);if(run->closing.load())break;
+     run->texts[index]=std::move(text);run->done[index]=true;
+    }
+    guard.lock();
+   }
+   run->running.fetch_sub(1);run->idle.notify_all();
+  }
+ };
+ // Ends the readers: joined when none is busy, else left running on the
+ // heap object, which is then never freed (the caller counts the job late).
+ const auto finishReaders=[&](bool late){
+  {std::lock_guard<std::mutex> guard(run->lock);run->closing=true;}
+  run->wake.notify_all();
+  for(auto& r:readers){if(late)r.detach();else r.join();}
+  readers.clear();
+  if(!late)delete run;
+ };
  const auto readBatch=[&](const Batch& b,bool first){
   // The memory first, before any composite is built, and with the last
   // batch's composites gone: this batch's composites (a byte a pixel) and,
   // summed over the engines that read it, each one's working memory: for a
   // new engine its own cost and 20 bytes a pixel of the largest group; for
   // one that has read a group, as in the first pass, 12 bytes a pixel beyond
-  // the largest group it read itself, whose working memory it keeps (one
-  // that read none counts 20 bytes a pixel).
-  run->groups.clear();run->texts.clear();run->done.clear();
+  // the largest group it read itself, whose working memory it keeps in its
+  // own thread (one that read none counts 20 bytes a pixel).
+  {std::lock_guard<std::mutex> guard(run->lock);run->groups.clear();run->texts.clear();run->done.clear();}
   const int groups=int(b.pieces.size());
   std::vector<int> chosen;  // the reused engines, most working memory first
   if(!first){
@@ -213,50 +260,33 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   qint64 reserved=0;
   for(int k=0;k<engines;++k){reserved+=need(k);if(!in.roomFor(b.total+reserved)){engines=k;break;}}
   if(engines==0)return true;
-  for(int g=0;g<groups;++g)run->groups.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
-  run->texts=QList<BandText>(run->groups.size());run->done=QList<bool>(run->groups.size(),false);run->next=0;run->closing=false;
-  const auto scales=b.scales;
-  std::vector<std::thread> readers;
-  const auto launch=[&](TextEngine* engine,std::atomic<qint64>* read,bool start){
-   run->running.fetch_add(1);
-   try{
-    readers.emplace_back([run,engine,read,start,scales]{
-     if(!start||engine->startAlso(run->languages,run->engine).isEmpty()){
-      for(;;){
-       if(run->closing.load())break;
-       const int index=run->next.fetch_add(1);
-       if(index>=run->groups.size())break;
-       const int deadline=run->left();if(deadline<=0)break;
-       bool cut=false,failed=false;
-       const auto& image=run->groups[index].image;
-       auto text=engine->recognize(image,scales[size_t(index)],deadline,&cut,&failed);
-       raise(*read,qint64(image.width)*image.height);
-       if(failed||cut)break;
-       std::lock_guard<std::mutex> guard(run->lock);if(run->closing.load())break;
-       run->texts[index]=std::move(text);run->done[index]=true;
-      }
-     }
-     std::lock_guard<std::mutex> guard(run->lock);run->running.fetch_sub(1);run->idle.notify_all();
-    });
-    return true;
-   }catch(const std::system_error&){run->running.fetch_sub(1);return false;}
-  };
   if(first){
    for(int k=0;k<engines;++k){
     run->engines.push_back(std::make_unique<TextEngine>());auto* read=&run->readPixels.emplace_back(0);
-    if(!launch(run->engines.back().get(),read,true)){run->engines.pop_back();run->readPixels.pop_back();break;}
+    const int slot=int(run->engines.size())-1;
+    {std::lock_guard<std::mutex> guard(run->lock);run->takes.push_back(0);}
+    try{readers.emplace_back(reader,slot,run->engines.back().get(),read);}
+    catch(const std::system_error&){run->engines.pop_back();run->readPixels.pop_back();std::lock_guard<std::mutex> guard(run->lock);run->takes.pop_back();break;}
+    chosen.push_back(slot);
    }
-  }else{
-   for(int k=0;k<engines;++k){const int j=chosen[size_t(k)];if(!launch(run->engines[size_t(j)].get(),&run->readPixels[size_t(j)],false))break;}
+   if(chosen.empty())return true;
+  }else chosen.resize(size_t(engines));
+  QList<Composite> built;for(int g=0;g<groups;++g)built.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
+  {
+   std::lock_guard<std::mutex> guard(run->lock);
+   run->groups=std::move(built);run->texts=QList<BandText>(run->groups.size());run->done=QList<bool>(run->groups.size(),false);
+   run->scales=b.scales;run->next=0;
+   std::fill(run->takes.begin(),run->takes.end(),char(0));for(const int j:chosen)run->takes[size_t(j)]=1;
+   run->running=int(chosen.size());++run->phase;
   }
+  run->wake.notify_all();
   bool late=false;
   {
    std::unique_lock<std::mutex> guard(run->lock);
    // A quarter of a second's grace for a read ending on its monitor deadline.
    run->idle.wait_until(guard,run->end+std::chrono::milliseconds(250),[&]{return run->running.load()==0;});
-   run->closing=true;late=run->running.load()>0;
+   late=run->running.load()>0;
   }
-  for(auto& reader:readers){if(late)reader.detach();else reader.join();}
   return !late;
  };
  // Each segment's second reading, and both readings' confidence sums.
@@ -291,13 +321,13 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  const auto firstBatch=batchOf(all,garbledIndexes);check.pieces=int(firstBatch.segments.size());
  if(firstBatch.segments.isEmpty()){delete run;check.outcome=QStringLiteral("no_memory");return false;}
  bool late=!readBatch(firstBatch,true);check.engines=int(run->engines.size());
- if(check.engines==0){if(!late)delete run;check.outcome=QStringLiteral("no_memory");return late;}
+ if(check.engines==0){finishReaders(late);check.outcome=QStringLiteral("no_memory");return late;}
  collect(all,firstBatch,readings);
  QList<SegmentReading> verdicts;for(const auto& r:std::as_const(readings))verdicts.append({r.read,r.before,r.after,r.beforeCount,r.afterCount});
  const auto decision=decideGarbled(verdicts,garbledIndexes);
  check.before=decision.before;check.after=decision.after;
  if(!decision.keep){
-  if(!late)delete run;
+  finishReaders(late);
   const bool nothing=std::none_of(garbledIndexes.cbegin(),garbledIndexes.cend(),[&](int i){return readings[i].read;});
   check.outcome=late&&nothing?QStringLiteral("no_time"):QStringLiteral("discarded");
   return late;
@@ -318,7 +348,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
    }
   }
  }
- if(!late)delete run;
+ finishReaders(late);
  // From the last segment back, so the earlier ones' word indexes hold.
  for(int i=int(all.size())-1;i>=0;--i){
   if(!take[i])continue;
