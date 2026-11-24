@@ -4627,6 +4627,28 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
            (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) ||
            contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
   };
+  // A tie the expected offset broke is checked against the whole overlap:
+  // where the pick does not agree over it and exactly one tied place does,
+  // that place is the page's. At the page's end the page moves less than
+  // auto-scroll's step: on the ruler page the true +2 and a look-alike at +28
+  // both agreed in every cell of their own moving tiles, the hint (53) chose
+  // +28, which agrees in 0.47 of the whole overlap against 1.00 for +2, and
+  // the image got 26 rows too many (#1999).
+  if (pick >= 0 && byExp && !wholeMove && wholeCells(cur, ref, cands[size_t(pick)].d) < kWholeShare) {
+    int other = -1, count = 0;
+    for (size_t i = 0; i < cands.size(); ++i) {
+      const Candidate& c = cands[i];
+      if (int(i) == pick || !c.accepted || c.cells < cands[size_t(pick)].cells - opts_.tieCells) continue;
+      if (wholeCells(cur, ref, c.d) >= kWholeShare) {
+        other = int(i);
+        ++count;
+      }
+    }
+    if (count == 1) {
+      pick = other;
+      byExp = false;
+    }
+  }
   // The pair's place, also when the image's check refuses it: the image
   // lookup that finds the same place again confirms it, as before.
   int pairD = INT_MIN;
