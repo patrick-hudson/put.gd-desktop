@@ -249,8 +249,9 @@ set. The AppImage also carries `libxcb-xtest.so.0` for the X11 route.
 **Pace.** The first step is one notch: what the page moved, once it rests, is the distance
 per notch. Only a step that began with the page at rest measures it, and a later sample
 over 1.5 times the one it has is ignored: a page that lays itself out anew during a step
-(GitHub in Chrome) measured 540 px for a notch of 180. Every later step is
-40% of the frame's height (at least one notch, at most 12), so the frames of its animation
+(GitHub in Chrome) measured 540 px for a notch of 180. Once a distance per notch is
+measured, every later step is 40% of the frame's height; until then, including after a step
+that settled unmeasured, each step stays one notch. A measured step is at least one notch and at most 12, so the frames of its animation
 overlap well: the tracker places small steps where 600 px bursts sometimes do not.
 
 The first step's rest is seen on the screen. The first distance per notch is measured only
@@ -271,9 +272,10 @@ the next step of 8 notches went past what a frame can follow, and the page was l
 
 The next step goes only once the page has been seen at rest, as it is when a person
 scrolls: a frame that shows what the last placed frame showed, at least 150 ms after the
-page last moved, or no frame at all for 100 ms after the last one that moved (for the step
-that measures the first distance per notch, only once a frame proves the page still, as
-above). The second rule is for streams that send a frame only when the picture changes (KWin,
+page last moved, or no frame at all for 100 ms after the last one that moved. The step that
+would measure the first distance per notch records it only from a frame that proves the page
+still, as above; a frame let through as still without that proof settles it unmeasured, and
+auto-scroll goes on at one notch. The second rule is for streams that send a frame only when the picture changes (KWin,
 Mutter, image copy). A page that never rests gets 3 s per step.
 
 Why: while a scroll runs on, Chrome leaves tiles of the page undrawn for a moment, black at a

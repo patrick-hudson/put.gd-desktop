@@ -343,10 +343,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   `end_of_content`, or `done` with `framesSkipped` above 0, accepted whatever the reason for
   the skips (on a starved runner the tracker was seen to skip a frame it could not place among the
   ruler's look-alike rows, #1535); either way it requires `reachedEnd` and `scrolledBy` `putgd`,
-  and it checks the image's height and the ruler's pattern on every line; on failure it prints the result (for a
+  and it checks the image's height and samples the ruler's pattern at the cell centres of every line; on failure it prints the result (for a
   capture that never ended, its last progress), the helper's `scroll: ended` line and every time
   auto-scroll let go of the wheel, from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
-  Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,
+  Done or Cancel reply, and, with the test's pointer warp repeated until the capture reports paused, nothing injected from then until auto-scroll is on again,
   and the pointer is put back; the end of the control pipe stops injection at once. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
