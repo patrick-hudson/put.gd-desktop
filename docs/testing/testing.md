@@ -317,7 +317,11 @@ design is in [scrolling capture](../design/scroll-capture.md).
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
   up still is); the tracker's expected offset stays within what a step owes when its first frames
-  show the page still; a blank stretch under a pinned header and footer is not called the end; the
+  show the page still; a source that stalls in the first step for 150, 1,700 or 3,500 ms ends `PageEnd`
+  with `reachedEnd`, every row of the image byte for byte the page's and the distance per notch
+  within 10% of the fixture's; a first step still moving at its time limit ends `PageEnd` with
+  every row byte for byte, and with no distance per notch or one within 10% (#1535); a blank
+  stretch under a pinned header and footer is not called the end; the
   end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
   lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
   image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
@@ -336,10 +340,13 @@ design is in [scrolling capture](../design/scroll-capture.md).
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
   while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
   the exact page; that auto-scroll left alone runs to the end with every row exact and finishes
-  `end_of_content`, or `done` with `reachedEnd` where a starved runner's grab caught the fixture half
-  repainted and that frame was skipped (#1535); on failure it prints the result and the helper's
-  `scroll: ended` line from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
-  Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,
+  `end_of_content`, or `done` with `framesSkipped` above 0, accepted whatever the reason for
+  the skips (on a starved runner the tracker was seen to skip a frame it could not place among the
+  ruler's look-alike rows, #1535); either way it requires `reachedEnd` and `scrolledBy` `putgd`,
+  and it checks the image's height and samples the ruler's pattern at the cell centres of every line; on failure it prints the result (for a
+  capture that never ended, its last progress), the helper's `scroll: ended` line and every time
+  auto-scroll let go of the wheel, from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
+  Done or Cancel reply, and, with the test's pointer warp repeated until the capture reports paused, nothing injected from then until auto-scroll is on again,
   and the pointer is put back; the end of the control pipe stops injection at once. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage

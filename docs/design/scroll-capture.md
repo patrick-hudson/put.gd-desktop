@@ -249,15 +249,34 @@ set. The AppImage also carries `libxcb-xtest.so.0` for the X11 route.
 **Pace.** The first step is one notch: what the page moved, once it rests, is the distance
 per notch. Only a step that began with the page at rest measures it, and a later sample
 over 1.5 times the one it has is ignored: a page that lays itself out anew during a step
-(GitHub in Chrome) measured 540 px for a notch of 180. Every later step is
-40% of the frame's height (at least one notch, at most 12), so the frames of its animation
+(GitHub in Chrome) measured 540 px for a notch of 180. Once a distance per notch is
+measured, every later step is 40% of the frame's height; until then, including after a step
+that settled unmeasured, each step stays one notch. A measured step is at least one notch and at most 12, so the frames of its animation
 overlap well: the tracker places small steps where 600 px bursts sometimes do not.
+
+The first step's rest is seen on the screen. The first distance per notch is measured only
+by a step that was sent after a frame that proved the page still, and that settles on another
+such frame: one the tracker found where the last placed frame was (no movement with no kept
+hints, or placed at offset 0). A frame it let through as still without proving it does not
+count for the measurement, though it can still settle the step: the step then settles
+unmeasured, before its time limit, and the next step goes on as usual. While that step has already moved, has seen no frame
+for 100 ms, and neither a still frame nor its 3 s limit has settled it, the session asks for a
+fresh frame. It waits for it at most 1,500 ms (the wait for Done's fresh frame) and no longer
+than the step has left. If the frame shows more movement, the step keeps waiting; if it proves
+the page still, the step settles and measures. With no frame, or one that proves nothing, the
+step waits on. A step that reaches its 3 s limit without that proof, whether frames kept
+coming or not, settles unmeasured, and a later step from a proved rest measures again. Before
+this rule (#1995), a starved X server's grabs stalled 80 ms in every 100 in the middle of the
+step. Taken as settled after its first frame, the step measured 27 px a notch instead of 100,
+the next step of 8 notches went past what a frame can follow, and the page was lost ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)).
 
 The next step goes only once the page has been seen at rest, as it is when a person
 scrolls: a frame that shows what the last placed frame showed, at least 150 ms after the
-page last moved, or no frame at all for 100 ms after the last one that moved. The second
-rule is for streams that send a frame only when the picture changes (KWin, Mutter, image
-copy). A page that never rests gets 3 s per step.
+page last moved, or no frame at all for 100 ms after the last one that moved. The step that
+would measure the first distance per notch records it only from a frame that proves the page
+still, as above; a frame let through as still without that proof settles it unmeasured, and
+auto-scroll goes on at one notch. The second rule is for streams that send a frame only when the picture changes (KWin,
+Mutter, image copy). A page that never rests gets 3 s per step.
 
 Why: while a scroll runs on, Chrome leaves tiles of the page undrawn for a moment, black at a
 fixed place in the viewport. When the next step went at 85% of the last one's way, Python's
@@ -301,8 +320,9 @@ capture follows the user. **Auto-scroll** (once the mouse has been still for 500
 scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
 (**Nothing scrolled here**). A jump up counts as yours only if the next frame agrees: the
 page stays up or goes on up. One frame placed far up and then the page back on
-auto-scroll's way was a picture out of place. On a starved X server a grab caught the
-window half repainted, and the wheel was handed back to nobody
+auto-scroll's way was a picture out of place: in one run on a starved X server,
+the tracker placed a frame of the X11 test's ruler page at a look-alike far up, and auto-scroll
+paused although nobody had scrolled
 ([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)). It also hands it back when the tracker is lost and five steps
 back do not find the page. Each step back is judged on at least three frames and 2.5 s,
 because a lost tracker takes about a second per frame. It does the same after more than
