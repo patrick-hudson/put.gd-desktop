@@ -103,7 +103,10 @@ bool mostlyLatin(const QList<Word>& words){
 }
 bool keepFirstReading(const QList<Word>& first,const QList<Word>& second){
  if(mostlyLatin(second))return true;
- static const QStringList labels{QStringLiteral("pass"),QStringLiteral("token"),QStringLiteral("secret"),QStringLiteral("key"),QStringLiteral("api")};
+ // The labels Quick redact's key rules read a value after (passwords, tokens,
+ // keys, HTTP authorization, one-time codes).
+ static const QStringList labels{QStringLiteral("pass"),QStringLiteral("pwd"),QStringLiteral("token"),QStringLiteral("secret"),QStringLiteral("key"),QStringLiteral("api"),
+                                 QStringLiteral("auth"),QStringLiteral("bearer"),QStringLiteral("basic"),QStringLiteral("credential"),QStringLiteral("otp")};
  for(const auto& w:first){
   if(uncertainToken(w.text,0))return true;
   const auto lower=w.text.toLower();

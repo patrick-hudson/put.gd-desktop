@@ -62,7 +62,8 @@ bool mostlyLatin(const QList<Word>& words);
 // Whether a replaced line keeps its first reading for Quick redact: when the
 // second reading still reads it as Latin, or when the first holds a word
 // shaped like a token or key (letters and digits, as uncertainToken) or a
-// secret's label (password, token, secret, key, api): a Latin key reread in
+// secret's label (password, token, secret, key, api, authorization, bearer,
+// basic, credential, otp): a Latin key reread in
 // Cyrillic look-alikes would otherwise be lost (Sol S16 on #1986).
 bool keepFirstReading(const QList<Word>& first,const QList<Word>& second);
 

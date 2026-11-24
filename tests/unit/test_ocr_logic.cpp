@@ -113,7 +113,10 @@ private slots:
   QVERIFY(!keepFirstReading(words({u"Bmupe",u"SkoHomuKa",u"O6wectBo",u"Mpoucwectsua"}),words({u"В",u"мире",u"Экономика",u"Общество"})));
   QVERIFY(keepFirstReading(words({u"FAKE7QW3RTY5UOP2X4C"}),words({u"ҒАКЕ7ОШЗКТУ5ОР2Х4С"})));
   QVERIFY(keepFirstReading(words({u"Password:",u"hunter"}),words({u"Разѕшогd:",u"һuпtег"})));
-  QVERIFY(keepFirstReading(words({u"--password",u"hunter"}),words({u"--password",u"hunter"})));
+  // A letters-only value after Authorization: Basic (Sol S17 on #1986).
+  QVERIFY(keepFirstReading(words({u"Authorization:",u"Basic",u"SampleLettersOnlyValue"}),words({u"Аuthогizаtiоп:",u"Ваѕіс",u"ЅаmрlеLеttегѕОпlуVаluе"})));
+  // The Latin rule on its own: no label, no token-shaped word.
+  QVERIFY(keepFirstReading(words({u"see",u"the",u"docs"}),words({u"see",u"the",u"docs"})));
   QVERIFY(takeOther(readings[3]));QVERIFY(!takeOther(readings[1]));QVERIFY(!takeOther({true,90*4,80*4,4,4}));QVERIFY(!takeOther({false,10,90,1,1}));
  }
  // #1981: a composite's pieces map back to their own source pixels, at any
