@@ -66,9 +66,11 @@ QJsonObject keptOriginal(const Fixture& f,const QJsonObject& sensitive){
 // The operation's JSON with each value put.gd or the fixture generated for it put aside, at its own place and only
 // when it equals what was learned elsewhere: the id from the start call; the artifact and publication ids from the
 // journal, the artifact id only as a v4 UUID and the publication id only as the provider issued it; the PNG's size and SHA-256 from the file; the revisions from the settings; the file id, revision id,
-// tokens and link from the receipt the fixture's provider issued (or, before one, the file id its name check
-// gives); and the fixture's folder at the start of each path. They are random hex or numbers and hold 4111 by
+// tokens and link from the receipt the fixture's provider issued for a v4 publication id; the file id from the
+// fixture's name check of the candidate; and the fixture's folder at the start of each path. They are random hex or numbers and hold 4111 by
 // chance (#1889). A value that matches nothing stays, and is scanned with the rest.
+// A v4 UUID written the way put.gd writes them (no braces): recognized text can't take this shape.
+bool generatedUuid(const QString& value){const auto u=QUuid::fromString(value);return u.version()==QUuid::Random&&u.toString(QUuid::WithoutBraces)==value;}
 QString withoutGeneratedValues(Fixture& f,const QString& id,QJsonObject operation){
  const QJsonValue generated(QStringLiteral("(generated)"));
  const auto mask=[&](QJsonObject& o,const QString& key,const QJsonValue& known){
@@ -85,20 +87,19 @@ QString withoutGeneratedValues(Fixture& f,const QString& id,QJsonObject operatio
  for(qsizetype i=0;i<items.size()&&i<record.items.size();++i){
   const auto& known=record.items[i];auto item=items[i].toObject();
   StorageReceipt issued;
-  {QMutexLocker lock(&f.provider->mutex);for(const auto& r:std::as_const(f.provider->objects))if(!known.publicationId.isEmpty()&&r.publicationId==known.publicationId)issued=r;}
+  {QMutexLocker lock(&f.provider->mutex);for(const auto& r:std::as_const(f.provider->objects))if(generatedUuid(known.publicationId)&&r.publicationId==known.publicationId)issued=r;}
   within(item,"artifact",[&](QJsonObject& a){
    // The journal is what inspect() reads too, so the artifact id must also be the v4 UUID ArtifactStore makes.
-   const auto uuid=QUuid::fromString(known.artifact.id);
-   if(uuid.version()==QUuid::Random&&uuid.toString(QUuid::WithoutBraces)==known.artifact.id)mask(a,"id",known.artifact.id);
+   if(generatedUuid(known.artifact.id))mask(a,"id",known.artifact.id);
    QFile file(known.artifact.path);
    if(file.open(QIODevice::ReadOnly)){const auto bytes=file.readAll();mask(a,"bytes",double(bytes.size()));mask(a,"sha256",QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));}
    mask(a,"previewPath",f.dir.filePath("data/artifacts/../previews/")+known.artifact.id+".png");
   });
   mask(item,"publicationId",issued.publicationId);mask(item,"concurrencyToken",issued.concurrencyToken);
-  within(item,"objectReference",[&](QJsonObject& r){mask(r,"fileId",issued.publicationId.isEmpty()?QJsonValue(OpaqueProvider::fileId(known.candidate)):issued.objectReference.value("fileId"));});
+  within(item,"objectReference",[&](QJsonObject& r){mask(r,"fileId",OpaqueProvider::fileId(known.candidate));});
   within(item,"receipt",[&](QJsonObject& r){
    mask(r,"publicationId",issued.publicationId);mask(r,"concurrencyToken",issued.concurrencyToken);mask(r,"directUrl",issued.directUrl);
-   within(r,"objectReference",[&](QJsonObject& o){mask(o,"fileId",issued.objectReference.value("fileId"));mask(o,"revisionId",issued.objectReference.value("revisionId"));});
+   within(r,"objectReference",[&](QJsonObject& o){mask(o,"fileId",OpaqueProvider::fileId(known.candidate));mask(o,"revisionId",issued.objectReference.value("revisionId"));});
    within(r,"destination",[&](QJsonObject& d){mask(d,"profileRevision",revision);});
   });
   within(item,"local",[&](QJsonObject& l){l["path"]=relative(l.value("path"));});
