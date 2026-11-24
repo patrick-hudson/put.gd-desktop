@@ -371,12 +371,12 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   if(!take[i])continue;
   const auto& seg=all[i];
   // A line the first pass read with some confidence may hold a key, token or
-  // passphrase it read right: for Quick redact its first words stay, as second
-  // reads, when the second reading still reads it as Latin (an English line).
-  // A line it reads in the page's script was replaced only with a rise of
-  // keepRise (takeOther): it was garbage in English, like a garbled one, and
-  // that is what this check exists to drop.
-  if(in.candidates&&!seg.garbled&&mostlyLatin(readings[i].words))
+  // passphrase it read right: for Quick redact its first words always stay,
+  // as second reads. The page's script can rewrite a Latin credential into
+  // look-alikes with a large rise (Sol S19-S22 on #1986), and a missed secret
+  // costs more than a prompt. Only a garbled line's English reading, under
+  // garbledConfidence, is dropped: that is what this check exists to clear.
+  if(in.candidates&&!seg.garbled)
    for(int w=seg.first;w<seg.last;++w){auto word=job.words[w];word.kept=false;word.second=true;word.reread=true;firstReadings.append(word);}
   job.words.remove(seg.first,seg.last-seg.first);
   for(int k=0;k<readings[i].words.size();++k)job.words.insert(seg.first+k,readings[i].words[k]);
