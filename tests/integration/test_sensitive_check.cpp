@@ -14,6 +14,7 @@
 #include <QFileInfo>
 #include <QFont>
 #include <QPainter>
+#include <QRegularExpression>
 using namespace putgd;using namespace putgd::test;
 
 namespace {
@@ -53,13 +54,47 @@ struct Fixture {
  QString start(const QJsonObject& options={}){return call([&](JsonReply r){operations->invoke("region",r,options);}).result["operationId"].toString();}
 };
 const QStringList card{"Card 4111 1111 1111 1111"};
-// Whether an operation holds the card's recognized digits: spaced as on the page, joined, or a group as a
-// word of its own. Not a bare 4111: the record's ids and hashes are random hex, and hold it by chance (#1889).
-bool holdsCardText(const QJsonObject& operation){
- const auto json=QJsonDocument(operation).toJson(QJsonDocument::Compact);
- return json.contains("4111 1111")||json.contains("4111111111111111")||json.contains("\"4111\"");
-}
 const QStringList key{"key AKIAIOSFODNN7EXAMPLE"};
+// The kept original as the operation should name it: one PNG saved in the fixture's archive, named after the
+// capture with -original, and nothing else.
+QJsonObject keptOriginal(const Fixture& f,const QJsonObject& sensitive){
+ const auto path=sensitive["original"].toObject()["paths"].toArray().first().toString();
+ const QFileInfo file(path);
+ if(!path.startsWith(f.dir.filePath("archive/images/"))||!file.isFile()||!file.fileName().endsWith("-original.png"))return {};
+ return {{"paths",QJsonArray{path}},{"status","saved"}};
+}
+// The operation's JSON without the values put.gd generates for it: the fixture's folder, and each id, revision,
+// hash and token, taken from the field that holds it and only when it has that value's shape, so recognized text
+// can't hide in one; and the PNG's measured size. They are random hex or numbers and hold 4111 by chance (#1889).
+QString withoutGeneratedValues(const QJsonObject& operation,const QString& root){
+ static const QRegularExpression uuid("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),sha("^[0-9a-f]{64}$");
+ QStringList values{root};
+ const auto take=[&](const QJsonValue& value,const QRegularExpression& shape,const QString& prefix=QString()){
+  const auto text=value.toString();if(text.startsWith(prefix)&&shape.match(text.mid(prefix.size())).hasMatch())values.append(text);};
+ const auto destination=[&](const QJsonValue& value){take(value.toObject()["profileRevision"],sha);};
+ const auto reference=[&](const QJsonValue& value){const auto o=value.toObject();take(o["fileId"],sha,QStringLiteral("opaque:α/%?#:"));take(o["revisionId"],uuid,"opaque-version!");};
+ auto copy=operation;take(copy["id"],uuid);take(copy["settingsRevision"],sha);destination(copy["destination"]);
+ auto items=copy["items"].toArray();
+ for(qsizetype i=0;i<items.size();++i){
+  auto item=items[i].toObject();auto artifact=item["artifact"].toObject();const auto receipt=item["receipt"].toObject();
+  take(artifact["id"],uuid);take(artifact["sha256"],sha);take(item["publicationId"],uuid);take(item["concurrencyToken"],uuid,"opaque-token!");reference(item["objectReference"]);
+  take(receipt["publicationId"],uuid);take(receipt["concurrencyToken"],uuid,"opaque-token!");reference(receipt["objectReference"]);destination(receipt["destination"]);
+  artifact.remove("bytes");item["artifact"]=artifact;items[i]=item;
+ }
+ copy["items"]=items;
+ auto json=QString::fromUtf8(QJsonDocument(copy).toJson(QJsonDocument::Compact));
+ // Longest first: an id inside a token goes with the token.
+ std::sort(values.begin(),values.end(),[](const QString& a,const QString& b){return a.size()>b.size();});
+ for(const auto& value:std::as_const(values))if(!value.isEmpty())json.replace(value,QString());
+ return json;
+}
+// The first piece of the fixture's text left in the operation once the generated values are out: either digit group
+// of the card, alone or in any form, the line's word, or a piece of the example key. Empty when there is none.
+QString fixtureTextIn(const QJsonObject& operation,const QString& root){
+ const auto json=withoutGeneratedValues(operation,root);
+ for(const auto* piece:{"4111","1111","Card","AKIA","IOSFODNN","EXAMPLE"})if(json.contains(QLatin1String(piece)))return QString::fromLatin1(piece)+QStringLiteral(" in ")+json;
+ return {};
+}
 // #1820: the check object with each kind set; kinds not named are off.
 QJsonObject kinds(const QJsonObject& chosen){QJsonObject all{{"email","off"},{"phone","off"},{"ip","off"},{"card","off"},{"key","off"},{"name","off"},{"list","off"}};for(auto it=chosen.begin();it!=chosen.end();++it)all[it.key()]=it.value();return {{"enabled",true},{"kinds",all}};}
 const auto everyKind=kinds({{"email","redact"},{"phone","redact"},{"ip","redact"},{"card","redact"},{"key","redact"},{"name","redact"},{"list","redact"}});
@@ -105,8 +140,9 @@ private slots:
   QVERIFY(f.reaches(id,"sensitive_text_found"));
   const auto found=f.inspect(id)["sensitive"].toObject();
   QCOMPARE(found["found"].toObject()["card"].toInt(),1);QVERIFY(found["complete"].toBool());QCOMPARE(f.provider->uploads.load(),0);
-  // Only the kinds and counts: nothing recognized reaches the operation.
-  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
+  // Only the kinds and counts: nothing recognized reaches the operation, in a field of its own or in any other.
+  QCOMPARE(f.inspect(id)["sensitive"].toObject(),(QJsonObject{{"found",QJsonObject{{"card",1}}},{"complete",true},{"prompt",1}}));
+  {const auto leak=fixtureTextIn(f.inspect(id),f.dir.path());QVERIFY2(leak.isEmpty(),qPrintable(leak));}
   QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"later",r);}).error.code,QString("invalid_request"));
   const auto decided=call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);});QVERIFY2(!decided.error,qPrintable(decided.error.code));
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
@@ -212,7 +248,8 @@ private slots:
   // With Keep a local copy on, the uncovered original is kept locally, as automatic covers keep it.
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(blackShare(kept,digits(0))<0.4);QVERIFY(blackShare(kept,digits(1))<0.4);
-  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
+  QCOMPARE(f.inspect(id)["sensitive"].toObject(),(QJsonObject{{"found",QJsonObject{{"key",1}}},{"covered",QJsonObject{{"card",1},{"key",1}}},{"complete",true},{"original",keptOriginal(f,sensitive)}}));
+  {const auto leak=fixtureTextIn(f.inspect(id),f.dir.path());QVERIFY2(leak.isEmpty(),qPrintable(leak));}
  }
  // #1898: Redact and upload covers each file of a selection that asks; the user's own files stay as they are.
  void redactAndUploadCoversEachFileOfASelection(){
@@ -289,7 +326,8 @@ private slots:
   QVERIFY(blackShare(QImage(items.first().toObject()["local"].toObject()["path"].toString()),digits(0))>0.7);
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(!kept.isNull());QVERIFY(blackShare(kept,digits(0))<0.4);
-  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
+  QCOMPARE(f.inspect(id)["sensitive"].toObject(),(QJsonObject{{"found",QJsonObject{}},{"covered",QJsonObject{{"card",1}}},{"complete",true},{"original",keptOriginal(f,sensitive)}}));
+  {const auto leak=fixtureTextIn(f.inspect(id),f.dir.path());QVERIFY2(leak.isEmpty(),qPrintable(leak));}
  }
  // #1941: a QR code holding a 2FA secret or a Wi-Fi password is covered with Keys and tokens before the upload: one
  // solid cover over the whole symbol, so the real putgd-ocr finds no code in what was uploaded (it reads the one in
