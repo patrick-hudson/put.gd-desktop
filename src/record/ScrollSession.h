@@ -287,7 +287,9 @@ private:
     int centreIndex() const;
     int planNotches() const;
     int responseWaitMs() const;
-    void settled(int64_t t);
+    // measured false: the page rests by the rules but no frame proved it, so the
+    // step does not set the distance per notch.
+    void settled(int64_t t, bool measured = true);
     void startRecover();
     int frameRowsFull() const { return frameH_; }
     void stillStep(int64_t t);

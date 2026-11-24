@@ -645,14 +645,25 @@ void ScrollSession::autoTick() {
             // stalled 80 ms in every 100; the first step was taken as settled
             // after its first frame, at 27 px a notch instead of 100, the next
             // went 8 notches, past what a frame can follow, and the page was
-            // lost (#1535). A fresh frame says which; later steps keep the
-            // distance within bounds of this one.
-            if (quiet && !rested && !timedOut && phase_ == Phase::Settle && stepFromRest_ && stepNotches_ > 0 && stats_.pxPerNotch <= 0) {
+            // lost (#1535). It waits for a fresh frame, no longer than the
+            // step has left, and only one that shows the page where the last
+            // placed frame had it measures the distance. A step whose time runs
+            // out with no frame settles unmeasured: the next goes one notch
+            // and measures again. Later steps keep the distance within bounds
+            // of the first one.
+            const bool measuring = phase_ == Phase::Settle && stepFromRest_ && stepNotches_ > 0 && stats_.pxPerNotch <= 0;
+            if (measuring && quiet && !rested) {
+                if (timedOut) {
+                    settled(now, false);
+                    return;
+                }
                 const int64_t movedAt = lastMoveAt_;
-                if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500)) feed(*fresh);
+                const int wait = int(std::min<int64_t>(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500, opts_.stepTimeoutMs - (now - stepSentAt_)));
+                auto fresh = source_.freshFrame(std::max(1, wait));
+                if (fresh) feed(*fresh);
                 if (!auto_ || phase_ != Phase::Settle || lastMoveAt_ != movedAt) return;  // it moved on: not at rest yet
-                settled(clock_.nowMs());
-                return;
+                if (fresh && lastShowedStill_) settled(clock_.nowMs());
+                return;  // no frame, or one that proves nothing: wait on, until the step's time is up
             }
             settled(now);
             return;
@@ -728,10 +739,10 @@ void ScrollSession::dropOwed() {
     chainHinted_ = true;
 }
 
-void ScrollSession::settled(int64_t now) {
+void ScrollSession::settled(int64_t now, bool measured) {
     if (stepFirstMoveAt_ >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(stepFirstMoveAt_ - stepSentAt_));
     dropOwed();
-    const bool measure = stepFromRest_;
+    const bool measure = stepFromRest_ && measured;
     restedBefore_ = true;
     if (phase_ == Phase::Settle && measure && stepNotches_ > 0 && stepMoved_ > 0) {
         const double sample = double(stepMoved_) / stepNotches_;

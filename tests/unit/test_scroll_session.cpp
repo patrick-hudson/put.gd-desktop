@@ -601,15 +601,20 @@ void testOneFrameOutOfPlace() {
 void testStallInTheFirstStep() {
   std::printf("A source that stalls in the first step\n");
   const Document doc = page(96);
-  Harness h;
-  FakeAppSpec as;
-  as.pxPerNotch = 100;
-  as.stallAfterFirstMoveMs = 150;
-  h.run(doc.img, as, options(true));
-  const std::string wrong = h.exact(doc.img, 0);
-  report("a stall after the first step's first frame: the distance per notch measured whole, the image exact to the end",
-         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch,
-         (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  // 150 ms: a fresh frame comes and shows the page moving on. 1,700 ms: no
+  // fresh frame within its wait; the step waits on, and must not measure the
+  // distance from what it saw before the stall (Sol on #1995).
+  for (const int stall : {150, 1700}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 100;
+    as.stallAfterFirstMoveMs = stall;
+    h.run(doc.img, as, options(true));
+    const std::string wrong = h.exact(doc.img, 0);
+    report(fmt("a %d ms stall after the first step's first frame: the distance per notch measured whole, the image exact to the end", stall),
+           h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  }
 }
 
 // "Scroll to the top first" with a strip under the first wheel point that

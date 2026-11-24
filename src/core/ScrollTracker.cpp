@@ -1349,6 +1349,11 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
   // spans its large one. On the ruler page a frame that moved further than
   // auto-scroll's hint was placed 452 rows up at 0.75 of its cells, against
   // 1.00 where the page was, and the image kept 425 rows of it on top (#1535).
+  // But only over more of the frame than the columns' own layer agrees in,
+  // counted in rows, not as a share: an exact repeat that overlaps a few rows
+  // explains its own overlap whole as well, and on a page with an 80-row
+  // section repeated, a frame whose small redraw kept the page's place under
+  // 0.99 went 360 rows up above the image (Sol on #1995).
   if (layers > 1) {
     int alone = -1;
     bool several = false;
@@ -1358,7 +1363,10 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
       if (alone >= 0 && layerOf[size_t(alone)] != layerOf[size_t(i)]) several = true;
       if (alone < 0 || c.cells > cands[size_t(alone)].cells) alone = i;
     }
-    if (alone >= 0 && !several) page = layerOf[size_t(alone)];
+    int pageRows = 0;
+    for (int i : ok)
+      if (layerOf[size_t(i)] == page) pageRows = std::max(pageRows, cands[size_t(i)].rows);
+    if (alone >= 0 && !several && cands[size_t(alone)].rows > pageRows) page = layerOf[size_t(alone)];
   }
   // The page's layer must explain the frame: tiles that neither move with
   // any layer found nor stood still (a page further away than the frame is

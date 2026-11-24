@@ -1676,6 +1676,32 @@ void testRulerPastTheHint() {
   }
 }
 
+// A short exact repeat against the page's longer place (Sol on #1995): an
+// 80-row section of the page shows again lower down, so the frame's bottom
+// rows match the reference's top rows exactly, 520 rows up, while a line
+// redrawn in place keeps the true place just under the whole-frame bar. The
+// whole-frame rule must not take the short repeat over the columns' choice:
+// it agrees over 80 rows, the page's place over most of the frame.
+void testShortRepeatAgainstTheMove() {
+  std::printf("\n[short repeat] an exact repeat over a few rows does not beat the page's longer place\n");
+  const int W = 480, V = 600, s = 80, L = 80;
+  Document base = plainPage(7, W, V);
+  Image doc = base.img;
+  for (int i = 0; i < L; ++i) std::memcpy(&doc.px[size_t(3 * s + V - L + i) * W], &doc.px[size_t(2 * s + i) * W], size_t(W) * 4);
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  ss.changingX = 0, ss.changingY = 3 * s + 40, ss.changingW = W, ss.changingH = 16;  // a line redrawn in every frame
+  const Scene scene(doc, ss);
+  MemoryCanvas canvas(W);
+  ScrollTracker tracker(canvas);
+  TrackResult t;
+  for (int i = 0; i <= 3; ++i) t = tracker.addFrame(scene.frame(i * s, i).view());
+  report("a frame whose bottom rows repeat the reference's top rows is placed where the page is",
+         t.status == TrackStatus::Placed && t.position == 3 * s && tracker.top() == 0,
+         fmt("%s at %lld (page at %d), image rows %lld to %lld", toString(t.status), t.position, 3 * s, tracker.top(), tracker.bottom()));
+}
+
 // A jump past the reference over look-alike tables (#1515's re-check on
 // Cinnamon): while frames were skipped the page moved more than a frame
 // tall, and the pair, against the last placed frame, found the look-alike a
@@ -2932,6 +2958,7 @@ int main() {
   testRepeatAtStep();
   testJumpPastLookAlikes();
   testRulerPastTheHint();
+  testShortRepeatAgainstTheMove();
   testLostGuessMarksNothing();
   testEdgeLine();
   testTurnBackLookAlike();
