@@ -4660,6 +4660,10 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
         refusedKnown = false;
         pick = -1;
         why = SkipReason::Contradicted;
+        // A far place off the hint that the check refused is no pair's place
+        // the image lookup may confirm leniently: found there again, it must
+        // pass the check of a place found again (Sol on #2002).
+        if (hinted && !hintSays(d) && 2 * std::abs(d) > height_) pairD = INT_MIN;
       }
     }
   }
