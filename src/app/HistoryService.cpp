@@ -341,7 +341,8 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
   const auto path=operations_.databasePath();HistoryStore store(path);doc["state"]="running";if((error=store.startDeletion(doc)))return doc;committed();
   auto items=doc["items"].toArray();
   for(int index=0;index<items.size();++index) {
-   auto item=items[index].toObject();auto status=item["status"].toString();if(status=="removed"||status=="already_missing"||status=="changed")continue;
+   // An item a newer deletion of the same file took over (#1773) is that deletion's to finish.
+   auto item=items[index].toObject();auto status=item["status"].toString();if(status=="removed"||status=="already_missing"||status=="changed"||status=="taken_over")continue;
    if(cancelled->load()) {doc["cancelled"]=true;break;}
    // Quit: the rest is left as journaled; the next start recovers it as interrupted.
    if(quitting->load())return doc;
@@ -421,6 +422,9 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     else {
      const auto before=items[index].toObject();
      item["status"]="deleting";item["deletingProfileId"]=receipt.destination.profileId;items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
+     // Marking it deleting is where this deletion holds the file against a newer one (#1773): one recorded
+     // since took it over, and nothing is sent; once it is deleting, a newer one is refused.
+     items=doc["items"].toArray();if(items[index].toObject()["status"]=="taken_over")continue;
      // Whether this attempt's driver got a checkpoint acknowledged: none send a
      // destructive request before one (see DurableCheckpoint).
      auto acknowledged=std::make_shared<std::atomic_bool>(false);
@@ -468,6 +472,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     }
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
+   items=doc["items"].toArray();
   }
   // Quit: the deletion stays running in its journal; the next start marks it interrupted.
   if(quitting->load())return doc;

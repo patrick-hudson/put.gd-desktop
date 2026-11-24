@@ -57,7 +57,11 @@ public:
  // A finished deletion that ended unsupported_safe_removal or version_retained lets the record go (#1763).
  QString forgetBlocker(const QString& historyId,const QSet<QString>& running) const;
  // requireRecords: a new deletion, recorded only while each of its records is still in History (#1759).
- Error saveDeletion(const QJsonObject&,bool requireRecords=false);
+ // It takes over each record from an earlier deletion that sent nothing for it, and is refused while one
+ // may still hold it (#1773). Every other write updates only the records this deletion still holds: an
+ // unfinished item whose record a newer deletion took over is marked "taken_over" in `doc`.
+ Error saveDeletion(QJsonObject& doc,bool requireRecords=false);
+ Error saveDeletion(const QJsonObject& doc,bool requireRecords=false) {auto copy=doc;return saveDeletion(copy,requireRecords);}
  // A deletion's run starts: records removed from History only are dropped from it (doc["forgotten"]).
  Error startDeletion(QJsonObject& doc);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
@@ -90,7 +94,7 @@ private:
  Error ensureErrorLog();
  Error initialize();
  bool releasable(const QString& historyId,const QSet<QString>& running,QStringList* release=nullptr) const;
- bool writeDeletion(const QJsonObject&);
+ bool writeDeletion(QJsonObject&,bool claim,Error* refused);
  bool beginWrite();
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
  // Stored artifact and preview paths are absolute. A journal moved with its

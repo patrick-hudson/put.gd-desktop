@@ -1936,7 +1936,7 @@ void HistoryWindow::pollDeletion(){
   const bool running=data["state"]=="running"||data["state"]=="accepted";
   // Each item names its file from the journal (#1753), and its destination from its receipt.
   const auto profiles=g->session_.document()["profiles"].toArray();
-  QStringList progress,problems;QJsonObject target;QString removedName,removedWhere;int removed=0;
+  QStringList progress,problems,handed;QJsonObject target;QString removedName,removedWhere;int removed=0;
   for(const auto& v:data["items"].toArray()){
    const auto item=v.toObject();const auto state=item["status"].toString(),historyId=item["historyId"].toString();
    auto name=item["name"].toString();if(name.isEmpty())name=g->deletionNames_.value(historyId);if(name.isEmpty())name=QStringLiteral("a file");else name="“"+name+"”";
@@ -1944,6 +1944,8 @@ void HistoryWindow::pollDeletion(){
    const auto reason=item["error"].toObject()["message"].toString();
    if(state=="removed"||state=="already_missing"){++removed;removedName=name;removedWhere=where;}
    else if(state=="pending"||state=="deleting")progress<<"Deleting "+name+" from "+where+"…";
+   // A newer deletion of the same file took it over (#1773): its own entry shows that one's outcome.
+   else if(state=="taken_over")handed<<name+" is handled by a newer deletion of it; its entry in History shows that one.";
    else{problems<<"Couldn't delete "+name+" from "+where+(reason.isEmpty()?QString(" ("+state+")."):": "+reason);if(target.isEmpty())target={{"historyId",historyId},{"kind","deletion"}};}
   }
   g->status_->setProperty("deletionDetails",data);
@@ -1959,9 +1961,12 @@ void HistoryWindow::pollDeletion(){
    if(std::exchange(g->deletionAnnounce_,false)){
     // The line that said the deletion was accepted is answered by its outcome; another note stays.
     if(QStringList{"Remote deletion accepted","Deletion action accepted","Deletion retry requested"}.contains(g->status_->text().section(';',0,0).section('.',0,0)))Ui::feedback(g->status_,{});
-    if(!problems.isEmpty())g->showError(problems.join("\n"),target);
-    else if(removed==1)Ui::feedback(g->status_,"Deleted "+removedName+" from "+removedWhere+".");
-    else if(removed>1)Ui::feedback(g->status_,QStringLiteral("Deleted %1 files from their destinations.").arg(removed));
+    QString done;
+    if(removed==1)done="Deleted "+removedName+" from "+removedWhere+".";
+    else if(removed>1)done=QStringLiteral("Deleted %1 files from their destinations.").arg(removed);
+    if(!handed.isEmpty())done+=(done.isEmpty()?QString():QStringLiteral("\n"))+handed.join("\n");
+    if(!problems.isEmpty())g->showError(problems.join("\n")+(handed.isEmpty()?QString():"\n"+handed.join("\n")),target);
+    else if(!done.isEmpty())Ui::feedback(g->status_,done);
    }
    g->refresh();
   }

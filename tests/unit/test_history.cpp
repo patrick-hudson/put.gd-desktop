@@ -51,10 +51,10 @@ private slots:
  void remoteMetadataReplacementDropsStaleNestedFields() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="metadata-operation";OperationItem item;item.artifact.id="metadata-item";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));
   auto deletion=[&](QString id,QString status,QJsonObject error,QJsonObject progress) {return QJsonObject{{"id",id},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status",status},{"error",error},{"progress",progress}}}}};};
-  QVERIFY(!store.saveDeletion(deletion("failed-delete","failed",Error{"synthetic","Failed",{{"stale","old"}}}.toJson(),{{"oldMarker","old"}})));
-  QVERIFY(!store.saveDeletion(deletion("successful-delete","removed",Error{}.toJson(),{{"phase","done"}})));
+  QVERIFY(!store.saveDeletion(deletion("failed-delete","failed",Error{"synthetic","Failed",{{"stale","old"}}}.toJson(),{{"oldMarker","old"}}),true));
+  QVERIFY(!store.saveDeletion(deletion("successful-delete","removed",Error{}.toJson(),{{"phase","done"}}),true));
   const auto detail=store.detail(item.artifact.id);QCOMPARE(detail["remoteError"].toObject(),Error{}.toJson());QCOMPARE(detail["deleteProgress"].toObject(),QJsonObject({{"phase","done"}}));
-  QVERIFY(!store.saveDeletion({{"id","pending-delete"},{"state","accepted"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status","pending"}}}}}));QVERIFY(!store.detail(item.artifact.id).contains("remoteError"));QVERIFY(!store.detail(item.artifact.id).contains("deleteProgress"));
+  QVERIFY(!store.saveDeletion({{"id","pending-delete"},{"state","accepted"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status","pending"}}}}},true));QVERIFY(!store.detail(item.artifact.id).contains("remoteError"));QVERIFY(!store.detail(item.artifact.id).contains("deleteProgress"));
  }
  void largeClearedLegacyMigrationExpandsDeletionDocumentsOnce() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="bulk-legacy";
