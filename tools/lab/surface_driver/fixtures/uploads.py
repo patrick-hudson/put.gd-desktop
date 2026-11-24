@@ -23,14 +23,14 @@ def cancel(scope, identity):
 
 EDITOR='putgd-ui --edit-image'
 # How the editor helper ended, read before cleanup removes the private log (#2011: an editor_exit
-# left no trace). Only fixed event names and typed exit fields leave the target: helper stderr and
-# crash text are counted, never copied. Core dumps are matched to this resident's helper PIDs.
-TRACE=r'''import glob,json,os,subprocess
+# left no trace). Only fixed event names and typed exit fields leave the target: helper stderr is
+# counted and crash text dropped, never copied. A crash's signal is in its own exit record.
+TRACE=r'''import glob,json,os
 events={'Helper started','Helper exited','Helper stopped by put.gd','Helper killed by put.gd','Killing helper',
         'Helper crashed','Helper killed from outside put.gd','Helper crash record','Helper failed to start',
         'Helper output truncated'}
 typed={'exitCode':int,'signal':int,'requested':bool,'supervisorKill':bool,'pid':int}
-rows,stderr,started=[],0,{}
+rows,stderr=[],0
 for path in glob.glob(os.environ['XDG_STATE_HOME']+'/putgd/logs/*.jsonl'):
  for line in open(path,errors='replace'):
   try:r=json.loads(line)
@@ -40,22 +40,9 @@ for path in glob.glob(os.environ['XDG_STATE_HOME']+'/putgd/logs/*.jsonl'):
   if f.get('helper')!=EDITOR or r.get('message') not in events:continue
   row={'t':str(r.get('time'))[:24],'event':r['message']}
   row.update({k:f[k] for k,kind in typed.items() if type(f.get(k)) is kind})
-  if row['event']=='Helper started' and 'pid' in row:started[row['pid']]=row['t']
   rows.append(row)
 rows.sort(key=lambda r:r['t'])
-dumps=[]
-try:
- from datetime import datetime
- launched={pid:datetime.fromisoformat(t.replace('Z','+00:00')).timestamp()*1e6 for pid,t in started.items()}
- if launched:
-  # Only a dump of one of these helpers, taken after that helper's own launch (a PID can be reused).
-  since=datetime.fromtimestamp(min(launched.values())/1e6).strftime('%Y-%m-%d %H:%M:%S')
-  p=subprocess.run(['coredumpctl','--no-pager','--json=short','--since='+since,'list'],capture_output=True,text=True,timeout=10)
-  for d in json.loads(p.stdout or '[]'):
-   if d.get('pid') in launched and d.get('uid')==os.getuid() and isinstance(d.get('time'),int) and d['time']>=launched[d['pid']]:
-    dumps.append({'pid':d['pid'],'sig':d.get('sig'),'time':d['time']})
-except (OSError,ValueError,subprocess.SubprocessError):pass
-print(json.dumps({'editor':rows[-8:],'stderrLines':stderr,'coredumps':dumps[-3:]}))
+print(json.dumps({'editor':rows[-8:],'stderrLines':stderr}))
 '''.replace('EDITOR',repr(EDITOR))
 
 
