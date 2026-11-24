@@ -248,8 +248,8 @@ A read-only lookup saves no destructive checkpoint, but the outcome it leaves
 (`unknown`, for example) can still refuse a takeover and keep the record. An
 older deletion's later retry sends nothing for a record taken over and leaves
 the record's state alone. In its own journal it keeps a final outcome (removed,
-already_missing, changed) it had already recorded for that record, and marks any
-other `taken_over`. Cancellation cannot undo a sent mutation. Shutdown cancels queued
+already_missing, changed) it had already recorded for that record and marks any
+other `taken_over`; either way the item names the newer deletion in `takenOverBy`. Cancellation cannot undo a sent mutation. Shutdown cancels queued
 targets and drains sent work before history services are destroyed. Browser/CDN
 cache invalidation is outside this pipeline.
 
