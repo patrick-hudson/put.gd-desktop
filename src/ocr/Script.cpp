@@ -1,6 +1,5 @@
 #include "Script.h"
 #include "Layout.h"
-#include <QRegularExpression>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -102,22 +101,11 @@ bool mostlyLatin(const QList<Word>& words){
  }
  return letters>0&&2*latin>=letters;
 }
-bool keepFirstReading(const QList<Word>& first,const QList<Word>& second){
- if(mostlyLatin(second))return true;
- // The labels Quick redact's key rules read a value after (passwords, tokens,
- // keys, HTTP authorization, one-time codes).
- static const QStringList labels{QStringLiteral("pass"),QStringLiteral("pwd"),QStringLiteral("token"),QStringLiteral("secret"),QStringLiteral("key"),QStringLiteral("api"),
-                                 QStringLiteral("auth"),QStringLiteral("bearer"),QStringLiteral("basic"),QStringLiteral("credential"),QStringLiteral("otp")};
- for(const auto& w:first){
-  if(uncertainToken(w.text,0))return true;
-  // A label starts the word or one of its pieces (DB_PASSWORD, x-api-key), so
-  // English garbage with "api" or "otp" inside a word does not count.
-  for(const auto& piece:w.text.toLower().split(QRegularExpression(QStringLiteral("[^a-z]+")),Qt::SkipEmptyParts))
-   for(const auto& l:labels)if(piece.startsWith(l))return true;
- }
- return false;
+bool takeOther(const SegmentReading& r,bool latin){
+ if(!r.read||r.afterCount==0||r.beforeCount==0)return false;
+ const double before=r.before/r.beforeCount,after=r.after/r.afterCount;
+ return latin?after>before:keepReread(before,after);
 }
-bool takeOther(const SegmentReading& r){return r.read&&r.afterCount>0&&r.beforeCount>0&&r.after/r.afterCount>r.before/r.beforeCount;}
 QRect paddedPiece(const QRect& rect,const QRect& bounds){
  const int pad=std::max(4,rect.height()/3);
  return rect.adjusted(-pad,-pad,pad,pad).intersected(bounds);

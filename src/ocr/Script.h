@@ -52,20 +52,18 @@ struct SegmentReading { bool read=false;double before=0,after=0;int beforeCount=
 struct ScriptDecision { bool keep=false;double before=0,after=0;QList<bool> take; };
 ScriptDecision decideGarbled(const QList<SegmentReading>& readings,const QList<int>& garbled);
 // Another segment of a page whose language was kept: replaced when its
-// second reading has words and a higher mean confidence.
-bool takeOther(const SegmentReading& reading);
+// second reading has words and a higher mean confidence, and, when that
+// reading is not mostly Latin (latin false), only when it rose by keepRise
+// as the garbled segments' did. A Latin line, a key among them, that the
+// second reading turns into look-alikes of the page's script rises little
+// (Sol S16-S21 on #1986: a Latin key read in Cyrillic rose 5 points) and
+// stays as the first pass read it, for the copy and Quick redact alike.
+bool takeOther(const SegmentReading& reading,bool latin);
 // Whether at least half of the letters in these words are Latin: a line the
 // second reading still reads as Latin was an English line, whose first
 // reading may hold a token worth keeping for Quick redact; one it reads in the
 // page's script was garbage in English.
 bool mostlyLatin(const QList<Word>& words);
-// Whether a replaced line keeps its first reading for Quick redact: when the
-// second reading still reads it as Latin, or when the first holds a word
-// shaped like a token or key (letters and digits, as uncertainToken) or a
-// secret's label (password, token, secret, key, api, authorization, bearer,
-// basic, credential, otp): a Latin key reread in
-// Cyrillic look-alikes would otherwise be lost (Sol S16 on #1986).
-bool keepFirstReading(const QList<Word>& first,const QList<Word>& second);
 
 // A segment's box, grown by a third of its height (at least 4 px) on every
 // side, within bounds: room for accents and descenders.

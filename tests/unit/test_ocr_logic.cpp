@@ -108,19 +108,15 @@ private slots:
   const auto words=[](std::initializer_list<const char16_t*> texts){QList<Word> out;for(const auto* t:texts){Word w;w.text=QString::fromUtf16(t);out.append(w);}return out;};
   QVERIFY(mostlyLatin(words({u"--password",u"hunter",u"2"})));QVERIFY(mostlyLatin(words({u"NBA",u"体育"})));
   QVERIFY(!mostlyLatin(words({u"В",u"мире",u"Экономика"})));QVERIFY(!mostlyLatin(words({u"新浪网新闻",u"NBA"})));QVERIFY(!mostlyLatin(words({u"123",u"!"})));
-  // ria.ru's menu, read in English then in Russian, is dropped; a Latin key
-  // reread in Cyrillic look-alikes, or a labelled line, keeps its first words (Sol S16 on #1986).
-  QVERIFY(!keepFirstReading(words({u"Bmupe",u"SkoHomuKa",u"O6wectBo",u"Mpoucwectsua"}),words({u"В",u"мире",u"Экономика",u"Общество"})));
-  QVERIFY(keepFirstReading(words({u"FAKE7QW3RTY5UOP2X4C"}),words({u"ҒАКЕ7ОШЗКТУ5ОР2Х4С"})));
-  QVERIFY(keepFirstReading(words({u"Password:",u"hunter"}),words({u"Разѕшогd:",u"һuпtег"})));
-  // A letters-only value after Authorization: Basic (Sol S17 on #1986).
-  QVERIFY(keepFirstReading(words({u"Authorization:",u"Basic",u"SampleLettersOnlyValue"}),words({u"Аuthогizаtiоп:",u"Ваѕіс",u"ЅаmрlеLеttегѕОпlуVаluе"})));
-  QVERIFY(keepFirstReading(words({u"DB_PASSWORD=",u"x"}),words({u"ДВ_РАЅЅШОRD=",u"х"})));
-  // A label inside a garbled word is not one.
-  QVERIFY(!keepFirstReading(words({u"Rapia",u"Botpr",u"Skeyq"}),words({u"Рапіа",u"Ботпр",u"Скейк"})));
-  // The Latin rule on its own: no label, no token-shaped word.
-  QVERIFY(keepFirstReading(words({u"see",u"the",u"docs"}),words({u"see",u"the",u"docs"})));
-  QVERIFY(takeOther(readings[3]));QVERIFY(!takeOther(readings[1]));QVERIFY(!takeOther({true,90*4,80*4,4,4}));QVERIFY(!takeOther({false,10,90,1,1}));
+  // ria.ru's menu, read in English (mean 55) then in Russian (mean 88), is
+  // replaced; a Latin key or password line that Russian turns into Cyrillic
+  // look-alikes rises little (71 to 76) and stays as read (Sol S16-S21 on #1986).
+  QVERIFY(!mostlyLatin(words({u"В",u"мире",u"Экономика",u"Общество"})));
+  QVERIFY(takeOther({true,55*4,88*4,4,4},false));
+  QVERIFY(!mostlyLatin(words({u"ҒАКЕ7ОШЗКТУ5ОР2Х4С"})));
+  QVERIFY(!takeOther({true,71,76,1,1},false));
+  // A Latin reading needs only to be surer.
+  QVERIFY(takeOther(readings[3],true));QVERIFY(!takeOther(readings[1],true));QVERIFY(!takeOther({true,90*4,80*4,4,4},true));QVERIFY(!takeOther({false,10,90,1,1},true));
  }
  // #1981: a composite's pieces map back to their own source pixels, at any
  // scale and polarity, and a box in a gap belongs to no piece.
