@@ -750,7 +750,7 @@ the first pass was cut short or already uses three languages.
    costs a walk over the words and nothing else.
 2. **Detect.** Tesseract's orientation and script detection (OSD, `osd.traineddata`, which runs on the
    legacy engine) reads a composite of up to 60 of the widest garbled segments, as many as fit in 4
-   megapixels. Each is grown by a third of its height, dark panels are inverted, code areas are
+   megapixels. Each is grown by a third of its height (at least 4 pixels) within its panel, dark panels are inverted, code areas are
    filled, and they are stacked on white at their own pixels. In the research, OSD on a whole screen
    was wrong (ynet's Hebrew came back as Thai) or found nothing (BBC Arabic). On the composite, the final
    sweep detected and kept Chinese, Japanese, Korean, Russian, Hebrew, Arabic and Hindi pages; Thai gave
@@ -792,14 +792,14 @@ them. `outcome` is one of these:
 | Outcome | Meaning |
 | --- | --- |
 | `kept` | The garbled segments' second reading was kept. Some segments may still hold their first reading: those that gave no words, and others the rest-of-page pass didn't replace or had no time or memory for. The language is listed in `languagesUsed` |
-| `discarded` | Read again, but the rise was under 15 points, nothing was read, the language is already one of the job's, or its data didn't load |
-| `language_missing` | That language's data isn't installed. Copy text's notification names it |
+| `discarded` | The language is already one of the job's, or its data didn't load, or the garbled segments were read again and the rise was under 15 points or gave no words |
+| `language_missing` | That language's data isn't installed. When Copy text copies the text, its notification names it |
 | `detector_missing` | No `osd` data |
 | `unknown_script` | OSD found no script, Latin, or one without a language here |
-| `no_time` | Too little of the time budget was left to start, or OSD didn't finish |
+| `no_time` | Too little of the time budget was left to start, OSD didn't finish, or the reread finished no garbled group in time |
 | `no_memory` | The memory budget had no room for OSD, the first reread engine or its composites, or an allocation failed while the readers ran |
 
-The job never fails for the check: whatever stopped it, the first reading stands where nothing was kept.
+For every outcome in the table the job goes on with the first reading wherever nothing was kept.
 
 **Measured on the #1975 sweep** (`tools/lab/redact_sites`, 265 public pages, 1,701 captures, all on
 aurora-amd with the same helper, the check off and then on). The check ran on 136 captures and kept a
@@ -1314,8 +1314,8 @@ other tool active it does not. The user's side is in the
     that stay:
     - a page in another script (Chinese, Japanese, Korean, Russian, Hebrew) read with English only
       comes back as random-looking Latin words, which can look like a split token. This was the
-      baseline, read in English only. Since #1981, with no language chosen, garbled lines are read
-      again in their script's language ([pages in another script](#pages-in-another-script)), and the
+      baseline, read in English only. Since #1981, with no language chosen, garbled lines may be read
+      again in their script's language when the check finds a supported script and can load its data ([pages in another script](#pages-in-another-script)), and the
       default-kind pages fell from 15 to 12. We tried skipping key candidates made of many short,
       low-confidence words with no prefix, label or secret word: it cleared none of the six such
       pages fully and dropped three true covers in the fuzz scenes, so it was not kept;
@@ -2154,8 +2154,8 @@ the house rule.
 - **Script data (#1981).** The script check needs `osd` and one language per script. They are
   weak dependencies of the DEB and RPM, which apt and dnf install by default, and optional on Arch;
   without them a page in another script is read with the job's own languages, as before. When the
-  check finds a script whose language is missing, Copy text's notification names it; without `osd` it
-  can't find one. The native audit refuses a DEB or RPM that does
+  check finds a script whose language is missing and Copy text copies the text, its notification names
+  it; without `osd` it can't find one. The native audit refuses a DEB or RPM that does
   not recommend all ten. The AppImage carries them.
 - **AppImage.** It builds Leptonica (no image-format libraries at all), Tesseract (with its legacy
   engine, which only OSD uses: recognition stays LSTM only; no curl, no archive, no OpenMP, no
@@ -2352,13 +2352,13 @@ The raw rows are in the evidence record's
   host. The whole set took 0.997× as long with the check on as off on aurora-amd (at `4aad3e35c`), and
   1.0007× on m74, 1.0005× on f44, 0.996× on k72 and 1.004× on d69 (at `78d7987e2`, whose Latin path is
   the same), with a median paired ratio of 1.000. A Latin capture that does trigger (53 of the final
-  sweep's 1,611) pays for OSD, about 0.25 to 1 s in the research, and when OSD names a supported script,
-  for a reread as well.
+  sweep's 1,611) pays for OSD, about 0.25 to 1 s in the research, and, when OSD names a supported script
+  whose data is installed, it can pay for a reread as well.
 - **Non-Latin pages** read every Russian and Chinese repetition again in its language (`kept`), inside
   the 16 s budget everywhere, never truncated. The slowest median was a 4K Chinese screen on d69, at
   11.4 s.
 - **Memory.** Peak resident memory on a Chinese page reached 313 to 324 MiB (aurora-amd 4K 331,468 KiB,
-  d69 327,848 KiB, m74 326,276 KiB, k72 320,356 KiB) against 129 to 150 MiB with the check off. That is inside the
+  d69 327,848 KiB, m74 326,276 KiB, k72 320,356 KiB) against 126 to 146 MiB with the check off. That is inside the
   budget of 320 MiB plus the data beyond English, `osd` and `chi_sim` (about 332 MiB). Russian pages
   peaked under 180 MiB. Latin pages' peaks were unchanged.
 - Raw rows and the five-desktop acceptance are in the evidence record
