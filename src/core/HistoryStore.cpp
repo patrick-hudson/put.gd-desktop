@@ -475,48 +475,61 @@ Error HistoryStore::startDeletion(QJsonObject& doc) {
  if(!writeDeletion(proposed,false,nullptr)||!db_.commit()) {db_.rollback();return sqlError();}
  doc=proposed;return {};
 }
-// Which deletion holds a record is its item_state deleteOperationId (#1773): a new deletion takes the record
-// over when it is recorded (claim), and an earlier one retried after that leaves it alone, so the newer
-// deletion's outcome and saved progress always win. A claim is refused while the holder may still need its
-// own retry, as HistoryService::prepare says: an outcome a retry settles, or a saved "phase" checkpoint.
+// Which deletion holds a record is its item_state deleteOperationId (#1773); of two deletions the newer is the one
+// recorded later (deletions.rowid). A new deletion takes a record over when it is recorded (claim), and an older one
+// retried after that leaves it alone, so the newer deletion's state and saved progress always win; a newer one
+// named by an older holder (a journal written before this rule) takes it back. A claim is refused while the holder
+// may still need its own retry, as HistoryService::prepare says (an outcome a retry settles, or a saved "phase"
+// checkpoint), and while any deletion keeping the record in History can't let it go (releasable).
 bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
  QSqlQuery q(db_);const auto id=doc["id"].toString();
  const QStringList finals{"removed","already_missing","changed"};
- auto items=doc["items"].toArray();QList<bool> held;QList<QJsonObject> states;
+ // The order deletions were first recorded; a deletion not recorded yet is the newest.
+ const auto sequence=[&](const QString& deletion,bool* ok)->qint64 {q.prepare("SELECT rowid FROM deletions WHERE id=?");q.addBindValue(deletion);*ok=q.exec();const auto seq=*ok&&q.next()?q.value(0).toLongLong():-1;q.finish();return seq;};
+ bool ok=true;const auto self=sequence(id,&ok);if(!ok)return false;
+ QJsonObject stored;if(self>=0){q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec())return false;if(q.next())stored=decode(q.value(0));q.finish();}
+ QHash<QString,QJsonObject> before;for(const auto& v:stored["items"].toArray())before.insert(v.toObject()["historyId"].toString(),v.toObject());
+ auto items=doc["items"].toArray();QList<bool> held,taken;QList<QJsonObject> states;QHash<QString,QStringList> release;
  for(qsizetype i=0;i<items.size();++i) {
   auto item=items[i].toObject();const auto historyId=item["historyId"].toString();
   q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);if(!q.exec())return false;
   const bool found=q.next();const auto data=found?decode(q.value(0)):QJsonObject{};q.finish();
   const auto holder=data["deleteOperationId"].toString();
-  if(!holder.isEmpty()&&holder!=id) {
-   if(claim) {
-    const auto remote=data["remoteStatus"].toString();
-    if(QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(data["deleteProgress"].toObject().contains("phase")&&!finals.contains(remote))) {
-     if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
-     return true;
+  if(claim) {
+   const auto remote=data["remoteStatus"].toString();QStringList keeping;
+   const bool holderBusy=!holder.isEmpty()&&holder!=id&&(QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(data["deleteProgress"].toObject().contains("phase")&&!finals.contains(remote)));
+   if(holderBusy||!releasable(historyId,{},&keeping)) {
+    if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
+    return true;
+   }
+   keeping.removeAll(id);release.insert(historyId,keeping);
+  } else if(!holder.isEmpty()&&holder!=id) {
+   const auto other=sequence(holder,&ok);if(!ok)return false;
+   if(self<0||other>self) {
+    // Taken over by a newer deletion: this one sends nothing more for it and no longer keeps it. An outcome it
+    // had already recorded stays in its journal; one it read only after the takeover is not reported.
+    const auto earlier=before.value(historyId);
+    if(finals.contains(earlier["status"].toString()))item=earlier;
+    else {
+     item["status"]="taken_over";item["takenOverBy"]=holder;
+     item["error"]=Error{"delete_taken_over","A newer deletion of this file took over; its History entry shows that one.",{{"deleteOperationId",holder}}}.toJson();
     }
-   } else {
-    // Taken over by a newer deletion: this one sends nothing more for it, no longer keeps it, and reports
-    // no outcome of its own for it, even one it read meanwhile.
-    item["status"]="taken_over";item["takenOverBy"]=holder;
-    item["error"]=Error{"delete_taken_over","A newer deletion of this file took over; its History entry shows that one.",{{"deleteOperationId",holder}}}.toJson();
-    items[i]=item;
-    held<<false;states<<QJsonObject{};continue;
+    items[i]=item;held<<false;taken<<true;states<<QJsonObject{};continue;
    }
   }
-  held<<found;states<<data;
+  held<<found;taken<<false;states<<data;
  }
  doc["items"]=items;
- q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(id);q.addBindValue(encode(doc));bool ok=q.exec();
+ q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(id);q.addBindValue(encode(doc));ok=q.exec();
  // While a deletion is accepted or running, each target it may still send a request for is retained.
  const bool live=doc["state"]=="accepted"||doc["state"]=="running";
  for(qsizetype i=0;ok&&i<items.size();++i) {const auto item=items[i].toObject();const auto status=item["status"].toString();const bool final=finals.contains(status);const auto historyId=item["historyId"].toString();
   // A finished one keeps a target that may still need a request, and one whose saved "phase" checkpoint
   // has no final outcome yet (#1763): until then its record can't leave History and a retry keeps it.
-  const bool active=status!="taken_over"&&(live?!final:status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained"||(!final&&item["progress"].toObject().contains("phase")));
+  const bool active=!taken[i]&&(live?!final:status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained"||(!final&&item["progress"].toObject().contains("phase")));
   q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(id);q.addBindValue(historyId);q.addBindValue(active?1:0);ok=q.exec();
-  // The deletion it took the record over from sent nothing for it (the claim was not refused): it lets go.
-  if(ok&&claim) {q.prepare("UPDATE deletion_targets SET active=0 WHERE history_id=? AND deletion_id<>?");q.addBindValue(historyId);q.addBindValue(id);ok=q.exec();}
+  // The deletions it took the record over from may all let it go (the claim was not refused): they do.
+  for(const auto& deletion:release.value(historyId)){if(!ok)break;q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletion);q.addBindValue(historyId);ok=q.exec();}
   if(ok&&held[i]) {auto data=states[i];data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=id;data["deleteProgress"]=item["progress"];ok=persistRemote(db_,historyId,data);}
  }
  return ok;
