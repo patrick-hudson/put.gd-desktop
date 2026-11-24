@@ -285,13 +285,19 @@ def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_S
     if not tmpfs_mounted(root, mounts):
         return None
     uid = os.getuid() if uid is None else uid
-    deadline, total, entries, complete = clock() + seconds, 0, [], True
+    deadline = clock() + seconds
     try:
-        top = sorted(os.scandir(root), key=lambda entry: entry.name)
+        device, top = os.stat(root).st_dev, os.scandir(root)
     except OSError:
         return {'total': 0, 'entries': [], 'complete': False}
-    device = os.stat(root).st_dev
-    for entry in top:
+    with top:
+        total, entries, complete = _tmp_entries(top, uid, device, deadline, clock)
+    return {'total': total, 'entries': entries, 'complete': complete}
+
+
+def _tmp_entries(top, uid, device, deadline, clock):
+    total, entries, complete = 0, [], True
+    for entry in top:  # streamed: the budget holds while /tmp itself is listed
         if clock() > deadline:
             complete = False
             break
@@ -326,7 +332,7 @@ def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_S
             entries.append((entry.path, size, info.st_ino))
         if not complete:
             break
-    return {'total': total, 'entries': entries, 'complete': complete}
+    return total, entries, complete
 
 
 def mem_available():
