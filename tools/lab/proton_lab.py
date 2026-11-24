@@ -348,6 +348,7 @@ def minimal_environment():
 def headless(layout, registry, keychain):
     """A lab resident with no display and a private runtime directory (and so its own session
     socket). With `keychain` it joins the user's real session bus, where the secret service is."""
+    # tmpfs-ok: holds only the resident's sockets; the short path keeps them under 107 bytes
     runtime = Path(tempfile.mkdtemp(prefix='pgp', dir='/tmp'))
     environment = dict(minimal_environment(), **layout.environment(), XDG_RUNTIME_DIR=str(runtime),
                        QT_QPA_PLATFORM='offscreen')

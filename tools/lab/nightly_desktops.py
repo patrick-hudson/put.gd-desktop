@@ -67,6 +67,21 @@ TERMINATE_GRACE = 300
 ATTEMPT_TIMEOUT = 1800  # Recipes allow 300–720s, plus fixture/live setup/cleanup.
 
 
+# Reasons a row never starts that lie with its builder, not with the build (preflight, await_host,
+# run_host). A row stopped by one of these on two nights running is a host problem someone has to
+# fix: on 11-22 and 11-23 lab scratch in k72's and f44's RAM-backed /tmp kept their rows from
+# running at all, and nothing said so (#1978).
+HOST_REASONS = ('RAM below guest requirement', 'load at or above core count', 'disk below sparse overlay budget',
+                'builder KVM unavailable', 'golden missing', 'golden copy awaiting', 'reserved nightly guest port',
+                'desktop lease held', 'proton lease held', 'nightly guest slot held', 'SSH unreachable',
+                # The same occupied slot or lease, met by stale-guest recovery before await_host.
+                'nightly guest slot belongs to a live or unverified worker',
+                'nightly guest recovery refused: desktop lease is live or belongs to another session',
+                # A guest kept for cleanup or recovery keeps every later row off the slot until someone acts.
+                'guest retained', 'guest recovery')
+HOST_BLOCKED_ALERT = 2  # nights running
+
+
 class NotRun(RuntimeError):
     """Infrastructure prevented a valid app-flow observation."""
 
@@ -1048,7 +1063,7 @@ def recover_stale_guest(config, out, *, checked_run=None, by='nightly'):
             released = None
             if state['state'] != 'free':
                 save(recovery/'desktop-release.json', desktop.release(owner['session'], verified_clean=True,
-                     not_mine=controller_ssh_identities if config['host'] == 'd69' else []))
+                     not_mine=controller_ssh_identities if config['host'] == 'd69' else [], tmp_blocks=False))
                 released = str(recovery/'desktop-release.json')
             files = [name for name in ('session', 'owner.json', 'retained.json') if os.path.lexists(slot/name)]
             stamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
@@ -1150,7 +1165,8 @@ def lease(host, session, out, *, reservation=None):
         else:
             try:
                 not_mine = controller_ssh_identities if host == 'd69' else []
-                save(out/'lock-release.json', lock.release(session, verified_clean=True, not_mine=not_mine))
+                # Another session's large /tmp scratch is reported in the receipt but can't retain the slot.
+                save(out/'lock-release.json', lock.release(session, verified_clean=True, not_mine=not_mine, tmp_blocks=False))
                 if acquired:
                     (slot/'session').unlink()
                     (slot/'owner.json').unlink(missing_ok=True)
@@ -1514,6 +1530,58 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
     return result
 
 
+def host_blocked(row):
+    """The builder's reason when no cell of ROW ran because of its host, else None."""
+    cells = [value for value in row['cells'].values() if value['status'] != 'unsupported']
+    if not cells or any(value['status'] != 'not_run' or value.get('attempts') for value in cells):
+        return None
+    reason = row.get('notRunReason') or next((value['assertion'] for value in cells if value.get('assertion')), '')
+    return reason if any(part.strip().startswith(HOST_REASONS) for part in reason.split(';')) else None
+
+
+def last_results(state):
+    """The results the last controller run published, or None."""
+    try:
+        return json.loads(Path(json.loads((state/'last-run.json').read_text())['results']).read_text())
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def count_host_blocked(result, last):
+    """Give each row its builder kept from running a count of its published runs in a row so
+    blocked, from the last published results. A run on the UTC date the row was last counted
+    (`hostBlockedDate`, kept with the row when a filtered recheck carries it over) adds none."""
+    today = str(result.get('date', ''))[:10]
+    try:
+        before = {(row['host'], row['desktop']): row for row in (last or {}).get('desktops', [])}
+        published = str((last or {}).get('date', ''))[:10]
+    except (AttributeError, KeyError, TypeError):
+        before, published = {}, ''
+    for row in result['desktops']:
+        row.pop('hostBlockedNights', None)
+        row.pop('hostBlockedDate', None)
+        if not host_blocked(row):
+            continue
+        previous = before.get((row['host'], row['desktop']))
+        try:
+            blocked_before = bool(previous) and bool(host_blocked(previous))
+            earlier = int(previous.get('hostBlockedNights') or 1) if blocked_before else 0
+            counted = str(previous.get('hostBlockedDate') or published)[:10] if blocked_before else ''
+        except (AttributeError, KeyError, TypeError, ValueError):
+            earlier, counted = 0, ''
+        row['hostBlockedNights'] = max(1, earlier if counted == today else earlier+1)
+        row['hostBlockedDate'] = today
+
+
+def host_alert(row):
+    """One line for a row its builder has kept from running for HOST_BLOCKED_ALERT nights or more."""
+    nights = row.get('hostBlockedNights', 0)
+    if nights < HOST_BLOCKED_ALERT:
+        return None
+    return (f'{row["desktop"]} / {row["host"]} ran no cell for {nights} nights running: {host_blocked(row)}. '
+            'The builder needs attention before the next nightly; tell the lab coordinator.')
+
+
 def table(result):
     lines = ['| Desktop / host | '+' | '.join(FLOWS.values())+' | Not run |',
              '| --- | '+' | '.join('---' for _ in FLOWS)+' | --- |']
@@ -1530,6 +1598,8 @@ def table(result):
             if value['status'] == 'not_run' and value.get('assertion'):
                 reasons.append(value['assertion'])
         reason = row.get('notRunReason') or '; '.join(dict.fromkeys(reasons))
+        if row.get('hostBlockedNights', 0) >= HOST_BLOCKED_ALERT:
+            reason = f'⚠️ {row["hostBlockedNights"]} nights running: '+reason
         reason = reason.replace('|', '/').replace('\n', ' ')[:500]
         lines.append('| '+row['desktop']+' / '+row['host']+' | '+' | '.join(values)+' | '+reason+' |')
     return '\n'.join(lines)+'\n'
@@ -1584,7 +1654,11 @@ def publish(github, result, out, *, previous=None):
             identity={k:row.get(k) for k in ('profile','driver','session','runId','goldenSha256','packageSha256')},
             seconds=row.get('totalSeconds', row.get('seconds')), waitSeconds=row.get('waitSeconds', 0),
             attachments=row['evidence']+'/attachments.tgz', notRunReason=row.get('notRunReason'))
-        body = f'{result["release"]} · {row["desktop"]} / {row["host"]}\n\n```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'
+        if row.get('hostBlockedNights'):
+            receipt.update(hostBlockedNights=row['hostBlockedNights'], hostBlockedDate=row.get('hostBlockedDate'))
+        alert = host_alert(row)
+        body = f'{result["release"]} · {row["desktop"]} / {row["host"]}\n\n'+(f'> [!WARNING]\n> {alert}\n\n' if alert else '')
+        body += '```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'
         comment = github.api(f'repos/{github.repo}/issues/{pinned["number"]}/comments', 'POST', dict(body=body))
         for value in row['cells'].values():
             value['receiptUrl'] = comment['html_url']
@@ -1609,7 +1683,11 @@ def publish(github, result, out, *, previous=None):
                 github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed'))
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
-    markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
+    markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'
+    alerts = [line for line in map(host_alert, result['desktops']) if line]
+    if alerts:
+        markdown += '> [!WARNING]\n'+''.join(f'> {line}\n' for line in alerts)+'\n'
+    markdown += table(result)
     markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · ➖ not supported on this desktop (acceptance matrix) · — disabled.\n'
     markdown += '\n| Desktop / host | Row seconds | Host total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: | ---: |\n'
     for row in result['desktops']:
@@ -1889,6 +1967,8 @@ def controller(args, config, *, local_workers=None):
         else:
             run_hosts(builders,tag,artifacts,out,result,local_workers=local_workers)
         result['eligibleDesktops'] = eligible_desktops(result)
+        if not stable_draft:
+            count_host_blocked(result, last_results(state))
         publish(github,result,out,previous=previous)
         save(state/'last-run.json',dict(results=str(out/'results.json'),eligibleDesktops=result['eligibleDesktops']))
         # Grey is not a tested release. A later daily check may try it again.

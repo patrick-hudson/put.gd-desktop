@@ -59,6 +59,7 @@ _IDLE = r'''idle() {
 '''
 HOLD_UPDATES = (r'''set -u
 # The root hooks live in a private directory only lab can write; any failure to make them stops here.
+# tmpfs-ok: runs in the guest and holds a few hook files
 hold=$(mktemp -d) || exit 1
 ''' + _IDLE + r'''as_root() {
  command -v apt-get >/dev/null 2>&1 || return 0

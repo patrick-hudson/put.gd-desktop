@@ -10,7 +10,6 @@ import base64
 import functools
 import collections
 import stat
-import tempfile
 import dataclasses
 import hashlib
 import hmac
@@ -551,7 +550,24 @@ def scan_run(directory, *, frames=None, literals=(), quarantine=False, hosts=(),
 
 def quarantine_files(root, files):
     """Outside the export root; names never preserve attacker-controlled text."""
-    directory = Path(tempfile.mkdtemp(prefix='putgd-surface-quarantine-'))
+    import tempfile
+    from tools.lab import scratch  # on disk: /tmp is RAM on the builders (#1978)
+    makers = (lambda: scratch.mkdtemp(prefix='putgd-surface-quarantine-'),
+              # tmpfs-ok: when the scratch base is refused or inside the export root
+              lambda: tempfile.mkdtemp(prefix='putgd-surface-quarantine-'))
+    directory = None
+    for make in makers:
+        try:
+            candidate = Path(make())
+        except (scratch.ScratchError, OSError):
+            continue
+        if candidate.resolve().is_relative_to(Path(root).resolve()):
+            candidate.rmdir()  # empty: made just now
+            continue
+        directory = candidate
+        break
+    if directory is None:
+        raise RuntimeError('no private quarantine directory outside the export root; nothing was moved')
     directory.chmod(0o700)
     actions = []
     moved = []
