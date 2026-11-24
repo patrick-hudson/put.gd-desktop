@@ -1,4 +1,5 @@
 #include <csignal>
+#include <sys/wait.h>
 #include "platform/ProcessStat.h"
 #include "RegionProcess.h"
 #include "platform/SessionLock.h"
@@ -35,7 +36,15 @@ WaylandRegionProcess::WaylandRegionProcess(QString helperPath,QObject* parent)
  deadline_.setSingleShot(true); stopDeadline_.setSingleShot(true); moveFlush_.setSingleShot(true);
  connect(&moveFlush_,&QTimer::timeout,this,[this]{if(pendingMove_){flushMove();if(busy())moveFlush_.start(33);}});
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout"));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_){stoppedAfterAccept_=resultReceived_&&accepted_&&!failure_;process_->kill();}});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{
+  if(!process_)return;
+  // Claim the kill only for a helper still alive now (peek, not reap; __WALL as
+  // Qt may clone it without SIGCHLD): one that already exited or was killed
+  // from outside keeps its own exit status (#398).
+  siginfo_t info{};const auto pid=pid_t(process_->processId());
+  const bool alive=pid>0&&::waitid(P_PID,id_t(pid),&info,WEXITED|WNOHANG|WNOWAIT|__WALL)==0&&info.si_pid==0;
+  stoppedAfterAccept_=alive&&resultReceived_&&accepted_&&!failure_;process_->kill();
+ });
 }
 WaylandRegionProcess::~WaylandRegionProcess() { shutdown(); }
 void WaylandRegionProcess::shutdown() {
