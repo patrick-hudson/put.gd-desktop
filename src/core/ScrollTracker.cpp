@@ -904,6 +904,9 @@ constexpr double kRepeatMargin = 0.05;
 // quite all pinned leaves the whole overlap at 0.95).
 constexpr double kWholeCells = 0.99;
 constexpr double kWholeShare = 0.90;
+// A candidate that agrees in kWholeCells and leaves at most this share of the
+// tiles neither moving with it nor standing still explains the frame alone.
+constexpr double kAloneOther = 0.02;
 // Offsets closer than this are the same place.
 constexpr int kSamePlaceRows = 8;
 int sliverRows(const TrackerOptions& o, int h) {
@@ -1337,6 +1340,25 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
       ++count;
     }
     if (count == 1 && !columnsNear) page = consistent;
+  }
+  // One movement that explains the whole frame is the page, whatever the
+  // columns say: its cells and bands agree in kWholeCells and it leaves no
+  // more than kAloneOther of the tiles neither moving with it nor standing
+  // still. Another layer is then a look-alike at a far offset, and the
+  // columns favour it: it spans its own small overlap as fully as the page
+  // spans its large one. On the ruler page a frame that moved further than
+  // auto-scroll's hint was placed 452 rows up at 0.75 of its cells, against
+  // 1.00 where the page was, and the image kept 425 rows of it on top (#1535).
+  if (layers > 1) {
+    int alone = -1;
+    bool several = false;
+    for (int i : ok) {
+      const Candidate& c = cands[size_t(i)];
+      if (c.cells < kWholeCells || c.bands < kWholeCells || c.other > kAloneOther) continue;
+      if (alone >= 0 && layerOf[size_t(alone)] != layerOf[size_t(i)]) several = true;
+      if (alone < 0 || c.cells > cands[size_t(alone)].cells) alone = i;
+    }
+    if (alone >= 0 && !several) page = layerOf[size_t(alone)];
   }
   // The page's layer must explain the frame: tiles that neither move with
   // any layer found nor stood still (a page further away than the frame is
@@ -4611,8 +4633,15 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // rows back, at 0.88 of its cells, while the page went down, left a
     // GitHub pull request 952 rows short on Cinnamon).
     const bool known = at >= top_ && at + height_ <= bottom_;
+    // A place off the driver's hint (auto-scroll said where the page would
+    // be, and the frame is elsewhere) must agree as one found again does: a
+    // look-alike of the ruler page's numbered rows, 506 rows on where the
+    // hint said 8 and the page had gone 746, fits at 0.74 of its cells, and
+    // its rows were written into the image (#1535).
+    const bool offHint = hinted && !hintSays(c.d);
     return (strict && ((found ? c.cells : c.cellsKept) < opts_.recoverCells || 3 * inside < height_)) ||
            (known && !hintSays(c.d) && c.cells < opts_.recoverCells) ||
+           (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) ||
            contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
   };
   // The pair's place, also when the image's check refuses it: the image
@@ -4752,7 +4781,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // pair agreed in every cell, and a part of the image written by a layer
     // of its own (a side bar at its own pace) made the check refuse it.
     const bool elsewhere = fp >= 0 && (pairD == INT_MIN || std::abs(found[size_t(fp)].d - pairD) >= kSamePlaceRows);
-    if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
+    if (fp >= 0 && (elsewhere || skipRun_ > 0 || hinted) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
       bool retried = false;
       const long long fpos = lastPos_ + found[size_t(fp)].d;
       if (prevHasPos_ && prevSig() && !prevViewMoved_ && skipRun_ < opts_.lostAfterSkips &&

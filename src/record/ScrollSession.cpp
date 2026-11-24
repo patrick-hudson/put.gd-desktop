@@ -636,7 +636,27 @@ void ScrollSession::autoTick() {
     if (phase_ != Phase::Settle && phase_ != Phase::Recover) return;
     if (stepFirstMoveAt_ >= 0) {
         const bool quiet = opts_.restQuietMs > 0 && lastMoveAt_ >= 0 && now - lastMoveAt_ >= opts_.restQuietMs && now - lastFrameAt_ >= opts_.restQuietMs;
-        if ((lastStill_ && stillRun_ >= opts_.restFrames && now - lastMoveAt_ >= opts_.settleMs) || quiet || now - stepSentAt_ >= opts_.stepTimeoutMs) { settled(now); return; }
+        const bool rested = lastStill_ && stillRun_ >= opts_.restFrames && now - lastMoveAt_ >= opts_.settleMs;
+        const bool timedOut = now - stepSentAt_ >= opts_.stepTimeoutMs;
+        if (rested || quiet || timedOut) {
+            // The step that measures the distance per notch rests only where
+            // the screen shows it: no frame for a while is also a source that
+            // stalled while the page went on. A starved X server's grabs
+            // stalled 80 ms in every 100; the first step was taken as settled
+            // after its first frame, at 27 px a notch instead of 100, the next
+            // went 8 notches, past what a frame can follow, and the page was
+            // lost (#1535). A fresh frame says which; later steps keep the
+            // distance within bounds of this one.
+            if (quiet && !rested && !timedOut && phase_ == Phase::Settle && stepFromRest_ && stepNotches_ > 0 && stats_.pxPerNotch <= 0) {
+                const int64_t movedAt = lastMoveAt_;
+                if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500)) feed(*fresh);
+                if (!auto_ || phase_ != Phase::Settle || lastMoveAt_ != movedAt) return;  // it moved on: not at rest yet
+                settled(clock_.nowMs());
+                return;
+            }
+            settled(now);
+            return;
+        }
         // Most of the step has moved: the next goes now. A browser's smooth
         // scroll eases out for half a second and more; the frames of its tail
         // and of the next step overlap as well as any.

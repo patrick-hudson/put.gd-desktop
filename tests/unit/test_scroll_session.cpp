@@ -592,6 +592,26 @@ void testOneFrameOutOfPlace() {
          counts(u) + fmt(", %d hand-backs", u.stats.handBacks));
 }
 
+// The first step measures the distance per notch, and no frame for a while
+// does not prove that it rests (#1535): a starved X server's grabs stalled
+// for 80 ms in every 100, in the middle of the step's animation. The step was
+// taken as settled after its first frame, at 27 px a notch instead of 100;
+// the next step went 8 notches, 800 px, past what a frame can follow, the page
+// was lost, and auto-scroll handed the wheel back to nobody.
+void testStallInTheFirstStep() {
+  std::printf("A source that stalls in the first step\n");
+  const Document doc = page(96);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 100;
+  as.stallAfterFirstMoveMs = 150;
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a stall after the first step's first frame: the distance per notch measured whole, the image exact to the end",
+         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+}
+
 // "Scroll to the top first" with a strip under the first wheel point that
 // takes no wheel (#1536's review): two still steps there say nothing of the
 // top. The top is proved only where the wheel moves the page, or once every
@@ -1097,6 +1117,7 @@ int main() {
   testStaleStreamUnderAuto();
   testTopUnderADeadPoint();
   testOneFrameOutOfPlace();
+  testStallInTheFirstStep();
   testHintsCountedOnce();
   testBlankUnderPinnedParts();
   testEndAboveABlankTail();

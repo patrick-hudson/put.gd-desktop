@@ -350,6 +350,10 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     framePositions.push_back(pos);
     return putgd::record::RunFrame{delivered_.view(), t};
   }
+  if (spec_.stallAfterFirstMoveMs > 0 && !stallDone_ && !framePositions.empty() && pos != framePositions.back()) {
+    stallDone_ = true;
+    quietUntil_ = t + spec_.stallAfterFirstMoveMs;
+  }
   int shown = pos;
   if (spec_.glitchAtMs >= 0 && !glitchDone_ && t - firstFrameT_ >= spec_.glitchAtMs && !framePositions.empty() && pos != framePositions.back()) {
     glitchDone_ = true;
