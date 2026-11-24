@@ -76,7 +76,9 @@ HOST_REASONS = ('RAM below guest requirement', 'load at or above core count', 'd
                 'desktop lease held', 'proton lease held', 'nightly guest slot held', 'SSH unreachable',
                 # The same occupied slot or lease, met by stale-guest recovery before await_host.
                 'nightly guest slot belongs to a live or unverified worker',
-                'nightly guest recovery refused: desktop lease is live or belongs to another session')
+                'nightly guest recovery refused: desktop lease is live or belongs to another session',
+                # A guest kept for cleanup or recovery keeps every later row off the slot until someone acts.
+                'guest retained', 'guest recovery')
 HOST_BLOCKED_ALERT = 2  # nights running
 
 

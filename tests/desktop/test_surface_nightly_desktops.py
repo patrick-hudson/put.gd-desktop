@@ -1902,6 +1902,10 @@ with n.controller_shutdown(workers):
         slot = night('2026-11-24', 'nightly guest slot belongs to a live or unverified worker')
         nightly.count_host_blocked(slot, second)  # met by stale-guest recovery, before await_host
         self.assertEqual(slot['desktops'][0]['hostBlockedNights'], 3)
+        kept = night('2026-11-24', 'guest retained: live remote cleanup unresolved (marker in the run directory); '
+                                   'resolve it before recovery')
+        nightly.count_host_blocked(kept, second)
+        self.assertEqual(kept['desktops'][0]['hostBlockedNights'], 3)
         recovered = night('2026-11-24', ram, ran=True)
         nightly.count_host_blocked(recovered, second)
         self.assertNotIn('hostBlockedNights', recovered['desktops'][0])

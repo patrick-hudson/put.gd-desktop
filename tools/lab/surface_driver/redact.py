@@ -551,7 +551,16 @@ def scan_run(directory, *, frames=None, literals=(), quarantine=False, hosts=(),
 def quarantine_files(root, files):
     """Outside the export root; names never preserve attacker-controlled text."""
     from tools.lab import scratch  # on disk: /tmp is RAM on the builders (#1978)
-    directory = Path(scratch.mkdtemp(prefix='putgd-surface-quarantine-'))
+    try:
+        directory = Path(scratch.mkdtemp(prefix='putgd-surface-quarantine-'))
+    except scratch.ScratchError:
+        directory = None
+    if directory is None or directory.resolve().is_relative_to(Path(root).resolve()):
+        if directory is not None:
+            directory.rmdir()
+        import tempfile
+        # tmpfs-ok: the scratch base is refused or inside the export root; quarantine must stay outside it
+        directory = Path(tempfile.mkdtemp(prefix='putgd-surface-quarantine-'))
     directory.chmod(0o700)
     actions = []
     moved = []
