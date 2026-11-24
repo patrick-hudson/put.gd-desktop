@@ -23,6 +23,9 @@
 #include <QTemporaryDir>
 #include "fixtures/Waits.h"
 namespace {
+// A verified, accepted capture ends with a normal zero exit, or with the
+// resident stopping a helper that was slow to exit after the accept (#398).
+bool acceptedExit(const QJsonObject& exit){return exit["stoppedAfterAccept"].toBool()||(exit["status"].toString()=="normal"&&exit["code"].toInt()==0);}
 bool cacheExpected(){return QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0);}
 QJsonObject regionSnapshot(char fingerprint='a');
 bool createCursorTrace(const QString& path){
@@ -228,7 +231,7 @@ private slots:
    qputenv("PUTGD_TEST_CAPTURE_MODE",index==1||index==5?"cursor-empty":"cursor-seed");int count=0;putgd::PayloadResult result;
    controller.start(targets[index],{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
-   const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+   const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),12);
   for(qsizetype index=0;index<targets.size();++index){
@@ -292,7 +295,7 @@ private slots:
    for(int repeat=0;repeat<2;++repeat){
     int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
     QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
-    const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+    const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));
    }
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),8);
@@ -354,7 +357,7 @@ private slots:
   const auto frozen=snapshot();controller.start(frozen,{},[&](putgd::PayloadResult result){QVERIFY(!result.error);done=true;},"Opens the image editor");
   PUTGD_TRY_VERIFY(done);const auto frames=cursorTrace(trace);QVERIFY(!frames.isEmpty());QCOMPARE(frames.first()["outcome"].toString(),QString("Opens the image editor"));QCOMPARE(frozen,snapshot());
  }
- void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
+ void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
  void preparedHelperStaysIdleUntilBegin(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   auto ticket=controller.prepare(snapshot(),{});QVERIFY(controller.busy());

@@ -15,7 +15,9 @@
 #include <QThread>
 #include <QUuid>
 #include <fcntl.h>
+#include <csignal>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 namespace putgd {
 namespace {
@@ -45,7 +47,15 @@ CaptureProcessController::CaptureProcessController(QString helperPath,QObject* p
  deadline_.setSingleShot(true);stopDeadline_.setSingleShot(true);holdDeadline_.setSingleShot(true);
  connect(&holdDeadline_,&QTimer::timeout,this,&CaptureProcessController::releaseCrosshair);
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout","deadline",{{"ready",ready_},{"begun",begun_},{"result",resultReceived_}}));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{
+  if(!process_||process_->state()==QProcess::NotRunning)return;
+  // Claim the kill only for a helper still alive now (peek, not reap; __WALL as
+  // Qt may clone it without SIGCHLD): one that
+  // already exited or was killed from outside keeps its own exit status (#398).
+  siginfo_t info{};const auto pid=pid_t(process_->processId());
+  const bool alive=pid>0&&::waitid(P_PID,id_t(pid),&info,WEXITED|WNOHANG|WNOWAIT|__WALL)==0&&info.si_pid==0;
+  stoppedAfterAccept_=alive&&accepted_&&!failure_;process_->kill();
+ });
 }
 CaptureProcessController::~CaptureProcessController(){closing_=true;releaseCrosshair();deadline_.stop();stopDeadline_.stop();if(control_)control_->stop();if(process_){process_->disconnect(this);process_->kill();process_->waitForFinished(1000);}if(decoder_){decoder_->disconnect(this);decoder_->wait();delete decoder_;}artifact_.cleanup();if(callback_){auto callback=std::move(callback_);callback_={};callback({{},{"cancelled","Capture adapter closed",{}}});}}
 bool CaptureProcessController::busy()const{return prepared_||bool(callback_)||process_;}
@@ -80,7 +90,7 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  if(!holdable||!residentCursor){releaseCrosshair();forgetHeldButtons();}
  else if(!cursorCache_.holding()&&cursorCache_.holdPointer())holdDeadline_.start(crosshairHoldMs);
  earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;selection_.reset();selectionLayout_={};delayMs_=delaySeconds>0?delaySeconds*1000:0;
- launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=false;
+ launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=stoppedAfterAccept_=false;
  directory_=std::make_unique<QTemporaryDir>("/tmp/putgd-capture-XXXXXX");
  // Recursive QTemporaryDir removal could erase a replacement inode.
  directory_->setAutoRemove(false);
@@ -242,10 +252,16 @@ void CaptureProcessController::decode(QJsonObject descriptor){
 void CaptureProcessController::exited(int code,QProcess::ExitStatus status){
  if(!busy()||exited_)return;
  exited_=true;deadline_.stop();stopDeadline_.stop();lastExit_={{"generation",QString::number(generation_)},{"processId",launchPid_},{"startTicks",launchStartTicks_},{"code",code},{"status",status==QProcess::NormalExit?"normal":"crash"}};
- if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_);}
+ // Only the resident's own SIGKILL after accept counts: a helper that exited or
+ // crashed by itself before Qt reported it still fails (#398).
+ const bool residentStop=stoppedAfterAccept_&&status==QProcess::CrashExit&&code==SIGKILL;
+ if(residentStop){lastExit_["stoppedAfterAccept"]=true;logging::write(logCapture(),QtWarningMsg,"Capture helper stopped after its result was accepted",{{"generation",QString::number(generation_)}});}
+ if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_||residentStop);}
  if(control_)control_->stop();
  control_=nullptr;
- if(!failure_&&(!accepted_||code!=0||status!=QProcess::NormalExit)){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
+ // A helper that exits by itself must exit normally. A slow exit that the
+ // resident ended after accepting the result does not discard the result (#398).
+ if(!failure_&&(!accepted_||(!residentStop&&(code!=0||status!=QProcess::NormalExit)))){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
  complete();
 }
 void CaptureProcessController::observedCursor(const QJsonObject& image){
