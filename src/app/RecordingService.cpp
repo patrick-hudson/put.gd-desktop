@@ -861,7 +861,8 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
         s.shellFrame = true;
         shell_->showFrame(shellFrame(s, RecordingState::Ready), marshal(s.generation, [this](Error error, QJsonObject result) {
             auto& s = *session_;
-            if (s.state != RecordingState::Preparing) return;
+            // Record on the bar can come before this answer (#1994): the bar's place still applies.
+            if (s.state != RecordingState::Preparing && s.state != RecordingState::Starting) return;
             const auto bar = result["bar"].toObject();
             if (!error && bar["placed"].toBool()) {
                 // With no room outside, the Shell keeps the bar in the corner and
@@ -871,7 +872,7 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
                 s.overlayPlacement = outside ? QStringLiteral("outside") : QStringLiteral("handle");
                 if (!outside) backend_->control(s.op.id, "overlay", {{"handle", true}}, [](Error, QJsonObject) {});
             }
-            transition(s, RecordingState::Ready);
+            if (s.state == RecordingState::Preparing) transition(s, RecordingState::Ready);
         }));
         return;
     }

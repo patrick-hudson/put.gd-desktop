@@ -113,8 +113,9 @@ bool allowedStep(RecordingState from, RecordingState to) {
     // fail() and cancelActive() end the session from any state.
     if (to == S::Failed || to == S::Cancelled) return true;
     switch (from) {
-    // prepared(): the helper's prepare result, or the shell placed the bar.
-    case S::Preparing: return to == S::Ready;
+    // prepared(): the helper's prepare result, or the shell placed the bar; or
+    // Record on the helper's bar (its `starting` event) while the shell still places it (#1994).
+    case S::Preparing: return to == S::Ready || to == S::Starting;
     // recording.start; or Record on the helper's bar (the `started` event).
     case S::Ready: return to == S::Starting || to == S::Recording;
     // The start reply, or the bar's `started` event while the start is in flight.

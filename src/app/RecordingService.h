@@ -116,11 +116,12 @@ private:
         bool capturedSystemAudio = false;
         // #1364: the track also (or only) holds the microphone.
         bool capturedMicrophone = false;
-        bool clickWatchTried = false;
-        // #1994: the helper's PipeWire source failed while this start ran; a start that then
-        // misses its deadline is PipeWire going away, not a slow helper.
+        bool clickWatchTried = false;  // the desktop was asked to report clicks for this recording, whatever it answered
+        // #1994: the error of a native source that failed while this start ran and whose
+        // teardown has not returned yet; a start that then misses its deadline stalled there.
         QString startTrouble;
-        bool startDaemonGone = false;  // the desktop was asked to report clicks for this recording, whatever it answered
+        // Whether the PipeWire daemon had hung up on the helper's connection by then.
+        bool startDaemonGone = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
