@@ -195,7 +195,9 @@ private slots:
  void privatePeerExitGate_data() {
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<bool>("success");
   QTest::newRow("normal-exit-after-result")<<QByteArray("valid")<<true;
-  for(const auto* mode:{"early-eof","wrong-build","stale-generation","outside","duplicate","nonzero-exit","crash","no-exit","malformed"})
+  // Accepted, then too slow to exit: the resident stops it and keeps the selection.
+  QTest::newRow("no-exit")<<QByteArray("no-exit")<<true;
+  for(const auto* mode:{"early-eof","wrong-build","stale-generation","outside","duplicate","nonzero-exit","crash","malformed"})
    QTest::newRow(mode)<<QByteArray(mode)<<false;
  }
  void privatePeerExitGate() {
@@ -208,7 +210,7 @@ private slots:
   putgd::test::settle(40);PUTGD_TRY_COMPARE(callbacks,1);PUTGD_TRY_COMPARE(process.processId(),qint64(0));
   const auto exit=process.diagnostics()["lastExit"].toObject();
   QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);
-  if(success) { QVERIFY(!process.cleanupRequired());QVERIFY(exit["teardownCertified"].toBool()); QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal")); }
+  if(success) { QVERIFY(!process.cleanupRequired());QVERIFY(exit["teardownCertified"].toBool()); if(mode=="no-exit")QVERIFY(exit["stoppedAfterAccept"].toBool());else{QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal"));} }
  }
  void cancellationAndBusyAreBounded() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");

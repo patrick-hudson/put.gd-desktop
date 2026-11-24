@@ -89,5 +89,7 @@ private:
  Error failure_; QJsonObject lastExit_;
  HelperOutput output_{"putgd-region",logCapture()};
  bool ready_=false,begun_=false,resultReceived_=false,accepted_=false,cancelling_=false,terminal_=false,teardownCertified_=false,cleanupRequired_=false,closing_=false;
+ // The resident stopped a helper whose validated result it had accepted (#398).
+ bool stoppedAfterAccept_=false;
 };
 }
