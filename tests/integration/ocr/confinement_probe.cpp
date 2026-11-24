@@ -2,6 +2,9 @@
 // helper's own settings, optionally a first recognition or a banded one with
 // the distribution's Tesseract and OpenMP, then one forbidden action. It prints
 // "errno=N" when the action returns, or dies by the seccomp filter (SIGSYS).
+// It ends as the helper does, with _exit: a banded recognition can return
+// while an extra engine is still starting, and exit's destructors would free
+// what that thread is reading (#1718).
 //   test_ocr_confinement_probe [--recognize | --bands] none|socket-inet|socket-unix|exec|fork|write PATH|read PATH|signal PID|chmod PATH|prlimit PID|vm-read PID
 // "none" prints the Landlock ABI, for the per-host record.
 #include "ocr/Confinement.h"
@@ -32,8 +35,7 @@ QByteArray stripes(int width,int height){
  }
  return grey;
 }
-}
-int main(int argc,char** argv){
+int probe(int argc,char** argv){
  int i=1;int recognition=0;
  if(i<argc&&!std::strcmp(argv[i],"--recognize")){recognition=1;++i;}
  else if(i<argc&&!std::strcmp(argv[i],"--bands")){recognition=2;++i;}
@@ -66,4 +68,10 @@ int main(int argc,char** argv){
  if(action=="prlimit"){const rlimit none{0,0};return report(::prlimit(pid_t(std::atoi(argument)),RLIMIT_CPU,&none,nullptr));}
  if(action=="vm-read"){char buffer[16];iovec local{buffer,sizeof buffer},remote{reinterpret_cast<void*>(0x400000),sizeof buffer};return report(::process_vm_readv(pid_t(std::atoi(argument)),&local,1,&remote,1,0));}
  std::fprintf(stderr,"unknown action\n");return 2;
+}
+}
+int main(int argc,char** argv){
+ const int status=probe(argc,argv);
+ std::fflush(nullptr);
+ ::_exit(status);
 }
