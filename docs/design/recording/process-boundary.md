@@ -34,6 +34,14 @@ child's pipes, mirroring the capture and editor helpers:
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
   `recording_helper_crashed` (or `recording_helper_exited`) and never uploads.
+  While the capture records or is paused, the helper sends `progress` every
+  second from its main thread. When no event at all arrives for twice the
+  command deadline (30 s), the service takes the helper as stuck: the session
+  fails with `recording_helper_unresponsive` (`details.step` is `recording` or
+  `paused`, `silentMs` the limit), nothing is kept, and the discard below ends
+  that helper (#1994). A stuck helper can't read `shutdown`, so it is killed
+  when the 2 s deadline runs out. A missed `start` or `prepare` deadline fails
+  the session the same way, so a helper stuck there is killed too.
 - `appearance {scheme: dark|light}` from the resident whenever the resolved
   interface scheme changes while the helper runs; the bar, review window and
   selector restyle at once (#198, [appearance](../appearance.md#recording-overlays)).
