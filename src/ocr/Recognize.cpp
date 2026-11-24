@@ -158,7 +158,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  // The segments of one reading, in groups of about scriptGroupPixels at
  // their panels' scale, in reading order, within what is left of scriptPixels.
  struct Batch { QList<int> segments;QList<QList<int>> members;QList<QList<PieceSource>> pieces;std::vector<double> scales;qint64 largest=0,total=0; };
- qint64 budgetPixels=scriptPixels,used=0;
+ qint64 budgetPixels=scriptPixels,used=0,readLargest=0;
  const auto batchOf=[&](const QList<Segment>& segs,const QList<int>& which){
   // Counted as composite() allocates them: the widest piece times every
   // piece and gap, so one wide line among narrow ones is not undercounted.
@@ -187,18 +187,22 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  // reuses those that started. Returns false when one is still running at the
  // deadline (late).
  const auto readBatch=[&](const Batch& b,bool first){
-  // The memory first, before any composite is built: the batch's composites
-  // (a byte a pixel) and, for each engine, its working memory (20 bytes a
-  // pixel of the largest group), plus each new engine's own cost.
+  // The memory first, before any composite is built, and with the last
+  // batch's composites gone: this batch's composites (a byte a pixel) and,
+  // for each engine, its working memory: 20 bytes a pixel of the largest
+  // group, plus its own cost, for a new engine; for one that has read a
+  // batch, as in the first pass, only 12 bytes a pixel beyond the largest
+  // group it has read, whose working memory it keeps.
+  run->groups.clear();run->texts.clear();run->done.clear();
   const int groups=int(b.pieces.size());
-  const qint64 each=(first?std::max<qint64>(16*1024*1024,in.engineCost):0)+20*b.largest;
+  const qint64 each=first?std::max<qint64>(16*1024*1024,in.engineCost)+20*b.largest:12*std::max<qint64>(0,b.largest-readLargest);
   int engines=0;
   if(first)engines=std::min<int>(in.threads,groups);
   else for(const auto& engine:run->engines)if(engine->ready())++engines;
   engines=std::min(engines,groups);
   for(int k=0;k<engines;++k)if(!in.roomFor(b.total+each*(k+1))){engines=k;break;}
-  run->groups.clear();run->texts.clear();run->done.clear();
   if(engines==0)return true;
+  readLargest=std::max(readLargest,b.largest);
   for(int g=0;g<groups;++g)run->groups.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
   run->texts=QList<BandText>(run->groups.size());run->done=QList<bool>(run->groups.size(),false);run->next=0;run->closing=false;
   const auto scales=b.scales;
