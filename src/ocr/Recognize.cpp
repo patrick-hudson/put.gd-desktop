@@ -248,6 +248,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  struct Reading { bool read=false;QList<Word> words;double before=0,after=0;int beforeCount=0,afterCount=0; };
  const auto collect=[&](const QList<Segment>& segs,const Batch& b,QList<Reading>& out){
   std::lock_guard<std::mutex> guard(run->lock);
+  // A batch the memory gate left unread has no groups: nothing to collect (Sol S10 on #1986).
+  if(run->done.size()!=b.members.size())return;
   for(int g=0;g<b.members.size();++g){
    if(!run->done[g])continue;
    const auto& c=run->groups[g];
