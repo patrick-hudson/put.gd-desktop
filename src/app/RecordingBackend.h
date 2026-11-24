@@ -56,6 +56,9 @@ public:
     virtual void discard(const QString& id) = 0;
     // The process that owns the session's windows (the control bar), or 0.
     virtual qint64 processId(const QString&) const { return 0; }
+    // How long a recording or paused capture may go without an event before the
+    // service counts its backend hung and ends the session (#1994); 0 never does.
+    virtual int silenceLimitMs() const { return 0; }
 };
 // Presentation the helper cannot do itself where the compositor keeps clients
 // from placing their own surfaces. On GNOME the put.gd Shell extension runs the

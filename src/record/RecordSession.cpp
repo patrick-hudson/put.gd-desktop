@@ -94,6 +94,8 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
     connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) { sourceLost(error); });
+    // Written to the resident at once: the teardown that follows can stall this thread (#1994).
+    connect(&pipeline_, &RecordingPipeline::sourceFailedAtStart, this, [this](const QString& failure) { emit event({{"event", "sourceTrouble"}, {"message", failure.left(512)}}); });
     // wlr-capture: the recorded window closed (targetLost) or its output went away.
     connect(&pipeline_, &RecordingPipeline::imageCopyLost, this, [this](Error error) {
         debugLog("wlr-capture: the source ended: " + error.message);

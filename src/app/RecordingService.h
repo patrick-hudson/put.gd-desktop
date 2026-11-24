@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QObject>
 #include <QPointer>
+#include <QTimer>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -115,7 +116,10 @@ private:
         bool capturedSystemAudio = false;
         // #1364: the track also (or only) holds the microphone.
         bool capturedMicrophone = false;
-        bool clickWatchTried = false;  // the desktop was asked to report clicks for this recording, whatever it answered
+        bool clickWatchTried = false;
+        // #1994: the helper's PipeWire source failed while this start ran; a start that then
+        // misses its deadline is PipeWire going away, not a slow helper.
+        QString startTrouble;  // the desktop was asked to report clicks for this recording, whatever it answered
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -173,6 +177,11 @@ private:
     void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
+    // While the capture records or is paused, every event from the backend
+    // restarts silence_; when it runs out the helper is taken as hung, and the
+    // session fails and ends it (#1994). Stopped in every other state.
+    void heard(const Session&);
+    QTimer silence_;
     QString stagingRoot_;
     Host host_;
     std::unique_ptr<RecordingBackend> backend_;

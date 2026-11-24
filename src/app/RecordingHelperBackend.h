@@ -29,6 +29,10 @@ public:
     void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits, const QJsonObject& answer = {}) override;
     void discard(const QString& id) override { helper_.discard(id); }
     qint64 processId(const QString& id) const override { return helper_.processId(id); }
+    // The helper reports progress every second while it records or is paused, from
+    // its main thread. Twice the command deadline without one is a helper stuck
+    // there, as in pipewiresrc's failed-connect hang while reopening a source (#1994).
+    int silenceLimitMs() const override { return 2 * commandMs_; }
     QJsonObject diagnostics() const { return helper_.diagnostics(); }
     // The resolved interface scheme, "dark" or "light" (#198): the helper's
     // overlays, control bar and review window use its tokens. It goes in the

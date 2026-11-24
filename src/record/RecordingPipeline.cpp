@@ -472,6 +472,19 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // first-frame-anchored timestamps of releases before #86, =compositor maps
     // each frame's header time instead of stamping its arrival.
     const QString frameSource = options.pipewireNode && qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "legacy" ? frameClockSource() : QString();
+    // A native node: the recorder's own connection to the session daemon, held
+    // until this function returns, after the source opened on its copy (#1994).
+    PipeWireConnection session;
+    int pipewireFd = options.pipewireFd;
+    if (options.pipewireNode && pipewireFd < 0) {
+        QString why;
+        if (!session.open(QProcessEnvironment::systemEnvironment(), &why)) {
+            failure = "PipeWire is not reachable: " + why;
+            if (failedElement) *failedElement = QStringLiteral("pipewire");
+            return false;
+        }
+        pipewireFd = session.fd();
+    }
     if (options.imageCopy) {
         // The stream's caps follow the source; a window that changes size is
         // scaled, borders added, into the size it started at.
@@ -487,7 +500,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // Lab A/B: PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS replaces the request
         // (for example a rate above the output's to exercise the fallback).
         const QString labCaps = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS");
-        description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
+        description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, pipewireFd, frameSource.isEmpty())
             + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue();
         if (options.crop.isValid()) description += cropDescription(options.rect.size(), options.crop);
         // A window stream: square pixels, the window's place in each frame
@@ -634,6 +647,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         }
         gst_object_unref(errors);
         debugLog("start failed: " + failure);
+        if (options.pipewireNode && failedElement && *failedElement == "src") emit sourceFailedAtStart(failure);
         gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); return false;
     }
     // Live sources report ASYNC/NO_PREROLL; watch the bus briefly for a
@@ -666,7 +680,11 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         gst_message_unref(message);
     }
     gst_object_unref(bus);
-    if (failed) { debugLog("start failed: " + failure); gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false; }
+    if (failed) {
+        debugLog("start failed: " + failure);
+        if (options.pipewireNode && failedElement && *failedElement == "src") emit sourceFailedAtStart(failure);
+        gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false;
+    }
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
     debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder + (mixed ? QStringLiteral(" (system audio and microphone mixed)") : options.microphone ? QStringLiteral(" (microphone)") : QStringLiteral(" (system audio)"))) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
     if (options.imageCopy) {
@@ -699,7 +717,9 @@ Error RecordingPipeline::start(const Options& options) {
     if (sound && audioEncoder.isEmpty()) return {"recording_unsupported", "No AAC encoder is available for the recording's audio", {}};
     if (options.microphone && (options.microphoneDevice.isEmpty() || recording::monitorSourceName(options.microphoneDevice))) return {"invalid_request", "The microphone must name an input device", {}};
     bool microphoneFailed = false;
+    pipewireUnreachable_ = false;
     if (launchAny(options, audioEncoder, failures, &microphoneFailed)) return {};
+    if (pipewireUnreachable_) return {"recording_start_failed", "PipeWire is not running, so the screen could not be recorded; try again once it is back", {{"reason", "pipewire_unreachable"}, {"attempts", QJsonArray::fromStringList(failures)}}};
     if (options.microphone && microphoneFailed) {
         // The microphone could not be opened (unplugged since the session was
         // prepared, or refused by the sound server): record without it rather
@@ -730,6 +750,8 @@ bool RecordingPipeline::launchAny(const Options& options, const QString& audioEn
             failures.append(failure);
             // The microphone fails the same way with every video encoder.
             if (element == "msrc") { if (microphoneFailed) *microphoneFailed = true; return false; }
+            // So does a session PipeWire that nothing answers on (#1994).
+            if (element == "pipewire") { pipewireUnreachable_ = true; return false; }
         }
     }
     return false;
@@ -981,12 +1003,22 @@ bool RecordingPipeline::reopenSource() {
     gst_element_set_state(old, GST_STATE_NULL);
     gst_bin_remove(GST_BIN(pipeline_), old);
     gst_object_unref(old);
+    // A native node opens on a fresh connection of the recorder's own, held
+    // until the new source has opened on its copy (#1994): PipeWire that is
+    // gone or restarting is a source that cannot be reopened, not a hang.
+    PipeWireConnection session;
+    int pipewireFd = options_.pipewireFd;
+    if (pipewireFd < 0) {
+        QString why;
+        if (!session.open(QProcessEnvironment::systemEnvironment(), &why)) { debugLog("source reopen: PipeWire is not reachable: " + why); gst_object_unref(peer); return false; }
+        pipewireFd = session.fd();
+    }
     // The same element and properties as at launch (pipewireSourceDescription).
     GstElement* fresh = gst_element_factory_make(element.constData(), "src");
     if (!fresh) { gst_object_unref(peer); return false; }
     const bool stamped = element != "pipewiresrc";
     gst_util_set_object_arg(G_OBJECT(fresh), "path", QByteArray::number(options_.pipewireNode).constData());
-    if (options_.pipewireFd >= 0) gst_util_set_object_arg(G_OBJECT(fresh), "fd", QByteArray::number(options_.pipewireFd).constData());
+    gst_util_set_object_arg(G_OBJECT(fresh), "fd", QByteArray::number(pipewireFd).constData());
     gst_util_set_object_arg(G_OBJECT(fresh), "min-buffers", "1");
     gst_util_set_object_arg(G_OBJECT(fresh), "keepalive-time", "1000");
     gst_util_set_object_arg(G_OBJECT(fresh), "resend-last", "true");

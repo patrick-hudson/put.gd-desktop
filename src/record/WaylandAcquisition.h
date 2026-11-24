@@ -13,6 +13,30 @@ namespace putgd::record {
 // over a node id and need it; the portal passes its own connection instead.
 QString pipewireSocket(const QProcessEnvironment& env);
 
+// A connection to that socket made by the recorder itself, for a native node's
+// pipewiresrc (#1994). Given no fd, pipewiresrc connects on its own, and when
+// that fails (PipeWire stopped or restarting) its error path destroys the
+// PipeWire context with the context's loop still running, then joins the loop
+// thread, which now and then never wakes: the helper hangs for good (PipeWire
+// #5581). With a connected fd its connect cannot fail. A missing daemon is
+// found here instead, as an error. pipewiresrc duplicates the fd when it opens
+// (NULL to READY), so the connection is held only until that state change has
+// returned, and the daemon sees the client go when pipewiresrc closes its copy.
+// Each opening takes a fresh connection: one pipewiresrc already spoke on is
+// spent.
+class PipeWireConnection {
+public:
+    PipeWireConnection() = default;
+    PipeWireConnection(const PipeWireConnection&) = delete;
+    PipeWireConnection& operator=(const PipeWireConnection&) = delete;
+    ~PipeWireConnection();
+    // Connects to the session daemon; false with the reason when nothing answers.
+    bool open(const QProcessEnvironment& env, QString* failure);
+    int fd() const { return fd_; }
+private:
+    int fd_ = -1;
+};
+
 // A screen-cast frame's PipeWire header PTS is the compositor's own frame time
 // in CLOCK_MONOTONIC nanoseconds (Mutter: when it painted the frame; KWin: the
 // output's last presentation). The recorder stamps frames on arrival and uses
