@@ -238,7 +238,18 @@ set and journals it before network work. Mutations serialize by provider-owned
 destination/object identity, without adopting replacements. Drivers await durable
 checkpoint acknowledgement before each destructive step. Failed, unknown or
 partial deletion retains its original receipt and versioned opaque progress for
-explicit retry. Cancellation cannot undo a sent mutation. Shutdown cancels queued
+explicit retry. Each record follows its newest deletion, the one recorded last: a new
+deletion takes a record over in the transaction that journals it. That
+transaction refuses while the record's current deletion may still need its own
+retry (its outcome is pending, deleting, unknown, changed or
+hidden_version_retained, or it saved a `phase` checkpoint without a final
+outcome), and while any deletion keeping the record in History can't let it go.
+A read-only lookup saves no destructive checkpoint, but the outcome it leaves
+(`unknown`, for example) can still refuse a takeover and keep the record. An
+older deletion's later retry sends nothing for a record taken over and leaves
+the record's state alone. In its own journal it keeps a final outcome (removed,
+already_missing, changed) it had already recorded for that record and marks any
+other `taken_over`; either way the item names the newer deletion in `takenOverBy`. Cancellation cannot undo a sent mutation. Shutdown cancels queued
 targets and drains sent work before history services are destroyed. Browser/CDN
 cache invalidation is outside this pipeline.
 
