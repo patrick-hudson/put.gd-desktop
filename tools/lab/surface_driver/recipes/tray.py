@@ -1243,8 +1243,13 @@ def _ocr_notice(ctx, notice, area):
     return ' '.join(notice['summary'].split()) in ' '.join(read['stdout'].split())
 
 
-def _ocr_frame(ctx, notice, frame):
-    """The banner's summary read inside one compositor frame on head 0 (desktop = head pixels there)."""
+def _ocr_frame(ctx, notice, frame, by_body=False):
+    """The banner's summary (by_body: its body's first words) read inside one compositor frame on
+    head 0 (desktop = head pixels there)."""
+    wanted = ' '.join((__import__('html').unescape(notice.get('body', '')).split()[:3] if by_body
+                       else notice['summary'].split()))
+    if not wanted:
+        return False
     image = ctx.target.capture_image(0).convert('RGB')
     x, y, w, h = (int(v) for v in frame)
     left, top, right, bottom = max(0, x), max(0, y), min(image.width, x + w), min(image.height, y + h)
@@ -1256,7 +1261,7 @@ def _ocr_frame(ctx, notice, frame):
     image.crop((left, top, right, bottom)).resize(((right - left) * 2, (bottom - top) * 2)).save(stream, format='PNG')
     read = ctx.shell('printf %s ' + shlex.quote(base64.b64encode(stream.getvalue()).decode())
                      + ' | base64 -d | tesseract stdin - --psm 6 2>/dev/null')
-    return not read['returncode'] and ' '.join(notice['summary'].split()) in ' '.join(read['stdout'].split())
+    return not read['returncode'] and wanted in ' '.join(read['stdout'].split())
 
 
 def _drawn_notice(ctx, notice, *, by_body=False):
@@ -1280,7 +1285,7 @@ def _drawn_notice(ctx, notice, *, by_body=False):
             if not rect and node.get('coordinate_space') == 'ambiguous-notification':
                 # Several shell banners match this node (#1003: put.gd's first-run notice under
                 # "Upload complete"). Drawn only if its summary reads inside one of their frames.
-                return any(_ocr_frame(ctx, notice, frame) for frame in node.get('candidate_frames') or [])
+                return any(_ocr_frame(ctx, notice, frame, by_body) for frame in node.get('candidate_frames') or [])
             if not rect and unplaced:
                 # A layer-shell popup the compositor gives no position (labwc): showing is all there is to prove.
                 return node.get('coordinate_space') == 'window-relative'
