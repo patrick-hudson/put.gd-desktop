@@ -132,10 +132,16 @@ def main():
     data = source / item['file']
     if hashlib.file_digest(data.open('rb'), 'sha256').hexdigest() != item['sha256']:
         raise ValueError('English tessdata_fast digest differs from lock')
+    # #1981: the script check's data, osd and one language a script.
+    for name, sha256 in item.get('scriptFiles', {}).items():
+        if hashlib.file_digest((source / name).open('rb'), 'sha256').hexdigest() != sha256:
+            raise ValueError('tessdata_fast ' + name + ' digest differs from lock')
     if not args.skip_build:
         destination = prefix / 'share/putgd/tessdata'
         destination.mkdir(parents=True, exist_ok=True)
         shutil.copy2(data, destination / item['file'])
+        for name in item.get('scriptFiles', {}):
+            shutil.copy2(source / name, destination / name)
     records.append({'name': 'tessdata_fast', **item})
     # Licence texts only: the Qt modules the image bundles and the ICU build
     # shipped with Qt (tools/releases/appimage_notices.py).

@@ -145,6 +145,8 @@ void TextService::acquired(const QString& id,Error error,Load load){
   textjob::Options options;options.words=guard->request_.keepResult;options.languagesRequired=!guard->request_.languages.isEmpty();options.allCores=guard->host_.settings().unhingedMode;
   options.languages=options.languagesRequired?guard->request_.languages
    :textjob::defaultLanguages(guard->host_.settings().textRecognitionLanguages,guard->host_.locale?guard->host_.locale():QLocale::system().name(),guard->backend_->languages());
+  // #1981: a page in another script may be read again in its language, unless someone chose the languages.
+  options.detectScript=!options.languagesRequired&&guard->host_.settings().textRecognitionLanguages.isEmpty();
   auto result=std::make_shared<TextResult>();auto failure=std::make_shared<Error>();
   guard->host_.background([backend=guard->backend_,load,options,result,failure,cancel=guard->cancel_]{
    auto pixels=load(*failure);if(*failure)return;
@@ -179,9 +181,13 @@ void TextService::complete(const QString& id,std::shared_ptr<TextResult> result,
  QJsonObject record{{"operationId",id},{"state","completed"},{"source",request_.source},{"characterCount",double(textjob::characters(result->text))},{"codeCount",result->textCodes()},{"copyStatus",copyStatus},
   {"truncated",result->truncated},{"banded",result->banded},{"languagesUsed",strings(result->languagesUsed)},{"languagesSkipped",strings(result->languagesSkipped)},
   {"timings",QJsonObject{{"spawnMs",double(result->spawnMs)},{"engineStartMs",double(result->engineStartMs)},{"recognizeMs",double(result->recognizeMs)},{"copyMs",double(copyMs_)},{"totalMs",double(result->totalMs)}}}};
+ // #1981: what the script check did, when it ran.
+ if(!result->detectionOutcome.isEmpty())record["detection"]=textjob::detectionJson(*result);
  if(request_.keepResult)keep(id,*result);
  QString notification;
- if(request_.copy){QStringList missing;for(const auto& language:result->languagesSkipped)missing.append(languageName(language));notification=textjob::notification(*result,copyStatus,missing);}
+ if(request_.copy){QStringList missing;for(const auto& language:result->languagesSkipped)missing.append(languageName(language));
+  // #1981: the page's script was found, but not its language's data.
+  if(result->detectionOutcome=="language_missing"&&!result->languagesSkipped.contains(result->detectedLanguage))missing.append(languageName(result->detectedLanguage));notification=textjob::notification(*result,copyStatus,missing);}
  end(std::move(record),notification);
 }
 void TextService::terminate(Error error,bool cancelled){

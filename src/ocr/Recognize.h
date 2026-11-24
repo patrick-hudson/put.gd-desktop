@@ -64,6 +64,9 @@ struct JobOptions {
  EmojiOptions emoji;
  // The emoji scan stops this long after the job starts and keeps what it found.
  int emojiBudgetMs=3000;
+ // #1981: garbled lines may have their script detected and be read again
+ // in its language (textjob::Options::detectScript).
+ bool detectScript=false;
  // Unhinged mode (#1937): secondReadCapMs is multiplied by this, the engines
  // over four, so extra engines buy more second reads; 1 (off, or four engines
  // or fewer) keeps the cap. The share, the floor and the margin don't change.
@@ -71,7 +74,9 @@ struct JobOptions {
 };
 // emojiMs is the whole scan; emojiWaitMs what the job waited for it beyond
 // recognition (all of it when it ran inline).
-struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,emojiMs=0,emojiWaitMs=0,totalMs=0; };
+struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,emojiMs=0,emojiWaitMs=0,totalMs=0,scriptMs=0,osdMs=0; };
+// #1981: what the script check did; outcome empty when it did not run.
+struct ScriptCheck { QString script,language,outcome;int segments=0,pieces=0,engines=0;double before=0,after=0; };
 struct JobResult {
  QString error;             // input_excessive, language_unavailable, engine_unavailable
  QString failedLanguage;
@@ -84,6 +89,7 @@ struct JobResult {
  int emoji=0,emojiCandidates=0;   // emoji placed, colour glyphs examined
  bool emojiCut=false;
  Profile profile;
+ ScriptCheck script;
 };
 JobResult recognizeImage(const GreyView& image,const JobOptions& options);
 // The contract's result: text with its line tops, the filtered words when

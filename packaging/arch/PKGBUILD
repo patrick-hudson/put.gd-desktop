@@ -20,7 +20,13 @@ optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal servic
             'nautilus: Files upload menu' 'caja: Caja upload menu'
             'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'
             'thunar: Thunar send-to menu'
-            'gst-plugin-va: hardware (VA-API) video encoding for screen recording')
+            'gst-plugin-va: hardware (VA-API) video encoding for screen recording'
+            'tesseract-data-osd: detect the script of a page read in another language'
+            'tesseract-data-chi_sim: read Chinese pages' 'tesseract-data-jpn: read Japanese pages'
+            'tesseract-data-kor: read Korean pages' 'tesseract-data-rus: read Cyrillic pages'
+            'tesseract-data-ara: read Arabic pages' 'tesseract-data-heb: read Hebrew pages'
+            'tesseract-data-hin: read Devanagari pages' 'tesseract-data-tha: read Thai pages'
+            'tesseract-data-ell: read Greek pages')
 makedepends=('cmake' 'ninja' 'python' 'git' 'pkgconf' 'wayland-protocols' 'nautilus' 'caja')
 # CMake has already stripped product binaries and recorded private runtime hashes.
 # makepkg must preserve these exact bytes, including bundled Proton code.

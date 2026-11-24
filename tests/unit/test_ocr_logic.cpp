@@ -4,10 +4,12 @@
 // window of a screen grown past its trimmed text (#1912), uncertain tokens' lines read again (#1911)
 // in their run of text only (#1929), the faster CPUs of a machine of mixed cores (#1929), the input limit, and
 // emoji (#1748) put in place of what Tesseract made of them but never over
-// confident letters. The contract's own tests cover the character filter.
+// confident letters, and (#1981) the garbled lines whose script is detected and read again.
+// The contract's own tests cover the character filter.
 // Synthetic data only: the emoji are drawn from the built-in templates.
 #include "ocr/Cores.h"
 #include "ocr/Layout.h"
+#include "ocr/Script.h"
 #include "ocr/Words.h"
 #include <QDir>
 #include <QFile>
@@ -58,6 +60,72 @@ Profile lines(int width,int height,int lineHeight,int gap){
 class OcrLogic final:public QObject {
  Q_OBJECT
 private slots:
+ // #1981: which lines count as garbled, when a job triggers, and the keep
+ // rule. A Latin page that triggers pays for OSD; one that does not, nothing.
+ void scriptCheckTriggersOnGarbledLinesOnly() {
+  const auto page=[](const QList<QList<std::pair<QString,float>>>& lines){
+   Recognition job;int y=0;
+   for(int l=0;l<lines.size();++l){
+    job.lines.append({QRect(0,y,800,20),0,0,false});int x=0;
+    for(const auto& [text,confidence]:lines[l]){Word w;w.text=text;w.rect=QRect(x,y,int(text.size())*10,20);w.confidence=confidence;w.line=l;w.lineHeight=20;job.words.append(w);x+=int(text.size())*10+10;}
+    y+=30;
+   }
+   return job;
+  };
+  const QList<std::pair<QString,float>> garbage{{"Bmupe",31},{"SkoHomuKa",28},{"O6wectBo",22},{"Hayka",40}};
+  const QList<std::pair<QString,float>> english{{"Watch",92},{"Live",95},{"Subscribe",90},{"today",88}};
+  // Two garbled lines of four holding half the words: it triggers.
+  auto job=page({garbage,english,garbage,english});
+  auto segs=garbledSegments(job);
+  QCOMPARE(segs.size(),qsizetype(2));QCOMPARE(segs[0].first,0);QCOMPARE(segs[0].last,4);QCOMPARE(segs[1].line,2);
+  // One garbled line is not enough, however many words it holds.
+  QVERIFY(garbledSegments(page({garbage,english})).isEmpty());
+  // Under a quarter of the words: no trigger.
+  QVERIFY(garbledSegments(page({garbage,english,garbage,english,english,english,english,english,english})).isEmpty());
+  // Confident words, or fewer than three with a Latin letter, are not garbled.
+  const QList<std::pair<QString,float>> sure{{"Bmupe",71},{"SkoHomuKa",68},{"O6wectBo",62}};
+  const QList<std::pair<QString,float>> digits{{"12",20},{"34",21},{"Ab",30},{"Cd",30}};
+  QVERIFY(garbledSegments(page({sure,sure,english})).isEmpty());
+  QVERIFY(garbledSegments(page({digits,digits})).isEmpty());
+  // A gap of three word heights splits a line into segments.
+  auto wide=page({garbage});wide.words[2].rect.moveLeft(wide.words[1].rect.right()+61);wide.words[3].rect.moveLeft(wide.words[2].rect.right()+10);
+  QCOMPARE(lineSegments(wide).size(),qsizetype(2));
+  // The keep rule: 15 points or more.
+  QVERIFY(keepReread(30,45));QVERIFY(!keepReread(30,44.9));QVERIFY(!keepReread(60,40));
+  QCOMPARE(languageForScript("Han"),QStringLiteral("chi_sim"));QCOMPARE(languageForScript("Cyrillic"),QStringLiteral("rus"));
+  QCOMPARE(languageForScript("Hangul"),QStringLiteral("kor"));QCOMPARE(languageForScript("Katakana"),QStringLiteral("jpn"));
+  QVERIFY(languageForScript("Latin").isEmpty());QVERIFY(languageForScript("").isEmpty());QVERIFY(languageForScript("Fraktur").isEmpty());
+  for(const auto& script:{"Han","Japanese","Hangul","Cyrillic","Arabic","Hebrew","Devanagari","Thai","Greek"})QVERIFY2(detectionLanguages().contains(languageForScript(script)),script);
+ }
+ // #1981: a composite's pieces map back to their own source pixels, at any
+ // scale and polarity, and a box in a gap belongs to no piece.
+ void scriptCompositeMapsBack() {
+  QByteArray grey(200*100,char(255));
+  for(int y=40;y<50;++y)for(int x=60;x<120;++x)grey[y*200+x]=0;
+  const GreyView view{reinterpret_cast<const uint8_t*>(grey.constData()),200,100,200};
+  QByteArray dark(200*100,char(20));const GreyView night{reinterpret_cast<const uint8_t*>(dark.constData()),200,100,200};
+  const QList<PieceSource> pieces{{view,QRect(50,35,80,20),255,false,2.0},{night,QRect(10,10,40,10),20,true,1.0}};
+  const auto c=composite(pieces,16);
+  QCOMPARE(c.tops,(QList<int>{0,56}));QCOMPARE(c.heights,(QList<int>{40,10}));QCOMPARE(c.image.width,160);QCOMPARE(c.image.height,66);
+  // The ink is where the source put it, scaled; the dark piece is inverted to a light one.
+  QCOMPARE(uint8_t(c.image.pixels.at(qsizetype(2*(45-35))*160+2*(90-50))),uint8_t(0));
+  QVERIFY(uint8_t(c.image.pixels.at(qsizetype(60)*160+5))>200);
+  QCOMPARE(pieceAt(c,QRect(20,18,10,4)),0);QCOMPARE(pieceAt(c,QRect(20,44,10,4)),-1);QCOMPARE(pieceAt(c,QRect(2,58,4,4)),1);
+  QCOMPARE(pieceToSource(c,0,pieces[0],QRect(20,10,120,20)),QRect(60,40,60,10));
+  QCOMPARE(pieceToSource(c,1,pieces[1],QRect(4,58,8,4)),QRect(14,12,8,4));
+  QCOMPARE(paddedPiece(QRect(10,10,100,30),QRect(0,0,200,100)),QRect(0,0,120,50));
+  QCOMPARE(paddedPiece(QRect(10,10,100,6),QRect(0,0,200,100)),QRect(6,6,108,14));
+ }
+ // #1981: Chinese, Japanese and Thai words join without spaces; Korean and
+ // Latin words keep theirs.
+ void unspacedScriptsJoin() {
+  Recognition job;job.lines={{QRect(0,0,400,20),0,0,false},{QRect(0,30,400,20),0,0,false}};
+  const auto add=[&](const QString& text,int line){Word w;w.text=text;w.line=line;w.rect=QRect(int(job.words.size())*20,line*30,18,18);job.words.append(w);};
+  add(QStringLiteral("新浪"),0);add(QStringLiteral("网，"),0);add(QStringLiteral("NBA"),0);add(QStringLiteral("体育"),0);
+  add(QStringLiteral("한국"),1);add(QStringLiteral("뉴스"),1);add(QStringLiteral("ข่าว"),1);add(QStringLiteral("วันนี้"),1);
+  joinUnspaced(job);
+  QCOMPARE(copiedText(job),QStringLiteral("新浪网， NBA 体育\n한국 뉴스 ข่าววันนี้"));
+ }
  // A code's area is filled with the background in every band copy, so no word
  // can come from its modules. Here the "code" is a checkerboard on white.
  void codeAreasAreBlank(){

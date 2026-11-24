@@ -11,6 +11,20 @@
    "not": {"enum": ["osd", "equ"]},
    "description": "A Tesseract language identifier. osd and equ are data files, not languages."
   },
+  "detection": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["script", "language", "outcome"],
+   "properties": {
+    "script": {"type": "string", "pattern": "^([A-Za-z_]{1,32})?$", "description": "Tesseract OSD's name for the garbled lines' script (Han, Cyrillic, ...); empty when none was found."},
+    "language": {"oneOf": [{"$ref": "#/$defs/language"}, {"const": ""}], "description": "The language that script is read again in; empty when it maps to none."},
+    "outcome": {
+     "enum": ["kept", "discarded", "language_missing", "detector_missing", "unknown_script", "no_time"],
+     "description": "kept: the lines were read again in that language and the new reading was kept. discarded: read again, the first reading stayed. language_missing: that language's data is not installed. detector_missing: no osd data. unknown_script: no script, Latin or one without a language. no_time: the time budget left no room."
+    }
+   },
+   "description": "#1981: the script check of a job whose languages nobody chose, present only when lines read badly enough to run it."
+  },
   "rect": {
    "type": "array",
    "minItems": 4,
@@ -117,6 +131,10 @@
         "languagesRequired": {
          "type": "boolean",
          "description": "True when a caller named the languages: one that cannot load fails the job. False for the saved preference: one that cannot load is skipped when another loads."
+        },
+        "detectScript": {
+         "const": true,
+         "description": "#1981: nobody chose the languages, so garbled lines may have their script detected and be read again in its language. Present only when true, never with languagesRequired."
         }
        }
       },
@@ -222,7 +240,8 @@
        "additionalProperties": false,
        "required": ["engineStartMs", "recognizeMs"],
        "properties": {"engineStartMs": {"type": "integer", "minimum": 0}, "recognizeMs": {"type": "integer", "minimum": 0}}
-      }
+      },
+      "detection": {"$ref": "#/$defs/detection"}
      }
     }
    }
@@ -294,6 +313,7 @@
        }
       },
       "error": {"$ref": "#/$defs/error"},
+      "detection": {"$ref": "#/$defs/detection"},
       "resultExpired": {"type": "boolean"},
       "text": {"type": "string"},
       "words": {"type": "array", "maxItems": 20000, "items": {"$ref": "#/$defs/word"}},
@@ -404,7 +424,8 @@
        ]
       },
       "truncated": {"type": "boolean"},
-      "error": {"$ref": "#/$defs/error"}
+      "error": {"$ref": "#/$defs/error"},
+      "detection": {"$ref": "#/$defs/detection"}
      },
      "description": "The text member editor.inspect gains. result identifies one recognition result and changes with every new one."
     },

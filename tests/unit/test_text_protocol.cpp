@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QtTest>
+#include <functional>
 
 using namespace putgd;
 using namespace putgd::textjob;
@@ -71,6 +72,50 @@ private slots:
   TextResult wrongList;QVERIFY(!decodeResult(QJsonDocument(inWords).toJson(QJsonDocument::Compact),input,both,wrongList));
   marked.remove("second");inWords["words"]=QJsonArray{marked};
   TextResult plainWord;QVERIFY(decodeResult(QJsonDocument(inWords).toJson(QJsonDocument::Compact),input,both,plainWord));
+ }
+ // #1981: the script check travels only for a job that asked for it, only
+ // when nobody chose the languages, and its result names a known outcome, a
+ // script and language of the right shape, and a kept language the job used.
+ void scriptCheckTravelsOnlyWhenAsked() {
+  const QJsonObject build{{"version","t"}};const InputHeader input{64,64,64,192};
+  Options asked;asked.languages={"eng"};asked.detectScript=true;
+  QString nonce;InputHeader header;Options back;
+  const auto frame=bootstrap("n",build,input,asked);
+  QCOMPARE(frame.value("options").toObject().value("detectScript"),QJsonValue(true));
+  QVERIFY(decodeBootstrap(frame,build,nonce,header,back));QVERIFY(back.detectScript);
+  Options plain=asked;plain.detectScript=false;
+  QVERIFY(!bootstrap("n",build,input,plain).value("options").toObject().contains("detectScript"));
+  QVERIFY(decodeBootstrap(bootstrap("n",build,input,plain),build,nonce,header,back));QVERIFY(!back.detectScript);
+  // Chosen languages and the check never go together.
+  auto chosen=frame;auto o=chosen.value("options").toObject();o["languagesRequired"]=true;chosen["options"]=o;
+  QVERIFY(!decodeBootstrap(chosen,build,nonce,header,back));
+  auto falseFlag=frame;o=falseFlag.value("options").toObject();o["detectScript"]=false;falseFlag["options"]=o;
+  QVERIFY(!decodeBootstrap(falseFlag,build,nonce,header,back));
+
+  TextResult result;result.text="中文";result.lineTops={0};result.languagesUsed={"eng","chi_sim"};
+  result.detectedScript="Han";result.detectedLanguage="chi_sim";result.detectionOutcome="kept";
+  const auto json=encodeResult(result,asked);
+  QCOMPARE(QJsonDocument::fromJson(json).object().value("detection").toObject(),(QJsonObject{{"script","Han"},{"language","chi_sim"},{"outcome","kept"}}));
+  TextResult decoded;QVERIFY(decodeResult(json,input,asked,decoded));
+  QCOMPARE(decoded.detectedLanguage,QStringLiteral("chi_sim"));QCOMPARE(decoded.detectionOutcome,QStringLiteral("kept"));
+  // A job that did not ask gets no detection.
+  QVERIFY(!decodeResult(json,input,plain,decoded));
+  const auto refused=[&](const std::function<void(QJsonObject&)>& change){
+   auto object=QJsonDocument::fromJson(json).object();auto d=object.value("detection").toObject();change(d);object["detection"]=d;
+   TextResult out;return !decodeResult(QJsonDocument(object).toJson(QJsonDocument::Compact),input,asked,out);
+  };
+  QVERIFY(refused([](QJsonObject& d){d["outcome"]="maybe";}));
+  QVERIFY(refused([](QJsonObject& d){d["script"]="Han/../x";}));
+  QVERIFY(refused([](QJsonObject& d){d["language"]="osd";}));
+  QVERIFY(refused([](QJsonObject& d){d["language"]="rus";}));      // kept, but not among languagesUsed
+  QVERIFY(refused([](QJsonObject& d){d["language"]="";}));         // kept names its language
+  QVERIFY(refused([](QJsonObject& d){d["extra"]=1;}));
+  QVERIFY(!refused([](QJsonObject& d){d["outcome"]="detector_missing";d["script"]="";d["language"]="";}));
+  QVERIFY(!refused([](QJsonObject& d){d["outcome"]="language_missing";d["script"]="Cyrillic";d["language"]="rus";}));
+  // No check, no field.
+  TextResult none;none.languagesUsed={"eng"};
+  QVERIFY(!QJsonDocument::fromJson(encodeResult(none,asked)).object().contains("detection"));
+  QCOMPARE(detectionJson(none),QJsonValue(QJsonValue::Null));
  }
  void languageNamesAreIdentifiersOnly() {
   for(const auto* valid:{"eng","deu","chi_sim","chi_tra_vert","frak"})QVERIFY2(validLanguage(valid),valid);

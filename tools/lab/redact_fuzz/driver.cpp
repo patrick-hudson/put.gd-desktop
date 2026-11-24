@@ -4,7 +4,10 @@
 // package whose helper it drives; never part of a package.
 //
 //   redact_fuzz_driver --helper PATH --data DIR [--data DIR] --build-json FILE
-//                      [--lang L]... < JOBS.jsonl > RESULTS.jsonl
+//                      [--lang L]... [--detect] [--text] < JOBS.jsonl > RESULTS.jsonl
+//
+// --detect: the script check (#1981) as the product runs it when no language
+// was chosen; each result then carries "detection". --text: also the copied text.
 //
 // One JSON object per input line:
 //   {"id": "...", "image": "/abs/scene.png",
@@ -81,7 +84,7 @@ QJsonObject run(const QList<editor::RecognizedWord>& words,const QJsonObject& pr
 int main(int argc,char** argv){
  qputenv("QT_QPA_PLATFORM","offscreen");
  QGuiApplication app(argc,argv);
- QString helper,buildJson;QStringList data;textjob::Options options;options.words=true;options.candidates=true;
+ QString helper,buildJson;QStringList data;textjob::Options options;options.words=true;options.candidates=true;bool withText=false;
  const auto args=app.arguments();
  for(int i=1;i<args.size();++i){
   const auto& a=args[i];
@@ -89,6 +92,8 @@ int main(int argc,char** argv){
   else if(a=="--data"&&i+1<args.size())data.append(args[++i]);
   else if(a=="--build-json"&&i+1<args.size())buildJson=args[++i];
   else if(a=="--lang"&&i+1<args.size())options.languages.append(args[++i]);
+  else if(a=="--detect")options.detectScript=true;
+  else if(a=="--text")withText=true;
   else{std::fprintf(stderr,"unknown argument %s\n",qPrintable(a));return 2;}
  }
  if(options.languages.isEmpty())options.languages={QStringLiteral("eng")};
@@ -121,6 +126,8 @@ int main(int argc,char** argv){
     Error error;const auto result=job.recognize(image,options,error);
     out["recognizeMs"]=double(result.recognizeMs);out["totalMs"]=double(result.totalMs);
     out["truncated"]=result.truncated;out["banded"]=result.banded;
+    if(!result.detectionOutcome.isEmpty())out["detection"]=textjob::detectionJson(result);
+    if(withText)out["text"]=result.text;
     if(error){out["error"]=error.code;++failures;}
     else{
      QList<editor::RecognizedWord> words;for(const auto& c:result.candidates)words.append({c.text,c.rect,c.confidence,0,c.second});

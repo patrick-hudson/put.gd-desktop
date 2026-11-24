@@ -29,6 +29,7 @@ struct Resolver {
  QList<DataFile> files;
  qint64 total=0;
  QString overLimit;          // the language that crossed a limit
+ int extraFiles=0;           // #1981: the script check's files, beyond maximumLanguages
  std::mutex lock;            // engines start on several threads
  void reset(){files.clear();total=0;overLimit.clear();}
 };
@@ -106,16 +107,36 @@ std::vector<char> lstmImage(const std::vector<char>& data){
  }
  return out;
 }
+// #1981: osd.traineddata holds the legacy engine's classifier and nothing of
+// the LSTM's; its table must be sound like any other, and it is kept whole.
+bool plausibleOsd(const std::vector<char>& data){
+ if(data.size()<4)return false;
+ uint32_t entries=0;std::memcpy(&entries,data.data(),4);
+ if(entries<1||entries>1000)return false;
+ const size_t header=4+size_t(entries)*8;if(header>data.size())return false;
+ std::vector<int64_t> offsets(entries);std::memcpy(offsets.data(),data.data()+4,size_t(entries)*8);
+ int64_t previous=-1;bool any=false;
+ for(auto offset:offsets){
+  if(offset==-1)continue;
+  if(offset<int64_t(header)||offset>int64_t(data.size()))return false;
+  if(previous<0?offset!=int64_t(header):offset<previous)return false;
+  previous=offset;any=true;
+ }
+ return any;
+}
 bool readData(const char* filename,std::vector<char>* data){
  if(!resolver||!filename||!data)return false;
  const QString name=QFile::decodeName(filename);
  if(!name.startsWith(QLatin1String(dataRoot))||!name.endsWith(QLatin1String(".traineddata")))return false;
  const QString language=name.mid(int(std::strlen(dataRoot))).chopped(12);
- if(!validLanguage(language))return false;
+ const bool osd=language==QLatin1String("osd");
+ if(!osd&&!validLanguage(language))return false;
  const std::lock_guard<std::mutex> guard(resolver->lock);
+ // osd only once the job allowed the script check.
+ if(osd&&resolver->extraFiles==0)return false;
  // A language asked for again, by Tesseract or by another engine, comes from memory.
  for(const auto& file:std::as_const(resolver->files))if(file.language==language){*data=file.data;return true;}
- if(resolver->files.size()>=maximumLanguages){resolver->overLimit=language;return false;}
+ if(resolver->files.size()>=maximumLanguages+resolver->extraFiles){resolver->overLimit=language;return false;}
  for(const auto& directory:resolver->directories){
   const auto path=directory+QLatin1Char('/')+language+QLatin1String(".traineddata");
   bool tooLarge=false;std::vector<char> bytes;
@@ -123,8 +144,9 @@ bool readData(const char* filename,std::vector<char>* data){
    if(tooLarge){resolver->overLimit=language;return false;}
    continue;
   }
-  if(!plausibleData(bytes))continue;  // a broken user file falls back to the next directory
-  DataFile file{language,path,qint64(bytes.size()),QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex(),lstmImage(bytes)};
+  if(!(osd?plausibleOsd(bytes):plausibleData(bytes)))continue;  // a broken user file falls back to the next directory
+  const auto sha256=QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex();
+  DataFile file{language,path,qint64(bytes.size()),sha256,osd?std::move(bytes):lstmImage(bytes)};
   resolver->total+=file.bytes;file.kept=qint64(file.data.size());
   *data=file.data;resolver->files.append(std::move(file));
   return true;
@@ -137,6 +159,21 @@ std::vector<std::string> initNames(const EngineOptions& o){return o.dictionary?s
 std::vector<std::string> initValues(const EngineOptions& o){return o.dictionary?std::vector<std::string>{}:std::vector<std::string>(6,"0");}
 }
 LanguageData::LanguageData(const QStringList& directories){delete resolver;resolver=new Resolver;resolver->directories=directories;}
+void LanguageData::allowDetection(){if(!resolver)return;const std::lock_guard<std::mutex> guard(resolver->lock);resolver->extraFiles=2;resolver->overLimit.clear();}
+bool LanguageData::available(const QString& identifier)const{
+ if(!resolver||(identifier!=QLatin1String("osd")&&!validLanguage(identifier)))return false;
+ {
+  const std::lock_guard<std::mutex> guard(resolver->lock);
+  for(const auto& f:std::as_const(resolver->files))if(f.language==identifier)return true;
+ }
+ for(const auto& directory:std::as_const(resolver->directories)){
+  const int fd=::open(QFile::encodeName(directory+QLatin1Char('/')+identifier+QLatin1String(".traineddata")).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
+  if(fd<0)continue;
+  struct stat st{};const bool regular=::fstat(fd,&st)==0&&S_ISREG(st.st_mode)&&st.st_size>0;::close(fd);
+  if(regular)return true;
+ }
+ return false;
+}
 LanguageData::~LanguageData(){delete resolver;resolver=nullptr;}
 void LanguageData::release(){
  if(!resolver)return;
@@ -201,6 +238,43 @@ QString TextEngine::startLike(const TextEngine& first){
  const auto joined=used_.join(QLatin1Char('+')).toLatin1();
  if(api_->Init(dataRoot,0,joined.constData(),tesseract::OEM_LSTM_ONLY,nullptr,0,&names,&values,false,readData)!=0){api_.reset();return QStringLiteral("engine_unavailable");}
  return {};
+}
+QString TextEngine::startAlso(const QStringList& languages,const EngineOptions& options){
+ options_=options;used_.clear();skipped_.clear();
+ if(!resolver)return QStringLiteral("engine_unavailable");
+ if(languages.isEmpty()||languages.size()>maximumLanguages)return QStringLiteral("language_unavailable");
+ for(const auto& language:languages)if(!validLanguage(language)||languages.count(language)>1)return QStringLiteral("language_unavailable");
+ auto names=initNames(options),values=initValues(options);
+ api_=std::make_unique<tesseract::TessBaseAPI>();
+ const auto joined=languages.join(QLatin1Char('+')).toLatin1();
+ const int status=api_->Init(dataRoot,0,joined.constData(),tesseract::OEM_LSTM_ONLY,nullptr,0,&names,&values,false,readData);
+ std::vector<std::string> loaded;if(status==0)api_->GetLoadedLanguagesAsVector(&loaded);
+ QStringList loadedNames;for(const auto& l:loaded)loadedNames.append(QString::fromStdString(l));
+ for(const auto& l:languages)if(!loadedNames.contains(l)){api_.reset();return QStringLiteral("language_unavailable");}
+ if(status!=0){api_.reset();return QStringLiteral("language_unavailable");}
+ used_=loadedNames;return {};
+}
+ScriptDetector::ScriptDetector()=default;
+ScriptDetector::~ScriptDetector(){stop();}
+void ScriptDetector::stop(){if(api_){api_->End();api_.reset();}}
+bool ScriptDetector::start(){
+ if(!resolver)return false;
+ api_=std::make_unique<tesseract::TessBaseAPI>();
+ if(api_->Init(dataRoot,0,"osd",tesseract::OEM_TESSERACT_ONLY,nullptr,0,nullptr,nullptr,false,readData)!=0){api_.reset();return false;}
+ return true;
+}
+QString ScriptDetector::detect(const GreyImage& image,float* confidence){
+ if(confidence)*confidence=0;
+ if(!api_||image.width<1||image.height<1)return {};
+ api_->SetPageSegMode(tesseract::PSM_OSD_ONLY);
+ api_->SetImage(reinterpret_cast<const unsigned char*>(image.pixels.constData()),image.width,image.height,1,image.width);
+ api_->SetSourceResolution(96);
+ int degrees=0;float orientationConfidence=0,scriptConfidence=0;const char* name=nullptr;
+ const bool found=api_->DetectOrientationScript(&degrees,&orientationConfidence,&name,&scriptConfidence);
+ QString script=found&&name?QString::fromLatin1(name):QString();
+ api_->Clear();
+ if(confidence)*confidence=scriptConfidence;
+ return script;
 }
 void TextEngine::prepare(const GreyImage& band,double scale){
  api_->SetPageSegMode(tesseract::PageSegMode(options_.pageSegmentation));

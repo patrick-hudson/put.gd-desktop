@@ -51,6 +51,9 @@ constexpr int cpuSecondsPerThread=21;
 // truncated, leaving the parent's 20 s deadline time for the rest: decoding,
 // the memfd, the result and the copy.
 constexpr int budgetMs=16000;
+// #1981: what the script check's data may add to an English-only job's data
+// limit: osd.traineddata (10.6 MB) and one language's LSTM model.
+constexpr qint64 scriptDataAllowance=32*1024*1024;
 // The parent's data path, read before confinement: Landlock may read only
 // these language directories. Relative or dotted entries are not used.
 QStringList dataDirectories(){
@@ -89,7 +92,11 @@ int main(int argc,char** argv){
   job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.threads=threads;job.memoryBudget=budgets.base;job.memoryCeiling=budgets.ceiling;job.cpus=cpus;
   // More engines, more second reads in the cap: four engines or fewer keep it.
   if(unhinged)job.secondReadScale=std::max(1.0,threads/4.0);
-  if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(budgets.base*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
+  // #1981: lines in another script may be read again in its language.
+  job.detectScript=options.detectScript;
+  // An English-only job's data limit comes down to one and a half times the
+  // budget; with the script check, plus room for its osd and language data.
+  if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit((budgets.base+(job.detectScript?scriptDataAllowance:0))*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);
   if(!recognized.error.isEmpty())return {recognized.error,recognized.failedLanguage};
   result=toTextResult(recognized,job);

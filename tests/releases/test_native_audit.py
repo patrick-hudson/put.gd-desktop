@@ -313,5 +313,26 @@ class RuntimePackageTests(unittest.TestCase):
                 self.assertRegex(text, r"CPACK_(DEBIAN_PACKAGE_DEPENDS|RPM_PACKAGE_REQUIRES) \"[^\"]*\b" + name + r"\b")
 
 
+class RecommendedPackageTests(unittest.TestCase):
+    """The script check's language data (#1981): recommended, never required."""
+    def test_deb_and_rpm_recommend_the_script_data(self):
+        native.require_recommended_packages({"format": "DEB", "recommends": ", ".join(native.RECOMMENDED_PACKAGES["DEB"]) + ", gvfs-fuse"})
+        native.require_recommended_packages({"format": "RPM", "recommends": list(native.RECOMMENDED_PACKAGES["RPM"]) + ["gvfs-fuse"]})
+
+    def test_missing_recommendation_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "DEB does not recommend tesseract-ocr-osd"):
+            native.require_recommended_packages({"format": "DEB", "recommends": "gvfs-fuse"})
+        with self.assertRaisesRegex(ValueError, "RPM does not recommend tesseract-langpack-ell"):
+            native.require_recommended_packages({"format": "RPM", "recommends": list(native.RECOMMENDED_PACKAGES["RPM"][:-1])})
+
+    def test_package_configuration_declares_them(self):
+        text = (REPO / "packaging/linux/CMakeLists.txt").read_text()
+        for names in native.RECOMMENDED_PACKAGES.values():
+            for name in names:
+                self.assertRegex(text, r"CPACK_(DEBIAN|RPM)_PACKAGE_RECOMMENDS \"[^\"]*\b" + name + r"\b")
+        for name in native.SCRIPT_LANGUAGES:
+            self.assertIn('"' + name + '"', (REPO / "src/ocr/Script.cpp").read_text())
+
+
 if __name__ == "__main__":
     unittest.main()
