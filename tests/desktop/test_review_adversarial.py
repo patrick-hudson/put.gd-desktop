@@ -284,6 +284,18 @@ class Adv(unittest.TestCase):
             self.assertFalse((out/'planted.log').exists())
             self.assertEqual([p for p in out.rglob('*') if TOKEN in (p.read_text() if p.is_file() else '')], [])
 
+    def test_quarantine_refuses_when_no_directory_outside_the_export_root_exists(self):
+        import os
+        out = self.out.parent/'run-nowhere'
+        (out/'scratch').mkdir(parents=True)
+        (out/'tmp').mkdir()
+        (out/'planted.log').write_text(TOKEN)
+        with patch.dict(os.environ, PUTGD_LAB_SCRATCH=str(out/'scratch')), patch.object(tempfile, 'tempdir', str(out/'tmp')):
+            with self.assertRaises(RuntimeError):
+                scan_run(out, literals=(TOKEN,), quarantine=True)
+        self.assertEqual((out/'planted.log').read_text(), TOKEN)  # not reported as moved
+        self.assertEqual(list((out/'scratch').iterdir())+list((out/'tmp').iterdir()), [])
+
     def test_quarantine_removes_leaks_across_filesystems(self):
         import errno
         import tools.lab.surface_driver.redact as redact

@@ -1548,23 +1548,29 @@ def last_results(state):
 
 
 def count_host_blocked(result, last):
-    """Give each row its builder kept from running a count of the UTC days running that has
-    happened, from the last published results: a rerun on the same day doesn't add one."""
+    """Give each row its builder kept from running a count of its published runs in a row so
+    blocked, from the last published results. A run on the UTC date the row was last counted
+    (`hostBlockedDate`, kept with the row when a filtered recheck carries it over) adds none."""
+    today = str(result.get('date', ''))[:10]
     try:
         before = {(row['host'], row['desktop']): row for row in (last or {}).get('desktops', [])}
-        same_day = str((last or {}).get('date', ''))[:10] == str(result.get('date', ''))[:10]
+        published = str((last or {}).get('date', ''))[:10]
     except (AttributeError, KeyError, TypeError):
-        before, same_day = {}, False
+        before, published = {}, ''
     for row in result['desktops']:
         row.pop('hostBlockedNights', None)
+        row.pop('hostBlockedDate', None)
         if not host_blocked(row):
             continue
         previous = before.get((row['host'], row['desktop']))
         try:
-            earlier = int(previous.get('hostBlockedNights') or 1) if previous and host_blocked(previous) else 0
+            blocked_before = bool(previous) and bool(host_blocked(previous))
+            earlier = int(previous.get('hostBlockedNights') or 1) if blocked_before else 0
+            counted = str(previous.get('hostBlockedDate') or published)[:10] if blocked_before else ''
         except (AttributeError, KeyError, TypeError, ValueError):
-            earlier = 0
-        row['hostBlockedNights'] = max(1, earlier if same_day else earlier+1)
+            earlier, counted = 0, ''
+        row['hostBlockedNights'] = max(1, earlier if counted == today else earlier+1)
+        row['hostBlockedDate'] = today
 
 
 def host_alert(row):
@@ -1649,7 +1655,7 @@ def publish(github, result, out, *, previous=None):
             seconds=row.get('totalSeconds', row.get('seconds')), waitSeconds=row.get('waitSeconds', 0),
             attachments=row['evidence']+'/attachments.tgz', notRunReason=row.get('notRunReason'))
         if row.get('hostBlockedNights'):
-            receipt['hostBlockedNights'] = row['hostBlockedNights']
+            receipt.update(hostBlockedNights=row['hostBlockedNights'], hostBlockedDate=row.get('hostBlockedDate'))
         alert = host_alert(row)
         body = f'{result["release"]} · {row["desktop"]} / {row["host"]}\n\n'+(f'> [!WARNING]\n> {alert}\n\n' if alert else '')
         body += '```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'

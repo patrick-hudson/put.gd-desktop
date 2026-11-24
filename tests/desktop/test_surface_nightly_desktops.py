@@ -1906,6 +1906,13 @@ with n.controller_shutdown(workers):
                                    'resolve it before recovery')
         nightly.count_host_blocked(kept, second)
         self.assertEqual(kept['desktops'][0]['hostBlockedNights'], 3)
+        # A filtered recheck of another row in the morning carries this row over with a newer table
+        # date; the evening's full run is still its next blocked run.
+        morning = dict(first, date='2026-11-23T08:00:00+00:00')
+        evening = night('2026-11-23', ram)
+        nightly.count_host_blocked(evening, morning)
+        self.assertEqual(evening['desktops'][0]['hostBlockedNights'], 2)
+        self.assertEqual(evening['desktops'][0]['hostBlockedDate'], '2026-11-23')
         recovered = night('2026-11-24', ram, ran=True)
         nightly.count_host_blocked(recovered, second)
         self.assertNotIn('hostBlockedNights', recovered['desktops'][0])
