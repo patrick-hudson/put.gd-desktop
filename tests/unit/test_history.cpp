@@ -51,10 +51,10 @@ private slots:
  void remoteMetadataReplacementDropsStaleNestedFields() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="metadata-operation";OperationItem item;item.artifact.id="metadata-item";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));
   auto deletion=[&](QString id,QString status,QJsonObject error,QJsonObject progress) {return QJsonObject{{"id",id},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status",status},{"error",error},{"progress",progress}}}}};};
-  QVERIFY(!store.saveDeletion(deletion("failed-delete","failed",Error{"synthetic","Failed",{{"stale","old"}}}.toJson(),{{"oldMarker","old"}})));
-  QVERIFY(!store.saveDeletion(deletion("successful-delete","removed",Error{}.toJson(),{{"phase","done"}})));
+  QVERIFY(!store.saveDeletion(deletion("failed-delete","failed",Error{"synthetic","Failed",{{"stale","old"}}}.toJson(),{{"oldMarker","old"}}),true));
+  QVERIFY(!store.saveDeletion(deletion("successful-delete","removed",Error{}.toJson(),{{"phase","done"}}),true));
   const auto detail=store.detail(item.artifact.id);QCOMPARE(detail["remoteError"].toObject(),Error{}.toJson());QCOMPARE(detail["deleteProgress"].toObject(),QJsonObject({{"phase","done"}}));
-  QVERIFY(!store.saveDeletion({{"id","pending-delete"},{"state","accepted"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status","pending"}}}}}));QVERIFY(!store.detail(item.artifact.id).contains("remoteError"));QVERIFY(!store.detail(item.artifact.id).contains("deleteProgress"));
+  QVERIFY(!store.saveDeletion({{"id","pending-delete"},{"state","accepted"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status","pending"}}}}},true));QVERIFY(!store.detail(item.artifact.id).contains("remoteError"));QVERIFY(!store.detail(item.artifact.id).contains("deleteProgress"));
  }
  void largeClearedLegacyMigrationExpandsDeletionDocumentsOnce() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="bulk-legacy";
@@ -107,6 +107,34 @@ private slots:
  // #1763: a deletion that ends unsupported_safe_removal or version_retained keeps the "phase" checkpoint an
  // interrupted attempt saved: expiry and Clear History keep the record, and a retry keeps the checkpoint.
  // Removing it from History is the way out: the record goes and the next retry drops the target.
+ // #1773: of two deletions of a file the newer one (recorded later) holds it. A retried older one keeps an outcome it
+ // had recorded and leaves the record's state alone, even when the record still names it (a journal written before
+ // this rule); the newer one's retry takes the record back; and while its checkpoint is unsettled, no third deletion
+ // takes it over.
+ void newerDeletionHoldsItsRecord() {
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");HistoryStore store(path);Operation op;op.id="op";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());
+  for(const auto* id:{"a","b"}){OperationItem item;item.artifact.id=id;item.artifact.name=QString(id)+".png";item.uploadStatus="uploaded";op.items.append(item);}
+  QVERIFY(!store.saveOperation(op));
+  const auto target=[](const QString& id,const QString& status,const QJsonObject& progress){return QJsonObject{{"historyId",id},{"status",status},{"progress",progress}};};
+  const QJsonObject none{{"schemaVersion",1}},checkpoint{{"schemaVersion",1},{"phase","delete_intent"}};
+  QVERIFY(!store.saveDeletion({{"id","old"},{"state","accepted"},{"items",QJsonArray{target("a","pending",none),target("b","pending",none)}}},true));
+  QJsonObject old{{"id","old"},{"state","completed"},{"items",QJsonArray{target("a","removed",none),target("b","failed",none)}}};QVERIFY(!store.saveDeletion(old));
+  QVERIFY(!store.saveDeletion({{"id","newer"},{"state","accepted"},{"items",QJsonArray{target("a","pending",none)}}},true));
+  QJsonObject newer{{"id","newer"},{"state","completed"},{"items",QJsonArray{target("a","unknown",checkpoint)}}};QVERIFY(!store.saveDeletion(newer));
+  old["state"]="running";QVERIFY(!store.startDeletion(old));
+  QCOMPARE(store.deletion("old")["items"].toArray()[0].toObject()["status"].toString(),QString("removed"));
+  QCOMPARE(store.detail("a")["deleteOperationId"].toString(),QString("newer"));QCOMPARE(store.detail("a")["deleteProgress"].toObject(),checkpoint);
+  // A journal written before this rule: the older deletion's write named itself on the record.
+  {const auto connection=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);
+   QVERIFY(q.exec("UPDATE item_state SET data=json_set(data,'$.deleteOperationId','old','$.remoteStatus','removed') WHERE id='a'"));db.close();}QSqlDatabase::removeDatabase(connection);}
+  // Retrying the older one first still leaves the record to the newer one, and keeps its own recorded outcome.
+  old["state"]="running";QVERIFY(!store.startDeletion(old));
+  {const auto kept=store.deletion("old")["items"].toArray()[0].toObject();QCOMPARE(kept["status"].toString(),QString("removed"));QCOMPARE(kept["takenOverBy"].toString(),QString("newer"));}
+  newer["state"]="running";QVERIFY(!store.startDeletion(newer));
+  QCOMPARE(newer["items"].toArray()[0].toObject()["status"].toString(),QString("unknown"));QCOMPARE(store.detail("a")["deleteOperationId"].toString(),QString("newer"));
+  newer["state"]="completed";QVERIFY(!store.saveDeletion(newer));QCOMPARE(store.forgetBlocker("a",{}),QString("deletion"));
+  QCOMPARE(store.saveDeletion({{"id","third"},{"state","accepted"},{"items",QJsonArray{target("a","pending",none)}}},true).code,QString("delete_target_changed"));
+ }
  void checkpointedTargetStaysUntilFinalOutcome() {
   for(const auto* outcome:{"unsupported_safe_removal","version_retained"}){
    QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.restore(OperationState::Completed);op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());

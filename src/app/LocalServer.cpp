@@ -705,6 +705,19 @@ void LocalServer::actOnError(const QJsonObject& entry,const QString& action,Json
   });
   return;
  }
+ // A deletion's Retry (#1773): when a newer deletion of the file took it over, retrying this one would skip the
+ // file the entry names, so the step is refused and the newer deletion is retried from History.
+ if(action=="retry"&&kind=="deletion"&&!historyId.isEmpty()){
+  const auto deletionId=entry["deletionId"].toString();
+  const auto answer=[id=entry["id"],reply](Error error,QJsonObject result){reply(error,{{"id",id},{"action","retry"},{"method","delete.retry"},{"result",result}});};
+  dispatch(request("history.detail",{{"id",historyId}}),[this,guarded=QPointer<LocalServer>(this),request,historyId,deletionId,answer](Error error,QJsonObject record){
+   const auto current=record["deleteOperationId"].toString();
+   if(!error&&!current.isEmpty()&&current!=deletionId){answer({"delete_taken_over","A newer deletion of this file took over. Retry or check it from the file's entry in History.",{{"historyId",historyId},{"deleteOperationId",current}}},{});return;}
+   if(!guarded){answer({"error_log_unavailable","This resident keeps no error log",{}},{});return;}
+   dispatch(request("delete.retry",{{"id",deletionId}}),answer);
+  });
+  return;
+ }
  QString method;QJsonObject params;
  if(action=="unlock_credentials"){
   if(!historyId.isEmpty()){method="history.unlockCredentials";params={{"id",historyId}};}

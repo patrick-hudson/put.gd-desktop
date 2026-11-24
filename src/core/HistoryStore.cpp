@@ -99,7 +99,8 @@ Error HistoryStore::initialize() {
  if(version>7) return {"history_version","Unsupported history schema version",{}};
  // The error log table (#1753) is created beside schema 7 without raising the version, so an
  // older put.gd still opens this journal; it never reads the table.
- if(version==7) return ensureErrorLog();
+ // Deletion targets are looked up by record (#1773); the index is added to existing schema-7 journals too.
+ if(version==7) {if(!q.exec("CREATE INDEX IF NOT EXISTS deletion_targets_history ON deletion_targets(history_id)"))return sqlError();return ensureErrorLog();}
  if(!db_.transaction()) return sqlError();
  auto exec=[&](const QString& s) {return q.exec(s);}; bool ok=true;
  if(version<4) {
@@ -111,7 +112,7 @@ Error HistoryStore::initialize() {
   if(ok) ok=exec("INSERT INTO history_next SELECT id,json_extract(data,'$.operationId'),json_extract(data,'$.itemId'),json_extract(data,'$.created'),json_extract(data,'$.name'),json_extract(data,'$.mime'),json_extract(data,'$.category'),json_extract(data,'$.profileId'),json_extract(data,'$.uploadStatus'),json_extract(data,'$.local.status'),json_extract(data,'$.remoteStatus'),data FROM history");
   if(ok) ok=exec("DROP TABLE history")&&exec("ALTER TABLE history_next RENAME TO history");
  }
- if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
+ if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS deletion_targets_history ON deletion_targets(history_id)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
  if(ok)ok=exec("ALTER TABLE history ADD COLUMN publication_identity TEXT NOT NULL DEFAULT ''")&&exec("CREATE INDEX history_publication ON history(publication_identity,upload_status)")&&exec("PRAGMA user_version=4");
  }
  if(version<5 && ok)ok=exec("CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,publication_identity TEXT NOT NULL DEFAULT '',upload_status TEXT NOT NULL)")
@@ -440,15 +441,19 @@ QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(err
 // Takes the write lock before reading (#1759): a read transaction that later writes can fail
 // SQLITE_BUSY without waiting when another writer went first; this one waits its turn.
 bool HistoryStore::beginWrite() {QSqlQuery q(db_);return q.exec("BEGIN IMMEDIATE");}
-Error HistoryStore::saveDeletion(const QJsonObject& doc,bool requireRecords) {
+Error HistoryStore::saveDeletion(QJsonObject& doc,bool requireRecords) {
  if(error_) return error_;
- if(!(requireRecords?beginWrite():db_.transaction())) return sqlError();
+ // The write lock first: writeDeletion reads which deletion holds each record before it writes (#1773).
+ if(!beginWrite()) return sqlError();
  QSqlQuery q(db_);
  // A new deletion records its intent only while every record is still in History, in the same
  // transaction, so Remove from History only can't race it (#1759).
  if(requireRecords)for(const auto& v:doc["items"].toArray()){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(v.toObject()["historyId"].toString());if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{{"historyId",v.toObject()["historyId"]}}};}}
  q.finish();
- if(!writeDeletion(doc)||!db_.commit()) {db_.rollback();return sqlError();}return {};
+ Error refused;
+ if(!writeDeletion(doc,requireRecords,&refused)) {db_.rollback();return sqlError();}
+ if(refused) {db_.rollback();return refused;}
+ if(!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
 // A deletion's run starts (#1759): the unfinished targets whose records were removed from History
 // only are dropped from this run and listed in "forgotten"; every other unfinished target is
@@ -468,19 +473,73 @@ Error HistoryStore::startDeletion(QJsonObject& doc) {
  }
  q.finish();
  auto proposed=doc;proposed["items"]=kept;if(!forgotten.isEmpty())proposed["forgotten"]=forgotten;
- if(!writeDeletion(proposed)||!db_.commit()) {db_.rollback();return sqlError();}
+ if(!writeDeletion(proposed,false,nullptr)||!db_.commit()) {db_.rollback();return sqlError();}
  doc=proposed;return {};
 }
-bool HistoryStore::writeDeletion(const QJsonObject& doc) {
- QSqlQuery q(db_);q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(doc["id"].toString());q.addBindValue(encode(doc));bool ok=q.exec();
+// Which deletion holds a record (#1773): the one recorded last (deletions.rowid) among the deletions that name it,
+// whatever item_state's deleteOperationId says (a journal written before this rule can name an older one there). A
+// new deletion takes a record over when it is recorded (claim), and an older one retried after that leaves it
+// alone, so the newer deletion's state and saved progress always win. A claim is refused while the holder
+// may still need its own retry, as HistoryService::prepare says (an outcome a retry settles, or a saved "phase"
+// checkpoint), and while any deletion keeping the record in History can't let it go (releasable).
+bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
+ QSqlQuery q(db_);const auto id=doc["id"].toString();
+ const QStringList finals{"removed","already_missing","changed"};
+ // The order deletions were first recorded; a deletion not recorded yet is the newest.
+ const auto sequence=[&](const QString& deletion,bool* ok)->qint64 {q.prepare("SELECT rowid FROM deletions WHERE id=?");q.addBindValue(deletion);*ok=q.exec();const auto seq=*ok&&q.next()?q.value(0).toLongLong():-1;q.finish();return seq;};
+ bool ok=true;const auto self=sequence(id,&ok);if(!ok)return false;
+ QJsonObject stored;if(self>=0){q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec())return false;if(q.next())stored=decode(q.value(0));q.finish();}
+ QHash<QString,QJsonObject> before;for(const auto& v:stored["items"].toArray())before.insert(v.toObject()["historyId"].toString(),v.toObject());
+ auto items=doc["items"].toArray();QList<bool> held,taken;QList<QJsonObject> states;QHash<QString,QStringList> release;QHash<QString,QJsonObject> journals;
+ for(qsizetype i=0;i<items.size();++i) {
+  auto item=items[i].toObject();const auto historyId=item["historyId"].toString();
+  q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);if(!q.exec())return false;
+  const bool found=q.next();const auto data=found?decode(q.value(0)):QJsonObject{};q.finish();
+  q.prepare("SELECT t.deletion_id FROM deletion_targets t JOIN deletions d ON d.id=t.deletion_id WHERE t.history_id=? ORDER BY d.rowid DESC LIMIT 1");q.addBindValue(historyId);if(!q.exec())return false;
+  const auto newest=q.next()?q.value(0).toString():QString();q.finish();
+  const auto holder=newest;
+  if(claim) {
+   // The holder's own journal says whether it may still need its own retry: the record's state can name an older
+   // deletion (a journal written before this rule).
+   QString remote;QJsonObject progress;
+   if(!holder.isEmpty()&&holder!=id){
+    if(!journals.contains(holder)){Error unread;journals.insert(holder,deletion(holder,&unread));if(unread)return false;}
+    for(const auto& v:journals.value(holder).value("items").toArray())if(v.toObject()["historyId"]==historyId){remote=v.toObject()["status"].toString();progress=v.toObject()["progress"].toObject();}
+   }
+   QStringList keeping;
+   const bool holderBusy=QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(progress.contains("phase")&&!finals.contains(remote));
+   if(holderBusy||!releasable(historyId,{},&keeping)) {
+    if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
+    return true;
+   }
+   keeping.removeAll(id);release.insert(historyId,keeping);
+  } else if(!holder.isEmpty()&&holder!=id&&self>=0) {
+   {
+    // Taken over by a newer deletion: this one sends nothing more for it and no longer keeps it. An outcome it
+    // had already recorded stays in its journal; one it read only after the takeover is not reported.
+    const auto earlier=before.value(historyId);
+    if(finals.contains(earlier["status"].toString())){item=earlier;item["takenOverBy"]=holder;}
+    else {
+     item["status"]="taken_over";item["takenOverBy"]=holder;
+     item["error"]=Error{"delete_taken_over","A newer deletion of this file took over; its History entry shows that one.",{{"deleteOperationId",holder}}}.toJson();
+    }
+    items[i]=item;held<<false;taken<<true;states<<QJsonObject{};continue;
+   }
+  }
+  held<<found;taken<<false;states<<data;
+ }
+ doc["items"]=items;
+ q.prepare("INSERT INTO deletions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(id);q.addBindValue(encode(doc));ok=q.exec();
  // While a deletion is accepted or running, each target it may still send a request for is retained.
  const bool live=doc["state"]=="accepted"||doc["state"]=="running";
- for(const auto& v:doc["items"].toArray()) {if(!ok)break;const auto item=v.toObject();const auto status=item["status"].toString();const bool final=QStringList{"removed","already_missing","changed"}.contains(status);
+ for(qsizetype i=0;ok&&i<items.size();++i) {const auto item=items[i].toObject();const auto status=item["status"].toString();const bool final=finals.contains(status);const auto historyId=item["historyId"].toString();
   // A finished one keeps a target that may still need a request, and one whose saved "phase" checkpoint
   // has no final outcome yet (#1763): until then its record can't leave History and a retry keeps it.
-  const bool active=live?!final:status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained"||(!final&&item["progress"].toObject().contains("phase"));
-  q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(doc["id"].toString());q.addBindValue(item["historyId"].toString());q.addBindValue(active?1:0);ok=q.exec();
-  if(ok) {q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(item["historyId"].toString());ok=q.exec();if(ok&&q.next()){auto data=decode(q.value(0));data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=doc["id"];data["deleteProgress"]=item["progress"];ok=persistRemote(db_,item["historyId"].toString(),data);}}
+  const bool active=!taken[i]&&(live?!final:status=="pending"||status=="deleting"||status=="unknown"||status=="failed"||status=="hidden_version_retained"||(!final&&item["progress"].toObject().contains("phase")));
+  q.prepare("INSERT INTO deletion_targets VALUES(?,?,?) ON CONFLICT(deletion_id,history_id) DO UPDATE SET active=excluded.active");q.addBindValue(id);q.addBindValue(historyId);q.addBindValue(active?1:0);ok=q.exec();
+  // The deletions it took the record over from may all let it go (the claim was not refused): they do.
+  for(const auto& deletion:release.value(historyId)){if(!ok)break;q.prepare("UPDATE deletion_targets SET active=0 WHERE deletion_id=? AND history_id=?");q.addBindValue(deletion);q.addBindValue(historyId);ok=q.exec();}
+  if(ok&&held[i]) {auto data=states[i];data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=id;data["deleteProgress"]=item["progress"];ok=persistRemote(db_,historyId,data);}
  }
  return ok;
 }
