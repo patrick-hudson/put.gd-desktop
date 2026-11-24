@@ -53,6 +53,12 @@ struct Fixture {
  QString start(const QJsonObject& options={}){return call([&](JsonReply r){operations->invoke("region",r,options);}).result["operationId"].toString();}
 };
 const QStringList card{"Card 4111 1111 1111 1111"};
+// Whether an operation holds the card's recognized digits: spaced as on the page, joined, or a group as a
+// word of its own. Not a bare 4111: the record's ids and hashes are random hex, and hold it by chance (#1889).
+bool holdsCardText(const QJsonObject& operation){
+ const auto json=QJsonDocument(operation).toJson(QJsonDocument::Compact);
+ return json.contains("4111 1111")||json.contains("4111111111111111")||json.contains("\"4111\"");
+}
 const QStringList key{"key AKIAIOSFODNN7EXAMPLE"};
 // #1820: the check object with each kind set; kinds not named are off.
 QJsonObject kinds(const QJsonObject& chosen){QJsonObject all{{"email","off"},{"phone","off"},{"ip","off"},{"card","off"},{"key","off"},{"name","off"},{"list","off"}};for(auto it=chosen.begin();it!=chosen.end();++it)all[it.key()]=it.value();return {{"enabled",true},{"kinds",all}};}
@@ -100,7 +106,7 @@ private slots:
   const auto found=f.inspect(id)["sensitive"].toObject();
   QCOMPARE(found["found"].toObject()["card"].toInt(),1);QVERIFY(found["complete"].toBool());QCOMPARE(f.provider->uploads.load(),0);
   // Only the kinds and counts: nothing recognized reaches the operation.
-  QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
   QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"later",r);}).error.code,QString("invalid_request"));
   const auto decided=call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);});QVERIFY2(!decided.error,qPrintable(decided.error.code));
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
@@ -206,7 +212,7 @@ private slots:
   // With Keep a local copy on, the uncovered original is kept locally, as automatic covers keep it.
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(blackShare(kept,digits(0))<0.4);QVERIFY(blackShare(kept,digits(1))<0.4);
-  QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
  }
  // #1898: Redact and upload covers each file of a selection that asks; the user's own files stay as they are.
  void redactAndUploadCoversEachFileOfASelection(){
@@ -283,7 +289,7 @@ private slots:
   QVERIFY(blackShare(QImage(items.first().toObject()["local"].toObject()["path"].toString()),digits(0))>0.7);
   const auto original=sensitive["original"].toObject();QCOMPARE(original["status"].toString(),QString("saved"));QCOMPARE(original["paths"].toArray().size(),1);
   const QImage kept(original["paths"].toArray().first().toString());QVERIFY(!kept.isNull());QVERIFY(blackShare(kept,digits(0))<0.4);
-  QVERIFY(!QJsonDocument(f.inspect(id)).toJson().contains("4111"));
+  QVERIFY2(!holdsCardText(f.inspect(id)),"recognized card digits reached the operation");
  }
  // #1941: a QR code holding a 2FA secret or a Wi-Fi password is covered with Keys and tokens before the upload: one
  // solid cover over the whole symbol, so the real putgd-ocr finds no code in what was uploaded (it reads the one in
