@@ -126,7 +126,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   std::stable_sort(widest.begin(),widest.end(),[](const Segment& a,const Segment& b){return a.rect.width()>b.rect.width();});
   if(widest.size()>detectionPieces)widest.resize(detectionPieces);
   QList<PieceSource> pieces;
-  for(const auto& s:std::as_const(widest)){pieces.append(piece(s,false));if(pieces.size()>1&&compositePixels(pieces,8)>osdPixels){pieces.removeLast();break;}}
+  for(const auto& s:std::as_const(widest)){pieces.append(piece(s,false));if(compositePixels(pieces,8)>osdPixels){pieces.removeLast();break;}}
+  if(pieces.isEmpty()){delete run;check.outcome=QStringLiteral("no_memory");return false;}
   run->osdImage=composite(pieces,8).image;
   QElapsedTimer clock;clock.start();
   std::thread osd;
@@ -156,8 +157,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  run->languages={check.language,QStringLiteral("eng")};run->engine=in.engine;
  // The segments of one reading, in groups of about scriptGroupPixels at
  // their panels' scale, in reading order, within what is left of scriptPixels.
- struct Batch { QList<int> segments;QList<QList<int>> members;QList<QList<PieceSource>> pieces;std::vector<double> scales;qint64 largest=0; };
- qint64 budgetPixels=scriptPixels;
+ struct Batch { QList<int> segments;QList<QList<int>> members;QList<QList<PieceSource>> pieces;std::vector<double> scales;qint64 largest=0,total=0; };
+ qint64 budgetPixels=scriptPixels,used=0;
  const auto batchOf=[&](const QList<Segment>& segs,const QList<int>& which){
   // Counted as composite() allocates them: the widest piece times every
   // piece and gap, so one wide line among narrow ones is not undercounted.
@@ -178,6 +179,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
    b.members.last().append(i);b.pieces.last()=std::move(grown);b.scales.back()=scale;
    b.largest=std::max(b.largest,groupPixels);b.segments.append(i);
   }
+  b.total=scriptPixels-budgetPixels-used;used=scriptPixels-budgetPixels;
   return b;
  };
  // Reads a batch on the run's engines: the first reading starts them, the
@@ -185,7 +187,19 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  // reuses those that started. Returns false when one is still running at the
  // deadline (late).
  const auto readBatch=[&](const Batch& b,bool first){
-  run->groups.clear();for(int g=0;g<b.pieces.size();++g)run->groups.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
+  // The memory first, before any composite is built: the batch's composites
+  // (a byte a pixel) and, for each engine, its working memory (20 bytes a
+  // pixel of the largest group), plus each new engine's own cost.
+  const int groups=int(b.pieces.size());
+  const qint64 each=(first?std::max<qint64>(16*1024*1024,in.engineCost):0)+20*b.largest;
+  int engines=0;
+  if(first)engines=std::min<int>(in.threads,groups);
+  else for(const auto& engine:run->engines)if(engine->ready())++engines;
+  engines=std::min(engines,groups);
+  for(int k=0;k<engines;++k)if(!in.roomFor(b.total+each*(k+1))){engines=k;break;}
+  run->groups.clear();run->texts.clear();run->done.clear();
+  if(engines==0)return true;
+  for(int g=0;g<groups;++g)run->groups.append(composite(b.pieces[g],int(std::lround(8*b.scales[size_t(g)]))));
   run->texts=QList<BandText>(run->groups.size());run->done=QList<bool>(run->groups.size(),false);run->next=0;run->closing=false;
   const auto scales=b.scales;
   std::vector<std::thread> readers;
@@ -212,17 +226,13 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
    }catch(const std::system_error&){run->running.fetch_sub(1);return false;}
   };
   if(first){
-   int engines=std::min<int>(in.threads,int(run->groups.size()));
-   const qint64 each=std::max<qint64>(16*1024*1024,in.engineCost)+20*b.largest;
-   for(int k=0;k<engines;++k)if(!in.roomFor(each*(k+1))){engines=k;break;}
-   if(engines==0)return true;
    for(int k=0;k<engines;++k){
     run->engines.push_back(std::make_unique<TextEngine>());
     if(!launch(run->engines.back().get(),true)){run->engines.pop_back();break;}
    }
   }else{
    int launched=0;
-   for(auto& engine:run->engines)if(engine->ready()&&launched<run->groups.size()){if(!launch(engine.get(),false))break;++launched;}
+   for(auto& engine:run->engines)if(engine->ready()&&launched<engines){if(!launch(engine.get(),false))break;++launched;}
   }
   bool late=false;
   {
@@ -296,14 +306,11 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  for(int i=int(all.size())-1;i>=0;--i){
   if(!take[i])continue;
   const auto& seg=all[i];
-  // A line the first pass read with some confidence may hold a key or token
-  // it read right: for Quick redact its first words stay, as second reads,
-  // when one of them looks like a token. (A garbled line's English reading is
-  // what this check exists to drop.)
-  if(in.candidates&&!seg.garbled){
-   bool token=false;for(int w=seg.first;w<seg.last;++w)token|=uncertainToken(job.words[w].text,0);
-   if(token)for(int w=seg.first;w<seg.last;++w){auto word=job.words[w];word.kept=false;word.second=true;word.reread=true;firstReadings.append(word);}
-  }
+  // A line the first pass read with some confidence may hold a key, token or
+  // passphrase it read right: for Quick redact its first words stay, as second
+  // reads. (A garbled line's English reading is what this check exists to drop.)
+  if(in.candidates&&!seg.garbled)
+   for(int w=seg.first;w<seg.last;++w){auto word=job.words[w];word.kept=false;word.second=true;word.reread=true;firstReadings.append(word);}
   job.words.remove(seg.first,seg.last-seg.first);
   for(int k=0;k<readings[i].words.size();++k)job.words.insert(seg.first+k,readings[i].words[k]);
   changes.append({seg.first,int(readings[i].words.size())-(seg.last-seg.first)});

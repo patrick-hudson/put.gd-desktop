@@ -11,7 +11,9 @@ bool lettered(const QString& text){
 }
 // Written without spaces between words.
 bool unspaced(char32_t c){
- if((c>=0x3000&&c<=0x303F)||(c>=0xFF00&&c<=0xFF60)||(c>=0xFF61&&c<=0xFF9F))return true;  // CJK punctuation, full and half width forms
+ // CJK punctuation, fullwidth punctuation (not fullwidth Latin letters or
+ // digits, which are spaced like Latin), halfwidth punctuation and katakana.
+ if((c>=0x3000&&c<=0x303F)||(c>=0xFF01&&c<=0xFF0F)||(c>=0xFF1A&&c<=0xFF20)||(c>=0xFF3B&&c<=0xFF40)||(c>=0xFF5B&&c<=0xFF9F))return true;
  switch(QChar::script(c)){
   case QChar::Script_Han:case QChar::Script_Hiragana:case QChar::Script_Katakana:case QChar::Script_Thai:case QChar::Script_Lao:case QChar::Script_Khmer:case QChar::Script_Myanmar:return true;
   default:return false;

@@ -140,8 +140,11 @@ private slots:
   // Across a real gap, a character's height or more, the space stays.
   job.lines.append({QRect(0,60,400,20),0,0,false});
   {Word w;w.text=QStringLiteral("中文");w.line=2;w.rect=QRect(0,60,18,18);job.words.append(w);w.text=QStringLiteral("汉字");w.rect=QRect(60,60,18,18);job.words.append(w);}
+  // Fullwidth Latin is spaced like Latin (Sol S7 on #1986).
+  job.lines.append({QRect(0,90,400,20),0,0,false});
+  {Word w;w.text=QStringLiteral("ＡＢＣ");w.line=3;w.rect=QRect(0,90,18,18);job.words.append(w);w.text=QStringLiteral("ＤＥＦ");w.rect=QRect(20,90,18,18);job.words.append(w);}
   joinUnspaced(job);
-  QCOMPARE(copiedText(job),QStringLiteral("新浪网， NBA 体育\n한국 뉴스 ข่าววันนี้\n中文 汉字"));
+  QCOMPARE(copiedText(job),QStringLiteral("新浪网， NBA 体育\n한국 뉴스 ข่าววันนี้\n中文 汉字\nＡＢＣ ＤＥＦ"));
  }
  // A code's area is filled with the background in every band copy, so no word
  // can come from its modules. Here the "code" is a checkerboard on white.
