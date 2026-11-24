@@ -255,6 +255,32 @@ def bun_advisories(versions):
     return findings
 
 
+def upstream_blocking(findings, policy, helper_sha256, today):
+    """Mark each official advisory's status; return those that block the stable cut.
+
+    An advisory at the policy's severities blocks unless policy.json's
+    upstreamAdvisories accepts that exact id, component and version for the
+    reviewed helper (helper_sha256, the one every package was verified to carry)
+    and the acceptance has not expired.
+    """
+    blocking = []
+    for item in findings:
+        if not (item['severity'].capitalize() in policy['severities']
+                and (item['fixedIn'] or not policy.get('requireFix', True))):
+            item['status'] = 'reported'
+            continue
+        rule = next((entry for entry in policy.get('upstreamAdvisories', [])
+                     if (entry['id'], entry['component'], entry['version'], entry['helperSha256'])
+                     == (item['ghsa_id'], item['component'], item['version'], helper_sha256)), None)
+        if rule and datetime.date.fromisoformat(rule['expires']) >= today:
+            item['status'] = 'accepted until ' + rule['expires']
+            item['acceptance'] = {key: rule[key] for key in ('reason', 'expires', 'issue', 'evidence', 'helperSha256')}
+        else:
+            item['status'] = 'blocking' + (' (acceptance expired ' + rule['expires'] + ')' if rule else '')
+            blocking.append(item)
+    return blocking
+
+
 def audit(args):
     directory, output = args.directory.resolve(), args.output.resolve()
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -418,8 +444,8 @@ def audit(args):
         policy = sbom.load_policy()
         upstream = bun_advisories(bun_versions)
         checks['upstreamAdvisories'] = upstream
-        if any(item['severity'].capitalize() in policy['severities']
-               and (item['fixedIn'] or not policy.get('requireFix', True)) for item in upstream):
+        # Every package's helper was checked above to be exactly the catalog's helper.
+        if upstream_blocking(upstream, policy, catalog['helperSha256'], datetime.datetime.now(datetime.timezone.utc).date()):
             result['errors'].append('Official Bun advisories exceed the stable threshold; see upstreamAdvisories')
         write(regenerated / 'sbom-receipts.json', {'schemaVersion': 1, 'sboms': generated})
         print('Scanning with a fresh vulnerability database and stable policy', flush=True)

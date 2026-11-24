@@ -107,5 +107,17 @@
         "putgd:toolsAbsent": "true"
       }
     }
-  }
+  },
+  "upstreamAdvisories": [
+    {
+      "id": "GHSA-p268-p2w7-qr8x",
+      "component": "bun",
+      "version": "1.4.4",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "reason": "Not reached in put.gd's default launch: the use-after-free is in LSQUIC's HTTP/3 QPACK decoding, which Bun runs only for Bun.serve with http3: true, node:quic, or its experimental HTTP/3 fetch client. putgd-proton-runtime is a stdio client that serves nothing; neither its sources nor any bundled dependency use those APIs, and put.gd sets no Bun flag, so HTTP/3 is off. If the user's environment sets BUN_FEATURE_FLAG_EXPERIMENTAL_HTTP3_CLIENT or BUN_OPTIONS=--experimental-http3-fetch, a request can move to HTTP/3 only after an Alt-Svc upgrade from a malicious peer the helper accepts over TLS for a Proton API or storage origin, and Bun has not confirmed the client half is exploitable. Bound to the reviewed helper of v26.1124.6905-nightly. Ship Bun 1.4.5 and clear those variables in the next release (#2005).",
+      "expires": "2027-01-15",
+      "issue": 2005,
+      "evidence": "packaging/sbom/dispositions/2005.json"
+    }
+  ]
 }
