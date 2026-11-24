@@ -329,7 +329,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  // the check, not the job: they are closed and left, and the first reading
  // stands (Sol S14 on #1986).
  bool late=false;
- QList<bool> take(all.size(),false);
+ QList<bool> take;
  try{
  late=!readBatch(firstBatch,true);check.engines=int(run->engines.size());
  if(check.engines==0){finishReaders(late);check.outcome=QStringLiteral("no_memory");return late;}
@@ -344,6 +344,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   return late;
  }
  check.outcome=QStringLiteral("kept");
+ take=QList<bool>(all.size(),false);
  for(int k=0;k<garbledIndexes.size();++k)take[garbledIndexes[k]]=decision.take[k];
  // The language is right: the page's other lines are read in it too, as
  // time allows, and each keeps whichever reading is surer (a line the trigger
