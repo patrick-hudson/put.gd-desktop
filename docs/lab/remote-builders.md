@@ -560,9 +560,11 @@ waiting for the lock, over a probe process left behind by a finished test.
   little memory for the nightly guests, and the k72 and f44 rows ran nothing (#1978).
   Make a scratch directory with `python3 tools/lab/scratch.py PREFIX` from a checkout,
   or `mkdir -p -m 700 ~/work/tmp && d=$(mktemp -d ~/work/tmp/PREFIX.XXXXXX)` without
-  one; the lab tools make theirs there too. The path is short enough for a session
-  socket inside it. Remove each directory when its run is done. A run that must use a
-  tmpfs, such as an rr recording, removes its traces as soon as it has what it needs.
+  one; the lab tools make theirs there too. With a short prefix the path leaves room for a
+  session socket inside it; still check the resolved socket path's length before launch. Once
+  a run is done and its evidence is kept ([evidence retention](../testing/evidence-retention.md)),
+  remove its scratch. A run that must use a tmpfs, such as an rr recording, moves the traces
+  it keeps to disk, or removes them, as soon as it has them.
   `release` and `status --check` list your large `/tmp` entries (below).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
@@ -630,11 +632,12 @@ decide, and cells the harness cannot drive on a desktop, each with the reason.
 
 A row whose cells all stay ⚪ because of its builder (too little memory, load at or above the
 core count, too little disk, no KVM, a missing golden, an occupied port, a lease or guest slot
-held by another session, or no SSH) on two UTC days running is a host problem: on 11-22 and
-11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and nothing
-said so (#1978). The controller counts those days from the last published results
-(`hostBlockedNights` in the row's receipt; a rerun on the same day adds none). From the second
-day it puts a warning naming the row and the reason at the top of #1003 and of the row's
+held by another session, or no SSH) in two published runs in a row is a host problem: on
+11-22 and 11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and
+nothing said so (#1978). A row counts when every cell that isn't ➖ is ⚪ with no attempt. The
+controller compares each row with the last published results: when that row was also blocked,
+the count (`hostBlockedNights` in the row's receipt) goes up by one if the earlier run's UTC
+date differs, and stays the same for a rerun on the same date. From a count of two it puts a warning naming the row and the reason at the top of #1003 and of the row's
 receipt comment, and the table's Not run cell starts with ⚠️ and the count. Fix the builder
 before the next run. Like any ⚪, it opens no issue.
 
@@ -918,11 +921,13 @@ Before you release:
    `Xvfb` servers (`desktop_lock.py` `PROCESS_PATTERN` has the exact pattern), and checks for user
    putgd desktop entries, extension copies and data, and an installed `putgd`
    package. Where `/tmp` is a tmpfs, it lists each top-level `/tmp` entry of yours
-   whose files take 256 MB or more, and notes the total of your files there, with the
-   memory still available, once it reaches 1 GB (#1978). Move such scratch to
-   `~/work/tmp` or remove it. The walk stops after 10 s, and the note then says its
-   sizes are lower bounds. The nightly's own lease reports a new large entry in its
-   receipt but is not held by it, since the entry may be another session's.
+   whose files take 256 MiB or more, and notes the total of your files there (with the
+   memory still available, when it can read it) once it reaches 1 GiB (#1978). "Yours"
+   means owned by the builder account, which every session shares: move to `~/work/tmp`
+   or remove only the scratch your run made, and name another session's new entry with
+   `--not-mine PATH`. The walk has a 10 s budget, checked between directories; when it
+   runs out, a note says the sizes are lower bounds. The nightly's own lease reports a new
+   large entry in its receipt but is not held by it, since the entry may be another session's.
    It lists anything that appeared since you acquired the lock and
    doesn't release yet. Once nothing of yours is left, run it again with
    `--verified-clean`; the lock is released only if the check passes. Items that
@@ -1251,10 +1256,10 @@ It uses these paths on k72:
 the version you want, then delete the checkout:
 
 ```bash
-mkdir -p -m 700 ~/work/tmp && src=$(mktemp -d ~/work/tmp/pgsw-install.XXXXXX)
-git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd"
-sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
-rm -rf -- "$src"
+src=$(mkdir -p -m 700 ~/work/tmp && mktemp -d ~/work/tmp/pgsw-install.XXXXXX) && [ -n "$src" ] &&
+  git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd" &&
+  sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
+[ -n "$src" ] && rm -rf -- "$src"
 ```
 
 The installer copies the wrapper and the units, runs `daemon-reload`, enables

@@ -83,13 +83,14 @@ outside any git checkout, and drop the icons there:
 
 ```sh
 checkout=$PWD
-export_dir=$(python3 tools/lab/scratch.py putgd-tsan-src.)   # on disk (~/work/tmp), not inside a git checkout
-git archive --format=tar HEAD | tar -x -C "$export_dir"
-sed -i 's/^add_subdirectory(icons)$/# add_subdirectory(icons)  # no instrumented Qt Svg/' "$export_dir/packaging/linux/CMakeLists.txt"
-mkdir -p "$export_dir/build"
-ln -s "$checkout/work" "$export_dir/work"            # the instrumented dependencies built above
-ln -s "$checkout/build/sdk" "$export_dir/build/sdk"
-cd "$export_dir"
+# On disk (~/work/tmp), not inside a git checkout. Every step needs the one before; stop on any failure.
+export_dir=$(python3 tools/lab/scratch.py putgd-tsan-src.) && [ -n "$export_dir" ] &&
+  git archive --format=tar HEAD | tar -x -C "$export_dir" &&
+  sed -i 's/^add_subdirectory(icons)$/# add_subdirectory(icons)  # no instrumented Qt Svg/' "$export_dir/packaging/linux/CMakeLists.txt" &&
+  mkdir -p "$export_dir/build" &&
+  ln -s "$checkout/work" "$export_dir/work" &&          # the instrumented dependencies built above
+  ln -s "$checkout/build/sdk" "$export_dir/build/sdk" &&
+  cd "$export_dir"
 ```
 
 Run the configure, build and CTest commands below from `"$export_dir"`. Record with the results

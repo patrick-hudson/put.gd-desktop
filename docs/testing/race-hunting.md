@@ -94,7 +94,7 @@ and a Unix socket path has at most 107 bytes.
 
 ```sh
 d=$(python3 tools/lab/scratch.py tsan.) && out="$d/tsan" &&   # a private parent on disk (~/work/tmp) and a new child; race_loop.py refuses an existing --out
-python3 -c 'import sys; p = sys.argv[1] + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
+python3 -c 'import os, sys; p = os.path.realpath(sys.argv[1]) + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
   ACTION_FUZZ_SLOW=4 python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt \
     --tsan-prefix work/sanitizer-diagnosis --out "$out" \
     --first-seed 1 --steps 120 --hours 3 --stress 2
