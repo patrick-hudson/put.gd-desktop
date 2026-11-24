@@ -1016,6 +1016,17 @@ void RecordingPipeline::observeRate() {
 }
 bool RecordingPipeline::reopenSource() {
     if (!pipeline_ || stopping_ || !options_.pipewireNode) return false;
+    // A native node opens on a fresh connection of the recorder's own, held
+    // until the new source has opened on its copy (#1994): PipeWire that is
+    // gone or restarting is a source that cannot be reopened, not a hang. It is
+    // made before the old source leaves, so a stop can still drain the clip through it.
+    PipeWireConnection session;
+    int pipewireFd = options_.pipewireFd;
+    if (pipewireFd < 0) {
+        QString why;
+        if (!session.open(QProcessEnvironment::systemEnvironment(), &why)) { debugLog("source reopen: PipeWire is not reachable: " + why); return false; }
+        pipewireFd = session.fd();
+    }
     GstElement* old = gst_bin_get_by_name(GST_BIN(pipeline_), "src");
     if (!old) return false;
     GstElementFactory* factory = gst_element_get_factory(old);
@@ -1028,16 +1039,6 @@ bool RecordingPipeline::reopenSource() {
     gst_element_set_state(old, GST_STATE_NULL);
     gst_bin_remove(GST_BIN(pipeline_), old);
     gst_object_unref(old);
-    // A native node opens on a fresh connection of the recorder's own, held
-    // until the new source has opened on its copy (#1994): PipeWire that is
-    // gone or restarting is a source that cannot be reopened, not a hang.
-    PipeWireConnection session;
-    int pipewireFd = options_.pipewireFd;
-    if (pipewireFd < 0) {
-        QString why;
-        if (!session.open(QProcessEnvironment::systemEnvironment(), &why)) { debugLog("source reopen: PipeWire is not reachable: " + why); gst_object_unref(peer); return false; }
-        pipewireFd = session.fd();
-    }
     // The same element and properties as at launch (pipewireSourceDescription).
     GstElement* fresh = gst_element_factory_make(element.constData(), "src");
     if (!fresh) { gst_object_unref(peer); return false; }
