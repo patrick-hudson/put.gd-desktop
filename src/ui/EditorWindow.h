@@ -99,6 +99,7 @@ private:
  QList<SecretCode> secretCodes_;
  QList<int> lineTops_;
  bool truncated_=false,active_=false,restart_=false;QStringList languagesSkipped_;
+ QJsonValue detection_;  // #1981: the result's script check, null when it did not run
  QString state_="idle";Error error_;
  QByteArray signature_;quint64 revision_=1,jobRevision_=0,nextIdentity_=1;
  TextJob::Cancel cancel_;

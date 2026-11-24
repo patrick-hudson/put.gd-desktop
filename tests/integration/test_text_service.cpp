@@ -72,6 +72,26 @@ bool anyFileHolds(const QString& root,const QByteArray& needle) {
 class TextServiceTest:public QObject {
  Q_OBJECT
 private slots:
+ // #1981: the script check runs only for languages nobody chose (no
+ // parameter, no saved preference), and its outcome reaches the record; a
+ // page whose language data is missing says so in the notification.
+ void scriptCheckOnlyWhenNobodyChoseLanguages() {
+  Resident resident;QVERIFY(resident.start());QSignalSpy finished(resident.operations.get(),&OperationService::textFinished);
+  auto result=recognized();result.detectedScript="Cyrillic";result.detectedLanguage="rus";result.detectionOutcome="language_missing";resident.backend->result=result;
+  auto id=resident.recognize(request(true,false));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(resident.backend->options().detectScript);QVERIFY(!resident.backend->options().languagesRequired);
+  QCOMPARE(resident.inspect(id)["detection"].toObject(),(QJsonObject{{"script","Cyrillic"},{"language","rus"},{"outcome","language_missing"}}));
+  QCOMPARE(finished.size(),1);QVERIFY2(finished.first().at(2).toString().contains("Russian"),qPrintable(finished.first().at(2).toString()));
+  // Named by the caller: no check.
+  resident.backend->result=recognized();
+  auto named=request(true,false);named.languages={"eng"};id=resident.recognize(std::move(named));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.backend->options().detectScript);QVERIFY(!resident.inspect(id).contains("detection"));
+  // Chosen in Settings: no check.
+  auto doc=configuration(resident.dir.path(),true);auto preferences=doc["preferences"].toObject();preferences["textRecognitionLanguages"]=QJsonArray{"eng"};doc["preferences"]=preferences;
+  QVERIFY(resident.settings->save(doc,resident.settings->revision()));
+  id=resident.recognize(request(true,false));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.backend->options().detectScript);
+ }
  // Recognized text or code content written to the journal, the History database
  // or a log would stay on disk unseen; and a much-used action that kept its rows
  // would grow the journal without limit.

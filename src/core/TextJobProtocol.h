@@ -43,6 +43,11 @@ struct TextResult {
  QList<TextCode> codes; // top to bottom, then left to right, by centre
  bool truncated=false,banded=false;
  QStringList languagesUsed,languagesSkipped;
+ // #1981: the script check of a job that named no languages. Empty outcome:
+ // it did not run (nothing garbled enough, or languages were chosen). script
+ // is Tesseract's OSD name (Han, Cyrillic, ...), language the one it maps to;
+ // outcome is one of textjob::detectionOutcomes().
+ QString detectedScript,detectedLanguage,detectionOutcome;
  // Timed by the helper; the parent adds spawnMs (start to ready) and totalMs.
  qint64 engineStartMs=0,recognizeMs=0,spawnMs=0,totalMs=0;
  // Codes whose content is text: what a notification counts and a copy carries.
@@ -97,6 +102,10 @@ struct Options {
  // Named by a caller: one that cannot load fails the job. From Settings: one
  // that cannot load is skipped when another loads.
  bool languagesRequired=false;
+ // #1981: languages nobody chose (no parameter, no saved preference): lines
+ // the first pass read badly may have their script detected and be read again
+ // in its language. Off when a person or caller picked the languages.
+ bool detectScript=false;
  // Unhinged mode (#1937): the parent tells the helper in its environment
  // (unhingedVariable), before the helper confines itself; never in the bootstrap.
  bool allCores=false;
@@ -170,6 +179,18 @@ QString copyText(const TextResult&);
 QString notification(const TextResult&,const QString& copyStatus,const QStringList& missingLanguageNames={});
 inline constexpr char busyNotification[]="Text recognition is still running";
 
+// #1981: what the script check did. kept: the lines were read again in the
+// detected language and that reading was kept; discarded: read again, kept
+// the first reading; language_missing: that language's data is not installed;
+// detector_missing: no osd data; unknown_script: no script, Latin, or one
+// without a language; no_time: the time budget left no room for it;
+// no_memory: the memory budget left no room for it.
+QStringList detectionOutcomes();
+// An OSD script name: 1 to 32 ASCII letters or underscores.
+bool validScriptName(const QString& name);
+// {"script","language","outcome"} of a result whose check ran; null otherwise.
+// What the helper's result, text.recognize's record and editor.inspect carry.
+QJsonValue detectionJson(const TextResult&);
 // Decision 6. Identifiers match ^[a-z]{3,4}(_[a-z0-9]+){0,2}$; osd and equ are
 // data files, not languages.
 bool validLanguage(const QString& identifier);

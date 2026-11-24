@@ -347,6 +347,15 @@ foreach(recommends CPACK_DEBIAN_PACKAGE_RECOMMENDS CPACK_RPM_PACKAGE_RECOMMENDS)
     set(${recommends} gvfs-fuse)
   endif()
 endforeach()
+if(TARGET putgd-ocr)
+  # #1981: script detection (osd) and one language for each script it reads
+  # again (Simplified Chinese, Japanese, Korean, Russian, Arabic, Hebrew, Hindi,
+  # Thai, Greek). Recommended, not required: without them a page in another
+  # script is read with the job's own languages, as before. Kept in step with
+  # tools/releases/native.py RECOMMENDED_PACKAGES and src/ocr/Script.cpp.
+  string(APPEND CPACK_DEBIAN_PACKAGE_RECOMMENDS ", tesseract-ocr-osd, tesseract-ocr-chi-sim, tesseract-ocr-jpn, tesseract-ocr-kor, tesseract-ocr-rus, tesseract-ocr-ara, tesseract-ocr-heb, tesseract-ocr-hin, tesseract-ocr-tha, tesseract-ocr-ell")
+  string(APPEND CPACK_RPM_PACKAGE_RECOMMENDS ", tesseract-osd, tesseract-langpack-chi_sim, tesseract-langpack-jpn, tesseract-langpack-kor, tesseract-langpack-rus, tesseract-langpack-ara, tesseract-langpack-heb, tesseract-langpack-hin, tesseract-langpack-tha, tesseract-langpack-ell")
+endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")

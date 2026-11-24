@@ -45,6 +45,7 @@ struct Word {
  bool attach=false;   // joins the word before it with no space
  bool second=false;   // #1911: from the second read of an uncertain token's line
  bool reread=false;   // #1929: from any second read (faint, unread or token lines)
+ bool script=false;   // #1981: read again in its detected script's language, which was kept
 };
 struct Line {
  QRect rect;          // source pixels

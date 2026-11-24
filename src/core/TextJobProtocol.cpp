@@ -52,9 +52,12 @@ QJsonObject codeJson(const TextCode& code){
 }
 QByteArray serialize(const TextResult& result){
  QJsonArray tops;for(const int top:result.lineTops)tops.append(top);
- return QJsonDocument(QJsonObject{{"text",result.text},{"lineTops",tops},{"words",wordsJson(result.words)},{"candidates",wordsJson(result.candidates)},{"codes",codesJson(result.codes)},
+ QJsonObject object{{"text",result.text},{"lineTops",tops},{"words",wordsJson(result.words)},{"candidates",wordsJson(result.candidates)},{"codes",codesJson(result.codes)},
   {"truncated",result.truncated},{"banded",result.banded},{"languagesUsed",strings(result.languagesUsed)},{"languagesSkipped",strings(result.languagesSkipped)},
-  {"timings",QJsonObject{{"engineStartMs",double(result.engineStartMs)},{"recognizeMs",double(result.recognizeMs)}}}}).toJson(QJsonDocument::Compact);
+  {"timings",QJsonObject{{"engineStartMs",double(result.engineStartMs)},{"recognizeMs",double(result.recognizeMs)}}}};
+ // #1981: only when the script check ran.
+ if(!result.detectionOutcome.isEmpty())object["detection"]=detectionJson(result);
+ return QJsonDocument(object).toJson(QJsonDocument::Compact);
 }
 void boundWords(QList<TextWord>& words,bool& cut){
  if(words.size()>maximumWords){words.resize(maximumWords);cut=true;}
@@ -110,6 +113,15 @@ QString sanitize(const QString& input,bool joiners){
 struct Tongue {const char* locale;const char* language;};
 // ISO 639-1 to the Tesseract data file of that language.
 constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},{"bg","bul"},{"bn","ben"},{"ca","cat"},{"cs","ces"},{"cy","cym"},{"da","dan"},{"de","deu"},{"el","ell"},{"en","eng"},{"es","spa"},{"et","est"},{"eu","eus"},{"fa","fas"},{"fi","fin"},{"fr","fra"},{"ga","gle"},{"gl","glg"},{"he","heb"},{"hi","hin"},{"hr","hrv"},{"hu","hun"},{"hy","hye"},{"id","ind"},{"is","isl"},{"it","ita"},{"ja","jpn"},{"ka","kat"},{"kk","kaz"},{"ko","kor"},{"lt","lit"},{"lv","lav"},{"mk","mkd"},{"ms","msa"},{"mt","mlt"},{"nb","nor"},{"nl","nld"},{"nn","nor"},{"no","nor"},{"pl","pol"},{"pt","por"},{"ro","ron"},{"ru","rus"},{"sk","slk"},{"sl","slv"},{"sq","sqi"},{"sr","srp"},{"sv","swe"},{"sw","swa"},{"ta","tam"},{"te","tel"},{"th","tha"},{"tr","tur"},{"uk","ukr"},{"ur","urd"},{"uz","uzb"},{"vi","vie"}};
+}
+QStringList detectionOutcomes(){return {"kept","discarded","language_missing","detector_missing","unknown_script","no_time","no_memory"};}
+bool validScriptName(const QString& name){
+ static const QRegularExpression pattern(QStringLiteral("^[A-Za-z_]{1,32}$"));
+ return pattern.match(name).hasMatch();
+}
+QJsonValue detectionJson(const TextResult& result){
+ if(result.detectionOutcome.isEmpty())return QJsonValue::Null;
+ return QJsonObject{{"script",result.detectedScript},{"language",result.detectedLanguage},{"outcome",result.detectionOutcome}};
 }
 QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
 // #1618: Quick redact terms and patterns. A message never repeats the value,
@@ -190,6 +202,8 @@ QJsonObject bootstrap(const QString& nonce,const QJsonObject& build,const InputH
  auto payload=envelope(nonce);payload["build"]=build;payload["task"]="recognize";
  payload["input"]=QJsonObject{{"bytes",decimal(inputBytes(input))},{"width",decimal(input.width)},{"height",decimal(input.height)},{"stride",decimal(input.stride)},{"colourStride",decimal(input.colourStride)}};
  payload["options"]=QJsonObject{{"words",options.words},{"candidates",options.candidates},{"languages",strings(options.languages)},{"languagesRequired",options.languagesRequired}};
+ // #1981: only when asked, so a bootstrap without it reads as before.
+ if(options.detectScript){auto wanted=payload["options"].toObject();wanted["detectScript"]=true;payload["options"]=wanted;}
  payload["limits"]=limits();return payload;
 }
 bool decodeBootstrap(const QJsonObject& payload,const QJsonObject& build,QString& nonce,InputHeader& input,Options& options){
@@ -198,9 +212,10 @@ bool decodeBootstrap(const QJsonObject& payload,const QJsonObject& build,QString
     ||!payload["build"].isObject()||payload["build"].toObject()!=build||payload["task"]!=QLatin1String("recognize")||payload["limits"].toObject()!=limits()
     ||!keys(described,{"bytes","width","height","stride","colourStride"})||!number(described["bytes"],bytes)||!number(described["width"],width)||!number(described["height"],height)||!number(described["stride"],stride)
     ||!number(described["colourStride"],colour)||width>maximumEdge||height>maximumEdge||stride>maximumEdge+3||colour>3*maximumEdge+3||!admitted(int(width),int(height),int(stride),int(colour))
-    ||!keys(wanted,{"words","candidates","languages","languagesRequired"})||!wanted["words"].isBool()||!wanted["candidates"].isBool()||!wanted["languagesRequired"].isBool()||!languageList(wanted["languages"],1,options.languages))return false;
+    ||!keys(wanted,wanted.contains("detectScript")?QStringList{"words","candidates","languages","languagesRequired","detectScript"}:QStringList{"words","candidates","languages","languagesRequired"})
+    ||(wanted.contains("detectScript")&&(wanted["detectScript"]!=QJsonValue(true)||wanted["languagesRequired"].toBool()))||!wanted["words"].isBool()||!wanted["candidates"].isBool()||!wanted["languagesRequired"].isBool()||!languageList(wanted["languages"],1,options.languages))return false;
  input={int(width),int(height),int(stride),int(colour)};if(inputBytes(input)!=bytes)return false;
- options.words=wanted["words"].toBool();options.candidates=wanted["candidates"].toBool();options.languagesRequired=wanted["languagesRequired"].toBool();nonce=payload["nonce"].toString();return true;
+ options.words=wanted["words"].toBool();options.candidates=wanted["candidates"].toBool();options.languagesRequired=wanted["languagesRequired"].toBool();options.detectScript=wanted.contains("detectScript");nonce=payload["nonce"].toString();return true;
 }
 QJsonObject ready(const QString& nonce,const QJsonObject& build){auto payload=envelope(nonce);payload["build"]=build;return payload;}
 bool validReady(const QJsonObject& payload,const QString& nonce,const QJsonObject& build){return payload.size()==4&&validEnvelope(payload,nonce)&&payload["build"].isObject()&&payload["build"].toObject()==build;}
@@ -251,9 +266,19 @@ QByteArray encodeResult(TextResult result,const Options& options){
 bool decodeResult(const QByteArray& json,const InputHeader& input,const Options& options,TextResult& result){
  result={};if(json.size()>maximumOutputBytes)return false;
  QJsonParseError parse;const auto document=QJsonDocument::fromJson(json,&parse);const auto object=document.object();
- if(parse.error!=QJsonParseError::NoError||!document.isObject()||!keys(object,{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings"})
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||!keys(object,object.contains("detection")?QStringList{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings","detection"}
+                                            :QStringList{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings"})
     ||!object["text"].isString()||object["text"].toString().toUtf8().size()>maximumTextBytes||!object["lineTops"].isArray()||!object["truncated"].isBool()||!object["banded"].isBool()
     ||!languageList(object["languagesUsed"],0,result.languagesUsed)||!languageList(object["languagesSkipped"],0,result.languagesSkipped)||(options.languagesRequired&&!result.languagesSkipped.isEmpty()))return false;
+ // #1981: the script check, only for a job that asked for it.
+ if(object.contains("detection")){
+  const auto detection=object["detection"].toObject();const auto script=detection["script"].toString(),language=detection["language"].toString(),outcome=detection["outcome"].toString();
+  if(!options.detectScript||!object["detection"].isObject()||!keys(detection,{"script","language","outcome"})||!detection["script"].isString()||!detection["language"].isString()
+     ||!detectionOutcomes().contains(outcome)||(!script.isEmpty()&&!validScriptName(script))||(!language.isEmpty()&&!validLanguage(language))
+     ||((outcome=="kept"||outcome=="discarded"||outcome=="language_missing")&&(script.isEmpty()||language.isEmpty()))
+     ||(outcome=="kept"&&!result.languagesUsed.contains(language)))return false;
+  result.detectedScript=script;result.detectedLanguage=language;result.detectionOutcome=outcome;
+ }
  const auto timings=object["timings"].toObject();
  if(!keys(timings,{"engineStartMs","recognizeMs"})||!integer(timings["engineStartMs"],0,3600000,result.engineStartMs)||!integer(timings["recognizeMs"],0,3600000,result.recognizeMs))return false;
  const auto raw=object["text"].toString();const auto lines=raw.isEmpty()?QStringList{}:raw.split('\n');const auto tops=object["lineTops"].toArray();

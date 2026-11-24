@@ -58,6 +58,31 @@ public:
  qint64 bytesHanded()const;
  // Frees the kept file contents once no engine will start any more.
  void release();
+ // #1981: whether a directory holds a regular, non-empty data file for this
+ // identifier (or osd). It is validated only when an engine loads it.
+ bool available(const QString& identifier)const;
+ // #1981: the script check's osd and language files count apart from the
+ // job's own: up to two more files, within the same byte limit.
+ void allowDetection();
+};
+
+// #1981: Tesseract's orientation and script detection, the legacy engine on
+// osd.traineddata. Only Tesseract builds with the legacy engine have it; on
+// others start fails and no script is ever detected.
+class ScriptDetector final {
+public:
+ ScriptDetector();
+ ~ScriptDetector();
+ ScriptDetector(const ScriptDetector&)=delete;
+ ScriptDetector& operator=(const ScriptDetector&)=delete;
+ bool start();
+ // The script of the text in the image (OSD's name, such as Han or Cyrillic)
+ // and its confidence; empty when it found none.
+ QString detect(const GreyImage& image,float* confidence=nullptr);
+ // Frees the engine.
+ void stop();
+private:
+ std::unique_ptr<tesseract::TessBaseAPI> api_;
 };
 
 // Tesseract 5 through its C++ API, LSTM engine only.
@@ -74,6 +99,9 @@ public:
  QString start(const QStringList& languages,bool strict,const EngineOptions& options,QString& failedLanguage);
  // Another instance for the same job: exactly the languages the first loaded.
  QString startLike(const TextEngine& first);
+ // #1981: an engine of other languages for the same job, after the first
+ // pass: the data already read stays (start() would forget it). strict.
+ QString startAlso(const QStringList& languages,const EngineOptions& options);
  QStringList used()const{return used_;}
  bool ready()const{return api_!=nullptr;}  // started, and not failed to
  QStringList skipped()const{return skipped_;}

@@ -60,6 +60,10 @@ if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit
 # the install step checks each executable's identity.
 LD_LIBRARY_PATH="$PWD/build/appimage-deps/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DESTDIR="$stage" cmake --install build/release
 install -Dm644 build/appimage-deps/share/putgd/tessdata/eng.traineddata "$stage/usr/share/putgd/tessdata/eng.traineddata"
+# #1981: the script check's data (osd and one language a script), pinned beside English.
+for data in $(python3 -c 'import json; print(" ".join(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["tessdata_fast"]["scriptFiles"]))'); do
+  install -Dm644 "build/appimage-deps/share/putgd/tessdata/$data" "$stage/usr/share/putgd/tessdata/$data"
+done
 version=$(python3 -c 'import json; print(json.load(open("build/release/build-identity/build-info.json"))["version"])')
 # Tagged builds embed their channel's update information and write the
 # matching .zsync (tools/releases/appimage_update.py); untagged builds embed

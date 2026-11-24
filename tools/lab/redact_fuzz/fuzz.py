@@ -3,7 +3,7 @@
 
   fuzz.py build  --source TREE --out DIR                   compile the driver (g++, pkg-config Qt6)
   fuzz.py render --seed S --count N --out DIR [--start I] [--families a,b] [--jobs 4]
-  fuzz.py run    --scenes DIR --driver BIN --helper BIN --build-json FILE --data DIR [--jobs 4] [--session ID]
+  fuzz.py run    --scenes DIR --driver BIN --helper BIN --build-json FILE --data DIR [--jobs 4] [--session ID] [--detect]
   fuzz.py score  --scenes DIR [--results FILE] --out DIR
 
 `render` writes DIR/images/NNNNN.png and DIR/labels.jsonl; the same seed, start and count on the
@@ -267,6 +267,9 @@ def run(args):
     print(f'{len(todo)} scenes to run, {len(labels) - len(todo)} done or given up', flush=True)
     env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
     cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
+    # #1981: the script check, as the product runs it when no language was chosen.
+    if args.detect:
+        cmd.append('--detect')
     for attempt in range(args.retries + 1):
         while todo:
             procs = []
@@ -598,6 +601,7 @@ def main():
     u.add_argument('--out', help='results directory (default SCENES/results); give your own to reuse scenes read-only')
     u.add_argument('--families', help='run only scenes holding one of these families (comma-separated)')
     u.add_argument('--oracle-only', action='store_true', help='match the true words only: no recognition, seconds per thousand scenes')
+    u.add_argument('--detect', action='store_true', help='the script check (#1981), as when no language is chosen')
     s = sub.add_parser('score')
     s.add_argument('--scenes', required=True)
     s.add_argument('--results', help='a results file or directory of shard-*.jsonl (default SCENES/results)')

@@ -250,7 +250,17 @@
         "LICENSE"
       ],
       "files": [
-        "usr/share/putgd/tessdata/eng.traineddata"
+        "usr/share/putgd/tessdata/eng.traineddata",
+        "usr/share/putgd/tessdata/osd.traineddata",
+        "usr/share/putgd/tessdata/chi_sim.traineddata",
+        "usr/share/putgd/tessdata/jpn.traineddata",
+        "usr/share/putgd/tessdata/kor.traineddata",
+        "usr/share/putgd/tessdata/rus.traineddata",
+        "usr/share/putgd/tessdata/ara.traineddata",
+        "usr/share/putgd/tessdata/heb.traineddata",
+        "usr/share/putgd/tessdata/hin.traineddata",
+        "usr/share/putgd/tessdata/tha.traineddata",
+        "usr/share/putgd/tessdata/ell.traineddata"
       ]
     },
     {

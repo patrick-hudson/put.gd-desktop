@@ -60,7 +60,7 @@ void EditorTextRecognition::documentChanged() {
  // nothing of the old result is shown, selected, copied or returned.
  signature_=signature;++revision_;
  if(cancel_)cancel_->store(true);
- layer_.clear();candidates_.clear();secretCodes_.clear();lineTops_.clear();truncated_=false;state_="idle";error_={};
+ layer_.clear();candidates_.clear();secretCodes_.clear();lineTops_.clear();truncated_=false;detection_=QJsonValue();state_="idle";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({"edit_stale","A Redact mark or the crop changed before recognition finished",{}});
  if(active_)start();
  emit changed();
@@ -82,6 +82,8 @@ void EditorTextRecognition::run() {
  textjob::Options options;options.words=true;options.candidates=true;options.allCores=allCores_;
  // The saved preference, else the locale's language and English; installed ones only.
  options.languages=textjob::defaultLanguages(languages_,QLocale::system().name(),textjob::installedLanguages(textjob::dataDirectories(QDir::homePath(),QCoreApplication::applicationDirPath())));
+ // #1981: lines in another script may be read again in its language, unless a language was chosen.
+ options.detectScript=languages_.isEmpty();
  cancel_=std::make_shared<std::atomic_bool>(false);
  auto result=std::make_shared<TextResult>();auto error=std::make_shared<Error>();
  // #1941: each decoded code's secret kind (quickRedact::codeSecret), worked out here on the worker, by index.
@@ -116,7 +118,7 @@ void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_pt
  for(qsizetype i=0;i<codes.size()&&i<kinds.size();++i){codes[i].secret=kinds.at(i);if(!kinds.at(i).isEmpty()&&!codes.at(i).quad.isEmpty())secretCodes_.append({kinds.at(i),codes.at(i).quad});}
  QList<editor::RecognizedCode> none;
  editor::TextLayer::exclude(found,codes,redactions);editor::TextLayer::exclude(every,none,redactions);
- layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;languagesSkipped_=result->languagesSkipped;
+ layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;languagesSkipped_=result->languagesSkipped;detection_=textjob::detectionJson(*result);
  lineTops_.clear();for(const auto& word:layer_.words()){if(word.line>=lineTops_.size())lineTops_.append(word.rect.top());else lineTops_[word.line]=qMin(lineTops_[word.line],word.rect.top());}
  state_="completed";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({});
@@ -143,6 +145,7 @@ QJsonObject EditorTextRecognition::inspect() const {
  QJsonObject text{{"state",state_},{"result",layer_.identity()?QJsonValue(double(layer_.identity())):QJsonValue()},{"words",textjob::wordsJson(found)},{"codes",codesJson},{"truncated",truncated_},
   {"selection",layer_.hasSelection()?QJsonValue(QJsonObject{{"from",layer_.first()},{"to",layer_.last()}}):QJsonValue()}};
  if(error_)text["error"]=error_.toJson();
+ if(detection_.isObject())text["detection"]=detection_;
  return text;
 }
 }

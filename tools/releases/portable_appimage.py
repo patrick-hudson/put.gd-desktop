@@ -580,6 +580,14 @@ def audit_ocr_runtime(appdir: Path) -> dict:
     data = appdir / "usr/share/putgd/tessdata/eng.traineddata"
     if not data.is_file() or digest(data) != lock["tessdata_fast"]["sha256"]:
         raise ValueError("AppImage English tessdata_fast missing or changed")
+    # #1981: the script check's data, exactly as pinned, and nothing else.
+    expected = {"eng.traineddata", *lock["tessdata_fast"].get("scriptFiles", {})}
+    present = {p.name for p in (appdir / "usr/share/putgd/tessdata").iterdir()}
+    if present != expected:
+        raise ValueError("AppImage tessdata differs from the pinned files")
+    for name, sha256 in lock["tessdata_fast"].get("scriptFiles", {}).items():
+        if digest(appdir / "usr/share/putgd/tessdata" / name) != sha256:
+            raise ValueError("AppImage tessdata_fast " + name + " missing or changed")
     libraries = {}
     paths = {}
     for prefix in OCR_LIBRARIES:

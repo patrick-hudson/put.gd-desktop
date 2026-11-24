@@ -156,6 +156,11 @@ def refresh_build_inputs(lock, upstream):
         if digest != data['sha256']:
             data['sha256'] = digest
             changes.append('tessdata_fast: refresh data digest')
+        for name, sha256 in data.get('scriptFiles', {}).items():
+            digest = upstream.sha256('https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/' + data['commit'] + '/' + name)
+            if digest != sha256:
+                data['scriptFiles'][name] = digest
+                changes.append('tessdata_fast: refresh ' + name + ' digest')
     return changes
 
 
