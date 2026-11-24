@@ -70,6 +70,17 @@ public:
         for (const auto& e : state()["events"].toArray()) if (e.toObject()["call"] == call) out.append(e);
         return out;
     }
+    // Empty when the file was asked for as often as the helper looks at its link (`checks`),
+    // else what was seen. Qt Network sends a GET again by itself when the connection closes
+    // while it still counts the request as unanswered: it takes the close for a dead
+    // keep-alive connection (QHttpNetworkConnectionChannel's resend of an idempotent request).
+    // So each reply that is cut off (`cuts`) may be asked for once more (#1393). A rule that
+    // cuts the last look carries "remaining": 2, so such a resend gets the same cut reply.
+    QString fileRequests(int checks, int cuts = 0) {
+        const auto seen = events("file").size();
+        if (seen >= checks && seen <= checks + cuts) return {};
+        return QString("%1 requests for the file, expected %2 to %3").arg(seen).arg(checks).arg(checks + cuts);
+    }
     int stored() { int count = 0; for (const auto& file : state()["files"].toObject()) if (!file.toObject()["deleted"].toBool()) ++count; return count; }
     Artifact artifact(const QString& name, const QByteArray& bytes, const QString& mime, const QString& category) {
         Artifact out;
@@ -449,9 +460,10 @@ private slots:
         const auto artifact = large ? f.artifact("large.bin", QByteArray(4 * 1024 * 1024 + 64 * 1024, 'x'), "application/octet-stream", "other") : f.image();
         const auto uploaded = f.upload(artifact, destination);
         QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
-        if (!large) f.rules({{{"call", "file"}, {"cut", "length"}}, {{"call", "file"}, {"status", 200}, {"body", "another file entirely"}, {"cut", "length"}}});
+        if (!large) f.rules({{{"call", "file"}, {"cut", "length"}}, {{"call", "file"}, {"status", 200}, {"body", "another file entirely"}, {"cut", "length"}, {"remaining", 2}}});
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(f.events("file").size(), 2);
+        const auto requests = f.fileRequests(2, large ? 0 : 2);
+        QVERIFY2(requests.isEmpty(), qPrintable(requests));
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
@@ -489,12 +501,10 @@ private slots:
         if (shape == "login-page") f.rules({{{"call", "file"}, {"status", 302}, {"location", otherHost("/__state")}}, serve});
         else if (shape == "cdn-gone") { f.rules({toCdn, serve, toCdn, {{"call", "file"}, {"status", 404}, {"body", "gone"}}}); checks = 4; }
         else if (shape == "cdn-same") { f.rules({toCdn, serve, toCdn, serve}); checks = 4; }
-        else f.rules({serve, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
+        else f.rules({serve, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}, {"remaining", 2}}});
         const auto result = f.remove(uploaded.receipt);
-        // The helper looks at the link `checks` times. Qt may also send a GET again when the
-        // connection closes under a reply that was cut off, so each cut reply may be asked for once more.
-        const int cuts = shape == "cut-404" ? 1 : 0;
-        QVERIFY2(f.events("file").size() >= checks && f.events("file").size() <= checks + cuts, qPrintable(QString("%1 requests for the file, expected %2 to %3").arg(f.events("file").size()).arg(checks).arg(checks + cuts)));
+        const auto requests = f.fileRequests(checks, shape == "cut-404" ? 1 : 0);
+        QVERIFY2(requests.isEmpty(), qPrintable(requests));
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
@@ -620,10 +630,11 @@ private slots:
         destination.settings = f.settings("pretend");
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
-        const QJsonObject whole{{"call", "file"}}, empty{{"call", "file"}, {"cut", "empty"}};
-        f.rules({beforeEmpty ? empty : whole, beforeEmpty ? whole : empty});
+        const QJsonObject whole{{"call", "file"}}, empty{{"call", "file"}, {"cut", "empty"}}, emptyLast{{"call", "file"}, {"cut", "empty"}, {"remaining", 2}};
+        f.rules({beforeEmpty ? empty : whole, beforeEmpty ? whole : emptyLast});
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(f.events("file").size(), 2);
+        const auto requests = f.fileRequests(2, 1);
+        QVERIFY2(requests.isEmpty(), qPrintable(requests));
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
