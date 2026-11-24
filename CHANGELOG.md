@@ -31,7 +31,7 @@ New places to upload, an optional check that looks for passwords, keys and card 
 - **Scrolling capture:** capture a page taller than the screen, scrolled by you or by put.gd's auto-scroll.
 - **Capture:** one monitor, a delay, and Repeat last region.
 - **Copy text and QR codes:** copy text from a screen region, select and copy text in the editor, use History's **Copy text** on local images, read QR codes in a capture, and **Show QR code** for a share link.
-- **Editor:** step numbers, pen, ellipse, line, pixelate and Copy image. Highlight tints only the background, so text stays readable, and snaps to words and lines.
+- **Editor:** step numbers, pen, ellipse, line, pixelate and Copy image. Highlight keeps text readable on light and dark pages and snaps to words and lines.
 - **Recording:** microphone audio, click highlights, cutting out the middle of a recording, a filmstrip in review, and single-window recording on KDE and GNOME Wayland without the portal chooser.
 - **Desktops and packages:** Budgie on Wayland, Hyprland (tested on Omarchy), a Fedora 45 RPM and Arch Linux packages from a signed pacman repository.
 - **Updates:** the AppImage updates itself with put.gd's own zsync client, downloading from pkg.put.gd first.
@@ -48,10 +48,10 @@ New places to upload, an optional check that looks for passwords, keys and card 
 
 ### Fixed
 
-- When a recording's PipeWire screen share goes away, the recorder no longer gets stuck: it reports a clear error, and the part recorded so far opens in review when it can be finished.
+- The recorder no longer gets stuck when a recording's PipeWire screen share is lost. If the share can't be recovered, put.gd opens the partial recording in review when it can finish the clip, and otherwise reports an error.
 - An accepted region is kept when the capture helper is slow to exit, on X11 and Wayland.
 - Scrolling capture fixes several stitching faults (stray lines, white patches over text, frames placed a table short), keeps a playing video as it first appeared while following the page, and handles sticky headers and pinned side columns. Moving the mouse pauses auto-scroll.
-- An incomplete reply from a custom HTTP uploader no longer causes an automatic second upload. Slow S3 and B2 transfers keep going while data is moving, and an unclear S3 multipart completion is checked instead of resent.
+- An incomplete reply from a custom HTTP uploader no longer causes an automatic second upload. Slow S3 and B2 uploads use progress-based timeouts instead of a fixed request deadline, and an unclear S3 multipart completion is checked instead of resent.
 - Uploads with an unknown outcome are listed under Failed uploads and stay unknown when a resend fails.
 - S3 deletion works on Garage and on R2 with a bucket-scoped token. S3 settings refuse a Region the SDK can't use and an Endpoint with a path.
 - Proton recovers when KDE's keyring fails a new helper's first read.
@@ -62,7 +62,7 @@ New places to upload, an optional check that looks for passwords, keys and card 
 
 - The AppImage updates its bundled FFmpeg from 7.1.5 to 9.0.2, which clears the scanner's fixed critical and high FFmpeg findings reported against 26.1105.3906 ([#1309](https://github.com/patrick-hudson/put.gd-desktop/issues/1309)). It is built without network protocols, reading and writing local files only.
 - A token from a `.sxcu` address stays out of thumbnail URLs and error messages, and Test upload and link no longer keeps its signed link.
-- The Proton Drive helper is still built with Bun 1.4.4. Bun's HTTP/3 advisory GHSA-p268-p2w7-qr8x is accepted for this release because HTTP/3 is off in put.gd's launch of the helper. A move to Bun 1.4.5 is planned ([#2005](https://github.com/patrick-hudson/put.gd-desktop/issues/2005)).
+- The Proton Drive helper is still built with Bun 1.4.4. Bun's HTTP/3 advisory GHSA-p268-p2w7-qr8x is accepted for this release because HTTP/3 is off by default when put.gd launches the helper. A move to Bun 1.4.5 is planned ([#2005](https://github.com/patrick-hudson/put.gd-desktop/issues/2005)).
 
 ### Known limitations
 
