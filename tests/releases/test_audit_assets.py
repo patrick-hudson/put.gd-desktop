@@ -217,25 +217,29 @@ class AdvisoryRanges(unittest.TestCase):
 
     def test_upstream_acceptance_covers_only_its_exact_unexpired_advisory(self):
         policy = {'severities': ['Critical', 'High'], 'requireFix': True, 'upstreamAdvisories': [
-            {'id': 'GHSA-test', 'component': 'bun', 'version': '1.4.4', 'reason': 'not reached',
-             'expires': '2027-01-15', 'issue': 1, 'evidence': 'packaging/sbom/dispositions/1.json'}]}
+            {'id': 'GHSA-test', 'component': 'bun', 'version': '1.4.4', 'helperSha256': 'a' * 64,
+             'reason': 'not reached', 'expires': '2027-01-15', 'issue': 1,
+             'evidence': 'packaging/sbom/dispositions/1.json'}]}
         def finding(**changes):
             return {'ghsa_id': 'GHSA-test', 'severity': 'high', 'component': 'bun', 'version': '1.4.4',
                     'fixedIn': '1.4.5', **changes}
         accepted, other_id, other_version, low = (finding(), finding(ghsa_id='GHSA-new'),
                                                   finding(version='1.4.3'), finding(severity='low'))
-        blocking = audit_assets.upstream_blocking([accepted, other_id, other_version, low], policy,
+        blocking = audit_assets.upstream_blocking([accepted, other_id, other_version, low], policy, 'a' * 64,
                                                   datetime.date(2027, 1, 15))
         self.assertEqual(blocking, [other_id, other_version])
         self.assertEqual(accepted['status'], 'accepted until 2027-01-15')
         self.assertEqual(accepted['acceptance']['issue'], 1)
         self.assertEqual(low['status'], 'reported')
+        # A helper rebuilt from other code needs its own review, even with the same Bun.
+        rebuilt = finding()
+        self.assertEqual(audit_assets.upstream_blocking([rebuilt], policy, 'b' * 64, datetime.date(2026, 11, 24)), [rebuilt])
         expired = finding()
-        self.assertEqual(audit_assets.upstream_blocking([expired], policy, datetime.date(2027, 1, 16)), [expired])
+        self.assertEqual(audit_assets.upstream_blocking([expired], policy, 'a' * 64, datetime.date(2027, 1, 16)), [expired])
         self.assertEqual(expired['status'], 'blocking (acceptance expired 2027-01-15)')
         self.assertNotIn('acceptance', expired)
         unaccepted = finding()
-        self.assertEqual(audit_assets.upstream_blocking([unaccepted], {**policy, 'upstreamAdvisories': []},
+        self.assertEqual(audit_assets.upstream_blocking([unaccepted], {**policy, 'upstreamAdvisories': []}, 'a' * 64,
                                                         datetime.date(2026, 11, 24)), [unaccepted])
 
     def test_fixed_boundary_and_union(self):

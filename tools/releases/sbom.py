@@ -439,13 +439,17 @@ def load_policy(path=POLICY):
     for entry in policy['ignore']:
         if 'scope' in entry and entry['component'] != policy['scopes'][entry['scope']]['component']:
             raise ValueError('Acceptance component differs from its scope: ' + entry['id'])
-    # Official upstream advisories (audit_assets.py) that Grype does not see; one exact version each.
+    # Official upstream advisories (audit_assets.py) that Grype does not see: one advisory, Bun version and helper each.
     for entry in policy.get('upstreamAdvisories', []):
-        if (set(entry) - {'issue', 'evidence'} != {'id', 'component', 'version', 'reason', 'expires'}
+        if (set(entry) != {'id', 'component', 'version', 'helperSha256', 'reason', 'expires', 'issue', 'evidence'}
                 or not all(isinstance(entry[key], str) and entry[key].strip()
-                           for key in ('id', 'component', 'version', 'reason', 'expires'))):
-            raise ValueError('Upstream advisory acceptances need id, component, version, a reason and an expiry: '
-                             + json.dumps(entry))
+                           for key in ('id', 'component', 'version', 'reason', 'expires'))
+                or not isinstance(entry['helperSha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', entry['helperSha256'])
+                or not isinstance(entry['issue'], int) or isinstance(entry['issue'], bool) or entry['issue'] < 1
+                or not isinstance(entry['evidence'], str)
+                or not re.fullmatch(r'packaging/sbom/dispositions/[0-9]+\.json', entry['evidence'])):
+            raise ValueError('Upstream advisory acceptances need id, component, version, helperSha256, a reason, '
+                             'an expiry, an issue and evidence: ' + json.dumps(entry))
         datetime.date.fromisoformat(entry['expires'])
     return policy
 
