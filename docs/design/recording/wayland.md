@@ -103,6 +103,48 @@ reply.
 demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian
 KDE desktops and `wlr-capture` on the Fedora 45 and Ubuntu Budgie 26.04 goldens.
 
+The helper connects to the session daemon's socket itself each time it opens
+a native node's `pipewiresrc` (at start, when the unthrottled request is
+retried with the plain one, and when a window's source is reopened), passes the connection as the
+element's `fd` and closes its own copy once the element has opened (#1994).
+Given no `fd`, `pipewiresrc` connects on its own, and when that fails because
+PipeWire stopped or is restarting, its plugin destroys the PipeWire context
+while the context's loop thread still runs and then joins that thread, which
+now and then never wakes (PipeWire #5581; 4 hangs in 200,000 failed opens on
+PipeWire 1.6.2): the helper would hang for good. With a connected `fd` the
+plugin makes no socket connection of its own, so a missing daemon can't send
+it down that path. When nothing answers on the socket, the start fails at
+once with `recording_start_failed` and `details.reason: pipewire_unreachable`
+("PipeWire is not running, so the screen could not be recorded"). A window
+source that can't be reopened stops the capture with `stopReason: source_lost`;
+the clip so far goes to review when that stop finishes it, and the session
+fails if it doesn't. Scrolling capture's frame source still lets `pipewiresrc`
+connect on its own; its helper is ended whenever a command misses its deadline.
+
+A PipeWire restart while the source starts removes the stream the compositor
+handed over. `pipewiresrc` then fails, and the pipeline's teardown after that
+failure can wait on the element's streaming thread past the start deadline
+(GNOME on Fedora 44 with PipeWire 1.6.9, 4 of 5 tries, the published nightly
+too; Plasma on Kubuntu 26.04, 1 of 4). When the source fails with a resource
+error on the helper's own connection, the helper sends `sourceTrouble
+{message, daemonGone}` before that teardown (`daemonGone`: the daemon hung up
+on that connection), and the same event with an empty message once the
+teardown has returned. A `start` request's deadline (15 s), or for
+Record on the helper's own bar the 30 s silence limit
+([process boundary](process-boundary.md#process-boundary)), ends the helper.
+If the source failure is still marked then (its teardown never returned), the
+start fails as `recording_start_failed` with the source's error in
+`details.sourceError` and `details.reason` `pipewire_stopped` ("PipeWire
+stopped while the recording was starting") when the daemon hung up, or
+`source_failed` ("The screen stream ended while the recording was starting")
+when it didn't. A restart through systemd's socket unit can give
+`source_failed`: the helper's connection can reach the new daemon, where the
+compositor's stream no longer exists, so the source fails without a hang-up
+(all four such tries on Fedora 44 GNOME did). Otherwise the start fails as
+`recording_helper_timeout` (a `start` request) or
+`recording_helper_unresponsive` (the bar). A start whose failure comes back
+before then keeps its own error.
+
 ### Window recordings
 
 On Plasma and GNOME Wayland a `window` target never shows the portal's picker
@@ -159,8 +201,8 @@ the window closes, KWin sends the stream's `closed` event and Mutter its
 session's `Closed` signal: a running capture stops into review with
 `stopReason: target_closed` and the clip so far (0.12–0.24 s after the window
 closed), and a ready session that never recorded fails
-`recording_target_closed`. A source that cannot be reopened stops the same way
-with `stopReason: source_lost`.
+`recording_target_closed`. A source that cannot be reopened stops with
+`stopReason: source_lost`, and goes to review if that stop finishes the clip.
 
 Acceptance on Kubuntu 26.04 (KWin 6.6.6), Debian 13 (KWin 6.3.6), Aurora
 (KWin 6.8.2), Fedora 44 (GNOME 50.6) and Ubuntu 26.04 (GNOME 50.1, VM) with
