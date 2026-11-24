@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <csignal>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 namespace putgd {
 namespace {
@@ -46,7 +47,15 @@ CaptureProcessController::CaptureProcessController(QString helperPath,QObject* p
  deadline_.setSingleShot(true);stopDeadline_.setSingleShot(true);holdDeadline_.setSingleShot(true);
  connect(&holdDeadline_,&QTimer::timeout,this,&CaptureProcessController::releaseCrosshair);
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout","deadline",{{"ready",ready_},{"begun",begun_},{"result",resultReceived_}}));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_&&process_->state()!=QProcess::NotRunning){stoppedAfterAccept_=accepted_&&!failure_;process_->kill();}});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{
+  if(!process_||process_->state()==QProcess::NotRunning)return;
+  // Claim the kill only for a helper still alive now (peek, not reap; __WALL as
+  // Qt may clone it without SIGCHLD): one that
+  // already exited or was killed from outside keeps its own exit status (#398).
+  siginfo_t info{};const auto pid=pid_t(process_->processId());
+  const bool alive=pid>0&&::waitid(P_PID,id_t(pid),&info,WEXITED|WNOHANG|WNOWAIT|__WALL)==0&&info.si_pid==0;
+  stoppedAfterAccept_=alive&&accepted_&&!failure_;process_->kill();
+ });
 }
 CaptureProcessController::~CaptureProcessController(){closing_=true;releaseCrosshair();deadline_.stop();stopDeadline_.stop();if(control_)control_->stop();if(process_){process_->disconnect(this);process_->kill();process_->waitForFinished(1000);}if(decoder_){decoder_->disconnect(this);decoder_->wait();delete decoder_;}artifact_.cleanup();if(callback_){auto callback=std::move(callback_);callback_={};callback({{},{"cancelled","Capture adapter closed",{}}});}}
 bool CaptureProcessController::busy()const{return prepared_||bool(callback_)||process_;}
