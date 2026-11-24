@@ -64,6 +64,7 @@ private slots:
   QTest::addColumn<QString>("mode");QTest::addColumn<QString>("code");
   QTest::newRow("starting")<<QString("hang-on-start")<<QString("recording_helper_timeout");
   QTest::newRow("starting, source failed")<<QString("hang-after-source-error")<<QString("recording_start_failed");
+  QTest::newRow("starting, after a source error that passed")<<QString("source-error-then-hang")<<QString("recording_helper_timeout");
   QTest::newRow("recording")<<QString("hang-while-recording")<<QString("recording_helper_unresponsive");
   // Record on the helper's own bar: no start command, so no command deadline either.
   QTest::newRow("starting from the bar, source failed")<<QString("bar-start-hangs")<<QString("recording_start_failed");
@@ -92,6 +93,16 @@ private slots:
   QVERIFY(h.backend->processId(next)!=pid);
   QVERIFY(!h.rec("start",{{"id",next}}).error);QCOMPARE(h.state(next),QString("recording"));
   QCOMPARE(h.rec("stop",{{"id",next}}).result["state"].toString(),QString("reviewing"));
+ }
+ void aClipTheHelperIsStillFinishingIsKept(){
+  // #1994: the silence watch gives a stop the helper began itself (its bar, the budget) the longer stopping limit.
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-bar-stop");
+  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  PUTGD_TRY_COMPARE(h.state(id),QString("stopping"));
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(h.state(id),QString("reviewing"),10000);
+  QVERIFY(h.backend->diagnostics()["active"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
  void capabilitiesBeforeTheFirstProbeAnswerSayPending(){
   // #1455: reading the empty cache must not fill it with nulls that replace the pending reason.

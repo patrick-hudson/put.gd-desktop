@@ -115,9 +115,11 @@ signals:
     void failed(putgd::Error);
     // The PipeWire source failed while reopenableSource is set; once per failure.
     void sourceLost(putgd::Error);
-    // A start attempt's PipeWire source failed, emitted before the pipeline is
-    // torn down (#1994): pipewiresrc's teardown after a vanished stream can
-    // stall the calling thread, and this may be the last word the session gets out.
+    // A start attempt's native source failed with a resource error, emitted
+    // before the pipeline is torn down (#1994): pipewiresrc's teardown after a
+    // vanished stream can stall the calling thread, and this may be the last
+    // word the session gets out. Emitted again with an empty failure once that
+    // teardown has returned.
     void sourceFailedAtStart(QString failure);
     void budgetReached(QJsonObject details);
     // The image-copy source ended: its window closed or its output went away.
@@ -197,6 +199,7 @@ private:
     int sourceReopens_ = 0;
     // The last start failed because nothing answered on the session PipeWire socket (#1994).
     bool pipewireUnreachable_ = false;
+    static Error pipewireUnreachable(const QStringList& attempts);
     // One adaptive-rate window a second while recording (not paused or stopping).
     void observeRate();
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).

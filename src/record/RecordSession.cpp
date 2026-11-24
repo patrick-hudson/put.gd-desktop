@@ -208,6 +208,9 @@ void RecordSession::enterPhase(HelperPhase phase) {
     if (phase_ == phase || phase_ == HelperPhase::Cancelled || (phase_ == HelperPhase::Failed && phase != HelperPhase::Cancelled)) return;
     debugLog("session: " + recording::phaseName(phase_) + " -> " + recording::phaseName(phase));
     phase_ = phase;
+    // The bar's Stop, the budget and a lost source stop here, not by the resident's command: it
+    // follows the clip being finished, which can take longer than recording without a report (#1994).
+    if (phase == HelperPhase::Stopping) emit event({{"event", "stopping"}});
 }
 void RecordSession::showBar(const QString& state) {
     if (!bar_) return;

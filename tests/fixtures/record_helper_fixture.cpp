@@ -130,6 +130,8 @@ int main(int argc, char** argv) {
             if (mode == "hang-on-start") hangOnAJoin();
             // The source failed and its teardown stalls (#1994): the event is the last frame out.
             if (mode == "hang-after-source-error") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); hangOnAJoin(); }
+            // That attempt's teardown returned; a later stall is not PipeWire's.
+            if (mode == "source-error-then-hang") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); event("sourceTrouble", {{"message", ""}}); hangOnAJoin(); }
             if (mode == "unknown-result") { result("not-outstanding", {}); return; }
             // A well-formed `ok` with a result that is not an object: the caller must still get the protocol error.
             if (mode == "malformed-result") { auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = true; frame["result"] = "not an object"; control.send("commandResult", frame); return; }
@@ -139,6 +141,13 @@ int main(int argc, char** argv) {
             ticker.start();
             // The source is reopened on the main thread mid-recording, and hangs there.
             if (mode == "hang-while-recording") { QTimer::singleShot(300, &app, [] { hangOnAJoin(); }); return; }
+            // Stop on the helper's bar, then a clip that takes 4.5 s to finish without a report:
+            // longer than the recording limit (3 s here), shorter than the stopping one.
+            if (mode == "slow-bar-stop") QTimer::singleShot(300, &app, [&] {
+                ticker.stop();
+                event("stopping", {});
+                QTimer::singleShot(4500, &app, [&] { event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
+            });
             if (mode == "stop-event") QTimer::singleShot(150, &app, [&] { ticker.stop(); event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
             return;
         }

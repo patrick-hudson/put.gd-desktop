@@ -71,7 +71,7 @@ RecordingService::RecordingService(QString stagingRoot, Host host, QObject* pare
     : QObject(parent), silence_(this), stagingRoot_(std::move(stagingRoot)), host_(std::move(host)), backend_(std::make_unique<UnavailableRecordingBackend>()) {
     silence_.setSingleShot(true);
     connect(&silence_, &QTimer::timeout, this, [this] {
-        if (!session_ || (session_->state != RecordingState::Starting && session_->state != RecordingState::Recording && session_->state != RecordingState::Paused)) return;
+        if (!session_ || !watched(session_->state)) return;
         // A helper stuck on its main thread never answers, so the clip it holds
         // cannot be finished; it is ended rather than left hanging.
         const int silent = silence_.interval();
@@ -88,9 +88,14 @@ Error RecordingService::stalledStart(const Session& s, Error error) {
     details["sourceError"] = s.startTrouble;
     return {"recording_start_failed", "PipeWire stopped while the recording was starting; try again", details};
 }
+bool RecordingService::watched(RecordingState state) {
+    return state == RecordingState::Starting || state == RecordingState::Recording || state == RecordingState::Paused || state == RecordingState::Stopping;
+}
 void RecordingService::heard(const Session& s) {
     const int limit = backend_->silenceLimitMs();
-    if (limit > 0 && (s.state == RecordingState::Starting || s.state == RecordingState::Recording || s.state == RecordingState::Paused)) silence_.start(limit);
+    // Finishing the clip drains the encoder and closes the PipeWire stream, whose
+    // final round trip alone may wait 30 s: twice the limit.
+    if (limit > 0 && watched(s.state)) silence_.start(s.state == RecordingState::Stopping ? 2 * limit : limit);
     else silence_.stop();
 }
 RecordingService::~RecordingService() { shutdown(); }
@@ -408,6 +413,9 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         // Record on the helper's bar: no start command times this one, the silence watch does.
         s.startTrouble.clear();
         transition(s, RecordingState::Starting);
+    } else if (kind == "stopping" && (s.state == RecordingState::Recording || s.state == RecordingState::Paused)) {
+        // The helper stops on its own (its bar, the budget, a lost source); `stopped` or `failed` follows.
+        transition(s, RecordingState::Stopping);
     } else if (kind == "sourceTrouble" && s.state == RecordingState::Starting) s.startTrouble = event["message"].toString().left(512);
     else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);

@@ -30,16 +30,7 @@ QString FrameTap::describe(const Source& source) {
 
 Error FrameTap::start(const Source& source) {
     if (pipeline_) return {"recording_state", "The frame tap is already running", {}};
-    // A native node opens on a connection of the helper's own, held until the
-    // source has opened on its copy (#1994, PipeWireConnection).
-    PipeWireConnection session;
-    Source opened = source;
-    if (source.pipewireNode && source.pipewireFd < 0) {
-        QString why;
-        if (!session.open(QProcessEnvironment::systemEnvironment(), &why)) return {"scroll_unavailable", "PipeWire is not reachable: " + why, {{"reason", "frame_source_unavailable"}}};
-        opened.pipewireFd = session.fd();
-    }
-    const QString description = describe(opened);
+    const QString description = describe(source);
     debugLog("scroll tap: " + description);
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);

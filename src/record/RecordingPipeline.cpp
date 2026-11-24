@@ -632,6 +632,24 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         g_signal_connect(capture, "overrun", G_CALLBACK(+[](GstElement*, gpointer user) { static_cast<std::atomic<gint64>*>(user)->fetch_add(1); }), &dropped_);
         gst_object_unref(capture);
     }
+    // A failed attempt's source error, and whether it says the stream is gone
+    // (a resource error from the source on the recorder's own connection, #1994).
+    QString element;
+    bool sourceGone = false;
+    auto noteError = [&](GstMessage* message, GError* e) {
+        element = GST_MESSAGE_SRC(message) ? QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))) : QString();
+        sourceGone = session.fd() >= 0 && element == "src" && e && e->domain == GST_RESOURCE_ERROR;
+        if (failedElement) *failedElement = element;
+    };
+    // pipewiresrc's teardown after a vanished stream can stall this thread: the
+    // resident hears of the failure first, and that it passed once teardown returns.
+    auto abandon = [&] {
+        debugLog("start failed: " + failure);
+        if (sourceGone) emit sourceFailedAtStart(failure);
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+        gst_object_unref(pipeline);
+        if (sourceGone) emit sourceFailedAtStart(QString());
+    };
     const auto change = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (change == GST_STATE_CHANGE_FAILURE) {
         failure = QStringLiteral("%1 refused to start").arg(encoder);
@@ -640,15 +658,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
             GError* e = nullptr; gchar* debug = nullptr;
             gst_message_parse_error(message, &e, &debug);
             failure += QStringLiteral(": %1 (%2)").arg(e ? QString::fromUtf8(e->message) : QString(), QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))));
-            if (failedElement) *failedElement = QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message)));
+            noteError(message, e);
             if (e) g_error_free(e);
             g_free(debug);
             gst_message_unref(message);
         }
         gst_object_unref(errors);
-        debugLog("start failed: " + failure);
-        if (options.pipewireNode && failedElement && *failedElement == "src") emit sourceFailedAtStart(failure);
-        gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); return false;
+        abandon();
+        return false;
     }
     // Live sources report ASYNC/NO_PREROLL; watch the bus briefly for a
     // negotiation or device error before accepting this encoder. A PipeWire
@@ -668,7 +685,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
             GError* e = nullptr; gchar* debug = nullptr;
             gst_message_parse_error(message, &e, &debug);
             failure = QStringLiteral("%1: %2").arg(encoder, e ? QString::fromUtf8(e->message) : QString());
-            if (failedElement && GST_MESSAGE_SRC(message)) *failedElement = QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message)));
+            noteError(message, e);
             if (e) g_error_free(e);
             g_free(debug);
             failed = true;
@@ -681,9 +698,9 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     }
     gst_object_unref(bus);
     if (failed) {
-        debugLog("start failed: " + failure);
-        if (options.pipewireNode && failedElement && *failedElement == "src") emit sourceFailedAtStart(failure);
-        gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false;
+        abandon();
+        QFile::remove(options.output);
+        return false;
     }
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
     debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder + (mixed ? QStringLiteral(" (system audio and microphone mixed)") : options.microphone ? QStringLiteral(" (microphone)") : QStringLiteral(" (system audio)"))) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
@@ -719,7 +736,7 @@ Error RecordingPipeline::start(const Options& options) {
     bool microphoneFailed = false;
     pipewireUnreachable_ = false;
     if (launchAny(options, audioEncoder, failures, &microphoneFailed)) return {};
-    if (pipewireUnreachable_) return {"recording_start_failed", "PipeWire is not running, so the screen could not be recorded; try again once it is back", {{"reason", "pipewire_unreachable"}, {"attempts", QJsonArray::fromStringList(failures)}}};
+    if (pipewireUnreachable_) return pipewireUnreachable(failures);
     if (options.microphone && microphoneFailed) {
         // The microphone could not be opened (unplugged since the session was
         // prepared, or refused by the sound server): record without it rather
@@ -734,6 +751,7 @@ Error RecordingPipeline::start(const Options& options) {
             microphoneLostReason_ = QStringLiteral("The microphone could not be opened; the recording has no microphone audio.");
             return {};
         }
+        if (pipewireUnreachable_) return pipewireUnreachable(failures);
     }
     return {"recording_start_failed", "No H.264 encoder could start the capture", {{"attempts", QJsonArray::fromStringList(failures)}}};
 }
@@ -874,6 +892,7 @@ void RecordingPipeline::poll() {
             gst_message_unref(message);
             gst_object_unref(bus);
             if (relaunchThrottled()) return;
+            if (pipewireUnreachable_) { emit failed(pipewireUnreachable({})); return; }
             emit failed({"recording_failed", "Capture failed: the compositor refused the stream twice", {}});
             return;
         }
@@ -1036,14 +1055,19 @@ bool RecordingPipeline::reopenSource() {
     debugLog(QStringLiteral("source reopened on node %1 (%2 so far)").arg(options_.pipewireNode).arg(sourceReopens_));
     return true;
 }
+Error RecordingPipeline::pipewireUnreachable(const QStringList& attempts) {
+    return {"recording_start_failed", "PipeWire is not running, so the screen could not be recorded; try again once it is back", {{"reason", "pipewire_unreachable"}, {"attempts", QJsonArray::fromStringList(attempts)}}};
+}
 bool RecordingPipeline::relaunchThrottled() {
+    pipewireUnreachable_ = false;
     tearDown();
     const auto options = options_;
     const QString audioEncoder = (options.audio || options.microphone) && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
     for (const auto& encoder : options.encoders) {
-        QString failure;
-        if (launch(options, encoder, audioEncoder, false, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
+        QString failure, element;
+        if (launch(options, encoder, audioEncoder, false, failure, &element)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
         debugLog("relaunch failed: " + failure);
+        if (element == "pipewire") { pipewireUnreachable_ = true; return false; }
     }
     return false;
 }
