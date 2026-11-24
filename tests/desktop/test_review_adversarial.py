@@ -228,14 +228,16 @@ class Adv(unittest.TestCase):
         def plant(ctx):
             ctx.sensitive(PUTGD)
             (ctx.out/'leak.log').write_text(TOKEN)
-        import tools.lab.surface_driver.redact as redact
-        original=redact.tempfile.mkdtemp
+        from tools.lab import scratch
+        original=scratch.mkdtemp
         directories=[]
         def quarantine(**kw):
             directory=Path(original(**kw));directories.append(directory)
             self.addCleanup(__import__('shutil').rmtree,directory)
-            return str(directory)
-        with patch.object(redact.tempfile,'mkdtemp',side_effect=quarantine):
+            return directory
+        base=tempfile.TemporaryDirectory();self.addCleanup(base.cleanup)
+        with patch.object(scratch,'mkdtemp',side_effect=quarantine), \
+                patch.dict(__import__('os').environ,PUTGD_LAB_SCRATCH=base.name):
             rows=run_recipes(self.ctx,[Recipe(('editor.undo',),plant)],self.env,self.out,'safe',external)
         self.assertEqual(rows[0].functional, 'failed')
         self.assertFalse((self.out/'leak.log').exists())
@@ -262,6 +264,38 @@ class Adv(unittest.TestCase):
         self.assertFalse(external.exists())
         self.assertFalse(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
 
+    def test_quarantine_stays_outside_the_export_root_whatever_the_scratch_base(self):
+        import os
+        import tools.lab.surface_driver.redact as redact
+        for base in ('inside', 'refused'):
+            out = self.out.parent/('run-'+base)
+            out.mkdir()
+            (out/'planted.log').write_text(TOKEN)
+            scratch = out/'scratch' if base == 'inside' else self.out.parent/'shared'
+            scratch.mkdir(mode=0o700 if base == 'inside' else 0o777)
+            scratch.chmod(0o700 if base == 'inside' else 0o777)
+            fallback = self.out.parent/('tmp-'+base)
+            fallback.mkdir()
+            with patch.dict(os.environ, PUTGD_LAB_SCRATCH=str(scratch)), patch.object(tempfile, 'tempdir', str(fallback)):
+                result = scan_run(out, literals=(TOKEN,), quarantine=True)
+            self.assertEqual(len(list(fallback.iterdir())), 1)  # quarantined outside the export root
+            self.assertFalse(result['passed'])
+            self.assertEqual(len(result['quarantine']), 1)
+            self.assertFalse((out/'planted.log').exists())
+            self.assertEqual([p for p in out.rglob('*') if TOKEN in (p.read_text() if p.is_file() else '')], [])
+
+    def test_quarantine_refuses_when_no_directory_outside_the_export_root_exists(self):
+        import os
+        out = self.out.parent/'run-nowhere'
+        (out/'scratch').mkdir(parents=True)
+        (out/'tmp').mkdir()
+        (out/'planted.log').write_text(TOKEN)
+        with patch.dict(os.environ, PUTGD_LAB_SCRATCH=str(out/'scratch')), patch.object(tempfile, 'tempdir', str(out/'tmp')):
+            with self.assertRaises(RuntimeError):
+                scan_run(out, literals=(TOKEN,), quarantine=True)
+        self.assertEqual((out/'planted.log').read_text(), TOKEN)  # not reported as moved
+        self.assertEqual(list((out/'scratch').iterdir())+list((out/'tmp').iterdir()), [])
+
     def test_quarantine_removes_leaks_across_filesystems(self):
         import errno
         import tools.lab.surface_driver.redact as redact
@@ -270,7 +304,8 @@ class Adv(unittest.TestCase):
         planted.write_text(TOKEN)
         quarantine=self.out.parent/'private-quarantine'
         quarantine.mkdir(mode=0o700)
-        with patch.object(redact.tempfile,'mkdtemp',return_value=str(quarantine)), \
+        from tools.lab import scratch
+        with patch.object(scratch,'mkdtemp',return_value=str(quarantine)), \
                 patch.object(redact.os,'rename',side_effect=OSError(errno.EXDEV,'cross-device link')):
             result=scan_run(self.out,literals=(TOKEN,),quarantine=True)
         self.assertFalse(result['passed'])

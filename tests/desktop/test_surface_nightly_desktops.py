@@ -85,7 +85,7 @@ class NightlyTests(unittest.TestCase):
                 observed, _ = locks.collect_inventory(root,
                     run=lambda argv:(0, '31 ssh -i /private/f44-identity remote putgd')
                         if argv[0] == 'pgrep' else (None, ''),
-                    environment=lambda pid:{'DISPLAY'}, own=set())
+                    environment=lambda pid:{'DISPLAY'}, own=set(), tmp=lambda: None)
             self.assertEqual(observed, [item(31, 'ssh -i /private/f44-identity remote putgd')])
             items.extend(observed)
             with patch.object(nightly.Path, 'home', return_value=root), \
@@ -1876,6 +1876,75 @@ with n.controller_shutdown(workers):
         with tempfile.TemporaryDirectory() as tmp:
             nightly.publish(github,dict(release='tag',date='today',build='unverified',desktops=[row]),Path(tmp))
         self.assertEqual([w[1] for w in github.writes if w[0]=='issue'],['Nightly desktop results'])
+
+    def test_a_row_its_builder_keeps_from_running_two_nights_running_is_flagged(self):
+        # #1978: k72's and f44's rows were all not run on 11-22 and 11-23 (RAM taken by /tmp scratch).
+        ram = 'RAM below guest requirement plus 4 GiB headroom; not run after 1200s'
+        def night(date, reason, ran=False):
+            rows = nightly.not_run_rows('k72', dict(rows=[dict(name='Kubuntu KDE', desktop='kde')]), reason, Path('/owned'))
+            rows += nightly.not_run_rows('m74', dict(rows=[dict(name='Mint Cinnamon')]), 'unrelated', Path('/owned'))
+            if ran:
+                rows[0]['cells']['region_upload'] = nightly.cell('green')
+            return dict(release='v26.1123.1-nightly', build=BUILD, date=date+'T12:30:00+00:00', desktops=rows)
+        first = night('2026-11-22', ram)
+        nightly.count_host_blocked(first, None)
+        self.assertEqual(first['desktops'][0]['hostBlockedNights'], 1)
+        self.assertNotIn('hostBlockedNights', first['desktops'][1])  # not a host reason
+        second = night('2026-11-23', 'worker stopped early; '+ram)
+        nightly.count_host_blocked(second, first)
+        self.assertEqual(second['desktops'][0]['hostBlockedNights'], 2)
+        rerun = night('2026-11-23', ram)
+        nightly.count_host_blocked(rerun, second)
+        self.assertEqual(rerun['desktops'][0]['hostBlockedNights'], 2)  # the same day again
+        legacy = night('2026-11-23', ram)  # results written before the count existed
+        nightly.count_host_blocked(legacy, dict(night('2026-11-22', ram), desktops=night('2026-11-22', ram)['desktops']))
+        self.assertEqual(legacy['desktops'][0]['hostBlockedNights'], 2)
+        slot = night('2026-11-24', 'nightly guest slot belongs to a live or unverified worker')
+        nightly.count_host_blocked(slot, second)  # met by stale-guest recovery, before await_host
+        self.assertEqual(slot['desktops'][0]['hostBlockedNights'], 3)
+        kept = night('2026-11-24', 'guest retained: live remote cleanup unresolved (marker in the run directory); '
+                                   'resolve it before recovery')
+        nightly.count_host_blocked(kept, second)
+        self.assertEqual(kept['desktops'][0]['hostBlockedNights'], 3)
+        # A filtered recheck of another row in the morning carries this row over with a newer table
+        # date; the evening's full run is still its next blocked run.
+        morning = dict(first, date='2026-11-23T08:00:00+00:00')
+        evening = night('2026-11-23', ram)
+        nightly.count_host_blocked(evening, morning)
+        self.assertEqual(evening['desktops'][0]['hostBlockedNights'], 2)
+        self.assertEqual(evening['desktops'][0]['hostBlockedDate'], '2026-11-23')
+        recovered = night('2026-11-24', ram, ran=True)
+        nightly.count_host_blocked(recovered, second)
+        self.assertNotIn('hostBlockedNights', recovered['desktops'][0])
+        github = FakeGitHub()
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github, second, Path(tmp))
+            table = (Path(tmp)/'results.md').read_text()
+        alert = 'Kubuntu KDE / k72 ran no cell for 2 nights running: worker stopped early; '+ram
+        self.assertTrue(table.startswith('Release: **v26.1123.1-nightly**'))
+        self.assertIn('> [!WARNING]\n> '+alert, table)
+        self.assertIn('| ⚠️ 2 nights running: worker stopped early; RAM below', table)
+        comments = [w[2]['body'] for w in github.writes if w[0] == 'POST' and w[1].endswith('/comments')]
+        self.assertIn('> [!WARNING]\n> '+alert, comments[0])
+        self.assertIn('"hostBlockedNights": 2', comments[0])
+        self.assertNotIn('[!WARNING]', comments[1])
+        # Grey still files no issue.
+        self.assertEqual([w[1] for w in github.writes if w[0] == 'issue'], ['Nightly desktop results'])
+
+    def test_the_last_results_are_read_from_the_state_directory_or_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            self.assertIsNone(nightly.last_results(state))
+            (state/'last-run.json').write_text(json.dumps(dict(results=str(state/'gone.json'))))
+            self.assertIsNone(nightly.last_results(state))
+            (state/'r.json').write_text(json.dumps(dict(release='t', desktops=[])))
+            (state/'last-run.json').write_text(json.dumps(dict(results=str(state/'r.json'))))
+            self.assertEqual(nightly.last_results(state), dict(release='t', desktops=[]))
+            # A malformed earlier file counts nothing rather than failing the night.
+            result = dict(date='2026-11-24', desktops=nightly.not_run_rows(
+                'f44', dict(rows=[dict(name='Fedora GNOME')]), 'golden missing', Path('/owned')))
+            nightly.count_host_blocked(result, dict(date=7, desktops=[dict(host='f44', desktop='Fedora GNOME')]))
+            self.assertEqual(result['desktops'][0]['hostBlockedNights'], 1)
 
     def test_secret_file_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:

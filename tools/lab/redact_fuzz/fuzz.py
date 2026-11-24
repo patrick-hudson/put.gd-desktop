@@ -550,6 +550,7 @@ def probe(args):
                 words.append([part, 10 + x * 8, 10 + i * 20, len(part) * 8, 14])
             x += len(part)
     import tempfile
+    # tmpfs-ok: one small PNG, removed on exit; the standalone copy of redact_fuzz/ has no scratch.py
     with tempfile.TemporaryDirectory(prefix='redact-probe-') as private:
         image = Path(private) / 'blank.png'
         image.write_bytes(blank_png(max([20 + 8 * len(line) for line in lines] + [200]), 30 + 20 * len(lines)))

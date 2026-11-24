@@ -600,8 +600,12 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
             # Rows this run published earlier (e.g. a previous pass) become failed.
             result['invalidated_coverage_rows'] = fail_coverage(coverage, [row.to_json() for row in rows], redactor=evidence.redactor)
     write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
-    final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
-                     hosts=evidence.redactor.link_hosts, quarantine=True)
+    try:
+        final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
+                         hosts=evidence.redactor.link_hosts, quarantine=True)
+    except Exception:  # e.g. no quarantine directory outside the run: the stubs below still replace both files
+        # Some files may have been moved before the failure; say so rather than claim none were.
+        final = {'passed': False, 'quarantine': [{'action': 'quarantine-incomplete'}]}
     if not final['passed']:
         # The rewritten receipt itself carried a value. Replace both with
         # constant failure stubs (no run data) and scan those final bytes.

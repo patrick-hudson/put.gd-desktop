@@ -39,6 +39,7 @@ def _files(ctx):
     # retains these synthetic artifacts for collection, even after a failure.
     return json.loads(_shell(ctx, """python3 - <<'PY'
 import json, pathlib, struct, tempfile, zlib
+# tmpfs-ok: runs on the test desktop and holds one 32x24 PNG
 root = pathlib.Path(tempfile.mkdtemp(prefix='pgfd.', dir='/tmp'))
 (root / 'Chosen folder').mkdir(mode=0o700)
 def chunk(kind, data):

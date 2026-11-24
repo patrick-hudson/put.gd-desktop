@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the fault harness over a range of seeds, each in a new run folder.
 #   faultrun.sh BUILD OUT FIRST LAST STEPS DEST CLASSES [extra action_fuzz.py options]
-# e.g. faultrun.sh build/asan /tmp/fr1 1 20 200 http fs,net,res
+# e.g. faultrun.sh build/asan ~/work/tmp/fr1 1 20 200 http fs,net,res   (on disk: the builders' /tmp is RAM)
 # OUT holds runs/f-<dest>-<seed>. Keep OUT short: the session socket lives at OUT/runs/f-DEST-SEED/r/rt/putgd/session.sock, and a
 # socket path has at most 107 bytes. Nothing is mounted: a full disk is a shim rule (ENOSPC, EDQUOT).
 # A finding stops that seed (its folder is kept), the loop goes on; the script prints how many seeds had findings and exits 1 if any did.

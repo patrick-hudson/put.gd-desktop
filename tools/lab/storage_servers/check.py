@@ -24,7 +24,6 @@ import shutil
 import struct
 import subprocess
 import sys
-import tempfile
 import time
 import zlib
 
@@ -494,7 +493,9 @@ def main():
     parser.add_argument('--no-settings', action='store_true', help='skip the Nextcloud quota, sharing and share-password checks and leave those settings alone')
     parser.add_argument('--only', choices=('sftp', 'webdav', 'nextcloud', 'public'), action='append')
     options = parser.parse_args()
-    work = tempfile.mkdtemp(prefix='putgd-st-check-')
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import scratch  # on disk: /tmp is RAM on the builders, and big.bin is large (#1978)
+    work = str(scratch.mkdtemp(prefix='putgd-st-check-'))
     lab = Lab(options.bind, work)
     try:
         wanted = options.only or ['sftp', 'webdav', 'nextcloud', 'public']

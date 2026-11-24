@@ -13,7 +13,8 @@ Arguments after `--` are appended to the test's command line (a QtTest function 
 --env NAME=VALUE entries go into the test's environment. --build and --run-dir are made absolute first. Use a RelWithDebInfo or
 Debug build and run on a build server: rr needs real performance counters (a VM often has none) and a kernel.perf_event_paranoid
 it accepts (rr 5.9+ on Linux 6.10+ works at 2). Keep --run-dir and TMPDIR on tmpfs: rr 5.10 aborts on FS_IOC_GETFSLABEL, which
-btrfs and ext4 answer. --timeout is how long one recorded run may take before it is stopped and counted as
+btrfs and ext4 answer. On a builder that tmpfs is RAM the nightly guests need: once you have the traces you want, move them
+to disk or remove them with `rr rm` (#1978). --timeout is how long one recorded run may take before it is stopped and counted as
 a possible slowdown or hang; --time-scale (PUTGD_TEST_TIME_SCALE) stretches the test's own waits for rr's slower schedule.
 A run that is stopped gets SIGTERM on rr itself, so rr finishes the trace; a trace is reported replayable only when rr completed it
 (no `incomplete` marker and a `version` file). Each run lives in a systemd user scope of its own (tools/lab/run_scope.py); when the run

@@ -29,7 +29,6 @@ import re
 import struct
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -203,7 +202,9 @@ def main():
     secrets = [value for path in files for value in tokens(path)]
     imported, reports, roots, leaked, packaged, cleanup = [], [], [], [], False, None
     try:
-        with tempfile.TemporaryDirectory(prefix='putgd-rx-') as temporary:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import scratch  # on disk: /tmp is RAM on the builders (#1978)
+        with scratch.TemporaryDirectory(prefix='putgd-rx-') as temporary:
             payload = Path(temporary) / 'putgd-receiver-check.png'
             payload.write_bytes(synthetic_png())
             for path in files:
@@ -213,7 +214,7 @@ def main():
         roots = [entry['path'] for entry in locations.values() if isinstance(entry, dict) and entry.get('path')]
         state = os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')
         roots.append(str(Path(state) / 'putgd'))
-        with tempfile.TemporaryDirectory(prefix='putgd-rx-diag-') as temporary:
+        with scratch.TemporaryDirectory(prefix='putgd-rx-diag-') as temporary:
             package = resident.call('diagnostics.bundle', {'output': str(Path(temporary) / 'package.zip'), 'includeNames': True})
             leaked = files_with(temporary, secrets) + [path for root in roots for path in files_with(root, secrets)]
             packaged = package['ok']

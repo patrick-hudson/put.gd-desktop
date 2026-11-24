@@ -3,6 +3,7 @@
 Every value here is fake;
 everything else runs anywhere in seconds.
 """
+import os
 import json
 from types import SimpleNamespace
 from pathlib import Path
@@ -77,11 +78,13 @@ class Base(unittest.TestCase):
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='g', package='deb',
                         destination=self.destination, build=BUILD)
         self.quarantines = []
-        original = redact.tempfile.mkdtemp
+        from tools.lab import scratch
+        original = scratch.mkdtemp
         def mkdtemp(*args, **kwargs):
             directory = original(*args, **kwargs); self.quarantines.append(directory); return directory
-        patcher = patch.object(redact.tempfile, 'mkdtemp', side_effect=mkdtemp)
-        patcher.start(); self.addCleanup(patcher.stop)
+        for patcher in (patch.object(scratch, 'mkdtemp', side_effect=mkdtemp),
+                        patch.dict(os.environ, PUTGD_LAB_SCRATCH=str(self.path/'scratch'))):
+            patcher.start(); self.addCleanup(patcher.stop)
         self.addCleanup(lambda: [shutil.rmtree(d, ignore_errors=True) for d in self.quarantines])
 
     def context(self, target=None, evidence=None):
@@ -491,6 +494,28 @@ class NaFinalBytes(Base):
         self.assertEqual(json.loads((self.out/'receipt.json').read_text())['secret_scan']['findings'][0]['kind'],
                          'final-receipt-audit-failed')
 
+
+    def test_the_stub_still_replaces_the_receipt_when_quarantine_is_unavailable(self):
+        from tools.lab.surface_driver import redact
+        ctx = self.context()
+        ctx._probe = FakeDesktop()
+        ctx.sensitive(SHARE)
+        original = runner.write_receipts
+        def poisoned(out, environment, rows, campaign, coverage, **kwargs):
+            original(out, environment, rows, campaign, coverage, **kwargs)
+            if kwargs.get('scan') is not None:
+                path = Path(out)/'receipt.json'
+                path.write_text(path.read_text().replace('"schemaVersion"', '"leak": "'+SHARE_TOKEN+'", "schemaVersion"', 1))
+        unavailable = RuntimeError('no private quarantine directory outside the export root; nothing was moved')
+        with patch.object(runner, 'write_receipts', side_effect=poisoned), \
+                patch.object(redact, 'quarantine_files', side_effect=unavailable):
+            rows = runner.run_recipes(ctx, [Recipe(('editor.undo',), lambda c: None, destinations=('s3',))], self.env,
+                                      self.out, 'na', self.out/'coverage.json')
+        self.assertEqual(rows[0].functional, 'failed')
+        self.assertEqual(self.leaked(SHARE_TOKEN), [])
+        scan = json.loads((self.out/'receipt.json').read_text())['secret_scan']
+        self.assertEqual(scan['findings'][0]['kind'], 'final-receipt-audit-failed')
+        self.assertEqual(scan['quarantine'], [{'action': 'quarantine-incomplete'}])
 
 class NbSharedCoverage(Base):
     OTHER = {'interaction': 'tray.open', 'desktop': 'ubuntu-gnome-wayland', 'package': 'deb', 'host': 'boat',

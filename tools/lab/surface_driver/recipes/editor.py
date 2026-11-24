@@ -743,6 +743,7 @@ def affected_text(ctx):
 
 
 def _copy_path(ctx):
+    # tmpfs-ok: on the test desktop, for one exported PNG
     result = ctx.shell('umask 077; mktemp -d /tmp/pg-edit.XXXXXXXX')
     ctx.expect(result['returncode']==0, 'private export directory created')
     directory = result['stdout'].strip()

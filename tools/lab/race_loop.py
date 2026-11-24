@@ -12,12 +12,13 @@ cleanup that fails is reported. A finding keeps the run folder whole (finding.js
 rr, the traces under <out>/traces. --stress N starts N busy loops (in one systemd user scope of their own, stopped with it) to shake the schedules. The loop stops
 at --hours or --max-findings.
 
-  python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis --out /tmp/races-tsan-1 \\
+  python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis --out ~/work/tmp/races-tsan-1 \\
       --first-seed 1 --steps 150 --hours 3 --stress 2
 
 On a build server, with --out on disk (it is made absolute first); rr needs real performance counters, a kernel.perf_event_paranoid it
 accepts (rr 5.9+ on Linux 6.10+ works at 2; see docs/testing/race-hunting.md) and a filesystem whose ioctls it knows: rr 5.10 aborts on
-FS_IOC_GETFSLABEL, which btrfs and ext4 both answer, so put --out and TMPDIR on tmpfs for rr.
+FS_IOC_GETFSLABEL, which btrfs and ext4 both answer, so put --out and TMPDIR on tmpfs for rr,
+and remove the rr --out folder when the loop is done: the builders' /tmp is RAM (#1978).
 """
 import argparse
 import os
