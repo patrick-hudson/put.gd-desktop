@@ -792,11 +792,11 @@ them. `outcome` is one of these:
 | Outcome | Meaning |
 | --- | --- |
 | `kept` | The garbled segments' second reading was kept. Some segments may still hold their first reading: those that gave no words, and others the rest-of-page pass didn't replace or had no time or memory for. The language is listed in `languagesUsed` |
-| `discarded` | The language is already one of the job's, or its data didn't load, or the garbled segments were read again and the rise was under 15 points or gave no words |
+| `discarded` | The language is already one of the job's, or its data didn't load, or the garbled segments were read again and the rise was under 15 points or, with every reader done, gave no words |
 | `language_missing` | That language's data isn't installed. When Copy text copies the text, its notification names it |
 | `detector_missing` | No `osd` data |
 | `unknown_script` | OSD found no script, Latin, or one without a language here |
-| `no_time` | Too little of the time budget was left to start, OSD didn't finish, or the reread finished no garbled group in time |
+| `no_time` | Too little of the time budget was left to start, OSD's thread couldn't start or didn't finish, or a reader was still running at the deadline with no garbled group read |
 | `no_memory` | The memory budget had no room for OSD, the first reread engine or its composites, or an allocation failed while the readers ran |
 
 For every outcome in the table the job goes on with the first reading wherever nothing was kept.
