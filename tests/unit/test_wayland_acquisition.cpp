@@ -27,6 +27,9 @@ private slots:
         QCOMPARE(pipewireSocket(env), QString());
         QFile named(runtime.filePath("pipewire-1")); QVERIFY(named.open(QIODevice::WriteOnly)); named.close();
         QCOMPARE(pipewireSocket(env), runtime.filePath("pipewire-1"));
+        // An empty one is the default remote, as libpipewire reads it (#1994: the recorder connects to it itself).
+        env.insert("PIPEWIRE_REMOTE", "");
+        QCOMPARE(pipewireSocket(env), pipewireDir.filePath("pipewire-0"));
     }
     // #137: the source leaves the buffer count to the compositor. KWin offers
     // 2-4 buffers; the AppImage's PipeWire 1.0 plugin asked for 8 or more by

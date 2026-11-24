@@ -15,8 +15,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <sys/resource.h>
+#include <thread>
+#include <unistd.h>
 
 using namespace putgd;
+namespace {
+// What pipewiresrc's failed connect does now and then (#1994): the main thread
+// joins a loop thread that never wakes, and nothing else on it runs again.
+[[noreturn]] void hangOnAJoin() {
+    std::thread loop([] { for (;;) ::pause(); });
+    loop.join();
+    std::abort();
+}
+}
 int main(int argc, char** argv) {
     const rlimit noCore{0, 0};
     ::setrlimit(RLIMIT_CORE, &noCore);
@@ -55,8 +66,11 @@ int main(int argc, char** argv) {
     if (!pipes.isOpen()) return 2;
     UiControl control(pipes);
     QJsonObject envelope;
-    bool started = false;
+    bool started = false, lateAnswered = false;
     QJsonObject reviewOptions;
+    // As the real helper does from Record to Stop, paused or not (RecordSession::emitProgress).
+    QTimer ticker;
+    ticker.setInterval(250);
     QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { app.exit(5); });
     QObject::connect(&control, &UiControl::failed, &app, [&] { app.exit(3); });
     auto result = [&](const QString& requestId, const QJsonObject& value) {
@@ -72,6 +86,11 @@ int main(int argc, char** argv) {
         for (auto it = extra.begin(); it != extra.end(); ++it) frame[it.key()] = it.value();
         control.send("event", frame);
     };
+    QObject::connect(&ticker, &QTimer::timeout, &app, [&] {
+        QJsonObject progress{{"durationUs", 1000000.0}, {"bytes", 4321.0}, {"droppedFrames", 0}};
+        if (lateAnswered) progress["lateAnswered"] = true;
+        event("progress", progress);
+    });
     QObject::connect(&control, &UiControl::frame, &app, [&](const QString& type, const QString&, const QJsonObject& payload) {
         if (type == "bootstrap") {
             envelope = {{"role", "record"}, {"nonce", payload["nonce"]}, {"generation", payload["generation"]}};
@@ -98,20 +117,43 @@ int main(int argc, char** argv) {
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         const auto params = payload["params"].toObject();
-        if (command == "prepare") { reviewOptions = params["reviewOptions"].toObject(); result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}}); return; }
+        if (command == "prepare") {
+            reviewOptions = params["reviewOptions"].toObject();
+            result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}});
+            // Record pressed on the helper's own bar, whose source then fails and stalls its teardown (#1994).
+            // The daemon kept the connection open: the stream failed, nothing says PipeWire stopped.
+            if (mode == "bar-start-hangs") QTimer::singleShot(800, &app, [&] { event("starting", {}); event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}, {"daemonGone", false}}); hangOnAJoin(); });
+            return;
+        }
         if (command == "review") { result(requestId, {{"reviewOptions", reviewOptions}}); return; }
         if (command == "start") {
             started = true;
+            if (mode == "hang-on-start") hangOnAJoin();
+            // The source failed and its teardown stalls (#1994): the event is the last frame out.
+            if (mode == "hang-after-source-error") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: connection error"}, {"daemonGone", true}}); hangOnAJoin(); }
+            // That attempt's teardown returned; a later stall is not PipeWire's.
+            if (mode == "source-error-then-hang") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); event("sourceTrouble", {{"message", ""}}); hangOnAJoin(); }
             if (mode == "unknown-result") { result("not-outstanding", {}); return; }
             // A well-formed `ok` with a result that is not an object: the caller must still get the protocol error.
             if (mode == "malformed-result") { auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = true; frame["result"] = "not an object"; control.send("commandResult", frame); return; }
             result(requestId, {});
             if (mode == "crash-after-start") { QTimer::singleShot(100, &app, [] { std::abort(); }); return; }
             event("progress", {{"durationUs", 1000000.0}, {"bytes", 4321.0}, {"droppedFrames", 0}});
-            if (mode == "stop-event") QTimer::singleShot(150, &app, [&] { event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
+            ticker.start();
+            // The source is reopened on the main thread mid-recording, and hangs there.
+            if (mode == "hang-while-recording") { QTimer::singleShot(300, &app, [] { hangOnAJoin(); }); return; }
+            // Stop on the helper's bar, then a clip that takes 4.5 s to finish without a report:
+            // longer than the recording limit (3 s here), shorter than the stopping one.
+            if (mode == "slow-bar-stop") QTimer::singleShot(300, &app, [&] {
+                ticker.stop();
+                event("stopping", {});
+                QTimer::singleShot(4500, &app, [&] { event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
+            });
+            if (mode == "stop-event") QTimer::singleShot(150, &app, [&] { ticker.stop(); event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
             return;
         }
         if (command == "stop") {
+            ticker.stop();
             if (mode.startsWith("stop-budget")) {
                 event("stopped", {{"reason", "budget"}, {"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}});
                 if (mode == "stop-budget-adjacent-error") {
@@ -142,7 +184,7 @@ int main(int argc, char** argv) {
         }
         if (command == "pause" && mode == "late-pause") {
             // Answers well after the resident's 1.5 s test deadline, then says so with a progress event.
-            QTimer::singleShot(4000, &app, [&, requestId] { result(requestId, {}); event("progress", {{"durationUs", 2000000.0}, {"lateAnswered", true}}); });
+            QTimer::singleShot(4000, &app, [&, requestId] { lateAnswered = true; result(requestId, {}); event("progress", {{"durationUs", 2000000.0}, {"lateAnswered", true}}); });
             return;
         }
         if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice", "savedCopy"}.contains(command)) { result(requestId, {}); return; }

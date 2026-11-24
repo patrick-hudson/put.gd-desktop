@@ -1,13 +1,20 @@
-// The live pipeline on a private Xvfb root produces a clip with frames in it, and a
-// refused PipeWire request is retried with the plain one. Throughput and cadence are
+// The live pipeline on a private Xvfb root produces a clip with frames in it, a
+// refused PipeWire request is retried with the plain one, and a PipeWire daemon
+// that is gone fails the start before pipewiresrc opens. Throughput and cadence are
 // measured by physical recording acceptance, not here.
 #include "record/RecordingPipeline.h"
 #include "fixtures/Waits.h"
+#include <QJsonArray>
 #include <QProcess>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
 #include <gst/gst.h>
+#include <cstring>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 namespace putgd::record {
 namespace {
@@ -38,6 +45,21 @@ void refusingClassInit(gpointer klass, gpointer) {
 void refusingInstanceInit(GTypeInstance* instance, gpointer) {
     gst_element_add_pad(GST_ELEMENT(instance), gst_pad_new_from_static_template(&refusingSink, "sink"));
     gst_element_add_pad(GST_ELEMENT(instance), gst_pad_new_from_static_template(&refusingSource, "src"));
+}
+// A Unix socket at path, as a PipeWire daemon's: listening (a daemon that never
+// answers) or bound and closed (the file a stopped daemon leaves). -1 on failure.
+int daemonSocket(const QString& path, bool listening) {
+    const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd < 0) return -1;
+    sockaddr_un address{};
+    address.sun_family = AF_UNIX;
+    const QByteArray name = QFile::encodeName(path);
+    if (size_t(name.size()) >= sizeof(address.sun_path)) { ::close(fd); return -1; }
+    std::memcpy(address.sun_path, name.constData(), size_t(name.size()));
+    if (::bind(fd, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) < 0 || (listening && ::listen(fd, 4) < 0)) { ::close(fd); return -1; }
+    if (listening) return fd;
+    ::close(fd);
+    return 0;
 }
 bool registerRefusingEncoder() {
     static const bool registered = [] {
@@ -134,9 +156,13 @@ private slots:
         gst_object_unref(source);
         QVERIFY(registerRefusingEncoder());
         QTemporaryDir dir;
-        // Should the bin ever reach pipewiresrc, it finds no daemon, not the desktop's.
+        // The recorder connects to the daemon's socket before it builds the source (#1994); this one
+        // accepts and never answers, not the desktop's. The bin never reaches pipewiresrc.
+        const int daemon = daemonSocket(dir.filePath("silent-daemon"), true);
+        QVERIFY(daemon >= 0);
+        const auto closeDaemon = qScopeGuard([daemon] { ::close(daemon); });
         qputenv("PIPEWIRE_RUNTIME_DIR", dir.path().toUtf8());
-        qputenv("PIPEWIRE_REMOTE", "no-daemon");
+        qputenv("PIPEWIRE_REMOTE", "silent-daemon");
         const QString log = logs_.filePath("record.log");
         QFile::remove(log);
         RecordingPipeline pipeline;
@@ -159,6 +185,39 @@ private slots:
         QCOMPARE(requests.size(), 2);
         QVERIFY2(requests[0].contains("max-framerate=0/1"), qPrintable(requests[0]));
         QVERIFY2(!requests[1].contains("max-framerate"), qPrintable(requests[1]));
+    }
+    void aGonePipeWireFailsBeforeTheSourceOpens_data() {
+        QTest::addColumn<bool>("stale");
+        QTest::newRow("no socket") << false;
+        QTest::newRow("socket left by a stopped daemon") << true;
+    }
+    // #1994: a native node's source opens on a connection the recorder made. With
+    // nothing answering, the start says so and pipewiresrc is never opened, so its
+    // failed-connect path, which can hang the helper for good, is not reached.
+    void aGonePipeWireFailsBeforeTheSourceOpens() {
+        QFETCH(bool, stale);
+        QTemporaryDir dir;
+        // Bound and closed: the file stays, and a connect is refused, as after PipeWire stops.
+        if (stale) QCOMPARE(daemonSocket(dir.filePath("gone-daemon"), false), 0);
+        qputenv("PIPEWIRE_RUNTIME_DIR", dir.path().toUtf8());
+        qputenv("PIPEWIRE_REMOTE", "gone-daemon");
+        const QString log = logs_.filePath("record.log");
+        QFile::remove(log);
+        RecordingPipeline pipeline;
+        RecordingPipeline::Options options;
+        options.rect = QRect(0, 0, 640, 480);
+        options.pipewireNode = 42;
+        options.fps = 15;
+        options.output = dir.filePath("working.mkv");
+        options.encoders = {QStringLiteral("x264enc"), QStringLiteral("openh264enc")};
+        const Error refused = pipeline.start(options);
+        QCOMPARE(refused.code, QStringLiteral("recording_start_failed"));
+        QCOMPARE(refused.details.value("reason").toString(), QStringLiteral("pipewire_unreachable"));
+        // One attempt: no other encoder or request can reach a daemon that is not there.
+        QCOMPARE(refused.details.value("attempts").toArray().size(), 1);
+        QVERIFY(!pipeline.running());
+        QFile written(log);
+        if (written.open(QIODevice::ReadOnly | QIODevice::Text)) QVERIFY(!QString::fromUtf8(written.readAll()).contains("pipeline: "));
     }
 };
 }

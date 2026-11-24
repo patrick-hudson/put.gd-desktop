@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QObject>
 #include <QPointer>
+#include <QTimer>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -116,6 +117,11 @@ private:
         // #1364: the track also (or only) holds the microphone.
         bool capturedMicrophone = false;
         bool clickWatchTried = false;  // the desktop was asked to report clicks for this recording, whatever it answered
+        // #1994: the error of a native source that failed while this start ran and whose
+        // teardown has not returned yet; a start that then misses its deadline stalled there.
+        QString startTrouble;
+        // Whether the PipeWire daemon had hung up on the helper's connection by then.
+        bool startDaemonGone = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -173,6 +179,15 @@ private:
     void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
+    // While the capture starts, records, is paused or stops, every event from the backend
+    // restarts silence_; when it runs out the helper is taken as hung, and the
+    // session fails and ends it (#1994). Stopped in every other state.
+    void heard(const Session&);
+    static bool watched(RecordingState);
+    // A start the helper stalled in after its PipeWire source failed: pipewire_stopped when
+    // the daemon hung up, source_failed otherwise; `error` when nothing failed first.
+    static Error stalledStart(const Session&, Error error);
+    QTimer silence_;
     QString stagingRoot_;
     Host host_;
     std::unique_ptr<RecordingBackend> backend_;

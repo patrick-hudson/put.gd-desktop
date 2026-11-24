@@ -94,6 +94,8 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
     connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) { sourceLost(error); });
+    // Written to the resident at once: the teardown that follows can stall this thread (#1994).
+    connect(&pipeline_, &RecordingPipeline::sourceFailedAtStart, this, [this](const QString& failure, bool daemonGone) { emit event({{"event", "sourceTrouble"}, {"message", failure.left(512)}, {"daemonGone", daemonGone}}); });
     // wlr-capture: the recorded window closed (targetLost) or its output went away.
     connect(&pipeline_, &RecordingPipeline::imageCopyLost, this, [this](Error error) {
         debugLog("wlr-capture: the source ended: " + error.message);
@@ -206,6 +208,9 @@ void RecordSession::enterPhase(HelperPhase phase) {
     if (phase_ == phase || phase_ == HelperPhase::Cancelled || (phase_ == HelperPhase::Failed && phase != HelperPhase::Cancelled)) return;
     debugLog("session: " + recording::phaseName(phase_) + " -> " + recording::phaseName(phase));
     phase_ = phase;
+    // The bar's Stop, the budget and a lost source stop here, not by the resident's command: it
+    // follows the clip being finished, which can take longer than recording without a report (#1994).
+    if (phase == HelperPhase::Stopping) emit event({{"event", "stopping"}});
 }
 void RecordSession::showBar(const QString& state) {
     if (!bar_) return;
@@ -786,6 +791,8 @@ void RecordSession::finishPrepare(Reply reply) {
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
         if (!guard || guard->phase_ != HelperPhase::Ready) return;
+        // The resident follows this start as its own (#1994): a source that stalls it is not silent.
+        emit guard->event({{"event", "starting"}});
         guard->start([guard](Error error, QJsonObject status) {
             if (!guard) return;
             if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }

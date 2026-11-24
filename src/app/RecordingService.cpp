@@ -68,7 +68,37 @@ QJsonObject UnavailableRecordingBackend::capabilities() const {
 }
 
 RecordingService::RecordingService(QString stagingRoot, Host host, QObject* parent)
-    : QObject(parent), stagingRoot_(std::move(stagingRoot)), host_(std::move(host)), backend_(std::make_unique<UnavailableRecordingBackend>()) {}
+    : QObject(parent), silence_(this), stagingRoot_(std::move(stagingRoot)), host_(std::move(host)), backend_(std::make_unique<UnavailableRecordingBackend>()) {
+    silence_.setSingleShot(true);
+    connect(&silence_, &QTimer::timeout, this, [this] {
+        if (!session_ || !watched(session_->state)) return;
+        // A helper stuck on its main thread never answers, so the clip it holds
+        // cannot be finished; it is ended rather than left hanging.
+        const int silent = silence_.interval();
+        logging::warning(logRecording(), "Recording helper stopped responding", {{"operationId", session_->op.id}, {"state", recording::stateName(session_->state)}, {"silentMs", silent}, {"pid", double(backend_->processId(session_->op.id))}});
+        fail(stalledStart(*session_, {"recording_helper_unresponsive", "The recording helper stopped responding, so the recording could not be kept", {{"step", recording::stateName(session_->state)}, {"silentMs", silent}}}));
+    });
+}
+Error RecordingService::stalledStart(const Session& s, Error error) {
+    // pipewiresrc can stall the helper while it tears a vanished stream down; a
+    // deadline ended it, and what the helper said first is the honest reason.
+    if (s.state != RecordingState::Starting || s.startTrouble.isEmpty()) return error;
+    auto details = error.details;
+    details["reason"] = s.startDaemonGone ? "pipewire_stopped" : "source_failed";
+    details["sourceError"] = s.startTrouble;
+    return {"recording_start_failed", s.startDaemonGone ? QStringLiteral("PipeWire stopped while the recording was starting; try again")
+                                                        : QStringLiteral("The screen stream ended while the recording was starting; try again"), details};
+}
+bool RecordingService::watched(RecordingState state) {
+    return state == RecordingState::Starting || state == RecordingState::Recording || state == RecordingState::Paused || state == RecordingState::Stopping;
+}
+void RecordingService::heard(const Session& s) {
+    const int limit = backend_->silenceLimitMs();
+    // Finishing the clip drains the encoder and closes the PipeWire stream, whose
+    // final round trip alone may wait 30 s: twice the limit.
+    if (limit > 0 && watched(s.state)) silence_.start(s.state == RecordingState::Stopping ? 2 * limit : limit);
+    else silence_.stop();
+}
 RecordingService::~RecordingService() { shutdown(); }
 void RecordingService::setBackend(std::unique_ptr<RecordingBackend> backend) {
     backend_ = backend ? std::move(backend) : std::make_unique<UnavailableRecordingBackend>();
@@ -93,6 +123,7 @@ void RecordingService::discardStaging(const QString& root) {
 void RecordingService::shutdown() {
     if (stopping_) return;
     stopping_ = true;
+    silence_.stop();
     unwatchClicks();
     if (session_ && backend_) { closeShell(*session_); backend_->control(session_->op.id, "cancel", {}, [](Error, QJsonObject) {}); backend_->discard(session_->op.id); }
     session_.reset();
@@ -258,6 +289,7 @@ void RecordingService::transition(Session& s, RecordingState state, const QStrin
     s.state = state;
     s.pending.clear();
     s.op.phase = phase.isEmpty() ? name : phase;
+    heard(s);
     // Click highlights (#1364) follow the capture: on at Record, kept across a pause, off once it stops.
     if (state == RecordingState::Recording) watchClicks(s);
     else if (state != RecordingState::Paused) unwatchClicks();
@@ -334,6 +366,7 @@ void RecordingService::cancelActive(JsonReply reply) {
 void RecordingService::handleEvent(const QJsonObject& event) {
     if (!session_ || event["id"].toString() != session_->op.id) return;
     auto& s = *session_;
+    heard(s);
     const auto kind = event["event"].toString();
     if (kind == "progress") {
         auto progress = event;
@@ -377,7 +410,17 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         noteCaptured(s, event, true);
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
         transition(s, RecordingState::Recording);
-    } else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
+    } else if (kind == "starting" && (s.state == RecordingState::Ready || (s.state == RecordingState::Preparing && s.shellFrame))) {
+        // Record on the helper's bar: no start command times this one, the silence watch does.
+        // On GNOME the bar can take it while the Shell is still placing that bar.
+        s.startTrouble.clear();
+        s.startDaemonGone = false;
+        transition(s, RecordingState::Starting);
+    } else if (kind == "stopping" && (s.state == RecordingState::Recording || s.state == RecordingState::Paused)) {
+        // The helper stops on its own (its bar, the budget, a lost source); `stopped` or `failed` follows.
+        transition(s, RecordingState::Stopping);
+    } else if (kind == "sourceTrouble" && s.state == RecordingState::Starting) { s.startTrouble = event["message"].toString().left(512); s.startDaemonGone = event["daemonGone"].toBool(); }
+    else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
     else if (kind == "lateResult" && event["command"] == "export") {
         // The helper finished an export after its deadline: it takes edits again.
@@ -567,6 +610,7 @@ void RecordingService::startCapture(const QString& id, JsonReply reply) {
         // reply, already moved the session on, and the helper refused this second
         // start. The recording runs; failing the session would discard it (#1434).
         if (s.state != RecordingState::Starting) { reply({}, publicJson(s)); return; }
+        if (error && error.code == "recording_helper_timeout") error = stalledStart(s, error);
         if (error) { fail(error); reply(error, {}); return; }
         for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
         noteCaptured(s, result, true);
@@ -817,7 +861,8 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
         s.shellFrame = true;
         shell_->showFrame(shellFrame(s, RecordingState::Ready), marshal(s.generation, [this](Error error, QJsonObject result) {
             auto& s = *session_;
-            if (s.state != RecordingState::Preparing) return;
+            // Record on the bar can come before this answer (#1994): the bar's place still applies.
+            if (s.state != RecordingState::Preparing && s.state != RecordingState::Starting) return;
             const auto bar = result["bar"].toObject();
             if (!error && bar["placed"].toBool()) {
                 // With no room outside, the Shell keeps the bar in the corner and
@@ -827,7 +872,7 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
                 s.overlayPlacement = outside ? QStringLiteral("outside") : QStringLiteral("handle");
                 if (!outside) backend_->control(s.op.id, "overlay", {{"handle", true}}, [](Error, QJsonObject) {});
             }
-            transition(s, RecordingState::Ready);
+            if (s.state == RecordingState::Preparing) transition(s, RecordingState::Ready);
         }));
         return;
     }
@@ -885,7 +930,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (s.pending == command) { reply({}, publicJson(s)); return; }
         if (!s.pending.isEmpty()) { reply({"recording_busy", "Another recording command is still being acknowledged", {{"pending", s.pending}}}, {}); return; }
         s.pending = command;
-        if (command == "start") transition(s, RecordingState::Starting), s.pending = command;
+        if (command == "start") transition(s, RecordingState::Starting), s.pending = command, s.startTrouble.clear(), s.startDaemonGone = false;
         if (command == "stop") transition(s, RecordingState::Stopping), s.pending = command;
         // Where starting the click watch shows on screen (labwc reads its configuration again),
         // it is started first and the capture only once the desktop has answered.
