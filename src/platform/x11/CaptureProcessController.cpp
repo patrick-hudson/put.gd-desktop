@@ -15,6 +15,7 @@
 #include <QThread>
 #include <QUuid>
 #include <fcntl.h>
+#include <csignal>
 #include <sys/stat.h>
 #include <unistd.h>
 namespace putgd {
@@ -242,13 +243,16 @@ void CaptureProcessController::decode(QJsonObject descriptor){
 void CaptureProcessController::exited(int code,QProcess::ExitStatus status){
  if(!busy()||exited_)return;
  exited_=true;deadline_.stop();stopDeadline_.stop();lastExit_={{"generation",QString::number(generation_)},{"processId",launchPid_},{"startTicks",launchStartTicks_},{"code",code},{"status",status==QProcess::NormalExit?"normal":"crash"}};
- if(stoppedAfterAccept_){lastExit_["stoppedAfterAccept"]=true;logging::write(logCapture(),QtWarningMsg,"Capture helper stopped after its result was accepted",{{"generation",QString::number(generation_)}});}
- if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_);}
+ // Only the resident's own SIGKILL after accept counts: a helper that exited or
+ // crashed by itself before Qt reported it still fails (#398).
+ const bool residentStop=stoppedAfterAccept_&&status==QProcess::CrashExit&&code==SIGKILL;
+ if(residentStop){lastExit_["stoppedAfterAccept"]=true;logging::write(logCapture(),QtWarningMsg,"Capture helper stopped after its result was accepted",{{"generation",QString::number(generation_)}});}
+ if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_||residentStop);}
  if(control_)control_->stop();
  control_=nullptr;
  // A helper that exits by itself must exit normally. A slow exit that the
  // resident ended after accepting the result does not discard the result (#398).
- if(!failure_&&(!accepted_||(!stoppedAfterAccept_&&(code!=0||status!=QProcess::NormalExit)))){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
+ if(!failure_&&(!accepted_||(!residentStop&&(code!=0||status!=QProcess::NormalExit)))){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
  complete();
 }
 void CaptureProcessController::observedCursor(const QJsonObject& image){
