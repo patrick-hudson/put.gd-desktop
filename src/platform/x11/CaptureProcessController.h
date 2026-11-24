@@ -81,5 +81,8 @@ private:
  HelperOutput output_{"putgd-capture",logCapture()};
  bool cursorCompatible_=false,prepared_=false,beginRequested_=false,begun_=false,region_=false,previewed_=false;
  bool ready_=false,resultReceived_=false,accepted_=false,exited_=false,cancelling_=false,closing_=false;
+ // The resident stopped a helper that outlived its exit budget after its result
+ // was verified and accepted: the pixels are already decoded, so they stand.
+ bool stoppedAfterAccept_=false;
 };
 }
