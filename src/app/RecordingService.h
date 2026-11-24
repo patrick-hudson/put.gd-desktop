@@ -177,10 +177,12 @@ private:
     void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
-    // While the capture records or is paused, every event from the backend
+    // While the capture starts, records or is paused, every event from the backend
     // restarts silence_; when it runs out the helper is taken as hung, and the
     // session fails and ends it (#1994). Stopped in every other state.
     void heard(const Session&);
+    // A start the helper stalled in after its PipeWire source failed: pipewire_stopped, else `error`.
+    static Error stalledStart(const Session&, Error error);
     QTimer silence_;
     QString stagingRoot_;
     Host host_;

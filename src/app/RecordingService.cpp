@@ -71,17 +71,26 @@ RecordingService::RecordingService(QString stagingRoot, Host host, QObject* pare
     : QObject(parent), silence_(this), stagingRoot_(std::move(stagingRoot)), host_(std::move(host)), backend_(std::make_unique<UnavailableRecordingBackend>()) {
     silence_.setSingleShot(true);
     connect(&silence_, &QTimer::timeout, this, [this] {
-        if (!session_ || (session_->state != RecordingState::Recording && session_->state != RecordingState::Paused)) return;
+        if (!session_ || (session_->state != RecordingState::Starting && session_->state != RecordingState::Recording && session_->state != RecordingState::Paused)) return;
         // A helper stuck on its main thread never answers, so the clip it holds
         // cannot be finished; it is ended rather than left hanging.
         const int silent = silence_.interval();
         logging::warning(logRecording(), "Recording helper stopped responding", {{"operationId", session_->op.id}, {"state", recording::stateName(session_->state)}, {"silentMs", silent}, {"pid", double(backend_->processId(session_->op.id))}});
-        fail({"recording_helper_unresponsive", "The recording helper stopped responding, so the recording could not be kept", {{"step", recording::stateName(session_->state)}, {"silentMs", silent}}});
+        fail(stalledStart(*session_, {"recording_helper_unresponsive", "The recording helper stopped responding, so the recording could not be kept", {{"step", recording::stateName(session_->state)}, {"silentMs", silent}}}));
     });
+}
+Error RecordingService::stalledStart(const Session& s, Error error) {
+    // pipewiresrc can stall the helper while it tears a vanished stream down; a
+    // deadline ended it, and what the helper said first is the honest reason.
+    if (s.state != RecordingState::Starting || s.startTrouble.isEmpty()) return error;
+    auto details = error.details;
+    details["reason"] = "pipewire_stopped";
+    details["sourceError"] = s.startTrouble;
+    return {"recording_start_failed", "PipeWire stopped while the recording was starting; try again", details};
 }
 void RecordingService::heard(const Session& s) {
     const int limit = backend_->silenceLimitMs();
-    if (limit > 0 && (s.state == RecordingState::Recording || s.state == RecordingState::Paused)) silence_.start(limit);
+    if (limit > 0 && (s.state == RecordingState::Starting || s.state == RecordingState::Recording || s.state == RecordingState::Paused)) silence_.start(limit);
     else silence_.stop();
 }
 RecordingService::~RecordingService() { shutdown(); }
@@ -395,6 +404,10 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         noteCaptured(s, event, true);
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
         transition(s, RecordingState::Recording);
+    } else if (kind == "starting" && s.state == RecordingState::Ready) {
+        // Record on the helper's bar: no start command times this one, the silence watch does.
+        s.startTrouble.clear();
+        transition(s, RecordingState::Starting);
     } else if (kind == "sourceTrouble" && s.state == RecordingState::Starting) s.startTrouble = event["message"].toString().left(512);
     else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
@@ -586,14 +599,7 @@ void RecordingService::startCapture(const QString& id, JsonReply reply) {
         // reply, already moved the session on, and the helper refused this second
         // start. The recording runs; failing the session would discard it (#1434).
         if (s.state != RecordingState::Starting) { reply({}, publicJson(s)); return; }
-        if (error && error.code == "recording_helper_timeout" && !s.startTrouble.isEmpty()) {
-            // pipewiresrc can stall the helper while it tears a vanished stream down; the
-            // deadline ended it, and what the helper said first is the honest reason.
-            auto details = error.details;
-            details["reason"] = "pipewire_stopped";
-            details["sourceError"] = s.startTrouble;
-            error = {"recording_start_failed", "PipeWire stopped while the recording was starting; try again", details};
-        }
+        if (error && error.code == "recording_helper_timeout") error = stalledStart(s, error);
         if (error) { fail(error); reply(error, {}); return; }
         for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
         noteCaptured(s, result, true);

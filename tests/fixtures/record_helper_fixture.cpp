@@ -117,7 +117,13 @@ int main(int argc, char** argv) {
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         const auto params = payload["params"].toObject();
-        if (command == "prepare") { reviewOptions = params["reviewOptions"].toObject(); result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}}); return; }
+        if (command == "prepare") {
+            reviewOptions = params["reviewOptions"].toObject();
+            result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}});
+            // Record pressed on the helper's own bar, whose source then fails and stalls its teardown (#1994).
+            if (mode == "bar-start-hangs") QTimer::singleShot(800, &app, [&] { event("starting", {}); event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); hangOnAJoin(); });
+            return;
+        }
         if (command == "review") { result(requestId, {{"reviewOptions", reviewOptions}}); return; }
         if (command == "start") {
             started = true;

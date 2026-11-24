@@ -65,17 +65,22 @@ private slots:
   QTest::newRow("starting")<<QString("hang-on-start")<<QString("recording_helper_timeout");
   QTest::newRow("starting, source failed")<<QString("hang-after-source-error")<<QString("recording_start_failed");
   QTest::newRow("recording")<<QString("hang-while-recording")<<QString("recording_helper_unresponsive");
+  // Record on the helper's own bar: no start command, so no command deadline either.
+  QTest::newRow("starting from the bar, source failed")<<QString("bar-start-hangs")<<QString("recording_start_failed");
  }
  void aStuckHelperIsEndedAndTheNextRecordingWorks(){
   QFETCH(QString,mode);QFETCH(QString,code);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE",mode.toUtf8());
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   const qint64 pid=h.backend->processId(id);QVERIFY(pid>0);
-  const auto started=h.rec("start",{{"id",id}});
-  if(mode!="hang-while-recording")QCOMPARE(started.error.code,code);else QVERIFY(!started.error);
-  if(mode=="hang-after-source-error")QCOMPARE(started.error.details["reason"].toString(),QString("pipewire_stopped"));
+  if(mode!="bar-start-hangs"){
+   const auto started=h.rec("start",{{"id",id}});
+   if(mode!="hang-while-recording")QCOMPARE(started.error.code,code);else QVERIFY(!started.error);
+   if(mode=="hang-after-source-error")QCOMPARE(started.error.details["reason"].toString(),QString("pipewire_stopped"));
+  }
   // The session ends with the error that says what happened, and nothing is kept or uploaded.
   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("failed"),10000);
-  QCOMPARE(journal.operation(id).error.code,code);QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.provider->uploads.load(),0);
+  QCOMPARE(journal.operation(id).error.code,code);QVERIFY(journal.operation(id).items.isEmpty());
+  if(mode=="bar-start-hangs")QCOMPARE(journal.operation(id).error.details["reason"].toString(),QString("pipewire_stopped"));QCOMPARE(h.provider->uploads.load(),0);
   // That exact helper is gone: killed after it ignored shutdown, not left hanging.
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
   QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));

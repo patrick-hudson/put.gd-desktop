@@ -788,6 +788,8 @@ void RecordSession::finishPrepare(Reply reply) {
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
         if (!guard || guard->phase_ != HelperPhase::Ready) return;
+        // The resident follows this start as its own (#1994): a source that stalls it is not silent.
+        emit guard->event({{"event", "starting"}});
         guard->start([guard](Error error, QJsonObject status) {
             if (!guard) return;
             if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }

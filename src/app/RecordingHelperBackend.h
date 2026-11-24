@@ -30,8 +30,8 @@ public:
     void discard(const QString& id) override { helper_.discard(id); }
     qint64 processId(const QString& id) const override { return helper_.processId(id); }
     // The helper reports progress every second while it records or is paused, from
-    // its main thread. Twice the command deadline without one is a helper stuck
-    // there, as in pipewiresrc's failed-connect hang while reopening a source (#1994).
+    // its main thread, and a start ends within the command deadline. Twice that
+    // without a word is a helper stuck there, as when pipewiresrc stalls (#1994).
     int silenceLimitMs() const override { return 2 * commandMs_; }
     QJsonObject diagnostics() const { return helper_.diagnostics(); }
     // The resolved interface scheme, "dark" or "light" (#198): the helper's
