@@ -25,7 +25,7 @@ New places to upload, an optional check that looks for passwords, keys and card 
 - **Expiring links:** S3 links can expire, and S3 and B2 links can be renewed from History.
 - **Sensitive text check** (off by default): before a capture, clipboard image or image file uploads, put.gd looks for card numbers, keys and tokens, email addresses, phone numbers, IP addresses, your username and name, and your own words or patterns. Each kind is Off, Warn or Redact automatically. A warning on a single image offers **Redact and upload**, **Open in editor** (when the image can be edited), **Upload anyway** and **Cancel**. The user guide lists which uploads are checked.
 - **Quick redact** covers connection-string passwords, secret-named values, passwords in flags, labels and diffs, webhooks, two-factor secrets, QR codes that hold a secret, many more providers' keys, and your own list.
-- **Capture style** (off by default): a backdrop, padding, rounded corners and a shadow, with Graphite, Amber, Paper, Clear and Custom looks and a Style tool in the editor.
+- **Capture style** (off by default): a backdrop, padding, rounded corners and a shadow, with a dark grey gradient, Amber, Paper, Clear and Custom looks and a Style tool in the editor.
 - **Text in other scripts:** with no language set, text recognition can detect Chinese, Russian and other supported non-Latin scripts and read them again in their own language, when that language's data is installed.
 - **Unhinged mode** (off by default): text recognition, recording and History thumbnails may use every processor core.
 - **Scrolling capture:** capture a page taller than the screen, scrolled by you or by put.gd's auto-scroll.
