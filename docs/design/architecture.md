@@ -37,6 +37,14 @@ durable authorization and before selection, and the result is cut from those
 frames. On KDE the selector can receive a sealed background memfd; it still
 returns geometry rather than capturing pixels itself. Helper protocols validate
 build identity, nonce, generation, bounds, message order and normal exit.
+One exception covers `putgd-capture` and `putgd-region`. The resident first
+validates the complete result (decoded and hashed for `putgd-capture`, checked
+against the frozen layout for `putgd-region`) and sends `accept`. It then gives
+the helper 2 s to exit. If the helper is still running when that deadline
+fires, the resident checks it is alive and sends SIGKILL. The capture keeps its
+result only when there is no recorded failure and the exit is reported as a
+crash by SIGKILL, and `lastExit` records `stoppedAfterAccept`. A helper killed
+before accept, or one that exits nonzero or crashes by itself, still fails.
 Missing required selector-cleanup proof fails closed. See the
 [desktop contracts](overview.md#desktop-adapters) for compositor-specific details.
 
