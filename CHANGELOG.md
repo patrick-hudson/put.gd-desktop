@@ -13,23 +13,25 @@ date is the day it was published.
 
 ## [Unreleased]
 
-New places to upload, a check that catches passwords, keys and card numbers before a capture leaves your machine, styled screenshots, text reading in more languages, and many reliability fixes. The AppImage's bundled FFmpeg is updated, fixing the known security issues in the previous stable AppImage.
+New places to upload, an optional check that looks for passwords, keys and card numbers before an image uploads, styled screenshots, text reading in more languages, and many reliability fixes. The AppImage's bundled FFmpeg moves to 9.0.2.
 
 ### Added
 
 - **SFTP:** upload to your own server over SSH, signing in with a password or a key file.
-- **Nextcloud and WebDAV:** upload to a Nextcloud server or any WebDAV share and copy a share link.
+- **Nextcloud:** sign in through your browser, upload to a folder of your files, and copy a public share link when the server allows one.
+- **WebDAV:** upload to a folder on any WebDAV server. The link is the file's address, or a public address you set that serves the same folder.
 - **Cloudflare R2** is its own destination type, including tokens scoped to one bucket.
 - **Custom HTTP uploader:** send captures to your own endpoint, or import a ShareX `.sxcu` file.
 - **Expiring links:** S3 links can expire, and S3 and B2 links can be renewed from History.
-- **Sensitive text check** (off by default): reads each capture before upload and looks for card numbers, keys and tokens, email addresses, phone numbers, IP addresses, your username and name, and your own words or patterns. Each kind is Off, Warn or Redact automatically. A warning offers **Redact and upload**, **Open in editor**, **Upload anyway** and **Cancel**.
+- **Sensitive text check** (off by default): before a capture, clipboard image or image file uploads, put.gd looks for card numbers, keys and tokens, email addresses, phone numbers, IP addresses, your username and name, and your own words or patterns. Each kind is Off, Warn or Redact automatically. A warning on a single image offers **Redact and upload**, **Open in editor** (when the image can be edited), **Upload anyway** and **Cancel**. The user guide lists which uploads are checked.
 - **Quick redact** covers connection-string passwords, secret-named values, passwords in flags, labels and diffs, webhooks, two-factor secrets, QR codes that hold a secret, many more providers' keys, and your own list.
 - **Capture style** (off by default): a backdrop, padding, rounded corners and a shadow, with Graphite, Amber, Paper, Clear and Custom looks and a Style tool in the editor.
-- **Text in other scripts:** Copy text and the sensitive text check read Chinese, Russian and other non-Latin pages in their own language when no language is set.
+- **Text in other scripts:** with no language set, text recognition can detect Chinese, Russian and other supported non-Latin scripts and read them again in their own language, when that language's data is installed.
 - **Unhinged mode** (off by default): text recognition, recording and History thumbnails may use every processor core.
 - **Scrolling capture:** capture a page taller than the screen, scrolled by you or by put.gd's auto-scroll.
-- **Capture:** one monitor, a delay, and Repeat last region. Copy text from any region and read QR codes.
-- **Editor:** step numbers, pen, ellipse, line, pixelate and Copy image.
+- **Capture:** one monitor, a delay, and Repeat last region.
+- **Copy text and QR codes:** copy text from a screen region, select and copy text in the editor, use History's **Copy text** on local images, read QR codes in a capture, and **Show QR code** for a share link.
+- **Editor:** step numbers, pen, ellipse, line, pixelate and Copy image. Highlight tints only the background, so text stays readable, and snaps to words and lines.
 - **Recording:** microphone audio, click highlights, cutting out the middle of a recording, a filmstrip in review, and single-window recording on KDE and GNOME Wayland without the portal chooser.
 - **Desktops and packages:** Budgie on Wayland, Hyprland (tested on Omarchy), a Fedora 45 RPM and Arch Linux packages from a signed pacman repository.
 - **Updates:** the AppImage updates itself with put.gd's own zsync client, downloading from pkg.put.gd first.
@@ -39,16 +41,17 @@ New places to upload, a check that catches passwords, keys and card numbers befo
 - The tray menu and action bar have a new layout, and the tray shows capture, processing and upload stages.
 - History is refined, and an upload whose share link didn't finish can be completed in one click.
 - Settings keeps errors in its own error log and saves one request at a time.
-- Proton Drive uploads with a share link in under two seconds, and large B2 files send up to four parts at once.
+- Small Proton Drive uploads with a share link are much faster, and large B2 files send up to four parts at once.
+- **Retry deletion** in History carries on from a stopped deletion's saved progress, and leaves files alone that a newer deletion has taken over.
 - Text recognition uses up to eight cores and reads faint lines a second time.
 - GNOME 50 setup finishes with one logout.
 
 ### Fixed
 
-- A recording whose PipeWire screen share goes away stops with a clear error instead of leaving the recorder stuck.
+- When a recording's PipeWire screen share goes away, the recorder no longer gets stuck: it reports a clear error, and the part recorded so far opens in review when it can be finished.
 - An accepted region is kept when the capture helper is slow to exit, on X11 and Wayland.
-- Scrolling capture no longer draws stray lines or white patches, follows playing videos, and handles sticky headers and pinned side columns.
-- No upload is sent twice. Slow S3 and B2 uploads finish instead of timing out, and an unclear multipart completion is checked instead of resent.
+- Scrolling capture fixes several stitching faults (stray lines, white patches over text, frames placed a table short), keeps a playing video as it first appeared while following the page, and handles sticky headers and pinned side columns. Moving the mouse pauses auto-scroll.
+- An incomplete reply from a custom HTTP uploader no longer causes an automatic second upload. Slow S3 and B2 transfers keep going while data is moving, and an unclear S3 multipart completion is checked instead of resent.
 - Uploads with an unknown outcome are listed under Failed uploads and stay unknown when a resend fails.
 - S3 deletion works on Garage and on R2 with a bucket-scoped token. S3 settings refuse a Region the SDK can't use and an Endpoint with a path.
 - Proton recovers when KDE's keyring fails a new helper's first read.
@@ -57,15 +60,15 @@ New places to upload, a check that catches passwords, keys and card numbers befo
 
 ### Security
 
-- The AppImage bundles FFmpeg 9.0.2. The 26.1105.3906 AppImage's FFmpeg 7.1.5 had known critical and high CVEs with fixes ([#1309](https://github.com/patrick-hudson/put.gd-desktop/issues/1309)).
+- The AppImage updates its bundled FFmpeg from 7.1.5 to 9.0.2, which clears the scanner's fixed critical and high FFmpeg findings reported against 26.1105.3906 ([#1309](https://github.com/patrick-hudson/put.gd-desktop/issues/1309)). The build still includes only the decoders, encoders and file handling put.gd uses.
 - A token from a `.sxcu` address stays out of thumbnail URLs and error messages, and Test upload and link no longer keeps its signed link.
-- The Proton Drive helper is still built with Bun 1.4.4. Bun's HTTP/3 advisory GHSA-p268-p2w7-qr8x is accepted for this release because the helper doesn't use HTTP/3; the next release moves to Bun 1.4.5 ([#2005](https://github.com/patrick-hudson/put.gd-desktop/issues/2005)).
+- The Proton Drive helper is still built with Bun 1.4.4. Bun's HTTP/3 advisory GHSA-p268-p2w7-qr8x is accepted for this release because HTTP/3 is off in put.gd's launch of the helper. A move to Bun 1.4.5 is planned ([#2005](https://github.com/patrick-hudson/put.gd-desktop/issues/2005)).
 
 ### Known limitations
 
 - The sensitive text check covers only text put.gd can read; very small, faint or low-contrast text can be missed.
 - On a page in a script you haven't chosen, the check can mistake text for a key.
-- About one time in a hundred, the image editor on Fedora GNOME closes by itself as it opens; open it again.
+- On Fedora GNOME the image editor occasionally closes by itself as it opens; open it again.
 - GNOME 50 still needs the put.gd Shell extension, and Fedora recording still needs extra encoder packages.
 
 ## [26.1105.3906] - 2026-11-05
