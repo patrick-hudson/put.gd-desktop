@@ -126,6 +126,18 @@ class Promotion(unittest.TestCase):
         self.assertIn('[#3]', unpublished['section'])
         self.assertTrue(unpublished['changelog'].endswith(f'[Unreleased]: {URL}/commits/nightly\n'))
 
+    def test_section_starts_at_the_stable_tag_on_mains_promotion_merge(self):
+        # The stable tag sits on main's merge commit, which nightly never contains.
+        self.nightly()
+        tag = self.release()
+        self.pull(8, 'fix: keep the upload going')
+        self.git('push', '-q', 'origin', 'nightly')
+        promotion = self.plan(released=lambda repository: {tag})
+        self.assertNotIn('[#3]', promotion['section'])
+        self.assertNotIn('[#5]', promotion['section'])
+        self.assertIn('[#8]', promotion['section'])
+        self.assertTrue(promotion['changelog'].endswith(f'[Unreleased]: {URL}/compare/{tag}...nightly\n'))
+
     def test_new_sections_and_links_go_first_below_unreleased(self):
         existing = (promote.HEADER + '\n## [Unreleased]\n\n- Draft\n\n## [26.1001.1] - 2026-10-01\n\n### Fixed\n\n'
                     f'- Old fix\n\n[Unreleased]: {URL}/compare/v26.1001.1...nightly\n[26.1001.1]: {URL}/releases/tag/v26.1001.1\n')
