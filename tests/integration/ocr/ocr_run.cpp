@@ -4,8 +4,9 @@
 // builders; never part of a package. The peak is the largest of every helper
 // this process has reaped (RUSAGE_CHILDREN), so give one image per invocation
 // for a per-job figure.
-//   test_ocr_run --helper PATH [--data DIR]... [--lang L]... [--words] [--candidates] [--all-cores] [--text] IMAGE
-// --all-cores runs the job in Unhinged mode (#1937).
+//   test_ocr_run --helper PATH [--data DIR]... [--lang L]... [--words] [--candidates] [--all-cores] [--detect] [--text] IMAGE
+// --all-cores runs the job in Unhinged mode (#1937). --detect runs the script
+// check (#1981), as the product does when no language was chosen.
 #include "core/TextJob.h"
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -31,6 +32,7 @@ int main(int argc,char** argv){
   else if(a=="--words")options.words=true;
   else if(a=="--candidates")options.candidates=true;
   else if(a=="--all-cores")options.allCores=true;
+  else if(a=="--detect")options.detectScript=true;
   else if(a=="--text")printText=true;
   else images.append(a);
  }
@@ -48,6 +50,7 @@ int main(int argc,char** argv){
                    {"spawnMs",result.spawnMs},{"engineStartMs",result.engineStartMs},{"recognizeMs",result.recognizeMs},{"totalMs",result.totalMs},
                    {"peakRssKiB",qint64(usage.ru_maxrss)},{"chars",result.text.size()},{"codes",result.codes.size()},{"banded",result.banded},{"truncated",result.truncated}};
   if(printText)line["text"]=result.text;
+  if(!result.detectionOutcome.isEmpty())line["detection"]=putgd::textjob::detectionJson(result);
   std::printf("%s\n",QJsonDocument(line).toJson(QJsonDocument::Compact).constData());std::fflush(stdout);
   if(error)++failures;
  }

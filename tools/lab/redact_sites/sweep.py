@@ -2,7 +2,7 @@
 """Real-website sweep for the sensitive-text check (#1975): how often everyday public pages raise a prompt.
 
   sweep.py capture --sites sites.tsv --out DIR [--browsers chromium,firefox] [--scales 1,1.25,1.5] [--jobs 4]
-  sweep.py run     --shots DIR --driver BIN --helper BIN --build-json FILE --data DIR --out RESULTS [--jobs 4] [--session ID]
+  sweep.py run     --shots DIR --driver BIN --helper BIN --build-json FILE --data DIR --out RESULTS [--jobs 4] [--session ID] [--detect]
   sweep.py replay  --shots DIR --words RESULTS --driver BIN --build-json FILE --out RESULTS
   sweep.py report  --shots DIR --results RESULTS [--shots DIR --results RESULTS ...] [--triage triage.tsv] --out DIR
   sweep.py compare REPORT_DIR REPORT_DIR
@@ -236,6 +236,9 @@ def _execute(args, specs):
     print(f'{len(todo)} captures to run, {len(specs) - len(todo)} done', flush=True)
     env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
     cmd = [args.driver, '--helper', args.helper, '--build-json', args.build_json] + sum((['--data', d] for d in args.data), [])
+    # #1981: the script check, as the product runs it when no language was chosen.
+    if getattr(args, 'detect', False):
+        cmd.append('--detect')
     tmp.mkdir(exist_ok=True)
     n = 0
     while todo:
@@ -466,6 +469,7 @@ def main():
         r.add_argument('--session', default=os.environ.get('PUTGD_LAB_SESSION', ''))
         if name == 'run':
             r.add_argument('--helper', required=True)
+            r.add_argument('--detect', action='store_true', help='the script check (#1981), as when no language is chosen')
         else:
             r.add_argument('--words', required=True, help="a previous run's results")
     p = sub.add_parser('report')
