@@ -186,8 +186,9 @@ class Context:
         [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
         application, window, owned, objectName, accessibleId, accelerator, attributes,
         visible/showing/enabled, protected, popup and ancestors, plus
-        coordinate_space ('desktop', 'window-relative', or 'ambiguous-notification' for one
-        of several same-size shell banners, drawn but not placed), coordinate_error and
+        coordinate_space ('desktop', 'window-relative', or 'ambiguous-notification' for a
+        banner several shell notification windows match, with their candidate_frames and
+        no rect), coordinate_error and
         window_id (compositor identity) where placement applies. rect is in
         desktop coordinates. On X11 that is AT-SPI DESKTOP_COORDS. On Wayland,
         client toolkits report extents relative to their own window; a profile
