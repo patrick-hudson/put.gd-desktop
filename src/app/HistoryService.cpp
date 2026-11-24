@@ -424,7 +424,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      item["status"]="deleting";item["deletingProfileId"]=receipt.destination.profileId;items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
      // Marking it deleting is where this deletion holds the file against a newer one (#1773): one recorded
      // since took it over, and nothing is sent; once it is deleting, a newer one is refused.
-     items=doc["items"].toArray();if(items[index].toObject()["status"]=="taken_over")continue;
+     items=doc["items"].toArray();if(items[index].toObject().value("status")=="taken_over")continue;
      // Whether this attempt's driver got a checkpoint acknowledged: none send a
      // destructive request before one (see DurableCheckpoint).
      auto acknowledged=std::make_shared<std::atomic_bool>(false);
