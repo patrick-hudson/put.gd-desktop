@@ -99,7 +99,8 @@ Error HistoryStore::initialize() {
  if(version>7) return {"history_version","Unsupported history schema version",{}};
  // The error log table (#1753) is created beside schema 7 without raising the version, so an
  // older put.gd still opens this journal; it never reads the table.
- if(version==7) return ensureErrorLog();
+ // Deletion targets are looked up by record (#1773); the index is added to existing schema-7 journals too.
+ if(version==7) {if(!q.exec("CREATE INDEX IF NOT EXISTS deletion_targets_history ON deletion_targets(history_id)"))return sqlError();return ensureErrorLog();}
  if(!db_.transaction()) return sqlError();
  auto exec=[&](const QString& s) {return q.exec(s);}; bool ok=true;
  if(version<4) {
@@ -489,17 +490,24 @@ bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
  bool ok=true;const auto self=sequence(id,&ok);if(!ok)return false;
  QJsonObject stored;if(self>=0){q.prepare("SELECT data FROM deletions WHERE id=?");q.addBindValue(id);if(!q.exec())return false;if(q.next())stored=decode(q.value(0));q.finish();}
  QHash<QString,QJsonObject> before;for(const auto& v:stored["items"].toArray())before.insert(v.toObject()["historyId"].toString(),v.toObject());
- auto items=doc["items"].toArray();QList<bool> held,taken;QList<QJsonObject> states;QHash<QString,QStringList> release;
+ auto items=doc["items"].toArray();QList<bool> held,taken;QList<QJsonObject> states;QHash<QString,QStringList> release;QHash<QString,QJsonObject> journals;
  for(qsizetype i=0;i<items.size();++i) {
   auto item=items[i].toObject();const auto historyId=item["historyId"].toString();
   q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);if(!q.exec())return false;
   const bool found=q.next();const auto data=found?decode(q.value(0)):QJsonObject{};q.finish();
   q.prepare("SELECT t.deletion_id FROM deletion_targets t JOIN deletions d ON d.id=t.deletion_id WHERE t.history_id=? ORDER BY d.rowid DESC LIMIT 1");q.addBindValue(historyId);if(!q.exec())return false;
   const auto newest=q.next()?q.value(0).toString():QString();q.finish();
-  const auto holder=claim?data["deleteOperationId"].toString():newest;
+  const auto holder=newest;
   if(claim) {
-   const auto remote=data["remoteStatus"].toString();QStringList keeping;
-   const bool holderBusy=!holder.isEmpty()&&holder!=id&&(QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(data["deleteProgress"].toObject().contains("phase")&&!finals.contains(remote)));
+   // The holder's own journal says whether it may still need its own retry: the record's state can name an older
+   // deletion (a journal written before this rule).
+   QString remote;QJsonObject progress;
+   if(!holder.isEmpty()&&holder!=id){
+    if(!journals.contains(holder)){Error unread;journals.insert(holder,deletion(holder,&unread));if(unread)return false;}
+    for(const auto& v:journals.value(holder).value("items").toArray())if(v.toObject()["historyId"]==historyId){remote=v.toObject()["status"].toString();progress=v.toObject()["progress"].toObject();}
+   }
+   QStringList keeping;
+   const bool holderBusy=QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(progress.contains("phase")&&!finals.contains(remote));
    if(holderBusy||!releasable(historyId,{},&keeping)) {
     if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
     return true;

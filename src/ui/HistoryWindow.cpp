@@ -1942,10 +1942,11 @@ void HistoryWindow::pollDeletion(){
    auto name=item["name"].toString();if(name.isEmpty())name=g->deletionNames_.value(historyId);if(name.isEmpty())name=QStringLiteral("a file");else name="“"+name+"”";
    const auto where=originalDestination(item["receipt"].toObject(),profiles);
    const auto reason=item["error"].toObject()["message"].toString();
-   if(state=="removed"||state=="already_missing"){++removed;removedName=name;removedWhere=where;}
+   // A newer deletion of the same file took it over (#1773): its own entry shows that one's outcome, even when this
+   // deletion had recorded one of its own for it earlier.
+   if(state=="taken_over"||item.contains("takenOverBy"))handed<<name+" is handled by a newer deletion of it; its entry in History shows that one.";
+   else if(state=="removed"||state=="already_missing"){++removed;removedName=name;removedWhere=where;}
    else if(state=="pending"||state=="deleting")progress<<"Deleting "+name+" from "+where+"…";
-   // A newer deletion of the same file took it over (#1773): its own entry shows that one's outcome.
-   else if(state=="taken_over")handed<<name+" is handled by a newer deletion of it; its entry in History shows that one.";
    else{problems<<"Couldn't delete "+name+" from "+where+(reason.isEmpty()?QString(" ("+state+")."):": "+reason);if(target.isEmpty())target={{"historyId",historyId},{"kind","deletion"}};}
   }
   g->status_->setProperty("deletionDetails",data);
