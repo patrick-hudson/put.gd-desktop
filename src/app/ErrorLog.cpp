@@ -219,6 +219,8 @@ void ErrorLog::deletionFinished(const QJsonObject& doc) {
   {"unsupported_safe_removal","This destination can't safely delete the recorded file."}};
  for(const auto& value:doc["items"].toArray()){
   const auto item=value.toObject();const auto status=item["status"].toString(),historyId=item["historyId"].toString();
+  // A newer deletion of the file took it over (#1773): its errors are that deletion's to record or settle.
+  if(item.contains("takenOverBy"))continue;
   if(status=="removed"||status=="already_missing"){resolve("deletion:"+historyId,"Deleted from the destination");continue;}
   if(!outcomes.contains(status))continue;
   const auto destination=item["receipt"].toObject()["destination"].toObject();

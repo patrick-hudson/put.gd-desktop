@@ -108,8 +108,9 @@ private slots:
  // interrupted attempt saved: expiry and Clear History keep the record, and a retry keeps the checkpoint.
  // Removing it from History is the way out: the record goes and the next retry drops the target.
  // #1773: of two deletions of a file the newer one (recorded later) holds it. A retried older one keeps an outcome it
- // had recorded and leaves the record's state alone; a record an older one wrote over before this rule goes back to
- // the newer one on its retry; and while the newer one's checkpoint is unsettled, no third deletion takes it over.
+ // had recorded and leaves the record's state alone, even when the record still names it (a journal written before
+ // this rule); the newer one's retry takes the record back; and while its checkpoint is unsettled, no third deletion
+ // takes it over.
  void newerDeletionHoldsItsRecord() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");HistoryStore store(path);Operation op;op.id="op";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());
   for(const auto* id:{"a","b"}){OperationItem item;item.artifact.id=id;item.artifact.name=QString(id)+".png";item.uploadStatus="uploaded";op.items.append(item);}
@@ -126,6 +127,9 @@ private slots:
   // A journal written before this rule: the older deletion's write named itself on the record.
   {const auto connection=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);
    QVERIFY(q.exec("UPDATE item_state SET data=json_set(data,'$.deleteOperationId','old','$.remoteStatus','removed') WHERE id='a'"));db.close();}QSqlDatabase::removeDatabase(connection);}
+  // Retrying the older one first still leaves the record to the newer one, and keeps its own recorded outcome.
+  old["state"]="running";QVERIFY(!store.startDeletion(old));
+  {const auto kept=store.deletion("old")["items"].toArray()[0].toObject();QCOMPARE(kept["status"].toString(),QString("removed"));QCOMPARE(kept["takenOverBy"].toString(),QString("newer"));}
   newer["state"]="running";QVERIFY(!store.startDeletion(newer));
   QCOMPARE(newer["items"].toArray()[0].toObject()["status"].toString(),QString("unknown"));QCOMPARE(store.detail("a")["deleteOperationId"].toString(),QString("newer"));
   newer["state"]="completed";QVERIFY(!store.saveDeletion(newer));QCOMPARE(store.forgetBlocker("a",{}),QString("deletion"));

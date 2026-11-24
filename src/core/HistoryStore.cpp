@@ -111,7 +111,7 @@ Error HistoryStore::initialize() {
   if(ok) ok=exec("INSERT INTO history_next SELECT id,json_extract(data,'$.operationId'),json_extract(data,'$.itemId'),json_extract(data,'$.created'),json_extract(data,'$.name'),json_extract(data,'$.mime'),json_extract(data,'$.category'),json_extract(data,'$.profileId'),json_extract(data,'$.uploadStatus'),json_extract(data,'$.local.status'),json_extract(data,'$.remoteStatus'),data FROM history");
   if(ok) ok=exec("DROP TABLE history")&&exec("ALTER TABLE history_next RENAME TO history");
  }
- if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
+ if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS deletion_targets_history ON deletion_targets(history_id)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
  if(ok)ok=exec("ALTER TABLE history ADD COLUMN publication_identity TEXT NOT NULL DEFAULT ''")&&exec("CREATE INDEX history_publication ON history(publication_identity,upload_status)")&&exec("PRAGMA user_version=4");
  }
  if(version<5 && ok)ok=exec("CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,publication_identity TEXT NOT NULL DEFAULT '',upload_status TEXT NOT NULL)")
@@ -475,10 +475,10 @@ Error HistoryStore::startDeletion(QJsonObject& doc) {
  if(!writeDeletion(proposed,false,nullptr)||!db_.commit()) {db_.rollback();return sqlError();}
  doc=proposed;return {};
 }
-// Which deletion holds a record is its item_state deleteOperationId (#1773); of two deletions the newer is the one
-// recorded later (deletions.rowid). A new deletion takes a record over when it is recorded (claim), and an older one
-// retried after that leaves it alone, so the newer deletion's state and saved progress always win; a newer one
-// named by an older holder (a journal written before this rule) takes it back. A claim is refused while the holder
+// Which deletion holds a record (#1773): the one recorded last (deletions.rowid) among the deletions that name it,
+// whatever item_state's deleteOperationId says (a journal written before this rule can name an older one there). A
+// new deletion takes a record over when it is recorded (claim), and an older one retried after that leaves it
+// alone, so the newer deletion's state and saved progress always win. A claim is refused while the holder
 // may still need its own retry, as HistoryService::prepare says (an outcome a retry settles, or a saved "phase"
 // checkpoint), and while any deletion keeping the record in History can't let it go (releasable).
 bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
@@ -494,7 +494,9 @@ bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
   auto item=items[i].toObject();const auto historyId=item["historyId"].toString();
   q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);if(!q.exec())return false;
   const bool found=q.next();const auto data=found?decode(q.value(0)):QJsonObject{};q.finish();
-  const auto holder=data["deleteOperationId"].toString();
+  q.prepare("SELECT t.deletion_id FROM deletion_targets t JOIN deletions d ON d.id=t.deletion_id WHERE t.history_id=? ORDER BY d.rowid DESC LIMIT 1");q.addBindValue(historyId);if(!q.exec())return false;
+  const auto newest=q.next()?q.value(0).toString():QString();q.finish();
+  const auto holder=claim?data["deleteOperationId"].toString():newest;
   if(claim) {
    const auto remote=data["remoteStatus"].toString();QStringList keeping;
    const bool holderBusy=!holder.isEmpty()&&holder!=id&&(QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(data["deleteProgress"].toObject().contains("phase")&&!finals.contains(remote)));
@@ -503,13 +505,12 @@ bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
     return true;
    }
    keeping.removeAll(id);release.insert(historyId,keeping);
-  } else if(!holder.isEmpty()&&holder!=id) {
-   const auto other=sequence(holder,&ok);if(!ok)return false;
-   if(self<0||other>self) {
+  } else if(!holder.isEmpty()&&holder!=id&&self>=0) {
+   {
     // Taken over by a newer deletion: this one sends nothing more for it and no longer keeps it. An outcome it
     // had already recorded stays in its journal; one it read only after the takeover is not reported.
     const auto earlier=before.value(historyId);
-    if(finals.contains(earlier["status"].toString()))item=earlier;
+    if(finals.contains(earlier["status"].toString())){item=earlier;item["takenOverBy"]=holder;}
     else {
      item["status"]="taken_over";item["takenOverBy"]=holder;
      item["error"]=Error{"delete_taken_over","A newer deletion of this file took over; its History entry shows that one.",{{"deleteOperationId",holder}}}.toJson();
