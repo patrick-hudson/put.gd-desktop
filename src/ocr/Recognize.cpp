@@ -14,6 +14,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <sched.h>
 #include <system_error>
 #include <thread>
@@ -229,7 +230,9 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  };
  // Ends the readers: joined when none is busy, else left running on the
  // heap object, which is then never freed (the caller counts the job late).
+ bool finished=false;
  const auto finishReaders=[&](bool late){
+  finished=true;
   {std::lock_guard<std::mutex> guard(run->lock);run->closing=true;}
   run->wake.notify_all();
   for(auto& r:readers){if(late)r.detach();else r.join();}
@@ -286,6 +289,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
    // A quarter of a second's grace for a read ending on its monitor deadline.
    run->idle.wait_until(guard,run->end+std::chrono::milliseconds(250),[&]{return run->running.load()==0;});
    late=run->running.load()>0;
+   // Late: nothing is published after this (Sol S13 on #1986).
+   if(late)run->closing=true;
   }
   return !late;
  };
@@ -320,7 +325,13 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  QList<Reading> readings(all.size());
  const auto firstBatch=batchOf(all,garbledIndexes);check.pieces=int(firstBatch.segments.size());
  if(firstBatch.segments.isEmpty()){delete run;check.outcome=QStringLiteral("no_memory");return false;}
- bool late=!readBatch(firstBatch,true);check.engines=int(run->engines.size());
+ // While readers live, an allocation that fails (composites, readings) ends
+ // the check, not the job: they are closed and left, and the first reading
+ // stands (Sol S14 on #1986).
+ bool late=false;
+ QList<bool> take(all.size(),false);
+ try{
+ late=!readBatch(firstBatch,true);check.engines=int(run->engines.size());
  if(check.engines==0){finishReaders(late);check.outcome=QStringLiteral("no_memory");return late;}
  collect(all,firstBatch,readings);
  QList<SegmentReading> verdicts;for(const auto& r:std::as_const(readings))verdicts.append({r.read,r.before,r.after,r.beforeCount,r.afterCount});
@@ -333,7 +344,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   return late;
  }
  check.outcome=QStringLiteral("kept");
- QList<bool> take(all.size(),false);for(int k=0;k<garbledIndexes.size();++k)take[garbledIndexes[k]]=decision.take[k];
+ for(int k=0;k<garbledIndexes.size();++k)take[garbledIndexes[k]]=decision.take[k];
  // The language is right: the page's other lines are read in it too, as
  // time allows, and each keeps whichever reading is surer (a line the trigger
  // passed over, a word or two of the script beside English, is garbled too).
@@ -349,6 +360,11 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   }
  }
  finishReaders(late);
+ }catch(const std::bad_alloc&){
+  if(!finished)finishReaders(true);
+  check.outcome=QStringLiteral("no_memory");
+  return true;
+ }
  // From the last segment back, so the earlier ones' word indexes hold.
  for(int i=int(all.size())-1;i>=0;--i){
   if(!take[i])continue;
