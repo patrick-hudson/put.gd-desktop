@@ -83,7 +83,7 @@ outside any git checkout, and drop the icons there:
 
 ```sh
 checkout=$PWD
-export_dir=$(mktemp -d /tmp/putgd-tsan-src.XXXXXX)   # not inside a git checkout
+export_dir=$(python3 tools/lab/scratch.py putgd-tsan-src.)   # on disk (~/work/tmp), not inside a git checkout
 git archive --format=tar HEAD | tar -x -C "$export_dir"
 sed -i 's/^add_subdirectory(icons)$/# add_subdirectory(icons)  # no instrumented Qt Svg/' "$export_dir/packaging/linux/CMakeLists.txt"
 mkdir -p "$export_dir/build"

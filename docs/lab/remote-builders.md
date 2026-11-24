@@ -554,6 +554,16 @@ waiting for the lock, over a probe process left behind by a finished test.
   lab helpers refuse to. Run at most 4 jobs per host, and with several campaigns
   running hold one quiet lease at a time unless the coordinator says otherwise. See
   [Quiet leases](#quiet-leases-for-timing-runs).
+- **Keep scratch on disk, in `~/work/tmp`, not in `/tmp`.** `/tmp` on f44, d69, k72
+  and aurora-amd is a tmpfs: what is left there stays in RAM until a reboot. On
+  2026-11-22 and 11-23, campaign scratch there (5.7 GB on k72, 4.5 GB on f44) left too
+  little memory for the nightly guests, and the k72 and f44 rows ran nothing (#1978).
+  Make a scratch directory with `python3 tools/lab/scratch.py PREFIX` from a checkout,
+  or `mkdir -p -m 700 ~/work/tmp && d=$(mktemp -d ~/work/tmp/PREFIX.XXXXXX)` without
+  one; the lab tools make theirs there too. The path is short enough for a session
+  socket inside it. Remove each directory when its run is done. A run that must use a
+  tmpfs, such as an rr recording, removes its traces as soon as it has what it needs.
+  `release` and `status --check` list your large `/tmp` entries (below).
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
   plasma, xorg, mesa, GPU drivers, pipewire or xdg-desktop-portal*. Read every
@@ -617,6 +627,16 @@ GNOME has no tray host, so the Fedora GNOME row installs Fedora's AppIndicator e
 waits for a registered StatusNotifier host before put.gd starts (`tray-host-ready.json`).
 ⚪ means not run or no valid result: setup or infrastructure failures, checks that could not
 decide, and cells the harness cannot drive on a desktop, each with the reason.
+
+A row whose cells all stay ⚪ because of its builder (too little memory, load at or above the
+core count, too little disk, no KVM, a missing golden, an occupied port, a lease or guest slot
+held by another session, or no SSH) on two UTC days running is a host problem: on 11-22 and
+11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and nothing
+said so (#1978). The controller counts those days from the last published results
+(`hostBlockedNights` in the row's receipt; a rerun on the same day adds none). From the second
+day it puts a warning naming the row and the reason at the top of #1003 and of the row's
+receipt comment, and the table's Not run cell starts with ⚠️ and the count. Fix the builder
+before the next run. Like any ⚪, it opens no issue.
 
 On trays without AT-SPI the Tray menu cell finds put.gd's icon by its pixels. The template is
 what the running resident publishes at that moment: its `IconPixmap` frames, which must read
@@ -897,7 +917,13 @@ Before you release:
    `pgrep -u patrick -af` for `putgd`, `host_input`, `videotestsrc`, `cover_player` and lab test
    `Xvfb` servers (`desktop_lock.py` `PROCESS_PATTERN` has the exact pattern), and checks for user
    putgd desktop entries, extension copies and data, and an installed `putgd`
-   package. It lists anything that appeared since you acquired the lock and
+   package. Where `/tmp` is a tmpfs, it lists each top-level `/tmp` entry of yours
+   whose files take 256 MB or more, and notes the total of your files there, with the
+   memory still available, once it reaches 1 GB (#1978). Move such scratch to
+   `~/work/tmp` or remove it. The walk stops after 10 s, and the note then says its
+   sizes are lower bounds. The nightly's own lease reports a new large entry in its
+   receipt but is not held by it, since the entry may be another session's.
+   It lists anything that appeared since you acquired the lock and
    doesn't release yet. Once nothing of yours is left, run it again with
    `--verified-clean`; the lock is released only if the check passes. Items that
    were there at acquire are reported but don't block. A matching process counts
@@ -1225,7 +1251,7 @@ It uses these paths on k72:
 the version you want, then delete the checkout:
 
 ```bash
-src=$(mktemp -d /tmp/pgsw-install.XXXXXX)
+mkdir -p -m 700 ~/work/tmp && src=$(mktemp -d ~/work/tmp/pgsw-install.XXXXXX)
 git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd"
 sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
 rm -rf -- "$src"
