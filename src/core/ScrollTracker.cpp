@@ -4611,10 +4611,50 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // rows back, at 0.88 of its cells, while the page went down, left a
     // GitHub pull request 952 rows short on Cinnamon).
     const bool known = at >= top_ && at + height_ <= bottom_;
+    // A place off the driver's hint that overlaps less than half the frame
+    // must agree as one found again does. Such a place has only its own
+    // agreement over a small overlap as proof, and a look-alike's is partial:
+    // on the ruler page a frame of the first step that came late, at 95 where
+    // the hint said 13, was placed 452 rows up at 0.75 of its cells (1.00 at
+    // 95), and the image kept 425 rows of it on top in 11 of 30 starved runs
+    // (#1999). Nearer places keep the lenient check: a sticky header that
+    // appears while the page moves shares tiles with it and keeps a true move
+    // under recoverCells (Sol on #2002), and on a starved X server the frames
+    // come late, so the page is often some way past the hint.
+    const bool offHint = hinted && !hintSays(c.d) && 2 * std::abs(c.d) > height_;
     return (strict && ((found ? c.cells : c.cellsKept) < opts_.recoverCells || 3 * inside < height_)) ||
            (known && !hintSays(c.d) && c.cells < opts_.recoverCells) ||
+           (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) ||
            contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
   };
+  // A tie the expected offset broke is checked against the whole overlap:
+  // where the pick does not agree over it and exactly one tied place does
+  // over a larger overlap, a shorter move the same way, that place is the
+  // page's. At the page's end the page moves less than auto-scroll's step: on
+  // the ruler page the true +2 and a look-alike at +28 both agreed in every
+  // cell of their own moving tiles, the hint (53) chose +28, which agrees in
+  // 0.47 of the whole overlap against 1.00 for +2, and the image got 26 rows
+  // too many (#1999). Only a larger overlap: a share is easily whole over a
+  // few rows, and on a repeating page with a panel over the true overlap a
+  // longer move by the period agreed whole and took 256 rows too many (Sol
+  // on #2002).
+  if (pick >= 0 && byExp && !wholeMove && wholeCells(cur, ref, cands[size_t(pick)].d) < kWholeShare) {
+    const int pd = cands[size_t(pick)].d;
+    int other = -1, count = 0;
+    for (size_t i = 0; i < cands.size(); ++i) {
+      const Candidate& c = cands[i];
+      if (int(i) == pick || !c.accepted || c.cells < cands[size_t(pick)].cells - opts_.tieCells) continue;
+      if (c.d == 0 || (c.d > 0) != (pd > 0) || std::abs(c.d) >= std::abs(pd)) continue;
+      if (wholeCells(cur, ref, c.d) >= kWholeShare) {
+        other = int(i);
+        ++count;
+      }
+    }
+    if (count == 1) {
+      pick = other;
+      byExp = false;
+    }
+  }
   // The pair's place, also when the image's check refuses it: the image
   // lookup that finds the same place again confirms it, as before.
   int pairD = INT_MIN;
@@ -4648,6 +4688,10 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
         refusedKnown = false;
         pick = -1;
         why = SkipReason::Contradicted;
+        // A far place off the hint that the check refused is no pair's place
+        // the image lookup may confirm leniently: found there again, it must
+        // pass the check of a place found again (Sol on #2002).
+        if (hinted && !hintSays(d) && 2 * std::abs(d) > height_) pairD = INT_MIN;
       }
     }
   }
