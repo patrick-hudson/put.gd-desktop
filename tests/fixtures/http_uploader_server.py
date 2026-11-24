@@ -24,6 +24,11 @@ A "file" rule can also hold its reply: "stall": seconds before it answers, as a 
 server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s),
 or answer 404 only to a request sending a cookie: "notFoundFor": "name=value". A "delete"
 rule can set one: "setCookie": "name=value".
+A "file" rule {"phased": {"before": R, "after": R}} is never used up. The link then answers a
+whole 302 to /look/<phase>/<file id>, the phase being "after" once a deletion of the file has
+been asked for, and that address answers as R (a "file" rule's status, body and cut; {} serves
+the file) however often it is asked. A client's own resends of a cut reply get the same answer,
+and the link itself is asked exactly once per look.
 
 An upload rule can also bend the reply the way a careless or hostile server would:
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
@@ -185,6 +190,32 @@ class Handler(BaseHTTPRequestHandler):
             state['events'].append(event)
         return event
 
+    def phased(self):
+        with lock:
+            return next((r['phased'] for r in state['rules'] if r.get('call') == 'file' and 'phased' in r), None)
+
+    def serve(self, file_id, rule):
+        # A request for a stored file, answered as its "file" rule says.
+        if rule.get('stall'):
+            time.sleep(rule['stall'])
+        if rule.get('barrier'):
+            with lock:
+                barrier = barriers.setdefault(rule['barrier'], threading.Event())
+            barrier.wait(60)
+        # "notFoundFor": the file is gone only for a visitor sending that cookie.
+        if rule.get('notFoundFor') and rule['notFoundFor'] in (self.headers.get('Cookie') or ''):
+            return self.reply(404, {'error': 'no such file'})
+        # A "file" rule may cut its reply short (the file's own, or a "status" reply
+        # with its "body"), as an upload rule does.
+        self.cut = rule.get('cut')
+        if rule.get('status'):
+            return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
+        with lock:
+            entry = state['files'].get(file_id)
+        if not entry or entry.get('deleted'):
+            return self.reply(404, {'error': 'no such file'})
+        return self.reply(200, blobs[file_id], entry['type'] or 'application/octet-stream')
+
     def do_GET(self):
         self.php, self.cut = False, None  # one connection serves several requests
         parsed = urllib.parse.urlsplit(self.path)
@@ -196,26 +227,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.upload(b'')
         if parts[0] == 'f' and len(parts) >= 2:
             self.record('file')
-            rule = self.rule('file')
-            if rule.get('stall'):
-                time.sleep(rule['stall'])
-            if rule.get('barrier'):
+            phased = self.phased()
+            if phased is not None:
                 with lock:
-                    barrier = barriers.setdefault(rule['barrier'], threading.Event())
-                barrier.wait(60)
-            # "notFoundFor": the file is gone only for a visitor sending that cookie.
-            if rule.get('notFoundFor') and rule['notFoundFor'] in (self.headers.get('Cookie') or ''):
-                return self.reply(404, {'error': 'no such file'})
-            # A "file" rule may cut its reply short (the file's own, or a "status" reply
-            # with its "body"), as an upload rule does.
-            self.cut = rule.get('cut')
-            if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
-            with lock:
-                entry = state['files'].get(parts[1])
-            if not entry or entry.get('deleted'):
-                return self.reply(404, {'error': 'no such file'})
-            return self.reply(200, blobs[parts[1]], entry['type'] or 'application/octet-stream')
+                    deleted = any(e['call'] == 'delete' and e['path'].split('/')[2:3] == [parts[1]] for e in state['events'])
+                return self.reply(302, '', 'text/plain', {'Location': '%s/look/%s/%s' % (self.origin(), 'after' if deleted else 'before', parts[1])})
+            return self.serve(parts[1], self.rule('file'))
+        if parts[0] == 'look' and len(parts) == 3:
+            self.record('look', {'phase': parts[1]})
+            return self.serve(parts[2], (self.phased() or {}).get(parts[1], {}))
         if parts[0] == 'result' and len(parts) == 2:
             self.record('result')
             with lock:
