@@ -252,6 +252,8 @@ private slots:
   source.payload=textPayload();
   OperationService operations(directory.filePath("data"),settings,registry,source);
   HistoryService history(operations);
+  int finished=0;
+  connect(&history,&HistoryService::deletionFinished,this,[&]{++finished;});
   PUTGD_TRY_VERIFY(operations.ready());
   QString operationId;
   operations.invoke("clipboard",[&](Error error,QJsonObject result) {QVERIFY(!error);operationId=result["operationId"].toString();});
@@ -267,7 +269,8 @@ private slots:
   history.deleteConfirmed({item.artifact.id},preview["acknowledgement"].toString(),[&](Error error,QJsonObject result) {QVERIFY(!error);deleteId=result["deleteOperationId"].toString();});
   PUTGD_TRY_COMPARE(store.detail(item.artifact.id)["remoteStatus"].toString(),QString("unknown"));
   PUTGD_TRY_VERIFY(!store.deletion(deleteId)["items"].toArray()[0].toObject()["progress"].toObject()["phase"].toString().isEmpty());
-  putgd::test::settle(25);
+  // The item's outcome is stored before its run ends, and Retry is refused (delete_busy) until it has.
+  PUTGD_TRY_COMPARE(finished,1);
   {
    QMutexLocker lock(&provider->mutex);
    auto replacement=item.receipt;
@@ -277,7 +280,7 @@ private slots:
   }
   provider->deletionResults.clear();
   bool accepted=false;
-  history.retryDelete(deleteId,[&](Error error,QJsonObject) {QVERIFY(!error);accepted=true;});
+  history.retryDelete(deleteId,[&](Error error,QJsonObject) {QVERIFY2(!error,qPrintable(error.code));accepted=true;});
   PUTGD_TRY_VERIFY(accepted);
   PUTGD_TRY_COMPARE(store.detail(item.artifact.id)["remoteStatus"].toString(),QString("changed"));
   QCOMPARE(provider->deletes.load(),1);
