@@ -104,6 +104,10 @@ private slots:
   QVERIFY(d.keep);QCOMPARE(d.before,30.0);QCOMPARE(d.after,80.0);QCOMPARE(d.take,(QList<bool>{true,false,false}));
   QVERIFY(!decideGarbled({{true,40*4,50*4,4,4},{true,30*4,0,4,0}},{0,1}).keep);
   QVERIFY(decideGarbled({{true,0,0,0,0}},{0}).take==QList<bool>{false});
+  // A replaced line keeps its first words for Quick redact only when the second reading is Latin.
+  const auto words=[](std::initializer_list<const char16_t*> texts){QList<Word> out;for(const auto* t:texts){Word w;w.text=QString::fromUtf16(t);out.append(w);}return out;};
+  QVERIFY(mostlyLatin(words({u"--password",u"hunter",u"2"})));QVERIFY(mostlyLatin(words({u"NBA",u"体育"})));
+  QVERIFY(!mostlyLatin(words({u"В",u"мире",u"Экономика"})));QVERIFY(!mostlyLatin(words({u"新浪网新闻",u"NBA"})));QVERIFY(!mostlyLatin(words({u"123",u"!"})));
   QVERIFY(takeOther(readings[3]));QVERIFY(!takeOther(readings[1]));QVERIFY(!takeOther({true,90*4,80*4,4,4}));QVERIFY(!takeOther({false,10,90,1,1}));
  }
  // #1981: a composite's pieces map back to their own source pixels, at any

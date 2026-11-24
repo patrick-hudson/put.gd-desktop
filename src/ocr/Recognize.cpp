@@ -372,8 +372,10 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   const auto& seg=all[i];
   // A line the first pass read with some confidence may hold a key, token or
   // passphrase it read right: for Quick redact its first words stay, as second
-  // reads. (A garbled line's English reading is what this check exists to drop.)
-  if(in.candidates&&!seg.garbled)
+  // reads, when the second reading still reads it as Latin (an English line).
+  // A line the second reading reads in the page's script, like a garbled one,
+  // was garbage in English: that is what this check exists to drop.
+  if(in.candidates&&!seg.garbled&&mostlyLatin(readings[i].words))
    for(int w=seg.first;w<seg.last;++w){auto word=job.words[w];word.kept=false;word.second=true;word.reread=true;firstReadings.append(word);}
   job.words.remove(seg.first,seg.last-seg.first);
   for(int k=0;k<readings[i].words.size();++k)job.words.insert(seg.first+k,readings[i].words[k]);

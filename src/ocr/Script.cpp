@@ -91,6 +91,16 @@ ScriptDecision decideGarbled(const QList<SegmentReading>& readings,const QList<i
  if(!d.keep)d.take.fill(false);
  return d;
 }
+bool mostlyLatin(const QList<Word>& words){
+ int letters=0,latin=0;
+ for(const auto& w:words)for(qsizetype i=0;i<w.text.size();++i){
+  char32_t c=w.text.at(i).unicode();
+  if(w.text.at(i).isHighSurrogate()&&i+1<w.text.size()){c=QChar::surrogateToUcs4(w.text.at(i),w.text.at(i+1));++i;}
+  if(!QChar::isLetter(c))continue;
+  ++letters;if(QChar::script(c)==QChar::Script_Latin)++latin;
+ }
+ return letters>0&&2*latin>=letters;
+}
 bool takeOther(const SegmentReading& r){return r.read&&r.afterCount>0&&r.beforeCount>0&&r.after/r.afterCount>r.before/r.beforeCount;}
 QRect paddedPiece(const QRect& rect,const QRect& bounds){
  const int pad=std::max(4,rect.height()/3);

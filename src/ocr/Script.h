@@ -54,6 +54,11 @@ ScriptDecision decideGarbled(const QList<SegmentReading>& readings,const QList<i
 // Another segment of a page whose language was kept: replaced when its
 // second reading has words and a higher mean confidence.
 bool takeOther(const SegmentReading& reading);
+// Whether at least half of the letters in these words are Latin: a line the
+// second reading still reads as Latin was an English line, whose first
+// reading may hold a token worth keeping for Quick redact; one it reads in the
+// page's script was garbage in English.
+bool mostlyLatin(const QList<Word>& words);
 
 // A segment's box, grown by a third of its height (at least 4 px) on every
 // side, within bounds: room for accents and descenders.
