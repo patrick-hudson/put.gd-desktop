@@ -118,15 +118,17 @@ once with `recording_start_failed` and `details.reason: pipewire_unreachable`
 ("PipeWire is not running, so the screen could not be recorded"). A window
 source that can't be reopened stops the capture with `stopReason: source_lost`;
 the clip so far goes to review when that stop finishes it, and the session
-fails if it doesn't. Scrolling capture's frame source opens the same way; a missing daemon
-there is `scroll_unavailable` with `frame_source_unavailable`.
+fails if it doesn't. Scrolling capture's frame source still lets `pipewiresrc`
+connect on its own; its helper is ended whenever a command misses its deadline.
 
 A PipeWire restart while the source starts removes the stream the compositor
 handed over. `pipewiresrc` then fails, and the pipeline's teardown after that
 failure can wait on the element's streaming thread past the start deadline
 (GNOME on Fedora 44 with PipeWire 1.6.9, 4 of 5 tries, the published nightly
-too; Plasma on Kubuntu 26.04, 1 of 4). The helper sends `sourceTrouble
-{message}` before that teardown. A `start` request's deadline (15 s), or for
+too; Plasma on Kubuntu 26.04, 1 of 4). When the source fails with a resource
+error on the helper's own connection, the helper sends `sourceTrouble
+{message}` before that teardown, and the same event with an empty message once
+the teardown has returned. A `start` request's deadline (15 s), or for
 Record on the helper's own bar the 30 s silence limit
 ([process boundary](process-boundary.md#process-boundary)), ends the helper,
 and the start fails as `recording_start_failed` with `details.reason:

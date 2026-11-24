@@ -42,9 +42,13 @@ child's pipes, mirroring the capture and editor helpers:
   While the capture records or is paused, the helper sends `progress` every
   second from its main thread. Record on the helper's own bar starts inside the
   helper with no command to time it, so the helper first sends `starting` and
-  the session moves to `starting`. When no event at all arrives for twice the
-  command deadline (30 s) while the session is starting, recording or paused,
-  the service takes the helper as stuck: the session fails with
+  the session moves to `starting`. A stop the helper begins itself (its bar's
+  Stop, the byte budget, a lost source) sends `stopping`, and the session moves
+  to `stopping` until `stopped` or `failed`. When no event at all arrives for
+  twice the command deadline (30 s) while the session is starting, recording or
+  paused, or for 60 s while it is stopping (finishing the clip drains the
+  encoder and closes the PipeWire stream), the service takes the helper as
+  stuck: the session fails with
   `recording_helper_unresponsive` (`details.step` names the state, `silentMs`
   the limit), or with `pipewire_stopped` for a start whose source failed first.
   Nothing is kept, and the discard below ends that helper (#1994). A stuck
