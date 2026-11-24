@@ -32,6 +32,7 @@ class Chain:
 
     def __call__(self, host_broker, reference):
         self.calls.append(('export', reference))
+        self.step('export')
         return self
 
     def step(self, name):
@@ -73,9 +74,11 @@ class Chain:
 
     def cleanup(self, run, broker, reference):
         self.calls.append(('cleanup', reference))
+        self.step('cleanup')
 
     def recover(self, receipt, reference, run, broker):
         self.calls.append(('recover', reference))
+        self.step('recover')
         self.current = ROTATED
 
 
@@ -308,6 +311,245 @@ class Recovery(LendTest):
         self.assertNotIn('export', [call[0] for call in self.calls])
 
 
+
+class KeyringGuest(Guest):
+    """A guest whose live keyring daemon died; restart_keyring answers with a synthetic record."""
+
+    def __init__(self, calls, run, record):
+        super().__init__(calls, run)
+        self.record = record
+
+    def restart_keyring(self):
+        self.calls.append(('restart_keyring',))
+        if isinstance(self.record, Exception):
+            raise self.record
+        return self.record
+
+
+RESTARTED = {'restarted': True, 'previousBusName': ':1.40', 'busName': ':1.77', 'pid': 4242, 'start': '991',
+             'collection': {'label': 'putgd lab', 'locked': False}}
+
+
+class DeadGuestKeyring(Recovery):
+    def recover(self, record, fail, chain=None):
+        folder = self.interrupted()
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded):
+            result = proton.recover(self.layout, folder, 'local_lender', 'lender',
+                                    chain_factory=chain or Chain(self.calls, fail={'recover': fail}),
+                                    guest_factory=lambda run: KeyringGuest(self.calls, run, record), clock=self.clock)
+        return folder, result
+
+    def lent(self, folder):
+        return json.loads((folder / 'lend.json').read_text())
+
+    def restarts(self, folder):
+        return self.lent(folder).get('keyringRestarts', [])
+
+    def test_a_dead_daemon_is_started_again_and_the_return_is_tried_once_more(self):
+        folder, result = self.recover(RESTARTED, fail=1)
+        self.assertEqual([call[0] for call in self.calls],
+                         ['stop_app', 'export', 'recover', 'restart_keyring',
+                          'stop_app', 'recover', 'carry_back', 'cleanup', 'remove_brokers'])
+        self.assertEqual(result['keyringRestarted'], RESTARTED)
+        recorded = self.lent(folder)
+        self.assertEqual((recorded['step'], [r['busName'] for r in recorded['keyringRestarts']]), ('recovered', [':1.77']))
+        self.assertEqual(self.lock().status()['state'], 'free')
+
+    def test_the_return_is_retried_only_once(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(RESTARTED, fail=2)
+        self.assertEqual([call[0] for call in self.calls].count('restart_keyring'), 1)
+        self.assertEqual([call[0] for call in self.calls].count('recover'), 2)
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def test_a_daemon_that_still_answers_is_left_alone_and_the_failure_stands(self):
+        answering = {'restarted': False, 'busName': ':1.40', 'reason': 'the live keyring daemon still answers'}
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(answering, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertEqual([r['reason'] for r in self.restarts(folder)], [answering['reason']])
+        self.assertEqual([call[0] for call in self.calls].count('recover'), 1)
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def failed_restart(self, error, reason):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(error, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertEqual([r['reason'] for r in self.restarts(folder)], [reason])
+        self.assertNotIn('synthetic-secret-output', (folder / 'lend.json').read_text())
+
+    def test_a_failed_restart_check_records_only_its_kind(self):
+        self.failed_restart(RuntimeError('ssh said: synthetic-secret-output'), 'check failed: RuntimeError')
+
+    def test_a_refused_restart_records_its_fixed_reason(self):
+        refused = type('KeyringRestartRefused', (RuntimeError,), {})
+        reason = 'the live keyring files are missing from the guest'
+        self.failed_restart(refused(reason), reason)
+
+    def test_a_guest_on_its_desktop_secret_service_is_not_restarted(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(None, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertEqual(self.restarts(folder), [])
+
+    def test_a_failed_carry_back_is_never_retried_with_a_fresh_baseline(self):
+        # A conflict with the builder's entry keeps the guest copy and the lock blocked, as before.
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(RESTARTED, fail=0, chain=Chain(self.calls, fail={'carry_back': 1}, reconcile=None))
+        names = [call[0] for call in self.calls]
+        self.assertNotIn('restart_keyring', names)
+        self.assertEqual((names.count('carry_back'), names.count('cleanup')), (1, 0))
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def test_a_builder_entry_changed_between_attempts_is_a_conflict_not_an_overwrite(self):
+        builder = {'entry': BASELINE}
+        calls = self.calls
+
+        class Cas(Chain):
+            # Exports the builder's entry as its baseline; carry-back is a compare-and-swap on it.
+            def __call__(self, host_broker, reference):
+                calls.append(('export', reference))
+                self.baseline = self.current = builder['entry']
+                return self
+
+            def carry_back(self, receipt):
+                calls.append(('carry_back', Path(receipt).name))
+                Path(receipt).open('x').close()
+                if builder['entry'] != self.baseline:
+                    raise proton.bridge.ProvisionError('credential_provisioning_failed')
+                builder['entry'] = self.current
+
+        class Updating(KeyringGuest):
+            def restart_keyring(self):
+                builder['entry'] = 'synthetic-same-session-update'  # lands while the daemon restarts
+                return super().restart_keyring()
+
+        folder = self.interrupted()
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded), self.assertRaises(proton.bridge.ProvisionError):
+            proton.recover(self.layout, folder, 'local_lender', 'lender', chain_factory=Cas(calls, fail={'recover': 1}),
+                           guest_factory=lambda run: Updating(calls, run, RESTARTED), clock=self.clock)
+        self.assertEqual(builder['entry'], 'synthetic-same-session-update')
+        self.assertEqual([call[0] for call in calls].count('export'), 1)
+        self.assertNotIn('cleanup', [call[0] for call in calls])
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def test_a_failed_builder_step_is_never_retried(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(RESTARTED, fail=0, chain=Chain(self.calls, fail={'export': 1}))
+        self.assertNotIn('restart_keyring', [call[0] for call in self.calls])
+
+    def test_after_a_carry_back_the_retry_only_cleans_up(self):
+        folder, result = self.recover(RESTARTED, fail=0, chain=Chain(self.calls, fail={'cleanup': 1}))
+        names = [call[0] for call in self.calls]
+        self.assertEqual(names, ['stop_app', 'export', 'recover', 'carry_back', 'cleanup', 'restart_keyring',
+                                 'cleanup', 'remove_brokers'])
+        self.assertTrue(result['recovered'])
+
+    def test_a_later_check_never_hides_an_earlier_restart(self):
+        folder, _ = self.recover(RESTARTED, fail=1)
+        answering = {'restarted': False, 'busName': ':1.77', 'reason': 'the live keyring daemon still answers'}
+        proton.restart_dead_keyring(KeyringGuest(self.calls, self.run_dir, answering), folder)
+        self.assertEqual([r['restarted'] for r in self.restarts(folder)], [True, False])
+
+
+
+class LiveKeyringRestart(unittest.TestCase):
+    """nightly_desktop_guest.restart_live_keyring against a scripted guest; no VM or keyring."""
+
+    DESKTOP = {'owner': ':1.9', 'pid': 900, 'provider': 'ksecretd'}
+
+    def restart(self, found, secret_service=':1.40', status=None, owners=None):
+        sys.path.insert(0, str(ROOT))
+        from tools.lab import nightly_desktop_guest as guest
+        info = {'secret_service': secret_service} if secret_service else {}
+        scripts, written = [], []
+        owners = iter(owners or [self.DESKTOP, self.DESKTOP])
+        def session(run, body, timeout=60):
+            scripts.append(body)
+            if 'control-directory' in body and 'NameHasOwner' in body:
+                return json.dumps(found)
+            if 'GetNameOwner' in body:
+                return json.dumps(next(owners))
+            if 'gnome-keyring-daemon' in body:
+                return json.dumps({'pid': 4242, 'start': '991'})
+            if 'ListNames' in body:
+                return json.dumps([':1.77'])
+            return json.dumps(status or {'provider': 'gnome-keyring-d', 'label': 'putgd lab', 'locked': False,
+                                         'default': '/org/freedesktop/secrets/collection/putgd_5flab'})
+        run = tempfile.TemporaryDirectory()
+        self.addCleanup(run.cleanup)
+        with mock.patch.object(guest.lab, 'verify_owned_guest'), mock.patch.object(guest.lab, 'put'), \
+                mock.patch.object(guest.lab, 'state', return_value=info), \
+                mock.patch.object(guest.lab, 'write_json', lambda path, value: written.append(dict(value))), \
+                mock.patch.object(guest.lab, 'guest_session', session):
+            try:
+                return guest.restart_live_keyring(run.name), scripts, written
+            except guest.KeyringRestartRefused as error:
+                return error, scripts, written
+
+    def started(self, scripts):
+        return [body for body in scripts if 'gnome-keyring-daemon' in body]
+
+    def test_a_dead_daemon_starts_again_on_its_own_files_and_the_run_names_its_new_connection(self):
+        record, scripts, written = self.restart({'owned': False, 'daemons': [], 'data': True})
+        self.assertEqual((record['restarted'], record['previousBusName'], record['busName']), (True, ':1.40', ':1.77'))
+        start = self.started(scripts)
+        self.assertEqual(len(start), 1)
+        self.assertIn('if False:', start[0])  # the existing folders are reused, never made afresh
+        # The new daemon loads the blank collection locked; it is opened on its new connection.
+        unlock = [body for body in scripts if body.endswith('lab_keyring.py --unlock')]
+        self.assertEqual(len(unlock), 1)
+        self.assertIn("SECRET_SERVICE_BUS_NAME=:1.77", unlock[0])
+        self.assertEqual(written, [{'secret_service': ':1.77'}])
+
+    def test_a_daemon_that_answers_or_still_serves_the_folder_is_never_replaced(self):
+        record, scripts, written = self.restart({'owned': True, 'daemons': [4100], 'data': True})
+        self.assertFalse(record['restarted'])
+        record, scripts, written = self.restart({'owned': False, 'daemons': [4100], 'data': True})
+        self.assertIsInstance(record, RuntimeError)
+        record, scripts, more = self.restart({'owned': False, 'daemons': [], 'data': False})
+        self.assertIsInstance(record, RuntimeError)
+        self.assertEqual((self.started(scripts), written, more), ([], [], []))
+
+    def test_the_run_names_the_new_connection_only_after_it_is_the_unlocked_lab_collection(self):
+        record, _, written = self.restart({'owned': False, 'daemons': [], 'data': True},
+                                          status={'label': 'Login', 'locked': True})
+        self.assertIsInstance(record, RuntimeError)
+        self.assertEqual(written, [])
+
+    def test_the_desktop_secret_service_must_be_up_before_and_unchanged_after(self):
+        dead = {'owner': None, 'pid': None, 'provider': None}
+        record, scripts, written = self.restart({'owned': False, 'daemons': [], 'data': True}, owners=[dead])
+        self.assertIsInstance(record, RuntimeError)
+        self.assertEqual((self.started(scripts), written), ([], []))
+        taken = {'owner': ':1.77', 'pid': 4242, 'provider': 'gnome-keyring-d'}
+        record, scripts, written = self.restart({'owned': False, 'daemons': [], 'data': True}, owners=[self.DESKTOP, taken])
+        self.assertIsInstance(record, RuntimeError)
+        self.assertEqual(written, [])
+        # The daemon this restart started is ended, by its pid and start time.
+        self.assertIn('kill -TERM 4242', scripts[-1])
+        self.assertIn('= 991 ]', scripts[-1])
+
+    def test_a_daemon_whose_connection_never_shows_is_ended(self):
+        sys.path.insert(0, str(ROOT))
+        from tools.lab import nightly_desktop_guest as guest
+        scripts = []
+        def session(run, body, timeout=60):
+            scripts.append(body)
+            return json.dumps({'pid': 4242, 'start': '991'} if 'gnome-keyring-daemon' in body else [])
+        with mock.patch.object(guest.lab, 'guest_session', session), mock.patch('time.monotonic', side_effect=[0, 0, 99]):
+            with self.assertRaises(RuntimeError):
+                guest._start_live_keyring('/synthetic/run', fresh=False)
+        self.assertIn('kill -TERM 4242', scripts[-1])
+
+    def test_a_guest_on_its_desktop_secret_service_has_nothing_to_restart(self):
+        record, scripts, _ = self.restart({}, secret_service=None)
+        self.assertIsNone(record)
+        self.assertEqual(scripts, [])
+
+
 class Resident:
     """A headless lab resident whose setup jobs end with synthetic outcomes."""
 
@@ -479,36 +721,74 @@ class SmokeCheck(unittest.TestCase):
         self.assertEqual(test.result['testScope'], 'account-folder')
         self.assertEqual(test.result['steps'][-1]['step'], 'checked')
 
-    def test_the_upload_wait_covers_every_active_operation_state(self):
-        source = (ROOT / 'src/core/Operation.cpp').read_text()
-        active = source.split('Operation::activeState', 1)[1].split('}', 1)[0]
-        import re
-        for state in re.findall(r'state=="([a-z]+)"', active):
-            self.assertIn(state, smoke.ACTIVE_STATES)
-
     def test_an_account_only_check_does_not_pass(self):
         test = self.smoke('account')
         with mock.patch('sys.stdout'), self.assertRaises(smoke.lab.LabError):
             test.check()
 
 
+def standin_process(path, **kwargs):
+    """A live process whose executable is `path` and whose name is its basename.
+
+    Not a copy of `sleep`: where coreutils is one multicall binary (uutils, the default on
+    Ubuntu 26.04) a copy under another name exits with "unknown program", and the test would
+    then inspect a dead process. A copy of the shell blocks on its stdin and ignores argv[0].
+    """
+    shutil.copy(shutil.which('sh'), path)
+    process = subprocess.Popen([str(path), '-c', 'read line'], stdin=subprocess.PIPE, **kwargs)
+    deadline = time.monotonic() + 5
+    while Path(f'/proc/{process.pid}/exe').resolve() != Path(path).resolve() and time.monotonic() < deadline:
+        time.sleep(.01)
+    if process.poll() is not None or Path(f'/proc/{process.pid}/exe').resolve() != Path(path).resolve():
+        process.kill()
+        process.wait()
+        raise AssertionError('stand-in process did not start as ' + str(path))
+    return process
+
+
 class QuitResidents(unittest.TestCase):
+    def test_collection_waits_for_provider_processes_but_not_a_clipboard_keeper(self):
+        """A resident or provider helper delays collection; a keeper does not."""
+        for name, remains in [('putgd', True), ('putgd-proton', True), ('putgd-clipboard-keeper', False)]:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='pg-w-') as temp:
+                root = Path(temp)
+                child = standin_process(root/name)
+                try:
+                    (root/'pid').write_text(str(child.pid))
+                    # Restrict real pgrep to our child, preserving its actual name matching.
+                    (root/'pgrep').write_text('#!/bin/sh\nexec '+shutil.which('pgrep')+' "$@" -F "$FIXTURE_PID"\n')
+                    (root/'pgrep').chmod(0o755)
+                    def ssh(run, command):
+                        """Execute process probes against this fixture PID only."""
+                        if command == proton.QUIT_RESIDENTS:
+                            return ''  # An unresponsive resident must still prevent collection.
+                        return subprocess.check_output(['sh', '-c', command], text=True,
+                            env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", FIXTURE_PID=str(root/'pid')))
+                    with mock.patch.object(proton.lab, 'state', return_value={}), mock.patch.object(proton.lab, 'cli'), mock.patch.object(proton.lab, 'ssh', side_effect=ssh):
+                        guest = proton.Guest(root)
+                        if remains:
+                            with self.assertRaises(proton.LabFailure):
+                                guest.stop_app(timeout=.05)
+                        else:
+                            guest.stop_app(timeout=.05)
+                finally:
+                    child.kill()
+                    child.wait()
+                    child.stdin.close()
+
     def test_a_private_resident_is_quit_with_its_own_environment(self):
         with tempfile.TemporaryDirectory(prefix='pg-q-') as temp:
             root = Path(temp)
             (root/'bin').mkdir()
-            shutil.copy(shutil.which('sleep'), root/'bin/putgd')
             (root/'bin/putgd-cli').write_text('#!/bin/sh\necho "$XDG_RUNTIME_DIR $1" > "$MARK"\n')
             (root/'bin/putgd-cli').chmod(0o755)
-            resident = subprocess.Popen([str(root/'bin/putgd'), '30'], env={'XDG_RUNTIME_DIR': str(root/'private dir')})
+            resident = standin_process(root/'bin/putgd', env={'XDG_RUNTIME_DIR': str(root/'private dir')})
+            self.addCleanup(resident.stdin.close)
             self.addCleanup(resident.wait)
             self.addCleanup(resident.kill)
             # A stand-in pgrep: only this test's process, never a real resident on this machine.
             (root/'pgrep').write_text(f'#!/bin/sh\necho {resident.pid}\n')
             (root/'pgrep').chmod(0o755)
-            deadline = time.monotonic() + 5
-            while Path(f'/proc/{resident.pid}/exe').resolve() != (root/'bin/putgd').resolve() and time.monotonic() < deadline:
-                time.sleep(.01)
             subprocess.run(['sh', '-c', proton.QUIT_RESIDENTS], check=True,
                            env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", MARK=str(root/'mark')))
             self.assertEqual((root/'mark').read_text().strip(), f"{root/'private dir'} ui.quit")

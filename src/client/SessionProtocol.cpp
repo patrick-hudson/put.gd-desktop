@@ -20,7 +20,11 @@ int deadlineMs(const QString& method) {
     if (method == "diagnostics.bundle") return diagnosticsBundleReplyMs + transportMarginMilliseconds;
     if (method == "diagnostics.uploadTarget") return diagnosticsUploadTargetReplyMs + transportMarginMilliseconds;
     if (method == "history.preview") return historyPreviewReplyMs + transportMarginMilliseconds;
+    if (method == "desktop.setup.recheck") return desktopSetupRecheckReplyMs + transportMarginMilliseconds;
     if (method == "upload.files") return uploadFilesReplyMs + transportMarginMilliseconds;
+    if (method == "settings.importUploader") return uploaderImportReplyMs + transportMarginMilliseconds;
+    // Unlocking can wait on a keyring prompt; an error log step may be that unlock (#1753).
+    if (method == "history.unlockCredentials" || method == "errors.act") return 300000 + transportMarginMilliseconds;
     return deadlineMilliseconds;
 }
 

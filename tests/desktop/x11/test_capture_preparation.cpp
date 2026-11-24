@@ -1,5 +1,5 @@
 // Actual helper protocol under isolated X11; not real-compositor acceptance.
-#include "platform/x11/CaptureControl.h"
+#include "ipc/CaptureControl.h"
 #include "platform/x11/X11NativeSnapshot.h"
 #include "platform/x11/X11SourceAdapter.h"
 #include "platform/x11/X11Reply.h"

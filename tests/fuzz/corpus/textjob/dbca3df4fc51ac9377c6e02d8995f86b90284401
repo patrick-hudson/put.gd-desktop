@@ -1,0 +1,1 @@
+{"result":{"text":"\n0","lineTops":[1,3],"words":[{"text":"I","rect":[3,2,30,4],"confidence":8}],"candidates":[],"codes":[{"format":"QRCode","kind":"text","text":"","length":22,"quad":[[1,4],[6,40],[.60,80],[]]}],"truncated":false,"banded":false,"languagesUsed":["eog"],"languagesSkipped":["deu"],"timings":{"engineStartMs":1,"recognizeMs":0}}}

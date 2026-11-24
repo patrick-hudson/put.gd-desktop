@@ -30,9 +30,9 @@ struct FileManagerContext {
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file
  bool firstRun=false;       // no version stamp existed for this installation identity; stamp now written
- bool announce=false;       // firstRun, on a desktop where this installation has an entry: say so
+ bool announce=false;       // AppImage firstRun, on a desktop where it has an entry: say so. DEB/RPM never announce
  QStringList written,removed,skipped; // absolute paths: changed now; removed; not written (a duplicate, or a file put.gd does not manage)
- QStringList restartable;   // firstRun only: the session's own file manager, at most one, when it may need a restart. "nautilus"/"caja"/"peony" with a system plugin; "pcmanfm"/"pcmanfm-qt" with a FileManager-Actions entry
+ QStringList restartable;   // firstRun only: the session's own file manager, at most one, when it may need a restart. "pcmanfm"/"pcmanfm-qt" with the AppImage's FileManager-Actions entry
  QString launcher;          // the stable launcher script (AppImage)
  QJsonObject toJson() const;
 };

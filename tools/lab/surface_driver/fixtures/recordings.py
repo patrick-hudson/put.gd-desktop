@@ -1,6 +1,7 @@
 """Fresh production captures of the existing visible cover_player pattern."""
 import json
 from pathlib import Path
+import re
 import shlex
 import time
 
@@ -9,20 +10,23 @@ from . import consent, media
 from .base import Fixture
 from .uploads import track
 
-GTK_SINK = '''import gi
+PATTERN_PLUGINS = '''import gi
 gi.require_version('Gst','1.0')
 from gi.repository import Gst
 Gst.init(None)
-raise SystemExit(0 if Gst.ElementFactory.find('gtksink') else 3)
+missing = [name for name in ('gtksink', 'timeoverlay') if not Gst.ElementFactory.find(name)]
+if missing:
+    print(', '.join(missing))
+    raise SystemExit(3)
 '''
 
 
 def media_preflight(scope):
-    """The visible pattern plays through GStreamer's GTK3 sink (#784)."""
-    result=scope.ctx.shell("python3 - <<'SD_GTKSINK'\n"+GTK_SINK+'SD_GTKSINK\n')
+    """The timestamped pattern plays through GStreamer's GTK3 sink (#784)."""
+    result=scope.ctx.shell("python3 - <<'SD_GST_PATTERN'\n"+PATTERN_PLUGINS+'SD_GST_PATTERN\n')
     if result['returncode']:
-        raise RecipeBlocked('recording source needs GStreamer gtksink (gstreamer1.0-gtk3 / gstreamer1-plugins-good-gtk); '
-                            'stage it in the disposable overlay with profiles/provision-probes.sh --recording-overlay',issue=784)
+        missing=result['stdout'].strip() or 'GStreamer with Python GI bindings'
+        raise RecipeBlocked('recording source is missing '+missing,issue=784)
 
 
 def desktop_contract(scope):
@@ -42,32 +46,56 @@ for group in outputs['logical']:
  assert len(group['rect'])==4 and all(isinstance(n,int) for n in group['rect'])
  assert group['rect'][2]>=640 and group['rect'][3]>=320 and group['names']
 print(json.dumps({'record_helper':str(helper),'logical':outputs['logical']}))
-'''.replace('APP',repr(scope.ctx.target.app_executable)).replace('BUILD',repr(build)).replace('COVER',repr(scope.root+'/cover.py')))
+'''.replace('APP',repr(scope.ctx.target.app_executable)).replace('BUILD',repr(build)).replace('COVER',repr(scope.root+'/cover_player.py')))
     return value
 
 
-def pattern(scope):
+def text_overlays(lines):
+    """GStreamer textoverlay elements drawing LINES in black, centred one above the other."""
+    for line in lines:
+        if not re.fullmatch(r'[A-Z0-9 ]{1,24}', line):
+            raise ValueError('text pattern lines are short upper-case words and digits')
+    spacing=80
+    first=-(len(lines)-1)*spacing//2
+    return ''.join('textoverlay text="%s" valignment=center halignment=center deltay=%d font-desc="Sans Bold 30" '
+                   'color=4278190080 draw-outline=false draw-shadow=false shaded-background=false ! '
+                   % (line, first+i*spacing) for i, line in enumerate(lines))
+
+
+def pattern(scope, text=None):
+    """The moving pattern; with TEXT (a few short lines) a still white video with that text instead."""
     scope.ctx.fixture('app-profile')
-    # Reuse the established output-pinned cover; add private FIFO controls for
-    # freeze/resume/raise. The real desktop, compositor and portal stay intact.
+    # Add a clock to distinguish repeated bar positions across a cut.
+    # Reuse the output-pinned cover and add private FIFO controls.
     source=(Path(__file__).resolve().parents[2]/'cover_player.py').read_text()
-    for anchor in ('def on_stdin(channel, condition):', "if command == 'quit':"):
+    bars='framerate=30/1 ! videoconvert ! gtksink name=video'
+    moving='pattern=%s horizontal-speed=6 '
+    for anchor in (bars, moving, 'def on_stdin(channel, condition):', "if command == 'quit':"):
         if source.count(anchor) != 1:
             raise RecipeBlocked('cover_player.py no longer matches pattern-control anchors',issue=672)
+    if text:
+        # A plain white source keeps the text the only thing in the video for recognition.
+        source=source.replace(moving, 'pattern=white %.0s')
+        source=source.replace(bars, 'framerate=30/1 ! '+text_overlays(text)+'videoconvert ! gtksink name=video')
+    else:
+        source=source.replace(bars, 'framerate=30/1 ! timeoverlay font-desc="Sans Bold 40" '
+                                   'shaded-background=true ! videoconvert ! gtksink name=video')
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
-    scope.write(scope.root+'/cover.py',source.encode())
+    scope.write(scope.root+'/cover_player.py',source.encode())
     media_preflight(scope)
     desktop=desktop_contract(scope)
     fifo=scope.root+'/pattern.fifo'
     scope.python('import os\nos.mkfifo('+repr(fifo)+',0o600)')
     # A child holds the FIFO open; no leaked shell, implicit desktop input or
-    # kill-by-name. Scope.launch owns this PID and its exact start identity.
+    # kill-by-name. Scope.launch owns this PID and its exact start identity, and its
+    # launcher exits at once, so the player runs --detached. The copy keeps the name
+    # cover_player.py, so a lock release check still sees one left behind.
     code='''import os,sys
 fd=os.open(FIFO,os.O_RDWR)
 os.dup2(fd,0)
-os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture'])
-'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
+os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture','--detached'])
+'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover_player.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
     scope.launch(['python3','-c',code],name='pattern',environment={'GTK_USE_PORTAL':'0'})
     def ready():
         result=scope.ctx.shell('cat '+shlex.quote(scope.root+'/pattern.log'))
@@ -142,7 +170,7 @@ def capture(scope, scene, *, seconds=4.5, automatic=False):
 def recording(scope, *, automatic=False):
     ctx=scope.ctx
     ctx.fixture('destination') # route/settings snapshot must precede prepare
-    media.register(scope) # private hashed copies before any clip is removed
+    media.register(scope, outside_receipts=True) # preserve raw clips outside the shareable audit root
     scene=ctx.fixture('events.recording-source')
     scene.command('freeze')
     frozen,frozen_path=capture(scope,scene)
@@ -165,10 +193,15 @@ def controls(scope):
     return Fixture(json.loads(path.read_text()))
 
 
-def preview_error(scope):
-    """Latch a genuine decoder failure, then restore bytes before real Retry."""
-    value=scope.ctx.fixture('recording')
-    working=actual_working(scope,value.id)
+def copy_recording(scope):
+    ctx=scope.ctx
+    ctx.fixture('file-dialog-fallback')
+    return ctx.fixture('recording')
+
+
+def _replace_working(scope, identity):
+    """Temporarily replace the owned working file and register its restoration."""
+    working=actual_working(scope,identity)
     backup=scope.root+'/decoder-backup.mkv'
     scope.python('''import os
 from pathlib import Path
@@ -189,7 +222,15 @@ if backup.exists():
  assert backup.resolve()==backup and p.resolve()==p
  os.replace(backup,p)
 '''.replace('WORKING',repr(working)).replace('BACKUP',repr(backup)))
-    scope.defer('decoder working bytes',restore,priority=300)
+    scope.defer('recording working bytes',restore,priority=300)
+    return restore
+
+
+def preview_error(scope):
+    """Latch a genuine decoder failure, then restore bytes before real Retry."""
+    value=scope.ctx.fixture('recording')
+    restore=_replace_working(scope,value.id)
+
     scope.ctx.call('recording.review',{'id':value.id,'action':'seek','time':1_000_000})
     scope.ctx.wait(lambda:scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['preview'].get('error'),
                    'genuine decoder preview failure',timeout=20)
@@ -199,11 +240,21 @@ if backup.exists():
 
 
 def export_failure(scope):
-    value=scope.ctx.fixture('recording')
-    blocker=scope.root+'/blocked-export'
-    scope.write(blocker,b'synthetic export blocker')
-    scope.ctx.call('recording.saveCopy',{'id':value.id,'path':blocker+'/retry.mp4'})
-    scope.ctx.wait(lambda:(state if (state:=scope.ctx.call('recording.inspect',{'id':value.id})).get('lastExport',{}).get('status')=='failed' else None),
-                   'authentic recoverable export failure',timeout=30)
-    scope.python('from pathlib import Path\np=Path('+repr(blocker)+');p.unlink();p.mkdir(mode=0o700)')
-    return Fixture(value,export_fault_removed=True,retry_path=blocker+'/retry.mp4')
+    from ..recipes.dialogs import choose_review_copy
+
+    value=scope.ctx.fixture('recording-copy')
+    path=value['output_dir']+'/retry.mp4'
+    restore=_replace_working(scope,value.id)
+    try:
+        # Only a chooser save tells the review to show a failed export banner.
+        # Force the worker to fail inside that event, with a valid save path.
+        choose_review_copy(scope.ctx,value.id,path,output_dir=value['output_dir'])
+        def failed():
+            result=scope.ctx.call('recording.inspect',{'id':value.id}).get('lastExport') or {}
+            return result.get('status')=='failed' and result.get('path')==path
+        scope.ctx.wait(failed,'recoverable export failure at the chosen path',timeout=30)
+        scope.ctx.wait(lambda: scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['errorDetails']['visible'],
+                       'the chooser export failure reaches the review')
+    finally:
+        restore()
+    return Fixture(value,retry_path=path)

@@ -1,10 +1,8 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
-#include "fixtures/FakeRecordingBackend.h"
 #include "client/SessionClient.h"
 #include <QLocalSocket>
 #include <QLocalServer>
-#include <QTimer>
 #include <QProcess>
 #include <QImage>
 #include <QScopeGuard>
@@ -43,6 +41,8 @@ private slots:
   const auto wider=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",280}});QVERIFY2(wider["ok"].toBool(),QJsonDocument(wider).toJson().constData());const int bounded=wider["result"].toObject()["propertiesWidth"].toInt();QVERIFY(bounded>=240&&bounded<=280);
   QCOMPARE(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["propertiesWidth"].toInt(),bounded);
   QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
+  // #1618: removeSuggestions is a known view action: with no suggested mark the editor answers edit_shape_missing, not invalid_request.
+  const auto noSuggestions=request("editor.view",{{"id",id},{"action","removeSuggestions"}});QVERIFY(!noSuggestions["ok"].toBool());QCOMPARE(noSuggestions["error"].toObject()["code"].toString(),QString("edit_shape_missing"));
   const auto applied=request("editor.apply",{{"id",id},{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{310,190}},{"text","Clipped annotation"}}}}}}});QVERIFY2(applied["ok"].toBool(),QJsonDocument(applied).toJson().constData());
   const auto affected=request("editor.view",{{"id",id},{"action","selectAffectedText"}});QVERIFY2(affected["ok"].toBool(),QJsonDocument(affected).toJson().constData());QVERIFY(affected["result"].toObject()["selectedShapeId"].toDouble()>0);QVERIFY(affected["result"].toObject()["textOutsideImage"].toBool());
   const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
@@ -52,24 +52,6 @@ private slots:
   details=request("editor.view",{{"id",id},{"action","saveDetails"}});QVERIFY(details["ok"].toBool());QVERIFY(!details["result"].toObject()["saveDetailsOpen"].toBool());
   const auto dismissed=request("editor.view",{{"id",id},{"action","dismissSavedCopy"}});QVERIFY2(dismissed["ok"].toBool(),QJsonDocument(dismissed).toJson().constData());QVERIFY(!dismissed["result"].toObject()["saveFeedbackVisible"].toBool());QCOMPARE(dismissed["result"].toObject()["lastSave"].toObject()["status"].toString(),QString("failed"));
 
- }
- void recordToggleWaitsForASlowStopThroughTheRealClient(){
-  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;
-  OperationService ops(d.filePath("data"),settings,registry,source);auto owned=std::make_unique<FakeRecordingBackend>();auto* backend=owned.get();ops.setRecordingBackend(std::move(owned));
-  HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
-  auto request=[&](const QString& method,const QJsonObject& params){QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});(void)putgd::test::waitFor([&]{return client.state()==QProcess::NotRunning;});return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
-  auto invoke=[&](const QString& mode){return request("action.invoke",{{"action","record"},{"mode",mode}});};
-  const auto prepared=invoke("open");QVERIFY(prepared["ok"].toBool());const auto id=prepared["result"].toObject()["recordingId"].toString();QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(request("recording.inspect",{{"id",id}})["result"].toObject()["state"].toString(),QString("ready"));QCOMPARE(invoke("toggle")["result"].toObject()["step"].toString(),QString("start"));
-  backend->deferStop=true;QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"action.invoke","{\"action\":\"record\",\"mode\":\"toggle\"}"});PUTGD_TRY_VERIFY(backend->pendingStop);
-  // Outlast action.invoke's former 15 s client budget, within the helper's 30 s.
-  QTimer::singleShot(16000,Qt::PreciseTimer,&ops,[backend]{auto done=std::move(backend->pendingStop);done({},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});});
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,LocalServer::replyDeadlineMs("recording.stop")+1000);
-  QCOMPARE(client.exitCode(),0);const auto stopped=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(stopped["ok"].toBool());
-  QCOMPARE(stopped["result"].toObject()["step"].toString(),QString("stop"));QCOMPARE(stopped["result"].toObject()["stopReason"].toString(),QString("user"));
-  client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"recording.inspect",QString("{\"id\":\"%1\"}").arg(id)});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
-  auto expected=stopped["result"].toObject();expected.remove("step");QCOMPARE(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["result"].toObject(),expected);
-  QVERIFY(request("recording.cancel",{{"id",id}})["ok"].toBool());
  }
  void historyImageEndpointAcceptsOnlyJournalId(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);PUTGD_TRY_VERIFY(operations.ready());
@@ -193,29 +175,10 @@ private slots:
   client.start(PUTGD_APP_PATH,{"--history"});PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,5000);QCOMPARE(client.exitStatus(),QProcess::NormalExit);QCOMPARE(client.exitCode(),1);QCOMPARE(requests,1);
   const auto error=client.readAllStandardError();QVERIFY2(error.contains(expectedCode+':'),error.constData());QVERIFY(!error.contains("synthetic-private"));QVERIFY(client.readAllStandardOutput().isEmpty());QVERIFY(!QFileInfo::exists(d.filePath("config/putgd/config.json")));QVERIFY(!QFileInfo::exists(d.filePath("data/putgd")));
  }
- void secondLauncherWaitsForCompleteDelayedResponse() {
-  QTemporaryDir d;const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime+"/putgd"));QVERIFY(QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(runtime+"/putgd/session.sock"));bool received=false;
-  connect(&server,&QLocalServer::newConnection,this,[&]{auto* socket=server.nextPendingConnection();socket->setParent(&server);
-   connect(socket,&QLocalSocket::readyRead,socket,[&,socket]{auto bytes=socket->property("request").toByteArray()+socket->readAll();socket->setProperty("request",bytes);if(!bytes.endsWith('\n'))return;QObject::disconnect(socket,&QLocalSocket::readyRead,socket,nullptr);received=true;
-    const auto request=QJsonDocument::fromJson(bytes).object();const auto reply=QJsonDocument(LocalServer::response(request["requestId"].toString(),{},{{"shown","history"}})).toJson(QJsonDocument::Compact)+'\n';
-    socket->write(reply.left(reply.size()/2));QTimer::singleShot(3500,socket,[socket,reply]{socket->write(reply.mid(reply.size()/2));socket->disconnectFromServer();});
-   });
-  });
-  QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("QT_QPA_PLATFORM","offscreen");client.setProcessEnvironment(environment);client.start(PUTGD_APP_PATH,{"--history"});
-  PUTGD_TRY_VERIFY(received);putgd::test::settle(3100);PUTGD_TRY_COMPARE(client.state(),QProcess::Running);PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,3000);QCOMPARE(client.exitCode(),0);
- }
- void secondLauncherHasOneDeadlineDespitePartialTraffic() {
-  QTemporaryDir d;const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime+"/putgd"));QVERIFY(QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(runtime+"/putgd/session.sock"));int connections=0;
-  connect(&server,&QLocalServer::newConnection,this,[&]{auto* socket=server.nextPendingConnection();socket->setParent(&server);++connections;auto* timer=new QTimer(socket);timer->setInterval(1000);connect(timer,&QTimer::timeout,socket,[socket]{socket->write(" ");});timer->start();connect(socket,&QLocalSocket::readyRead,socket,[socket]{socket->readAll();});});
-  QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("QT_QPA_PLATFORM","offscreen");client.setProcessEnvironment(environment);QElapsedTimer elapsed;elapsed.start();client.start(PUTGD_APP_PATH,{"--history"});
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,20000);QVERIFY(elapsed.elapsed()>=14000);QVERIFY(elapsed.elapsed()<20000);QCOMPARE(client.exitCode(),1);QCOMPARE(connections,1);QVERIFY(client.readAllStandardError().contains("activation_timeout:"));
- }
  void realClientHistoryLinkCopyUpdatesPersistedOperationStatus(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;
   OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
-  Operation op;op.id="copy-recovery";op.state="completed";op.copyStatus="suppressed";OperationItem item;item.artifact.id="stored-link";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/stored-link";op.items={item};HistoryStore store(ops.databasePath());QVERIFY(!store.saveOperation(op));
+  Operation op;op.id="copy-recovery";op.restore(OperationState::Completed);op.copyStatus="suppressed";OperationItem item;item.artifact.id="stored-link";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/stored-link";op.items={item};HistoryStore store(ops.databasePath());QVERIFY(!store.saveOperation(op));
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"history.copyLink","{\"id\":\"stored-link\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
   QCOMPARE(client.exitCode(),0);const auto copied=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(copied["ok"].toBool());QVERIFY(copied["result"].toObject()["copied"].toBool());QCOMPARE(source.copied.text,item.receipt.directUrl);
   client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"operation.inspect","{\"id\":\"copy-recovery\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);

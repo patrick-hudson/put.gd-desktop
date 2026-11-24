@@ -22,12 +22,13 @@ TAG = 'v0.1.1-nightly.600'
 VERSION = '0.1.1-nightly.600'
 PACKAGE_VERSION = '0.1.1~nightly.600'
 COMMIT = 'a' * 40
-LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44')
+LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45')
+RPM_LABELS = ('fedora44', 'fedora45')
 KEYS = Path(__file__).resolve().parents[2] / 'packaging/linux/repo/keys'
 
 
 def asset_name(label, version=VERSION):
-    return f'putgd-{version}-{label}-x86_64.' + ('rpm' if label == 'fedora44' else 'deb')
+    return f'putgd-{version}-{label}-x86_64.' + ('rpm' if label in RPM_LABELS else 'deb')
 
 
 class FakeGitHub:
@@ -74,7 +75,7 @@ def release_files(tamper=None, zsync_url=RELEASE_URL):
     builds = {'release': {'tag': TAG, 'version': VERSION, 'packageVersion': PACKAGE_VERSION, 'gitCommit': COMMIT},
               'receipts': {label: {'package': {'sha256': hashlib.sha256(files[asset_name(label)]).hexdigest(),
                                                'size': len(files[asset_name(label)]),
-                                               'format': 'RPM' if label == 'fedora44' else 'DEB'}} for label in LABELS}}
+                                               'format': 'RPM' if label in RPM_LABELS else 'DEB'}} for label in LABELS}}
     builds['receipts']['appimage'] = {
         'artifact': {'file': IMAGE, 'sha256': hashlib.sha256(files[IMAGE]).hexdigest(), 'bytes': len(files[IMAGE]), 'mode': '0755'},
         'update': {'information': 'zsync|https://app.put.gd/dl/nightly/appimage.zsync',
@@ -147,15 +148,26 @@ class Verification(unittest.TestCase):
 
         def missing_label(files, builds):
             del files[asset_name('fedora44')]
+
+        def missing_receipted_label(files, builds):
+            del files[asset_name('fedora45')]
         cases = {
             'receipt': FakeGitHub(release_files(corrupt_package)),
             'version': FakeGitHub(release_files(wrong_version)),
             'missing': FakeGitHub(release_files(missing_label)),
+            'missing with receipt': FakeGitHub(release_files(missing_receipted_label)),
             'commit': FakeGitHub(release_files(), commit='b' * 40),
         }
         for name, github in cases.items():
             with self.subTest(name), self.assertRaises(pkgrepo.SignerError):
                 self.verify(github)
+
+    def test_release_built_before_fedora45_still_verifies(self):
+        def before_fedora45(files, builds):
+            del files[asset_name('fedora45')]
+            del builds['receipts']['fedora45']
+        inputs = self.verify(FakeGitHub(release_files(before_fedora45)))
+        self.assertEqual(sorted(inputs['packages']), sorted(set(LABELS) - {'fedora45'}))
 
     def test_github_digest_and_sums_must_agree(self):
         github = FakeGitHub(release_files())
@@ -477,7 +489,7 @@ class Metadata(unittest.TestCase):
         document = update_feed.feed('nightly', github.release(), sums, '2026-10-21T06:00:00Z')
         update_feed.check_feed(document)
         self.assertEqual(sorted(document['release']['assets']),
-                         ['appimage', 'debian13', 'fedora44', 'ubuntu24.04', 'ubuntu26.04'])
+                         ['appimage', 'debian13', 'fedora44', 'fedora45', 'ubuntu24.04', 'ubuntu26.04'])
         self.assertEqual(document['release']['assets']['appimage']['zsync'], 'https://app.put.gd/dl/nightly/appimage.zsync')
         broken = json.loads(json.dumps(document))
         broken['release']['assets']['debian13']['zsync'] = 'x'
@@ -527,15 +539,16 @@ def tool_fixture(root, version, package_version):
             f'Priority: optional\nDescription: test {label}\n')
         subprocess.run(['dpkg-deb', '--build', '--root-owner-group', str(package), str(assets / asset_name(label, version))],
                        check=True, capture_output=True)
-    spec = root / 'putgd.spec'
     fixture_root(root / 'rpm-root')
     files = sorted('/' + path.relative_to(root / 'rpm-root').as_posix() for path in (root / 'rpm-root').rglob('*') if path.is_file())
-    spec.write_text(f'Name: putgd\nVersion: {package_version}\nRelease: 1.fc44\nSummary: t\nLicense: MIT\n'
-                    f'BuildArch: x86_64\n%description\nt\n%install\ncp -a {root / "rpm-root"}/. %{{buildroot}}/\n'
-                    '%files\n' + ''.join(name + '\n' for name in files))
-    subprocess.run(['rpmbuild', '-bb', '--define', f'_topdir {root / "rpm"}', '--define', '_build_id_links none',
-                    str(spec)], check=True, capture_output=True)
-    shutil.copy2(next((root / 'rpm/RPMS').rglob('*.rpm')), assets / asset_name('fedora44', version))
+    for label in RPM_LABELS:
+        spec = root / f'putgd-{label}.spec'
+        spec.write_text(f'Name: putgd\nVersion: {package_version}\nRelease: 1.fc{label[-2:]}\nSummary: t\nLicense: MIT\n'
+                        f'BuildArch: x86_64\n%description\nt\n%install\ncp -a {root / "rpm-root"}/. %{{buildroot}}/\n'
+                        '%files\n' + ''.join(name + '\n' for name in files))
+        subprocess.run(['rpmbuild', '-bb', '--define', f'_topdir {root / ("rpm-" + label)}', '--define', '_build_id_links none',
+                        str(spec)], check=True, capture_output=True)
+        shutil.copy2(next((root / ('rpm-' + label) / 'RPMS').rglob('*.rpm')), assets / asset_name(label, version))
     (assets / 'SHA256SUMS').write_text(''.join(f'{pkgrepo.sha256_file(path)}  {path.name}\n'
                                                for path in sorted(assets.iterdir())))
     settings = config(root, gnupghome=gnupg, minisign_key=root / 'nightly.key', keys=keys,
@@ -568,14 +581,20 @@ class RealTools(unittest.TestCase):
             self.assertIn(pkgrepo.sha256_file(assets / asset_name('ubuntu24.04')), packages)
             self.assertTrue(pkgrepo.verify_gpg(keys / 'putgd-nightly.gpg', tree / 'apt/debian13/dists/nightly/InRelease'))
             self.assert_catalog(tree, 'nightly', receipt, keys / 'putgd-nightly.gpg')
-            # The repository RPM is the built one plus a nightly signature; the receipt maps the digests.
-            signed = next((tree / 'rpm/fedora/44/x86_64/nightly/Packages').glob('putgd-*.rpm'))
-            self.assertTrue(pkgrepo.verify_rpm(keys / 'putgd-nightly.asc', signed))
-            self.assertEqual(pkgrepo.rpm_digests(signed), pkgrepo.rpm_digests(assets / asset_name('fedora44')))
-            self.assertEqual(receipt['rpm'][0]['githubSha256'], pkgrepo.sha256_file(assets / asset_name('fedora44')))
-            self.assertEqual(receipt['rpm'][0]['repoSha256'], pkgrepo.sha256_file(signed))
-            self.assertFalse(pkgrepo.verify_rpm(keys / 'putgd-nightly.asc', assets / asset_name('fedora44')))
-            self.assertFalse((tree / 'rpm/fedora/44/x86_64/nightly/repodata/repomd.xml.asc').exists())
+            # Each repository RPM is its release's build plus a nightly signature; the receipt maps the digests.
+            self.assertEqual([entry['label'] for entry in receipt['rpm']], list(RPM_LABELS))
+            for entry, label in zip(receipt['rpm'], RPM_LABELS):
+                release = label[-2:]
+                signed = next((tree / f'rpm/fedora/{release}/x86_64/nightly/Packages').glob('putgd-*.rpm'))
+                self.assertTrue(signed.name.endswith(f'.fc{release}.x86_64.rpm'))
+                self.assertTrue(pkgrepo.verify_rpm(keys / 'putgd-nightly.asc', signed))
+                self.assertEqual(pkgrepo.rpm_digests(signed), pkgrepo.rpm_digests(assets / asset_name(label)))
+                self.assertEqual(entry['githubSha256'], pkgrepo.sha256_file(assets / asset_name(label)))
+                self.assertEqual(entry['repoSha256'], pkgrepo.sha256_file(signed))
+                self.assertFalse(pkgrepo.verify_rpm(keys / 'putgd-nightly.asc', assets / asset_name(label)))
+                self.assertFalse((tree / f'rpm/fedora/{release}/x86_64/nightly/repodata/repomd.xml.asc').exists())
+                self.assertIn(f'rpm/fedora/{release}/x86_64/nightly/Packages/{signed.name}',
+                              [signature['file'] for signature in receipt['signatures']])
             sums = tree / f'releases/{TAG}/SHA256SUMS'
             self.assertTrue(pkgrepo.verify_minisign(keys / 'putgd-nightly.minisign.pub', sums, sums.with_name('SHA256SUMS.minisig')))
             update_feed.check_feed(json.loads((tree / 'update/v1/nightly.json').read_text()))
@@ -602,16 +621,17 @@ class RealTools(unittest.TestCase):
             self.assertIn('Package: putgd\n', yml)
             deb = next((tree / f'apt/{label}/pool/main/p/putgd').glob('*.deb'))
             self.assertEqual(receipt['catalog'][label]['packageSha256'], pkgrepo.sha256_file(deb))
-        repo = tree / f'rpm/fedora/44/x86_64/{channel}'
-        locations = __import__('appstream_catalog').repomd_locations(repo / 'repodata/repomd.xml')
-        self.assertTrue({'primary', 'appstream', 'appstream-icons'} <= set(locations))
-        xml = gzip.decompress((repo / locations['appstream']).read_bytes()).decode()
-        self.assertIn('origin="putgd-' + channel + '"', xml)
-        self.assertIn('<pkgname>putgd</pkgname>', xml)
-        self.assertEqual(sorted(p.name for p in (repo / 'repodata').glob('*appstream*')),
-                         sorted(Path(locations[kind]).name for kind in ('appstream', 'appstream-icons')))
-        rpm = next((repo / 'Packages').glob('*.rpm'))
-        self.assertEqual(receipt['catalog']['fedora44']['packageSha256'], pkgrepo.sha256_file(rpm))
+        for label in RPM_LABELS:
+            repo = tree / f'rpm/fedora/{label[-2:]}/x86_64/{channel}'
+            locations = __import__('appstream_catalog').repomd_locations(repo / 'repodata/repomd.xml')
+            self.assertTrue({'primary', 'appstream', 'appstream-icons'} <= set(locations))
+            xml = gzip.decompress((repo / locations['appstream']).read_bytes()).decode()
+            self.assertIn('origin="putgd-' + channel + '"', xml)
+            self.assertIn('<pkgname>putgd</pkgname>', xml)
+            self.assertEqual(sorted(p.name for p in (repo / 'repodata').glob('*appstream*')),
+                             sorted(Path(locations[kind]).name for kind in ('appstream', 'appstream-icons')))
+            rpm = next((repo / 'Packages').glob('*.rpm'))
+            self.assertEqual(receipt['catalog'][label]['packageSha256'], pkgrepo.sha256_file(rpm))
 
     def test_appimage_only_lab_release_gets_signed_repositories_and_the_mirror(self):
         """#293 phase 3 lab acceptance publishes AppImages only; the lab repositories stay valid."""
@@ -679,18 +699,21 @@ class StableRoundTrip(unittest.TestCase):
                 shutil.copy2(tree / relative, copy)
                 subprocess.run(['minisign', '-S', '-s', str(root / 'stable.key'), '-m', str(copy), '-x',
                                 str(out / (relative.replace('/', '__') + '.minisig'))], check=True, capture_output=True)
-            signed = out / manifest['rpm']['file']
-            def sign_rpm(fingerprint):
-                shutil.copy2(stage / 'unsigned.rpm', signed)
+            self.assertEqual((manifest['schemaVersion'], sorted(manifest['rpms'])), (3, list(RPM_LABELS)))
+            def sign_rpm(label, fingerprint):
+                signed = out / manifest['rpms'][label]['file']
+                shutil.copy2(stage / f'unsigned-{label}.rpm', signed)
                 subprocess.run(['rpmsign', '--define', '_gpg_name ' + fingerprint, '--define', f'_gpg_path {env["GNUPGHOME"]}',
                                 '--addsign', str(signed)], env=env, check=True, capture_output=True)
-            # Signed with the wrong (nightly) key: refused, nothing published.
-            sign_rpm(fingerprints['nightly'])
+            sign_rpm('fedora44', fingerprints['stable'])
+            self.assertFalse(signer.stable_signed(stage))
+            # One RPM signed with the wrong (nightly) key: refused, nothing published.
+            sign_rpm('fedora45', fingerprints['nightly'])
             self.assertTrue(signer.stable_signed(stage))
             with self.assertRaisesRegex(pkgrepo.SignerError, 'channel key'):
                 signer.publish_stable('lab', stage)
             self.assertFalse(any(key.endswith('InRelease') for key in s3.objects))
-            sign_rpm(fingerprints['stable'])
+            sign_rpm('fedora45', fingerprints['stable'])
             signer.publish_stable('lab', stage)
             self.assertFalse(stage.exists())
             published = {key: value[0] for key, value in s3.objects.items()}
@@ -701,20 +724,20 @@ class StableRoundTrip(unittest.TestCase):
             components = published['lab/apt/debian13/dists/stable/main/dep11/Components-amd64.yml.gz']
             self.assertIn(hashlib.sha256(components).hexdigest(), inrelease)
             self.assertTrue(any(key.endswith('-appstream.xml.gz') for key in published))
-            self.assertEqual(json.loads(published['lab/receipts/v0.1.1.json'])['catalog']['fedora44']['packageSha256'],
-                             hashlib.sha256(published[next(key for key in published if key.endswith('.rpm'))]).hexdigest())
-            rpm_key = next(key for key in published if key.endswith('.rpm'))
-            rpm = root / 'published.rpm'
-            rpm.write_bytes(published[rpm_key])
-            self.assertTrue(pkgrepo.verify_rpm(settings.keys / 'putgd-stable.asc', rpm))
-            self.assertFalse(pkgrepo.verify_rpm(settings.keys / 'putgd-nightly.asc', rpm))
-            feed = json.loads(published['lab/update/v1/stable.json'])
-            self.assertEqual(feed['release']['tag'], 'v0.1.1')
             receipt = json.loads(published['lab/receipts/v0.1.1.json'])
             self.assertEqual(receipt['result'], 'published')
-            mapping = receipt['rpm'][-1]
-            self.assertEqual((mapping['signedWith'], mapping['repoSha256'], mapping['githubSha256']),
-                             (fingerprints['stable'], hashlib.sha256(published[rpm_key]).hexdigest(), sums[asset_name('fedora44', '0.1.1')]))
+            for label in RPM_LABELS:
+                rpm_key = next(key for key in published if key.startswith(f'lab/rpm/fedora/{label[-2:]}/') and key.endswith('.rpm'))
+                self.assertEqual(receipt['catalog'][label]['packageSha256'], hashlib.sha256(published[rpm_key]).hexdigest())
+                rpm = root / 'published.rpm'
+                rpm.write_bytes(published[rpm_key])
+                self.assertTrue(pkgrepo.verify_rpm(settings.keys / 'putgd-stable.asc', rpm))
+                self.assertFalse(pkgrepo.verify_rpm(settings.keys / 'putgd-nightly.asc', rpm))
+                mapping = next(entry for entry in receipt['rpm'] if entry['label'] == label and entry['signedWith'] == fingerprints['stable'])
+                self.assertEqual((mapping['repoSha256'], mapping['githubSha256']),
+                                 (hashlib.sha256(published[rpm_key]).hexdigest(), sums[asset_name(label, '0.1.1')]))
+            feed = json.loads(published['lab/update/v1/stable.json'])
+            self.assertEqual(feed['release']['tag'], 'v0.1.1')
 
 
 if __name__ == '__main__':

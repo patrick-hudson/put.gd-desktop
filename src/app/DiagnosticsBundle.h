@@ -49,7 +49,7 @@ private:
 // at most 20 MiB (the oldest log records go first). Packages are saved locally
 // only; the default folder <archive root>/diagnostics belongs to put.gd, which
 // keeps its newest 10 packages and none older than 30 days. A package saved
-// anywhere else is never deleted. See docs/diagnostics.md.
+// anywhere else is never deleted. See docs/design/diagnostics.md.
 class DiagnosticsBundles final:public QObject {
  Q_OBJECT
 public:

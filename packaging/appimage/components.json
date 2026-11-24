@@ -16,13 +16,23 @@
                 "usr/share/gnome-shell/extensions/putgd@put.gd/*", "usr/share/putgd/autostart/putgd.desktop",
                 "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
                 "usr/share/putgd/aws-runtime-manifest.json", "usr/share/putgd/fonts/*.ttf"],
-      "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml", "usr/share/doc/putgd/fonts/*"],
+      "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/scroll-tracker-LICENSE", "usr/share/doc/putgd/LGPL-2.1.txt", "usr/share/doc/putgd/wayland-*.xml", "usr/share/doc/putgd/fonts/*", "usr/share/doc/putgd/emoji/*"],
       "embedded": [
+        {"name": "wayscrollshot and mark-shot band matcher (ported into the scrolling capture's tracker, in putgd-record)", "license": "MIT",
+         "licenseText": "usr/share/doc/putgd/scroll-tracker-LICENSE"},
         {"name": "IBM Plex Sans Regular, Medium and SemiBold", "license": "OFL-1.1",
          "licenseText": "usr/share/doc/putgd/fonts/OFL-sans.txt"},
         {"name": "IBM Plex Mono Regular", "license": "OFL-1.1",
          "licenseText": "usr/share/doc/putgd/fonts/OFL-mono.txt"},
+        {"name": "Emoji templates drawn from Noto Color Emoji 2.047, 2.051 and 2.057 (in putgd-ocr)", "license": "OFL-1.1",
+         "licenseText": "usr/share/doc/putgd/emoji/OFL.txt"},
+        {"name": "Emoji templates drawn from Twemoji Mozilla 0.7.0 (in putgd-ocr)", "license": "CC-BY-4.0",
+         "licenseText": "usr/share/doc/putgd/emoji/CC-BY-4.0.txt"},
+        {"name": "Unicode Emoji 16.0 sequences in the emoji templates (in putgd-ocr)", "license": "Unicode-3.0",
+         "licenseText": "usr/share/doc/putgd/emoji/UNICODE-LICENSE.txt"},
         {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
+         "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"},
+        {"name": "KWin fake-input protocol bindings", "license": "LGPL-2.1-or-later",
          "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"}
       ],
       "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
@@ -149,6 +159,130 @@
       ],
       "files": [],
       "note": "The exact runtime mi_version returns 217, identifying mimalloc 2.1.7. Its source is included in the complete source asset and its original MIT notice is retained here."
+    },
+    {
+      "id": "leptonica",
+      "name": "leptonica",
+      "version": {
+        "from": "lock",
+        "key": "leptonica"
+      },
+      "source": {
+        "from": "lock",
+        "key": "leptonica"
+      },
+      "license": "BSD-2-Clause",
+      "licenseTexts": {
+        "BSD-2-Clause": "leptonica-license.txt"
+      },
+      "licenseFiles": [
+        "leptonica-license.txt"
+      ],
+      "files": [
+        "usr/lib/liblept*.so*"
+      ]
+    },
+    {
+      "id": "tesseract",
+      "name": "tesseract",
+      "version": {
+        "from": "lock",
+        "key": "tesseract"
+      },
+      "source": {
+        "from": "lock",
+        "key": "tesseract"
+      },
+      "license": "Apache-2.0",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE"
+      },
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "files": [
+        "usr/lib/libtesseract.so*"
+      ]
+    },
+    {
+      "id": "zxing",
+      "name": "zxing",
+      "version": {
+        "from": "lock",
+        "key": "zxing"
+      },
+      "source": {
+        "from": "lock",
+        "key": "zxing"
+      },
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE",
+        "BSD-3-Clause": "PUTGD-THIRD-PARTY-NOTICES.txt",
+        "MIT": "PUTGD-THIRD-PARTY-NOTICES.txt"
+      },
+      "licenseFiles": [
+        "LICENSE",
+        "PUTGD-THIRD-PARTY-NOTICES.txt"
+      ],
+      "embedded": [{"name": "libzueci", "version": "1.0.1", "license": "BSD-3-Clause AND MIT",
+                    "licenseText": "usr/share/doc/putgd/bundled-licenses/zxing/PUTGD-THIRD-PARTY-NOTICES.txt"}],
+      "files": [
+        "usr/lib/libZXing.so*"
+      ]
+    },
+    {
+      "id": "tessdata_fast",
+      "name": "tessdata_fast",
+      "version": {
+        "from": "lock",
+        "key": "tessdata_fast"
+      },
+      "source": {
+        "from": "lock",
+        "key": "tessdata_fast"
+      },
+      "license": "Apache-2.0",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE"
+      },
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "files": [
+        "usr/share/putgd/tessdata/eng.traineddata",
+        "usr/share/putgd/tessdata/osd.traineddata",
+        "usr/share/putgd/tessdata/chi_sim.traineddata",
+        "usr/share/putgd/tessdata/jpn.traineddata",
+        "usr/share/putgd/tessdata/kor.traineddata",
+        "usr/share/putgd/tessdata/rus.traineddata",
+        "usr/share/putgd/tessdata/ara.traineddata",
+        "usr/share/putgd/tessdata/heb.traineddata",
+        "usr/share/putgd/tessdata/hin.traineddata",
+        "usr/share/putgd/tessdata/tha.traineddata",
+        "usr/share/putgd/tessdata/ell.traineddata"
+      ]
+    },
+    {
+      "id": "qrcodegen",
+      "name": "Nayuki QR Code generator",
+      "version": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "source": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "license": "MIT",
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/qrcodegen-LICENSE"
+      },
+      "files": [],
+      "noticeFiles": [
+        "usr/share/doc/putgd/qrcodegen-LICENSE"
+      ],
+      "note": "Vendored into the core library; commit and source file hashes are pinned in dependency-lock.json."
     }
   ]
 }

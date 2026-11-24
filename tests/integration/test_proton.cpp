@@ -1,4 +1,6 @@
+#include <QJsonDocument>
 #include <QDateTime>
+#include <QFile>
 #include <memory>
 #include <optional>
 #include <QScopeGuard>
@@ -20,6 +22,9 @@ public:
  putgd::test::OpaqueProvider storage;std::atomic_int shares{0},inspections{0};bool privateDefault=false,loseShareReply=false,inspectPrivate=false,changedShareIdentity=false,protonSettings=false,draftConflict=false,explicitDraft=true,reconciliationFails=false;QString reservedCandidate;std::atomic_int draftCollisions{0};
  std::function<void(const UploadRequest&,std::function<void(StatResult)>)> reconciliationHook;QMutex captureMutex;QList<UploadRequest> capturedUploads,capturedReconciliations;
  std::function<void(const ShareRequest&)> beforeCompletion;QList<QJsonObject> createOptions;QString expiresAt;
+ // #1872: a provider that records its share's ID in the step's progress, as Nextcloud's does, and
+ // every request's progress as it arrived.
+ QString recordShareId,sharedLink="https://example.invalid/recorded#secret";QList<QJsonObject> requestProgress;
  ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
  QString defaultPublicationMode(const Destination&)const override{return privateDefault?"private":"share";}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n)const override{return storage.serializationKey(d,o,n);}
@@ -31,7 +36,9 @@ public:
  void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb)override{{QMutexLocker lock(&captureMutex);capturedReconciliations.append(r);}if(reconciliationHook){reconciliationHook(r,cb);return;}if(reconciliationFails&&draftCollisions.load()>0){cb({"unknown",{}, {"proton_request_timeout","Synthetic reconciliation deadline",{{"reason","deadline"},{"timeoutMs",2000},{"method","reconcile"}}}});return;}storage.reconcile(r,cb);}
  void remove(const DeleteRequest& r,DurableCheckpoint d,std::function<void(DeleteResult)> cb)override{storage.remove(r,d,cb);}
  void share(const ShareRequest& r,DurableCheckpoint durable,std::function<void(ShareResult)> cb)override{
-  const auto complete=[this,r,cb](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {},expiresAt});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl="https://example.invalid/recorded#secret";else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,{}, {},r.action=="create"?expiresAt:QString{}});};
+  requestProgress.append(r.progress);
+  const QJsonObject recorded=recordShareId.isEmpty()||r.action!="create"?QJsonObject{}:QJsonObject{{"schemaVersion",1},{"phase","created"},{"shareId",recordShareId}};
+  const auto complete=[this,r,cb,recorded](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {},expiresAt});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl=sharedLink;else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,recorded, {},r.action=="create"?expiresAt:QString{}});};
   if(r.action=="inspect")complete({});else durable({{"schemaVersion",1},{"phase","intent"}},complete);
  }
 };
@@ -60,15 +67,81 @@ private slots:
   profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic"}};doc["profiles"]=QJsonArray{profile};QVERIFY(settings.save(doc,{}));
   doc=putgd::test::configuration(tmp.path());QVERIFY(settings.save(doc,settings.revision()));
  }
- void missingShareAfterUncertainCreateRetainsIntent() {
+ // One Retry finishes an uncertain create (#1399): its inspection finds the file
+ // unshared with the create intent kept, and the same run makes the link, once.
+ void uncertainCreateIsFinishedByOneRetry() {
   QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->loseShareReply=true;provider->inspectPrivate=true;registry.add("opaque",provider);
   SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());
   const auto original=store.operation(id).items.first().receipt;QCOMPARE(store.operation(id).items.first().shareIntent,QString("create"));
-  bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  QCOMPARE(store.operation(id).items.first().shareStatus,QString("private"));QCOMPARE(store.operation(id).items.first().shareIntent,QString("create"));QCOMPARE(store.operation(id).state,QString("partial"));QCOMPARE(provider->shares.load(),1);QCOMPARE(source.copies,0);
-  provider->loseShareReply=false;retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  const auto item=store.operation(id).items.first();QCOMPARE(item.shareStatus,QString("shared"));QVERIFY(item.shareIntent.isEmpty());QCOMPARE(item.receipt.objectReference,original.objectReference);QCOMPARE(item.receipt.concurrencyToken,original.concurrencyToken);QCOMPARE(provider->shares.load(),2);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
+  provider->loseShareReply=false;bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  const auto item=store.operation(id).items.first();QCOMPARE(item.shareStatus,QString("shared"));QVERIFY(item.shareIntent.isEmpty());QCOMPARE(store.operation(id).stateName(),QString("completed"));QCOMPARE(item.receipt.objectReference,original.objectReference);QCOMPARE(item.receipt.concurrencyToken,original.concurrencyToken);QCOMPARE(provider->shares.load(),2);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
+ }
+ // Finish share link (#1496) is a retry with scope sharing: it makes the wanted link once,
+ // reports a link that already exists, gives a file changed at the destination no link,
+ // never uploads, and leaves a failed local save to Retry local save.
+ void linkOnlyRetryOnlyFinishesTheWantedLink_data() {
+  QTest::addColumn<QString>("variant");QTest::addColumn<int>("shares");QTest::addColumn<int>("inspections");QTest::addColumn<QString>("status");
+  QTest::newRow("unconfirmed link is made once")<<"unconfirmed"<<2<<1<<"shared";
+  QTest::newRow("existing link is not made twice")<<"exists"<<1<<1<<"shared";
+  QTest::newRow("deleted file gets no link")<<"removed"<<1<<0<<"unknown";
+  QTest::newRow("failed local save is left alone")<<"localSave"<<2<<1<<"shared";
+ }
+ void linkOnlyRetryOnlyFinishesTheWantedLink() {
+  QFETCH(QString,variant);QFETCH(int,shares);QFETCH(int,inspections);QFETCH(QString,status);
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->loseShareReply=true;provider->inspectPrivate=variant!="exists";registry.add("opaque",provider);
+  auto doc=putgd::test::configuration(tmp.path());if(variant=="localSave"){auto archive=doc["archive"].toObject();archive["keepUploads"]=true;doc["archive"]=archive;QFile blocker(tmp.filePath("archive"));QVERIFY(blocker.open(QIODevice::WriteOnly));}
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(doc,{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());
+  const auto itemId=store.operation(id).items.first().artifact.id;QVERIFY(store.detail(itemId)["linkFinishable"].toBool());
+  if(variant=="localSave"){QVERIFY(store.detail(itemId)["local"].toObject()["status"]!="saved");QVERIFY(QFile::remove(tmp.filePath("archive")));}
+  if(variant=="removed")QVERIFY(sql(operations.databasePath(),"UPDATE item_state SET remote_status='removed',data=json_set(data,'$.remoteStatus','removed')"));
+  provider->loseShareReply=false;bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));retried=true;},true);PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  const auto detail=store.detail(itemId);QCOMPARE(detail["shareStatus"].toString(),status);QVERIFY(!detail["linkFinishable"].toBool());QCOMPARE(provider->shares.load(),shares);QCOMPARE(provider->inspections.load(),inspections);QCOMPARE(provider->storage.uploads.load(),1);
+  if(status=="shared"&&variant!="localSave")QCOMPARE(store.operation(id).stateName(),QString("completed"));
+  if(variant=="localSave")QVERIFY(detail["local"].toObject()["status"]!="saved");
+ }
+ // The resident, not the History row, decides that nothing is uploaded: a filtered or
+ // paged row cannot see every file of its upload (#1496).
+ void linkOnlyRetryRefusesWhileAFileNeedsItsUpload() {
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->storage.failUpload=true;registry.add("opaque",provider);
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const int uploads=provider->storage.uploads.load();
+  provider->storage.failUpload=false;Error refused;bool answered=false;operations.retry(id,[&](Error e,QJsonObject){refused=e;answered=true;},true);PUTGD_TRY_VERIFY(answered);QCOMPARE(refused.code,QString("retry_would_upload"));
+  PUTGD_COMPARE_STEADY(provider->storage.uploads.load(),uploads,50);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+ }
+ // #1872: a Nextcloud revoke from History carries the share ID the create recorded and a digest of
+ // the link's token, never the link, and clients see neither. Other providers' progress is untouched.
+ void nextcloudRevokeCarriesTheRecordedShare() {
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->recordShareId="7";provider->sharedLink="https://cloud.example.invalid/s/SyntheticShareToken1";registry.add("nextcloud",provider);
+  auto doc=putgd::test::configuration(tmp.path());auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["provider"]="nextcloud";profiles[0]=profile;doc["profiles"]=profiles;
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(doc,{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);HistoryService history(operations);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto item=store.operation(id).items.first();
+  QCOMPARE(item.shareStatus,QString("shared"));
+  QJsonObject reply;QString revokeId;history.changeSharing(item.artifact.id,"revoke",{},[&](Error e,QJsonObject d){QVERIFY(!e);reply=d;revokeId=d["shareOperationId"].toString();});PUTGD_TRY_COMPARE(store.sharing(revokeId)["status"].toString(),QString("revoked"));
+  const auto sent=provider->requestProgress.last();
+  QCOMPARE(sent["shareId"].toString(),QString("7"));
+  QCOMPARE(sent["tokenDigest"].toString(),QString::fromLatin1(QCryptographicHash::hash("SyntheticShareToken1",QCryptographicHash::Sha256).toHex()));
+  QVERIFY(!QJsonDocument(sent).toJson().contains("SyntheticShareToken1"));
+  QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("tokenDigest"));QVERIFY(!reply["sharing"].toObject()["progress"].toObject().contains("shareId"));
+  QJsonObject detail;history.detail(item.artifact.id,[&](Error e,QJsonObject d){QVERIFY(!e);detail=d;});PUTGD_TRY_VERIFY(!detail.isEmpty());
+  QVERIFY(!detail["shareProgress"].toObject().contains("shareId"));QVERIFY(!detail["shareProgress"].toObject().contains("tokenDigest"));
+  QJsonObject listed;history.list(HistoryQuery{},[&](Error e,QJsonObject d){QVERIFY(!e);listed=d;});PUTGD_TRY_VERIFY(!listed.isEmpty());
+  QVERIFY(!listed["records"].toArray().isEmpty());
+  for(const auto& record:listed["records"].toArray()){QVERIFY(!record.toObject()["shareProgress"].toObject().contains("shareId"));QVERIFY(!record.toObject()["shareProgress"].toObject().contains("tokenDigest"));}
+  QJsonObject inspected;history.inspectSharing(revokeId,[&](Error e,QJsonObject d){QVERIFY(!e);inspected=d;});PUTGD_TRY_VERIFY(!inspected.isEmpty());QVERIFY(!inspected["progress"].toObject().contains("tokenDigest"));
+  // A provider other than Nextcloud gets the request progress it always had.
+  QVERIFY(HistoryService::recordedShare(item.receipt,QJsonObject{{"shareId","7"}},"revoke").contains("shareId"));
+  auto other=item.receipt;other.destination.providerId="proton-drive";QVERIFY(HistoryService::recordedShare(other,QJsonObject{{"shareId","7"}},"revoke").isEmpty());
+ }
+ // Create share link without options keeps the options the upload asked for (#1496).
+ void historyCreateKeepsTheRequestedLinkOptions() {
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->privateDefault=true;registry.add("opaque",provider);
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);HistoryService history(operations);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto item=store.operation(id).items.first();
+  provider->loseShareReply=true;const QJsonObject options{{"expirationDays",2},{"passwordReference","synthetic-password-reference"}};QString shareId;history.changeSharing(item.artifact.id,"create",options,[&](Error e,QJsonObject d){QVERIFY(!e);shareId=d["shareOperationId"].toString();});PUTGD_TRY_COMPARE(store.sharing(shareId)["status"].toString(),QString("unknown"));
+  provider->inspectPrivate=true;QString inspectId;history.changeSharing(item.artifact.id,"inspect",{},[&](Error e,QJsonObject d){QVERIFY(!e);inspectId=d["shareOperationId"].toString();});PUTGD_TRY_COMPARE(store.sharing(inspectId)["status"].toString(),QString("private"));
+  provider->loseShareReply=false;QString createId;history.changeSharing(item.artifact.id,"create",{},[&](Error e,QJsonObject d){QVERIFY(!e);createId=d["shareOperationId"].toString();});PUTGD_TRY_COMPARE(store.sharing(createId)["status"].toString(),QString("shared"));QCOMPARE(provider->createOptions.last(),options);
  }
  void journalFailureStopsPollingAndCanBeInspected_data() {QTest::addColumn<bool>("runningFailure");QTest::newRow("running-transition")<<true;QTest::newRow("terminal-write")<<false;}
  void journalFailureStopsPollingAndCanBeInspected() {
@@ -173,7 +246,7 @@ private slots:
  void cancellationReachesBothReconciliationPaths(){
   QFETCH(bool,collision);QTemporaryDir tmp;ProviderRegistry registry;auto fixture=std::make_shared<SharingFixture>();fixture->storage.loseReply=true;registry.add("opaque",fixture);SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());
   if(collision){auto op=store.operation(id);op.items.first().uploadStatus="stored";QVERIFY(!store.saveOperation(op));}
-  UploadRequest request;std::function<void(StatResult)> complete;bool waiting=false;fixture->reconciliationHook=[this,&request,&complete,&waiting](const UploadRequest& r,auto cb){QMetaObject::invokeMethod(this,[&request,&complete,&waiting,r,cb]{request=r;complete=cb;waiting=true;},Qt::QueuedConnection);};auto drain=qScopeGuard([&]{if(complete){complete({"unknown",{}, {}});complete={};}(void)putgd::test::waitFor([&]{return !operations.diagnostics()["activeOperations"].toInt();},1000);});bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried&&waiting);QVERIFY(request.cancellation);bool cancelled=false;operations.cancel(id,[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled&&request.cancellation->load());complete({"unknown",{}, {"operation_cancelled","Synthetic reconciliation cancelled",{}}});complete={};PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(store.operation(id).state,QString("cancelled"));QCOMPARE(source.copies,0);
+  UploadRequest request;std::function<void(StatResult)> complete;bool waiting=false;fixture->reconciliationHook=[this,&request,&complete,&waiting](const UploadRequest& r,auto cb){QMetaObject::invokeMethod(this,[&request,&complete,&waiting,r,cb]{request=r;complete=cb;waiting=true;},Qt::QueuedConnection);};auto drain=qScopeGuard([&]{if(complete){complete({"unknown",{}, {}});complete={};}(void)putgd::test::waitFor([&]{return !operations.diagnostics()["activeOperations"].toInt();},1000);});bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried&&waiting);QVERIFY(request.cancellation);bool cancelled=false;operations.cancel(id,[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled&&request.cancellation->load());complete({"unknown",{}, {"operation_cancelled","Synthetic reconciliation cancelled",{}}});complete={};PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(store.operation(id).stateName(),QString("cancelled"));QCOMPARE(source.copies,0);
  }
  void explicitRetryUsesLongerCurrentBudgetWithoutChangingAcceptedDestination() {
   QTemporaryDir tmp;ProviderRegistry registry;auto fixture=std::make_shared<SharingFixture>();fixture->protonSettings=true;fixture->storage.loseReply=true;registry.add("proton-drive",fixture);
@@ -189,7 +262,7 @@ private slots:
  void retryRenamesExplicitDraftCollisionOnlyAfterMissingPublicationIsConfirmed() {
   QFETCH(bool,explicitDraft);QFETCH(bool,lookupFailure);const bool recovered=explicitDraft&&!lookupFailure;
   QTemporaryDir tmp;ProviderRegistry registry;auto fixture=std::make_shared<SharingFixture>();fixture->storage.loseReply=true;registry.add("opaque",fixture);SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto accepted=store.operation(id);fixture->reservedCandidate=accepted.items.first().candidate;fixture->draftConflict=true;fixture->explicitDraft=explicitDraft;fixture->reconciliationFails=lookupFailure;fixture->storage.loseReply=false;{QMutexLocker lock(&fixture->storage.mutex);fixture->storage.objects.clear();}
-  bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const auto after=store.operation(id);QCOMPARE(after.state,QString(recovered?"completed":"partial"));QCOMPARE(after.items.first().uploadStatus,QString(recovered?"uploaded":"unknown"));QCOMPARE(after.items.first().candidate!=fixture->reservedCandidate,recovered);QCOMPARE(after.items.first().publicationId,accepted.items.first().publicationId);QCOMPARE(fixture->draftCollisions.load(),1);QCOMPARE(fixture->storage.uploads.load(),recovered?2:1);QCOMPARE(fixture->storage.deletes.load(),0);QCOMPARE(source.reads,1);if(!recovered){QCOMPARE(after.items.first().phase,QString("unknown"));QCOMPARE(after.items.first().error.code,QString(lookupFailure?"proton_request_timeout":"publication_unknown"));if(lookupFailure)QCOMPARE(after.items.first().error.details["reason"].toString(),QString("deadline"));}
+  bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const auto after=store.operation(id);QCOMPARE(after.stateName(),QString(recovered?"completed":"partial"));QCOMPARE(after.items.first().uploadStatus,QString(recovered?"uploaded":"unknown"));QCOMPARE(after.items.first().candidate!=fixture->reservedCandidate,recovered);QCOMPARE(after.items.first().publicationId,accepted.items.first().publicationId);QCOMPARE(fixture->draftCollisions.load(),1);QCOMPARE(fixture->storage.uploads.load(),recovered?2:1);QCOMPARE(fixture->storage.deletes.load(),0);QCOMPARE(source.reads,1);if(!recovered){QCOMPARE(after.items.first().phase,QString("unknown"));QCOMPARE(after.items.first().error.code,QString(lookupFailure?"proton_request_timeout":"publication_unknown"));if(lookupFailure)QCOMPARE(after.items.first().error.details["reason"].toString(),QString("deadline"));}
  }
  void retryBudgetRequiresMatchingAccountAndFolderAndNeverShortensAcceptedDeadline(){
   ProtonProvider provider;auto acceptedSettings=provider.defaults();acceptedSettings["requestTimeoutMs"]=600000;acceptedSettings["accountRootUid"]=QString(22,'a')+"~"+QString(22,'b');acceptedSettings["folderUid"]=QString(22,'a')+"~"+QString(22,'c');Destination accepted{"proton-drive","profile","revision",acceptedSettings,{{"mode","keychain"},{"reference","putgd/proton/synthetic-budget"}}};auto current=acceptedSettings;current["requestTimeoutMs"]=3600000;QJsonObject profile{{"id","profile"},{"provider","proton-drive"},{"settings",current},{"credentials",accepted.credentialReference}};QCOMPARE(provider.retryRequestTimeout(accepted,profile).value(),3600000);current["requestTimeoutMs"]=1000;profile["settings"]=current;QCOMPARE(provider.retryRequestTimeout(accepted,profile).value(),600000);

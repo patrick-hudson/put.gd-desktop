@@ -6,17 +6,18 @@
 #   tests/desktop/pipewire/ci_check.sh APPDIR
 #
 # APPDIR is an extracted AppImage (squashfs-root). Runs in a container with
-# PipeWire >= 1.5.81 (Ubuntu 26.04); with --install it first installs the
-# distro packages it needs. Needs no session manager, devices or D-Bus.
+# PipeWire >= 1.5.81 (Ubuntu 26.04): CI's pipewire image
+# (tools/ci/images/provision.sh). With --install it first installs the distro
+# packages it needs, and with no APPDIR it stops there. Needs no session manager,
+# devices or D-Bus.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
 if [ "${1:-}" = --install ]; then
     shift
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get install -y --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev \
-        gcc g++ pkg-config qt6-base-dev
+    bash "$root/tools/ci/ubuntu-mirrors.sh"
+    bash "$root/tools/ci/install-packages.sh" --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev gcc g++ pkg-config qt6-base-dev
+    [ $# -gt 0 ] || exit 0
 fi
 [ $# -eq 1 ] || { sed -n 2,10p "$0"; exit 64; }
 plugins=$(cd "$1/usr/lib/gstreamer-1.0" && pwd)

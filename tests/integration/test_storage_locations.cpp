@@ -1,5 +1,8 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/StorageLocations.h"
+#include "app/DestinationTestJournal.h"
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QDirIterator>
 #include <algorithm>
 #include <QLockFile>
@@ -73,7 +76,7 @@ class StorageLocationsTest:public QObject {
   if(!QDir().mkpath(legacyData(base)+"/previews")||fixture(legacyData(base)+"/previews",profile.item+".png","synthetic preview").isEmpty())return {};
   op.items[0].artifact.previewPath=profile.preview;if(store.saveOperation(op))return {};
   profile.interrupted="2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5";
-  Operation accepted;accepted.id=profile.interrupted;accepted.action="clipboard";accepted.state="acquiring";accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};
+  Operation accepted;accepted.id=profile.interrupted;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};
   if(store.saveOperation(accepted))return {};
   if(ArtifactStore(legacyData(base)+"/artifacts").acquire(profile.interrupted,textPayload(),ResourceLimits{}).error)return {};
   if(!staleLock(legacyData(base)+"/resident.lock"))return {};
@@ -131,7 +134,7 @@ private slots:
   QCOMPARE(store.detail(template_.item)["previewPath"].toString(),failed.items[0].artifact.previewPath);
   const auto page=store.list({});QCOMPARE(page.records.size(),2);
   for(const auto& record:page.records)if(record.toObject()["id"]==template_.item)QCOMPARE(record.toObject()["previewPath"].toString(),failed.items[0].artifact.previewPath);
-  const auto recovered=store.operation(template_.interrupted);QCOMPARE(recovered.state,QString("interrupted"));QCOMPARE(recovered.items.size(),1);
+  const auto recovered=store.operation(template_.interrupted);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);
   for(const auto& id:{template_.failed,template_.interrupted}) {
    bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));retried=true;});PUTGD_TRY_VERIFY(retried);
@@ -145,7 +148,22 @@ private slots:
   QLockFile running(legacyData(d.path())+"/resident.lock");QVERIFY(running.tryLock(0));const auto before=snapshot(d.path());
   const auto locations=StorageLocations::prepare(d.filePath("c"),d.filePath("d"));
   QCOMPARE(locations.error.code,QString("storage_busy"));QCOMPARE(snapshot(d.path()),before);
+  // The same step as journal recovery gives: no owner named, the lock's path to remove by hand (#1576).
+  QCOMPARE(locations.error.details["lockPath"].toString(),QDir::toNativeSeparators(legacyData(d.path())+"/resident.lock"));
+  QVERIFY2(locations.error.message.startsWith("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "),qPrintable(locations.error.message));
   running.unlock();verifyMoved(d.path(),StorageLocations::prepare(d.filePath("c"),d.filePath("d")));
+ }
+ // A lock file that cannot be created is not a held lock: no removal step for a file that never existed (#1576).
+ void unwritableDataFolderIsNotReportedAsAHeldLock() {
+  QTemporaryDir d;QVERIFY(copyTree(templateDir_.path(),d.path()));
+  const auto data=d.filePath("d/putgd");QVERIFY(QFileInfo(data).isDir());QVERIFY(!QFileInfo::exists(data+"/resident.lock"));
+  QVERIFY(QFile::setPermissions(data,QFile::ReadOwner|QFile::ExeOwner));
+  if(QFileInfo(data).isWritable()) {QFile::setPermissions(data,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);QSKIP("permissions are not enforced for this user");}
+  const auto locations=StorageLocations::prepare(d.filePath("c"),d.filePath("d"));
+  QFile::setPermissions(data,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+  QCOMPARE(locations.error.code,QString("storage_unavailable"));
+  QCOMPARE(locations.error.message,QString("Cannot create the journal lock file"));
+  QCOMPARE(locations.error.details["lockPath"].toString(),QDir::toNativeSeparators(data+"/resident.lock"));
  }
  void bothRootsExistLeavesBothUnchanged() {
   QTemporaryDir d;QVERIFY(copyTree(templateDir_.path(),d.path()));
@@ -189,6 +207,98 @@ private slots:
    HistoryStore store(d.filePath("d/putgd/history.sqlite"));QCOMPARE(store.operation(template_.failed).items[0].artifact.sha256,QString::fromLatin1(QCryptographicHash::hash("synthetic source content",QCryptographicHash::Sha256).toHex()));
    QVERIFY(!ArtifactStore(d.filePath("d/putgd/artifacts")).recover(template_.interrupted).error);
   }
+ }
+ // #1680: every storage test checkpoint is scrubbed at the journal boundary, so a receipt with a
+ // missing or forged provider ID still reaches the journal without its signed query.
+ void destinationTestCheckpointsLoseSignedLinksWhateverTheyClaim() {
+  const QString link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
+  const QJsonObject unlabelled{{"directUrl",link},{"publicationId","pub-1"}};
+  const QJsonObject forged{{"destination",QJsonObject{{"providerId","custom-http"}}},{"directUrl",link},{"publicationId","pub-1"}};
+  const QJsonObject checkpoint{{"phase","finished"},{"receipt",unlabelled},{"target",forged},
+   {"result",QJsonObject{{"receipt",forged},{"cleanupProgress",QJsonObject{{"target",unlabelled}}}}}};
+  const auto written=QJsonDocument(withoutSignedTestLinks(checkpoint)).toJson();
+  QVERIFY(!written.contains("X-Amz-")&&!written.contains("AKIDSYNTHETIC"));QVERIFY(written.contains("putgd-test-1.txt"));
+ }
+ // Journals of earlier tests are rewritten only when their own records show an S3 or B2 test, and
+ // then lose every link's signed query while keeping what traces the test object. Anything else
+ // in the folder stays byte for byte: Custom uploader journals (however labelled), journals whose
+ // records don't say, symbolic links, other names and other schemas.
+ void destinationTestJournalsLoseOnlySignedLinkQueries() {
+  QTemporaryDir d;const auto dir=d.filePath("destination-tests");QVERIFY(QDir().mkpath(dir));
+  auto receipt=[](const QString& provider,const QString& link,QJsonObject reference){reference["key"]="putgd-test-1.txt";
+   QJsonObject r{{"directUrl",link},{"publicationId","pub-1"},{"objectReference",reference}};if(!provider.isEmpty())r["destination"]=QJsonObject{{"providerId",provider}};return r;};
+  const QString s3Link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
+  const auto s3=receipt("s3",s3Link,{{"versionId","v1"}});
+  const auto s3Unlabelled=receipt({},s3Link,{{"versionId","v1"}});
+  const auto b2=receipt("backblaze-b2","https://f000.example/file/b/putgd-test-1.txt?Authorization=b2tokensynthetic",{{"fileId","4_z1"},{"bucketId","b1"}});
+  const auto custom=receipt("custom-http","https://up.example/i/1.png",{{"nonce","n1"},{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}});
+  const auto customAsS3=receipt("s3",s3Link,{{"nonce","n1"},{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}});
+  auto journal=[](QJsonArray checkpoints){return QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson();};
+  auto write=[&](const QString& name,const QByteArray& bytes){QFile f(dir+"/"+name);QVERIFY(f.open(QIODevice::WriteOnly));f.write(bytes);};
+  auto read=[&](const QString& name){QFile f(dir+"/"+name);return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();};
+  auto uuid=[](char c){return QString(8,c)+"-"+QString(4,c)+"-"+QString(4,c)+"-"+QString(4,c)+"-"+QString(12,c)+".json";};
+  const QJsonObject s3Intent{{"phase","synthetic_upload_intent"},{"destination",QJsonObject{{"providerId","s3"}}}};
+  write(uuid('1'),journal({s3Intent,QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}},QJsonObject{{"phase","object_intent"},{"target",s3Unlabelled}},
+   QJsonObject{{"phase","finished"},{"result",QJsonObject{{"uploadStatus","uploaded"},{"receipt",s3},{"cleanupStatus","removed"},{"cleanupProgress",QJsonObject{{"target",s3}}}}}}}));
+  write(uuid('2'),journal({QJsonObject{{"phase","delete_intent"},{"target",b2}}}));
+  QMap<QString,QByteArray> unchanged;
+  unchanged[uuid('3')]=journal({QJsonObject{{"phase","uploaded"},{"receipt",custom}}});
+  unchanged[uuid('6')]=journal({s3Intent,QJsonObject{{"phase","uploaded"},{"receipt",customAsS3}}});
+  unchanged[uuid('7')]=journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}}});
+  // Custom uploader records with no label and no nonce, and an S3 destination on a record that
+  // never saves one: their deletion URL keeps its token. B2 receipts need real file and bucket IDs.
+  const QJsonObject bareCustom{{"directUrl",s3Link},{"publicationId","pub-1"},{"objectReference",QJsonObject{{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}}}};
+  const QJsonObject s3Destination{{"providerId","s3"}};
+  unchanged[uuid('8')]=journal({QJsonObject{{"phase","upload_intent"},{"name","putgd-test-1.txt"}},QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",bareCustom}}});
+  const QJsonObject urlOnly{{"directUrl",s3Link},{"objectReference",QJsonObject{{"url","https://up.example/i/1.png"}}}};
+  unchanged[uuid('9')]=journal({QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",urlOnly}}});
+  unchanged[uuid('b')]=journal({QJsonObject{{"phase","finished"},{"destination",s3Destination},{"result",QJsonObject{{"link","https://up.example/i/1.png"},{"receipt",QJsonObject{{"directUrl",s3Link}}}}}}});
+  unchanged[uuid('a')]=journal({QJsonObject{{"phase","delete_intent"},{"target",receipt("backblaze-b2",s3Link,{{"fileId",""},{"bucketId",""}})}}});
+  unchanged["notes.json"]=journal({s3Intent,QJsonObject{{"receipt",s3}}});
+  unchanged[uuid('5')]=QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{s3Intent,QJsonObject{{"receipt",s3}}}}}).toJson();
+  for(auto it=unchanged.begin();it!=unchanged.end();++it)write(it.key(),it.value());
+  QTemporaryDir outside;QFile target(outside.filePath("elsewhere.json"));QVERIFY(target.open(QIODevice::WriteOnly));target.write(unchanged["notes.json"]);target.close();
+  QVERIFY(QFile::link(target.fileName(),dir+"/"+uuid('4')));
+  scrubDestinationTestJournals(dir);
+  for(const auto& name:{uuid('1'),uuid('2')}){
+   const auto bytes=read(name);
+   QVERIFY2(!bytes.contains("X-Amz-")&&!bytes.contains("AKIDSYNTHETIC")&&!bytes.contains("Authorization=")&&!bytes.contains("b2tokensynthetic"),qPrintable(name));
+   QVERIFY2(bytes.contains("putgd-test-1.txt")&&bytes.contains("pub-1"),qPrintable(name));
+  }
+  QVERIFY(read(uuid('1')).contains("\"phase\":\"finished\""));
+  for(auto it=unchanged.begin();it!=unchanged.end();++it)QVERIFY2(read(it.key())==it.value(),qPrintable(it.key()));
+  QVERIFY(QFileInfo(dir+"/"+uuid('4')).isSymLink());
+  QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),unchanged["notes.json"]);
+ }
+ // #1690: when a test's worker ends without a result, each step reports only what its own
+ // terminal checkpoint shows; a step without one is unknown.
+ void destinationTestTrailReportsOnlyFinishedSteps() {
+  auto completed=[](QList<QJsonObject> checkpoints){DestinationTestTrail trail;for(const auto& c:checkpoints)trail.record(c);return trail.completed({});};
+  const QJsonObject intent{{"phase","synthetic_upload_intent"}},uploaded{{"phase","synthetic_uploaded"},{"receipt",QJsonObject{{"publicationId","pub-1"}}}};
+  QVERIFY(!completed({}).contains("uploadStatus"));
+  QCOMPARE(completed({intent})["uploadStatus"].toString(),QString("unknown"));
+  auto done=completed({intent,uploaded,QJsonObject{{"phase","object_intent"},{"target",QJsonObject{}}},QJsonObject{{"phase","done"},{"target",QJsonObject{}}}});
+  QCOMPARE(done["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(done["cleanupStatus"].toString(),QString("removed"));
+  auto marker=completed({intent,uploaded,QJsonObject{{"phase","object_failed"},{"target",QJsonObject{}},{"markerVersionId","m1"}}});
+  QCOMPARE(marker["cleanupStatus"].toString(),QString("hidden_version_retained"));
+  // A version deletion in flight behind a marker may have succeeded: unknown, not retained.
+  auto inFlight=completed({intent,uploaded,QJsonObject{{"phase","version_intent"},{"target",QJsonObject{}},{"markerVersionId","m1"}}});
+  QCOMPARE(inFlight["cleanupStatus"].toString(),QString("unknown"));
+  QCOMPARE(completed({intent,uploaded})["cleanupStatus"].toString(),QString("unknown"));
+  QCOMPARE(completed({QJsonObject{{"phase","upload_intent"}},QJsonObject{{"phase","uploaded"},{"receipt",QJsonObject{{"publicationId","pub-1"}}}}})["uploadStatus"].toString(),QString("uploaded"));
+  const QJsonObject probe{{"phase","synthetic_multipart_intent"}};
+  QCOMPARE(completed({intent,uploaded,probe})["multipart"].toObject()["status"].toString(),QString("unknown"));
+  const auto aborted=completed({intent,uploaded,probe,QJsonObject{{"phase","synthetic_multipart_finished"},{"abort","aborted"}}})["multipart"].toObject();
+  QCOMPARE(aborted["status"].toString(),QString("unknown"));QCOMPARE(aborted["abort"].toString(),QString("aborted"));
+  const QJsonObject large{{"phase","synthetic_large_intent"}};
+  QCOMPARE(completed({intent,uploaded,large})["largeFile"].toObject()["start"].toString(),QString("unknown"));
+  const auto started=completed({intent,uploaded,large,QJsonObject{{"phase","synthetic_large_started"},{"fileId","f1"}}})["largeFile"].toObject();
+  QCOMPARE(started["start"].toString(),QString("ok"));QCOMPARE(started["fileId"].toString(),QString("f1"));QCOMPARE(started["cancel"].toString(),QString("unknown"));
+  // A saved finish record stands on its own when the start record wasn't saved.
+  const auto finishedOnly=completed({intent,uploaded,large,QJsonObject{{"phase","synthetic_large_finished"},{"fileId","f1"},{"cancel","cancelled"}}})["largeFile"].toObject();
+  QCOMPARE(finishedOnly["fileId"].toString(),QString("f1"));QCOMPARE(finishedOnly["cancel"].toString(),QString("cancelled"));
+  const QJsonObject reported{{"uploadStatus","failed"}};
+  DestinationTestTrail trail;trail.record(intent);QCOMPARE(trail.completed(reported),reported);
  }
  void stagedEntryNeverReplacesTheRoot() {
   QTemporaryDir d;const auto root=d.filePath("d/putgd"),staging=StorageLocations::stagingRoot(root);

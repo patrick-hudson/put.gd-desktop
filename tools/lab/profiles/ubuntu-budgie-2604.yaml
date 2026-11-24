@@ -1,0 +1,15 @@
+{
+  "name": "ubuntu-budgie-2604",
+  "desktop": "Budgie",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "budgie-panel",
+  "image": "ubuntu-budgie-2604",
+  "install": "deb",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}

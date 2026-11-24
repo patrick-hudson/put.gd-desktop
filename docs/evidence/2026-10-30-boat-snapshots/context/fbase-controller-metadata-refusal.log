@@ -1,2 +1,0 @@
-PUTGD_CI_TMPDIR=/dev/shm TMPDIR=/dev/shm
-tmpfs:1021994

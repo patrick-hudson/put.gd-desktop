@@ -44,7 +44,7 @@ class SelectorMapping(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             home=Path(td);directory=home/'putgd-lab/appimage/squashfs-root/usr/bin';directory.mkdir(parents=True)
             original=b'synthetic installed helper';replacement=b'swapped same-name helper'
-            digests={name:hashlib.sha256(original).hexdigest() for name in ('putgd-capture','putgd-kde-region','putgd-ui')}
+            digests={name:hashlib.sha256(original).hexdigest() for name in ('putgd-capture','putgd-region','putgd-ui')}
             for name in digests:
                 binary=directory/name;binary.write_bytes(original);binary.write_bytes(replacement)
             with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None), \
@@ -68,7 +68,7 @@ class SelectorMapping(unittest.TestCase):
 
     def test_appimage_helper_needs_the_verified_extracted_binary_bytes(self):
         """The controller-provided inventory distinguishes installed bytes from a lookalike."""
-        trusted=b'synthetic trusted binary';digests={'putgd-kde-region':hashlib.sha256(trusted).hexdigest()}
+        trusted=b'synthetic trusted binary';digests={'putgd-region':hashlib.sha256(trusted).hexdigest()}
         with patch.object(probe,'VERIFIED_HELPER_SHA256',digests),patch.object(probe,'owned',return_value=True):
             for data,expected in ((b'foreign same-name binary',False),(trusted,True)):
                 with patch('builtins.open',return_value=io.BytesIO(data)):

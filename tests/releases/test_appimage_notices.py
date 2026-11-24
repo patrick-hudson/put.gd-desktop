@@ -189,6 +189,19 @@ class NoticesTest(unittest.TestCase):
                                                      "rpath": [], "runpath": ["$ORIGIN", "/opt/x"]})
         self.assertIsNone(notices.elf_dynamic(write(self.root / "script", "#!/bin/sh\n")))
 
+    def test_native_lgpl_copy_is_owned_by_the_real_component_spec(self):
+        production = json.loads((ROOT / "packaging/appimage/components.json").read_text())
+        owner = next(item for item in production["components"] if item["id"] == "putgd")
+        fixture = json.loads(json.dumps(SPEC))
+        fixture["components"][0]["noticeFiles"] = owner["noticeFiles"]
+        (self.root / "components.json").write_text(json.dumps(fixture))
+        name = "usr/share/doc/putgd/LGPL-2.1.txt"
+        write(self.app / name, (ROOT / "packaging/linux/LGPL-2.1.txt").read_text())
+        self.finish()
+        notices.audit(self.app)
+        component = next(item for item in self.inventory()["components"] if item["id"] == "putgd")
+        self.assertIn(name, component["licenseFiles"])
+
     def test_generated_menu_pngs_are_owned_by_putgd_in_the_real_component_spec(self):
         production = json.loads((ROOT / "packaging/appimage/components.json").read_text())
         owner = next(item for item in production["components"] if item["id"] == "putgd")

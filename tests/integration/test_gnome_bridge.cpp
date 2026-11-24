@@ -16,6 +16,7 @@
 #include <QDBusConnectionInterface>
 #include <QScopeGuard>
 #include <QProcess>
+#include <QElapsedTimer>
 #include <QUuid>
 #include <cstdio>
 #include "fixtures/Waits.h"
@@ -87,7 +88,7 @@ class GnomeHelperFixture final:public QObject,protected QDBusContext {
  uint currentPid_=0,failPid_=0,failures_=0;
  QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_,lastRegionMode_;int acquires_=0,previews_=0,previewsAtAcquire_=0,releases_=0;QJsonObject lastPreview_;
  int hellos_=0,binds_=0,commits_=0;
- QJsonObject lastBindings_;
+ QJsonObject lastBindings_;QJsonArray frames_;
  QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
  QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
  static QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
@@ -98,7 +99,7 @@ public slots:
   if(helloError_=="incompatible")return json({{"version",99},{"shellMajor",50}});
   if(!helloError_.isEmpty()){sendErrorReply(helloError_,"Synthetic bridge failure");return {};}
   const int loaded=qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion;
-  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",loaded},{"recordingVersion",loaded>=2?1:0},{"previewVersion",qEnvironmentVariableIsSet("PUTGD_TEST_EXTENSION_NO_PREVIEW")?QJsonValue():QJsonValue(1)}});}
+  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",loaded},{"recordingVersion",loaded>=19?2:loaded>=2?1:0},{"previewVersion",qEnvironmentVariableIsSet("PUTGD_TEST_EXTENSION_NO_PREVIEW")?QJsonValue():QJsonValue(1)}});}
  QString SetUiProcess(uint pid){
   registrations_.append(int(pid));
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
@@ -106,7 +107,7 @@ public slots:
  }
  QString Bind(const QString& encoded){
   ++binds_;lastBindings_=QJsonDocument::fromJson(encoded.toUtf8()).object();QJsonObject bindings;
-  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
+  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){if(i.key()=="text"&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")>0&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")<23)continue;const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
   return json({{"bindings",bindings}});
  }
  QString BeginCopy(const QString& id,const QString& mime,qulonglong size){copyId_=id;copyMime_=mime;copySize_=size;copyBytes_.clear();return json({});}
@@ -130,11 +131,22 @@ public slots:
  }
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
  QString Release(const QString&){++releases_;return json({});}
+ // Recording protocol 2 (#1278): one valid window, one with a malformed identity.
+ QString RecordingWindows(){return json({{"version",1},{"activeExcluded",false},{"windows",QJsonArray{
+  QJsonObject{{"identity","42"},{"title","Notes"},{"appId","org.example.Notes.desktop"},{"rect",QJsonArray{10,20,640,480}},{"active",true},{"minimized",false}},
+  QJsonObject{{"identity",""},{"title","Broken"},{"rect",QJsonArray{0,0,1,1}}}}}});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ // The frames the resident asked the Shell to show, as it sent them.
+ QString ShowRecordingFrame(const QString& encoded){frames_.append(QJsonDocument::fromJson(encoded.toUtf8()).object());return json({{"version",1},{"bar",QJsonObject{{"placed",false},{"outside",false}}}});}
+ QString HideRecordingFrame(){return json({});}
+ QString State(){return json({{"frames",frames_},{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
+ // As the extension's enable() and disable(): announce first, then (un)export.
+ void Enable(){helloError_.clear();emit CapabilitiesChanged();}
+ void Disable(const QString& error){emit CapabilitiesChanged();helloError_=error;}
  signals:
  void Action(const QString& action,const QString& ticket);
+ void CapabilitiesChanged();
 };
 class GnomeAdapterTransportTest final:public QObject {
  Q_OBJECT
@@ -190,21 +202,23 @@ private slots:
   QFETCH(QString,failure);QFETCH(QString,code);QFETCH(bool,guidance);stopFixture();QVERIFY(startFixture(0,failure));
   GnomeAdapter source;PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
   PayloadResult result;bool done=false;source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);QCOMPARE(result.error.code,code);
-  QCOMPARE(result.error.message.contains("gnome-extensions enable putgd@put.gd"),guidance);
-  if(guidance){QVERIFY(result.error.message.contains("install"));QVERIFY(result.error.message.contains("log out and back in"));}
+  QCOMPARE(result.error.message.contains("not running yet"),guidance);
+  QVERIFY(!result.error.message.contains("gnome-extensions enable"));
   if(failure.startsWith("org."))QCOMPARE(result.error.details["dbusError"].toString(),failure);
  }
- void absentHelperPublishesOnlyWhatChanges(){
-  // Each signal makes an open UI reload its snapshot and History page, so the
-  // retry for a missing extension must stay silent until something is different.
-  const QString missing="org.freedesktop.DBus.Error.UnknownMethod",denied="org.freedesktop.DBus.Error.AccessDenied";
-  const auto failure=[](const GnomeAdapter& source){return source.capabilities()["helper"].toObject()["error"].toObject()["details"].toObject()["dbusError"].toString();};
+ void extensionSignalsDiscoverWithoutWaitingForTheProbe(){
+  const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
   stopFixture();QVERIFY(startFixture(0,missing));
-  GnomeAdapter source;source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
-  QSignalSpy published(&source,&GnomeAdapter::capabilitiesChanged);const auto retriedFrom=state()["hellos"].toInt();
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=retriedFrom+2,10000);QCOMPARE(published.size(),0);
-  control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);PUTGD_COMPARE_STEADY(published.size(),1,3300);
-  control("SetErrors",{QString{},QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);QVERIFY(published.size()>1);
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(600000,600000);
+  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
+  QCOMPARE(state()["hellos"].toInt(),1);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
+  // Enabling the extension later, with the resident idle and no retry due, is found by its signal.
+  QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
+  QCOMPARE(state()["hellos"].toInt(),2);PUTGD_TRY_VERIFY(state()["binds"].toInt()>0);
+  // The subscription survives a disable, so the next enable is found the same way.
+  QCOMPARE(control("Disable",{missing}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(!helperAvailable(source),3000);
+  QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
+  QCOMPARE(state()["hellos"].toInt(),4);QCOMPARE(retried.size(),0);
  }
  void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
@@ -214,7 +228,7 @@ private slots:
   QCOMPARE(result.error.details["dbusError"].toString(),missing);QVERIFY(!result.error.message.contains("gnome-extensions enable"));
   control("SetErrors",{missing,missing});done=false;
   source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);
-  QVERIFY(result.error.message.contains("gnome-extensions enable putgd@put.gd"));
+  QVERIFY(result.error.message.contains("not running yet"));
   control("SetErrors",{QString{},QString{}});done=false;
   source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!result.error,qPrintable(result.error.message));
  }
@@ -327,38 +341,37 @@ private slots:
   done=false;source.setShortcutRecording(false,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!error);
   QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString("<Control>2"));
  }
- void clearFailureRecoversWithoutUiReopen(){
-  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
-  QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);
-  QVERIFY(helperAvailable(source));QVERIFY(!windowAvailable(source));QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
-  bool rejected=false;source.acquire("window",{},[&](PayloadResult result){rejected=true;QCOMPARE(result.error.code,QString("helper_unavailable"));});QVERIFY(rejected);
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(windowAvailable(source),5000);
-  auto recovered=state();QCOMPARE(recovered["currentPid"].toInt(),0);QCOMPARE(recovered["registrations"].toArray(),(QJsonArray{0,1234,0,0}));QCOMPARE(recovered["hellos"].toInt(),1);QCOMPARE(recovered["binds"].toInt(),1);
-  bool completed=false;PayloadResult result;
-  connect(&source,&GnomeAdapter::actionRequested,this,[&](const QString& action){source.acquire(action,{},[&](PayloadResult value){result=std::move(value);completed=true;});});
-  QCOMPARE(control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY(completed);
-  QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(result.payload.bytes,QByteArray("x"));
- }
- void liveFailureStaysClosedAndNewPidSupersedesClear(){
+ // While the Shell has not registered put.gd's own UI process, window capture stays
+ // off: a capture could otherwise include put.gd's own windows.
+ void liveFailureStaysClosed(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));
   QCOMPARE(control("FailRegistration",{uint(1234),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(1234);QVERIFY(!windowAvailable(source));
   putgd::test::settle(3300);PUTGD_TRY_VERIFY(!windowAvailable(source));PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234}));
-  PUTGD_TRY_COMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
-  source.setUiProcess(5678);QVERIFY(windowAvailable(source));putgd::test::settle(3300);
-  PUTGD_TRY_COMPARE(state()["currentPid"].toInt(),5678);PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
  }
  void outdatedExtensionAsksForALogOut_data(){QTest::addColumn<int>("loadedVersion");QTest::newRow("no-recording-protocol")<<1;QTest::newRow("prior-appearance-protocol")<<putgd::gnome::extensionVersion-1;}
  void outdatedExtensionAsksForALogOut(){
   QFETCH(int,loadedVersion);stopFixture();QVERIFY(startFixture(loadedVersion));
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  // Until the setup run reports there is no logout to ask for.
+  PUTGD_TRY_COMPARE(source.capabilities()["helper"].toObject()["setup"].toObject()["state"].toString(),QString("login_required"));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
+  // An old Shell omits text from Bind; recording existing shortcuts still works.
+  bool recorded=false;Error recordingError;
+  source.setShortcutRecording(true,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
+  recorded=false;source.setShortcutRecording(false,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
   QVERIFY(!source.selectsRegions());
+  QCOMPARE(source.scrollShell()->selectsRegions(),loadedVersion>=22);
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
   QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
   // Non-region acquisition remains available with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   QCOMPARE(source.regionError().code,QString("helper_outdated"));
+  // Window recordings need RecordingWindows, which the loaded extension predates.
+  Error windowsError;bool listed=false;source.listWindows([&](Error value,QJsonObject){windowsError=value;listed=true;});QVERIFY(listed);
+  QCOMPARE(windowsError.code,QString("helper_outdated"));
   // Neither Screenshot first nor Live may silently ignore the new app appearance.
   const auto before=state()["acquires"].toInt();
   source.setRegionScreenshotFirst(true);PayloadResult frozen;bool frozenDone=false;
@@ -368,9 +381,22 @@ private slots:
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
   QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
+  // Copy text (#1428) selects a region too. An extension loaded before it must give
+  // the same step; capturing with selector code that predates the action is not an answer.
+  PayloadResult text;bool textDone=false;source.acquire("text",{},[&](PayloadResult value){text=std::move(value);textDone=true;});PUTGD_TRY_VERIFY(textDone);
+  QCOMPARE(text.error.code,QString("helper_outdated"));QCOMPARE(state()["acquires"].toInt(),before);
+  QVERIFY(!source.capabilities()["capture"].toObject()["text"].toObject()["available"].toBool());
   PayloadResult desktop;bool desktopDone=false;source.acquire("desktop",{},[&](PayloadResult value){desktop=std::move(value);desktopDone=true;});PUTGD_TRY_VERIFY(desktopDone);
   QVERIFY2(!desktop.error,qPrintable(desktop.error.code+": "+desktop.error.message));QCOMPARE(desktop.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
+ }
+ void listsWindowsForRecording(){
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  QCOMPARE(source.capabilities()["helper"].toObject()["recordingVersion"].toInt(),2);
+  Error error;QJsonObject result;bool done=false;source.listWindows([&](Error value,QJsonObject listed){error=value;result=listed;done=true;});
+  PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.message));
+  const auto windows=result["windows"].toArray();QCOMPARE(windows.size(),1);
+  QCOMPARE(windows[0].toObject()["identity"].toString(),QString("42"));QVERIFY(windows[0].toObject()["active"].toBool());QCOMPARE(windows[0].toObject()["rect"].toArray(),QJsonArray({10,20,640,480}));
  }
  void ownerReplacementRegistersLatestPid(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);

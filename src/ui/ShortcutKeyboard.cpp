@@ -3,7 +3,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #ifdef PUTGD_SHORTCUT_KEYBOARD
-#include "platform/kde/KdeKeyboardMap.h"
+#include "platform/wayland/KeyboardMap.h"
 #include <QtGui/qguiapplication_platform.h>
 #include <xkbcommon/xkbcommon.h>
 #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
@@ -31,8 +31,8 @@ int symbolKey(uint32_t symbol) {
 QKeyCombination unshiftedChord(QKeyCombination pressed,uint32_t baseSymbol,uint32_t shiftedSymbol) {
  const auto modifiers=pressed.keyboardModifiers();
  if(!modifiers.testFlag(Qt::ShiftModifier)||modifiers.testFlag(Qt::KeypadModifier))return pressed;
- // Digits and ASCII punctuation only. KDE resolves those back to the Shift
- // level of the current layout; a non-ASCII base would register literally.
+ // Digits and ASCII punctuation only. KDE resolves those, and a Latin-1 symbol
+ // left as Qt's key, back to the Shift level of the current layout.
  const bool letter=(baseSymbol>='a'&&baseSymbol<='z')||(baseSymbol>='A'&&baseSymbol<='Z');
  if(baseSymbol<=0x20||baseSymbol>=0x7f||letter||baseSymbol==shiftedSymbol)return pressed;
  const int shifted=symbolKey(shiftedSymbol);
@@ -71,7 +71,7 @@ struct ShortcutKeyboard::Private {
 const wl_keyboard_listener ShortcutKeyboard::Private::listener{
  [](void* data,wl_keyboard*,uint32_t format,int32_t fd,uint32_t size){
   auto* d=static_cast<Private*>(data);
-  if(auto* next=readKdeKeyboardMap(d->context,format,fd,size)){if(d->map)xkb_keymap_unref(d->map);d->map=next;}
+  if(auto* next=readWaylandKeyboardMap(d->context,format,fd,size)){if(d->map)xkb_keymap_unref(d->map);d->map=next;}
  },
  [](void*,wl_keyboard*,uint32_t,wl_surface*,wl_array*){},
  [](void*,wl_keyboard*,uint32_t,wl_surface*){},

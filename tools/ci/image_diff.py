@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Compare two PNG images within a tolerance.
 
-The UI catalog's reference test (tools/ci/check_catalog_references.py) and the
-lab drivers share this module. Its interface is stable:
+The lab drivers use this module. Its interface is stable:
 
     Tolerance(channel_delta, max_pixels, max_region)
     load_png(path) -> Image             RGBA, 8 bits per channel

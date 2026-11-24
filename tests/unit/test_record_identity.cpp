@@ -33,6 +33,22 @@ private slots:
         QVERIFY(lines.contains("NoDisplay=true"));
         QVERIFY(lines.contains(QString("StartupWMClass=%1").arg(QLatin1String(putgd::record::desktopFileName))));
     }
+    // KWin offers a restricted Wayland interface only to the executable of an
+    // entry that lists it: the screencast for recordings, and through Plasma
+    // 6.7 the fake input a scrolling capture turns the wheel with (#1376).
+    void installedEntryListsTheKWinInterfacesTheHelperBinds() {
+        QFile file(QStringLiteral(PUTGD_RECORD_DESKTOP_ENTRY));
+        QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(file.fileName()));
+        QStringList interfaces;
+        QString exec;
+        for (const auto& line : QString::fromUtf8(file.readAll()).split('\n')) {
+            if (line.startsWith("X-KDE-Wayland-Interfaces=")) interfaces = line.section('=', 1).split(',', Qt::SkipEmptyParts);
+            if (line.startsWith("Exec=")) exec = line.section('=', 1).section(' ', 0, 0);
+        }
+        QCOMPARE(interfaces, QStringList({"zkde_screencast_unstable_v1", "org_kde_kwin_fake_input"}));
+        // KWin compares the first Exec token with the client's executable.
+        QVERIFY2(exec.endsWith("/putgd-record"), qPrintable(exec));
+    }
 };
 
 QTEST_MAIN(RecordIdentityTest)

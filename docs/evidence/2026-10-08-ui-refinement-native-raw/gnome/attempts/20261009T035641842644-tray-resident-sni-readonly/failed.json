@@ -1,4 +1,0 @@
-{
-  "phase": "tray-resident-sni-readonly",
-  "error": "Owned /StatusNotifierItem introspection returned nonzero; raw command stdout/stderr retained, no product mutation"
-}

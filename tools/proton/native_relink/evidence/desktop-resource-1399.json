@@ -1,0 +1,1276 @@
+{
+  "schemaVersion": 1,
+  "issue": 1399,
+  "status": "failed",
+  "recordedUtc": "2026-11-13T22:08:51.898912+00:00",
+  "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+  "sourcePins": {
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+    "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+    "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+    "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+    "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+  },
+  "historicalProofTransferred": false,
+  "scope": "Published nightly packages installed on physical Cinnamon X11, GNOME Wayland and KDE Wayland. Current helper Proton acceptance only; not stable release acceptance or acceptance of later application-only nightly merges.",
+  "publishedTag": "v26.1113.4757-nightly",
+  "publishedSourceCommit": "466449a4c69a07a1997668d1b70d637abac76a16",
+  "testedEmbeddedCatalogSha256": "0e98e8175381c121470656607f2d03aa1ebac1aa01de02b3c883ad0a68ffa0fc",
+  "embeddedCatalogRetainsBuildTimePendingFlags": true,
+  "requiredResourceEvidence": {
+    "postUseIdleWindows": 2,
+    "minimumSecondsPerWindow": 300,
+    "idleRssMiBMaximum": 40,
+    "idlePssMiBMaximum": 40,
+    "idleCpuOneCorePercentStrictUpperBound": 0.5,
+    "idleSwapBytes": 0,
+    "idleHelperProcesses": 0,
+    "hostLoadOneMinuteMaximum": 1,
+    "nativeSettlingSeconds": 180
+  },
+  "observation": {
+    "wholeProductFamilySampling": true,
+    "sampleCadenceSeconds": 0.2,
+    "scope": "All same-UID putgd-prefixed processes, including transient helpers and CLI; PID, PPID, startTicks, executable, RSS/PSS/private memory, CPU ticks, swap and host load retained. Finite sampling is not an exhaustive exec trace.",
+    "identity": "Socket peer UID/PID/startTicks and installed --version-json commit/tree/executable hashes checked. Historical frozen observer rejected the published version string and was not modified.",
+    "privateProfile": true,
+    "sessionSocketUtf8Bytes": 44,
+    "waylandSocketUtf8Bytes": 24,
+    "busSocketUtf8Bytes": 18,
+    "noAccountLoginOrSecretsInExport": true
+  },
+  "desktops": [
+    {
+      "host": "m74",
+      "environment": {
+        "os": "Linux Mint 22.3",
+        "desktop": "Cinnamon 6.6.9+zena",
+        "compositor": "Muffin 6.6.3",
+        "qt": "6.4.2"
+      },
+      "sessionType": "x11",
+      "installedPackage": {
+        "file": "putgd-26.1113.4757-nightly-ubuntu24.04-x86_64.deb",
+        "sha256": "f77a9f0ccb69d6a197e7680b091a9d5f7caa556a1a413519b9c9cb49053ee8b8",
+        "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "0e98e8175381c121470656607f2d03aa1ebac1aa01de02b3c883ad0a68ffa0fc"
+      },
+      "functionalRuns": [
+        {
+          "run": "w7m2",
+          "passed": 21,
+          "total": 21,
+          "cases": [
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "file-1m",
+              "passed": true
+            },
+            {
+              "name": "file-8m",
+              "passed": true
+            },
+            {
+              "name": "batch-3",
+              "passed": true
+            },
+            {
+              "name": "text-small",
+              "passed": true
+            },
+            {
+              "name": "back-to-back",
+              "passed": true
+            },
+            {
+              "name": "desktop-now",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3-again",
+              "passed": true
+            },
+            {
+              "name": "monitor-delay3",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "cancel-countdown",
+              "passed": true
+            },
+            {
+              "name": "after-cancel",
+              "passed": true
+            },
+            {
+              "name": "history-picture",
+              "passed": true
+            },
+            {
+              "name": "link-answers",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-1",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-2",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-3",
+              "passed": true
+            },
+            {
+              "name": "revoke-additions",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "run": "w7m5",
+          "passed": 21,
+          "total": 23,
+          "cases": [
+            {
+              "name": "account-folder",
+              "passed": true
+            },
+            {
+              "name": "p6-native",
+              "passed": false
+            },
+            {
+              "name": "file-64k",
+              "passed": false
+            },
+            {
+              "name": "file-1m",
+              "passed": true
+            },
+            {
+              "name": "file-8m",
+              "passed": true
+            },
+            {
+              "name": "batch-3",
+              "passed": true
+            },
+            {
+              "name": "text-small",
+              "passed": true
+            },
+            {
+              "name": "back-to-back",
+              "passed": true
+            },
+            {
+              "name": "desktop-now",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3-again",
+              "passed": true
+            },
+            {
+              "name": "monitor-delay3",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "cancel-countdown",
+              "passed": true
+            },
+            {
+              "name": "after-cancel",
+              "passed": true
+            },
+            {
+              "name": "history-picture",
+              "passed": true
+            },
+            {
+              "name": "link-answers",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-1",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-2",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-3",
+              "passed": true
+            },
+            {
+              "name": "revoke-additions",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "run": "w7m6",
+          "passed": 7,
+          "total": 7,
+          "cases": [
+            {
+              "name": "account-folder",
+              "passed": true
+            },
+            {
+              "name": "editor-private",
+              "passed": true
+            },
+            {
+              "name": "history.share",
+              "passed": true
+            },
+            {
+              "name": "history.inspectLink",
+              "passed": true
+            },
+            {
+              "name": "history.revokeLink",
+              "passed": true
+            },
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "run": "w7m1",
+          "passed": 2,
+          "total": 2,
+          "cases": [
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "postUseMemory": {
+        "measurementsPassed": true,
+        "run": "w7m4",
+        "settlingSecondsAfterUiExit": 35,
+        "sameUsedResidentForBothWindows": true,
+        "resident": {
+          "pid": 854980,
+          "startTicks": "200100625"
+        },
+        "windows": [
+          {
+            "index": 1,
+            "elapsed": 300.97572725103237,
+            "cpuPercent": 0.003322527065998044,
+            "rssPeak": 16211968,
+            "pssPeak": 11072512,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.05126953125,
+              0.27685546875
+            ],
+            "privateCleanPeak": 6221824,
+            "privateDirtyPeak": 4374528,
+            "swapPeak": 0
+          },
+          {
+            "index": 2,
+            "elapsed": 300.9481872150209,
+            "cpuPercent": 0.0033228311134019957,
+            "rssPeak": 10403840,
+            "pssPeak": 6905856,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.064453125,
+              0.34716796875
+            ],
+            "privateCleanPeak": 2412544,
+            "privateDirtyPeak": 4231168,
+            "swapPeak": 0
+          }
+        ],
+        "native180SecondSettlingSatisfied": false
+      },
+      "activeFamily": {
+        "run": "w7m4",
+        "summedFamilyPeakBytes": {
+          "Rss": 262111232,
+          "Pss": 205263872,
+          "Private_Clean": 58347520,
+          "Private_Dirty": 130519040,
+          "Swap": 0
+        },
+        "peakHostLoads": {
+          "Rss": {
+            "atMonotonic": 2001024.439030725,
+            "load": [
+              0.1484375,
+              0.1591796875,
+              0.1845703125
+            ]
+          },
+          "Pss": {
+            "atMonotonic": 2001024.439030725,
+            "load": [
+              0.1484375,
+              0.1591796875,
+              0.1845703125
+            ]
+          },
+          "Private_Clean": {
+            "atMonotonic": 2001016.630681438,
+            "load": [
+              0.07421875,
+              0.14453125,
+              0.1796875
+            ]
+          },
+          "Private_Dirty": {
+            "atMonotonic": 2001024.439030725,
+            "load": [
+              0.1484375,
+              0.1591796875,
+              0.1845703125
+            ]
+          },
+          "Swap": {
+            "atMonotonic": 2001006.24717959,
+            "load": [
+              0.08837890625,
+              0.150390625,
+              0.181640625
+            ]
+          }
+        },
+        "hostLoadOneMinuteRange": [
+          0.05126953125,
+          0.34716796875
+        ],
+        "sampleCount": 2971,
+        "sampleCadenceSeconds": 0.2,
+        "scope": "All same-UID processes whose comm begins putgd, including short-lived CLI and transient workers. Finite cadence is not an exhaustive exec trace."
+      },
+      "qtPlatformPlugins": [
+        "libqxcb.so"
+      ],
+      "regionHelperLifetimes": [
+        {
+          "run": "w7m2",
+          "case": "region-complete",
+          "operationId": "b8316a3b-e9c4-4da2-a1fb-9787ed62797e",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "850463:200001733",
+              "firstSampleSecondsAfterAccepted": 0.10811194754205644,
+              "lastSampleSecondsAfterAccepted": 8.563934909645468
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7m2",
+          "case": "region-cancel",
+          "operationId": "504ded15-e76a-4309-8282-e5c087899d6e",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 1.16,
+          "observedHelperIdentities": [
+            {
+              "identity": "850702:200002601",
+              "firstSampleSecondsAfterAccepted": 0.11294208490289748,
+              "lastSampleSecondsAfterAccepted": 1.4489143418613821
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7m4",
+          "case": "region-complete",
+          "operationId": "3e8e3085-ae6a-465d-81ce-1e3edb02d862",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "855259:200101733",
+              "firstSampleSecondsAfterAccepted": 0.178305383073166,
+              "lastSampleSecondsAfterAccepted": 7.347285208059475
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7m4",
+          "case": "region-cancel",
+          "operationId": "921c2ed1-7943-40bb-9dac-1ff77ed7ec6f",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "855462:200102480",
+              "firstSampleSecondsAfterAccepted": 0.1023387738969177,
+              "lastSampleSecondsAfterAccepted": 1.2983760519418865
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        }
+      ],
+      "helpersLeft": [],
+      "residentMappedLibrariesOfInterest": [],
+      "functionalStatus": "failed",
+      "nativeSettledRepeat": {
+        "status": "not_run",
+        "reason": "Another acceptance sweep acquired the exclusive m74 desktop before W7 could reacquire it. Existing windows started after 35 seconds and are reported with that actual settling time.",
+        "unblocks": "An exclusive Cinnamon slot, a used installed-package resident, 180 seconds after normal UI exit, then two disjoint >=300-second quiet windows with zero helpers."
+      }
+    },
+    {
+      "host": "f44",
+      "environment": {
+        "os": "Fedora 44",
+        "desktop": "GNOME 50.6",
+        "compositor": "Mutter 50.6",
+        "qt": "6.11.2"
+      },
+      "sessionType": "wayland",
+      "installedPackage": {
+        "file": "putgd-26.1113.4757-nightly-fedora44-x86_64.rpm",
+        "sha256": "c29b545859ca448e7230f62b4903c47e030e081a52c41f233cc2671fa93c83db",
+        "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "0e98e8175381c121470656607f2d03aa1ebac1aa01de02b3c883ad0a68ffa0fc"
+      },
+      "functionalRuns": [
+        {
+          "run": "w7f2",
+          "passed": 22,
+          "total": 22,
+          "cases": [
+            {
+              "name": "account-folder",
+              "passed": true
+            },
+            {
+              "name": "editor-private",
+              "passed": true
+            },
+            {
+              "name": "history.share",
+              "passed": true
+            },
+            {
+              "name": "history.inspectLink",
+              "passed": true
+            },
+            {
+              "name": "history.revokeLink",
+              "passed": true
+            },
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "file-1m",
+              "passed": true
+            },
+            {
+              "name": "file-8m",
+              "passed": true
+            },
+            {
+              "name": "batch-3",
+              "passed": true
+            },
+            {
+              "name": "text-small",
+              "passed": true
+            },
+            {
+              "name": "back-to-back",
+              "passed": true
+            },
+            {
+              "name": "desktop-now",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3-again",
+              "passed": true
+            },
+            {
+              "name": "monitor-delay3",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "cancel-countdown",
+              "passed": true
+            },
+            {
+              "name": "after-cancel",
+              "passed": true
+            },
+            {
+              "name": "history-picture",
+              "passed": true
+            },
+            {
+              "name": "link-answers",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "run": "w7f3",
+          "passed": 9,
+          "total": 9,
+          "cases": [
+            {
+              "name": "account-folder",
+              "passed": true
+            },
+            {
+              "name": "editor-private",
+              "passed": true
+            },
+            {
+              "name": "history.share",
+              "passed": true
+            },
+            {
+              "name": "history.inspectLink",
+              "passed": true
+            },
+            {
+              "name": "history.revokeLink",
+              "passed": true
+            },
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "postUseMemory": {
+        "measurementsPassed": true,
+        "run": "w7f4",
+        "settlingSecondsAfterUiExit": 180,
+        "sameUsedResidentForBothWindows": true,
+        "resident": {
+          "pid": 39850,
+          "startTicks": "105650554"
+        },
+        "windows": [
+          {
+            "index": 1,
+            "elapsed": 300.98618616512977,
+            "cpuPercent": 0.0033224116121108992,
+            "rssPeak": 13115392,
+            "pssPeak": 8551424,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.0107421875,
+              0.2529296875
+            ],
+            "privateCleanPeak": 3485696,
+            "privateDirtyPeak": 4866048,
+            "swapPeak": 0
+          },
+          {
+            "index": 2,
+            "elapsed": 300.8261316330172,
+            "cpuPercent": 0.0,
+            "rssPeak": 13115392,
+            "pssPeak": 8551424,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.02392578125,
+              0.3671875
+            ],
+            "privateCleanPeak": 3485696,
+            "privateDirtyPeak": 4866048,
+            "swapPeak": 0
+          }
+        ],
+        "native180SecondSettlingSatisfied": true
+      },
+      "activeFamily": {
+        "run": "w7f4",
+        "summedFamilyPeakBytes": {
+          "Rss": 327385088,
+          "Pss": 231331840,
+          "Private_Clean": 62615552,
+          "Private_Dirty": 137732096,
+          "Swap": 0
+        },
+        "peakHostLoads": {
+          "Rss": {
+            "atMonotonic": 1056522.774107934,
+            "load": [
+              0.26318359375,
+              0.1865234375,
+              0.22412109375
+            ]
+          },
+          "Pss": {
+            "atMonotonic": 1056522.987304161,
+            "load": [
+              0.26318359375,
+              0.1865234375,
+              0.22412109375
+            ]
+          },
+          "Private_Clean": {
+            "atMonotonic": 1056531.516902406,
+            "load": [
+              0.376953125,
+              0.2138671875,
+              0.23291015625
+            ]
+          },
+          "Private_Dirty": {
+            "atMonotonic": 1056531.516902406,
+            "load": [
+              0.376953125,
+              0.2138671875,
+              0.23291015625
+            ]
+          },
+          "Swap": {
+            "atMonotonic": 1056505.531857703,
+            "load": [
+              0.0205078125,
+              0.13232421875,
+              0.2080078125
+            ]
+          }
+        },
+        "hostLoadOneMinuteRange": [
+          0.0107421875,
+          0.546875
+        ],
+        "sampleCount": 3983,
+        "sampleCadenceSeconds": 0.2,
+        "scope": "All same-UID processes whose comm begins putgd, including short-lived CLI and transient workers. Finite cadence is not an exhaustive exec trace."
+      },
+      "qtPlatformPlugins": [
+        "libqwayland.so"
+      ],
+      "regionHelperLifetimes": [
+        {
+          "run": "w7f2",
+          "case": "region-complete",
+          "operationId": "62ce45f4-8830-46da-8786-ae0b1b9d4a17",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "34944:105550876",
+              "firstSampleSecondsAfterAccepted": 0.13356314576230943,
+              "lastSampleSecondsAfterAccepted": 7.16987944371067
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7f2",
+          "case": "region-cancel",
+          "operationId": "9a790441-16b9-4fc4-ab41-ddd7f3eb889a",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "35209:105551613",
+              "firstSampleSecondsAfterAccepted": 0.016043866286054254,
+              "lastSampleSecondsAfterAccepted": 1.5120788493659347
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7f4",
+          "case": "region-complete",
+          "operationId": "b0223343-562c-46db-baa4-9482638d70bb",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "40492:105653187",
+              "firstSampleSecondsAfterAccepted": 0.054882933385670185,
+              "lastSampleSecondsAfterAccepted": 8.57442593225278
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7f4",
+          "case": "region-cancel",
+          "operationId": "cc1bb4be-2c19-4e74-8d47-4540c3567cf0",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "40786:105654064",
+              "firstSampleSecondsAfterAccepted": 0.030609589302912354,
+              "lastSampleSecondsAfterAccepted": 1.5242007323540747
+            }
+          ],
+          "directPollingIdentities": [],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        }
+      ],
+      "helpersLeft": [],
+      "residentMappedLibrariesOfInterest": [
+        "libcrypto.so.3.5.9"
+      ],
+      "functionalStatus": "passed"
+    },
+    {
+      "host": "k72",
+      "environment": {
+        "os": "Kubuntu 26.04",
+        "desktop": "Plasma 6.6.6",
+        "compositor": "KWin 6.6.6",
+        "qt": "6.10.2"
+      },
+      "sessionType": "wayland",
+      "installedPackage": {
+        "file": "putgd-26.1113.4757-nightly-ubuntu26.04-x86_64.deb",
+        "sha256": "9a8e4422d334bf27d58958bb86f2992d8e74a9296608c4ac20d437871c897f5e",
+        "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "0e98e8175381c121470656607f2d03aa1ebac1aa01de02b3c883ad0a68ffa0fc"
+      },
+      "functionalRuns": [
+        {
+          "run": "w7k1",
+          "passed": 26,
+          "total": 26,
+          "cases": [
+            {
+              "name": "account-folder",
+              "passed": true
+            },
+            {
+              "name": "editor-private",
+              "passed": true
+            },
+            {
+              "name": "history.share",
+              "passed": true
+            },
+            {
+              "name": "history.inspectLink",
+              "passed": true
+            },
+            {
+              "name": "history.revokeLink",
+              "passed": true
+            },
+            {
+              "name": "file-64k",
+              "passed": true
+            },
+            {
+              "name": "file-1m",
+              "passed": true
+            },
+            {
+              "name": "file-8m",
+              "passed": true
+            },
+            {
+              "name": "batch-3",
+              "passed": true
+            },
+            {
+              "name": "text-small",
+              "passed": true
+            },
+            {
+              "name": "back-to-back",
+              "passed": true
+            },
+            {
+              "name": "desktop-now",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3",
+              "passed": true
+            },
+            {
+              "name": "desktop-delay3-again",
+              "passed": true
+            },
+            {
+              "name": "monitor-delay3",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "cancel-countdown",
+              "passed": true
+            },
+            {
+              "name": "after-cancel",
+              "passed": true
+            },
+            {
+              "name": "history-picture",
+              "passed": true
+            },
+            {
+              "name": "link-answers",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-1",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-2",
+              "passed": true
+            },
+            {
+              "name": "sequential-desktop-3",
+              "passed": true
+            },
+            {
+              "name": "revoke-additions",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "run": "w7k2",
+          "passed": 4,
+          "total": 4,
+          "cases": [
+            {
+              "name": "file-8m",
+              "passed": true
+            },
+            {
+              "name": "region-complete",
+              "passed": true
+            },
+            {
+              "name": "region-cancel",
+              "passed": true
+            },
+            {
+              "name": "revoke-all",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "postUseMemory": {
+        "measurementsPassed": true,
+        "run": "w7k1",
+        "settlingSecondsAfterUiExit": 180,
+        "sameUsedResidentForBothWindows": true,
+        "resident": {
+          "pid": 1547963,
+          "startTicks": "128731133"
+        },
+        "windows": [
+          {
+            "index": 1,
+            "elapsed": 300.9534343921114,
+            "cpuPercent": 0.006645546358491478,
+            "rssPeak": 11804672,
+            "pssPeak": 6403072,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.02001953125,
+              0.35302734375
+            ],
+            "privateCleanPeak": 1564672,
+            "privateDirtyPeak": 4509696,
+            "swapPeak": 0
+          },
+          {
+            "index": 2,
+            "elapsed": 300.7957443248015,
+            "cpuPercent": 0.006649030239737652,
+            "rssPeak": 11804672,
+            "pssPeak": 6403072,
+            "gates": {
+              "rss": true,
+              "pss": true,
+              "cpu": true,
+              "swap": true,
+              "quiet": true,
+              "noHelpers": true
+            },
+            "hostLoadOneMinuteRange": [
+              0.00439453125,
+              0.33349609375
+            ],
+            "privateCleanPeak": 1564672,
+            "privateDirtyPeak": 4509696,
+            "swapPeak": 0
+          }
+        ],
+        "native180SecondSettlingSatisfied": true
+      },
+      "activeFamily": {
+        "run": "w7k2",
+        "summedFamilyPeakBytes": {
+          "Rss": 344588288,
+          "Pss": 232872960,
+          "Private_Clean": 62087168,
+          "Private_Dirty": 158642176,
+          "Swap": 0
+        },
+        "peakHostLoads": {
+          "Rss": {
+            "atMonotonic": 1288296.481192646,
+            "load": [
+              0.33740234375,
+              0.22705078125,
+              0.23828125
+            ]
+          },
+          "Pss": {
+            "atMonotonic": 1288296.481192646,
+            "load": [
+              0.33740234375,
+              0.22705078125,
+              0.23828125
+            ]
+          },
+          "Private_Clean": {
+            "atMonotonic": 1288295.352575801,
+            "load": [
+              0.33740234375,
+              0.22705078125,
+              0.23828125
+            ]
+          },
+          "Private_Dirty": {
+            "atMonotonic": 1288296.481192646,
+            "load": [
+              0.33740234375,
+              0.22705078125,
+              0.23828125
+            ]
+          },
+          "Swap": {
+            "atMonotonic": 1288281.623370744,
+            "load": [
+              0.15576171875,
+              0.1875,
+              0.2255859375
+            ]
+          }
+        },
+        "hostLoadOneMinuteRange": [
+          0.15576171875,
+          0.3427734375
+        ],
+        "sampleCount": 128,
+        "sampleCadenceSeconds": 0.2,
+        "scope": "All same-UID processes whose comm begins putgd, including short-lived CLI and transient workers. Finite cadence is not an exhaustive exec trace."
+      },
+      "qtPlatformPlugins": [
+        "libqwayland.so"
+      ],
+      "regionHelperLifetimes": [
+        {
+          "run": "w7k1",
+          "case": "region-complete",
+          "operationId": "97d90648-a2b2-4b57-9171-49886404fec5",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "1550702:128739446",
+              "firstSampleSecondsAfterAccepted": 0.20776922651566565,
+              "lastSampleSecondsAfterAccepted": 6.910112883662805
+            }
+          ],
+          "directPollingIdentities": [
+            {
+              "pid": 1550702,
+              "startTicks": "128739446"
+            }
+          ],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7k1",
+          "case": "region-cancel",
+          "operationId": "ae44f49c-a838-46a2-b342-12f2206ddaf9",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "1550882:128740148",
+              "firstSampleSecondsAfterAccepted": 0.11583286081440747,
+              "lastSampleSecondsAfterAccepted": 1.4800849966704845
+            }
+          ],
+          "directPollingIdentities": [
+            {
+              "pid": 1550882,
+              "startTicks": "128740148"
+            }
+          ],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7k2",
+          "case": "region-complete",
+          "operationId": "277f1c55-4f73-4b69-aa4d-05e76871f936",
+          "state": "completed",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "1556017:128829680",
+              "firstSampleSecondsAfterAccepted": 0.1283411686308682,
+              "lastSampleSecondsAfterAccepted": 6.695061197737232
+            }
+          ],
+          "directPollingIdentities": [
+            {
+              "pid": 1556017,
+              "startTicks": "128829680"
+            }
+          ],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        },
+        {
+          "run": "w7k2",
+          "case": "region-cancel",
+          "operationId": "5b25749a-8625-4bc2-b392-f08df484d234",
+          "state": "cancelled",
+          "helperGoneAfterSeconds": 0.01,
+          "observedHelperIdentities": [
+            {
+              "identity": "1556188:128830370",
+              "firstSampleSecondsAfterAccepted": 0.03547028265893459,
+              "lastSampleSecondsAfterAccepted": 1.610936860786751
+            }
+          ],
+          "directPollingIdentities": [
+            {
+              "pid": 1556188,
+              "startTicks": "128830370"
+            }
+          ],
+          "correlation": "Approximate UTC/monotonic offset from export; see raw trace and events. Driver explicitly waits for zero helpers before the next action; no kill before that observation."
+        }
+      ],
+      "helpersLeft": [],
+      "residentMappedLibrariesOfInterest": [],
+      "functionalStatus": "passed"
+    }
+  ],
+  "findings": [
+    {
+      "host": "m74",
+      "run": "w7m5",
+      "case": "file-64k",
+      "operationId": "1eb49f84-4013-4949-b5fa-d83cca7b87bd",
+      "historyId": "2565ce6e-45cb-4f6c-82f3-fe077edf1730",
+      "bytesUploaded": 65536,
+      "shareStatus": "changed",
+      "linkAvailable": false,
+      "errorCode": "",
+      "freshUploadRepeat": "passed in w7m6",
+      "originalPublicationInspection": "private; no reupload or remote deletion",
+      "causeEstablished": false,
+      "sourceCallPath": [
+        "tools/proton/runtime.ts:189",
+        "tools/proton/protocol.ts:130"
+      ],
+      "assessment": "A fresh ownership check can suppress the link; foreign versus missing was not exposed by this completion. No product fix, issue filing or acceptance waiver."
+    }
+  ],
+  "installerAudits": {
+    "passed": true,
+    "count": 5,
+    "receipt": "tools/proton/native_relink/evidence/installers-1399.json",
+    "receiptSha256": "dd3a4174b65bc5810a5df079e2bf572e77097c6495d50f00f2211d7fdf44a98d",
+    "scope": "Three DEBs, Fedora RPM and AppImage extraction/integrity/embedded-runtime/advisory audits, matching the prior five-audit scope; no VM clean-install lifecycle claimed."
+  },
+  "notRun": [
+    {
+      "gate": "Cinnamon repeat after native 180-second settling",
+      "reason": "m74 became exclusively leased to sweep-acceptance-a at 2026-11-13T22:05:05Z. W7 did not touch or preempt that session. Earlier two quiet 301-second windows passed after 35 seconds and are reported with their actual settling time.",
+      "unblocks": "An exclusive m74 slot for a used installed-package resident: normal UI exit, 180 seconds settling, then two disjoint quiet >=300-second windows."
+    }
+  ],
+  "retainedCorrections": [
+    "Native proof: symlink temporary directory rejected; corrected canonical private TMPDIR proof passed.",
+    "GNOME: Wayland environment and installed extension discovery corrected before live captures.",
+    "GNOME: require focused normal UI exit before measuring; the failed UI-open observation remains retained.",
+    "GNOME: early 35-second-settle diagnostic RSS 40.64453125 MiB; repeated after the required 180-second settle, both windows passed.",
+    "Cinnamon: the automatic update check spawned a CLI during an initial idle attempt; subsequent runs completed an explicit update check before observation, retaining the initial failed attempt.",
+    "Editor harness: premature submit corrected by waiting for editing phase; corrected P6 assertions passed.",
+    "Active traces above host load 1 retained as diagnostic; quiet active replays and the actual host loads are recorded separately."
+  ],
+  "evidenceRecord": {
+    "repository": "patrick-hudson/put.gd-evidence",
+    "record": "2026-11-13-proton-relink-1399",
+    "commitPinnedLinkLocation": "Pull request and worker report; not embedded here to avoid a catalog/manifest/evidence hash cycle."
+  }
+}

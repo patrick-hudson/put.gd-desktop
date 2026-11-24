@@ -30,18 +30,28 @@
 #include <QTimer>
 #include <QWindow>
 #include <algorithm>
+#include <cmath>
 #include <utility>
 #ifdef PUTGD_RECORD_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
 
 namespace putgd::record {
+namespace {
+// Keep the recording selector's original small-drag cancellation threshold;
+// video selection has never promised single-pixel still-image precision.
+constexpr int minimumSelectionSize=4;
+}
+
 SurfaceMode surfaceMode() {
     static const SurfaceMode mode = [] {
         if (!QGuiApplication::platformName().startsWith("wayland")) return SurfaceMode::X11;
 #ifdef PUTGD_RECORD_LAYER_SHELL
-        // KWin implements wlr-layer-shell; the same selector serves KDE screenshots.
-        if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains("KDE", Qt::CaseInsensitive)) return SurfaceMode::LayerShell;
+        // KWin, labwc (Budgie 10.10) and Hyprland implement wlr-layer-shell; the
+        // same selector serves their screenshots. Add a desktop here only once
+        // its compositor's layer surfaces are accepted.
+        for (const auto& desktop : qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':', Qt::SkipEmptyParts))
+            if (desktop.compare("KDE", Qt::CaseInsensitive) == 0 || desktop.compare("Budgie", Qt::CaseInsensitive) == 0 || desktop.compare("Hyprland", Qt::CaseInsensitive) == 0) return SurfaceMode::LayerShell;
 #endif
         return SurfaceMode::Compositor;
     }();
@@ -108,7 +118,59 @@ QList<QRect> screenRects() {
 // actions use the shared neutral role.
 
 }
+QList<QRect> barScreens() { return screenRects(); }
+QRect barLogicalRect(const QRect& root) { return fromRootSpan(root); }
+QPoint barRootPoint(const QPointF& logical) { return toRoot(QRectF(logical, QSizeF(1, 1))).topLeft(); }
+void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard) {
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    toLayer(widget, screen, logical, keyboard);
+#else
+    Q_UNUSED(screen); Q_UNUSED(keyboard);
+    widget->setGeometry(logical);
+#endif
+}
 
+namespace {
+// The microphone's level beside its toggle: a short bar that follows the
+// input's peak and falls back over about a third of a second, so the user sees
+// that the microphone is live before and during a recording (#1364).
+class LevelBar final : public QWidget {
+public:
+    explicit LevelBar(QWidget* parent) : QWidget(parent) {
+        setObjectName("microphoneLevel");
+        setAccessibleName("Microphone level");
+        setFixedSize(Ui::scaled(44), Ui::scaled(10));
+        setToolTip("Microphone level");
+    }
+    void setLevel(float level) {
+        // Peaks rise at once and fall slowly; quiet speech still moves the bar (square-root scale).
+        const float shown = std::sqrt(std::clamp(level, 0.0f, 1.0f));
+        level_ = std::max(shown, level_ * 0.72f);
+        if (level_ < 0.005f) level_ = 0.0f;
+        setAccessibleDescription(QStringLiteral("%1%").arg(int(level_ * 100)));
+        update();
+    }
+    float level() const { return level_; }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        const auto& tokens = Theme::current();
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        const QRectF track = QRectF(rect()).adjusted(0.5, 1.5, -0.5, -1.5);
+        const qreal radius = track.height() / 2;
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(tokens.borderStrong);
+        painter.drawRoundedRect(track, radius, radius);
+        if (level_ <= 0.0f) return;
+        QRectF fill = track;
+        fill.setWidth(std::max(track.height(), track.width() * qreal(level_)));
+        painter.setBrush(level_ > 0.92f ? tokens.live : tokens.accent);
+        painter.drawRoundedRect(fill, radius, radius);
+    }
+private:
+    float level_ = 0.0f;
+};
+}
 QString formatHint(const QString& format, const QString& codec) {
     if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Use MP4 (H.264) for broader playback compatibility.");
     if (format == "mp4") return QStringLiteral("Recommended for browser sharing.");
@@ -218,7 +280,7 @@ void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;
     move(point);
-    if (selection_.width() < 4 || selection_.height() < 4) { cancel(); return; }
+    if (selection_.width()<minimumSelectionSize||selection_.height()<minimumSelectionSize) { cancel(); return; }
     const auto root = toRoot(selection_);
     finish();
     emit selected(root);
@@ -232,12 +294,12 @@ void SelectionOverlay::finish() {
     if (!finished_ && stats_.paints) regionDebugLog(stats_.summary(QStringLiteral("record selection")));
     finished_ = true;
     hint_.stop();
-    for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); }
+    for (auto* s : std::as_const(surfaces_)) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); }
 }
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 
 BoundsOverlay::BoundsOverlay(QObject* parent) : QObject(parent) {}
-BoundsOverlay::~BoundsOverlay() { hideAll(); for (auto* w : ring_ + dim_) delete w; }
+BoundsOverlay::~BoundsOverlay() { hideAll(); }
 namespace {
 // A flat, input-transparent surface: ring segments and dim strips.
 class PassiveSurface final : public QWidget {
@@ -316,15 +378,25 @@ void BoundsOverlay::setDimmed(bool dimmed) {
     if (dimmed) addDim(dimColor);
     else { for (auto* w : dim_) delete w; dim_.clear(); }
 }
+void BoundsOverlay::showHeartbeat(const QPoint& at) {
+    for (auto* w : heart_) delete w;
+    heart_.clear();
+    add(heart_, QRect(at, QSize(1, 1)), Qt::transparent);
+}
+void BoundsOverlay::beat() {
+    for (auto* w : heart_) w->update();
+}
 void BoundsOverlay::hideAll() {
-    for (auto* w : ring_ + dim_) delete w;
+    for (auto* w : ring_ + dim_ + heart_) delete w;
     ring_.clear();
     dim_.clear();
+    heart_.clear();
     rect_ = {};
 }
 
-ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), audioIntent_(config.audio.system), options_(options) {
+ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), audioIntent_(config.audio.system), microphoneIntent_(config.audio.microphone), options_(options) {
     config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
+    config_.audio.microphone = microphoneIntent_ && options_.microphoneAvailable && !config_.silent();
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
@@ -365,6 +437,10 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     target_->setAccessibleName(options.targetLabel);
     audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
+    microphone_ = new QCheckBox("Microphone", choices_);
+    microphone_->setObjectName("microphone");
+    microphone_->setChecked(config.audio.microphone);
+    meter_ = new LevelBar(choices_);
     format_ = new FormatBox(choices_);
     format_->setObjectName("format");
     format_->setProperty("purposeMinimum", true);
@@ -389,7 +465,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     lockedFacts_->setObjectName("recordingFacts");
     choices->addWidget(lockedFacts_);
     for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) { Ui::role(label, "muted"); Ui::setLocked(label, true); }
-    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
+    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, microphone_, meter_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     Ui::role(record_, "primary");
     record_->setProperty("uiSemanticIcon", true);
@@ -426,6 +502,13 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
     connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (audioIntent_ == on) return; audioIntent_ = on; config_.audio.system = on && options_.audioSupported && !config_.silent(); emit configChanged(config_); });
+    connect(microphone_, &QCheckBox::toggled, this, [this](bool on) {
+        if (microphoneIntent_ == on) return;
+        microphoneIntent_ = on;
+        config_.audio.microphone = on && options_.microphoneAvailable && !config_.silent();
+        refresh();
+        emit configChanged(config_);
+    });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
         format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->itemData(index, Qt::ToolTipRole).toString());
         const auto value = format_->itemData(index).toStringList();
@@ -433,6 +516,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         config_.format = value[0];
         config_.codec = value[1];
         config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
+        config_.audio.microphone = microphoneIntent_ && options_.microphoneAvailable && !config_.silent();
         refresh();
         emit configChanged(config_);
     });
@@ -479,6 +563,23 @@ void ControlBar::refresh() {
     audio_->blockSignals(false);
     audio_->setText(config_.silent() ? QStringLiteral("System audio — used for video formats") : QStringLiteral("System audio"));
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
+    const bool narrated = config_.audio.microphone && !config_.silent();
+    microphone_->setEnabled(ready && options_.microphoneAvailable && !config_.silent());
+    // Without one the toggle says so itself; why is in its tooltip.
+    microphone_->setText(options_.microphoneAvailable ? QStringLiteral("Microphone") : QStringLiteral("No microphone"));
+    Ui::setLocked(microphone_, !microphone_->isEnabled());
+    microphone_->blockSignals(true);
+    // Without a microphone the box is empty whatever was chosen last time; the choice is kept for when one is there.
+    microphone_->setChecked(microphoneIntent_ && options_.microphoneAvailable);
+    microphone_->blockSignals(false);
+    microphone_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent")
+        : !options_.microphoneAvailable ? (options_.microphoneUnavailable.isEmpty() ? QStringLiteral("No microphone is available") : options_.microphoneUnavailable)
+        : narrated ? QStringLiteral("Recording your voice from %1. The microphone is open while this is ticked.").arg(options_.microphoneLabel)
+        : QStringLiteral("Narrate the recording with %1").arg(options_.microphoneLabel));
+    microphone_->setAccessibleDescription(microphone_->toolTip());
+    microphone_->setVisible(ready);
+    // The meter stays beside the toggle before Record and beside the facts during it.
+    meter_->setVisible(narrated && microphoneLost_.isEmpty() && !handle && !asking && state_ != "stopping");
     format_->setEnabled(ready);
     audio_->setVisible(ready);
     format_->setVisible(ready);
@@ -490,13 +591,15 @@ void ControlBar::refresh() {
     lockedFacts_->setVisible(!ready);
     lockedAudio_->hide();
     lockedFormat_->hide();
-    lockedAudio_->setText(withSound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
+    lockedAudio_->setText(!microphoneLost_.isEmpty() ? (withSound ? QStringLiteral("System audio · microphone disconnected") : QStringLiteral("Microphone disconnected"))
+        : withSound && narrated ? QStringLiteral("System audio and microphone") : narrated ? QStringLiteral("With microphone") : withSound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
     lockedAudio_->setToolTip(audio_->toolTip());
     lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
     lockedFormat_->setText(format_->currentText().section(QStringLiteral(" — "), 0, 0));
     lockedFacts_->setToolTip(options_.targetLabel + " · " + lockedAudio_->text() + " · " + format_->currentText());
     QStringList facts;
     for (const auto& fact : {options_.targetLabel, lockedAudio_->text(), lockedFormat_->text()}) if (!fact.isEmpty()) facts.append(fact);
+    if (options_.clickHighlights) facts.append(QStringLiteral("Click highlights"));
     lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
     lockedFacts_->setAccessibleName(lockedFacts_->text());
     lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
@@ -529,7 +632,7 @@ void ControlBar::refresh() {
         arrange(true);
         const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Ui::space(Ui::Space::m));
         int other = 0;
-        for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
+        for (auto* widget : std::initializer_list<QWidget*>{audio_, microphone_, meter_, format_, formatAudio_})
             if (!widget->isHidden()) other += widget->sizeHint().width() + Ui::space(Ui::Space::s);
         for (auto* label : {target_, lockedFacts_}) {
             if (label->isHidden()) continue;
@@ -547,6 +650,45 @@ void ControlBar::refresh() {
     reposition();
 }
 void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
+QJsonObject ControlBar::microphoneState() const {
+    QJsonObject state{{"requested", microphoneIntent_}, {"effective", config_.audio.microphone}, {"available", options_.microphoneAvailable}};
+    if (options_.microphoneAvailable) state["device"] = options_.microphoneLabel;
+    else if (!options_.microphoneUnavailable.isEmpty()) state["unavailable"] = options_.microphoneUnavailable;
+    if (!microphoneLost_.isEmpty()) state["lost"] = microphoneLost_;
+    return state;
+}
+void ControlBar::setMicrophoneLevel(float level) { if (meter_->isVisible()) static_cast<LevelBar*>(meter_)->setLevel(level); }
+float ControlBar::microphoneLevel() const { return static_cast<const LevelBar*>(meter_)->level(); }
+void ControlBar::setMicrophone(bool available, const QString& label, const QString& unavailable) {
+    if (state_ != "ready") return;
+    if (options_.microphoneAvailable == available && options_.microphoneLabel == label && options_.microphoneUnavailable == unavailable) return;
+    options_.microphoneAvailable = available;
+    options_.microphoneLabel = label;
+    options_.microphoneUnavailable = unavailable;
+    const bool effective = microphoneIntent_ && available && !config_.silent();
+    const bool changed = effective != config_.audio.microphone;
+    config_.audio.microphone = effective;
+    refresh();
+    if (changed) emit configChanged(config_);
+}
+void ControlBar::chooseAudio(std::optional<bool> system, std::optional<bool> microphone) {
+    if (state_ != "ready") return;
+    bool changed = false;
+    if (system && audioIntent_ != *system) { audioIntent_ = *system; changed = true; }
+    if (microphone && microphoneIntent_ != *microphone) { microphoneIntent_ = *microphone; changed = true; }
+    if (!changed) return;
+    config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
+    config_.audio.microphone = microphoneIntent_ && options_.microphoneAvailable && !config_.silent();
+    // refresh() draws both boxes from what was asked for.
+    refresh();
+    emit configChanged(config_);
+}
+void ControlBar::setMicrophoneLost(const QString& reason) {
+    if (microphoneLost_ == reason) return;
+    microphoneLost_ = reason;
+    lockedFacts_->setToolTip(reason);
+    refresh();
+}
 void ControlBar::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), Theme::current().bg);

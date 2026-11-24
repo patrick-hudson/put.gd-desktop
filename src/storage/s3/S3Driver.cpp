@@ -1,5 +1,7 @@
 #include "core/ByteSize.h"
 #include "S3Driver.h"
+#include "S3Journal.h"
+#include <QXmlStreamReader>
 #include "S3SdkContext.h"
 #include "PublicUrl.h"
 #include "SdkRuntime.h"
@@ -14,6 +16,7 @@
 #include <aws/core/http/HttpResponse.h>
 #include <algorithm>
 #include <array>
+#include <aws/core/client/CoreErrors.h>
 #include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
 #include <aws/core/utils/threading/PooledThreadExecutor.h>
@@ -28,6 +31,7 @@
 #include <aws/s3/model/UploadPartRequest.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetBucketVersioningRequest.h>
+#include <aws/s3/model/ListObjectVersionsRequest.h>
 #include <aws/s3/model/ObjectCannedACL.h>
 #include <aws/s3/model/StorageClass.h>
 #include <QCryptographicHash>
@@ -40,6 +44,7 @@
 #include <condition_variable>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <mutex>
 #include <thread>
 namespace putgd {
@@ -53,19 +58,91 @@ void useHostCaFile(Aws::Client::ClientConfiguration& config) {
 }
 QString qt(const Aws::String& value) { return QString::fromUtf8(value.data(), int(value.size())); }
 QString objectKey(const Destination& destination, const QString& candidate) {
-    auto prefix = destination.settings["objectPrefix"].toString();
-    if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
-    return prefix + candidate;
+    return s3ObjectKey(destination.settings, candidate);
 }
 bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && token->load(); }
+// A "." or ".." folder makes libcurl send a path other than the one the SDK
+// signed, and the object would land under a key other than the recorded one (#1582).
+Error prefixError() {
+    return {"s3_settings_invalid", "Folder in bucket can't contain a \".\" or \"..\" part: S3 would store the file under a different name than put.gd shows. Remove that part in Settings.", {}};
+}
+Error unaddressableKey() {
+    return {"s3_key_invalid", "The recorded object key contains a \".\" or \"..\" part, which no S3 request can name exactly, so put.gd leaves that object alone. Check the bucket with another tool.", {}};
+}
 Error cancelled() {
     return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}};
 }
-Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter and Store credentials for this session.", {}}; }
-QString requestGuidance(const QString& name, int status, const QString& stage, int curlCode) {
-    if (name == "InvalidAccessKeyId") return "S3 does not recognize the access key ID. Check that it is correct, active, and belongs to the selected storage service; then Store credentials again.";
+Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter them and choose Save to keychain or Use for this session.", {}}; }
+// Which request was denied decides what to check. Every stage is named, so a new one cannot fall through.
+QString deniedGuidance(S3Stage stage) {
+    switch (stage) {
+    case S3Stage::UploadPut: return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
+    case S3Stage::UploadCreate:
+    case S3Stage::UploadPart:
+    case S3Stage::UploadComplete: return ByteSize::labels("S3 denied the multipart upload that files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy; it covers every part. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.");
+    case S3Stage::UploadAbort: return "S3 denied removing an incomplete multipart upload, so its uploaded parts keep using storage. Check s3:AbortMultipartUpload in IAM and the bucket policy, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
+    case S3Stage::UploadListParts: return "S3 denied listing the parts of an interrupted multipart upload, so put.gd sends every part again. Check s3:ListMultipartUploadParts in IAM and the bucket policy.";
+    case S3Stage::DeleteVersioning: return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
+    case S3Stage::DeleteVersion: return "S3 denied deletion of the recorded object version. Check s3:DeleteObjectVersion in IAM and the bucket policy, plus Object Lock, retention and MFA restrictions.";
+    case S3Stage::DeleteVersionList: return "S3 denied listing this file's versions, so put.gd can't tell whether its kept version was removed. Check s3:ListBucketVersions in IAM and the bucket policy.";
+    case S3Stage::DeleteObject:
+    case S3Stage::DeleteMarker: return "S3 denied object cleanup. Check s3:DeleteObject in IAM and the bucket policy, and s3:DeleteObjectVersion when targeting a recorded version (including the null version). Also check Object Lock, retention and MFA restrictions.";
+    case S3Stage::NameHead:
+    case S3Stage::ObjectHead:
+    case S3Stage::CurrentHead:
+    case S3Stage::DeleteCurrentHead: return "S3 denied the object check. Verify the key pair and s3:GetObject access in IAM and the bucket policy, plus s3:GetObjectVersion for recorded-version checks. A missing object can also return 403 without s3:ListBucket; S3 did not identify the exact cause.";
+    }
+    Q_UNREACHABLE();
+    return {};
+}
+// A 501 names the request the service refused (#1677). The conditional writes have their own text.
+QString unsupportedGuidance(S3Stage stage) {
+    QString request;
+    switch (stage) {
+    case S3Stage::NameHead: request = "the check for an existing file of this name (HEAD)"; break;
+    case S3Stage::ObjectHead: request = "the check of the recorded object (HEAD, naming its version when one was recorded)"; break;
+    case S3Stage::CurrentHead:
+    case S3Stage::DeleteCurrentHead: request = "the check of the current object (HEAD)"; break;
+    case S3Stage::UploadPut:
+    case S3Stage::UploadComplete: request = "a conditional write (If-None-Match or If-Match)"; break;
+    case S3Stage::UploadCreate: request = ByteSize::labels("starting the multipart upload that files over 64 MiB use (CreateMultipartUpload)"); break;
+    case S3Stage::UploadPart: request = "uploading a part of a multipart upload (UploadPart)"; break;
+    case S3Stage::UploadListParts: request = "listing the parts of an interrupted multipart upload (ListParts)"; break;
+    case S3Stage::UploadAbort: request = "removing an incomplete multipart upload (AbortMultipartUpload)"; break;
+    case S3Stage::DeleteVersioning: request = "the bucket versioning check (GetBucketVersioning) that safe cleanup needs"; break;
+    case S3Stage::DeleteMarker: request = "hiding the object behind a delete marker (DeleteObject with If-Match)"; break;
+    case S3Stage::DeleteVersion: request = "deleting the recorded object version (DeleteObject with a version ID)"; break;
+    case S3Stage::DeleteObject: request = "deleting the object only if it is unchanged (DeleteObject with If-Match)"; break;
+    case S3Stage::DeleteVersionList: request = "listing the file's versions (ListObjectVersions)"; break;
+    }
+    return "The storage service does not implement " + request + ", which put.gd needs here. Check that the endpoint supports it.";
+}
+// The requests that carry If-None-Match or If-Match.
+bool conditionalWrite(S3Stage stage) {
+    switch (stage) {
+    case S3Stage::UploadPut:
+    case S3Stage::UploadComplete: return true;
+    case S3Stage::NameHead:
+    case S3Stage::ObjectHead:
+    case S3Stage::CurrentHead:
+    case S3Stage::UploadCreate:
+    case S3Stage::UploadPart:
+    case S3Stage::UploadListParts:
+    case S3Stage::UploadAbort:
+    case S3Stage::DeleteVersioning:
+    case S3Stage::DeleteCurrentHead:
+    case S3Stage::DeleteMarker:
+    case S3Stage::DeleteVersion:
+    case S3Stage::DeleteObject:
+    case S3Stage::DeleteVersionList: return false;
+    }
+    Q_UNREACHABLE();
+    return false;
+}
+QString requestGuidance(const QString& name, int status, S3Stage stage, int curlCode) {
+    if (name == "InvalidAccessKeyId") return "S3 does not recognize the access key ID. Check that it is correct, active, and belongs to the selected storage service; then choose Save to keychain or Use for this session.";
     if (name == "SignatureDoesNotMatch") return "S3 could not verify the request signature. Check that the secret access key matches the access key ID, then check the region, endpoint and system clock.";
-    if (name == "ExpiredToken" || name == "InvalidToken" || name == "TokenRefreshRequired") return "The temporary session token is expired or invalid. Renew and Store the complete access key, secret key and session token together.";
+    if (name == "ExpiredToken" || name == "InvalidToken" || name == "TokenRefreshRequired") return "The temporary session token is expired or invalid. Renew them, then enter the access key, secret key and session token together and choose Save to keychain or Use for this session.";
     if (name == "RequestTimeTooSkewed" || name == "RequestExpired") return "S3 rejected the request time. Synchronize the system clock and try again.";
     if (name == "NoSuchBucket") return "S3 could not find the bucket. Check the bucket name, region and endpoint; the bucket must already exist.";
     if (name == "InvalidBucketName") return "S3 rejected the bucket name. Enter only the existing bucket name, without a URL or folder path.";
@@ -75,21 +152,15 @@ QString requestGuidance(const QString& name, int status, const QString& stage, i
     if (name == "EntityTooLarge") return ByteSize::labels("The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.");
     if (name == "EntityTooSmall" || name == "InvalidPart" || name == "InvalidPartOrder") return ByteSize::labels("The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.");
     if (name == "BadDigest" || name == "XAmzContentSHA256Mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
-    if ((name == "NotImplemented" || status == 501) && (stage == "upload_put" || stage == "upload_complete"))
+    if ((name == "NotImplemented" || status == 501) && conditionalWrite(stage))
         return "The storage service does not support conditional writes (If-None-Match and If-Match), which put.gd uses so an upload never replaces another file. Use a storage service or endpoint that implements S3 conditional writes.";
-    if (name == "NotImplemented" || status == 501) return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
-    if (status == 403) {
-        if (stage == "upload_put") return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
-        if (stage == "upload_create" || stage == "upload_part" || stage == "upload_complete") return ByteSize::labels("S3 denied the multipart upload that files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy; it covers every part. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.");
-        if (stage == "upload_abort") return "S3 denied removing an incomplete multipart upload, so its uploaded parts keep using storage. Check s3:AbortMultipartUpload in IAM and the bucket policy, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
-        if (stage == "upload_list_parts") return "S3 denied listing the parts of an interrupted multipart upload, so put.gd sends every part again. Check s3:ListMultipartUploadParts in IAM and the bucket policy.";
-        if (stage == "delete_versioning") return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
-        if (stage == "delete_version") return "S3 denied deletion of the recorded object version. Check s3:DeleteObjectVersion in IAM and the bucket policy, plus Object Lock, retention and MFA restrictions.";
-        if (stage == "delete_object" || stage == "delete_marker") return "S3 denied object cleanup. Check s3:DeleteObject in IAM and the bucket policy, and s3:DeleteObjectVersion when targeting a recorded version (including the null version). Also check Object Lock, retention and MFA restrictions.";
-        return "S3 denied the object check. Verify the key pair and s3:GetObject access in IAM and the bucket policy, plus s3:GetObjectVersion for recorded-version checks. A missing object can also return 403 without s3:ListBucket; S3 did not identify the exact cause.";
-    }
+    if (name == "NotImplemented" || status == 501) return unsupportedGuidance(stage);
+    if (status == 403) return deniedGuidance(stage);
     if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
     if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
+    // A request that sends a file has no request timeout (#1758): it ends on a stall.
+    if (curlCode == 28 && (stage == S3Stage::UploadPut || stage == S3Stage::UploadPart))
+        return "The upload stalled or couldn't connect in time. Check the network and endpoint, or lower Minimum transfer speed, lengthen Low-speed window or raise Connect timeout in Advanced connection settings.";
     if (curlCode == 28 || name == "RequestTimeout") return "The S3 request timed out. Check the network and endpoint, or increase the connection/request deadlines in Advanced connection settings.";
     if (curlCode == 35 || curlCode == 60) return "The secure connection to S3 failed. Check the endpoint, system clock and trusted certificates, including any proxy certificate.";
     if (name == "SlowDown" || status == 429) return "S3 is limiting requests. Wait before retrying and reduce concurrent uploads if this continues.";
@@ -133,7 +204,40 @@ QJsonObject withIds(QJsonObject record, const ResponseIds& ids, const Aws::Strin
     if (!ids.extended.isEmpty()) record["extendedRequestId"] = ids.extended;
     return record;
 }
-template<class E> Error wireError(const E& error, const char* stage, qint64 elapsedMs) {
+// #1601: the SDK sends $ & , : = and @ in a key as they are but signs them percent-encoded.
+// AWS and most servers accept that; Garage checks the path as sent and answers 403. put.gd
+// can't tell that apart from a real denial, so the error stays as it is and gains a hint
+// when the key (prefix and name) contains one of those characters.
+Error withNameCharactersHint(Error error, const QString& key) {
+    if (error.code != "s3_permission_denied" && error.code != "s3_authentication_failed") return error;
+    for (const auto character : QStringLiteral("$&,:=@"))
+        if (key.contains(character)) {
+            error.message += " Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.";
+            break;
+        }
+    return error;
+}
+// The SDK refused the request before sending it: it could not build an endpoint from
+// Region and Endpoint, such as a Region it drops because it is not a DNS label (#1675).
+template<class E> bool notSent(const E& error) {
+    return int(error.GetErrorType()) == int(Aws::Client::CoreErrors::ENDPOINT_RESOLUTION_FAILURE);
+}
+// The SDK's reason in put.gd's words: its own text may quote the endpoint, which
+// messages and diagnostics never carry.
+template<class E> Error notSentError(const E& error, S3Stage stage) {
+    const auto reason = qt(error.GetMessage());
+    QString why = "it could not build a request address from Region and Endpoint.";
+    if (reason.contains("region must be set", Qt::CaseInsensitive) || reason.contains("invalid region", Qt::CaseInsensitive) ||
+        reason.contains("region was not a valid", Qt::CaseInsensitive))
+        why = "Region is not a region code, so the library had no region to send the request to.";
+    else if (reason.contains("endpoint", Qt::CaseInsensitive) || reason.contains("URI", Qt::CaseSensitive) || reason.contains("hostname", Qt::CaseInsensitive))
+        why = "Endpoint is not an address it can send S3 requests to.";
+    return {"s3_settings_invalid", "put.gd's S3 library refused these settings before sending anything: " + why +
+            " Check Region and Endpoint in Settings. Region takes a code such as us-east-1.",
+            {{"httpStatus", int(error.GetResponseCode())}, {"sdkErrorType", int(error.GetErrorType())}, {"requestStage", s3StageName(stage)}, {"requestSent", false}}};
+}
+template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedMs) {
+    if (notSent(error)) return notSentError(error, stage);
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
     const int curlCode = sdkCurlCode({error.GetMessage().data(), error.GetMessage().size()});
@@ -152,28 +256,43 @@ template<class E> Error wireError(const E& error, const char* stage, qint64 elap
     else if (status == 403) code = "s3_permission_denied";
     else if (status == 409 || status == 412) code = "precondition_changed";
     else if (status < 200 || status >= 500) code = "s3_transport_unknown";
-    QString message=requestGuidance(name,status,QString::fromLatin1(stage),curlCode);
+    QString message=requestGuidance(name,status,stage,curlCode);
     if(code=="s3_retention_blocked")message="S3 blocked deletion because of Object Lock, retention or a legal hold. Review the object's protection settings with the bucket administrator; put.gd does not bypass them.";
     else if(code=="s3_mfa_required")message="S3 requires MFA for this deletion. Ask the bucket administrator to use the required MFA-authorized workflow; put.gd does not bypass it.";
     else if(code=="precondition_changed")message="The S3 object changed while the request was running. Refresh its state before retrying; put.gd will not overwrite or delete an unchecked replacement.";
     QJsonObject details{{"httpStatus", status}, {"sdkErrorType", int(error.GetErrorType())},
              {"curlCode", curlCode},
-             {"sdkRetryable", error.ShouldRetry()}, {"requestStage", QString::fromLatin1(stage)},
+             {"sdkRetryable", error.ShouldRetry()}, {"requestStage", s3StageName(stage)},
              {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect", "NoSuchUpload", "EntityTooLarge", "EntityTooSmall", "InvalidPart", "InvalidPartOrder", "BadDigest", "XAmzContentSHA256Mismatch", "NotImplemented"}.contains(name) ? name : QString("Unclassified")}};
     addRequestIds(error, details);
     return {code, message, details};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
 template<class E> bool ambiguous(const E& error) {
+    if (notSent(error)) return false;
     const int status = int(error.GetResponseCode());
     // 501 Not Implemented is a definite refusal of an unsupported request.
     return status < 200 || (status >= 500 && status != 501);
+}
+// A bucket versioning check denied to the key (an R2 token scoped to one bucket can't read
+// bucket configuration) or not implemented by the service (#1677).
+template<class E> bool versioningUnreadable(const E& error) {
+    const int status = int(error.GetResponseCode());
+    return status == 403 || status == 501;
+}
+// Only Cloudflare R2 itself is trusted to keep no versions when it answers a request naming one
+// with 501. A proxy or another S3-compatible front could answer so while the bucket behind it
+// keeps versions, and an unversioned delete there would leave the recorded version behind a
+// marker, or remove a null version for good. Elsewhere a denied versioning check stops.
+bool cloudflareR2(const Destination& destination) {
+    const auto endpoint = destination.settings["endpoint"].toString();
+    return QUrl(endpoint).scheme() == QLatin1String("https") && s3CloudflareR2Endpoint(endpoint);
 }
 // Only the explicit synthetic destination test uses this unsigned GET. Keep
 // its response bounded even when a public endpoint returns unexpected content.
 class SyntheticResponseStream final : public Aws::IOStream {
     class Buffer final : public std::streambuf {
-        std::array<char, 128> bytes_{};
+        std::array<char, 4096> bytes_{};
     protected:
         pos_type seekoff(off_type offset, std::ios_base::seekdir direction,
                          std::ios_base::openmode mode) override {
@@ -191,7 +310,7 @@ public:
     explicit SyntheticResponseStream(qsizetype limit) : Aws::IOStream(nullptr), buffer_(limit) { rdbuf(&buffer_); }
     QByteArray bytes() const { return buffer_.bytes(); }
 };
-bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected) {
+bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected, int* status = nullptr, bool* authorizationRequired = nullptr) {
     Aws::Client::ClientConfiguration config(false, "legacy", true);
     config.verifySSL = true;
     useHostCaFile(config);
@@ -207,9 +326,19 @@ bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& exp
     // Passing the already encoded public path would escape each '%' twice.
     uri.SetPath(aws(publicUrl.path(QUrl::FullyDecoded)));
     auto request = Aws::Http::CreateHttpRequest(uri, Aws::Http::HttpMethod::HTTP_GET,
-        [limit = expected.size() + 1] { return Aws::New<SyntheticResponseStream>("putgd-public-fixture", limit); });
+        [limit = authorizationRequired ? qsizetype(4096) : expected.size() + 1] { return Aws::New<SyntheticResponseStream>("putgd-public-fixture", limit); });
     // CreateHttpRequest/MakeRequest do not apply an AWS signer or credentials.
     auto response = client->MakeRequest(request);
+    if(status)*status=response?int(response->GetResponseCode()):0;
+    if(authorizationRequired){
+        *authorizationRequired=false;
+        if(response&&int(response->GetResponseCode())==400)if(auto* body=dynamic_cast<SyntheticResponseStream*>(&response->GetResponseBody())){
+            QXmlStreamReader xml(body->bytes());QString code,message;
+            while(!xml.atEnd()){xml.readNext();if(xml.isStartElement()&&xml.name()==QLatin1String("Code"))code=xml.readElementText();else if(xml.isStartElement()&&xml.name()==QLatin1String("Message"))message=xml.readElementText();}
+            // R2's S3 API refuses an unauthenticated GET with this structured 400.
+            *authorizationRequired=!xml.hasError()&&code=="InvalidArgument"&&message.contains("Authorization",Qt::CaseInsensitive);
+        }
+    }
     if (!response || response->GetResponseCode() != Aws::Http::HttpResponseCode::OK) return false;
     auto* body = dynamic_cast<SyntheticResponseStream*>(&response->GetResponseBody());
     return body && body->bytes() == expected;
@@ -226,6 +355,14 @@ Head head(Client& client, const Destination& destination, const QString& key, co
     if (cancellation) request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
     return client.HeadObject(request);
 }
+// Whether the service answers 501 to a HEAD naming a version, as Cloudflare R2 does: it keeps
+// no versions, so a key holds one object. Asked only when GetBucketVersioning is denied, as
+// it is to an R2 token scoped to one bucket (#1677). Amazon S3 answers such a HEAD with the
+// version, 404 or 403, never 501, so a denied check there still stops deletion.
+bool versionsRefused(Client& client, const Destination& destination, const QString& key, const QString& version) {
+    const auto named = head(client, destination, key, version.isEmpty() ? QStringLiteral("null") : version);
+    return !named.IsSuccess() && int(named.GetError().GetResponseCode()) == 501;
+}
 QString metadata(const Aws::S3::Model::HeadObjectResult& result, const char* name) {
     const auto it = result.GetMetadata().find(name);
     return it == result.GetMetadata().end() ? QString{} : qt(it->second);
@@ -241,15 +378,47 @@ StorageReceipt receipt(const Destination& destination, const QString& key, const
     result.directUrl = publicObjectUrl(destination.settings, key);
     return result;
 }
+// Called only in the SDK worker, using the receipt's saved destination and identity.
+// versionless: a check just made (see versionless()) found the key holds one object, so the
+// link names the key alone without asking again.
+void signLink(Client& client, StorageReceipt& value, bool versionless = false) {
+    if (value.destination.settings.value("linkMode") != "presigned") return;
+    const auto seconds = value.destination.settings.value("linkValidityDays").toInt(7) * 86400;
+    auto version=value.objectReference.value("versionId").toString();
+    if(versionless)version.clear();
+    if(!version.isEmpty()&&version!="null") {
+        Aws::S3::Model::GetBucketVersioningRequest request;request.SetBucket(aws(value.destination.settings["bucket"].toString()));
+        const auto status=client.GetBucketVersioning(request);
+        // R2 returns an opaque write ID but has no version addressing.
+        if(status.IsSuccess()&&status.GetResult().GetStatus()==Aws::S3::Model::BucketVersioningStatus::NOT_SET)version.clear();
+        // An R2 token scoped to one bucket can't read its versioning (#1677). A link naming
+        // the version would then be refused, so ask for the version itself: a 501 means
+        // the service keeps none, and the link names the key alone.
+        else if(!status.IsSuccess()&&versioningUnreadable(status.GetError())&&cloudflareR2(value.destination)&&
+                versionsRefused(client,value.destination,s3StoredKey(value.objectReference["key"].toString()),version))version.clear();
+    }
+    if(version.isEmpty())value.directUrl=qt(client.GeneratePresignedUrl(aws(value.destination.settings["bucket"].toString()),
+        aws(s3StoredKey(value.objectReference["key"].toString())),Aws::Http::HttpMethod::HTTP_GET,seconds));
+    else {
+        auto settings=value.destination.settings;settings["publicUrlBase"]=QJsonValue::Null;
+        const QUrl url(publicObjectUrl(settings,value.objectReference["key"].toString()));
+        Aws::Http::URI uri(aws(url.toString(QUrl::FullyEncoded)));uri.SetPath(aws(url.path(QUrl::FullyDecoded)));
+        uri.AddQueryStringParameter("versionId",aws(version));
+        value.directUrl=qt(client.Aws::Client::AWSClient::GeneratePresignedUrl(uri,Aws::Http::HttpMethod::HTTP_GET,seconds));
+    }
+    value.objectReference["linkExpiresAt"] = QDateTime::currentDateTimeUtc().addSecs(seconds).toString(Qt::ISODateWithMs);
+}
 StatResult inspect(Client& client, const StorageReceipt& expected, bool current = false) {
     const auto key = expected.objectReference["key"].toString();
+    if (!s3KeyAddressable(key)) return {"unknown", {}, unaddressableKey()};
     const auto version = current ? QString{} : expected.objectReference["versionId"].toString();
     QElapsedTimer requestTimer;
     requestTimer.start();
-    const auto outcome = head(client, expected.destination, key, version);
+    // A receipt made before #1582 may hold the key as typed; the request names the stored key.
+    const auto outcome = head(client, expected.destination, s3StoredKey(key), version);
     if (!outcome.IsSuccess()) {
         if (absent(outcome.GetError())) return {"missing", {}, {}};
-        return {"unknown", {}, wireError(outcome.GetError(), current ? "current_head" : "object_head", requestTimer.elapsed())};
+        return {"unknown", {}, wireError(outcome.GetError(), current ? S3Stage::CurrentHead : S3Stage::ObjectHead, requestTimer.elapsed())};
     }
     const auto& result = outcome.GetResult();
     if (result.GetDeleteMarker()) return {"missing", {}, {}};
@@ -262,21 +431,122 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
                             metadata(result, "putgd-sha256"), result.GetContentLength(),
                             qt(result.GetETag()), qt(result.GetVersionId())), {}};
 }
-// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
-// a request naming a version gets 501, and the bucket reports no versioning status. A
-// bucket whose versioning was never enabled holds one object per key, so a receipt from
-// it is checked and removed like an unversioned one.
-bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
-    const auto version = expected.objectReference["versionId"].toString();
-    if (found.status != "unknown" || found.error.details["httpStatus"].toInt() != 501 || version.isEmpty() || version == "null") return false;
-    Aws::S3::Model::GetBucketVersioningRequest request;
-    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
-    const auto outcome = client.GetBucketVersioning(request);
-    return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
-}
 StorageReceipt withoutVersion(StorageReceipt receipt) {
     receipt.objectReference.remove("versionId");
     return receipt;
+}
+// After an unversioned delete was answered with a delete marker (#1690), whether the recorded
+// upload is still kept as a version at its key (#1771). Read-only: it lists the key's versions
+// and checks each one with the recorded ETag against the recorded identity, by its version ID.
+// Kept: one of them is the upload. Gone: none is. Unknown: a read failed or didn't answer for
+// what it asked, named by error.
+struct Hidden { enum Kind { Kept, Gone, Unknown } kind = Unknown; Error error = {}; };
+Hidden keptVersion(Client& client, const StorageReceipt& expected, const std::shared_ptr<std::atomic_bool>& cancellation) {
+    const auto key = s3StoredKey(expected.objectReference["key"].toString());
+    const auto& destination = expected.destination;
+    const auto unquoted = [](QString etag) { return etag.remove(QLatin1Char('"')); };
+    const auto etag = unquoted(expected.concurrencyToken);
+    const Error unanswered{"delete_unknown", "The bucket didn't answer for the version put.gd asked about.", {}};
+    Aws::S3::Model::ListObjectVersionsRequest request;
+    request.SetBucket(aws(destination.settings["bucket"].toString()));
+    request.SetPrefix(aws(key));
+    // Whether the listing showed any version or marker at the key. A reply that isn't a
+    // version listing (a service that ignored the request's versions query) shows none.
+    bool listedAny = false;
+    // Versions list in key order, so the key's own come before any longer key it prefixes.
+    for (int page = 0; page < 100; ++page) {
+        if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
+        QElapsedTimer timer;
+        timer.start();
+        const auto listed = client.ListObjectVersions(request);
+        if (!listed.IsSuccess()) return {Hidden::Unknown, wireError(listed.GetError(), S3Stage::DeleteVersionList, timer.elapsed())};
+        const auto& result = listed.GetResult();
+        for (const auto& marker : result.GetDeleteMarkers()) listedAny = listedAny || qt(marker.GetKey()) == key;
+        for (const auto& version : result.GetVersions()) {
+            if (qt(version.GetKey()) != key) continue;
+            listedAny = true;
+            if (unquoted(qt(version.GetETag())) != etag) continue;
+            if (stopped(cancellation)) return {Hidden::Unknown, cancelled()};
+            const auto id = qt(version.GetVersionId());
+            timer.restart();
+            const auto found = head(client, destination, key, id, cancellation);
+            if (!found.IsSuccess()) return {Hidden::Unknown, absent(found.GetError()) ? unanswered : wireError(found.GetError(), S3Stage::ObjectHead, timer.elapsed())};
+            // A service that ignores the version ID answers for the current object instead.
+            const auto answered = qt(found.GetResult().GetVersionId());
+            if (found.GetResult().GetDeleteMarker() || (answered != id && !(answered.isEmpty() && id == "null"))) return {Hidden::Unknown, unanswered};
+            const auto& object = found.GetResult();
+            if (metadata(object, "putgd-publication") == expected.publicationId &&
+                metadata(object, "putgd-sha256") == expected.objectReference["sha256"].toString() &&
+                object.GetContentLength() == qint64(expected.objectReference["bytes"].toDouble()) &&
+                qt(object.GetETag()) == expected.concurrencyToken) return {Hidden::Kept};
+        }
+        if (result.GetIsTruncated() && qt(result.GetNextKeyMarker()) == key) {
+            request.SetKeyMarker(result.GetNextKeyMarker());
+            request.SetVersionIdMarker(result.GetNextVersionIdMarker());
+            continue;
+        }
+        if (listedAny) return {Hidden::Gone};
+        // Nothing listed: gone only if the key holds nothing at all, not even a marker.
+        timer.restart();
+        const auto current = head(client, destination, key, {}, cancellation);
+        if (!current.IsSuccess() && absent(current.GetError()) && !current.GetError().GetResponseHeaders().count("x-amz-delete-marker")) return {Hidden::Gone};
+        if (!current.IsSuccess() && !absent(current.GetError())) return {Hidden::Unknown, wireError(current.GetError(), S3Stage::CurrentHead, timer.elapsed())};
+        return {Hidden::Unknown, {"delete_unknown", "The bucket listed no versions of this file, yet something is still at its name.", {}}};
+    }
+    return {Hidden::Unknown, {"delete_unknown", "This file has too many versions in the bucket for put.gd to check them all.", {}}};
+}
+// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
+// a request naming a version gets 501, and the bucket reports no versioning status. Garage
+// returns an opaque version ID in the PutObject response header (its multipart completion
+// omits it) and has no versioning either; it answers a request naming that version with
+// the object and no version ID, which the identity check takes for another object. A
+// bucket whose versioning was never enabled holds one object per key, so a receipt from it
+// is checked and removed like an unversioned one.
+// An R2 API token with Object Read & Write scoped to one bucket can't read bucket
+// configuration, so GetBucketVersioning is denied (#1677). On R2's own endpoint the 501
+// already shows the service keeps no versions; only a bucket that says its versioning is
+// on overrides it.
+// Yes: check and remove it unversioned. No: the first answer stands. Unknown: a read
+// needed to tell a version-only mismatch from another object failed; the caller reports
+// unknown with this error, so a Retry checks again instead of settling on "changed".
+// refused: the service answered 501 to a request naming a version.
+struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; bool refused = false; };
+Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
+    const auto version = expected.objectReference["versionId"].toString();
+    if (version.isEmpty() || version == "null") return {};
+    const bool refused = found.status == "unknown" && found.error.details["httpStatus"].toInt() == 501;
+    if (!refused && found.status != "foreign") return {};
+    if (!refused) {
+        // Everything but the version ID must match the object that is current at the key.
+        const auto current = inspect(client, withoutVersion(expected), true);
+        if (current.status == "unknown") return {Versionless::Unknown, current.error};
+        if (current.status != "own") return {};
+    }
+    Aws::S3::Model::GetBucketVersioningRequest request;
+    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
+    QElapsedTimer timer;
+    timer.start();
+    const auto outcome = client.GetBucketVersioning(request);
+    if (!outcome.IsSuccess()) {
+        if (refused && versioningUnreadable(outcome.GetError()) && cloudflareR2(expected.destination)) return {Versionless::Yes, {}, true};
+        return {Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
+    }
+    const bool none = outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    return {none ? Versionless::Yes : Versionless::No, {}, refused && none};
+}
+// stat() and refreshLink(): versionlessKey says the key was found to hold one object.
+StatResult checkedStat(Client& client, const StorageReceipt& expected, bool& versionlessKey) {
+    auto found = inspect(client, expected);
+    const auto check = versionless(client, expected, found);
+    if (check.kind == Versionless::Unknown) return {"unknown", {}, check.error};
+    versionlessKey = check.kind == Versionless::Yes;
+    if (versionlessKey) {
+        found = inspect(client, withoutVersion(expected), true);
+        // The recorded ID names the only object the key can hold; keep the receipt as recorded.
+        if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
+    }
+    if (found.status == "own" && expected.destination.settings.value("linkMode")=="presigned") found.receipt=expected;
+    return found;
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -358,7 +628,7 @@ QString plainEtag(const QString& etag) {
     if (value.startsWith('"') && value.endsWith('"') && value.size() >= 2) value = value.mid(1, value.size() - 2);
     return value.toLower();
 }
-template<class E> Error partError(const E& error, const char* stage, qint64 elapsedMs, int part) {
+template<class E> Error partError(const E& error, S3Stage stage, qint64 elapsedMs, int part) {
     auto result = wireError(error, stage, elapsedMs);
     if (part > 0) result.details["partNumber"] = part;
     return result;
@@ -376,7 +646,7 @@ Error abortMultipart(Client& client, const Aws::String& bucket, const QString& k
         timer.start();
         const auto outcome = client.AbortMultipartUpload(cancel);
         if (outcome.IsSuccess() || int(outcome.GetError().GetResponseCode()) == 404) return {};
-        last = wireError(outcome.GetError(), "upload_abort", timer.elapsed());
+        last = wireError(outcome.GetError(), S3Stage::UploadAbort, timer.elapsed());
         if (!ambiguous(outcome.GetError())) break;
     }
     return last;
@@ -385,7 +655,11 @@ Error abortMultipart(Client& client, const Aws::String& bucket, const QString& k
 // artifact, so memory stays bounded by one read buffer per lane whatever the file size.
 // Part requests never publish: an uncertain part is simply sent again under the
 // same number. Only CompleteMultipartUpload, sent with the item's create or replace
-// precondition, can publish, and only its uncertainty makes the item unknown.
+// precondition, can publish. It is sent once. Any answer but a clear success (a
+// refusal, a precondition failure, a vanished upload, a lost reply, or a reply to a
+// request libcurl resent on its own) is settled by one HEAD of the key (#1627): our
+// object there means uploaded; a definitely absent key means failed, and the upload
+// is aborted; a HEAD that can't tell keeps the item unknown with its parts.
 // Cancellation and every failure that ends this attempt abort the upload so no
 // parts keep using storage. A durable journal of the upload ID lets an attempt that
 // could not abort (a crash, or a lost worker) resume on retry from the parts S3 lists.
@@ -417,15 +691,73 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
         return {status, {}, error};
     };
+    // Another object holds the key. A collision lets History rename, skip or fail the item, so
+    // it is reported only once the upload is aborted: if S3 refuses the abort, the item stays
+    // unknown with its journal, which still names the parts (M8).
+    // The same for a definitely absent key and failed. While S3 keeps the parts, the item is
+    // unresolved either way.
+    auto unresolved = [](Error error) -> UploadResult {
+        error.details["incompleteUpload"] = true;
+        error.message += " The incomplete multipart upload could not be removed, so put.gd keeps its record and the item stays unresolved; Retry to try again, or allow s3:AbortMultipartUpload.";
+        return {"unknown", {}, error};
+    };
+    auto collided = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"collision", {}, error};
+        return unresolved(error);
+    };
+    auto absentKey = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"failed", {}, error};
+        return unresolved(error);
+    };
+    // What the key says once a completion's outcome is in doubt, or the upload vanished.
+    auto settle = [&](const Error& error, bool conflict) -> UploadResult {
+        const auto found = inspect(client, expected, true);
+        if (found.status == "own") {
+            save({});
+            return {"uploaded", found.receipt, {}};
+        }
+        // The HEAD can't tell: the item stays unknown, keeping its journal and parts.
+        if (found.status == "unknown") return {"unknown", {}, error};
+        if (found.status == "foreign") return collided(conflict ? error : Error{"precondition_changed", "Another object now uses the saved object key", {}});
+        return absentKey(error);
+    };
     std::map<int, Aws::String> done;
     qint64 completed = 0;
     const auto previous = request.resume["uploadId"].toString();
-    const bool interruptedCompletion = request.resume["phase"] == "completing";
+    // A created upload's journal names its phase. One this build cannot read is
+    // never resumed: guessing could report a completed upload as a collision.
+    bool completing = false;
+    if (!previous.isEmpty()) {
+        const auto phase = s3UploadPhase(request.resume["phase"]);
+        if (!phase) return {"failed", {}, {"s3_multipart_invalid", "The saved multipart upload has a phase this build cannot read", {}}};
+        completing = *phase == S3UploadPhase::Completing;
+    }
     if (!previous.isEmpty() &&
-        (request.resume["key"].toString() != key || request.resume["bytes"].toInteger() != bytes ||
+        (s3StoredKey(request.resume["key"].toString()) != key || request.resume["bytes"].toInteger() != bytes ||
          request.resume["sha256"].toString() != request.artifact.sha256 || request.resume["partBytes"].toInteger() != partBytes)) {
-        // A journal for another target or another artifact is never resumed.
-        abort(previous, request.resume["key"].toString());
+        // A journal for another target or another artifact is never resumed. One whose key
+        // has a "." or ".." part names nothing a request can reach, so it is left alone,
+        // as the standalone abandon path refuses it.
+        // If S3 refuses to abort it, nothing new is created: a new upload ID would replace the
+        // journal, and with it the only record of the old upload's parts.
+        if (s3KeyAddressable(request.resume["key"].toString()) && !abort(previous, s3StoredKey(request.resume["key"].toString()))) {
+            Error error{"publication_unknown", "An earlier multipart upload of this file could not be removed, so put.gd did not start a new one. Retry to try again, or allow s3:AbortMultipartUpload.", {}};
+            error.details["incompleteUpload"] = true;
+            return {"unknown", {}, error};
+        }
+    } else if (completing) {
+        // A completion was sent before and its outcome never settled. It is not sent again:
+        // the key decides, and only a definitely absent key starts a new upload.
+        uploadId = previous;
+        const auto found = inspect(client, expected, true);
+        if (found.status == "own") {
+            save({});
+            return {"uploaded", found.receipt, {}};
+        }
+        if (found.status == "unknown") return {"unknown", {}, found.error};
+        if (found.status == "foreign") return collided({"precondition_changed", "Another object now uses the saved object key", {}});
+        if (!abort(previous, key)) return unresolved({"publication_unknown", "The earlier multipart upload could not be removed.", {}});
+        uploadId.clear();
     } else if (!previous.isEmpty()) {
         uploadId = previous;
         Aws::S3::Model::ListPartsRequest list;
@@ -448,15 +780,15 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                     }
                     if (found.status == "unknown") return {"unknown", {}, found.error};
                     if (found.status == "foreign")
-                        return {interruptedCompletion ? "unknown" : "collision", {}, {"precondition_changed", "Another object now uses the saved object key", {}}};
+                        return {"collision", {}, {"precondition_changed", "Another object now uses the saved object key", {}}};
                     save({});
                     uploadId.clear();
                 } else if (status == 403) {
                     // Without the listing, every part is sent again under the same upload.
                     done.clear();
                 } else {
-                    const auto error = partError(outcome.GetError(), "upload_list_parts", timer.elapsed(), 0);
-                    return {interruptedCompletion ? "unknown" : "failed", {}, error};
+                    const auto error = partError(outcome.GetError(), S3Stage::UploadListParts, timer.elapsed(), 0);
+                    return {"failed", {}, error};
                 }
                 break;
             }
@@ -475,6 +807,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         for (const auto& [number, etag] : done) completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
     }
     if (uploadId.isEmpty()) {
+        // An Endpoint with a path is allowed here only to finish or abort an upload it started
+        // (#1676): a new multipart upload there would land under the doubled key again.
+        if (const auto problem = s3EndpointProblem(settings["endpoint"].toString()); !problem.isEmpty())
+            return {"failed", {}, {"s3_settings_invalid", problem, {{"field", "endpoint"}}}};
         done.clear();
         completed = 0;
         Aws::S3::Model::CreateMultipartUploadRequest create;
@@ -482,7 +818,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         create.SetKey(aws(key));
         create.SetContentType(aws(request.artifact.mime));
         create.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(settings["storageClass"].toString())));
-        if (settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+        if (settings.value("linkMode") != "presigned" && settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
         create.AddMetadata("putgd-publication", aws(request.publicationId));
         create.AddMetadata("putgd-sha256", aws(request.artifact.sha256));
         for (int attempt = 0; attempt < 3 && uploadId.isEmpty(); ++attempt) {
@@ -491,7 +827,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
             timer.start();
             const auto outcome = client.CreateMultipartUpload(create);
             if (outcome.IsSuccess()) uploadId = qt(outcome.GetResult().GetUploadId());
-            else if (!ambiguous(outcome.GetError()) || attempt == 2) return {"failed", {}, partError(outcome.GetError(), "upload_create", timer.elapsed(), 0)};
+            else if (!ambiguous(outcome.GetError()) || attempt == 2) return {"failed", {}, partError(outcome.GetError(), S3Stage::UploadCreate, timer.elapsed(), 0)};
         }
         if (uploadId.isEmpty()) return {"failed", {}, {"s3_multipart_invalid", "S3 returned no multipart upload ID", {}}};
     }
@@ -499,7 +835,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     journal["key"] = key;
     journal["bytes"] = double(bytes);
     journal["sha256"] = request.artifact.sha256;
-    journal["phase"] = "parts";
+    journal["phase"] = s3UploadPhaseName(S3UploadPhase::Parts);
     // The upload ID is durable before any part relies on it.
     if (auto error = save(journal)) return fail(error);
     report("uploading", completed);
@@ -514,7 +850,8 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         std::array<bool, s3MaximumPartLanes> busy{};
         std::array<qint64, s3MaximumPartLanes> sending{}; // bytes read of each lane's part in flight
         Error error;           // the first error that ends this attempt
-        bool vanished = false; // S3 no longer has the upload
+        bool vanished = false; // some lane found that S3 no longer has the upload
+        Error vanishedError;
         std::atomic_bool ended{false}; // error is set: parts in flight stop (#203)
     } lanes;
     auto progress = [&] { // lanes.mutex held
@@ -582,12 +919,14 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 }
                 return {true, outcome.GetResult().GetETag(), {}};
             }
+            // The upload vanished (completed, aborted elsewhere, or a lifecycle rule): reported even
+            // when another lane's error came first, because the key must then decide (#1627).
+            if (int(outcome.GetError().GetResponseCode()) == 404)
+                return {false, {}, partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number), true};
             // A part cut on cancel or by another lane's error reports that, not its transport error.
             if (stopped(request.cancellation)) return {false, {}, cancelled()};
             if (lanes.ended.load()) return {};
-            last = partError(outcome.GetError(), "upload_part", timer.elapsed(), number);
-            // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
-            if (int(outcome.GetError().GetResponseCode()) == 404) return {false, {}, last, true};
+            last = partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number);
             if (!ambiguous(outcome.GetError())) return {false, {}, last};
         }
         return {false, {}, last};
@@ -606,11 +945,16 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 done[number] = sent.etag;
                 completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
                 progress();
-            } else if (!lanes.error) {
-                // Another lane's error ends the attempt; this part is sent again on retry.
-                lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
-                lanes.vanished = sent.vanished;
-                lanes.ended = true;
+            } else {
+                if (sent.vanished && !lanes.vanished) {
+                    lanes.vanished = true;
+                    lanes.vanishedError = sent.error;
+                }
+                if (!lanes.error) {
+                    // Another lane's error ends the attempt; this part is sent again on retry.
+                    lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
+                    lanes.ended = true;
+                }
             }
         }
         lanes.busy[lane] = false;
@@ -647,14 +991,13 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     }
     for (auto& thread : threads)
         if (thread.joinable()) thread.join();
-    if (lanes.error) {
-        if (!lanes.vanished) return fail(lanes.error);
-        save({});
-        return {"failed", {}, lanes.error};
-    }
+    // S3 no longer has the upload, as any lane found: it may have been completed meanwhile,
+    // so the key decides, whatever error another lane reported first.
+    if (lanes.vanished) return settle(lanes.vanishedError, false);
+    if (lanes.error) return fail(lanes.error);
     if (int(done.size()) != parts) return fail({"s3_multipart_invalid", "A multipart part ended without a result", {}});
     report("uploading", completed);
-    journal["phase"] = "completing";
+    journal["phase"] = s3UploadPhaseName(S3UploadPhase::Completing);
     if (auto error = save(journal)) return fail(error);
     report("finalizing", bytes);
     Aws::S3::Model::CompletedMultipartUpload manifest;
@@ -678,50 +1021,29 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     finish.SetMpuObjectSize(bytes);
     if (request.condition == "absent") finish.SetIfNoneMatch("*");
     else finish.SetIfMatch(aws(request.concurrencyToken));
-    bool uncertain = interruptedCompletion;
-    for (int attempt = 0; attempt < 3; ++attempt) {
-        ResponseIds ids;
-        watchIds(finish, ids);
-        QElapsedTimer timer;
-        timer.start();
-        const auto outcome = client.CompleteMultipartUpload(finish);
-        if (outcome.IsSuccess()) {
-            save({});
-            if (request.trace) {
-                try {
-                    request.trace(withIds({{"event", "complete"}, {"parts", int(done.size())}, {"bytes", double(bytes)}, {"attempt", attempt + 1},
-                                           {"elapsedMs", timer.elapsed()}}, ids, outcome.GetResult().GetRequestId()));
-                } catch (...) {}
-            }
-            const auto etag = qt(outcome.GetResult().GetETag());
-            // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
-            const auto expectedEtag = QString::fromLatin1(composite.result().toHex()) + "-" + QString::number(done.size());
-            if (digestEtags && plainEtag(etag).contains('-') && plainEtag(etag) != expectedEtag)
-                return {"unknown", {}, {"s3_multipart_checksum_mismatch", "S3 completed the upload with a different part checksum than put.gd sent; inspect the object before relying on it", {}}};
-            return {"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, bytes, etag,
-                                        qt(outcome.GetResult().GetVersionId())), {}};
+    ResponseIds ids;
+    watchIds(finish, ids);
+    QElapsedTimer timer;
+    timer.start();
+    const auto outcome = client.CompleteMultipartUpload(finish);
+    if (outcome.IsSuccess()) {
+        save({});
+        if (request.trace) {
+            try {
+                request.trace(withIds({{"event", "complete"}, {"parts", int(done.size())}, {"bytes", double(bytes)}, {"attempt", 1},
+                                       {"elapsedMs", timer.elapsed()}}, ids, outcome.GetResult().GetRequestId()));
+            } catch (...) {}
         }
-        const auto error = partError(outcome.GetError(), "upload_complete", timer.elapsed(), 0);
-        const int status = int(outcome.GetError().GetResponseCode());
-        const bool conflict = status == 412 || status == 409;
-        uncertain = uncertain || ambiguous(outcome.GetError());
-        if (!ambiguous(outcome.GetError()) && !conflict && status != 404) return fail(error);
-        // A lost reply, a precondition failure or a vanished upload: check what the key holds.
-        const auto found = inspect(client, expected, true);
-        if (found.status == "own") {
-            save({});
-            return {"uploaded", found.receipt, {}};
-        }
-        if (found.status == "unknown") return {"unknown", {}, error};
-        if (found.status == "foreign") return fail(error, uncertain ? "unknown" : "collision");
-        if (conflict) return fail(error, uncertain ? "unknown" : "collision");
-        if (status == 404) {
-            save({});
-            return {uncertain ? "unknown" : "failed", {}, error};
-        }
-        // Missing after an uncertain completion: the upload still exists, so complete it again.
+        const auto etag = qt(outcome.GetResult().GetETag());
+        // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
+        const auto expectedEtag = QString::fromLatin1(composite.result().toHex()) + "-" + QString::number(done.size());
+        if (digestEtags && plainEtag(etag).contains('-') && plainEtag(etag) != expectedEtag)
+            return {"unknown", {}, {"s3_multipart_checksum_mismatch", "S3 completed the upload with a different part checksum than put.gd sent; inspect the object before relying on it", {}}};
+        return {"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, bytes, etag,
+                                    qt(outcome.GetResult().GetVersionId())), {}};
     }
-    return {"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}};
+    const int status = int(outcome.GetError().GetResponseCode());
+    return settle(partError(outcome.GetError(), S3Stage::UploadComplete, timer.elapsed(), 0), status == 412 || status == 409);
 }
 // Test connection proves the extra multipart permissions on a synthetic key,
 // without sending a part: create (s3:PutObject), list (s3:ListMultipartUploadParts),
@@ -730,27 +1052,35 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
     const auto bucket = aws(destination.settings["bucket"].toString());
     const auto key = objectKey(destination, "putgd-test-" + QUuid::createUuid().toString(QUuid::WithoutBraces) + "-multipart.txt");
     QJsonObject journal{{"schemaVersion", 1}, {"phase", "synthetic_multipart_intent"}, {"destination", destination.toJson()}, {"key", key}};
-    if ((error = checkpoint(save, journal))) return {{"status", "failed"}, {"stage", "upload_create"}};
+    if ((error = checkpoint(save, journal))) return {{"status", "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
     Aws::S3::Model::CreateMultipartUploadRequest create;
     create.SetBucket(bucket);
     create.SetKey(aws(key));
     create.SetContentType("text/plain");
     create.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(destination.settings["storageClass"].toString())));
-    if (destination.settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+    if (destination.settings.value("linkMode") != "presigned" && destination.settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
     create.AddMetadata("putgd-publication", aws(QUuid::createUuid().toString(QUuid::WithoutBraces)));
     QElapsedTimer timer;
     timer.start();
+    std::optional<SdkRuntime::SingleSendScope> once(std::in_place);
     const auto created = client.CreateMultipartUpload(create);
+    once.reset();
     if (!created.IsSuccess()) {
-        error = wireError(created.GetError(), "upload_create", timer.elapsed());
+        error = wireError(created.GetError(), S3Stage::UploadCreate, timer.elapsed());
         const int status = int(created.GetError().GetResponseCode());
-        return {{"status", status == 403 ? "denied" : ambiguous(created.GetError()) ? "unknown" : "failed"}, {"stage", "upload_create"}};
+        // A 408 doesn't prove the service refused it: the upload may exist (#1690).
+        return {{"status", status == 403 ? "denied" : ambiguous(created.GetError()) || status == 408 ? "unknown" : "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
     }
     const auto uploadId = qt(created.GetResult().GetUploadId());
+    // A success without an upload ID created an upload nothing can name or abort (#1690).
+    if (uploadId.isEmpty()) {
+        error = {"s3_multipart_unconfirmed", "S3 answered the multipart check without an upload ID; an incomplete upload may remain. Check the bucket for incomplete multipart uploads.", {}};
+        return {{"status", "unknown"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
+    }
     journal["phase"] = "synthetic_multipart_created";
     journal["uploadId"] = uploadId;
     QJsonObject result{{"status", "ok"}};
-    if ((error = checkpoint(save, journal))) result = {{"status", "failed"}, {"stage", "upload_create"}};
+    if ((error = checkpoint(save, journal))) result = {{"status", "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
     Aws::S3::Model::ListPartsRequest list;
     list.SetBucket(bucket);
     list.SetKey(aws(key));
@@ -758,8 +1088,8 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
     timer.restart();
     const auto listed = client.ListParts(list);
     if (!listed.IsSuccess() && !error) {
-        error = wireError(listed.GetError(), "upload_list_parts", timer.elapsed());
-        result = {{"status", int(listed.GetError().GetResponseCode()) == 403 ? "denied" : "failed"}, {"stage", "upload_list_parts"}};
+        error = wireError(listed.GetError(), S3Stage::UploadListParts, timer.elapsed());
+        result = {{"status", int(listed.GetError().GetResponseCode()) == 403 ? "denied" : "failed"}, {"stage", s3StageName(S3Stage::UploadListParts)}};
     }
     Aws::S3::Model::AbortMultipartUploadRequest cancel;
     cancel.SetBucket(bucket);
@@ -769,9 +1099,9 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
     const auto aborted = client.AbortMultipartUpload(cancel);
     result["abort"] = aborted.IsSuccess() ? "aborted" : ambiguous(aborted.GetError()) ? "unknown" : "failed";
     if (!aborted.IsSuccess() && (!error || result["status"] == "ok")) {
-        error = wireError(aborted.GetError(), "upload_abort", timer.elapsed());
+        error = wireError(aborted.GetError(), S3Stage::UploadAbort, timer.elapsed());
         result["status"] = int(aborted.GetError().GetResponseCode()) == 403 ? "denied" : "failed";
-        result["stage"] = "upload_abort";
+        result["stage"] = s3StageName(S3Stage::UploadAbort);
     }
     journal["phase"] = "synthetic_multipart_finished";
     journal["abort"] = result["abort"];
@@ -789,16 +1119,35 @@ struct NetworkS3Driver::State {
     std::shared_ptr<Client> client(const Destination& destination) {
         const auto credential = credentials(destination.profileId, destination.credentialReference);
         if (!credential) return {};
-        const auto key = QJsonDocument(destination.settings).toJson(QJsonDocument::Compact) + QByteArray::number(credential->generation);
+        // What the SDK is handed: the endpoint as classified (lowercase scheme and host; the SDK
+        // matches the scheme case-sensitively) and the effective Region. Cloudflare R2 has no
+        // regions and signs with auto; a saved dashboard location such as "Western North
+        // America (WNAM)", or none, would otherwise make the SDK refuse every request (#1675).
+        // Receipts, History and object locks keep the saved settings.
+        // Only the scheme and host are lowercased; the rest goes to the SDK exactly as saved, so a
+        // path an earlier version accepted is encoded once, by the SDK, as before.
+        auto effective = destination.settings;
+        auto endpointText = effective["endpoint"].toString();
+        if (const auto schemeEnd = endpointText.indexOf(QLatin1String("://")); schemeEnd > 0) {
+            const auto pathStart = endpointText.indexOf('/', schemeEnd + 3);
+            const auto authorityEnd = pathStart < 0 ? endpointText.size() : pathStart;
+            endpointText = endpointText.left(authorityEnd).toLower() + endpointText.mid(authorityEnd);
+        }
+        effective["endpoint"] = endpointText;
+        const QUrl endpointUrl(endpointText);
+        if (s3CloudflareR2Endpoint(effective["endpoint"].toString())) effective["region"] = QStringLiteral("auto");
+        const auto key = QJsonDocument(effective).toJson(QJsonDocument::Compact) + QByteArray::number(credential->generation);
         if (clients.contains(key)) return clients[key];
         // Validation and credential lookup above are Qt-only. Initialize before
         // client configuration touches SDK endpoint, crypto and HTTP globals.
         SdkRuntime::ensureInitialized();
         Aws::S3::S3ClientConfiguration config(false, "legacy", true);
-        config.region = aws(destination.settings["region"].toString());
-        config.endpointOverride = aws(destination.settings["endpoint"].toString());
-        config.scheme = QUrl(destination.settings["endpoint"].toString()).scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
+        config.region = aws(effective["region"].toString());
+        config.endpointOverride = aws(effective["endpoint"].toString());
+        config.scheme = endpointUrl.scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
         config.verifySSL = true;
+        // A signed request never follows a redirect to another host unless the endpoint is AWS (#1699).
+        if (!s3FollowsRedirects(destination.settings)) config.followRedirects = Aws::Client::FollowRedirectsPolicy::NEVER;
         useHostCaFile(config);
         config.connectTimeoutMs = destination.settings["connectTimeoutMs"].toInt();
         config.httpRequestTimeoutMs = destination.settings["requestTimeoutMs"].toInt();
@@ -808,7 +1157,7 @@ struct NetworkS3Driver::State {
         config.maxConnections = s3MaximumPartLanes;
         config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>("putgd", 0);
         config.executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("putgd", 1);
-        config.useVirtualAddressing = s3VirtualAddressing(destination.settings);
+        config.useVirtualAddressing = s3VirtualAddressing(effective);
         config.disableS3ExpressAuth = true;
         config.disableMultiRegionAccessPoints = true;
         config.payloadSigningPolicy = Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Always;
@@ -832,6 +1181,10 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
         reply({"inconclusive", {}, {}, accessError()});
         return;
     }
+    if (!s3KeyAddressable(destination.settings["objectPrefix"].toString())) {
+        reply({"inconclusive", {}, {}, prefixError()});
+        return;
+    }
     const auto key = objectKey(destination, candidate);
     if (key.toUtf8().size() > 1024 || key.contains(QChar(0))) {
         reply({"inconclusive", {}, {}, {"s3_key_invalid", "S3 key exceeds its byte limit", {}}});
@@ -844,8 +1197,11 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
     if (stopped(cancellation)) { reply({"inconclusive", {}, {}, cancelled()}); return; }
     QJsonObject reference{{"schemaVersion", 1}, {"key", key}};
     if (!outcome.IsSuccess()) {
-        if (absent(outcome.GetError())) reply({"absent", reference, {}, {}});
-        else reply({"inconclusive", {}, {}, wireError(outcome.GetError(), "name_head", requestTimer.elapsed())});
+        if (absent(outcome.GetError())) {
+            reply({"absent", reference, {}, {}});
+            return;
+        }
+        reply({"inconclusive", {}, {}, withNameCharactersHint(wireError(outcome.GetError(), S3Stage::NameHead, requestTimer.elapsed()), key)});
     } else {
         reference["versionId"] = qt(outcome.GetResult().GetVersionId());
         reply({"present", reference, qt(outcome.GetResult().GetETag()), {}});
@@ -861,12 +1217,24 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         reply({"unknown", {}, accessError()});
         return;
     }
-    auto found = inspect(*client, expected);
-    if (versionless(*client, expected, found)) {
-        found = inspect(*client, withoutVersion(expected), true);
-        // The recorded ID names the only object the key can hold; keep the receipt as recorded.
-        if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
+    bool versionlessKey = false;
+    reply(checkedStat(*client, expected, versionlessKey));
+}
+void NetworkS3Driver::refreshLink(const StorageReceipt& expected,std::function<void(StatResult)> reply) {
+    if (auto error = state_->readiness(expected.destination)) {
+        reply({"unknown", {}, error});
+        return;
     }
+    auto client = state_->client(expected.destination);
+    if (!client) {
+        reply({"unknown", {}, accessError()});
+        return;
+    }
+    // The check that found the object also settled whether the key holds one object; the
+    // link reuses it instead of asking for the bucket's versioning again.
+    bool versionlessKey = false;
+    auto found = checkedStat(*client, expected, versionlessKey);
+    if (found.status == "own") signLink(*client, found.receipt, versionlessKey);
     reply(found);
 }
 void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
@@ -874,16 +1242,33 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
         reply({"unknown", {}, error});
         return;
     }
-    const auto expected = receipt(request.destination, request.objectReference["key"].toString(), request.publicationId,
+    // A retry of an unknown upload reconciles first; the saved folder is the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"unknown", {}, prefixError()});
+        return;
+    }
+    // The first receipt of an upload names the key it is stored under, even when the
+    // journal from before #1582 holds the key as typed.
+    const auto expected = receipt(request.destination, s3StoredKey(request.objectReference["key"].toString()), request.publicationId,
                                   request.artifact.sha256, request.artifact.bytes, {}, {});
     auto client = state_->client(request.destination);
     if (!client) {
         reply({"unknown", {}, accessError()});
         return;
     }
-    reply(inspect(*client, expected, true));
+    auto found = inspect(*client, expected, true);
+    if (found.status == "own") signLink(*client, found.receipt);
+    reply(found);
 }
-void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) { upload(request, std::move(reply), false); }
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply, bool synthetic) {
+    const int attempts = synthetic ? 1 : 3;
+    reply = [this, destination=request.destination, completion=std::move(reply)](UploadResult result) {
+        if (result.status == "uploaded") {
+            if (auto client = state_->client(destination)) signLink(*client, result.receipt);
+        }
+        completion(std::move(result));
+    };
     auto report = [&](const QString& phase, qint64 transferred) {
         // Informational callbacks cannot affect the publication result. Curl's
         // data-sent handler counts request-body bytes read, not HTTP framing or
@@ -902,12 +1287,29 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         reply({"failed", {}, cancelled()});
         return;
     }
-    const auto key = request.objectReference["key"].toString();
+    // A retry with a saved key skips checkName; the saved folder is still the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"failed", {}, prefixError()});
+        return;
+    }
+    const auto recorded = request.objectReference["key"].toString();
+    if (!s3KeyAddressable(recorded)) {
+        reply({"failed", {}, unaddressableKey()});
+        return;
+    }
+    // A journal made before #1582 may hold the key as typed: it names the same stored key,
+    // and the receipt records the key the object is stored under.
+    const auto key = s3StoredKey(recorded);
     if (key != objectKey(request.destination, request.candidate) || key.toUtf8().size() > 1024 ||
         (request.condition != "absent" && (request.condition != "match" || request.concurrencyToken.isEmpty()))) {
         reply({"failed", {}, {"s3_precondition_invalid", "Persist an exact object key and write precondition before upload", {}}});
         return;
     }
+    // #1601: one hint for every failure of this upload, single request or multipart.
+    reply = [key, deliver = std::move(reply)](UploadResult result) {
+        if (result.error) result.error = withNameCharactersHint(result.error, key);
+        deliver(std::move(result));
+    };
     QFile source(request.artifact.path);
     if (!source.open(QIODevice::ReadOnly) || source.size() != request.artifact.bytes) {
         reply({"failed", {}, {"artifact_invalid", "Retained artifact is unavailable", {}}});
@@ -929,8 +1331,11 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         return;
     }
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes, {}, {});
+    // Whether an attempt that may have published was sent: one whose whole body went to the
+    // transport and whose reply never proved a result.
     bool uncertain = false;
-    for (int attempt = 0; attempt < 3; ++attempt) {
+    Error last;
+    for (int attempt = 0; attempt < attempts; ++attempt) {
         if (stopped(request.cancellation)) {
             reply({uncertain ? "unknown" : "failed", {}, cancelled()});
             return;
@@ -941,7 +1346,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         put.SetContentLength(request.artifact.bytes);
         put.SetContentType(aws(request.artifact.mime));
         put.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(request.destination.settings["storageClass"].toString())));
-        if (request.destination.settings["aclMode"] == "public-read") put.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+        if (request.destination.settings.value("linkMode") != "presigned" && request.destination.settings["aclMode"] == "public-read") put.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
         if (request.condition == "absent") put.SetIfNoneMatch("*");
         else put.SetIfMatch(aws(request.concurrencyToken));
         put.AddMetadata("putgd-publication", aws(request.publicationId));
@@ -953,7 +1358,22 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         put.SetBody(stream);
         qint64 transferred = 0;
+        // Set once the transport has read the last byte of the file in this attempt, and
+        // kept through a redirect's rewind. Until then S3 holds less than the length the
+        // request names, which it never stores.
+        bool wholeBodyRead = request.artifact.bytes == 0;
         report("uploading", transferred);
+        // A request that sends a file runs while its bytes move (#1758), so Cancel cuts it
+        // instead of waiting for the transfer, as it cuts a part (#203).
+        // Whether Cancel cut this attempt: the SDK also asks after curl returns, so a cut can
+        // follow a reply's status. A Cancel that only comes later leaves the reply standing.
+        bool cut = false;
+        if (request.cancellation)
+            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) {
+                if (!stopped(request.cancellation)) return true;
+                cut = true;
+                return false;
+            });
         // A new signed SDK request or our bounded outer retry sends the body
         // afresh. Keep each attempt's total equal to the retained artifact.
         put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
@@ -969,24 +1389,36 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             const auto position = stream->rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
             if (position < 0 || position > request.artifact.bytes) return;
             transferred = qint64(position);
+            if (transferred == request.artifact.bytes) wholeBodyRead = true;
             report("uploading", transferred);
         });
         QElapsedTimer requestTimer;
         requestTimer.start();
+        std::optional<SdkRuntime::SingleSendScope> once;
+        if (synthetic) once.emplace();
         const auto outcome = client->PutObject(put);
+        once.reset();
         report("finalizing", transferred);
         if (outcome.IsSuccess()) {
             reply({"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes,
                                          qt(outcome.GetResult().GetETag()), qt(outcome.GetResult().GetVersionId())), {}});
                                          return;
         }
-        const auto error = wireError(outcome.GetError(), "upload_put", requestTimer.elapsed());
+        const auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
-        if (!ambiguous(outcome.GetError()) && !conflict) {
+        // A 408 doesn't prove the service refused the synthetic file (#1690). A request cut on
+        // Cancel proves nothing either, even with the status of a reply that arrived first.
+        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408) || cut;
+        if (!unclear && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;
         }
-        uncertain = uncertain || ambiguous(outcome.GetError());
+        last = error;
+        // An attempt that ended before the transport read the whole file can't have stored
+        // it, so with no earlier uncertain attempt there is nothing to check (#1758). A cut
+        // on Cancel ends at the top of the loop.
+        if (unclear && !wholeBodyRead && !uncertain) continue;
+        uncertain = uncertain || (unclear && wholeBodyRead);
         auto found = inspect(*client, expected, true);
         if (found.status == "own") {
             reply({"uploaded", found.receipt, {}});
@@ -1004,32 +1436,37 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             reply({uncertain ? "unknown" : "collision", {}, error});
             return;
         }
-        uncertain = true;
     }
-    reply({"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}});
+    // Every attempt ended without a reply. Say why, with the last attempt's diagnostics.
+    if (!uncertain) {
+        // None got the whole file to S3, which keeps no partial object.
+        if (last.code == "s3_transport_unknown") last.code = "s3_upload_interrupted";
+        last.message += " S3 never received the whole file, so nothing was published.";
+        reply({"failed", {}, last});
+        return;
+    }
+    reply({"unknown", {}, {"publication_unknown", "S3 didn't confirm the upload, and an attempt that sent the whole file may still be stored. "
+                           "Nothing was at the saved key when put.gd checked; Retry checks it again before sending. Last attempt: " + last.message, last.details}});
 }
 void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint save, std::function<void(DeleteResult)> reply) {
     QJsonObject progress = request.progress;
-    const QStringList phases{"", "marker_intent", "marker_unknown", "marker_failed", "marker_cancelled",
-                             "marker_done", "version_ready", "version_intent", "version_unknown", "version_failed",
-                             "version_cancelled", "object_intent", "object_unknown", "object_failed", "object_cancelled", "done"};
-    if ((!progress.isEmpty() && progress.value("schemaVersion") != QJsonValue(1)) ||
-        (!progress.value("phase").isUndefined() && !progress.value("phase").isString()) ||
-        !phases.contains(progress.value("phase").toString()) ||
+    // The saved phase is read once; a phase this build does not know stops here, before any request.
+    const auto saved = s3DeletePhase(progress.value("phase"));
+    if ((!progress.isEmpty() && progress.value("schemaVersion") != QJsonValue(1)) || !saved ||
         (progress.contains("phase") && !progress["target"].isObject())) {
         reply({"failed", progress, {"delete_progress_unsupported", "Unsupported deletion journal schema or phase", {}}});
         return;
     }
     progress["schemaVersion"] = 1;
     auto finish = [&](const QString& status, Error error = {}) { reply({status, progress, error}); };
-    auto persist = [&](const QString& phase) {
-        progress["phase"] = phase;
+    auto persist = [&](S3DeletePhase phase) {
+        progress["phase"] = s3DeletePhaseName(phase);
         return checkpoint(save, progress);
     };
-    auto persistIntent = [&](const QString& phase) {
+    auto persistIntent = [&](S3DeletePhase phase) {
         // A rejected pre-effect checkpoint must not masquerade as a sent DELETE.
         auto proposed = progress;
-        proposed["phase"] = phase;
+        proposed["phase"] = s3DeletePhaseName(phase);
         auto error = checkpoint(save, proposed);
         if (!error) progress = std::move(proposed);
         return error;
@@ -1045,7 +1482,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     // A journal that found a versionless bucket (see versionless()) continues unversioned.
     auto expected = progress.value("versionless").toBool() ? withoutVersion(request.receipt) : request.receipt;
     const auto& destination = expected.destination;
-    const auto key = expected.objectReference["key"].toString();
+    const auto recorded = expected.objectReference["key"].toString();
+    if (!s3KeyAddressable(recorded)) {
+        finish("failed", unaddressableKey());
+        return;
+    }
+    // A receipt made before #1582 may hold the key as typed; requests name the stored key.
+    const auto key = s3StoredKey(recorded);
     auto version = expected.objectReference["versionId"].toString();
     if (key.isEmpty() || expected.publicationId.isEmpty() || expected.concurrencyToken.isEmpty() ||
         expected.objectReference["schemaVersion"].toInt() != 1) {
@@ -1063,21 +1506,22 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         finish("failed", accessError());
         return;
     }
-    auto phase = progress.value("phase").toString();
+    const auto phase = *saved;
+    const auto rule = s3DeleteRule(phase);
     bool immutable = !version.isEmpty() && version != "null";
-    const bool objectPhase = phase.startsWith("object_");
-    const bool immutablePhase = phase.startsWith("marker_") || phase.startsWith("version_");
+    const bool objectPhase = rule.kind == S3DeleteRule::Kind::Object;
+    const bool immutablePhase = rule.kind == S3DeleteRule::Kind::Marker || rule.kind == S3DeleteRule::Kind::Version;
     if ((objectPhase && immutable) || (immutablePhase && !immutable) ||
-        (phase == "marker_done" && progress["markerVersionId"].toString().isEmpty()) ||
-        (phase.startsWith("version_") && !progress.contains("markerVersionId") && !progress["noncurrent"].toBool())) {
+        (phase == S3DeletePhase::MarkerDone && progress.value("markerVersionId").toString().isEmpty()) ||
+        (rule.kind == S3DeleteRule::Kind::Version && !progress.contains("markerVersionId") && !progress.value("noncurrent").toBool())) {
         finish("failed", {"delete_progress_unsupported", "Deletion phase does not match the recorded version", {}});
         return;
     }
-    if (phase == "done") {
+    if (rule.kind == S3DeleteRule::Kind::Done) {
         finish("removed");
         return;
     }
-    if (phase == "marker_intent" || phase == "marker_unknown") {
+    if (rule.markerUnresolved) {
         // A marker has no publication metadata. A missing current object cannot
         // attribute its marker to this operation rather than an external delete.
         // Retain the exact intent and never issue another marker-creating DELETE.
@@ -1085,8 +1529,35 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         finish("unknown", {"delete_unknown", "Marker creation may have completed; its identity is unresolved", {}});
         return;
     }
+    // An earlier attempt found a delete marker in place of the removal: the object's bytes were
+    // kept as a version, whatever the current HEAD says now (#1690). Retry only reads whether
+    // that version is still there, so someone can remove it in the bucket and settle the
+    // deletion here (#1771). It never sends another DELETE.
+    if (objectPhase && progress.value("markerVersionId").isString()) {
+        Error retained{"delete_marker_created", "An earlier deletion left the object behind a delete marker: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
+        const auto kept = keptVersion(*client, expected, request.cancellation);
+        if (kept.kind == Hidden::Gone) {
+            if (auto error = persist(S3DeletePhase::Done)) {
+                finish("unknown", error);
+                return;
+            }
+            finish("removed");
+            return;
+        }
+        if (kept.kind == Hidden::Unknown) {
+            retained.message += " put.gd could not check whether it is still there: " + kept.error.message;
+            retained.details = kept.error.details;
+        }
+        finish("hidden_version_retained", retained);
+        return;
+    }
     auto identity = inspect(*client, expected);
-    if (phase.isEmpty() && immutable && versionless(*client, expected, identity)) {
+    const auto check = phase == S3DeletePhase::None && immutable ? versionless(*client, expected, identity) : Versionless{};
+    if (check.kind == Versionless::Unknown) {
+        finish("unknown", check.error);
+        return;
+    }
+    if (check.kind == Versionless::Yes) {
         progress["versionless"] = true;
         expected = withoutVersion(expected);
         version.clear();
@@ -1102,8 +1573,8 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     if (identity.status == "missing") {
-        const bool removalStarted = phase == "version_intent" || phase == "version_unknown" || phase == "object_intent" || phase == "object_unknown";
-        if (auto error = persist("done")) {
+        const bool removalStarted = rule.removalSent;
+        if (auto error = persist(S3DeletePhase::Done)) {
             finish("unknown", error);
             return;
         }
@@ -1119,11 +1590,16 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     QElapsedTimer versioningTimer;
     versioningTimer.start();
     auto bucket = client->GetBucketVersioning(versioning);
-    if (!bucket.IsSuccess()) {
-        finish("unknown", wireError(bucket.GetError(), "delete_versioning", versioningTimer.elapsed()));
+    auto state = Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    if (bucket.IsSuccess()) state = bucket.GetResult().GetStatus();
+    // Cloudflare R2 refuses requests naming a version and keeps none, so on its endpoint a denied
+    // check leaves nothing an unversioned delete could hide behind a marker (#1677). Anywhere
+    // else, and for a recorded version, a denied check stops here (see cloudflareR2()).
+    else if (!(version.isEmpty() && versioningUnreadable(bucket.GetError()) && cloudflareR2(destination) &&
+               (check.refused || versionsRefused(*client, destination, key, {})))) {
+        finish("unknown", wireError(bucket.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
         return;
     }
-    auto state = bucket.GetResult().GetStatus();
     const bool versioned = state == Aws::S3::Model::BucketVersioningStatus::Enabled || state == Aws::S3::Model::BucketVersioningStatus::Suspended;
     if (version.isEmpty() && versioned) {
         finish("unsupported_safe_removal", {"unsupported_safe_removal", "A recorded version identity is required after bucket versioning changes", {}});
@@ -1142,12 +1618,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish("unknown", {"versioning_inconclusive", "Recorded immutable version requires confirmed bucket versioning", {}});
             return;
         }
-        if (phase != "marker_done" && phase != "version_intent" && phase != "version_unknown") {
+        if (!rule.markerSettled) {
             QElapsedTimer currentTimer;
             currentTimer.start();
             const auto current = head(*client, destination, key);
             if (!current.IsSuccess() && !absent(current.GetError())) {
-                finish("unknown", wireError(current.GetError(), "delete_current_head", currentTimer.elapsed()));
+                finish("unknown", wireError(current.GetError(), S3Stage::DeleteCurrentHead, currentTimer.elapsed()));
                 return;
             }
             const bool isCurrent = current.IsSuccess() && qt(current.GetResult().GetVersionId()) == version;
@@ -1166,8 +1642,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     }
                 }
                 // External versioning changes are outside the object ETag guard.
+                versioningTimer.restart();
                 const auto rechecked = client->GetBucketVersioning(versioning);
-                if (!rechecked.IsSuccess() || rechecked.GetResult().GetStatus() != state) {
+                if (!rechecked.IsSuccess()) {
+                    finish("unknown", wireError(rechecked.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
+                    return;
+                }
+                if (rechecked.GetResult().GetStatus() != state) {
                     finish("unknown", {"versioning_changed", "Bucket versioning changed before marker creation", {}});
                     return;
                 }
@@ -1175,12 +1656,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     finish("failed", cancelled());
                     return;
                 }
-                if (auto error = persistIntent("marker_intent")) {
+                if (auto error = persistIntent(S3DeletePhase::MarkerIntent)) {
                     finish("failed", error);
                     return;
                 }
                 if (stopped(request.cancellation)) {
-                    persist("marker_cancelled");
+                    persist(S3DeletePhase::MarkerCancelled);
                     finish("failed", cancelled());
                     return;
                 }
@@ -1190,26 +1671,26 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                 const auto markerElapsedMs = markerTimer.elapsed();
                 if (!marked.IsSuccess()) {
                     const bool unknown = ambiguous(marked.GetError());
-                    if (auto error = persist(unknown ? "marker_unknown" : "marker_failed")) {
+                    if (auto error = persist(unknown ? S3DeletePhase::MarkerUnknown : S3DeletePhase::MarkerFailed)) {
                         finish("unknown", error);
                         return;
                     }
-                    finish(unknown ? "unknown" : (int(marked.GetError().GetResponseCode()) == 412 || int(marked.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(marked.GetError(), "delete_marker", markerElapsedMs));
+                    finish(unknown ? "unknown" : (int(marked.GetError().GetResponseCode()) == 412 || int(marked.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(marked.GetError(), S3Stage::DeleteMarker, markerElapsedMs));
                     return;
                 }
                 if (!marked.GetResult().GetDeleteMarker() || qt(marked.GetResult().GetVersionId()).isEmpty()) {
-                    persist("marker_unknown");
+                    persist(S3DeletePhase::MarkerUnknown);
                     finish("unknown", {"delete_unknown", "S3 did not return a protective marker identity", {}});
                     return;
                 }
                 progress["markerVersionId"] = qt(marked.GetResult().GetVersionId());
-                if (auto error = persist("marker_done")) {
+                if (auto error = persist(S3DeletePhase::MarkerDone)) {
                     finish("hidden_version_retained", error);
                     return;
                 }
             } else {
                 progress["noncurrent"] = true;
-                if (auto error = persist("version_ready")) {
+                if (auto error = persist(S3DeletePhase::VersionReady)) {
                     finish("failed", error);
                     return;
                 }
@@ -1225,12 +1706,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", cancelled());
             return;
         }
-        if (auto error = persistIntent("version_intent")) {
+        if (auto error = persistIntent(S3DeletePhase::VersionIntent)) {
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", error);
             return;
         }
         if (stopped(request.cancellation)) {
-            persist("version_cancelled");
+            persist(S3DeletePhase::VersionCancelled);
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", cancelled());
             return;
         }
@@ -1240,8 +1721,10 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
             const bool unknown = ambiguous(removed.GetError());
-            persist(unknown ? "version_unknown" : "version_failed");
-            finish(progress.contains("markerVersionId") ? "hidden_version_retained" : (unknown ? "unknown" : "failed"), wireError(removed.GetError(), "delete_version", removeElapsedMs));
+            persist(unknown ? S3DeletePhase::VersionUnknown : S3DeletePhase::VersionFailed);
+            // A lost reply may have removed the version: unknown, with the marker and the
+            // version intent journaled for Retry. A refusal leaves the version hidden.
+            finish(unknown ? "unknown" : (progress.contains("markerVersionId") ? "hidden_version_retained" : "failed"), wireError(removed.GetError(), S3Stage::DeleteVersion, removeElapsedMs));
             return;
         }
     } else {
@@ -1255,12 +1738,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish("failed", cancelled());
             return;
         }
-        if (auto error = persistIntent("object_intent")) {
+        if (auto error = persistIntent(S3DeletePhase::ObjectIntent)) {
             finish("failed", error);
             return;
         }
         if (stopped(request.cancellation)) {
-            persist("object_cancelled");
+            persist(S3DeletePhase::ObjectCancelled);
             finish("failed", cancelled());
             return;
         }
@@ -1270,19 +1753,34 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
             const bool unknown = ambiguous(removed.GetError());
-            persist(unknown ? "object_unknown" : "object_failed");
-            finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError(), "delete_object", removeElapsedMs));
+            persist(unknown ? S3DeletePhase::ObjectUnknown : S3DeletePhase::ObjectFailed);
+            finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError(), S3Stage::DeleteObject, removeElapsedMs));
+            return;
+        }
+        // A delete marker in reply means the bucket keeps versions after all: the object is hidden
+        // and its bytes stay behind the marker, so the removal is not complete (#1690). The one
+        // exception: deleting a receipt's "null" version in a bucket with versioning suspended can
+        // be answered with a "null" marker, and the null version itself is gone.
+        const auto markerVersion = qt(removed.GetResult().GetVersionId());
+        if (removed.GetResult().GetDeleteMarker() && !(markerVersion == "null" && version == "null")) {
+            progress["markerVersionId"] = markerVersion;
+            Error retained{"delete_marker_created", "S3 hid the object behind a delete marker instead of removing it: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
+            if (auto error = persist(S3DeletePhase::ObjectFailed))
+                retained.message += " put.gd could not record the marker's version ID, so its journal doesn't name it.";
+            finish("hidden_version_retained", retained);
             return;
         }
     }
-    if (auto error = persist("done")) {
+    if (auto error = persist(S3DeletePhase::Done)) {
         finish("unknown", error);
         return;
     }
     finish("removed");
 }
 void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject& journal, std::function<void(Error)> reply) {
-    const auto uploadId = journal["uploadId"].toString(), key = journal["key"].toString();
+    const auto uploadId = journal["uploadId"].toString(), recorded = journal["key"].toString();
+    // A journal made before #1582 may hold the key as typed; it names the stored key.
+    const auto key = s3StoredKey(recorded);
     if (uploadId.isEmpty()) {
         reply({});
         return;
@@ -1291,7 +1789,7 @@ void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject&
         reply(error);
         return;
     }
-    if (key.isEmpty() || key.toUtf8().size() > 1024 || !key.startsWith(objectKey(destination, {}))) {
+    if (key.isEmpty() || recorded.toUtf8().size() > 1024 || !s3KeyAddressable(recorded) || !key.startsWith(objectKey(destination, {}))) {
         reply({"s3_multipart_invalid", "The saved multipart upload does not belong to this destination", {}});
         return;
     }
@@ -1303,6 +1801,13 @@ void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject&
     reply(abortMultipart(*client, aws(destination.settings["bucket"].toString()), key, uploadId));
 }
 void NetworkS3Driver::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
+    // Its synthetic writes are sent once only through the transport that can refuse libcurl's own
+    // resend (#1690), as its cleanup needs: without it the test sends nothing at all.
+    if (!SdkRuntime::safeDeleteTransport()) {
+        // Nothing reached the destination: the last check stands (#1692).
+        reply({}, {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {{"notAttempted", true}}});
+        return;
+    }
     // The explicit setup caller owns this asynchronous operation. No captured input.
     auto temporary = std::make_shared<QTemporaryDir>();
     const QByteArray bytes("put.gd synthetic destination test\n");
@@ -1340,15 +1845,29 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 reply({{"uploadStatus", uploaded.status}}, uploaded.error);
                 return;
             }
-            const QJsonObject confirmed{{"schemaVersion", 1}, {"phase", "synthetic_uploaded"}, {"receipt", uploaded.receipt.toJson()}};
+            // An expiring link's query holds the access key ID and a working signature (#1680).
+            // The test opens it only here; the journal, the result and cleanup keep the link
+            // without its query, and cleanup needs only the key and the object's identity.
+            auto recorded = uploaded.receipt;
+            QUrl link(recorded.directUrl);
+            link.setQuery(QString());
+            recorded.directUrl = link.toString(QUrl::FullyEncoded);
+            const QJsonObject confirmed{{"schemaVersion", 1}, {"phase", "synthetic_uploaded"}, {"receipt", recorded.toJson()}};
             if (auto error = checkpoint(save, confirmed)) {
-                reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
+                reply({{"uploadStatus", "uploaded"}, {"receipt", recorded.toJson()}}, error);
                 return;
             }
-            const bool reachable = publicFixtureMatches(uploaded.receipt, bytes);
-            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", uploaded.receipt.toJson()}};
-            DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), uploaded.receipt, {}, {}};
-            remove(removeRequest, save, [this, destination = uploaded.receipt.destination, save, result, reachable, reply](DeleteResult removed) mutable {
+            const bool signedReachable = publicFixtureMatches(uploaded.receipt, bytes);
+            const bool presigned=uploaded.receipt.destination.settings.value("linkMode")=="presigned";
+            bool unsignedDenied=true;
+            if(presigned){auto unsignedReceipt=uploaded.receipt;auto settings=unsignedReceipt.destination.settings;settings["publicUrlBase"]=QJsonValue::Null;
+                unsignedReceipt.directUrl=publicObjectUrl(settings,unsignedReceipt.objectReference["key"].toString());
+                int status=0;bool authorizationRequired=false;publicFixtureMatches(unsignedReceipt,bytes,&status,&authorizationRequired);unsignedDenied=status==401||status==403||authorizationRequired;}
+            const bool reachable=signedReachable&&unsignedDenied;
+            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", recorded.toJson()}};
+            if(presigned){result["presignedReachable"]=signedReachable;result["unsignedDenied"]=unsignedDenied;}
+            DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), recorded, {}, {}};
+            remove(removeRequest, save, [this, destination = recorded.destination, save, result, reachable, reply](DeleteResult removed) mutable {
                 result["cleanupStatus"] = removed.status;
                 result["cleanupProgress"] = removed.progress;
                 Error multipart;
@@ -1356,14 +1875,14 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 else multipart = accessError();
                 if (reachable && !removed.error && multipart) {
                     // Small uploads work; say what larger (multipart) uploads lose.
-                    const auto stage = result["multipart"].toObject()["stage"].toString();
+                    const auto stage = s3Stage(result["multipart"].toObject()["stage"]);
                     const auto abort = result["multipart"].toObject()["abort"].toString();
                     QString message = multipart.message;
-                    if (stage == "upload_list_parts" && multipart.details["httpStatus"].toInt() == 403)
+                    if (stage == S3Stage::UploadListParts && multipart.details["httpStatus"].toInt() == 403)
                         message = ByteSize::labels("Uploads work, but S3 denied s3:ListMultipartUploadParts. Files over 64 MiB still upload in parts, but an interrupted upload sends every part again instead of resuming. Grant s3:ListMultipartUploadParts in IAM and the bucket policy.");
-                    else if (stage == "upload_abort" && multipart.details["httpStatus"].toInt() == 403)
+                    else if (stage == S3Stage::UploadAbort && multipart.details["httpStatus"].toInt() == 403)
                         message = ByteSize::labels("Uploads work, but S3 denied s3:AbortMultipartUpload. A cancelled or failed upload of a file over 64 MiB can leave incomplete parts that keep using storage. Grant s3:AbortMultipartUpload, or add a bucket lifecycle rule that aborts incomplete multipart uploads.");
-                    else if (stage == "upload_create" && multipart.details["httpStatus"].toInt() == 403)
+                    else if (stage == S3Stage::UploadCreate && multipart.details["httpStatus"].toInt() == 403)
                         message = ByteSize::labels("Uploads work, but S3 denied starting a multipart upload, which files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy, and s3:PutObjectAcl when requesting public read.");
                     if (abort != "aborted" && abort != "")
                         message += " The test's incomplete multipart upload could not be removed; its recorded target is retained.";
@@ -1371,12 +1890,12 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                     return;
                 }
                 if (reachable) { reply(result, removed.error); return; }
-                Error error{"public_url_unreachable", "The test upload succeeded, but its public link did not return the test file. Check Link domain and the bucket public-read policy or ACL settings.", {}};
+                Error error{"public_url_unreachable", destination.settings.value("linkMode")=="presigned"?"The test upload succeeded, but private link access did not match the destination. The signed URL must work and unsigned access must be denied. Check the bucket access policy and endpoint.":"The test upload succeeded, but its public link did not return the test file. Check Link domain and the bucket public-read policy or ACL settings.", {}};
                 if (removed.error) error.message += " Cleanup also failed: " + removed.error.message;
                 else if (removed.status != "removed" && removed.status != "missing") error.message += " Test cleanup is incomplete; inspect the recorded test target before retrying.";
                 reply(result, error);
             });
-        });
+        }, true);
     });
 }
 }

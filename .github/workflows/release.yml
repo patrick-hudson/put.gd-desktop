@@ -53,6 +53,8 @@ jobs:
       pull-requests: read
       # ci.yml's test jobs record flaky tests in tracker issues.
       issues: write
+      # ci.yml's images job builds a missing CI image (ci-images.yml).
+      packages: write
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.tag.outputs.tag }}
@@ -87,7 +89,10 @@ jobs:
       - name: Audit the exact staged downloads with stable policy
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends rpm cpio binutils
+          # The audit runs the AppImage's programs, which take their graphics and font
+          # libraries from the host, as on a desktop.
+          sudo apt-get install -y --no-install-recommends rpm cpio binutils libegl1 libfontconfig1 \
+            libfreetype6 libgl1 libglx0 libopengl0 libwayland-client0 libx11-6 libxcb1
           python3 tools/releases/audit_assets.py --tag "$TAG" --download \
             --directory "$RUNNER_TEMP/exact-assets" --output "$RUNNER_TEMP/exact-audit"
       - name: Retain exact-asset audit, including failures
@@ -109,7 +114,7 @@ jobs:
           {
             echo "Staged draft $CHANNEL release \`$TAG\`: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases"
             echo
-            echo "1. Run exact-asset acceptance on the draft downloads (docs/release.md)."
+            echo "1. Run exact-asset acceptance on the draft downloads (docs/release/release.md)."
             echo "2. Publish: \`gh release download $TAG -D build/publish\`, check out \`$TAG\`, then"
             echo "   \`python3 tools/releases/publish.py --tag $TAG --directory build/publish --publish --acceptance RECEIPT\`."
             echo "3. Name the CHANGELOG.md section: \`python3 tools/releases/promote.py --finalize $TAG --open\`."

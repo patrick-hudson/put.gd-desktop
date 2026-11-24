@@ -54,6 +54,17 @@ def active(scope):
     return Fixture(operation_ids=[r.operation_id for r in rows])
 
 
+def _mapped(ctx, window):
+    """The resident reports a chooser before its native window maps."""
+    from ..api import RecipeBlocked
+    try:
+        return ctx.geometry(window)
+    except RecipeBlocked as error:
+        if 'live window match is missing or ambiguous' not in error.reason:
+            raise
+        return None
+
+
 def saved_copy(scope):
     ctx=scope.ctx
     ctx.fixture('file-dialog-fallback')
@@ -62,8 +73,14 @@ def saved_copy(scope):
     ctx.view('ui.show',{'view':'history'})
     ctx.call('ui.history',{'action':'select','ids':[row.id]})
     ctx.call('ui.fileDialog',{'dialog':'historySaveAs','action':'open','id':row.id})
-    ctx.wait(lambda:ctx.call('ui.fileDialog',{'dialog':'historySaveAs','action':'inspect'}).get('open'),
-             'fixture Save a copy chooser',timeout=15)
+    chooser=ctx.wait(lambda:(s if (s:=ctx.call('ui.fileDialog',{'dialog':'historySaveAs','action':'inspect'})).get('open') else None),
+                     'fixture Save a copy chooser',timeout=15)
+    # Type into the modal chooser itself. Bound to History, the X11 input guard
+    # cannot activate the main window behind the modal dialog and refuses input.
+    import re
+    ctx.profile.setdefault('windows',{}).setdefault('historySaveDialog',{'title':'^'+re.escape(chooser['title'])+'$'})
+    ctx.wait(lambda:_mapped(ctx,'historySaveDialog'),'fixture chooser window maps',timeout=15)
+    ctx.focus('historySaveDialog',raise_window=False)
     ctx.keys('Ctrl+L');ctx.type_text(path);ctx.keys('Return')
     state=ctx.wait(lambda:(s if (s:=ctx.call('ui.history',{'action':'inspect'})).get('copyJob',{}).get('status')=='saved' else None),
                    'production Save a copy completes',timeout=30)

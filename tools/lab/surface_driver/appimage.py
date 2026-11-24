@@ -90,7 +90,7 @@ def sync_entries(root, socket_path, cleanup=False):
     for path in (data / 'applications').glob('putgd-record-appimage-*.desktop'):
         entry, argv = read_entry(path)
         if argv == [str(executable.with_name('putgd-record'))]:
-            assert entry.get('X-KDE-Wayland-Interfaces') == 'zkde_screencast_unstable_v1'
+            assert entry.get('X-KDE-Wayland-Interfaces') == 'zkde_screencast_unstable_v1,org_kde_kwin_fake_input'
             matches.append(path)
     applications.mkdir(parents=True, exist_ok=True)
     assert applications.resolve() == applications and applications.stat().st_uid == uid
@@ -140,6 +140,11 @@ def _prepare(target, *, cleanup=False):
     if result['returncode']:
         raise RecipeBlocked('AppImage KWin entry ' + ('cleanup' if cleanup else 'pre-capture staging') + ' refused', issue=961)
     receipt = json.loads(result['stdout'])
+    if (not cleanup and not (receipt and receipt.get('files'))
+            and not any(prior.get('files') for prior in getattr(target, 'kwin_entry_receipts', []))):
+        # Staging finished and copied nothing (a GNOME guest, or a package without entries): there is
+        # nothing to clean up, so closing must not reach into the guest for it.
+        target._kwin_entries = False
     if receipt and (receipt.get('files') or not cleanup):
         if not hasattr(target, 'kwin_entry_receipts'):
             target.kwin_entry_receipts = []

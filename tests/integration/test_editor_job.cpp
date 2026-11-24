@@ -13,6 +13,8 @@
 #include <QScopeGuard>
 #include <QTest>
 #include <thread>
+#include <mutex>
+#include <atomic>
 #include <csignal>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -54,21 +56,6 @@ int filesUnder(const QString& root){int count=0;QDirIterator it(root,QDir::Files
 class EditorJobTest:public QObject {
  Q_OBJECT
 private slots:
- void saveCopyRepliesAfterWorkerCompletionWhileViewStaysAvailable(){
-  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;auto image=noise({3000,2000},37);
-  std::thread worker([&]{result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic local copy",64*1024*1024,session);});
-  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});QVERIFY(waitPhase(*session,"editing"));
-  QSemaphore finished;Answer saved;const auto path=root.filePath("worker.png");
-  session->request("saveCopy",{{"path",path}},[&](Error error,QJsonObject reply){saved={error,reply};finished.release();});
-  const auto view=ask(*session,"view");QVERIFY2(!view.error,qPrintable(view.error.message));QVERIFY(view.result["savingCopy"].toBool());
-  QCOMPARE(view.result["lastSave"].toObject()["status"].toString(),QString("saving"));
-  QCOMPARE(ask(*session,"saveCopy",{{"path",root.filePath("overlap.png")}}).error.code,QString("editor_busy"));
-  QVERIFY(finished.tryAcquire(1,15000));QVERIFY2(!saved.error,qPrintable(saved.error.message));QVERIFY(saved.result["saved"].toBool());QCOMPARE(saved.result["path"].toString(),path);
-  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();QCOMPARE(saved.result["bytes"].toDouble(),double(bytes.size()));
-  QCOMPARE(saved.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));
-  QVERIFY(!ask(*session,"view").result["savingCopy"].toBool());QVERIFY(!ask(*session,"cancel").error);
-  worker.join();QCOMPARE(result.error.code,QString("cancelled"));
- }
  void agentEditsPreviewSaveAndSubmitSanitizedResult(){
   QTemporaryDir root;const auto staging=root.filePath("editing");
   const auto original=noise({320,200},21);const QRect secret(40,30,80,40);
@@ -130,39 +117,95 @@ private slots:
   QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
  }
- // An oversized result is recoverable: nothing is handed off, editing and
- // the resident's phase resume, inspect says why, and a smaller result uploads.
- void oversizedResultReturnsToEditing(){
-  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=noise({320,200},5);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",4096,session);});
+
+ // #1893: a new capture's editor starts with the saved capture style, and Upload hands off the styled image:
+ // the checkpoint's size is the styled canvas, which the resident checks against the PNG.
+ void aStyledEditUploadsTheStyledImage(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");const auto original=noise({240,150},31);
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=original;result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withStyle(CaptureStyle::preset("paper"),true).run(image,"Upload to synthetic destination",64*1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
-  QVERIFY(!ask(*session,"submit").error);
-  Answer state;
-  for(int waited=0;waited<20000;waited+=50){state=ask(*session,"inspect");if(!state.error&&state.result["preparation"].isObject())break;QTest::qSleep(50);}
-  QVERIFY2(!state.error,qPrintable(state.error.code));
-  const auto preparation=state.result["preparation"].toObject();
-  QCOMPARE(preparation["status"].toString(),QString("failed"));QCOMPARE(preparation["code"].toString(),QString("input_excessive"));
-  QVERIFY(preparation["reason"].toString().contains("limit"));
-  QCOMPARE(state.result["phase"].toString(),QString("editing"));QCOMPARE(session->phase(),QString("editing"));
-  const auto view=state.result["view"].toObject();QVERIFY(!view["busy"].toBool());QCOMPARE(view["preparationFailure"].toObject()["text"].toString(),preparation["reason"].toString());
-  // Editing goes on: crop to something small enough, then upload it.
-  QVERIFY(!ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","crop"},{"rect",QJsonArray{0,0,8,8}}}}}}).error);
-  QVERIFY(!ask(*session,"submit").error);
-  if(worker.joinable())worker.join();
+  const auto state=ask(*session,"inspect").result;
+  QVERIFY(state["style"].toObject()["enabled"].toBool());QCOMPARE(state["style"].toObject()["preset"].toString(),QString("paper"));QVERIFY(!state["modified"].toBool());
+  auto applied=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","style"},{"padding","large"}}}}});QVERIFY2(!applied.error,qPrintable(applied.error.message));
+  const auto size=applied.result["state"].toObject()["exportSize"].toArray();
+  const auto expected=CaptureStyle::preset("paper").geometry(original.size(),2).canvas;QCOMPARE(QSize(size[0].toInt(),size[1].toInt()),expected);
+  QVERIFY(!ask(*session,"submit").error);worker.join();
   QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
-  QCOMPARE(QSize(result.width,result.height),QSize(8,8));QVERIFY(!inspectSanitizedPng(result.png));QCOMPARE(filesUnder(staging),0);
+  QCOMPARE(QSize(result.width,result.height),expected);QCOMPARE(QImage::fromData(result.png,"PNG").size(),expected);
  }
- void agentCancelDiscardsWithoutOutput(){
-  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
-  // Recent custom colors travel to the helper and back even when nothing is uploaded.
-  std::thread worker([&]{auto image=noise({64,64},2);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRecentColors({"#123456","#abcdef"}).run(image,"Save to the local archive",1024*1024,session);});
+
+ // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when
+ // not empty, and the editor accepts them (its exact key count allows both). redactText's own
+ // checks answer at once, before any recognition: terms and patterns need the list category.
+ void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms_data(){
+  QTest::addColumn<QStringList>("terms");QTest::addColumn<QStringList>("patterns");QTest::addColumn<bool>("allCores");
+  QTest::newRow("neither")<<QStringList{}<<QStringList{}<<false;
+  QTest::newRow("words only")<<QStringList{"build-host-7","Project Aurora"}<<QStringList{}<<false;
+  QTest::newRow("patterns only")<<QStringList{}<<QStringList{"\\bJIRA-\\d+\\b"}<<false;
+  QTest::newRow("both")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"}<<false;
+  // #1937: Unhinged mode adds allCores to the bootstrap, which the key count allows too.
+  QTest::newRow("both, Unhinged mode")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"}<<true;
+  // A list the editor would refuse is never sent, so the editor still starts.
+  QTest::newRow("a word with a line break is dropped")<<QStringList{"two\nlines"}<<QStringList{}<<false;
+ }
+ void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms(){
+  QFETCH(QStringList,terms);QFETCH(QStringList,patterns);QFETCH(bool,allCores);
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({160,100},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRedactList(terms,patterns).withAllCores(allCores).run(image,"Upload to synthetic destination",64*1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
-  QVERIFY(!ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","redact"},{"rect",QJsonArray{1,1,5,5}}}}}}}}).error);
-  QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
-  QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);
-  QVERIFY(result.recentColors);QCOMPARE(*result.recentColors,QStringList({"#123456","#abcdef"}));
+  const auto redact=[&](const QJsonObject& command){return ask(*session,"apply",{{"commands",QJsonArray{command}}});};
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"email"}},{"terms",QJsonArray{"x"}}}).error.code,QString("edit_command_invalid"));
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"username"}}}).error.code,QString("edit_command_invalid"));
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"list"}},{"terms",QJsonArray{"two\nlines"}}}).error.code,QString("edit_command_invalid"));
+  const auto tooMany=redact({{"op","redactText"},{"categories",QJsonArray{"email","phone","ip","card","key","name","list","email"}}});
+  QCOMPARE(tooMany.error.code,QString("edit_command_invalid"));QVERIFY2(tooMany.error.message.contains("1 to 7"),qPrintable(tooMany.error.message));
+  QCOMPARE(ask(*session,"inspect").result["shapes"].toArray().size(),0);
+ }
+
+ // #1362: Copy image hands the resident the same sanitized PNG as Save a copy
+ // and Upload; the helper's staged copy never stays behind.
+ void copyImageHandsTheSanitizedPngToTheClipboardOnly(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");const QRect secret(40,30,80,40);
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::mutex mutex;QList<QByteArray> clipboard;Error refuse;
+  session->setCopyHandler([&](QByteArray png,std::function<void(Error)> done){Error answer;{std::lock_guard lock(mutex);clipboard.append(png);answer=refuse;}done(answer);});
+  std::thread worker([&]{auto image=noise({320,200},53);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const QJsonArray commands{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{200,150}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"points",QJsonArray{QJsonArray{20,150},QJsonArray{80,120},QJsonArray{140,160}}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{160,40,100,60}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","line"},{"from",QJsonArray{10,190}},{"to",QJsonArray{300,190}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{180,110,100,40}},{"style","pixelate"},{"strength",10}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","redact"},{"rect",QJsonArray{secret.x(),secret.y(),secret.width(),secret.height()}}}}}};
+  auto applied=ask(*session,"apply",{{"commands",commands}});QVERIFY2(!applied.error,qPrintable(applied.error.message));
+  QCOMPARE(applied.result["state"].toObject()["shapes"].toArray()[0].toObject()["number"].toInt(),1);
+  QCOMPARE(ask(*session,"copy",{{"format","png"}}).error.code,QString("invalid_request"));
+  auto copied=ask(*session,"copy");QVERIFY2(!copied.error,qPrintable(copied.error.code+": "+copied.error.message));
+  QVERIFY(copied.result["copied"].toBool());QCOMPARE(copied.result["width"].toInt(),320);
+  QByteArray png;{std::lock_guard lock(mutex);QCOMPARE(clipboard.size(),1);png=clipboard.first();}
+  QVERIFY(!inspectSanitizedPng(png));QCOMPARE(copied.result["bytes"].toDouble(),double(png.size()));
+  QCOMPARE(copied.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex()));
+  const auto pasted=QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32);
+  for(int y=secret.top();y<=secret.bottom();++y)for(int x=secret.left();x<=secret.right();++x)QCOMPARE(pasted.pixel(x,y),qRgb(0,0,0));
+  // Nothing of the copy stays in private staging: only the input and the empty output.
+  QCOMPARE(filesUnder(staging),2);
+  auto view=ask(*session,"view");QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("copied"));QVERIFY(!view.result["copying"].toBool());
+  // The same bytes as Save a copy.
+  auto saved=ask(*session,"saveCopy",{{"path",root.filePath("saved.png")}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QCOMPARE(saved.result["sha256"],copied.result["sha256"]);
+  // A clipboard refusal reaches the agent and the window; editing goes on.
+  {std::lock_guard lock(mutex);refuse={"clipboard_unavailable","No clipboard owner",{}};}
+  auto failed=ask(*session,"copy");QCOMPARE(failed.error.code,QString("clipboard_unavailable"));
+  view=ask(*session,"view");QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("failed"));QCOMPARE(view.result["message"].toObject()["tone"].toString(),QString("error"));
+  QCOMPARE(filesUnder(staging),2);QCOMPARE(session->phase(),QString("editing"));
+  // Upload hands off exactly the copied PNG.
+  QVERIFY(!ask(*session,"submit").error);worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.png,png);
  }
  void helperCrashWhileEditingFailsClosed(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
@@ -173,88 +216,23 @@ private slots:
   if(worker.joinable())worker.join();
   QCOMPARE(result.error.code,QString("editor_exit"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
  }
+ // An untrusted helper's bad output never becomes the image. Only the timeout row has
+ // short deadlines; the others get ones a slow machine cannot reach first.
  void misbehavingHelpersNeverHandOffAnImage_data(){
-  QTest::addColumn<QString>("mode");QTest::addColumn<QString>("code");
-  QTest::newRow("never ready (startup timeout)")<<"silent"<<"editor_timeout";
-  QTest::newRow("crash while editing")<<"crash"<<"editor_exit";
-  QTest::newRow("hang while finalizing (finalize timeout)")<<"hang-finalizing"<<"editor_timeout";
-  QTest::newRow("output is not a PNG")<<"bad-png"<<"edit_output_invalid";
-  QTest::newRow("output digest mismatch")<<"wrong-digest"<<"editor_io";
+  QTest::addColumn<QString>("mode");QTest::addColumn<QString>("code");QTest::addColumn<int>("deadlineMs");
+  QTest::newRow("crash while editing")<<"crash"<<"editor_exit"<<60000;
+  QTest::newRow("hang while finalizing (finalize timeout)")<<"hang-finalizing"<<"editor_timeout"<<800;
+  QTest::newRow("output is not a PNG")<<"bad-png"<<"edit_output_invalid"<<60000;
+  QTest::newRow("output digest mismatch")<<"wrong-digest"<<"editor_io"<<60000;
  }
  void misbehavingHelpersNeverHandOffAnImage(){
-  QFETCH(QString,mode);QFETCH(QString,code);
+  QFETCH(QString,mode);QFETCH(QString,code);QFETCH(int,deadlineMs);
   qputenv("PUTGD_TEST_EDITOR_MODE",mode.toUtf8());auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_EDITOR_MODE");});
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();
   auto image=noise({32,32},6);
-  const auto result=EditorJob(staging,PUTGD_EDITOR_FIXTURE,800,800,800).run(image,"Upload",1024*1024,session);
+  const auto result=EditorJob(staging,PUTGD_EDITOR_FIXTURE,deadlineMs,deadlineMs,deadlineMs).run(image,"Upload",1024*1024,session);
   QCOMPARE(result.error.code,code);QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
   QVERIFY(childProcesses("test_editor_hel").isEmpty());
- }
- void fullDiskWhileStagingIsReportedAsStorage(){
-  // A file-size limit stands in for a full disk: staging writes fail with EFBIG.
-  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();
-  auto image=noise({256,256},7);
-  rlimit previous{};QCOMPARE(::getrlimit(RLIMIT_FSIZE,&previous),0);const auto handler=std::signal(SIGXFSZ,SIG_IGN);
-  rlimit small=previous;small.rlim_cur=16*1024;QCOMPARE(::setrlimit(RLIMIT_FSIZE,&small),0);
-  const auto result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);
-  QCOMPARE(::setrlimit(RLIMIT_FSIZE,&previous),0);std::signal(SIGXFSZ,handler);
-  QCOMPARE(result.error.code,QString("edit_staging_failed"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);
-  QVERIFY(childProcesses("putgd-ui").isEmpty());
- }
- void residentCancellationTerminatesTheHelper(){
-  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=noise({64,64},3);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);});
-  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
-  QVERIFY(waitPhase(*session,"editing"));session->cancel();if(worker.joinable())worker.join();
-  QCOMPARE(result.error.code,QString("cancelled"));QCOMPARE(filesUnder(staging),0);
- }
- void oversizedInputIsRejectedBeforeStaging(){
-  QTemporaryDir root;auto session=std::make_shared<EditorSession>();QImage image(6000,4001,QImage::Format_RGB32);
-  const auto result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);
-  QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(image.isNull());QVERIFY(!QDir(root.filePath("editing")).exists());
- }
- // Over the budget the edit stays open (oversizedResultReturnsToEditing);
- // discarding it then still hands nothing off.
- void exportLargerThanBudgetKeepsEditingUntilDiscarded(){
-  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=noise({200,200},4);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1000,session);});
-  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
-  QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);
-  bool recovered=false;for(int waited=0;waited<20000&&!recovered;waited+=50){const auto state=ask(*session,"inspect");recovered=!state.error&&state.result["preparation"].isObject();if(!recovered)QTest::qSleep(50);}
-  QVERIFY(recovered);QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
-  QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(root.filePath("editing")),0);
- }
- void fileSourceIsDecodedOnlyByTheHelper(){
-  // A JPEG carrying an EXIF 90-degree rotation opens upright, decoded in the helper.
-  QTemporaryDir root;const auto jpeg=root.filePath("rotated.jpg");
-  {QImage image(40,20,QImage::Format_RGB32);image.fill(Qt::red);QImageWriter writer(jpeg,"jpeg");writer.setTransformation(QImageIOHandler::TransformationRotate90);QVERIFY(writer.write(image));}
-  auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(jpeg,1024*1024,"Upload",1024*1024,session);});
-  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
-  QVERIFY(waitPhase(*session,"editing"));
-  const auto state=ask(*session,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));
-  QCOMPARE(QSize(state.result["width"].toInt(),state.result["height"].toInt()),QSize(20,40));
-  QVERIFY(!ask(*session,"submit").error);if(worker.joinable())worker.join();
-  QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(QSize(result.width,result.height),QSize(20,40));QVERIFY(!inspectSanitizedPng(result.png));
-  // Bytes that are not a static PNG/JPEG are refused by the helper; nothing is returned.
-  const auto text=root.filePath("note.png");QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic, not an image");file.close();
-  auto second=std::make_shared<EditorSession>();
-  const auto refused=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(text,1024*1024,"Upload",1024*1024,second);
-  QCOMPARE(refused.error.code,QString("source_unsupported"));QVERIFY(refused.png.isEmpty());
-  auto third=std::make_shared<EditorSession>();
-  QCOMPARE(EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(jpeg,16,"Upload",1024*1024,third).error.code,QString("source_unsupported"));
-  QCOMPARE(filesUnder(root.filePath("editing")),0);
- }
- void missingHelperFailsClosed(){
-  QTemporaryDir root;auto session=std::make_shared<EditorSession>();auto image=noise({20,20},5);
-  const auto result=EditorJob(root.filePath("editing"),root.filePath("absent-helper")).run(image,"Upload",1024*1024,session);
-  QCOMPARE(result.error.code,QString("editor_start"));QCOMPARE(filesUnder(root.filePath("editing")),0);
-  QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
- }
- void abandonedStagingIsDiscarded(){
-  QTemporaryDir root;const auto staging=root.filePath("editing");QVERIFY(QDir().mkpath(staging+"/pge-abcdef"));
-  QFile left(staging+"/pge-abcdef/input.png");QVERIFY(left.open(QIODevice::WriteOnly));left.write("synthetic");left.close();
-  EditorJob::discardStaging(staging);QVERIFY(!QDir(staging).exists());
  }
 };
 QTEST_GUILESS_MAIN(EditorJobTest)

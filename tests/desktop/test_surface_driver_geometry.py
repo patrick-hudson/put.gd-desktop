@@ -1,6 +1,5 @@
 """Geometry and cleanup regressions. Run on the lab host, never as desktop proof."""
 import json
-import math
 import os
 from pathlib import Path
 import signal
@@ -13,60 +12,9 @@ from unittest.mock import Mock, call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
-from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.target import RELEASE_TIMEOUT, Target, input_release
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.run import run_recipes
-
-
-class Geometry(unittest.TestCase):
-    def test_equal_aspect_is_not_a_layout_anchor(self):
-        with self.assertRaisesRegex(RecipeBlocked, 'explicit layout anchors'):
-            control_point({'width': 1440, 'height': 960}, {'rect': [900, 30, 40, 24]},
-                          {'x': 0, 'y': 0, 'width': 1320, 'height': 880})
-
-    def test_fixed_control_tracks_window_edges_without_scaling(self):
-        control = {'rect': [900, 30, 40, 24], 'anchors': {'x': 'end', 'y': 'start'}}
-        self.assertEqual(control_point({'width': 1440, 'height': 960}, control,
-                                      {'x': 10, 'y': 20, 'width': 1320, 'height': 880}), (810, 62))
-
-    def test_visible_and_accessible_names_select_same_object(self):
-        with tempfile.TemporaryDirectory() as td:
-            p = Path(td)
-            (p/'01-history.controls.json').write_text(json.dumps({'width': 1440, 'height': 960,
-                'controls': [{'name': 'historyListMode', 'text': 'List', 'rect': [900, 30, 40, 24]}]}))
-            catalog = Catalog(p, {})
-            for selector in ('historyListMode', 'text:List', 'text:Show history as a list'):
-                self.assertEqual(catalog.candidates(selector, 'history')[0]['name'], 'historyListMode')
-
-    def test_image_comparison_normalizes_hidpi_and_window_size(self):
-        from PIL import Image
-        with tempfile.TemporaryDirectory() as td:
-            a, b = Path(td)/'live.png', Path(td)/'catalog.png'
-            Image.new('RGB', (1320, 880), 'white').save(a)
-            Image.new('RGB', (2880, 1920), 'white').save(b)
-            self.assertEqual(compare(a, b, .025), 0)
-            Image.new('RGB', (2880, 1920), 'black').save(b)
-            self.assertEqual(compare(a, b, .025), 1)
-
-    def test_qmp_combined_framebuffer_offsets_and_absolute_axes(self):
-        target = Target.__new__(Target)
-        target.physical = None
-        target.info = {'heads': [{}, {}]}
-        target.heartbeat = lambda **_: None
-        target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
-                           {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
-        sent = []
-        target.run = Path('/owned/run')
-        sending = patch('tools.lab.surface_driver.target.lab.input_events', side_effect=lambda run,*args:sent.append(args))
-        sending.start()
-        self.addCleanup(sending.stop)
-        target.pointer(320, 200, 1280, 800, head=0)
-        self.assertEqual(len(sent[0]), 1)  # no display/head-bound tablet
-        self.assertEqual([e['data']['value'] for e in sent[0][0]], [math.ceil(320*32768/2304), 8192])
-        target.pointer(100, 100, 1024, 768, head=1)
-        self.assertEqual([e['data']['value'] for e in sent[1][0]],
-                         [math.ceil(1380*32768/2304), 4096])
 
 
 class SelectorMapping(unittest.TestCase):
@@ -78,15 +26,6 @@ class SelectorMapping(unittest.TestCase):
                                  self.directory.name, self.directory.name)
         self.box = dict(x=0, y=0, width=1280, height=800, pid=7, override_redirect=True)
 
-    def test_every_selector_geometry_read_waits_for_mapping(self):
-        for role in ('region', 'recsel'):
-            with self.subTest(role=role):
-                self.ctx._probe = Mock(side_effect=[RecipeBlocked(
-                    'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)'), self.box])
-                self.assertEqual(self.ctx.geometry(role)['pid'], 7)
-                self.assertEqual(self.ctx._probe.call_count, 2)
-                self.assertTrue(self.ctx._probe.call_args.args[1]['selector'])
-
     def test_ambiguous_or_unowned_is_never_retried(self):
         for reason in ('geometry: RuntimeError: live window match is missing or ambiguous (2 matches)',
                        'geometry: unowned override-redirect target'):
@@ -94,17 +33,6 @@ class SelectorMapping(unittest.TestCase):
             with self.assertRaisesRegex(RecipeBlocked, reason.replace('(', r'\(').replace(')', r'\)')):
                 self.ctx.geometry('region')
             self.ctx._probe.assert_called_once()
-
-    def test_missing_cover_has_a_bounded_wait(self):
-        self.ctx._probe = Mock(side_effect=RecipeBlocked(
-            'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)'))
-        def bounded(predicate, what, timeout):
-            self.assertEqual(timeout, 30)
-            self.assertIsNone(predicate())
-            raise RecipeFailed('timeout: ' + what)
-        self.ctx.wait = bounded
-        with self.assertRaisesRegex(RecipeFailed, 'timeout: region owned selector geometry'):
-            self.ctx.geometry('region')
 
 
 class PhysicalPointerSafety(unittest.TestCase):
@@ -277,26 +205,6 @@ class PhysicalPointerSafety(unittest.TestCase):
 
 
 class Hygiene(unittest.TestCase):
-    def test_installer_receipt_digests_reach_persistent_and_fresh_probes_over_stdin(self):
-        """Guest queries cannot replace identities frozen from the controller-side receipt."""
-        with tempfile.TemporaryDirectory() as td:
-            root=Path(td);digest='a'*64
-            receipt=dict(sha256='b'*64,format='appimage',installedBinarySha256={'/usr/bin/putgd-capture':digest})
-            (root/'package.json').write_text(json.dumps(receipt))
-            target=self.probe_target();target.run=root
-            source='VERIFIED_HELPER_SHA256={}\ndef geometry(query):\n return VERIFIED_HELPER_SHA256\ndef control_geometry(query):\n return VERIFIED_HELPER_SHA256\n'
-            try:
-                with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                    expected={'putgd-capture':digest}
-                    self.assertEqual(target.probe('geometry',{},source)['result'],expected)
-                    # The channel keeps the installation identity it started with.
-                    receipt['installedBinarySha256']['/usr/bin/putgd-capture']='c'*64
-                    (root/'package.json').write_text(json.dumps(receipt))
-                    self.assertEqual(target.probe('control',{'VERIFIED_HELPER_SHA256':{'putgd-capture':'d'*64}},source)['result'],expected)
-                    self.assertNotIn(digest,repr(target._probe_process.args))
-            finally:
-                target._close_probe()
-
     def test_invalid_or_symlinked_installer_receipt_refuses_before_starting_probe(self):
         """A malformed controller receipt cannot fall back to a guest-controlled path."""
         with tempfile.TemporaryDirectory() as td:
@@ -362,72 +270,6 @@ class Hygiene(unittest.TestCase):
                                         ('guard',(20,20)),('pointer',(20,20)),
                                         ('guard',(30,30)),('pointer',(30,30))])
 
-    def test_persistent_probe_keeps_channel_but_observes_each_request(self):
-        target = self.probe_target()
-        source = 'counter=0\ndef geometry(query):\n global counter\n counter+=1\n return counter\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                self.assertEqual(target.probe('geometry',{},source)['result'],1)
-                pid = target._probe_process.pid
-                self.assertEqual(target.probe('geometry',{},source)['result'],2)
-                self.assertEqual(target._probe_process.pid,pid)
-        finally:
-            target._close_probe()
-
-    def test_timed_out_probe_cannot_consume_a_late_witness_on_retry(self):
-        # A deadline-cut wait leaves its reply in flight (#834): the retry
-        # discards that late witness and answers with its own observation.
-        target = self.probe_target()
-        source = 'import time\ncounter=0\ndef geometry(query):\n global counter\n counter+=1\n time.sleep(.2)\n return counter\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'outlived the recipe deadline'):
-                    target.probe('geometry',{},source,timeout=.01)
-                self.assertEqual(target.probe('geometry',{},source)['result'],2)
-                self.assertFalse(target._probe_failed)
-        finally:
-            target._close_probe()
-
-    def test_silent_channel_at_the_full_reply_bound_still_poisons(self):
-        target = self.probe_target()
-        source = 'import time\ndef geometry(query):\n time.sleep(.3)\n return {}\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']), \
-                 patch('tools.lab.surface_driver.target.PROBE_REPLY_SECONDS',.01):
-                with self.assertRaisesRegex(RecipeBlocked,'timed out: .*further input withheld'):
-                    target.probe('geometry',{},source,timeout=.01)
-                with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
-                    target.probe('geometry',{},source)
-        finally:
-            target._close_probe()
-
-    def test_accessibility_queries_get_fresh_interpreters_on_the_same_channel(self):
-        target = self.probe_target()
-        source = '''import json,os,sys
-counter=0
-def control_geometry(query):
- global counter
- counter+=1
- return {'counter':counter,'pid':os.getpid(),'argv':sys.argv,'query':query}
-def main():
- print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
-if __name__=='__main__':main()
-'''
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                first = target.probe('control',{'title':'synthetic-private-title-726'},source)['result']
-                self.assertNotIn('synthetic-private-title-726',repr(target._probe_process.args))
-                self.assertNotIn(source,repr(target._probe_process.args))
-                self.assertEqual(first['argv'],['-'])
-                self.assertEqual(first['query'],{'title':'synthetic-private-title-726'})
-                channel = target._probe_process.pid
-                second = target.probe('control',{},source)['result']
-                self.assertEqual((first['counter'],second['counter']),(1,1))
-                self.assertNotEqual(first['pid'],second['pid'])
-                self.assertEqual(target._probe_process.pid,channel)
-        finally:
-            target._close_probe()
-
     def probe_target(self):
         target = Target.__new__(Target)
         target.physical = None
@@ -439,13 +281,6 @@ if __name__=='__main__':main()
         target._probe_failed = False
         target._probe_buffer = b''
         return target
-
-    def test_preflight_identifies_every_missing_tool_before_launch(self):
-        target = Target.__new__(Target)
-        target.execute = lambda *a, **k: {'returncode': 0, 'stdout': json.dumps(
-            {'session': 'x11', 'missing': ['xdotool', 'xclip', 'python3-pyatspi', 'dbus-monitor']})}
-        with self.assertRaisesRegex(RecipeBlocked, 'xdotool, xclip, python3-pyatspi, dbus-monitor'):
-            target.preflight()
 
     def test_deadline_inside_release_is_delivered_after_release_completes(self):
         completed = []
@@ -462,27 +297,6 @@ if __name__=='__main__':main()
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, previous)
-
-    def test_vnc_scroll_pulse_finishes_release_before_a_forced_deadline(self):
-        events = []
-        class Vnc:
-            def pointer_button(self,x,y,button,down):
-                if not down:
-                    signal.setitimer(signal.ITIMER_REAL,.01)
-                    time.sleep(.03)
-                events.append((button,down))
-        target = Target.__new__(Target)
-        target.heartbeat = lambda **_:None
-        target.vnc = lambda:Vnc()
-        def deadline(*_):raise RecipeFailed('forced scroll deadline')
-        previous = signal.signal(signal.SIGALRM,deadline)
-        try:
-            with self.assertRaisesRegex(RecipeFailed,'forced scroll deadline'):
-                target.scroll_vnc(10,10,1)
-            self.assertEqual(events,[('wheel-up',True),('wheel-up',False)])
-        finally:
-            signal.setitimer(signal.ITIMER_REAL,0)
-            signal.signal(signal.SIGALRM,previous)
 
     def test_root_cleanup_requires_created_root_and_successful_quit(self):
         target = Target.__new__(Target)

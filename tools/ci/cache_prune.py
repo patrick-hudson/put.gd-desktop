@@ -9,7 +9,7 @@ family on the same ref is therefore never read again. Caches saved by closed
 pull requests and deleted branches are unreachable too. On main, nightly and
 v* tags only superseded family entries are ever deleted. Exact-key caches
 (SDK prefixes, the Qt installer's) are left for GitHub's seven-day idle
-eviction. See docs/ci.md, "Cache budget".
+eviction. See docs/release/ci.md, "Cache budget".
 """
 import argparse
 import json
@@ -27,7 +27,8 @@ FAMILIES = (
     re.compile(r'^(putgd-pkgs-v\d+-.+-[0-9a-f]{64}-)\d{4}-W\d{2}$'),
     # The Grype database archive by its SHA-256 (tools/releases/sbom.py, #420).
     re.compile(r'^(grype-db-v\d+-)[0-9a-f]{64}$'),
-    re.compile(r'^(appimage-distro-sources-v\d+-[0-9a-f]{64}-)\d+-\d+$'),
+    # Restored across package sets, so only the newest on a ref is read, whatever its hash.
+    re.compile(r'^(appimage-distro-sources-v\d+-)[0-9a-f]{64}-\d+-\d+$'),
 )
 
 

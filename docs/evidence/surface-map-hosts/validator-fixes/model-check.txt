@@ -1,1 +1,0 @@
-model ok: 9 desktops, 22 surfaces, 394 interactions

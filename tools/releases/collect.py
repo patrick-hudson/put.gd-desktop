@@ -18,7 +18,8 @@ from release_bundle import create_gnome_zip, create_release_bundle
 
 # Package matrix names in .github/workflows/package.yml, each built on its own distro.
 NATIVE_TARGETS = (('ubuntu24.04', 'DEB', '.deb'), ('ubuntu26.04', 'DEB', '.deb'),
-                  ('debian13', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm'))
+                  ('debian13', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm'),
+                  ('fedora45', 'RPM', '.rpm'), ('archlinux', 'PACMAN', '.pkg.tar.zst'))
 
 
 def identity_matches(manifest, release):
@@ -74,7 +75,7 @@ def verified_source(directory, release, *, require_build=True):
     programs = build.get('identityMatchedPrograms')
     required = set(PROGRAMS) - {'putgd-launcher'}
     # Optional helpers check_source_build.py reports when the builder has their dependencies.
-    allowed = required | {'putgd-kde-region', 'putgd-record'}
+    allowed = required | {'putgd-region', 'putgd-record'}
     if (build.get('passed') is not True or build.get('archive') != artifact or build.get('compiledBuild') != expected
             or not isinstance(programs, list) or not all(isinstance(name, str) for name in programs)
             or len(programs) != len(set(programs)) or not required.issubset(programs)

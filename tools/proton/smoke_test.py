@@ -25,6 +25,7 @@ def main():
              (json.dumps({**request, 'requestTimeoutMs': 86400000}).encode(), 'unsupported_safe_removal'),
              (json.dumps({**request, 'requestTimeoutMs': 86400001}).encode(), 'invalid_request'),
              (json.dumps({**request, 'requestTimeoutMs': 999}).encode(), 'invalid_request'),
+             (json.dumps({**request, 'method': 'warm'}).encode(), 'unsupported_request'),
              (b'{}{}', 'invalid_request'), (b'\xff', 'invalid_request'),
              (b'x' * (128 * 1024 + 1), 'invalid_request'),
              (json.dumps({**request, 'destination': {**destination, 'credentials': {'mode': 'unsafe_file', 'reference': 'smoke'}}}).encode(), 'keychain_required'),
@@ -44,7 +45,20 @@ def main():
                                    capture_output=True, check=True, timeout=10)
         assert not completed.stderr and json.loads(completed.stdout)['error']['code'] == 'reference_in_use'
         assert b'synthetic-secret' not in completed.stdout
-    print(f'Compiled helper version and {len(cases)+1} no-account stdio cases passed.')
+    # A session answers each line in turn and ends when its input closes. Setup and removal
+    # are not session requests; none of these reaches the keychain or the network.
+    lines = [json.dumps(request), json.dumps({**request, 'method': 'storeSharePassword', 'options': {'reference': 'smoke', 'password': 'synthetic-secret'}}),
+             '{}{}', json.dumps({**request, 'method': 'connect'})]
+    completed = subprocess.run([runtime, '--session'], input=('\n'.join(lines) + '\n').encode(), capture_output=True, check=True, timeout=10)
+    answers = [json.loads(line) for line in completed.stdout.splitlines()]
+    assert not completed.stderr and b'synthetic-secret' not in completed.stdout
+    assert [answer['error']['code'] for answer in answers] == ['unsupported_request', 'unsupported_request', 'invalid_request', 'unsupported_request']
+    completed = subprocess.run([runtime, '--session'], input=b'x' * (128 * 1024 + 2) + b'\n' + json.dumps(request).encode() + b'\n',
+                               capture_output=True, check=True, timeout=10)
+    answers = [json.loads(line) for line in completed.stdout.splitlines()]
+    assert not completed.stderr and [answer['error']['code'] for answer in answers] == ['invalid_request']
+    assert subprocess.run([runtime, '--session'], input=b'', capture_output=True, check=True, timeout=10).stdout == b''
+    print(f'Compiled helper version, {len(cases)+1} no-account stdio cases and 3 session cases passed.')
 
 if __name__ == '__main__':
     main()

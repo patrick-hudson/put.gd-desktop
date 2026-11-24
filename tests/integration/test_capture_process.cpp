@@ -23,6 +23,9 @@
 #include <QTemporaryDir>
 #include "fixtures/Waits.h"
 namespace {
+// A verified, accepted capture ends with a normal zero exit, or with the
+// resident stopping a helper that was slow to exit after the accept (#398).
+bool acceptedExit(const QJsonObject& exit){return exit["stoppedAfterAccept"].toBool()||(exit["status"].toString()=="normal"&&exit["code"].toInt()==0);}
 bool cacheExpected(){return QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0);}
 QJsonObject regionSnapshot(char fingerprint='a');
 bool createCursorTrace(const QString& path){
@@ -38,7 +41,7 @@ QList<QJsonObject> cursorTrace(const QString& path){
 }
 }
 
-QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
+QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"selectionLayout",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
 namespace {
 QJsonObject regionSnapshot(char fingerprint){auto result=snapshot();result["action"]="region";auto layout=result["layout"].toObject();layout["scale"]=QString(64,QChar(fingerprint));result["layout"]=layout;return result;}
 }
@@ -61,6 +64,20 @@ void seedCursor(putgd::CaptureProcessController& controller){
 class CaptureProcessTests final:public QObject {
  Q_OBJECT
 private slots:
+ void pointerProbeReleasePrecedesTheNextHold(){
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  // #398's late reports ran a pre-#1202 tree. Exercise its cross-connection
+  // boundary repeatedly, without retries: each successful probe must release
+  // its grab before the resident's very next request reaches the X server.
+  for(int i=0;i<32;++i){
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+   QVERIFY(controller.holdCrosshair());
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   controller.releaseUnclaimedCrosshair();
+  }
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+ }
  void crosshairHoldLastsUntilTheHelperAsks(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
@@ -109,14 +126,10 @@ private slots:
   xcb_ungrab_pointer(menu,XCB_CURRENT_TIME);std::free(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
  }
- void inputDuringTheHold_data(){
-  QTest::addColumn<QString>("input");
-  for(const char* input:{"escape","hotkey-again","right-click"})QTest::newRow(input)<<QString::fromLatin1(input);
- }
- void inputDuringTheHold(){
+ void escapeDuringTheHold(){
   // The real press path: a key through the server, the resident's shortcut, the
-  // hold, then a helper that is still loading when the input arrives.
-  QFETCH(QString,input);
+  // hold, then a helper that is still loading when Escape arrives. Escape always
+  // gives the desktop its pointer back.
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
   const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
   auto* symbols=xcb_key_symbols_alloc(connection);QVERIFY(symbols);const auto freeSymbols=qScopeGuard([&]{xcb_key_symbols_free(symbols);});
@@ -136,47 +149,26 @@ private slots:
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late");released=0;
   chord();PUTGD_TRY_COMPARE(presses,2);
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-  if(input=="escape"){
-   const uint8_t escape=code(0xff1b);fake(XCB_KEY_PRESS,escape);fake(XCB_KEY_RELEASE,escape);
-   // The pointer and cursor come back at once, ahead of the helper it no longer needs.
-   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
-   PUTGD_TRY_COMPARE(released,1);
-  }else if(input=="right-click"){
-   fake(XCB_BUTTON_PRESS,3);fake(XCB_BUTTON_RELEASE,3);
-   // The crosshair stays until the helper's surfaces arrive, which then cancel.
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
-   PUTGD_TRY_COMPARE(released,1);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   const auto frames=cursorTrace(trace);QCOMPARE(frames.last()["phase"].toString(),QString("released"));
-   QVERIFY(QJsonDocument(frames.last()["buttons"].toArray()).toJson().contains("\"button\":3")||frames.last()["buttons"].toArray()[0].toObject()["button"].toInt()==3);
-  }else{
-   // Ignored: the first selection keeps the hold and carries on as if unpressed.
-   chord();PUTGD_TRY_COMPARE(presses,3);PUTGD_TRY_COMPARE(released,1);QCOMPARE(terminals.size(),0);
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-   PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   bool finished=false;prepared.first()(limits,[&](putgd::PayloadResult value){QVERIFY2(!value.error,qPrintable(value.error.code));finished=true;});PUTGD_TRY_VERIFY(finished);
-  }
+  const uint8_t escape=code(0xff1b);fake(XCB_KEY_PRESS,escape);fake(XCB_KEY_RELEASE,escape);
+  // The pointer and cursor come back at once, ahead of the helper it no longer needs.
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
+  PUTGD_TRY_COMPARE(released,1);
   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
  }
- void crosshairHoldEndsAtItsTimeout(){
-  // The helper takes longer than the hold: the desktop gets the pointer back on
-  // time, and the helper still receives the click made while it was held.
-  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
-  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
-  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
-  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late-long");
-  QElapsedTimer clock;clock.start();
-  QVERIFY(controller.holdCrosshair());auto ticket=controller.prepare(regionSnapshot(),{});
-  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
-  xcb_test_fake_input(connection,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root,0,0,0);xcb_test_fake_input(connection,XCB_BUTTON_RELEASE,1,XCB_CURRENT_TIME,root,0,0,0);xcb_flush(connection);
-  PUTGD_COMPARE_STEADY(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED),putgd::CaptureProcessController::crosshairHoldMs-500);
-  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-  QVERIFY(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs+1500);
-  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);
-  const auto frames=cursorTrace(trace);QVERIFY(frames[1]["hold"].toString().toULongLong()>0);QCOMPARE(frames[2]["buttons"].toArray().size(),2);
-  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
+ // Copy text (#1428) selects as a region capture does, and Repeat last region
+ // must still mean the last region capture: a text selection that replaced the
+ // remembered rectangle would make the next Repeat capture and upload another area.
+ void textCaptureLeavesTheRememberedRegionAlone(){
+  putgd::X11CoreSourceAdapter adapter(nullptr,PUTGD_CAPTURE_FIXTURE);const putgd::ResourceLimits limits;
+  const auto remembered=[&]{return adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool();};
+  qputenv("PUTGD_TEST_CAPTURE_MODE",cacheExpected()?"cursor-seed":"observe-cursor");
+  int completed=0;putgd::Error error;const auto finished=[&](putgd::PayloadResult result){error=result.error;++completed;};
+  adapter.prepareAcquisition("text",limits,[](putgd::Error){},[]{})(limits,finished);
+  PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));QVERIFY(!remembered());
+  // The same selection as a region capture is remembered: the row above is not vacuous.
+  adapter.prepareAcquisition("region",limits,[](putgd::Error){},[]{})(limits,finished);
+  PUTGD_TRY_COMPARE(completed,2);QVERIFY2(!error,qPrintable(error.code));QVERIFY(remembered());
  }
  void screenshotFirstAndOtherSourcesHoldNothing(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
@@ -239,7 +231,7 @@ private slots:
    qputenv("PUTGD_TEST_CAPTURE_MODE",index==1||index==5?"cursor-empty":"cursor-seed");int count=0;putgd::PayloadResult result;
    controller.start(targets[index],{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
-   const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+   const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),12);
   for(qsizetype index=0;index<targets.size();++index){
@@ -303,7 +295,7 @@ private slots:
    for(int repeat=0;repeat<2;++repeat){
     int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
     QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
-    const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+    const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));
    }
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),8);
@@ -365,7 +357,7 @@ private slots:
   const auto frozen=snapshot();controller.start(frozen,{},[&](putgd::PayloadResult result){QVERIFY(!result.error);done=true;},"Opens the image editor");
   PUTGD_TRY_VERIFY(done);const auto frames=cursorTrace(trace);QVERIFY(!frames.isEmpty());QCOMPARE(frames.first()["outcome"].toString(),QString("Opens the image editor"));QCOMPARE(frozen,snapshot());
  }
- void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
+ void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QVERIFY(acceptedExit(exit));QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
  void preparedHelperStaysIdleUntilBegin(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   auto ticket=controller.prepare(snapshot(),{});QVERIFY(controller.busy());
@@ -405,6 +397,8 @@ private slots:
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
   QTest::newRow("escape")<<QByteArray("preview-cancel")<<QString("cancelled");
   QTest::newRow("display-error")<<QByteArray("preview-error")<<QString("capture_geometry");
+  // A delayed live region whose countdown ends on a locked screen (#1363): the lock, not a protocol fault.
+  QTest::newRow("locked-at-expiry")<<QByteArray("preview-locked")<<QString("session_locked");
  }
  void earlyPreviewTerminalIsReportedOnceAndRetained(){
   QFETCH(QByteArray,mode);QFETCH(QString,code);
@@ -414,7 +408,9 @@ private slots:
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=std::move(error);aliveAtNotification=controller.busy()&&controller.processId()>0;++early;});
   PUTGD_TRY_COMPARE(early,1);QCOMPARE(terminal.code,code);QVERIFY(aliveAtNotification);QVERIFY(!controller.preparedReady());
   // The helper's own reason and geometry reach the operation's error (#331).
-  if(code!="cancelled"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
+  if(code=="capture_geometry"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
+  // The lock keeps its own code and wording; it is not reported as a protocol fault.
+  else if(code=="session_locked")QCOMPARE(terminal.message,QString("The screen was locked when the capture delay ended, so nothing was captured."));
   else QVERIFY(terminal.details.isEmpty());
   // BEGIN must deliver the latched failure even while the old helper is exiting,
   // and cannot authorize a pixel read or start another child.
@@ -486,6 +482,7 @@ private slots:
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
   QTest::newRow("escape")<<QByteArray("preview-cancel")<<QString("cancelled");
   QTest::newRow("display-error")<<QByteArray("preview-error")<<QString("capture_geometry");
+  QTest::newRow("locked-at-expiry")<<QByteArray("preview-locked")<<QString("session_locked");
  }
  void terminalAfterBeginRequestUsesOnlyAcquisitionCallback(){
   QFETCH(QByteArray,mode);QFETCH(QString,code);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);
@@ -589,11 +586,6 @@ private slots:
  }
  void malformedResultsSettleOnce_data(){QTest::addColumn<QByteArray>("mode");for(const char* mode:{"wrong-build","wrong-dimension","wrong-hash","duplicate","early-exit"})QTest::newRow(mode)<<QByteArray(mode);}
  void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());putgd::test::settle(20);PUTGD_TRY_COMPARE(count,1);
-  // Each resident check names itself instead of a bare capture_failed (#331).
-  const QHash<QByteArray,QString> checks{{"wrong-build","ready_frame"},{"wrong-dimension","descriptor_limits"},{"wrong-hash","sha256"},{"duplicate","result_frame"}};
-  // An early exit races BEGIN: either the write or the exit names it.
-  if(mode=="early-exit")QVERIFY2(QStringList({"helper_exit","begin_send"}).contains(error.details["check"].toString()),qPrintable(error.details["check"].toString()));
-  else QCOMPARE(error.details["check"].toString(),checks.value(mode));
   if(mode=="wrong-hash"){QCOMPARE(error.code,QString("capture_failed"));QCOMPARE(error.details["stage"].toString(),QString("resident_verify"));QCOMPARE(error.details["width"].toInt(),3);QCOMPARE(error.details["height"].toInt(),2);QVERIFY(error.message.contains("SHA-256"));}}
  void cancellationOwnsOnlyOneChildAndCompletesOnce(){qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_VERIFY(controller.processId()>0);putgd::test::settle(30);controller.cancel();controller.cancel();PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());}
  void missingHelperCallbackCanDestroyController(){

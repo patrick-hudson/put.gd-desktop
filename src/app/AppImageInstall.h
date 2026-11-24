@@ -1,7 +1,6 @@
 #pragma once
 #include "core/Error.h"
 #include <QJsonObject>
-#include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -82,22 +81,4 @@ QJsonObject settle(const QString& stateRoot,const QString& runningImage,const QS
 // Removes a staging folder put.gd made: a directory, not a link, named
 // .putgd-update-XXXXXX, holding regular files only.
 bool removeStaging(const QString& path);
-
-// appimageupdatetool, else zsync2, on the host's PATH.
-struct ZsyncTool {QString kind,path;explicit operator bool() const {return !path.isEmpty();}};
-ZsyncTool findZsyncTool(const QProcessEnvironment& host);
-// The tool's arguments to build output (in the staging folder) from seed with
-// the .zsync at zsyncUrl. appimageupdatetool names its output after the
-// .zsync's Filename in seed's folder; zsync2 writes output.
-QStringList zsyncArguments(const ZsyncTool&,const QString& seed,const QString& output,const QString& zsyncUrl);
-// The host's environment for the tool (#326) with SSL_CERT_FILE set to the
-// host's CA bundle the AppImage found (#329); zsync2 otherwise walks past the
-// end of its CA path list on Fedora 44 and crashes (#297).
-QProcessEnvironment zsyncEnvironment(const QProcessEnvironment& host,const QString& caBundle);
-// The tool's output as a terminal would leave it (#349): escape sequences and
-// other control characters dropped, each carriage-return redraw overwriting
-// its line, blank lines skipped.
-QStringList terminalLines(const QByteArray& output);
-// Its last four lines, for an install's zsync.output.
-QString zsyncOutputTail(const QByteArray& output);
 }

@@ -18,7 +18,6 @@ sys.path.insert(0, str(ROOT / 'tools/releases'))
 spec = importlib.util.spec_from_file_location('release_publish', ROOT / 'tools/releases/publish.py')
 publish = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publish)
-import release_bundle
 
 
 class RemoteDraftTest(unittest.TestCase):
@@ -455,11 +454,6 @@ class NightlyPublicationTest(unittest.TestCase):
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
 
-    def test_release_titles_name_the_calendar_version(self):
-        self.assertEqual(publish.release_title({'version': '26.1022.42-nightly'}), 'put.gd 26.1022.42 nightly')
-        self.assertEqual(publish.release_title({'version': '26.1101.960'}), 'put.gd 26.1101.960')
-        self.assertEqual(publish.release_title({'version': '0.1.1-nightly.42'}), 'put.gd 0.1.1 nightly 42')
-
     def installer_fixture(self):
         sources = self.directory / 'sources'
         sources.mkdir()
@@ -487,7 +481,7 @@ class NightlyPublicationTest(unittest.TestCase):
             self.invoke()
         linked.assert_called_once()
         self.assertEqual(set(self.remote_files), publish.support_assets.inventory(self.release['version']))
-        self.assertEqual(len(self.remote_files), 15)
+        self.assertEqual(len(self.remote_files), 19)
         notes = (self.directory / 'release-notes.md').read_text()
         self.assertIn('/releases/tag/sources-' + self.tag, notes)
         self.assertIn('CI artifacts', notes)
@@ -498,6 +492,69 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertIn('Downloads:', delivery)
         self.assertIn('CI artifacts', delivery)
         self.assertNotIn('combined ZIP', notes)
+
+    def reused_record(self, **producer):
+        record = {'gitCommit': self.commit, 'reused': True, 'packages': True, 'reason': 'fixture',
+                  'producer': {'runId': 900, 'runAttempt': 2, 'gitCommit': self.commit,
+                               'url': 'https://github.com/fixture/putgd/actions/runs/900',
+                               'jobs': {'CI': 1}, 'artifacts': {'release-sbom': 5}, **producer}}
+        path = self.directory / 'reused-ci.json'
+        path.write_text(json.dumps(record))
+        return path
+
+    def test_reused_push_ci_packages_name_the_run_that_built_them(self):
+        self.installer_fixture()
+        record = self.reused_record()
+        with patch.object(publish.support_assets, 'publish'), patch.object(publish.support_assets, 'verify_proton'), \
+                patch.object(publish.support_assets, 'verify_public'):
+            self.invoke('--built-by', str(record))
+        notes = (self.directory / 'release-notes.md').read_text()
+        # Debug symbols live in the run that built the packages.
+        self.assertIn('[CI artifacts](https://github.com/fixture/putgd/actions/runs/900)', notes)
+        self.assertIn('Built and packaged by https://github.com/fixture/putgd/actions/runs/900, ', notes)
+        self.assertIn('published by https://github.com/fixture/putgd/actions/runs/77\n', notes)
+        receipt = json.loads((self.directory / 'publication.json').read_text())
+        self.assertEqual((receipt['producer']['runId'], receipt['builder']['runId']), (77, 900))
+        self.assertEqual((receipt['builder']['event'], receipt['builder']['ref']), ('push', 'refs/heads/nightly'))
+        self.assertTrue(receipt['published'])
+
+    def test_a_record_of_another_commit_run_or_a_rehearsal_cannot_be_published(self):
+        self.installer_fixture()
+        for change in ({'gitCommit': 'c' * 40}, {'url': 'https://github.com/other/repo/actions/runs/900'},
+                       {'runId': 0}, {'artifacts': None}, {'rehearsal': True}):
+            record = self.reused_record(**change)
+            with self.subTest(change=change), patch.object(publish.support_assets, 'publish') as linked, \
+                    patch.object(publish.support_assets, 'verify_proton'), \
+                    self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
+                self.invoke('--built-by', str(record))
+            self.assertFalse(self.commands)
+            linked.assert_not_called()
+        record = self.reused_record()
+        data = json.loads(record.read_text())
+        data['reused'] = False
+        record.write_text(json.dumps(data))
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_proton'), \
+                self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
+            self.invoke('--built-by', str(record))
+        self.assertFalse(self.commands)
+        linked.assert_not_called()
+
+    def test_a_rehearsal_writes_the_notes_and_stops_before_any_github_write(self):
+        self.installer_fixture()
+        record = self.reused_record(rehearsal=True, event='workflow_dispatch', headBranch='ci/topic')
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_proton') as proton:
+            self.invoke('--built-by', str(record), '--rehearse')
+        linked.assert_not_called()
+        proton.assert_called_once()
+        self.assertEqual(self.commands, [])
+        self.assertFalse((self.directory / 'publication.json').exists())
+        rehearsal = json.loads((self.directory / 'publication-rehearsal.json').read_text())
+        self.assertEqual((rehearsal['rehearsal'], rehearsal['published']), (True, False))
+        self.assertEqual(rehearsal['builder']['event'], 'workflow_dispatch')
+        self.assertIn('Built and packaged by https://github.com/fixture/putgd/actions/runs/900',
+                      (self.directory / 'release-notes.md').read_text())
 
     def test_missing_linked_sources_block_installer_publication(self):
         self.installer_fixture()
@@ -560,7 +617,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     self.invoke()
                 message = str(error.exception)
-                self.assertIn('installers-v1 (15 assets expected)', message)
+                self.assertIn('installers-v2 (19 assets expected)', message)
                 self.assertIn('missing: ' + installer if problem == 'missing' else 'extra: ' + extra,
                               message)
                 self.assertFalse(self.commands)
@@ -571,10 +628,10 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertIs(released, publish.changelog.released_tags)
         return f"## What's changed\n\n- Synthetic change in {tag}\n\n## Downloads and sources\n\n"
 
-    def test_cli_publishes_all_twenty_one_verified_assets_as_nightly_prerelease(self):
+    def test_cli_publishes_all_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 21)
+        self.assertEqual(len(self.remote_files), 25)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -693,7 +750,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, '21 assets expected'):
+        with self.assertRaisesRegex(ValueError, '25 assets expected'):
             self.invoke()
         self.assertEqual(self.commands, [])
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "core/Error.h"
 #include "core/RecordingModel.h"
 #include <QJsonObject>
@@ -16,6 +17,7 @@ class QHBoxLayout;
 class QLabel;
 class QPushButton;
 class QTimer;
+class QScreen;
 
 namespace putgd::record {
 // How the helper's own surfaces reach the screen. X11 windows bypass the window
@@ -26,6 +28,15 @@ enum class SurfaceMode { X11, LayerShell, Compositor };
 SurfaceMode surfaceMode();
 // The window title the GNOME Shell extension uses to find and place the bar.
 inline constexpr const char* controlBarTitle = "put.gd recording controls";
+// What the helper's bars share (the recording bar, the scroll capture's bar):
+// the screens in Qt logical pixels, X11 root pixels as a logical rectangle
+// (each screen's piece mapped at its own scale), and, on a layer-shell
+// desktop, a widget made an overlay layer surface at a logical position.
+QList<QRect> barScreens();
+QRect barLogicalRect(const QRect& root);
+// The other way: X11 root pixels of a logical point.
+QPoint barRootPoint(const QPointF& logical);
+void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard);
 
 // Drag-to-select over every screen. Reports the selection in X11 root pixels;
 // Escape or a right click cancels. Surfaces are released before reporting.
@@ -74,6 +85,12 @@ public:
     ~BoundsOverlay() override;
     void showBounds(const QRect& rootRect);
     void setDimmed(bool dimmed);
+    // A clear one-pixel surface at `at`, committed again on every beat(): damage
+    // on its output that changes no pixel. KWin's region stream delivers a
+    // repaint reliably only when more damage follows it, so the scroll capture
+    // keeps one coming while it reads frames (#1376). Gone with hideAll().
+    void showHeartbeat(const QPoint& at);
+    void beat();
     void hideAll();
     QRect rect() const { return rect_; }
 private:
@@ -82,7 +99,7 @@ private:
     void addDim(const QColor& color);
     static inline const QColor dimColor{0, 0, 0, 110};
     QRect rect_;
-    QList<QWidget*> ring_, dim_;
+    QList<QWidget*> ring_, dim_, heart_;
     bool dimmed_ = false;
 };
 
@@ -99,7 +116,12 @@ private:
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
-    struct Options { QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false; };
+    struct Options {
+        QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false;
+        // #1364: whether an input can be opened, its name, and otherwise why not.
+        bool microphoneAvailable = false; QString microphoneLabel, microphoneUnavailable;
+        bool clickHighlights = false;
+    };
     explicit ControlBar(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     // X11: positions the bar around rootRect (root pixels) on any screen;
     // returns false when it had to sit inside it.
@@ -112,8 +134,6 @@ public:
     void setHandleWhileRecording(bool handle) { handle_ = handle; refresh(); }
     bool handleWhileRecording() const { return handle_; }
     bool outside() const { return outside_; }
-    // The recorded rectangle in Qt logical pixels, as placed.
-    QRect recordedArea() const { return recorded_; }
     void setState(const QString& state);  // ready | recording | paused | stopping
     void setRetained(qint64 us);
     // One row or two for this screen (Qt logical pixels); placement calls it
@@ -126,6 +146,22 @@ public:
     bool requestedAudio() const { return audioIntent_; }
     bool effectiveAudio() const { return config_.audio.system; }
     QJsonObject audioState() const { return {{"requested", requestedAudio()}, {"effective", effectiveAudio()}}; }
+    // The microphone toggle: what the user asked for and what is (or will be) recorded.
+    bool requestedMicrophone() const { return microphoneIntent_; }
+    bool effectiveMicrophone() const { return config_.audio.microphone; }
+    QJsonObject microphoneState() const;
+    // The input's newest peak level, 0..1, for the meter beside the toggle.
+    void setMicrophoneLevel(float level);
+    float microphoneLevel() const;
+    // The microphone went away during the recording; the bar says so.
+    void setMicrophoneLost(const QString& reason);
+    // The input the toggle would open changed while the bar is at Ready: a microphone was plugged
+    // in or pulled, or the default input changed. The toggle, its text and what will be recorded
+    // follow; what the user asked for is kept, so a remembered choice takes effect again once there
+    // is a microphone. Emits configChanged when what will be recorded changed.
+    void setMicrophone(bool available, const QString& label, const QString& unavailable);
+    // The toggles set as a click sets them (recording.audio); an absent value leaves its toggle alone.
+    void chooseAudio(std::optional<bool> system, std::optional<bool> microphone);
 signals:
     void recordRequested();
     void pauseRequested();
@@ -152,7 +188,10 @@ private:
     // The largest size the full bar takes in any state; placement decides with it.
     QSize widestSize();
     RecordingConfig config_;
-    bool audioIntent_ = false;
+    bool audioIntent_ = false, microphoneIntent_ = false;
+    QString microphoneLost_;
+    QCheckBox* microphone_ = nullptr;
+    QWidget* meter_ = nullptr;
     Options options_;
     QString state_ = "ready";
     Placed placed_ = Placed::None;

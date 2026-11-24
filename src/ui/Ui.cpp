@@ -364,7 +364,7 @@ int scaled(int pixels) { return int(std::lround(pixels * textScale() * applicati
 int railWidth() {
     const QFontMetrics metrics(labelFont(true));
     int text = 0;
-    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Shortcuts", "Advanced"})
+    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Hotkeys", "Advanced"})
         text = std::max(text, metrics.horizontalAdvance(QString::fromLatin1(name)));
     const int natural = 2 * space(Space::l) + 2 * space(Space::m) + scaled(Metric::icon) + space(Space::s) + text;
     return std::clamp(natural, Metric::sidebar, Metric::sidebar + 2 * space(Space::xl));
@@ -419,7 +419,6 @@ void setLocked(QWidget* widget, bool locked) {
     widget->update();
 }
 bool isLocked(const QWidget* widget) { return widget && widget->property("uiLocked").toBool(); }
-int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, Metric::sidebarMax); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;
@@ -449,11 +448,93 @@ QPalette palette() {
     palette.setColor(QPalette::Disabled, QPalette::HighlightedText, p.textMuted);
     return palette;
 }
+QString tooltipText(const QString& text) {
+    // Qt shows a plain-text tooltip on one line however long it is. Breaking
+    // the text into lines here leaves sizing and placement to Qt, which places
+    // the tip on X11 and anchors it on Wayland, including when it reuses an
+    // open tip. Rich text keeps Qt's own wrapping.
+    if (text.isEmpty() || Qt::mightBeRichText(text) || !qobject_cast<QApplication*>(QCoreApplication::instance())) return text;
+    // The font Style::polish gives the tip label; about 45 characters a line.
+    const QFont tipFont = font(Type::metadata);
+    const QFontMetricsF fm(tipFont);
+    const qreal cap = fm.averageCharWidth() * 45;
+    QStringList lines;
+    bool changed = false;
+    for (const auto& paragraph : text.split(QLatin1Char('\n'))) {
+        if (fm.horizontalAdvance(paragraph) <= cap) { lines << paragraph; continue; }
+        // Words wrap at spaces; a word longer than a line (a file name) breaks inside it.
+        QTextLayout layout(paragraph, tipFont);
+        QTextOption option;
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(option);
+        layout.beginLayout();
+        for (auto line = layout.createLine(); line.isValid(); line = layout.createLine()) {
+            line.setLineWidth(cap);
+            QString part = paragraph.mid(line.textStart(), line.textLength());
+            while (part.endsWith(QLatin1Char(' '))) part.chop(1);
+            lines << part;
+        }
+        layout.endLayout();
+        changed = true;
+    }
+    return changed ? lines.join(QLatin1Char('\n')) : text;
+}
+namespace {
+// Widget, menu and drop-down list tooltips are shown from a QHelpEvent.
+// Showing the wrapped text here, the way QWidget, QMenu and the list's
+// delegate would show the original, wraps every such tip in every process
+// and leaves the stored text (and accessibility built from it) unchanged.
+class TooltipWrap final : public QObject {
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (event->type() != QEvent::ToolTip || !watched->isWidgetType()) return false;
+        auto* widget = static_cast<QWidget*>(watched);
+        const auto* help = static_cast<QHelpEvent*>(event);
+        if (auto* menu = qobject_cast<QMenu*>(widget)) {
+            // QMenu shows only an explicit action tooltip, not the default one made from its text.
+            const auto* action = menu->toolTipsVisible() ? menu->actionAt(help->pos()) : nullptr;
+            if (!action) return false;
+            // An action with the same texts and no tooltip gives Qt's default one.
+            QAction fallback;
+            fallback.setText(action->text());
+            fallback.setIconText(action->iconText());
+            const auto tip = action->toolTip();
+            if (tip.isEmpty() || tip == fallback.toolTip()) return false;
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, menu);
+            return true;
+        }
+        // A drop-down list's rows show their Qt::ToolTipRole text.
+        if (auto* view = qobject_cast<QAbstractItemView*>(widget->parentWidget()); view && view->viewport() == widget) {
+            const auto* container = view->parentWidget();
+            if (!container || !qobject_cast<QComboBox*>(container->parentWidget())) return false;
+            const auto index = view->indexAt(help->pos());
+            const auto tip = index.data(Qt::ToolTipRole).toString();
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, widget, view->visualRect(index));
+            return true;
+        }
+        // A tab bar shows its tabs' tooltips; leave it to Qt.
+        if (qobject_cast<QTabBar*>(widget)) return false;
+        const auto tip = widget->toolTip();
+        const auto wrapped = tooltipText(tip);
+        if (wrapped == tip) return false;
+        QToolTip::showText(help->globalPos(), wrapped, widget, QRect(), widget->toolTipDuration());
+        return true;
+    }
+};
+}
+
 void install(QApplication& app) {
     // Once per process: a later call (another window, a test) never resets
     // the application font a caller enlarged, nor the scale it implies.
     if (app.property("putgdUiStyle").toBool()) return;
     app.setProperty("putgdUiStyle", true);
+    app.installEventFilter(new TooltipWrap(&app));
     if (!qobject_cast<Style*>(app.style())) app.setStyle(new Style);
     app.setPalette(palette());
     QToolTip::setPalette(palette());
@@ -785,6 +866,14 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
     }
 }
 
+namespace {
+// Accelerator ampersands ("&File"); "&&" is a literal ampersand.
+const QRegularExpression& accelerator() {
+    static const QRegularExpression value(QStringLiteral("&(?!&)"));
+    return value;
+}
+}
+
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
     const bool compact = compactControl(widget);
     const int height = scaled(compact ? Metric::controlCompact : Metric::control);
@@ -805,7 +894,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         int w = contents.width() + 2 * 14;
         if (button && !button->text.isEmpty()) {
             const QFont f = buttonFont(widget, option);
-            const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(QRegularExpression(QStringLiteral("&(?!&)"))))));
+            const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(accelerator()))));
             const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
             w = text + icon + 2 * 14 + 2;
         }
@@ -840,11 +929,11 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         const QFont f = buttonFont(widget, option);
         const QFontMetrics metrics(f);
-        int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
+        int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(accelerator())))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
         if (widget && widget->property("uiTight").toBool()) w -= 2 * (int(Space::m) - int(Space::xs));
         if (split) {
             const int inset = name == "link" || name == "version" || (widget && widget->property("uiTight").toBool()) ? int(Space::xs) : int(Space::m);
-            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + (icon ? tool->iconSize.width() + 8 : 0);
+            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(accelerator())))) + (icon ? tool->iconSize.width() + 8 : 0);
             w = label + (flushButton(widget) ? 0 : inset) + std::max(inset, space(Space::s)) + scaled(Metric::splitArrow) + 2;
         }
         else if (menu) w += scaled(Metric::splitZone) - scaled(6);
@@ -1165,13 +1254,17 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const QFontMetricsF metrics(f);
     const bool hasIcon = !icon.isNull() && iconSize.isValid() && iconSize.width() > 0;
     const int iconWidth = hasIcon ? iconSize.width() : 0;
-    const QString plain = QString(rawText).remove(QRegularExpression(QStringLiteral("&(?!&)")));
+    const QString plain = QString(rawText).remove(accelerator());
     const qreal available = std::max<qreal>(0, body.width() - iconWidth - (hasIcon && !plain.isEmpty() ? 8 : 0));
     const QString shown = metrics.elidedText(plain, Qt::ElideRight, available);
     const qreal textWidth = shown.isEmpty() ? 0 : metrics.horizontalAdvance(shown);
     const qreal group = iconWidth + (hasIcon && !shown.isEmpty() ? 8 : 0) + textWidth;
     const bool leftAligned = flushButton(widget) || name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
     qreal x = leftAligned ? body.left() : body.left() + (body.width() - group) / 2.0;
+    // uiIconTrailing: the glyph follows the label ("Next ›").
+    const bool trailingIcon = hasIcon && !shown.isEmpty() && widget && widget->property("uiIconTrailing").toBool();
+    const qreal textX = trailingIcon ? x : x + (hasIcon ? iconWidth + (shown.isEmpty() ? 0 : 8) : 0);
+    if (trailingIcon) x += textWidth + 8;
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
         const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0 - (widget ? scaled(widget->property("uiIconRaise").toInt()) : 0), iconSize.width(), iconSize.height());
@@ -1195,8 +1288,8 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
             p->drawPixmap(badge.topLeft(), Ui::icon("alert", t().warning).pixmap(badge.size(), dpr(widget)));
             p->restore();
         }
-        x += iconWidth + (shown.isEmpty() ? 0 : 8);
     }
+    x = textX;
     if (!shown.isEmpty()) {
         p->save();
         p->setFont(f);
@@ -2049,7 +2142,7 @@ void Banner::paintEvent(QPaintEvent*) {
     const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
     QPainter painter(this);
     painter.fillRect(rect(), colors.bg);
-    const bool fillOnly = fillOnly_ || tone_ == Tone::Error;
+    const bool fillOnly = tone_ == Tone::Error;
     const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
     rounded(&painter, rect(), fill, {}, Metric::containerRadius);
     const int side = scaled(Metric::icon);
@@ -2100,7 +2193,9 @@ NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyled
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
     const QFontMetrics metrics(Ui::font());
-    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Ui::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
+    const auto trailing = index.data(TrailingRole).toString();
+    const int trailingWidth = trailing.isEmpty() ? 0 : QFontMetrics(Ui::font(Type::caption)).horizontalAdvance(trailing) + space(Space::s);
+    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Ui::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38 - trailingWidth;
     const int natural = wrap ? 2 * metrics.height() + 16 : two ? metrics.height() + QFontMetrics(Ui::font(Type::metadata)).height() + 22 : metrics.height() + 16;
     return {option.rect.width(), std::max(scaled(two && rowHeight_ < Metric::destinationRow ? Metric::destinationRow : rowHeight_), natural)};
 }
@@ -2122,7 +2217,14 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     }
     const auto first = index.data(Qt::DisplayRole).toString(), second = index.data(SecondLineRole).toString();
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
-    const QRectF text(x, box.top(), box.right() - 10 - x, box.height());
+    qreal right = box.right() - 10;
+    if (const auto trailing = index.data(TrailingRole).toString(); !trailing.isEmpty()) {
+        const auto font = Ui::font(Type::caption);
+        const qreal width = QFontMetricsF(font).horizontalAdvance(trailing);
+        paintText(*p, QRectF(right - width, box.top(), width, box.height()), trailing, !enabled ? c.textDisabled : index.data(TrailingDangerRole).toBool() ? c.danger : c.textMuted, font, Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        right -= width + space(Space::s);
+    }
+    const QRectF text(x, box.top(), right - x, box.height());
     if (second.isEmpty() && index.data(WrapLabelRole).toBool()) {
         const auto labelFont = (selected ? Ui::labelFont(true) : Ui::font(Type::body));
         const QFontMetrics metrics(labelFont);
@@ -2254,7 +2356,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             if (!field) continue;
             QList<QWidget*> controls;
             if (field->widget()) controls << field->widget() << field->widget()->findChildren<QWidget*>();
-            for (auto* control : controls) {
+            for (auto* control : std::as_const(controls)) {
                 const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
                     && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
                 if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
@@ -2293,7 +2395,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             : QObject(page), page_(page), forms_(forms), sharedForms_(sharedForms.isEmpty() ? forms : sharedForms), shared_(!sharedForms.isEmpty()) {
             page->installEventFilter(this);
             if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
-            for (auto* form : forms_) {
+            for (auto* form : std::as_const(forms_)) {
                 form->parentWidget()->installEventFilter(this);
                 for (auto* child : form->parentWidget()->findChildren<QWidget*>()) child->installEventFilter(this);
                 form->setRowWrapPolicy(QFormLayout::WrapAllRows);
@@ -2361,7 +2463,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             }
             bool stack = false;
             const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
-            for (auto* form : forms_) {
+            for (auto* form : std::as_const(forms_)) {
                 if (!form->parentWidget()->isVisibleTo(page_)) continue;
                 int fieldWidth = 0;
                 bool labelled = false;
@@ -2386,7 +2488,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                 stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? std::max(240, std::min(320, fieldWidth)) : fieldWidth);
             }
             const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
-            for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
+            for (auto* form : std::as_const(forms_)) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
         }
         QWidget* page_;
         QList<QFormLayout*> forms_, sharedForms_;
@@ -2431,7 +2533,7 @@ void focusTooltips(QAbstractButton* button) {
                 const bool iconOnly = tool ? tool->toolButtonStyle() == Qt::ToolButtonIconOnly : button_->text().isEmpty();
                 if (iconOnly && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason)) {
                     const auto text = button_->toolTip().isEmpty() ? button_->accessibleName() : button_->toolTip();
-                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), text, button_); }
+                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), tooltipText(text), button_); }
                 }
             } else if (shown_ && (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide || event->type() == QEvent::MouseButtonPress)) {
                 QToolTip::hideText(); shown_ = false;
@@ -2609,7 +2711,7 @@ namespace {
 int& customFrameOverride() { static int forced = 0; return forced; }
 }
 void WindowHeader::chromeAfter(QWidget* last) {
-    for (auto* button : chromeOrder_) { QWidget::setTabOrder(last, button); last = button; }
+    for (auto* button : std::as_const(chromeOrder_)) { QWidget::setTabOrder(last, button); last = button; }
     if (menu_) QWidget::setTabOrder(last, menu_);
 }
 void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }
@@ -2974,28 +3076,6 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
         }
     }
 }
-// Fit the name column when the viewport changes, never while dragging a section.
-// Stretch mode would steal the drag distance from the first column instead.
-class ColumnSizer final:public QObject {
-public:
- explicit ColumnSizer(QHeaderView* header):QObject(header),header_(header){
-  header_->setSectionResizeMode(QHeaderView::Interactive);header_->setStretchLastSection(false);
-  header_->viewport()->installEventFilter(this);
- }
-protected:
- bool eventFilter(QObject* watched,QEvent* event)override {
-  if(event->type()==QEvent::Resize){
-   const auto* resize=static_cast<QResizeEvent*>(event);
-   if(resize->size().width()!=resize->oldSize().width()&&header_->count()>0){
-    int remaining=resize->size().width();
-    for(int column=1;column<header_->count();++column)if(!header_->isSectionHidden(column))remaining-=header_->sectionSize(column);
-    header_->resizeSection(0,qMax(header_->minimumSectionSize(),remaining));
-   }
-  }
-  return QObject::eventFilter(watched,event);
- }
-private:QHeaderView* header_;
-};
 class ChoiceBox final:public QComboBox {
 public:explicit ChoiceBox(QWidget* parent):QComboBox(parent){setSizeAdjustPolicy(QComboBox::AdjustToContents);}
  QSize naturalSizeHint()const{return QComboBox::sizeHint();}
@@ -3004,26 +3084,7 @@ protected:
  // Leave wheel input to the containing pane. The open popup handles its own scrolling.
  void wheelEvent(QWheelEvent* event)override {event->ignore();}
 };
-class StateDelegate final:public QStyledItemDelegate {
-public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(parent),columns_(std::move(columns)){}
- void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index)const override {
-  if(!columns_.contains(index.column())||index.data().toString().isEmpty()){QStyledItemDelegate::paint(painter,option,index);return;}
-  auto value=index.data().toString();
-  // A local-save cell can contain a path; keep that evidence as ordinary text.
-  if(value.contains(' ')||value.contains('/')){QStyledItemDelegate::paint(painter,option,index);return;}
-  QStyleOptionViewItem base(option);initStyleOption(&base,index);base.text.clear();base.widget->style()->drawControl(QStyle::CE_ItemViewItem,&base,painter,base.widget);
-  const auto& p=Theme::current();QColor foreground=p.textSecondary,background=p.surfaceRaised;
-  if(QStringList{"completed","uploaded","copied","saved","removed"}.contains(value)){foreground=p.success;background=p.successSurface;}
-  else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=p.danger;background=p.dangerSurface;}
-  else if(QStringList{"partial","uncertain","accepted","superseded","version_retained"}.contains(value)){foreground=p.textSecondary;background=p.warningSurface;}
-  value.replace('_',' ');value=value.left(1).toUpper()+value.mid(1);
-  painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,5,-8,-5);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
- }
- QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override {auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(36,size.height()));if(columns_.contains(index.column()))size.setWidth(size.width()+26);return size;}
-private:QList<int> columns_;
-};
 }
-void configureColumns(QHeaderView* header){new ColumnSizer(header);}
 QComboBox* choiceBox(QWidget* parent){return new ChoiceBox(parent);}
 void role(QWidget* widget,const char* value){widget->setProperty("visualRole",value);widget->style()->unpolish(widget);widget->style()->polish(widget);}
 namespace {
@@ -3031,6 +3092,18 @@ void setFeedback(QLabel* label,const QString& text,const char* tone){label->setP
 }
 void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,text,error?"error":"neutral");}
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
+namespace {
+// Height that follows the widget's width (#1793). A form row without a label never shrinks below
+// its item's size hint, and a wrapping widget's hint is its height at a narrow guessed width, so
+// an opened setting's help sat in blank space above and below its text.
+template<class Base> class FollowsWidth final:public Base {
+public:
+ using Base::Base;
+ QSize sizeHint()const override{auto size=Base::sizeHint();if(this->width()>0&&this->hasHeightForWidth())size.setHeight(this->heightForWidth(this->width()));return size;}
+protected:
+ void resizeEvent(QResizeEvent* event)override{Base::resizeEvent(event);if(event->oldSize().width()!=this->width())this->updateGeometry();}
+};
+}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
  auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","quiet");button->setCheckable(true);button->setIcon(icon("info"));button->setProperty("uiIconBase",QSize(14,14));button->setIconSize(QSize(Ui::scaled(14),Ui::scaled(14)));
@@ -3038,9 +3111,13 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
  button->setFixedSize(Ui::scaled(24),Ui::scaled(24));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
  QObject::connect(button,&QToolButton::toggled,button,[button,control,description](bool open){
   auto* note=button->property("inlineHelp").value<QLabel*>();
-  if(!note){note=new QLabel(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
-   // Follow the field's layout so help appears below the value, not in the label gutter.
-   for(auto* form:control->window()->findChildren<QFormLayout*>())for(int row=0;row<form->rowCount()&&!placed;++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget())continue;auto* field=item->widget();if(field!=control&&!field->isAncestorOf(control))continue;if(auto* column=qobject_cast<QVBoxLayout*>(field->layout()))column->addWidget(note);else form->insertRow(row+1,QString{},note);placed=true;}
+  if(!note){note=new FollowsWidth<QLabel>(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
+   // Follow the field's layout so help appears below the value, not in the label gutter. The
+   // control's own form row wins: the nearest one holding it, so a row that holds a whole panel
+   // of rows (Advanced connection settings, #1787) never takes the note.
+   const auto forms=control->window()->findChildren<QFormLayout*>();
+   for(QWidget* field=control;field&&!placed;field=field->parentWidget())
+    for(auto* form:forms)for(int row=0;row<form->rowCount()&&!placed;++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||item->widget()!=field)continue;if(auto* column=qobject_cast<QVBoxLayout*>(field->layout()))column->addWidget(note);else form->insertRow(row+1,QString{},note);placed=true;}
    if(!placed){auto* field=control->parentWidget();while(field&&field->layout()&&!qobject_cast<QVBoxLayout*>(field->layout()))field=field->parentWidget();if(field&&qobject_cast<QVBoxLayout*>(field->layout()))qobject_cast<QVBoxLayout*>(field->layout())->addWidget(note);else{delete note;button->setChecked(false);return;}}
    button->setProperty("inlineHelp",QVariant::fromValue(note));
   }
@@ -3059,7 +3136,7 @@ QWidget* settingLabel(const QString& title,const QString& description,QWidget* c
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* row=new QWidget(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Ui::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ auto* row=new FollowsWidth<QWidget>(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Ui::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Ui::palette());}
@@ -3169,8 +3246,9 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  return result;
 }
 QIcon trayIcon(const IconArt::TrayIcon& state){
- if(state.glyph==IconArt::TrayGlyph::Mark)return icon("tray",state.color,state.percent,state.recording);
+ if(!state.done&&(state.glyph==IconArt::TrayGlyph::Mark||state.recording||state.percent==-2))return icon("tray",state.color,state.percent,state.recording);
  QIcon result;
+ if(state.glyph==IconArt::TrayGlyph::Turkey&&!state.recording&&state.percent!=-2){auto image=IconArt::liftTrayAtSize(state,16);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  for(int scale:{1,2,3}){auto image=IconArt::liftTray(state,scale);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  return result;
 }
@@ -3209,7 +3287,6 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
  };
  new ChoiceFamily(owner,family);
 }
-void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;
     static QHash<QString, QString> painted;

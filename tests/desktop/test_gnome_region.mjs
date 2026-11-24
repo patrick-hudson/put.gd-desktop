@@ -239,7 +239,12 @@ print('PASS hint pill and size label placement, label monitor, sizes and frozen 
     for (const [name, scheme] of [['dark', 'prefer-dark'], ['light', 'prefer-light']]) {
         const block = theme.slice(theme.indexOf(`const Palette ${name}{`)).split('};')[0];
         const fields = [...block.matchAll(/QColor\(([^)]+)\)/g)].map(match => match[1]);
-        const color = index => fields[index].replaceAll('"', '').toLowerCase();
+        // Theme.cpp builds its colours from numbers, QColor(0xRRGGBB); the Shell takes #rrggbb.
+        const color = index => {
+            const text = fields[index].replaceAll('"', '').trim().toLowerCase();
+            const hex = /^0x([0-9a-f]{6})$/.exec(text);
+            return hex ? `#${hex[1]}` : text;
+        };
         equal(RegionSelection.pillTokens(scheme), {surfaceRaised: color(3), text: color(7), borderStrong: color(6)});
     }
     for (const scheme of ['prefer-dark', 'prefer-light']) {

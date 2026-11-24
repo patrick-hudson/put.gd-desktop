@@ -1,5 +1,5 @@
 name: Renovate
-# Self-hosted Renovate (#420; docs/ci.md, "Dependency updates"). Weekly, or on
+# Self-hosted Renovate (#420; docs/release/ci.md, "Dependency updates"). Weekly, or on
 # demand, it opens version-update pull requests against nightly from
 # .github/renovate.json, with this workflow's own token: CI on those pull
 # requests starts after a maintainer approves its workflows, and Renovate cannot
@@ -85,7 +85,7 @@ jobs:
           mkdir -p -m 0777 /tmp/renovate-log
           # A schedule has no input; `none` runs for real too.
           if [ -n "$DRY_RUN" ] && [ "$DRY_RUN" != none ]; then echo "RENOVATE_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"; fi
-      - uses: renovatebot/github-action@2804199d260ad00c1fae0e9e842888369391c776 # v46.3.10
+      - uses: renovatebot/github-action@1c0cf989c02653fba0efe7ca5772338860ca71dc # v46.3.12
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PLATFORM: github

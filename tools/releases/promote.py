@@ -116,10 +116,10 @@ def body(source, section, changelog_pull=None):
               '- [ ] `CI` passed on this pull request.']
     if changelog_pull:
         lines.append(f'- [ ] {changelog_pull} is merged, so `{CHANGELOG}` has the `[Unreleased]` section.')
-    lines += ['- [ ] Known blocked acceptance gates are listed in docs/verification.md.', '',
+    lines += ['- [ ] Known blocked acceptance gates are listed in docs/testing/verification.md.', '',
               '## After merging', '',
               '- The Release workflow tags `vYY.MDD.N` and stages its draft.',
-              '- Run exact-asset acceptance on the draft (docs/release.md), then publish it.',
+              '- Run exact-asset acceptance on the draft (docs/release/release.md), then publish it.',
               '- Run `tools/releases/promote.py --finalize vYY.MDD.N` to name the CHANGELOG.md section.']
     return '\n'.join(lines) + '\n'
 
@@ -141,7 +141,14 @@ def plan(root, remote='origin', repository=None, lookup=changelog.lookup_pulls, 
         raise ValueError('main already contains nightly; nothing to promote')
     source = nightly_version(root, nightly)
     repository = repository or repository_of(git(root, 'remote', 'get-url', remote))
-    previous = changelog.previous_stable(root, nightly, released(repository) if released else None)
+    published = released(repository) if released else None
+    if released and published is None:
+        # main also carries stable tags whose acceptance failed; only the published ones may start the section.
+        raise ValueError('Cannot read the published releases; retry, or pass --offline to count every stable tag')
+    # A stable tag sits on main's promotion merge, which nightly reaches only through a hotfix merged back.
+    found = [changelog.previous_stable(root, nightly, published),
+             changelog.previous_stable(root, f'{remote}/main', published, include_ref=True)]
+    previous = max(filter(None, found), key=lambda tag: parse_tag(tag).key, default=None)
     pulls = changelog.merged_pulls(root, previous, nightly)
     metadata = lookup(repository, [number for number, _ in pulls]) if lookup else {}
     section, link = changelog.version_section(None, None, previous, changelog.entries(pulls, metadata),

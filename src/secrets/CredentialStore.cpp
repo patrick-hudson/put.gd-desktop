@@ -8,14 +8,42 @@ Error storeError(QKeychain::Job* job) {
     if (!job->error()) return {};
     // Backend error strings can contain service details; expose stable categories only.
     const auto denied = job->error() == QKeychain::AccessDenied || job->error() == QKeychain::AccessDeniedByUser;
+    // An entry that isn't there says so in its details, for a caller that only reads one if it exists.
     return {denied ? "credential_access_denied" : "credential_store_unavailable",
-            "Unlock the OS secret store explicitly or select session credentials", {}};
+            "Unlock the OS secret store explicitly or select session credentials",
+            job->error() == QKeychain::EntryNotFound ? QJsonObject{{"missing", true}} : QJsonObject{}};
 }
 Error validCredentials(const Credentials& value) {
+    if (!value.values.isEmpty()) {
+        // Named values of a custom HTTP uploader: no key pair beside them.
+        qsizetype total = 0;
+        for (auto it = value.values.cbegin(); it != value.values.cend(); ++it) {
+            if (it.key().isEmpty() || it.key().size() > 300 || it.value().size() > 65536) return {"credential_invalid", "A stored value is too long", {}};
+            total += it.key().size() + it.value().size();
+        }
+        if (!value.accessKey.isEmpty() || !value.secretKey.isEmpty() || !value.sessionToken.isEmpty()) return {"credential_invalid", "Named values are stored without an access key", {}};
+        if (value.values.size() > maximumNamedValues || total > maximumNamedValueChars)
+            return {"credential_invalid", "This destination's secret values are too large to store together: at most 128 KB, names included", {}};
+        return {};
+    }
     if (value.accessKey.isEmpty() || value.secretKey.isEmpty() || value.accessKey.size() > 4096 ||
         value.secretKey.size() > 4096 || value.sessionToken.size() > 16384)
         return {"credential_invalid", "Provide an access key and secret key", {}};
     return {};
+}
+QByteArray encode(const Credentials& value) {
+    if (value.values.isEmpty())
+        return QJsonDocument(QJsonObject{{"accessKey", value.accessKey}, {"secretKey", value.secretKey}, {"sessionToken", value.sessionToken}}).toJson(QJsonDocument::Compact);
+    QJsonObject values;
+    for (auto it = value.values.cbegin(); it != value.values.cend(); ++it) values[it.key()] = it.value();
+    return QJsonDocument(QJsonObject{{"values", values}}).toJson(QJsonDocument::Compact);
+}
+Credentials decode(const QByteArray& bytes) {
+    const auto object = QJsonDocument::fromJson(bytes).object();
+    Credentials value{object["accessKey"].toString(), object["secretKey"].toString(), object["sessionToken"].toString()};
+    const auto values = object["values"].toObject();
+    for (auto it = values.begin(); it != values.end(); ++it) if (it.value().isString()) value.values.insert(it.key(), it.value().toString());
+    return value;
 }
 }
 CredentialStore::CredentialStore(QObject* parent) : QObject(parent) {}
@@ -38,7 +66,9 @@ void CredentialStore::setSession(const QString& profile, Credentials value) {
 }
 void CredentialStore::forget(const QString& profile, const QJsonObject& reference) {
     QMutexLocker lock(&mutex_);
-    cache_.remove(cacheKey(profile, reference));
+    const auto key = cacheKey(profile, reference);
+    cache_.remove(key);
+    ++erased_[key];
 }
 std::optional<Credentials> CredentialStore::cached(const QString& profile, const QJsonObject& reference) const {
     QMutexLocker lock(&mutex_);
@@ -53,22 +83,36 @@ void CredentialStore::unlock(const QString& profile, const QJsonObject& referenc
         reply({"credential_setup_required", "Select and provide credentials explicitly", {}});
         return;
     }
+    const auto key = cacheKey(profile, reference);
+    quint64 erasedBefore = 0;
+    {
+        QMutexLocker lock(&mutex_);
+        erasedBefore = erased_.value(key);
+    }
     auto* job = new QKeychain::ReadPasswordJob("putgd", this);
     job->setInsecureFallback(false);
     job->setKey(reference["reference"].toString());
-    connect(job, &QKeychain::Job::finished, this, [this, profile, reference, reply](QKeychain::Job* base) {
+    connect(job, &QKeychain::Job::finished, this, [this, profile, reference, reply, key, erasedBefore](QKeychain::Job* base) {
         auto* read = static_cast<QKeychain::ReadPasswordJob*>(base);
         if (auto error = storeError(read)) {
             reply(error);
             return;
         }
-        const auto object = QJsonDocument::fromJson(read->binaryData()).object();
-        Credentials value{object["accessKey"].toString(), object["secretKey"].toString(), object["sessionToken"].toString()};
+        auto value = decode(read->binaryData());
         if (auto error = validCredentials(value)) {
             reply(error);
             return;
         }
-        remember(cacheKey(profile, reference), std::move(value));
+        {
+            // Erased (a sign-out) while this read was in flight: what it read is not kept.
+            QMutexLocker lock(&mutex_);
+            if (erased_.value(key) != erasedBefore) {
+                lock.unlock();
+                reply({"credential_setup_required", "These credentials were removed while put.gd was reading them", {}});
+                return;
+            }
+        }
+        remember(key, std::move(value));
         reply({});
     });
     job->start();
@@ -90,8 +134,7 @@ void CredentialStore::save(const QString& profile, const QJsonObject& reference,
     auto* job = new QKeychain::WritePasswordJob("putgd", this);
     job->setInsecureFallback(false);
     job->setKey(reference["reference"].toString());
-    job->setBinaryData(QJsonDocument(QJsonObject{{"accessKey", value.accessKey}, {"secretKey", value.secretKey},
-                                               {"sessionToken", value.sessionToken}}).toJson(QJsonDocument::Compact));
+    job->setBinaryData(encode(value));
     connect(job, &QKeychain::Job::finished, this, [this, profile, reference, value, reply](QKeychain::Job* base) {
         if (auto error = storeError(base)) {
             reply(error);
@@ -99,6 +142,24 @@ void CredentialStore::save(const QString& profile, const QJsonObject& reference,
         }
         remember(cacheKey(profile, reference), value);
         reply({});
+    });
+    job->start();
+}
+void CredentialStore::erase(const QString& profile, const QJsonObject& reference, std::function<void(Error)> reply) {
+    if (cacheKey(profile, reference).isEmpty()) {
+        reply({"credential_setup_required", "Select a credential reference", {}});
+        return;
+    }
+    forget(profile, reference);
+    if (reference["mode"] != "keychain") {
+        reply({});
+        return;
+    }
+    auto* job = new QKeychain::DeletePasswordJob("putgd", this);
+    job->setInsecureFallback(false);
+    job->setKey(reference["reference"].toString());
+    connect(job, &QKeychain::Job::finished, this, [reply](QKeychain::Job* base) {
+        reply(base->error() == QKeychain::EntryNotFound ? Error{} : storeError(base));
     });
     job->start();
 }

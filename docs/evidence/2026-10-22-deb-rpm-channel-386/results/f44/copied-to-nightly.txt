@@ -1,2 +1,0 @@
-sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo &&
-sudo dnf distro-sync --refresh putgd

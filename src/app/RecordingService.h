@@ -1,9 +1,12 @@
 #pragma once
 #include "RecordingBackend.h"
+#include "core/RecordingClicks.h"
 #include "core/Operation.h"
 #include <QElapsedTimer>
+#include <QMap>
 #include <QObject>
 #include <QPointer>
+#include <QTimer>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -30,6 +33,9 @@ public:
         std::function<void(Operation, ClipboardPayload, std::function<void()> released)> admit;
         // Terminal cancel/failure without any upload.
         std::function<void(Operation)> finish;
+        // Saves a change the recording bar made to a remembered preference
+        // (#1364: the microphone toggle); optional.
+        std::function<void(const QJsonObject& preferences)> remember;
     };
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;
@@ -37,11 +43,16 @@ public:
     // The desktop shell that selects regions and frames the recording where the
     // helper cannot (GNOME); not owned, and it must outlive the service.
     void setShell(RecordingShell* shell) { shell_ = shell; }
+    // The desktop's window list for window recordings (KDE, GNOME Wayland); not owned.
+    void setWindows(RecordingWindows* windows) { windows_ = windows; }
+    // Where the desktop reports pointer presses for click highlights (#1364);
+    // not owned. Unset on X11, where the helper reads them from the X server.
+    void setClicks(RecordingClicks* clicks) { clicks_ = clicks; }
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
-    // capabilities | prepare | start | pause | resume | stop | cancel | inspect |
-    // select | raise | overlay | edit | preview | saveCopy | upload
+    // capabilities | windows | prepare | start | pause | resume | stop | cancel |
+    // inspect | select | raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);
     // The tray and shortcut entry: with no session, prepare a dragged region with
     // the default configuration; otherwise "open" raises the session's window and
@@ -60,16 +71,32 @@ signals:
 private:
     struct Session {
         Operation op;
-        QString state = "preparing", pending;
+        RecordingState state = RecordingState::Preparing;
+        QString pending;
+        // A step outside recording::allowedStep was logged for this session (#1434).
+        bool offTableStep = false;
         RecordingTarget target;
         RecordingConfig config;
         QSize canvas;
         qint64 duration = 0;
         RecordingEdit edit;
+        // #1613: the review's undo and redo steps; reset with the edit when review starts.
+        RecordingEditHistory history;
         QJsonObject progress;
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;
         QJsonObject lastExportRequest;
+        // Each answered review-window proposal by number: {} when applied, else
+        // its refusal {code, message, revision}. recording.review reads its own
+        // proposals' outcomes here; the newest 128 are kept.
+        QMap<quint64, QJsonObject> proposalOutcomes;
+        // While the helper exports (it takes no edit then): proposal answers and
+        // whether another push waits, and a format or sound choice made meanwhile.
+        bool helperExporting = false, pushHeld = false;
+        QList<QJsonObject> heldAnswers;
+        QJsonObject heldConfig;
+        // The window's latest output choice (its configChanged seq) applied here.
+        quint64 windowConfigSeq = 0;
         std::optional<bool> overlayExcluded;
         // outside | inside | hidden | compositor: where the control bar ended up.
         QString overlayPlacement;
@@ -87,6 +114,14 @@ private:
         bool captureStopped = false;
         // Capture capability survives silent export formats during review.
         bool capturedSystemAudio = false;
+        // #1364: the track also (or only) holds the microphone.
+        bool capturedMicrophone = false;
+        bool clickWatchTried = false;  // the desktop was asked to report clicks for this recording, whatever it answered
+        // #1994: the error of a native source that failed while this start ran and whose
+        // teardown has not returned yet; a start that then misses its deadline stalled there.
+        QString startTrouble;
+        // Whether the PipeWire daemon had hung up on the helper's connection by then.
+        bool startDaemonGone = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -98,18 +133,45 @@ private:
     };
     QJsonObject publicJson(const Session&) const;
     // The phase defaults to the state; Upload's export reports as `encoding`.
-    void transition(Session&, const QString& state, const QString& phase = {});
+    void transition(Session&, RecordingState, const QString& phase = {});
+    void pushEdit(Session&, QJsonObject answer = {});
+    void resumeReview(Session&);
+    // Logs, once per session, a step outside the from/to table; the step is taken all the same.
+    void checkStep(Session&, RecordingState to);
     QJsonObject limitsJson(const Session&) const;
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
     void stoppedOnBudget(Session&, const QJsonObject& observed = {});
-    void prepareSession(const QJsonObject& params, JsonReply);
+    // `remembered`: the tray, dashboard and shortcut entry, whose microphone
+    // and click-highlight choices are preferences, not requests: where one is
+    // unavailable the recording prepares without it instead of failing.
+    void prepareSession(const QJsonObject& params, JsonReply, bool remembered = false);
+    // {available, route, drawnBy, targets, reason?, message?} for this desktop.
+    QJsonObject clickCapability() const;
+    // Click highlights run from Record to Stop: the desktop's presses go to the
+    // helper, which draws them (or the compositor's own effect is switched on).
+    // then: runs once the desktop has answered (or after clickWatchWaitMs), whether or not it could watch.
+    void watchClicks(Session&, std::function<void()> then = {});
+    void startCapture(const QString& id, JsonReply);
+    static constexpr int clickWatchWaitMs = 1500;
+    void unwatchClicks();
+    // What a capture reported it records: {audioSources: {system, microphone}}, or
+    // only audioEncoder from a backend that predates the microphone.
+    static void noteCaptured(Session&, const QJsonObject& result, bool required);
+    // The input a prepare (or the capabilities) asks about: the request's own
+    // device, else the one chosen in Settings, else the system default.
+    QString microphoneDevice(const QJsonObject& params) const;
+    // capabilities() with what the sound server offers right now.
+    QJsonObject withMicrophone(QJsonObject capabilities, const QJsonObject& microphones) const;
     // After the durable intent: a shell selection when needed, then the backend.
     void beginPrepare(quint64 generation);
+    // A window target: the active external window or the identity asked for,
+    // from the desktop's window list, before the helper opens its stream.
+    void resolveWindow(quint64 generation);
     void prepareBackend(quint64 generation);
     void prepared(Error, const QJsonObject& result);
-    QJsonObject shellFrame(const Session&, const QString& state) const;
+    QJsonObject shellFrame(const Session&, RecordingState) const;
     void closeShell(Session&);
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     // `reply` answers once the export starts (or is refused); `done`, when
@@ -117,12 +179,26 @@ private:
     void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
+    // While the capture starts, records, is paused or stops, every event from the backend
+    // restarts silence_; when it runs out the helper is taken as hung, and the
+    // session fails and ends it (#1994). Stopped in every other state.
+    void heard(const Session&);
+    static bool watched(RecordingState);
+    // A start the helper stalled in after its PipeWire source failed: pipewire_stopped when
+    // the daemon hung up, source_failed otherwise; `error` when nothing failed first.
+    static Error stalledStart(const Session&, Error error);
+    QTimer silence_;
     QString stagingRoot_;
     Host host_;
     std::unique_ptr<RecordingBackend> backend_;
     RecordingShell* shell_ = nullptr;
+    RecordingWindows* windows_ = nullptr;
+    RecordingClicks* clicks_ = nullptr;
+    bool clicksWatched_ = false;
     std::optional<Session> session_;
     quint64 generation_ = 0;
     bool stopping_ = false;
+    // Set by invoke() for the prepare it issues: its choices are remembered preferences.
+    bool rememberedPreferences_ = false;
 };
 }

@@ -4,7 +4,7 @@
   "distributionReady": true,
   "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
-  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -69,7 +69,7 @@
     "rustNightly": "2026-09-15",
     "rustSource": "574ff7d98bd6d037e5236a8453029173b32631fd",
     "cargoSource": "7941be6fb416b4cd9666aef7b858dfea25587a8c",
-    "profile": "release-local with local JSC and system ICU 74.2",
+    "profile": "release-local with local JSC and system ICU 78.3 (Aurora Fedora 45 putgd-build Toolbx)",
     "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
     "nativeOrWasmByteIdentityClaimed": false
   },
@@ -110,17 +110,17 @@
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "db3858fca53262970442805fa4ff1ad5c254a2f9c96a70954897e20962a3ca98"
+        "sha256": "07322de445d7073ae3b3bfdba8f07bec13a8c4ce9863afa95f3b53cbd15d0207"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "83ee273493b7edca7f0f66091786a253300e21dec290eb6fe7abf9379d14e724"
+        "sha256": "6b01e0e34d7550395cdbbb13ef9de3765d437e339bd88ea0b1f0dcf7a5854487"
       },
       {
         "source": "tools/proton/protocol.ts",
         "destination": "build-source/protocol.ts",
-        "sha256": "25cca19b3baea0d77ffaf27e2a230f43ef33885f256dd373b89092e5a0d1c5ec"
+        "sha256": "45b2d48c952cbc9fc9808e8caf4025330bd7bab39ba15877f759ebf456ad9014"
       },
       {
         "source": "tools/proton/protocol.test.ts",
@@ -130,12 +130,17 @@
       {
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
-        "sha256": "65f98bf072ea82c4a60150ec310e586dded805b1cf54424907d8712fb27b50de"
+        "sha256": "a477a5cce2a6e2a89d296acf3f924bee850666ca07f9eaccf566daa184436579"
       },
       {
         "source": "tools/proton/crypto-cache.ts",
         "destination": "build-source/crypto-cache.ts",
-        "sha256": "ce92f727d394362cf0f85684c358e5d345e6cf7acdc32e518da6ab7e962c57b1"
+        "sha256": "309443fcc79cb8368446b75f17f3e92ff1e71701d11de299db11690299b62378"
+      },
+      {
+        "source": "tools/proton/crypto-cache.test.ts",
+        "destination": "build-source/crypto-cache.test.ts",
+        "sha256": "3aafad815c917def328be1ed6b6d1f1b4c9c4bee596b0a0eb9b29c404d047593"
       },
       {
         "source": "tools/proton/stdout.ts",
@@ -170,7 +175,7 @@
     "preferredRustSourceClaimed": false
   },
   "nativeRelinkProof": {
-    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
       "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -180,16 +185,17 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receipt": "tools/proton/native_relink/evidence/native-proof.json",
-    "receiptSha256": "9d47aba1ec3674404f7905fad27999ac589efde49e08b5c1c9f12b643f624985",
-    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
-    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
-    "scope": "Offline modification/relink of the final helper using source-built Bun/JavaScriptCore/TinyCC; no native byte identity, account or desktop/resource acceptance claim."
+    "receipt": "tools/proton/native_relink/evidence/native-proof-34dda9fa.json",
+    "receiptSha256": "c61f7a7843e15b827b2f83db3376ef69570494c254956d9bf882e723194cd18e",
+    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+    "proofHelperSha256": "a12b9b2bd442c48e652482a5d97c9b34479d7ae62f591bef9640204ec6879f0c",
+    "scope": "Current overlay relink using verified retained source-built Bun; second archive verified by readback beside the original archive. No native byte identity claimed."
   },
   "desktopResourceAcceptance": {
-    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
     "status": "passed",
-    "receipt": "tools/proton/native_relink/evidence/desktop-resource-current.json",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-34dda9fa.json",
+    "receiptSha256": "f95788fde0b4b7183c9efce65f282e8d602af61498da2b0884ed63afb93793a1",
     "historicalProofTransferred": false,
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
@@ -200,7 +206,6 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receiptSha256": "2b4ab58ed44a851e59b8538ddceb8f7525a6c23a2bd6de72de9c590e91e2f455",
-    "scope": "Current-helper guest acceptance on #1080 CI DEBs, plus all five final-head installer Proton audits; exact tested package/build identities and build-time catalog flags remain in the receipt."
+    "scope": "Current-helper successful nightly push CI packages: installed-package functional, region-helper lifetime, normal UI exit plus 180-second-settle and two quiet >=300-second windows on each physical Cinnamon/GNOME/KDE desktop; five installer Proton audits."
   }
 }

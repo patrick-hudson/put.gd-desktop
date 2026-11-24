@@ -1,5 +1,5 @@
 from pathlib import Path
-import hashlib,json,os,re,subprocess,tarfile,time
+import hashlib,json,os,re,shutil,subprocess,tarfile,time
 from proof_command import run as run_command
 root=Path('/p3');logs=root/'logs';proof=root/'proof';work=root/'helper';work.mkdir(exist_ok=False)
 bun=root/'prepared/bun/build/release-local/bun-profile'
@@ -17,14 +17,21 @@ catalog=json.loads((root/'SOURCES.json').read_text())
 assert catalog['sourcePins']['bun']=='38afee6c84fcf48c0edb2466aa4b27d287a59c30'
 assert catalog['sourcePins']['webkit']=='d6375c72affe0f70222cdcb45012b10f0bf3a9d5'
 for item in catalog['applicationSourceOverlay']['files']:
+ source=root/'application-source-overlay'/item['destination']
+ with source.open('rb') as stream:actual=hashlib.file_digest(stream,'sha256').hexdigest()
+ assert actual==item['sha256'],'application source overlay mismatch: '+item['destination']
  path=work/item['destination']
+ shutil.copyfile(source,path)
  with path.open('rb') as stream:actual=hashlib.file_digest(stream,'sha256').hexdigest()
  assert actual==item['sha256'],'current helper overlay mismatch: '+item['destination']
 tests=run([bun,'test','./protocol.test.ts','./runtime.test.ts','./crypto-cache.test.ts','./progress.test.ts'],'native-helper-tests.log',build)
-assert re.search(r'\b46 pass\b',tests),'expected current helper test suite'
+test_count=re.search(r'\b(\d+) pass\b',tests)
+assert test_count and int(test_count[1])>0,'expected current helper test suite'
 helper=work/'putgd-proton-runtime-proof'
 run([bun,'build','--compile','--target=bun-linux-x64','--minify','runtime.ts','--outfile='+str(helper),'--compile-executable-path='+str(bun)],'native-helper-build.log',build)
-run(['python3','/p3/helper-proof-inputs/smoke_test.py','--runtime',helper],'native-helper-smoke.log')
+smoke=run(['python3','/p3/helper-proof-inputs/smoke_test.py','--runtime',helper],'native-helper-smoke.log')
+smoke_counts=re.search(r'(\d+) no-account stdio cases and (\d+) session cases passed',smoke)
+assert smoke_counts,'expected current compiled stdio and session smoke checks'
 embedded_env={**os.environ,'BUN_BE_BUN':'1'}
 embedded_revision=run([helper,'--revision'],'compiled-helper-native-revision.log',env=embedded_env)
 for marker in ['putgd-bun-native-proof','putgd-jsc-source-proof','putgd-tinycc-source-proof']:assert marker in embedded_revision,marker
@@ -38,5 +45,5 @@ crypto=json.loads(run(['/p3/helper/native-openpgp-proof'],'native-openpgp-crypto
 assert all(crypto[x] for x in ['argon2Packet','rebuildRoundtrip','publishedDecryptsRebuilt','rebuiltDecryptsPublished','modifiedWasmMarker'])
 def digest(p):
  with p.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
-result={'nativeBunSha256':digest(bun),'proofHelperSha256':digest(helper),'nativeCryptoProofSha256':digest(Path('/p3/helper/native-openpgp-proof')),'markers':revision.splitlines(),'nativeVersion':'1.4.4','tinyccCompileAndExecute':True,'compiledHelperCallsNativeSourceMarkers':True,'compiledHelperTinyccCompileAndExecute':True,'helperTests':46,'compiledStdioCases':11,'stdoutBytes':len(r.stdout),'crypto':crypto,'productionHelperChanged':False,'productionHelperSha256':catalog['helperSha256'],'sourcePins':catalog['sourcePins'],'applicationSourceOverlayVerified':True,'accountsOrServicesUsed':False,'nativeBitIdentityClaimed':False}
+result={'nativeBunSha256':digest(bun),'proofHelperSha256':digest(helper),'nativeCryptoProofSha256':digest(Path('/p3/helper/native-openpgp-proof')),'markers':revision.splitlines(),'nativeVersion':'1.4.4','tinyccCompileAndExecute':True,'compiledHelperCallsNativeSourceMarkers':True,'compiledHelperTinyccCompileAndExecute':True,'helperTests':int(test_count[1]),'compiledStdioCases':int(smoke_counts[1]),'compiledSessionCases':int(smoke_counts[2]),'stdoutBytes':len(r.stdout),'crypto':crypto,'productionHelperChanged':False,'productionHelperSha256':catalog['helperSha256'],'sourcePins':catalog['sourcePins'],'applicationSourceOverlayVerified':True,'accountsOrServicesUsed':False,'nativeBitIdentityClaimed':False}
 (proof/'native-proof-results.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))

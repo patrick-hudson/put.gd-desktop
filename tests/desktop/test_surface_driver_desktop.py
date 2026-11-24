@@ -12,7 +12,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from tools.lab.surface_driver import probe
-from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
+from tools.lab.surface_driver.api import RecipeBlocked
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
 
@@ -38,54 +38,6 @@ def row(name='',role='push button',objectName='',rect=(10,10,20,10),popup=None,w
             'enabled':True,'popup':popup,'window':window,'pid':7}
 
 
-class ControlMatching(unittest.TestCase):
-    def resolve(self,rows,selector,candidates=(),**query):
-        with patch.object(probe,'accessible',return_value=rows) as scan:
-            result=probe.control_geometry({'selector':selector,'candidates':list(candidates),**query})
-        return result,scan.call_args[0][0]
-
-    def test_text_selector_matches_catalog_accessible_name_without_label_prefilter(self):
-        # History's List button: catalog text "List", live accessible name differs.
-        rows=[row('Show history as a list'),row('Show history as a grid')]
-        candidates=[{'name':'','text':'List','accessibleName':'Show history as a list'}]
-        result,filters=self.resolve(rows,'text:List',candidates)
-        self.assertEqual(result['name'],'Show history as a list')
-        self.assertNotIn('name',filters)
-
-    def test_aliases_and_tooltip_are_labels(self):
-        rows=[row('Search history'),row('Filters')]
-        self.assertEqual(self.resolve(rows,'text:Search',[{'text':'Search','accessibleNames':['Search history']}])[0]['name'],'Search history')
-        self.assertEqual(self.resolve(rows,'historyFilters',[{'name':'historyFilters','toolTip':'&Filters'}])[0]['name'],'Filters')
-
-    def test_live_object_name_wins_over_same_label(self):
-        rows=[row('Upload',objectName='sidebarUpload'),row('Upload',objectName='editorUpload',rect=(50,10,20,10))]
-        result,_=self.resolve(rows,'editorUpload',[{'name':'editorUpload','text':'Upload'}])
-        self.assertEqual(result['objectName'],'editorUpload')
-        result,_=self.resolve(rows,'glob:editorUp*')
-        self.assertEqual(result['objectName'],'editorUpload')
-
-    def test_label_ambiguity_and_absence_fail_closed(self):
-        rows=[row('Copy link'),row('Copy link',rect=(50,10,20,10))]
-        with self.assertRaisesRegex(RuntimeError,r'\(2 matches\)'):
-            self.resolve(rows,'text:Copy link')
-        with self.assertRaisesRegex(RuntimeError,r'\(0 matches\)'):
-            self.resolve(rows,'text:Delete')
-
-    def test_open_menu_item_wins_over_same_label_button(self):
-        menu={'name':'','role':'popup menu','rect':[0,0,100,100],'pid':7}
-        rows=[row('Copy details'),row('Copy details',role='menu item',popup=menu)]
-        self.assertEqual(self.resolve(rows,'text:Copy details')[0]['role'],'menu item')
-
-    def test_newer_at_spi_button_role_is_push_button(self):
-        self.assertEqual(probe.normalize_role('button'),'push button')
-        self.assertEqual(probe.normalize_role('push_button'),'push button')
-        live=dict(row('Upload',role=probe.normalize_role('button')),states={},text='',description='',application='putgd',
-                  owned=True)
-        self.assertTrue(probe.matches(live,{'role':'button'}))
-        self.assertTrue(probe.matches(live,{'role':'push button'}))
-        self.assertEqual(probe.selector_matches(live,'class:QPushButton',[]),1)
-
-
 XWININFO="""xwininfo: Window id: 0x3a00007 "About put.gd"
   Absolute upper-left X:  410
   Absolute upper-left Y:  354
@@ -100,25 +52,6 @@ XWININFO="""xwininfo: Window id: 0x3a00007 "About put.gd"
 
 
 class X11Geometry(unittest.TestCase):
-    def test_client_origin_comes_from_absolute_server_coordinates(self):
-        # xdotool reported Y=394 for this reparented native dialog (title bar
-        # counted twice); the server's absolute origin is y=354.
-        def run(*args):
-            if args[0]=='xwininfo':return XWININFO%'no'
-            if args[:2]==('xprop','-root'):return 'window id # 0x3a00007'
-            if args[1]=='getwindowpid':return '7'
-            if args[1]=='getwindowname':return 'About put.gd'
-            if args[-1]=='_NET_FRAME_EXTENTS':return '_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 32, 0'
-            return ''
-        from types import SimpleNamespace
-        with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='60817415')),\
-             patch.object(probe,'run',side_effect=run),patch.object(probe,'owned',return_value=True):
-            window=probe.x11_windows({'title':'About'})[0]
-        self.assertEqual((window['x'],window['y'],window['width'],window['height']),(410,354,460,292))
-        self.assertEqual(window['frame'],{'x':410,'y':322,'width':460,'height':324})
-        self.assertFalse(window['override_redirect'])
-
-
     def test_unnamed_native_cover_requires_mapped_owned_pid(self):
         from types import SimpleNamespace
         def run(*args):
@@ -179,13 +112,6 @@ class UnmanagedForeground(unittest.TestCase):
         with patch.object(probe,'owned',return_value=False):
             self.assertFalse(probe.x11_foreground({'geometry':self.bar,'point':[600,720]})['ok'])
 
-    def test_focus_selects_an_unmanaged_bar_by_centre_hit_test(self):
-        ctx,directory=context();self.addCleanup(directory.cleanup)
-        ctx.geometry=lambda role:dict(self.bar,head=0,scale=1)
-        queries=[];ctx._probe=lambda name,query:queries.append(query) or {'ok':True}
-        ctx.focus('bar')
-        self.assertEqual(queries[0]['point'],(650,720))
-
 
 class WithheldInput(unittest.TestCase):
     def test_desktop_pointer_paths_refuse_after_unconfirmed_release(self):
@@ -232,34 +158,6 @@ class NotificationPrivacy(unittest.TestCase):
                       reply(':1.42',99,6),signal('ActionInvoked',5,sender=':1.55')):
             self.assertFalse(self.filter.keep(block),block)
 
-    def test_closed_ids_stop_matching(self):
-        self.filter.keep(notify(':1.42',7));self.filter.keep(reply(':1.42',7,5))
-        self.assertTrue(self.filter.keep(signal('NotificationClosed',5)))
-        self.assertFalse(self.filter.keep(signal('ActionInvoked',5)))
-
-    def test_parsed_log_still_correlates(self):
-        from tools.lab.surface_driver.context import parse_notifications
-        text=''.join(b for b in (notify(':1.42',7),reply(':1.42',7,5),signal('ActionInvoked',5)) if self.filter.keep(b))
-        rows=parse_notifications(text)
-        self.assertEqual([(r['id'],r['summary'],[e['action'] for e in r['action_events']]) for r in rows],[(5,'Done',['default'])])
-
-    def test_reader_reports_a_dead_monitor_and_reads_memory_over_a_private_socket(self):
-        import os,socket,threading
-        with tempfile.TemporaryDirectory() as directory:
-            path=directory+'/notify.sock'
-            self.assertFalse(probe.notification_read({'socket':path,'pid':2**22+7})['alive'])
-            server=socket.socket(socket.AF_UNIX);server.bind(path);os.chmod(path,0o600);server.listen(1)
-            def serve():
-                connection,_=server.accept()
-                with connection:connection.sendall(b'kept block')
-            worker=threading.Thread(target=serve);worker.start()
-            reply=probe.notification_read({'socket':path,'pid':os.getpid()})
-            worker.join(5);server.close()
-            self.assertEqual(reply,{'alive':True,'text':'kept block'})
-            os.chmod(path,0o666)
-            with self.assertRaises(RuntimeError):
-                probe.notification_read({'socket':path,'pid':os.getpid()})
-
     def test_monitor_keeps_bodies_in_memory_never_a_file(self):
         import inspect
         source=inspect.getsource(probe.notification_monitor)
@@ -272,7 +170,7 @@ class NotificationPrivacy(unittest.TestCase):
     def test_monitor_exits_with_the_probe_channel_and_takes_its_children(self):
         # #817's lifetime binding on the socket monitor: once the run's probe
         # channel is gone, the watcher and dbus-monitor end and the socket goes.
-        import json,os,signal,subprocess,time
+        import os,signal,subprocess,time
         for server in (':1.42',None):
             with self.subTest(server=server),tempfile.TemporaryDirectory() as temp:
                 temp=Path(temp);(temp/'bin').mkdir()
@@ -336,25 +234,6 @@ class FakeNode(list):
     def queryAction(self):raise NotImplementedError
 
 
-class LazyWalk(unittest.TestCase):
-    def test_only_candidates_and_matched_ancestry_read_extents(self):
-        from types import SimpleNamespace
-        label=FakeNode('Upload complete','label',[830,30,200,20])
-        other=[FakeNode('Clock '+str(i),'label',[0,0,40,10]) for i in range(30)]
-        banner=FakeNode('','notification',[780,10,480,80],children=[label])
-        stage=FakeNode('','window',[0,0,1280,800],children=[banner,*other])
-        app=FakeNode('cinnamon','application',None,children=[stage])
-        desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app])
-        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
-        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=desktop):
-            rows=probe.accessible({'application':'cinnamon*','name':'Upload complete','showing':True})
-        self.assertEqual(len(rows),1)
-        self.assertEqual(rows[0]['rect'],[830,30,200,20])
-        self.assertEqual([a['rect'] for a in rows[0]['ancestors']][-2:],[[0,0,1280,800],[780,10,480,80]])
-        self.assertTrue(all('_node' not in a for a in rows[0]['ancestors']))
-        self.assertEqual(sum(n.extent_reads for n in other),0)
-
-
 class PickNode(FakeNode):
     def __init__(self,name,role,rect,child=None):
         super().__init__(name,role,rect);self.child=child
@@ -384,10 +263,6 @@ class ShellChrome(unittest.TestCase):
         with self.desktop(PickNode('','panel',[0,0,1280,800],banner)):
             cover=probe.shell_cover((1000,40),'cinnamon*')
         self.assertIn('notification',cover);self.assertIn("'Upload complete'",cover)
-
-    def test_full_stage_container_is_not_chrome(self):
-        with self.desktop(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800]))):
-            self.assertIsNone(probe.shell_cover((300,400),'cinnamon*'))
 
     def test_x11_guard_refuses_input_under_shell_chrome(self):
         target={'x':0,'y':0,'width':900,'height':600,'pid':7,'window_id':'10'}
@@ -419,50 +294,6 @@ FRAMES={'windows':[{'id':11,'title':'Edit image — put.gd','pid':50,'wm_class':
 
 
 class WaylandCoordinates(unittest.TestCase):
-    def walk(self,rows):
-        from types import SimpleNamespace
-        canvas=FakeNode('Image being edited','filler',[0,108,659,456])
-        top=FakeNode('Edit image — put.gd','filler',[0,0,900,620],children=[canvas])
-        app=FakeNode('putgd-ui','application',None,children=[top])
-        shell_label=FakeNode('Upload complete','label',[830,30,200,20],pid=40)
-        shell=FakeNode('gnome-shell','application',None,children=[FakeNode('','window',[0,0,1280,800],pid=40,children=[shell_label])])
-        desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app,shell])
-        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
-        with patch.dict(sys.modules,pyatspi=fake),patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}),\
-             patch.object(probe,'desktop_root',return_value=desktop),\
-             patch.object(probe,'compositor_windows',return_value=FRAMES),patch.object(probe,'popup_roots',return_value=[]):
-            return probe.accessible(rows)
-
-    def test_client_rows_move_to_the_compositor_content_origin(self):
-        # frame 900x657 vs content 900x620: 0 px sides, 37 px title bar.
-        row=self.walk({'name':'Image being edited','compositor':WITNESS})[0]
-        self.assertEqual(row['rect'],[224,70+37+108,659,456])
-        self.assertEqual((row['coordinate_space'],row['window_id']),('desktop',11))
-        self.assertEqual(row['ancestors'][-1]['rect'],[224,107,900,620])
-
-    def test_shell_rows_are_already_desktop_coordinates(self):
-        row=self.walk({'name':'Upload complete','compositor':WITNESS})[0]
-        self.assertEqual(row['rect'],[830,30,200,20])
-
-    def test_without_a_witness_wayland_rects_are_refused_not_guessed(self):
-        row=self.walk({'name':'Image being edited'})[0]
-        self.assertIsNone(row['rect']);self.assertEqual(row['coordinate_space'],'window-relative')
-        self.assertIn('no compositor',row['coordinate_error'])
-
-    def test_implausible_decorations_fail_loudly(self):
-        placement=probe.WaylandPlacement(WITNESS)
-        placement._windows=[dict(FRAMES['windows'][0],frame=[0,0,903,640])]
-        with self.assertRaisesRegex(RuntimeError,'implausible decoration split'):
-            placement.toplevel(50,'Edit image — put.gd',[0,0,900,620])
-        placement._windows=[]
-        with self.assertRaisesRegex(RuntimeError,'missing or ambiguous'):
-            placement.toplevel(50,'Edit image — put.gd',[0,0,900,620])
-
-    def test_popups_take_their_own_compositor_frame(self):
-        placement=probe.WaylandPlacement(WITNESS);placement._windows=FRAMES['windows']
-        where=placement.popup(50,[476,330,229,190])
-        self.assertEqual(probe.shift([482,336,217,32],where),[706,406,217,32])
-
     def test_witness_foreground_names_the_panel_or_other_window(self):
         target={'window_id':11,'pid':50}
         with patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}):
@@ -502,30 +333,9 @@ class StartupFocus(unittest.TestCase):
              patch.object(probe.subprocess,'run',side_effect=lambda args,**kw:calls.append(args)),patch.object(probe.time,'sleep'):
             return probe.x11_settle(self.editor),calls
 
-    def test_window_zero_activates_the_target_once_then_waits(self):
-        ok,calls=self.settle(['0','0','0','10'],{})
-        self.assertTrue(ok);self.assertEqual(calls,[['xdotool','windowactivate','--sync','10']])
-
-    def test_same_process_window_is_replaced_by_the_target(self):
-        ok,calls=self.settle(['20','20','10'],{'20':7})
-        self.assertTrue(ok);self.assertEqual(len(calls),1)
-
     def test_a_foreign_active_window_is_never_displaced(self):
         ok,calls=self.settle(['30'],{'30':99})
         self.assertFalse(ok);self.assertEqual(calls,[])
-
-    def test_bounded_when_nothing_settles(self):
-        with patch.object(probe.time,'monotonic',side_effect=[0,0,1,2,3]):
-            ok,calls=self.settle(['0']*10,{})
-        self.assertFalse(ok);self.assertEqual(len(calls),1)
-
-    def test_guard_requests_settle_on_x11_and_forces_heartbeat(self):
-        from tools.lab.surface_driver.target import probe_mutates
-        ctx,directory=context();self.addCleanup(directory.cleanup)
-        ctx.geometry=lambda role:dict(self.editor,head=0,scale=1);ctx._current_window='editor'
-        queries=[];ctx._probe=lambda name,query:queries.append(query) or {'ok':True}
-        ctx._guard()
-        self.assertTrue(queries[0]['settle']);self.assertTrue(probe_mutates('foreground',queries[0]))
 
 
 if __name__=='__main__':

@@ -9,8 +9,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'tools/ci/install-packages.sh'
-TOOLS = ('bash', 'cat', 'comm', 'cp', 'cut', 'date', 'dirname', 'find', 'grep', 'mkdir', 'mktemp', 'mv', 'rm',
-         'sleep', 'sort', 'tail', 'tee', 'timeout', 'touch', 'tr')
+TOOLS = ('awk', 'bash', 'cat', 'comm', 'cp', 'cut', 'date', 'dirname', 'find', 'grep', 'head', 'mkdir', 'mktemp', 'mv', 'rm',
+         'rmdir', 'sleep', 'sort', 'tail', 'tee', 'timeout', 'touch', 'tr', 'wc', 'xargs')
 MIRROR_ERROR = 'Librepo error: Cannot download Packages/m/mesa-vulkan-drivers-26.2.4-1.fc44.x86_64.rpm: All mirrors were tried'
 # The last line nightly run 39851369595 printed before it hung for 93 minutes (#467).
 STALL_LINE = 'Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]'
@@ -62,10 +62,36 @@ case "$1" in
     count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
     if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
     if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble/InRelease  Hash Sum mismatch'; exit 100; fi ;;
-  install) case " $* " in *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100 ;; esac ;;
+  install)
+    # The archives the snapshot lacks, or a list its indexes can't satisfy.
+    case " $* " in *' --print-uris '*)
+      [ -z "${FAKE_UNSATISFIABLE:-}" ] || { echo 'E: Unable to correct problems, you have held broken packages.'; exit 100; }
+      [ -z "${FAKE_LACKING:-}" ] || printf "'http://archive.ubuntu.com/ubuntu/pool/main/%s' %s 1 SHA256:0\n" $FAKE_LACKING $FAKE_LACKING
+      exit 0 ;;
+    esac
+    # Only an install that is not --download-only changes the system: that is where dpkg runs.
+    case " $* " in
+      *' --download-only '*)
+        dcount=$(($(cat "$FAKE_COUNT.download" 2>/dev/null || echo 0) + 1)); echo "$dcount" > "$FAKE_COUNT.download"
+        if [ "$dcount" -le "${FAKE_DOWNLOAD_STALLS:-0}" ]; then stall; fi ;;
+      *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100; echo "installed: $*" >> "$FAKE_INSTALLED" ;;
+    esac
+    icount=$(($(cat "$FAKE_COUNT.install" 2>/dev/null || echo 0) + 1)); echo "$icount" > "$FAKE_COUNT.install"
+    if [ "$icount" -le "${FAKE_INSTALL_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/x.deb  Connection timed out'; exit 100; fi ;;
 esac
 exit 0
 '''
+# The last-resort mirror probe: mirrors named in $FAKE_DEAD_MIRRORS don't answer.
+FAKE_CURL = r'''#!/bin/bash
+echo "curl $*" >> "$FAKE_CALLS"
+url=${!#}
+case " ${FAKE_DEAD_MIRRORS:-} " in *" ${url%%dists/*} "*) exit 7 ;; esac
+case "$url" in https://fast.*) echo 900000.000 ;; *) echo 1000.000 ;; esac
+'''
+# The checked-in list's shape, with entries that must never be probed: plain HTTP, an IP literal, a port, a substitution.
+LAST_RESORT_LIST = ('# comment\nhttps://slow.example/ubuntu/\nhttps://fast.example/ubuntu/\nhttps://dead.example/ubuntu/\n'
+                    'http://plain.example/ubuntu/\nhttps://127.0.0.1/ubuntu/\nhttps://port.example:8080/ubuntu/\n'
+                    'https://evil.example/$(id)/\n')
 FAKE_RPM = '#!/bin/bash\necho mesa-26.2.4-1.fc44.x86_64.rpm\n'
 FAKE_DPKG = '#!/bin/bash\necho "dpkg $*" >> "$FAKE_CALLS"\n'
 
@@ -84,14 +110,15 @@ class InstallPackages(unittest.TestCase):
         self.snapshot = self.dir / 'packages'
 
     def run_script(self, manager, *args, **env):
-        fakes = {'dnf': FAKE_DNF, 'rpm': FAKE_RPM} if manager == 'dnf' else {'apt-get': FAKE_APT, 'dpkg': FAKE_DPKG}
+        fakes = ({'dnf': FAKE_DNF, 'rpm': FAKE_RPM} if manager == 'dnf' else
+                 {'apt-get': FAKE_APT, 'dpkg': FAKE_DPKG, 'curl': FAKE_CURL})
         for name, body in fakes.items():
             (self.bin / name).write_text(body)
             (self.bin / name).chmod(0o755)
         env = {'PATH': str(self.bin), 'PUTGD_PKG_BACKOFF': '0', 'PUTGD_PKG_LABEL': 'native (test)',
                'GITHUB_STEP_SUMMARY': str(self.summary), 'GITHUB_ENV': str(self.github_env),
                'FAKE_CALLS': str(self.calls), 'FAKE_COUNT': str(self.dir / 'count'), 'FAKE_ERROR': MIRROR_ERROR,
-               'FAKE_PIDS': str(self.dir / 'pids'), 'STALL_LINE': STALL_LINE, **env}
+               'FAKE_PIDS': str(self.dir / 'pids'), 'FAKE_INSTALLED': str(self.dir / 'installed'), 'STALL_LINE': STALL_LINE, **env}
         result = subprocess.run([str(self.bin / 'bash'), str(SCRIPT), *args], env=env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         calls = self.calls.read_text().splitlines() if self.calls.exists() else []
@@ -174,7 +201,10 @@ class InstallPackages(unittest.TestCase):
     def test_apt_retries_update_and_install_and_uses_the_snapshot_offline(self):
         result, calls, summary = self.run_script('apt-get', '--no-install-recommends', 'dwz', FAKE_FAILURES='1')
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual([call.split()[1] for call in calls], ['update', 'update', 'install'])
+        # Two phases: download everything, then install what was downloaded.
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'update', 'install', 'install'])
+        self.assertIn('--download-only', calls[2])
+        self.assertIn('--no-download', calls[3])
         self.assertIn('--no-install-recommends dwz', calls[2])
         self.assertIn('Acquire::Retries=3', calls[0])
         self.assertIn('Hash Sum mismatch', summary)
@@ -189,6 +219,153 @@ class InstallPackages(unittest.TestCase):
         self.assertIn('--no-download', calls[-1])
         self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', calls[-1])
 
+    def test_the_apt_snapshot_keeps_its_sources_and_the_offline_install_reads_through_them(self):
+        apt = self.dir / 'apt'
+        (apt / 'sources.list.d').mkdir(parents=True)
+        (apt / 'sources.list.d/ubuntu.sources').write_text('URIs: mirror+file:/etc/apt/putgd-mirrors.txt\n')
+        (apt / 'sources.list.d/vendor.list').write_text('deb https://vendor.example/apt noble main\n')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_APT_ROOT=str(apt))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(sorted(p.name for p in (self.snapshot / 'sources').iterdir()),
+                         ['ubuntu.sources', 'vendor.list'])
+        self.assertIn('putgd-mirrors.txt', (self.snapshot / 'sources/ubuntu.sources').read_text())
+        self.calls.unlink()
+        (self.dir / 'count').unlink()
+        # A host whose own sources are named differently, as the runner's are.
+        (apt / 'sources.list.d/ubuntu.sources').write_text('URIs: mirror+file:/etc/apt/apt-mirrors.txt\n')
+        result, calls, _ = self.run_script('apt-get', 'dwz', FAKE_FAILURES='9', PUTGD_PKG_CACHE=str(self.snapshot),
+                                           PUTGD_APT_ROOT=str(apt))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('--no-download', calls[-1])
+        self.assertIn('-o Dir::Etc::sourcelist=/dev/null', calls[-1])
+        self.assertIn(f'-o Dir::Etc::sourceparts={self.snapshot}/sources', calls[-1])
+
+    def fake_apt_config(self, list_file, parts):
+        (self.bin / 'apt-config').write_text(f"#!/bin/bash\necho \"list='{list_file}'\"\necho \"parts='{parts}/'\"\n")
+        (self.bin / 'apt-config').chmod(0o755)
+
+    def test_the_snapshot_saves_the_sources_apt_really_reads(self):
+        # A custom APT_CONFIG moves them away from /etc/apt.
+        custom = self.dir / 'custom'
+        (custom / 'parts').mkdir(parents=True)
+        (custom / 'main.list').write_text('deb http://archive.ubuntu.com/ubuntu noble main\n')
+        (custom / 'parts/ubuntu.sources').write_text('URIs: http://archive.ubuntu.com/ubuntu\n')
+        self.fake_apt_config(custom / 'main.list', custom / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(sorted(p.name for p in (self.snapshot / 'sources').iterdir()),
+                         ['00-sources-list.list', 'ubuntu.sources'])
+
+    def test_a_deb822_main_source_file_keeps_its_extension(self):
+        # apt picks the parser by extension: a .sources main file saved as .list would be read as legacy and rejected.
+        custom = self.dir / 'custom'
+        (custom / 'parts').mkdir(parents=True)
+        (custom / 'main.sources').write_text('Types: deb\nURIs: http://archive.ubuntu.com/ubuntu\n')
+        self.fake_apt_config(custom / 'main.sources', custom / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual([p.name for p in (self.snapshot / 'sources').iterdir()], ['00-sources-list.sources'])
+
+    def test_no_sources_found_saves_none_and_the_offline_install_keeps_the_hosts(self):
+        empty = self.dir / 'empty'
+        (empty / 'parts').mkdir(parents=True)
+        self.fake_apt_config(empty / 'sources.list', empty / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertFalse((self.snapshot / 'sources').exists())
+        self.calls.unlink()
+        (self.dir / 'count').unlink()
+        result, calls, _ = self.run_script('apt-get', 'dwz', FAKE_FAILURES='9', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn('Dir::Etc::sourcelist', calls[-1])
+
+    def test_no_online_attempts_installs_from_the_snapshot_at_once(self):
+        self.snapshot.mkdir()
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+        result, calls, summary = self.run_script('apt-get', 'dwz', PUTGD_PKG_ATTEMPTS='0',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(len(calls), 2)
+        self.assertIn('--print-uris', calls[0])
+        self.assertIn('--no-download', calls[1])
+        self.assertIn('installed offline from the package snapshot', summary)
+
+    def make_apt_snapshot(self):
+        (self.snapshot / 'lists').mkdir(parents=True)
+        (self.snapshot / 'archives').mkdir()
+        (self.snapshot / 'lists/ports_Packages').write_text('X 1.0\n')
+        (self.snapshot / 'archives/x_1.0_amd64.deb').write_text('x 1.0')
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+
+    def test_an_online_success_replaces_the_snapshot_with_the_metadata_it_installed_from(self):
+        self.make_apt_snapshot()
+        result, calls, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('autoclean', ' '.join(calls))
+        self.assertEqual(self.github_env.read_text(), 'PUTGD_PKG_CACHE_REFRESHED=true\n')
+
+    def test_adding_packages_never_refreshes_the_indexes_on_any_attempt(self):
+        self.make_apt_snapshot()
+        live = self.snapshot.parent / (self.snapshot.name + '.live/lists')
+        live.mkdir(parents=True)
+        (live / 'ports_Packages').write_text('X 1.0\n')
+        env = dict(PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_PKG_REUSE_METADATA='true')
+        _, calls, _ = self.run_script('apt-get', '--download-only', 'dwz', **env)
+        self.assertEqual([call.split()[1] for call in calls], ['install', 'autoclean'])
+        self.assertIn('--download-only', calls[0])
+        # A retry downloads again against the same indexes; the indexes stay as the install before it left them.
+        self.calls.unlink()
+        (self.dir / 'count.install').unlink(missing_ok=True)
+        self.run_script('apt-get', '--download-only', 'dwz', FAKE_INSTALL_FAILURES='2', **env)
+        calls = self.calls.read_text().splitlines()
+        self.assertEqual([call.split()[1] for call in calls if 'dpkg' not in call],
+                         ['install', 'install', 'install', 'autoclean'])
+        self.assertEqual((live / 'ports_Packages').read_text(), 'X 1.0\n')
+
+    def test_adding_packages_without_indexes_to_reuse_fails_and_saves_nothing(self):
+        self.snapshot.mkdir()
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+        result, calls, summary = self.run_script('apt-get', '--download-only', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot),
+                                                 PUTGD_PKG_REUSE_METADATA='true')
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertEqual(calls, [])
+        self.assertIn('no package indexes of an earlier install to reuse', result.stdout)
+        self.assertIn('the packages could not be downloaded into the snapshot', summary)
+        self.assertFalse(self.github_env.exists())
+
+    def test_a_failed_download_into_the_snapshot_fails_and_never_installs_offline(self):
+        self.make_apt_snapshot()
+        result, calls, summary = self.run_script('apt-get', '--download-only', 'dwz', FAKE_FAILURES='9',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertNotIn('--no-download', ' '.join(calls))
+        self.assertIn('the packages could not be downloaded into the snapshot', summary)
+
+    def test_a_download_that_times_out_installs_nothing_and_the_snapshot_then_installs(self):
+        # The limit covers the download only. A timed-out download leaves dpkg untouched, so when every
+        # attempt fails the snapshot installs onto the system as it was, never onto a half-upgraded one.
+        self.make_apt_snapshot()
+        installed = self.dir / 'installed'
+        result, calls, summary = self.run_script('apt-get', 'dwz', FAKE_DOWNLOAD_STALLS='9', FAKE_STALL_MODE='trickle',
+                                                 PUTGD_PKG_ATTEMPTS='2', PUTGD_PKG_TIMEOUT='2',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assert_stalled_calls_were_stopped()
+        self.assertEqual([call.split()[1] for call in calls if '--configure' not in call],
+                         ['update', 'install', 'update', 'install', 'install', 'install'])
+        self.assertIn('--print-uris', calls[-2])
+        self.assertIn('--download-only', calls[1])
+        self.assertEqual(installed.read_text().count('installed:'), 1)
+        self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', installed.read_text())
+        self.assertIn('| 2 of 2 | **stopped** |', summary)
+        self.assertIn('installed offline from the package snapshot', summary)
+
+    def test_a_finished_download_is_installed_without_a_time_limit(self):
+        result, calls, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_TIMEOUT='1')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'install', 'install'])
+        self.assertEqual((self.dir / 'installed').read_text().count('installed:'), 1)
+
     def assert_stalled_calls_were_stopped(self):
         for pid in (self.dir / 'pids').read_text().split():
             self.assertFalse(Path(f'/proc/{pid}').exists(), f'stalled package manager {pid} still runs')
@@ -196,6 +373,8 @@ class InstallPackages(unittest.TestCase):
     def test_networked_calls_drop_dead_connections(self):
         _, calls, _ = self.run_script('apt-get', 'dwz')
         for call in calls:
+            if '--no-download' in call:
+                continue  # installs what was downloaded, no network
             self.assertIn('-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60', call)
         self.calls.unlink()
         _, calls, _ = self.run_script('dnf', 'mesa')
@@ -208,7 +387,7 @@ class InstallPackages(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 20)
         self.assert_stalled_calls_were_stopped()
         # The retry first finishes whatever dpkg work the stopped attempt left.
-        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update', 'install'])
+        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update', 'install', 'install'])
         self.assertIn('| 1 of 4 | **stopped**, retrying in 0 s with refreshed metadata | '
                       f'`printed nothing for 1 s after: {STALL_LINE}` |', summary)
         self.assertIn('| 2 of 4 | **passed on retry** |', summary)
@@ -249,28 +428,93 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual([call.split()[1] for call in calls], ['update', 'update'])
         self.assertIn('**failed**: package metadata could not be refreshed', summary)
 
-    def test_hosted_azure_trickle_is_bounded_and_bypassed_without_a_snapshot(self):
-        from test_hosted_apt_mirrors import mirrors, RUNNER_MIRRORS
+    def test_a_stalled_first_mirror_is_moved_behind_the_others_for_the_next_attempt(self):
+        # The hosted runner's single mirror stalled all three attempts of run 44364918159 (#1668).
         apt = self.dir / 'apt'
         apt.mkdir()
-        mirror_list = apt / 'apt-mirrors.txt'
-        mirror_list.write_text(RUNNER_MIRRORS)
-        env = dict(FAKE_MIRRORS=str(mirror_list), FAKE_STALL_MODE='trickle',
-                   PUTGD_PKG_ATTEMPTS='1', PUTGD_PKG_TIMEOUT='2')
-        result, _, summary = self.run_script('apt-get', 'dwz', **env)
-        self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn('ran over the 2 s attempt limit', summary)
-        self.assert_stalled_calls_were_stopped()
-        self.calls.unlink()
-        self.summary.unlink()
-        mirrors.configure(apt)
+        mirror_list = apt / 'putgd-mirrors.txt'
+        mirror_list.write_text('http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n'
+                               'http://us.archive.ubuntu.com/ubuntu/\tpriority:2\n'
+                               'http://archive.ubuntu.com/ubuntu/\tpriority:3\n')
+        (apt / 'putgd-mirrors.txt.usable').write_text('3\n')
+        env = dict(FAKE_MIRRORS=str(mirror_list), FAKE_STALL_MODE='trickle', PUTGD_APT_ROOT=str(apt),
+                   PUTGD_PKG_ATTEMPTS='2', PUTGD_PKG_TIMEOUT='2')
         result, calls, summary = self.run_script('apt-get', 'dwz', **env)
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn('https://archive.ubuntu.com/ubuntu/ noble InRelease', result.stdout)
-        self.assertEqual([call.split()[1] for call in calls], ['update', 'install'])
-        self.assertEqual(summary, '')
-        self.assertFalse(self.github_env.exists())
+        self.assert_stalled_calls_were_stopped()
+        self.assertIn('ran over the 2 s attempt limit', summary)
+        self.assertIn('Get:1 http://us.archive.ubuntu.com/ubuntu/ noble InRelease', result.stdout)
+        self.assertEqual(mirror_list.read_text(), 'http://us.archive.ubuntu.com/ubuntu/\tpriority:1\n'
+                                                  'http://archive.ubuntu.com/ubuntu/\tpriority:2\n'
+                                                  'http://azure.archive.ubuntu.com/ubuntu/\tpriority:3\n')
 
+    def last_resort_env(self, **env):
+        apt = self.dir / 'apt'
+        apt.mkdir(exist_ok=True)
+        (apt / 'putgd-mirrors.txt').write_text('http://127.0.0.1:9/ubuntu/\tpriority:1\n')
+        mirrors = self.dir / 'last-resort.txt'
+        mirrors.write_text(LAST_RESORT_LIST)
+        return {'PUTGD_APT_ROOT': str(apt), 'PUTGD_APT_LAST_RESORT_MIRRORS': str(mirrors),
+                'FAKE_DEAD_MIRRORS': 'https://dead.example/ubuntu/', 'FAKE_FAILURES': '9', 'PUTGD_PKG_ATTEMPTS': '1', **env}
+
+    def test_an_older_snapshot_downloads_what_it_lacks_against_its_own_indexes(self):
+        # A snapshot restored from an older package list: one transaction against its indexes, never the mirror's newer ones.
+        self.make_apt_snapshot()
+        env = self.last_resort_env(FAKE_LACKING='hello_2.10-3_amd64.deb', PUTGD_PKG_CACHE=str(self.snapshot))
+        result, calls, summary = self.run_script('apt-get', 'dwz', 'hello', **env)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        installs = [call for call in calls if call.startswith('apt-get install')]
+        self.assertEqual([next(o for o in ('--print-uris', '--download-only', '--no-download') if o in call) for call in installs],
+                         ['--print-uris', '--download-only', '--no-download'])
+        for call in installs:
+            self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', call)
+        # No update after the online attempt: the snapshot's indexes are never refreshed.
+        self.assertEqual(sum(call.startswith('apt-get update') for call in calls), 1)
+        # The fastest answering mirrors from the list, fastest first; a malformed line is never used.
+        self.assertEqual((self.dir / 'apt/putgd-mirrors.txt').read_text(),
+                         'https://fast.example/ubuntu/\tpriority:1\nhttps://slow.example/ubuntu/\tpriority:2\n')
+        probed = ' '.join(call for call in calls if call.startswith('curl'))
+        for never in ('evil', 'plain.example', '127.0.0.1', 'port.example'):
+            self.assertNotIn(never, probed)
+        self.assertIn('--proto =https', probed)
+        self.assertIn('| snapshot | **installed offline from the package snapshot** saved 2026-10-20T04:00Z; archives it '
+                      'lacked, downloaded against its indexes: 1 | `hello_2.10-3_amd64.deb` |', summary)
+
+    def test_lacking_archives_that_cannot_be_downloaded_never_install_from_the_snapshot(self):
+        self.make_apt_snapshot()
+        env = self.last_resort_env(FAKE_LACKING='hello_2.10-3_amd64.deb', FAKE_INSTALL_FAILURES='9',
+                                   PUTGD_PKG_CACHE=str(self.snapshot))
+        result, calls, summary = self.run_script('apt-get', 'dwz', 'hello', **env)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertFalse((self.dir / 'installed').exists())
+        self.assertIn('| snapshot | **failed**; archives it lacked: 1: hello_2.10-3_amd64.deb |', summary)
+        self.assertIn('| last-resort | **failed** |', summary)
+
+    def test_without_a_usable_snapshot_one_fresh_transaction_runs_through_the_last_resort_mirrors(self):
+        for snapshot in (False, True):
+            with self.subTest(snapshot=snapshot):
+                for name in ('calls', 'count', 'count.install', 'summary.md', 'installed'):
+                    (self.dir / name).unlink(missing_ok=True)
+                (self.dir / 'apt/putgd-mirrors.txt.last-resort').unlink(missing_ok=True)
+                if snapshot:
+                    self.make_apt_snapshot()
+                env = self.last_resort_env(FAKE_FAILURES='1', FAKE_UNSATISFIABLE='1', PUTGD_PKG_CACHE=str(self.snapshot))
+                result, calls, summary = self.run_script('apt-get', 'dwz', **env)
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertEqual([call.split()[1] for call in calls if call.startswith('apt-get')],
+                                 ['update'] + (['install'] if snapshot else []) + ['update', 'install', 'install'])
+                self.assertIn('--no-download', calls[-1])
+                self.assertIn(f'Dir::State::Lists={self.snapshot}.live/lists/', calls[-1])
+                self.assertIn(f'| last-resort | **installed online through the last-resort mirrors** from '
+                              f'{self.dir}/last-resort.txt |', summary)
+                self.assertFalse(self.github_env.exists())
+
+    def test_no_answering_last_resort_mirror_fails_clearly(self):
+        env = self.last_resort_env(FAKE_DEAD_MIRRORS='https://slow.example/ubuntu/ https://fast.example/ubuntu/ https://dead.example/ubuntu/')
+        result, _, summary = self.run_script('apt-get', 'dwz', **env)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn('| snapshot | **failed**: no package snapshot to install from |', summary)
+        self.assertIn(f'| last-resort | **failed** | `E: no mirror of {self.dir}/last-resort.txt answered` |', summary)
 
 if __name__ == '__main__':
     unittest.main()

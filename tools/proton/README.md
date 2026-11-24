@@ -23,7 +23,7 @@ the runtime. See [the source catalog](notices/SOURCES.json) and
 Crypto source 2.2.0 and the npm 2.2.0 bootstrap now match; the public source
 commit and full dependency graph are locked. Historical 2.0.0/2.0.1 provenance
 remains in [the provenance record](notices/CRYPTO-PROVENANCE.md). Supported command
-lines are `--version` and `--stdio` only.
+lines are `--version`, `--stdio` and `--session` only.
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;
 the caller closes stdin. It emits at most one `{"event":"auth","url":...}`
@@ -37,6 +37,127 @@ text. Secrets and account names never appear on the command line. The required
 to 120 seconds and is bounded to 1–86,400 seconds (24 hours); login can use 600 seconds.
 Deadline errors carry a generic reason and the request budget. A deadline after
 mutation dispatch preserves `unknown`; cancellation is distinguished from expiry.
+
+`--session` answers several requests for one account from one process, a JSON
+line each (the same 128 KiB bound), until the caller closes stdin. It accepts
+`warm`, `checkName`, `upload`, `stat`, `reconcile` and `share` only, all with the
+same keychain reference; anything else is `unsupported_request`. `warm` signs
+in, opens the connections and reads the account and the configured folder; it
+changes nothing and answers `{}`. Each request has its
+own deadline, cancellation signal, progress lines and single completion line.
+The process keeps the signed-in account, its connections and one Drive client
+between requests. An upload for a publication other than the client's gets a
+new client, so its drafts keep that publication's client identity. The first
+good answers for My files and its root share serve the process's later
+clients, and the root share is read as soon as My files names it; no other
+response is kept. The clients share the two caches. Requests still read their
+destination and ownership from the service, with one exception: the destination
+read made for a name check also serves the one upload that follows it within
+ten seconds. Once a session has read a destination, a name query for it runs
+beside the destination read instead of after it. A passed
+deadline answers and ends the process. A request past the size bound is refused
+and nothing after it is read.
+
+An upload request may say `linkFollows:true`: the operation will ask for a share
+link as soon as the file is uploaded. A new link costs about half a second of
+local work before its request can be sent: two bcrypt hashes of its generated
+password, a read of the SRP modulus, and the share's session key wrapped under
+that password by an iterated hash of 65 MB. The helper then does the hashing
+and reads the modulus while the file's bytes are in transit, and wraps the
+session key while the request that creates the share is in transit. The
+password comes from the SDK's own generator, called ahead; the SDK's link code
+is handed that password and gets the prepared answers for exactly those inputs.
+A link with a share password of the user's own, a file over 4 MiB, a link asked
+for more than ten seconds after its preparation, and a preparation that failed
+are computed in line, as before. A preparation ends with the request after the
+upload, whatever that request is, and nothing of it is stored. The link itself
+is then four requests in sequence: the ownership read, the share, the link and
+the second ownership read.
+
+An upload's answer names the storage host its blocks went to (`transferHost`),
+and an upload request may name one (`transferHostHint`). The application keeps
+the last host per account in memory and names it in the next upload. For a file
+over the single-request limit and of one 4 MiB block at most, the helper then
+opens a connection to that host while the upload's draft is being made, with
+one unauthenticated request that carries nothing of the account or the file. A
+file of several blocks gets none: its blocks are sent side by side, and the
+block on the opened connection started ahead of the others, which then crawled. Only a `*.proton.me` host other
+than the API's is accepted in either direction. A 360 KB upload spent about
+0.3 s less with the connection already open.
+
+Proton's API answers each connection from one of several backends and stays
+with it for the connection's life. From the lab, the same read took 0.17 s on
+about a quarter of connections and 0.35 to 0.6 s on the rest, with the same
+network round trip on all of them, and a compiled `fetch` gives no say in which
+pooled connection carries a request. The helper therefore sends its first GET
+to the API on six new HTTP/2 connections at once, keeps the one that answers
+first, closes the others, and sends every later API request as a stream on the
+kept one. If that first answer took more than 0.1 s beyond the connection's
+ping, a second round of six looks for a faster connection in the background and
+replaces the first if it finds one, until a request is about to change
+something: from then on the kept connection stays, so a change and the reads
+that follow it reach one backend. Only a GET is ever sent more than once.
+This is a shortcut, never a requirement: the ordinary client carries the
+request, and every later one in that process, when no candidate connects or
+answers within four seconds, when the first answer is not a 200 or a 401, when
+a proxy is configured in the environment, or when a request on the kept
+connection fails. A failed GET, and a request the service says it never acted
+on, is sent again on the ordinary client; any other failure is reported as a
+lost connection is. File blocks go to Proton's storage hosts through the
+ordinary client as before. An idle kept connection is pinged every 20 seconds.
+
+Sharing reads the file before and after the link is made. For a file this
+process uploaded within the last thirty seconds, a read that may predate the
+upload is made again before it is believed: one the service answered without
+an error and that either did not return the file (the pinned SDK also leaves
+out a file returned without its active revision, as a draft), could not tell
+whose it is, or returned the file's own revision with none of the metadata it
+was uploaded with. Revisions never change, so that last read is not another
+file, although the ownership check alone calls it foreign. The reads are made
+again up to five times, 0.25, 0.5, 1, 2 and 4 s apart. A read that shows
+another revision, name, folder or trash is believed at once and the link
+step reports `changed`. A file that still reads that way gets no link and is
+reported `unknown`, which the application inspects again on Retry. Before
+#1399 such a file was reported `changed` after three reads 0.3 s apart, or at
+once for a revision without metadata, which told the user the file had been
+replaced and ended the link step.
+
+A token refresh makes the account code forget the user and address keys it
+loaded. The helper puts a load that was under way back for the same session,
+so the first request after an expired token no longer reads the user and the
+addresses twice.
+
+The application holds one session around an operation's name check, upload and
+link for a destination, on that operation's thread, and holds the account lock
+for as long as the helper lives. It starts that helper when the action is
+invoked (`StorageProvider::anticipate`), with a `warm` request, so the sign-in
+overlaps choosing and capturing the content. Starting ahead never waits for the
+account lock or the runtime's hash; an Edit & upload starts nothing ahead. The
+next request for the account takes the waiting helper after reading the
+warm-up's answer; a warm-up that was refused, unclear or late ends that helper
+and the request starts its own. A helper nobody used ends when its action
+does: it is left to finish what it is doing, since a helper killed during a
+session refresh loses the account. It asks a kept helper again only after a clean
+answer (`ok:true` with an empty `result.error`) and only while the helper is
+running and silent; otherwise it ends that helper and starts another for the
+next request. History and setup actions use `--stdio`. After the warm-up, one
+64 KiB publish makes 8 requests: two for the name check, one for the upload and
+five for the link.
+
+An operation invoked while another operation's session has the account, or
+while the helper started ahead for another operation has not been taken yet,
+starts no helper of its own. Every operation registers that it will ask, the
+one that started the helper included, because either may get the account
+first. A session's helper, signed in and connected, passes to a registered
+operation when that session ends, in place of a new process and its sign-in. Only a helper that waits for its next request
+and has said nothing since its last clean answer is passed on; it keeps the
+account lock meanwhile, and ends when no registered operation is left to take it.
+
+The application checks the bundled runtime's SHA-512 before it starts a helper.
+Hashing the 110 MB file takes most of a second, so one verdict stands while the
+file's device, inode, size, modification and change times are unchanged, and a
+resident with a Proton destination runs the first check in the background
+shortly after it starts.
 
 Every request carries `schemaVersion:1`, `method`, and `destination` containing
 `providerId:"proton-drive"`, `profileId`, `profileRevision`, `settings` and
@@ -55,11 +176,23 @@ requires a new reference. Browser authentication never replaces a prior account
 snapshot in place.
 The session is stored through the Secret Service `default` alias. A refused
 write, during Connect or a token refresh, reports `keychain_unavailable`.
+A new process's exchange with the secret service can go wrong for an entry that
+is there (#1418): on KDE's `ksecretd`, of 700 new processes reading one entry,
+5 were refused (`Client public key size is invalid`) and 3 were answered with
+nothing. A refused read or write made again in the same process succeeds, so the
+helper makes it again up to three times, 30, 90 and 240 ms apart, before it
+reports `keychain_unavailable`. An empty answer stays empty for the life of the
+process. A helper that finds no session therefore answers `session_unread`,
+having changed nothing, unless its request says `sessionRetry:true`. The
+application then asks once more through a new helper with `sessionRetry:true`,
+which believes what it finds: an account that really is not connected answers
+`authentication_required` as before, one helper start later.
 
 Upload accepts only `condition:"absent"`, plus `candidate`, `publicationId`,
 and `artifact:{path,name,mime,bytes,sha256}`. It hashes and streams the same open
 regular file, rejects a final symlink, and provides expected size/SHA-1 to the
-SDK. Encrypted additional metadata stores publication ID and SHA-256. Receipts
+SDK. A file under 128 KiB goes in the SDK's single small-file request, enabled
+as in Proton's own CLI at this pin; larger files stream 4 MiB blocks. Encrypted additional metadata stores publication ID and SHA-256. Receipts
 contain exact SDK completion node/revision IDs, the revision concurrency token,
 and SHA-256 inside `objectReference`. Upload never overwrites an existing file
 or uploads a revision. Uncertain mutations return `unknown` for reconciliation.
@@ -82,9 +215,17 @@ Denial never proves absence. Name checks return `absent`,
 query; lookup failures remain inconclusive. Atomic SDK creation still decides
 collisions, and missing-file reconciliation still requires a complete listing.
 
-Each request uses a bounded 64-entry SDK crypto-key cache. It has no disk or
-cross-request lifetime. Entity metadata uses NullCache, preserving fresh
-server identity/revision reads before and after sharing.
+Each Drive client has two bounded 64-entry caches in memory, one for SDK crypto keys
+and one for node metadata. Neither is written to disk or outlives the process.
+The helper's own destination and ownership checks never read the metadata
+cache: each one is a batched service read of the account root, the configured
+folder and, for stat and sharing, the file, during which the cache answers
+nothing. The SDK reuses what that read returned for its own parent and key
+lookups, which were a request each before. Sharing still reads the file from
+the service before and after the mutation. The user and address keys load
+beside the first Drive read, and a new link's SRP modulus beside the share's
+creation, or beside the upload when the link was prepared there. One 64 KiB publish made 38 requests before these changes and makes
+20 with them from three `--stdio` helpers.
 
 Share takes the receipt and `options:{action:"create"|"revoke"|"inspect",
 expirationDays,passwordReference}`. The caller persists its mutation checkpoint
@@ -118,7 +259,10 @@ live account or graphical desktop acceptance.
 probe using the production C++ adapter and bundled helper. Its required arguments are
 the configuration file and a new, owned private output directory. An optional
 third argument selects synthetic payload bytes (1–67,108,864; default 65,536). The config must
-contain exactly one Proton profile with an isolated `put.gd-` test folder. Resolve
+contain exactly one Proton profile with an isolated `put.gd-` test folder or a
+builder's `putgd-lab-` session folder. It holds one session around its requests,
+as an operation does; `PUTGD_PROBE_SEPARATE_HELPERS=1` gives each request a
+helper of its own. Resolve
 and preflight the actual keychain D-Bus Unix socket with
 `tools/diagnostics/check_socket_paths.py --socket` before running; set `TMPDIR` to
 the new short output directory. No put.gd session socket is created by this probe.
@@ -158,11 +302,11 @@ appear on the private output pipe: the parent must keep them out of logs and
 review packets. Password values must remain in parent-process memory and the
 keychain. Keep failed intents before retrying, reconcile uncertain uploads first,
 and never rebind old receipts to another session/destination. No remote deletion
-is provided. The [P1 receipt](../../docs/evidence/2026-10-15-proton-p1-recovery.md)
+is provided. The [P1 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p1-recovery.md)
 records the service checks and their original limits. The
-[application follow-up](../../docs/evidence/2026-10-15-proton-p1-app-recovery.md)
+[application follow-up](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p1-app-recovery.md)
 completes the bounded P1 normal-use recovery campaign. The
-[P2 resource receipt](../../docs/evidence/2026-10-15-proton-p2-resources.md)
+[P2 resource receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p2-resources.md)
 records active uploads/cancel/retry/repeats and idle, including a rejected
 smaller-heap experiment. No runtime optimization was retained; P3–P6 stay open.
 

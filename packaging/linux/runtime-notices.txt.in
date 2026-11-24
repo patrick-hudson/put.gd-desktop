@@ -5,11 +5,28 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
 (Proton's crypto). This file lists every licence of the code the package contains:
 
   put.gd                                    MIT                 LICENSE
+  Nayuki QR Code generator v1.8.0          MIT                 qrcodegen-LICENSE
+  wayscrollshot and mark-shot band matcher  MIT                 scroll-tracker-LICENSE, and below
+    (ported, in putgd-record)
   IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
   IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt
+  Emoji templates drawn from Noto Color      OFL-1.1, CC-BY-4.0, below
+    Emoji 2.047, 2.051 and 2.057 and Twemoji  Unicode-3.0
+    Mozilla 0.7.0, for Unicode Emoji 16.0
+    (in putgd-ocr)
   zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
     (in putgd-record)
+  KWin fake-input bindings                  LGPL-2.1-or-later   wayland-fake-input.xml
+    (in putgd-record)
   ext/wlr data-control-v1 bindings          MIT-style           wayland-*-data-control-*.xml
+  ext image-copy-capture, image-capture-    MIT-style           wayland-ext-image-*.xml,
+    source, foreign-toplevel-list and wlr                       wayland-*-foreign-toplevel-*.xml
+    foreign-toplevel-management bindings
+  hyprland-global-shortcuts-v1 and          BSD-3-Clause        wayland-hyprland-*.xml
+    hyprland-toplevel-mapping-v1 bindings
+  wlr-layer-shell-unstable-v1 bindings      MIT-style           wayland-wlr-layer-shell-unstable-v1.xml
+  wlr-virtual-pointer-unstable-v1 bindings  MIT-style           wayland-wlr-virtual-pointer-unstable-v1.xml
+    (in putgd-record)
   AWS SDK for C++, aws-crt-cpp, aws-c-*,    Apache-2.0          aws-*-LICENSE, aws-*-NOTICE
     s2n-tls
   cJSON, libcbor (in the AWS libraries)     MIT                 aws-sdk-cJSON-LICENSE,
@@ -38,14 +55,16 @@ notice; s2n-tls uses Apache-2.0. The SDK and CRT libraries also contain cJSON (M
 aws-sdk-cJSON-LICENSE), TinyXML-2 (Zlib, aws-sdk-TinyXML2-LICENSE), libcbor (MIT,
 aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES) and xxHash (BSD-2-Clause,
 aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE). Rebuild the pinned official
-SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
+SDK following docs/release/build.md, update the lock deliberately, and rebuild the DEB to
 update these libraries. No compiler or Qt runtime is bundled.
 
-The ext-data-control-v1, wlr-data-control-unstable-v1 and zkde-screencast-unstable-v1
-Wayland protocol notices are retained in wayland-ext-data-control-v1.xml,
-wayland-wlr-data-control-unstable-v1.xml and wayland-zkde-screencast-unstable-v1.xml
-beside this file, including their original copyright and license text. Generated
-client bindings use those protocols.
+The ext-data-control-v1, wlr-data-control-unstable-v1, zkde-screencast-unstable-v1,
+ext-image-copy-capture-v1, ext-image-capture-source-v1, ext-foreign-toplevel-list-v1,
+wlr-foreign-toplevel-management-unstable-v1, hyprland-global-shortcuts-v1,
+hyprland-toplevel-mapping-v1, wlr-layer-shell-unstable-v1, wlr-virtual-pointer-unstable-v1 and
+KWin fake-input Wayland protocol notices are retained
+in the wayland-<protocol>.xml file of each beside this file, including their original
+copyright and license text. Generated client bindings use those protocols.
 
 When the package includes the Proton Drive helper (/usr/libexec/putgd/proton), its
 licenses, the notices of everything compiled into it and the list of its
@@ -66,3 +85,68 @@ alone do not certify compositor support or install/upgrade/removal behavior; con
 https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/verification.md
 and https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/release.md
 for tested versions and remaining gates, including the complete release license audit.
+
+Emoji templates, built into putgd-ocr from src/ocr/emoji/templates.bin:
+
+Small pictures of each emoji as two fonts draw them, used only to recognize
+emoji on the screen. No font is included.
+- Noto Color Emoji 2.051, and 2.047 and 2.057 where those draw an emoji
+  differently, Copyright 2022 Google Inc. Licensed under the SIL Open Font
+  License, Version 1.1 (https://openfontlicense.org).
+- Twemoji Mozilla 0.7.0, graphics Copyright Twitter, Inc and other contributors
+  (https://github.com/mozilla/twemoji-colr). Licensed under CC-BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/).
+- The emoji sequences of Unicode Emoji 16.0 (emoji-test.txt), Copyright Unicode,
+  Inc. Licensed under the Unicode License v3 (emoji/UNICODE-LICENSE.txt).
+
+Nayuki QR Code generator, vendored in src/core/qrcodegen:
+
+QR Code generator library (C++)
+
+Copyright (c) Project Nayuki. (MIT License)
+https://www.nayuki.io/page/qr-code-generator-library
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+- The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+- The Software is provided "as is", without warranty of any kind, express or
+  implied, including but not limited to the warranties of merchantability,
+  fitness for a particular purpose and noninfringement. In no event shall the
+  authors or copyright holders be liable for any claim, damages or other
+  liability, whether in an action of contract, tort or otherwise, arising from,
+  out of or in connection with the Software or the use or other dealings in the
+  Software.
+
+The scrolling capture's tracker in putgd-record (src/core/ScrollTracker.cpp) ports
+the band matcher of wayscrollshot and of mark-shot's shot-stitch crate:
+
+wayscrollshot, https://github.com/jswysnemc/wayscrollshot
+commit 703474ad7b94a504306d7a93d21668ee162ebf1c
+Copyright (c) 2025
+
+mark-shot, https://github.com/jswysnemc/mark-shot
+commit 4cf891014f584e9199e41a182c13f6f478435115
+Copyright (c) 2026 Dhahbi Fadi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

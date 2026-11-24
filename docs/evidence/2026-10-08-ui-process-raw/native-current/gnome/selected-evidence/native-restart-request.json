@@ -1,5 +1,0 @@
-{
-  "command": "gnome-session-quit --reboot",
-  "output": "",
-  "witness": "native-restart-dialog.png"
-}

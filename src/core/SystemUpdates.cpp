@@ -9,11 +9,14 @@
 namespace putgd::update {
 namespace {
 constexpr qint64 maximumRepositoryFile=64*1024;
-const QStringList debTargets{"ubuntu24.04","ubuntu26.04","debian13"};
-const QList<Updater> updaters{
+const QStringList& debTargets() {static const QStringList value{"ubuntu24.04","ubuntu26.04","debian13"};return value;}
+const QList<Updater>& updaters() {
+ static const QList<Updater> value{
  {"mintupdate","Update Manager","mintupdate",{}},
  {"plasma-discover","Discover","plasma-discover",{"--mode","update"}},
  {"gnome-software","GNOME Software","gnome-software",{"--mode=updates"}}};
+ return value;
+}
 QString readSmall(const QString& path,bool& exists) {
  QFile file(path);exists=file.exists();
  if(!exists||!file.open(QIODevice::ReadOnly)||file.size()>maximumRepositoryFile)return {};
@@ -50,10 +53,12 @@ QStringList moveCommands(const QString& manager,const QString& channel) {
  // The package installs both channels' files under /usr/share/putgd/repo,
  // byte for byte what each channel's package installs, so dpkg takes the next
  // package without a conffile prompt.
+ if(manager=="pacman")return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".conf /etc/pacman.d/putgd.conf", "sudo pacman-key --add /usr/share/putgd/repo/putgd-"+channel+".asc", "sudo pacman-key --lsign-key "+QString(channel=="nightly"?"4032E28D893BAF66F4AC23D9A11D38D55536B371":"C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"), installFromRepositoryCommand(manager,channel)};
  if(manager=="apt")return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".sources /etc/apt/sources.list.d/putgd.sources","sudo apt update",installFromRepositoryCommand(manager,channel)};
  return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".repo /etc/yum.repos.d/putgd.repo",installFromRepositoryCommand(manager,channel)};
 }
 QString installFromRepositoryCommand(const QString& manager,const QString& channel) {
+ if(manager=="pacman")return "sudo pacman -Syuu putgd";
  return manager=="apt"?"sudo apt install --allow-downgrades putgd/"+channel:QString("sudo dnf distro-sync --refresh putgd");
 }
 QString channelDocs() {return "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels";}
@@ -62,8 +67,8 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  const auto preferred=desktops.contains("x-cinnamon")||desktops.contains("cinnamon")?QString("mintupdate"):
   desktops.contains("kde")?QString("plasma-discover"):desktops.contains("gnome")?QString("gnome-software"):QString();
  QList<Updater> order;
- for(const auto& updater:updaters)if(updater.id==preferred)order.append(updater);
- for(const auto& updater:updaters)if(updater.id!=preferred)order.append(updater);
+ for(const auto& updater:updaters())if(updater.id==preferred)order.append(updater);
+ for(const auto& updater:updaters())if(updater.id!=preferred)order.append(updater);
  for(auto updater:order) {
   const auto path=which(updater.program);
   if(!path.isEmpty()){updater.program=path;return {true,updater};}
@@ -71,34 +76,45 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  return {};
 }
 QJsonObject systemAction(const QString& target,const QString& root,const QString& repository,const UpdaterChoice& choice) {
- const bool deb=debTargets.contains(target),rpm=target=="fedora44";
- if(!deb&&!rpm)return {{"kind","download"},{"repository","none"}};
- const QString file=deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
+ const bool deb=debTargets().contains(target),rpm=target=="fedora44"||target=="fedora45",arch=target=="archlinux";
+ if(!deb&&!rpm&&!arch)return {{"kind","download"},{"repository","none"}};
+ const QString file=arch?"/etc/pacman.d/putgd.conf":deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
  bool exists=false;const auto text=readSmall(root+file,exists);
  if(!exists)return {{"kind","download"},{"repository","absent"},{"file",file}};
  // Only this build's repository counts; anything else is the user's own setup.
- const auto base=repository+(deb?"/apt/"+target:QString("/rpm/fedora/44/x86_64/"));
+ // An RPM's file names $releasever, or this build's release in files written before Fedora 45 had a build.
+ const auto base=repository+(deb?"/apt/"+target:QString("/rpm/fedora/"));
+ const QStringList rpmReleases{"$releasever",target.mid(6)};
  QString state="other",channel;
  if(deb) {
+  static const QRegularExpression whitespace("\\s+");
   for(const auto& stanza:stanzas(text)) {
    if(!stanza.value("types").split(' ',Qt::SkipEmptyParts).contains("deb"))continue;
-   if(!stanza.value("uris").split(QRegularExpression("\\s+"),Qt::SkipEmptyParts).contains(base))continue;
+   if(!stanza.value("uris").split(whitespace,Qt::SkipEmptyParts).contains(base))continue;
    channel=stanza.value("suites").section(' ',0,0);
    state=stanza.contains("enabled")&&falseValue(stanza.value("enabled"))?"disabled":"managed";
    if(state=="managed")break;
   }
+ } else if(arch) {
+  for(const auto& section:sections(text)) {
+   const auto id=section.value("[id]");
+   if((id=="putgd-nightly"||id=="putgd-stable")&&section.value("server")==repository+"/pacman/x86_64/"+id.mid(6)){
+    channel=id.mid(6);state="managed";break;
+   }
+  }
  } else {
   for(const auto& section:sections(text)) {
    const auto url=section.value("baseurl");
-   if(!url.startsWith(base))continue;
-   channel=url.mid(base.size()).section('/',0,0);
+   const auto release=std::find_if(rpmReleases.cbegin(),rpmReleases.cend(),[&](const QString& r){return url.startsWith(base+r+"/x86_64/");});
+   if(release==rpmReleases.cend())continue;
+   channel=url.mid(base.size()+release->size()+8).section('/',0,0);
    state=section.contains("enabled")&&falseValue(section.value("enabled"))?"disabled":"managed";
    if(state=="managed")break;
   }
  }
  if(state!="managed")return {{"kind","download"},{"repository",state},{"file",file}};
- QJsonObject result{{"kind","software-updates"},{"manager",deb?"apt":"dnf"},{"repository","managed"},{"file",file},{"channel",channel},
-  {"command",deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()},{"otherChannel",QJsonValue()},{"older",QJsonValue()}};
+ QJsonObject result{{"kind","software-updates"},{"manager",arch?"pacman":deb?"apt":"dnf"},{"repository","managed"},{"file",file},{"channel",channel},
+  {"command",arch?"sudo pacman -Syu":deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()},{"otherChannel",QJsonValue()},{"older",QJsonValue()}};
  if(channel=="nightly"||channel=="stable"){
   const auto other=channel=="nightly"?QString("stable"):QString("nightly");
   result["otherChannel"]=QJsonObject{{"channel",other},{"commands",QJsonArray::fromStringList(moveCommands(result["manager"].toString(),other))},{"docs",channelDocs()}};
@@ -116,8 +132,8 @@ bool openSoftwareUpdates(const QJsonObject& action) {
  if(action["kind"]!="software-updates"||updater.isEmpty())return false;
  // Only the three updaters this file knows, at the path it found.
  const auto id=updater["id"].toString();
- const auto known=std::find_if(updaters.cbegin(),updaters.cend(),[&](const Updater& u){return u.id==id;});
- if(known==updaters.cend())return false;
+ const auto known=std::find_if(updaters().cbegin(),updaters().cend(),[&](const Updater& u){return u.id==id;});
+ if(known==updaters().cend())return false;
  // The updater outlives the short-lived putgd-cli child that starts it, so it
  // must not inherit that child's pipes: Discover logs to stderr and died of
  // SIGPIPE once the resident closed them (k72). It gets the host's libraries

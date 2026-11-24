@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "client": "GTK",
-  "formats": [
-    "text/plain;charset=utf-8"
-  ],
-  "text": "putgd synthetic clipboard text"
-}

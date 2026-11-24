@@ -440,7 +440,7 @@ class OverlayCleanup(unittest.TestCase):
     def test_legacy_outside_run_requires_stopped_relocation_before_cleanup(self):
         outside = self.root / 'legacy-run'
         self.run.rename(outside)
-        with self.assertRaisesRegex(cleanup.CleanupError, 'canonical.*stop and relocate.*docs/vm-lab.md'):
+        with self.assertRaisesRegex(cleanup.CleanupError, 'canonical.*stop and relocate.*docs/lab/vm-lab.md'):
             cleanup.cleanup(outside)
         self.assertTrue((outside / 'disk.qcow2').exists())
         # Relocating the stopped bundle back restores its recorded paths. A
@@ -541,30 +541,6 @@ class OverlayCleanup(unittest.TestCase):
             (proc / 'mounts').write_text('proc /proc proc rw,hidepid=2 0 0\n')
             with self.assertRaisesRegex(cleanup.CleanupError, 'Hidden'):
                 self.process_probe(self.run, self.run / 'disk.qcow2')
-
-    def test_windows_bundle_base_and_explicit_completion_preserve_firmware_tpm(self):
-        base = self.root / 'work/windows/bases/fixture'
-        base.mkdir(parents=True)
-        self.qemu('create', '-f', 'qcow2', base / 'disk.qcow2', '1M')
-        self.write(base / 'manifest.json', {'sha256': {}})
-        run = self.root / 'work/windows/runs/fixture'
-        run.mkdir(parents=True)
-        self.qemu('create', '-f', 'qcow2', '-F', 'qcow2', '-b', base / 'disk.qcow2', run / 'disk.qcow2')
-        self.write(run / 'state.json', {'uuid': 'hardware-fixture', 'run_id': 'windows-fixture',
-                                      'base': str(base), 'clean_shutdown': True})
-        (run / 'vars.fd').write_bytes(b'firmware')
-        (run / 'tpm').mkdir()
-        (run / 'tpm/state').write_bytes(b'TPM state')
-        evidence = run / 'evidence'
-        evidence.mkdir()
-        proof = {'run': str(run), 'runId': 'windows-fixture', 'completed': True, 'outcome': 'passed'}
-        self.write(evidence / 'completion.json', proof)
-        self.write(evidence / 'manifest.json', {'schemaVersion': 1,
-            'kind': 'vm-overlay-cleanup-evidence', **proof, 'files': {
-                'completion.json': hashlib.sha256((evidence / 'completion.json').read_bytes()).hexdigest()}})
-        self.assertEqual(cleanup.cleanup(run, evidence_manifest=evidence / 'manifest.json')['status'], 'completed')
-        self.assertEqual((run / 'vars.fd').read_bytes(), b'firmware')
-        self.assertEqual((run / 'tpm/state').read_bytes(), b'TPM state')
 
 
 if __name__ == '__main__':

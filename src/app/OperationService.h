@@ -1,7 +1,11 @@
 #pragma once
+#include <tuple>
 #include "core/HistoryStore.h"
+#include "core/SourceAdapter.h"
 #include "core/EditorJob.h"
 #include "RecordingService.h"
+#include "ScrollCaptureService.h"
+#include "TextService.h"
 #include "core/SettingsService.h"
 #include "UploadSlots.h"
 #include <QElapsedTimer>
@@ -17,67 +21,6 @@
 #include <optional>
 namespace putgd {
 using JsonReply=std::function<void(Error,QJsonObject)>;
-struct CopyPayload { QString kind,text;QStringList files;QByteArray encodedImage; };
-// Calls originate on the session thread. Acquire/copy callbacks may arrive on any
-// thread, including after cancellation; services marshal and lifetime-guard them.
-// cancelAcquisition requests cancellation and need not synchronously drain callbacks.
-// The adapter outlives its services and never reads clipboard payloads for revision queries.
-class SourceAdapter {
-public:
- using PreparedAcquisition=std::function<void(const ResourceLimits&,std::function<void(PayloadResult)>)>;
- virtual ~SourceAdapter()=default;
- // The resident supervisor sets the one live UI helper before it can show a
- // window, and clears it on exit. Native adapters exclude it at invocation.
- virtual void setUiProcess(qint64) {}
- void setCaptureAppearance(const QJsonObject& appearance) { captureAppearance_=appearance; }
- void setCaptureOutcome(const QString& outcome) { captureOutcome_=outcome; }
- // Region screenshots only (#629): freeze every monitor before selection and
- // cut the result from those frames. Recording selection always stays live.
- void setRegionScreenshotFirst(bool frozen) { regionScreenshotFirst_=frozen; }
- virtual quint64 clipboardRevision() const=0;
- virtual QJsonObject capabilities() const=0;
- // Freeze native target identity/layout on the session thread before persistence
- // yields. Pixel acquisition waits until both journal checkpoints are durable.
- virtual PreparedAcquisition prepareAcquisition(const QString& action) {
-  return [this,action](const ResourceLimits& limits,std::function<void(PayloadResult)> reply) {
-   acquire(action,limits,std::move(reply));
-  };
- }
- // Preparation may show region selection, but must not read pixels until the
- // returned continuation is invoked after both durable journal checkpoints.
- virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits&) {
-  return prepareAcquisition(action);
- }
- // Early cancellation/failure reports metadata only; ordinary payload delivery
- // still belongs to the durable continuation. Legacy adapters need no preview.
- virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,
-                                               std::function<void(Error)>) {
-  return prepareAcquisition(action,limits);
- }
- // Optional source release reports that an independent prepared helper drained.
- // Legacy adapters keep interactive ownership until ordinary completion.
- virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,
-                                               std::function<void(Error)> terminal,std::function<void()> released) {
-  // Keep legacy completion ownership. An adapter with an independent prepared
-  // helper must override this overload and report release only after drain.
-  if(released)released();
-  return prepareAcquisition(action,limits,std::move(terminal));
- }
- virtual void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)=0;
- virtual void cancelAcquisition()=0;
- // Revision acknowledged by the last successful app copy, not a later owner query.
- // Adapters without an acknowledgement cannot advance automatic-copy eligibility.
- virtual std::optional<quint64> lastCopyRevision() const {return {};}
- // Cancel unsent asynchronous commits when superseded, paused for an import,
- // cancelled, or shut down. Report copy_suppressed only when no write committed.
- virtual void invalidateCopyEligibility() {}
- virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
-protected:
- // Non-secret presentation context; adapters copy it when freezing each request.
- QJsonObject captureAppearance_;
- QString captureOutcome_;
- bool regionScreenshotFirst_=false;
-};
 class UnavailableSource final:public SourceAdapter {
 public:
  quint64 clipboardRevision() const override {return 0;}
@@ -92,21 +35,55 @@ public:
  OperationService(QString dataRoot,SettingsService&,ProviderRegistry&,SourceAdapter&,QObject* parent=nullptr);
  ~OperationService() override;
  // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
- void invoke(const QString& action,JsonReply,const QJsonObject& options={});
+ // region, window, monitor, desktop, repeat and edit (of a screen capture) accept {delaySeconds: 0|3|5|10}.
+ // Any action takes sensitiveText (#1804): "prompt" shows the sensitive text
+ // prompt to a person; "report" (the default for session requests) pauses the
+ // operation for operation.decide instead. The tray, hotkeys and the main window send prompt.
+ // agent: an agent's request, whose Copy text withholds a code that holds a secret (#1962).
+ void invoke(const QString& action,JsonReply,const QJsonObject& options={},bool agent=false);
+ // #1804, #1898: settles an operation waiting in sensitive_text_found: redact_upload, edit, upload or cancel.
+ // `prompt`, when above 0, must be the number in the operation's sensitive.prompt.
+ void decideSensitive(const QString& id,const QString& choice,JsonReply,int prompt=0);
+ // #1804: brings a waiting capture's prompt forward (a tray click, a notification's Show). Whether one waits.
+ bool raiseSensitivePrompt(const QString& activationToken={});
+ bool raiseSensitivePrompt(const QString& id,const QString& activationToken);
+ // Whether this capture's prompt is open for a person, waiting for a decision (#1829).
+ bool sensitivePromptWaiting(const QString& id) const;
+ // The number of the prompt a person is shown now for this capture (a file selection can ask once per
+ // file), 0 when its prompt was answered, -1 when no check runs for it: read from the helper's session,
+ // phase and number together.
+ int sensitivePromptNumber(const QString& id) const;
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
  // Relays one recording.* command to the shared recording service.
  void recordingCommand(const QString& command,const QJsonObject& params,JsonReply);
- QString recordingActiveId() const;
  // Tests inject a fake backend; production installs the helper supervisor.
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
  // The interface's resolved scheme ("dark" or "light"), passed to each editor
  // helper so Edit image matches the other windows (#198's rule for putgd-record).
  void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");if(editor_)editor_->setAppearance(editorAppearance_);}
+ ScrollCaptureService& scroll() {return *scroll_;}
+ void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare"){emit explicitRequest();if(!scroll_->active())scrollSensitiveMode_=QStringLiteral("report");}scroll_->command(command,params,std::move(reply));}
+ void setScrollBackend(std::unique_ptr<ScrollBackend> backend) {scroll_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}
- // Tests may run a fixture helper; production always uses the sibling putgd-ui.
- void setEditorHelper(QString path) {editorHelper_=std::move(path);}
+ // Text recognition (#1428): what the Copy text action, text.recognize and
+ // History's Copy text call. Its host journals the operation, removes a completed
+ // or cancelled one's row and copies through the explicit-copy path.
+ TextService& text() {return *text_;}
+ // Tests inject a fake backend; production runs the putgd-ocr helper.
+ void setTextBackend(std::unique_ptr<TextBackend> backend) {text_->setBackend(std::move(backend));}
+ // text.inspect and text.cancel, answered from the service's live state and terminal record.
+ void textCommand(const QString& command,const QJsonObject& params,JsonReply);
+ // Recognizes text from a source (decision 8): the Copy text action,
+ // text.recognize and History's Copy text. params, already checked for shape:
+ // {source: region|window|monitor|desktop|clipboard|file|history, path?,
+ //  historyId?, languages?, copy?, keepResult?, delaySeconds?}.
+ // Screen sources go through the adapter's prepareAcquisition at the points a
+ // capture uses; a region is the adapter's `text` action, which selects as a
+ // region does and never changes what Repeat last region remembers.
+ // Answers {operationId, state} once the operation is journaled.
+ void recognizeText(const QJsonObject& params,JsonReply);
  // The internal action of a diagnostics package upload (#123), outside the
  // sharing actions: recorded in history and deletable like any upload.
  static constexpr const char* diagnosticsAction="diagnostics";
@@ -123,7 +100,7 @@ public:
  // resolved once and stored with the operation. Never a local-only save. Links
  // are copied as for a capture. Answers with the operation ID once it is durable.
  static constexpr const char* fileManagerAction="files";
- void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply);
+ void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"));
  // Refuses upload.files with a retryable error (initializing) while it answers one,
  // e.g. while the startup read of saved credentials is still running.
  void setUploadGate(std::function<Error()> gate) {uploadGate_=std::move(gate);}
@@ -131,21 +108,36 @@ public:
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
+ // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
+ bool operationSettling(const QString& id) const {return settling(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
+ // Tests make reading a just-saved final row back fail, which must not mark the operation (#1579).
+ void setFinalReadbackFailureForTesting(bool fail) {failFinalReadbackForTesting_=fail;}
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
  // The tray needs only the desktop report, without querying storage providers.
  QJsonObject shortcutStatus() const {return source_.capabilities()["shortcuts"].toObject();}
+ QJsonObject desktopSetup() const {return source_.desktopSetup();}
+ void recheckDesktopSetup(std::function<void(QJsonObject)> reply) {source_.recheckDesktopSetup(std::move(reply));}
  QString settingsRevision() const {return settings_.revision();}
+ // The tray's capture delay choice (#1363): saves preferences.captureDelaySeconds.
+ void setCaptureDelayPreference(int seconds);
  // With an item ID, cancels only that file's upload; the batch's other files continue.
  void cancel(const QString& id,JsonReply,const QString& itemId={});
- void retry(const QString& id,JsonReply);
+ // sharingOnly (#1496): finish the operation's wanted share links and nothing else.
+ // Refused with retry_would_upload while any file still needs its upload; skips
+ // local saves, which keep their own Retry local save.
+ void retry(const QString& id,JsonReply,bool sharingOnly=false);
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
  void copyHistoryImage(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
+ // History's QR code image (#1428): an explicit copy of a PNG the caller made,
+ // superseded like copyHistoryUrl when a newer explicit copy took the ticket.
+ quint64 clipboardRevision() const {return source_.clipboardRevision();}
+ void copyHistoryQr(QByteArray png,JsonReply,quint64 ticket,quint64 revision);
  // A history item's missing preview (#190): an image's or a video's that was
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
@@ -163,7 +155,6 @@ public:
  struct CleanupSchedule {int startupDelayMs=60*1000,intervalMs=60*60*1000,followUpMs=60*1000,batch=50;};
  // Tests substitute the schedule (before ready) and the clock retention compares against.
  void setCleanupScheduleForTesting(CleanupSchedule schedule) {cleanupSchedule_=schedule;cleanupTimer_.setInterval(schedule.intervalMs);}
- void setImagePageDelayForTesting(int delayMs) {imagePageDelayMs_=delayMs;}
  void setClockForTesting(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void shutdown();
  QJsonObject capabilities() const;
@@ -174,34 +165,72 @@ public:
  // Free space, system reserve and in-flight imports on the upload store's filesystem.
  QJsonObject artifactDisk() const {return ArtifactStore::diskBudget(root_+"/artifacts").toJson();}
  ProviderRegistry& providers() {return providers_;}
- // Shared services run SQL, encoding, and file/network work on workers.
+ // Shared services run SQL, encoding, and file/network work on workers. Each
+ // finished worker arms the idle heap reclamation once the resident is ready.
  void background(std::function<QJsonObject(Error&)>,JsonReply);
- std::shared_ptr<std::mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
+ // A timed mutex, so a deletion can stop waiting for it when put.gd quits (#1602).
+ std::shared_ptr<std::timed_mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
  // A provider that takes one request at a time for a destination (its credential
  // reference) is leased to one operation's provider work at a time.
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
+ // S3 and B2 destination tests may start: this resident holds the journal lock and has scrubbed
+ // earlier tests' journals (#1680). Unlike ready(), it doesn't wait for History recovery.
+ bool destinationTestsReady() const {return destinationTestsReady_.load();}
+ // Why the journal is not ready: the error that stopped its recovery (kept while the recovery is retried), or "initializing" while the
+ // first attempt is still running. Every reply to a call that needs the journal carries this, never a bare wait message (#1576).
+ Error notReadyError() const {return ready_?Error{}:startupError_?startupError_:Error{"initializing","Wait for resident journal recovery",{}};}
+ // Tests shorten the pause before a failed recovery is retried.
+ void setRecoveryRetryForTesting(int ms) {recoveryRetryMs_=ms;}
  // Ask the idle gate to return freed heap once current work drains (#1149): a
- // history page or a closed interface leaves query buffers free but resident.
+ // closed interface leaves its buffers free but resident. background() arms it itself.
  void requestHeapReclamation();
+ // Release the clean library pages a periodic probe mapped again (#1187), after
+ // the usual quiet. Unlike an interaction, it never postpones a release already due.
+ void requestImagePageRelease();
 signals:
  void initialized();
  void changed(const QString& id);
  // One notification for a live observation batch, independent of durable results.
  void observationsChanged();
  void storageActivityChanged();
+ // #1804: a capture's sensitive text prompt is open for a person; the tray offers it, or a notification does.
+ void sensitivePromptShown(const QString& id);
+ // The accepted configuration changed (Settings, the tray, a patch): what a menu
+ // shows from it is stale until it is read again.
+ void settingsAccepted();
  // An attempt failed outside normal terminal-result delivery (e.g. local retry).
  // Deliver its durable snapshot with the signal: inspecting it asynchronously
  // can report an already acknowledged failure after a subsequent retry.
  void operationError(const QString& operationId,const QJsonObject& operation);
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
+ // The committed snapshot (publicJson) with each resultReady, and after Retry local save,
+ // so a reader never has to look the operation up again after a newer attempt began (#1753).
+ void outcome(const QJsonObject& operation);
+ // An explicit copy of a finished operation's result (Copy result, operation.copy): only the copy
+ // changed, so the error log looks only at it. copy carries the copy's own error.
+ void copyFinished(const QJsonObject& operation,const QJsonObject& copy);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
  void incompleteUploadsKept(const QJsonObject& notice);
+ // History could not save an operation's result (#1579); sent once per resident session.
+ void historyResultsUnsaved();
+ // A text recognition ended (#1428). record is its terminal record, which holds
+ // nothing recognized; notification is the Copy text message for an operation
+ // that asked for a copy (after the clipboard's acknowledgement), else empty.
+ void textFinished(const QString& operationId,const QJsonObject& record,const QString& notification);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
+ // An upload operation's provider work starts, and the operation ends (#1692): the record of
+ // its destination's last check follows what the upload found. Both are sent on this thread.
+ void uploadStarting(const putgd::Operation& operation);
+ void uploadSettled(const putgd::Operation& operation);
+ // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
+ // MCP): an explicit request that shows a put.gd window, so the no-tray startup
+ // recovery must not open Settings over it (#1252).
+ void explicitRequest();
 private:
  // Scoped provider calls count requests, independently of queue/encoding/journal work.
  class StorageActivity {
@@ -233,7 +262,50 @@ private:
  // Retry and manual cleanup requests that arrived during an automatic pass.
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};};
+ // localOnly (#1804): a capture whose sensitive text check was cancelled keeps only its local copy.
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;bool localOnly=false;
+  // #1804: each checked file's identity (device, inode, size, mtime in ns) when it was checked; the upload refuses one that changed.
+  QHash<QString,QString> checkedFiles={};
+  // #1820: a covered upload. `original` is the capture before covering, saved locally with Keep a local copy on;
+  // replacedFiles maps a selected file's place in the selection (as a number) to its covered PNG staged under
+  // covered/ (#1898: a file chosen twice may be covered at one place only); covered sums the kinds covered.
+  // originalIdentities: by the same place, the file's identity when checked. originalFiles: a covered selected
+  // file's item index, its path and its identity when checked.
+  // originalPath: a covered capture's original, written as a private PNG at once so no raster waits in memory;
+  // empty when none was kept, "-" when writing it failed.
+  QString originalPath={};QHash<QString,QString> replacedFiles={};QJsonObject covered={};
+  QHash<QString,QString> originalIdentities={};QList<std::tuple<int,QString,QString>> originalFiles={};
+  // #1893: the PNG came from an editor (Redact and upload), which drew its own style or none.
+  bool fromEditor=false;
+  // #1893: originalPath holds the capture before its style, not before covering.
+  bool styleOriginal=false;
+  // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
+  QByteArray unstyled={};
+  // #1893: the style applied to the payload ({applied, pictureMissing?}), recorded once it is stored.
+  QJsonObject style={};};
+ // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
+ static bool needsStyle(const Job&);
+ // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
+ QSet<QString> styledEdits_;
+ void styleCapture(Job&,Operation&);
+ // #1820: saves a covered upload's original to the archive beside the covered copy; never uploaded.
+ void keepOriginals(Job&,Operation&);
+ // #1820: operations with a check that couldn't finish: their notification never says what was covered.
+ QSet<QString> unfinishedChecks_;
+ static void discardCovered(const QHash<QString,QString>& replaced);
+ // #1804: an upload whose capture is checked for sensitive text first, one check at a time.
+ void admitUpload(Job);
+ bool needsSensitiveCheck(const Job&) const;
+ void pumpChecks();
+ void runCheck(Job);
+ void checkPhase(const QString& id,const QString& phase,const QJsonObject& findings);
+ void checkFinished(const QString& id,std::shared_ptr<Job>,std::shared_ptr<EditorResult>,qint64 elapsedMs);
+ QQueue<Job> checkQueue_;QString checkingId_;
+ QHash<QString,std::shared_ptr<EditorSession>> checkSessions_;
+ QHash<QString,Operation> checkOperations_;
+ QHash<QString,std::shared_ptr<Job>> checkJobs_;
+ QHash<QString,QString> sensitiveModes_;
+ QString scrollSensitiveMode_=QStringLiteral("report");
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
@@ -247,7 +319,7 @@ private:
  // ends, so a slow or failing decode never delays its upload, link or copied
  // result. #190: a preview History asks for on selection goes ahead of those
  // and answers when it is made.
- struct PosterTask {QString operationId,itemId;bool onDemand=false;qint64 budget=0,maximumPixels=0;QElapsedTimer waiting;QList<JsonReply> replies;};
+ struct PosterTask {QString operationId,itemId;bool onDemand=false,allCores=false;qint64 budget=0,maximumPixels=0;QElapsedTimer waiting;QList<JsonReply> replies;};
  void queuePosters(const Operation&);
  void pumpPosters();
  void settlePreview(const PosterTask&,Error,QJsonObject);
@@ -257,6 +329,16 @@ private:
  QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
+ // Operations whose result History could not save (#1579). Their rows stay as last saved until a restart's
+ // recovery fixes them; Retry refuses them until then. One notification per session says so.
+ QSet<QString> unsavedHistory_;
+ bool unsavedHistoryNotified_=false,failFinalReadbackForTesting_=false;
+ void rememberUnsavedHistory(const QString& id);
+ // A finished operation keeps its slot until its link copy and source cleanup are done, while its outcome is already
+ // visible. A Retry then is answered operation_settling, which is worth repeating in a moment (#1578).
+ QSet<QString> finishing_;
+ bool settling(const QString& id) const;
+ void settled(const QString& id);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  // Which guard refused a copy, for the putgd.clipboard log record (#473): the
  // clipboard revision moved, the epoch/invocation moved (`epochGuard` names
@@ -275,7 +357,12 @@ private:
  struct PendingCopy;struct UploadCopy;struct UploadCopyGroup;
  void beginUploadCopies(const Operation&,bool importing=false);
  void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
+ // The sharing actions and Repeat last region, after invoke() has handled recording.
+ void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken,const QString& sensitiveMode);
  QString editorDestination(const Operation&) const;
+ void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
+ // The editor's Copy text (#1428): recognized text or a code's content, as an explicit copy.
+ void copyEditedText(const QString& id,QString text,std::function<void(Error)> done);
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).
  void uploadItemSettled(const QString&,int);
@@ -293,6 +380,9 @@ private:
  QQueue<std::shared_ptr<PendingCopy>> copies_;
  std::shared_ptr<PendingCopy> currentCopy_;
  QSet<QString> clipboardImports_;
+ // What a provider readied ahead of an operation's requests (StorageProvider::anticipate), by operation.
+ void anticipate(const Operation&);
+ QHash<QString,std::shared_ptr<void>> anticipated_;
  quint64 uploadCopyEpoch_=0;
  QString root_;
  QJsonObject locations_;
@@ -306,7 +396,7 @@ private:
  std::shared_ptr<std::atomic<qint64>> payloadBytes_=std::make_shared<std::atomic<qint64>>(0);
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::function<void(const Operation&)>> finishWatchers_;
- QHash<QString,std::weak_ptr<std::mutex>> locks_;
+ QHash<QString,std::weak_ptr<std::timed_mutex>> locks_;
  QHash<QString,std::weak_ptr<DestinationLease>> leases_;
  std::mutex locksMutex_;
  // Upload slots shared by every operation, and each active item's own cancellation.
@@ -320,8 +410,6 @@ private:
  bool heapReclamationPending_=false;
  quint64 heapReclamationCount_=0;
  qint64 lastHeapReclamationUsec_=0;
- // Clean library pages leave this process once it has been quiet for this long.
- int imagePageDelayMs_=30*1000;
  bool imagePagesPending_=false;
  quint64 imagePageReleaseCount_=0;
  qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;
@@ -329,15 +417,31 @@ private:
  quint64 invocation_=0;
  QString selectingId_;
  // At most one editor session exists; it holds no pixels on the session thread.
- QString editingId_,editorHelper_,editorAppearance_=QStringLiteral("dark");std::shared_ptr<EditorSession> editor_;
+ QString editingId_,editorAppearance_=QStringLiteral("dark");std::shared_ptr<EditorSession> editor_;
+ Error acceptScroll(Operation&);
+ QHash<QString,std::function<void()>> scrollEditorReleases_;
+ std::unique_ptr<ScrollCaptureService> scroll_;
  Error acceptRecording(Operation&);
  std::unique_ptr<RecordingService> recording_;
+ Error acceptText(Operation&,const TextService::Acceptance&);
+ // The text operation's own completion branch: no items, uploads or copies of a link.
+ void finishText(Operation);
+ void copyRecognizedText(const Operation&,const QString& text,std::function<void(Error)> done);
+ // The sources this desktop cannot read for text, each with its adapter's own error.
+ QHash<QString,Error> textSourceErrors() const;
+ std::unique_ptr<TextService> text_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;
+ std::atomic_bool destinationTestsReady_{false};
  QString installation_;
  std::function<Error()> uploadGate_;
  Error startupError_;
+ // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
+ // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that
+ // passes does not leave the resident dead until the next start.
+ void recoverJournal();
+ int recoveryRetryMs_=2000,recoveryAttempts_=0;
 };
 // Callback adapters complete once, including ambiguous outcomes. Waiting occurs
 // exclusively on a worker, so the user session remains responsive.

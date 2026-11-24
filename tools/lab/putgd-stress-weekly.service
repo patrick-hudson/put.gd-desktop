@@ -1,6 +1,6 @@
 # User unit for the weekly builder stress lane on k72 (#360). Installed with
 # tools/lab/install-stress-weekly.sh and started by putgd-stress-weekly.timer.
-# See docs/ci.md ("Builder stress lane") and docs/remote-builders.md.
+# See docs/release/ci.md ("Builder stress lane") and docs/lab/remote-builders.md.
 [Unit]
 Description=put.gd weekly stress lane (nightly integration tests under CPU contention)
 After=network-online.target

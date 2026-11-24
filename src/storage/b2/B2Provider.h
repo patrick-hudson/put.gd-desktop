@@ -21,7 +21,11 @@ public:
     Error validateSettings(const QJsonObject&) const override;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
+    void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
+    void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
+    void refreshLinkForCopy(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
+    void statForRemoval(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;
     void abandonUpload(const Destination&, const QJsonObject& journal, std::function<void(Error)>) override;
@@ -33,7 +37,8 @@ public:
 private:
     QJsonObject call(const QString& method, const Destination&, QJsonObject params, Error&, bool* uncertain = nullptr,
                      std::shared_ptr<std::atomic_bool> cancellation = {}, std::function<void(const UploadProgress&)> progress = {},
-                     DurableCheckpoint checkpoint = {});
+                     DurableCheckpoint checkpoint = {}, std::shared_ptr<std::atomic_bool> kill = {},
+                     std::function<int()> lanes = {});
     CredentialStore& credentials_;
     b2::UploadPolicy policy_;
     std::atomic_int active_{0};

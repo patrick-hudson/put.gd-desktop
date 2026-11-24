@@ -12,7 +12,7 @@ export function publicationClientUid(request: JsonObject): string | undefined {
     return 'putgd-' + createHash('sha256').update(JSON.stringify([text(request.destination.credentials.reference), text(request.publicationId)])).digest('hex');
 }
 export const METHODS = new Set(['connect', 'inspectAccount', 'createFolder', 'storeSharePassword',
-    'checkName', 'upload', 'stat', 'reconcile', 'share', 'remove']);
+    'checkName', 'upload', 'stat', 'reconcile', 'share', 'remove', 'warm']);
 export type JsonObject = Record<string, any>;
 export class ProtocolError extends Error {
     constructor(public readonly code: string) { super(code); }
@@ -120,6 +120,18 @@ export function classifyNode(node: JsonObject, ref: JsonObject, publicationId: s
     if (!marker || marker.publicationId !== publicationId || marker.sha256 !== ref.sha256) return 'foreign';
     return 'own';
 }
+// The receipt's own file and revision, read without any of the metadata that revision was uploaded
+// with: the service answered before it had the revision's extended attributes. A revision's
+// metadata never changes, so such a read says nothing either way; it is not another file.
+// `classifyNode` still calls it foreign, and only a file this process has just uploaded is read
+// again on it (see the helper's sharing).
+export function revisionWithoutMetadata(node: JsonObject, ref: JsonObject): boolean {
+    const revision = node.activeRevision;
+    return node.name?.ok === true && node.keyAuthor?.ok === true && node.nameAuthor?.ok === true &&
+        revision?.contentAuthor?.ok === true && !node.errors?.length && node.uid === ref.nodeUid &&
+        node.parentUid === ref.folderUid && node.name.value === ref.name && node.type === 'file' && !node.trashTime &&
+        revision.uid === ref.revisionUid && revision.claimedAdditionalMetadata === undefined && revision.claimedSize === undefined;
+}
 // A fresh check after sharing prevents returning a capability for a changed revision.
 export function shareOutcome(proof: JsonObject, action: string, directUrl: string, ownership: string,
     expirationTime?: Date, now = Date.now()): JsonObject {
@@ -149,7 +161,8 @@ export function failure(code: string): JsonObject {
         account_changed: 'The connected Proton account has changed.', destination_unavailable: 'The selected Proton folder is unavailable.',
         unsupported_safe_removal: 'Proton does not support exact guarded removal.', unsupported_condition: 'Proton supports new files only.',
         unsafe_data_directory: 'The Proton runtime requires a private data directory.', reference_in_use: 'The keychain reference is already in use.',
-        keychain_unavailable: 'The private keychain is unavailable.', artifact_changed: 'The staged artifact has changed.',
+        keychain_unavailable: 'The private keychain is unavailable.',
+        session_unread: 'The saved Proton session could not be read from the keychain; the request is made again.', artifact_changed: 'The staged artifact has changed.',
         account_reference_in_use: 'Use a new account reference to connect a replacement account.',
         upload_draft_conflict: 'An unfinished upload reserves this name. Retry can use another name under the configured rename policy.',
         operation_failed: 'The Proton operation could not be completed.', operation_unknown: 'The Proton operation outcome is unknown.',

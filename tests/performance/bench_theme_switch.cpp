@@ -2,6 +2,7 @@
 // with History (gallery view, synthetic captures) built and Settings showing,
 // through the production UiApplicationController and an in-process resident.
 // Synthetic measurement only. This does not establish desktop support.
+#include "fixtures/ControlDevice.h"
 #include "fixtures/UiSessionFixture.h"
 #include "ui/UiApplicationController.h"
 #include "ui/MainWindow.h"
@@ -25,16 +26,6 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
-class ControlDevice final:public QIODevice {
-public:
- QByteArray input,output;quint64 sequence=0;
- ControlDevice(){open(ReadWrite|Unbuffered);}
- bool isSequential()const override{return true;}
- qint64 bytesAvailable()const override{return input.size();}
- qint64 readData(char* data,qint64 max)override{const auto n=qMin(max,qint64(input.size()));memcpy(data,input.constData(),n);input.remove(0,n);return n;}
- qint64 writeData(const char* data,qint64 n)override{output.append(data,n);if(output.size()>(1<<20))output=output.right(1<<16);return n;}
- void send(const QString& type,QJsonObject payload={}){input+=QJsonDocument(QJsonObject{{"version",1},{"type",type},{"sequence",QString::number(++sequence)},{"payload",payload}}).toJson(QJsonDocument::Compact)+'\n';emit readyRead();}
-};
 bool waitUntil(const std::function<bool()>& condition,int ms=8000){QElapsedTimer timer;timer.start();while(!condition()&&timer.elapsed()<ms)QTest::qWait(10);return condition();}
 QImage capture(int index){
  QImage image(960,600,QImage::Format_RGB32);image.fill(QColor::fromHsv((index*37)%360,90,70));QPainter p(&image);
@@ -56,8 +47,8 @@ int main(int argc,char** argv){
  SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(doc,{}))return 2;
  ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);if(!waitUntil([&]{return operations.ready();}))return 2;
  const int items=24;const auto now=QDateTime::currentDateTimeUtc();
- {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){const auto path=data.filePath(QString("synthetic-%1.png").arg(i));if(!capture(i).save(path))return 2;Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action="region";op.created=now.addSecs(-60-i*30).toString(Qt::ISODateWithMs);op.state="completed";op.copyStatus="not_requested";op.settings=settings.snapshot();OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=QString("Screenshot %1.png").arg(i);item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status="saved";item.local.path=path;item.uploadStatus="not_requested";op.items.append(item);if(ledger.saveOperation(op))return 2;}}
- HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+ {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){const auto path=data.filePath(QString("synthetic-%1.png").arg(i));if(!capture(i).save(path))return 2;Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action="region";op.created=now.addSecs(-60-i*30).toString(Qt::ISODateWithMs);op.restore(OperationState::Completed);op.copyStatus="not_requested";op.settings=settings.snapshot();OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=QString("Screenshot %1.png").arg(i);item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status="saved";item.local.path=path;item.uploadStatus="not_requested";op.items.append(item);if(ledger.saveOperation(op))return 2;}}
+ HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device(1<<20);UiControl control(device);UiApplicationController controller(fixture.session,control,{});
  double accepted=-1;QObject::connect(&settings,&SettingsService::accepted,&app,[&]{if(accepted<0)accepted=clock.nsecsElapsed()/1e6;});
  device.send("activate",{{"view","history"}});
  auto* window=qobject_cast<MainWindow*>(QApplication::topLevelWidgets().isEmpty()?nullptr:[]{for(auto* w:QApplication::topLevelWidgets())if(qobject_cast<MainWindow*>(w))return w;return static_cast<QWidget*>(nullptr);}());

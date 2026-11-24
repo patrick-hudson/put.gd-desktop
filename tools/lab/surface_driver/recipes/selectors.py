@@ -250,6 +250,12 @@ def _cancel_region(ctx, oid, key="Esc"):
     ctx.expect(not op.get("items"), "cancel creates no artifact")
 
 
+def _requester_hidden(caps):
+    # KWin 6.6+ leaves the requesting client's windows out of its own stream (#1246).
+    return consent.acquisition(caps, {"kind": "region"}) == "kde-screencast" \
+        and caps.get("kdeScreencast", {}).get("hidesRequester") is True
+
+
 def _open_record(ctx, entire=False, rect=None):
     caps = _call(ctx, "recording.capabilities")
     if not caps.get("formats"):
@@ -843,10 +849,22 @@ def bar_handle(ctx):
         rid = _ready(ctx, entire=True)
         try:
             _frame(ctx, "before", window="bar", reference=BAR)
-            ctx.expect(_inspect(ctx, rid)["overlayPlacement"] == "handle", "full-screen target requires handle")
+            hidden = _requester_hidden(_call(ctx, "recording.capabilities"))
+            expected = "hidden" if hidden else "handle"
+            ctx.expect(_inspect(ctx, rid)["overlayPlacement"] == expected, "full-screen target requires " + expected)
             full = ctx.geometry("bar")
             _start(ctx, rid)
             handle = ctx.geometry("bar")
+            if hidden:
+                # The bar is sized to its content, so recording may differ a little from ready.
+                ctx.note("hidden placement bar width: ready=%d recording=%d" % (full["width"], handle["width"]))
+                ctx.expect(handle["width"] > full["width"] / 2 and _visible(ctx, "Pause"),
+                           "hidden placement keeps the full bar while recording")
+                _frame(ctx, "recording", window="bar")
+                _stop(ctx, rid)
+                _frame(ctx, "after", window="review", reference="30-review")
+                ctx.review("KWin hides the requester, so the bar stays full size and has no handle to collapse (#1246).")
+                return
             ctx.expect(handle["width"] < full["width"], "recording collapses the ready bar")
             _frame(ctx, "handle", window="bar")
             _stop(ctx, rid)

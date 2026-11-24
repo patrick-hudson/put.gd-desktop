@@ -22,11 +22,11 @@
 #include <algorithm>
 namespace putgd {
 namespace {
-const QStringList nameKeys{"name","candidate","fileName","folderName","label","notificationText"};
-const QStringList urlKeys{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl"};
-const QStringList objectKeys{"key","objectKey","objectPrefix"};
-const QStringList idKeys{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};
-const QStringList pathKeys{"path","localPath","previewPath","directory","stagingPath","root","from","to","modulePath","configPath"};
+const QStringList& nameKeys() {static const QStringList value{"name","candidate","fileName","folderName","label","notificationText"};return value;}
+const QStringList& urlKeys() {static const QStringList value{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};return value;}
+const QStringList& objectKeys() {static const QStringList value{"key","objectKey","objectPrefix"};return value;}
+const QStringList& idKeys() {static const QStringList value{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid","accountId"};return value;}
+const QStringList& quickRedactKeys() {static const QStringList value{"quickRedactTerms","quickRedactPatterns"};return value;}
 QString iso(const QDateTime& time) {return time.toUTC().toString(Qt::ISODateWithMs);}
 QByteArray compact(const QJsonValue& value) {return value.isArray()?QJsonDocument(value.toArray()).toJson(QJsonDocument::Indented):QJsonDocument(value.toObject()).toJson(QJsonDocument::Indented);}
 QString sha256(const QByteArray& bytes) {return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());}
@@ -71,7 +71,7 @@ PackageRedactor::PackageRedactor(bool includeNames):names_(includeNames) {
 void PackageRedactor::root(const QString& path,const QString& placeholder) {
  const auto clean=QDir::cleanPath(path);
  if(path.isEmpty()||clean=="/"||!QDir::isAbsolutePath(clean))return;
- for(const auto& existing:roots_)if(existing.path==clean)return;
+ for(const auto& existing:std::as_const(roots_))if(existing.path==clean)return;
  roots_.append({clean,placeholder,QRegularExpression(QRegularExpression::escape(clean)+"(?=$|[/\\s\"'<>,;:)\\]}])")});
  std::sort(roots_.begin(),roots_.end(),[](const Root& a,const Root& b){return a.path.size()>b.path.size();});
 }
@@ -91,7 +91,7 @@ QString PackageRedactor::token(const QString& kind,const QString& value) const {
 void PackageRedactor::compile() const {
  if(compiled_)return;
  auto values=literals_.keys();std::sort(values.begin(),values.end(),[](const QString& a,const QString& b){return a.size()>b.size();});
- QStringList escaped;for(const auto& value:values)escaped.append(QRegularExpression::escape(value));
+ QStringList escaped;for(const auto& value:std::as_const(values))escaped.append(QRegularExpression::escape(value));
  literalPattern_=QRegularExpression(escaped.isEmpty()?QStringLiteral("(?!)"):escaped.join('|'));
  compiled_=true;
 }
@@ -132,15 +132,20 @@ QString PackageRedactor::text(const QString& input) const {
  return result+text.mid(last);
 }
 QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) const {
+ // Quick redact's word list and patterns (#1618) are the user's own words: no
+ // package carries them, with names or without, only how many there are.
+ if(quickRedactKeys().contains(key))return QJsonObject{{"count",value.isArray()?int(value.toArray().size()):value.isUndefined()||value.isNull()?0:1}};
  if(value.isString()) {
   const auto string=value.toString();
   if(string.isEmpty())return value;
   if(!names_) {
-   if(nameKeys.contains(key))return token("name",string);
-   if(urlKeys.contains(key))return token("url",string);
-   if(objectKeys.contains(key))return token("key",string);
-   if(idKeys.contains(key))return token("id",string);
+   if(nameKeys().contains(key))return token("name",string);
+   if(urlKeys().contains(key))return token("url",string);
+   if(objectKeys().contains(key))return token("key",string);
+   if(idKeys().contains(key))return token("id",string);
    if(key=="bucket")return token("bucket",string);
+   // A Nextcloud destination's folder is a name the user chose (#1872).
+   if(key=="folder")return token("name",string);
    if(key=="endpoint")return token("endpoint",string);
   }
   return text(string);
@@ -185,6 +190,16 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  Context context;
  context.databasePath=operations_.databasePath();context.logsDirectory=stateRoot_+"/logs";context.defaultFolder=defaultFolder(snapshot);
  context.home=QDir::homePath();context.settings=snapshot.document;
+ // Each provider says what of its settings a package may carry: a custom uploader
+ // keeps the names of its headers, parameters and arguments and drops every value (#1361).
+ {
+  auto profiles=context.settings["profiles"].toArray();
+  for(qsizetype index=0;index<profiles.size();++index) {
+   auto profile=profiles[index].toObject();
+   if(const auto provider=operations_.providers().find(profile["provider"].toString())) {profile["settings"]=provider->diagnosticSettings(profile["settings"].toObject());profiles[index]=profile;}
+  }
+  context.settings["profiles"]=profiles;
+ }
  context.diagnostics=diagnostics_?diagnostics_():operations_.diagnostics();
  context.environment=environment_?environment_():QJsonObject{};
  const auto locations=context.diagnostics["locations"].toObject();
@@ -209,7 +224,7 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  });
 }
 QString DiagnosticsBundles::defaultUploadProfile(const Settings& settings) {
- for(const auto& action:QStringList{"region","window","desktop","clipboard","edit",Settings::recordingActionName()}) {
+ for(const auto& action:QStringList{"region","window","desktop","clipboard","edit","monitor","scroll",Settings::recordingActionName()}) {
   const auto route=settings.actions.value(action);
   if(route.destination=="upload"&&settings.profiles.contains(route.profileId))return route.profileId;
  }
@@ -227,7 +242,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
  const auto profile=snapshot.profiles.value(profileId);
  if(profile.isEmpty()){done({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
  const auto provider=profile["provider"].toString();const bool proton=provider=="proton-drive";
- const auto settings=profile["settings"].toObject();const bool authorizedB2=provider=="backblaze-b2"&&settings["linkMode"]=="authorized";
+ const auto settings=profile["settings"].toObject();const bool authorizedB2=(provider=="backblaze-b2"&&settings["linkMode"]=="authorized")||((provider=="s3"||provider=="cloudflare-r2")&&settings["linkMode"]=="presigned");
  QJsonObject target{{"profileId",profileId},{"label",profile["label"].toString()},{"provider",provider},{"publicLink",true},
   {"warning",proton?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days.").arg(OperationService::diagnosticsShareDays)
    :authorizedB2?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days. Delete it from History when it is no longer needed.").arg(settings["linkValidityDays"].toInt(7))
@@ -241,7 +256,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
   if(error||!last||last->destination.settings!=settings||last->destination.credentialReference!=credentials)return QJsonObject{};
   // The newest upload to this destination: an item or operation error, if any.
   Error failure=last->error;for(const auto& item:last->items)if(item.uploadStatus=="failed"&&item.error)failure=item.error;
-  return QJsonObject{{"operationId",last->id},{"state",last->state},{"created",last->created},{"error",failure.toJson()}};
+  return QJsonObject{{"operationId",last->id},{"state",last->stateName()},{"created",last->created},{"error",failure.toJson()}};
  },[guarded,profileId,revision,target,done](Error error,QJsonObject last) {
   if(!guarded)return;
   if(error){done(error,{});return;}
@@ -294,12 +309,12 @@ void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,
    if(accepted)settle(result,accepted);
   },[guarded,result,settle,copyLink](const Operation& op) mutable {
    if(!guarded)return;
-   auto upload=result["upload"].toObject();upload["operationId"]=op.id;upload["state"]=op.state;
+   auto upload=result["upload"].toObject();upload["operationId"]=op.id;upload["state"]=op.stateName();
    const auto item=op.items.value(0);
    if(!item.candidate.isEmpty())upload["name"]=item.candidate;
    if(item.artifact.id.size())upload["historyId"]=item.artifact.id;
    result["upload"]=upload;
-   if(op.state!="completed"||item.uploadStatus!="uploaded") {
+   if(op.state()!=OperationState::Completed||item.uploadStatus!="uploaded") {
     auto error=item.error?item.error:op.error?op.error:Error{"diagnostics_upload_failed","The package was not uploaded",{}};
     error.details["operationId"]=op.id;settle(result,error);return;
    }
@@ -333,7 +348,7 @@ QJsonObject DiagnosticsBundles::coredumps(const QString& configured,const QDateT
  // coredumpctl exits 1 with nothing on stdout when no dump matches.
  if(status==1&&listing.trimmed().isEmpty())return {{"available",true},{"entries",QJsonArray{}}};
  if(status!=0||parse.error!=QJsonParseError::NoError||!document.isArray())return {{"available",false},{"reason","coredumpctl_failed"},{"entries",QJsonArray{}}};
- static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-kde-region","putgd-record","putgd-s3-worker","putgd-cli"};
+ static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-region","putgd-record","putgd-s3-worker","putgd-cli"};
  QList<QJsonObject> matches;
  for(const auto& value:document.array()) {
   const auto dump=value.toObject();
@@ -378,7 +393,15 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("label",profile["label"].toString());
   redactor.literal("bucket",settings["bucket"].toString());redactor.literal("endpoint",settings["endpoint"].toString());
   redactor.literal("url",settings["publicUrlBase"].toString());redactor.literal("name",settings["folderName"].toString());
-  for(const auto* key:{"accountRootUid","folderUid"})redactor.literal("id",settings[key].toString());
+  redactor.literal("url",settings["requestUrl"].toString());
+  // Nextcloud and WebDAV (#1872): the server, folder and link addresses, and the account's name.
+  for(const auto* key:{"server","address","linkBase"})redactor.literal("url",settings[key].toString());
+  redactor.literal("name",settings["accountName"].toString());redactor.literal("name",settings["folder"].toString());
+  // Cloudflare R2's account ID also names its endpoint host in logs and errors (#1699).
+  for(const auto* key:{"accountRootUid","folderUid","accountId"})redactor.literal("id",settings[key].toString());
+  // An SFTP destination's server, user and folder name private machines and people (#1871); ssh's
+  // last error line, which an error message may carry, names them too.
+  if(profile["provider"]=="sftp"){const auto server=settings["server"].toString();redactor.literal("host",server);redactor.literal("host",server.startsWith('[')?server.section(']',0,0).mid(1):server.section(':',0,0));redactor.literal("name",settings["user"].toString());redactor.literal("name",settings["folder"].toString());}
  }
  HistoryStore store(context.databasePath);if(store.error()){error=store.error();return {};}
  QList<Operation> operations;
@@ -411,7 +434,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   }
  }
  const auto uploadedPackage=[&uploadedPackages](const QByteArray& line){for(const auto& needle:uploadedPackages)if(line.contains(needle))return true;return false;};
- for(const auto& op:operations)for(const auto& item:op.items) {
+ for(const auto& op:std::as_const(operations))for(const auto& item:op.items) {
   redactor.literal("name",item.artifact.name);redactor.literal("path",item.artifact.path);redactor.literal("path",item.artifact.previewPath);
   redactor.literal("name",item.candidate);redactor.literal("key",item.objectReference["key"].toString());
   redactor.literal("url",item.receipt.directUrl);redactor.literal("path",item.local.path);
@@ -420,10 +443,10 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // minutes before it was accepted to ten minutes after its last record.
  QDir logs(context.logsDirectory);auto files=logs.entryList({"putgd-*.jsonl"},QDir::Files,QDir::Name);std::reverse(files.begin(),files.end());
  QHash<QString,QByteArray> contents;
- for(const auto& name:files)contents.insert(name,readBounded(logs.filePath(name),64LL*1024*1024));
+ for(const auto& name:std::as_const(files))contents.insert(name,readBounded(logs.filePath(name),64LL*1024*1024));
  if(!request.operationId.isEmpty()) {
   QString last;const auto needle="\"operationId\":\""+request.operationId.toUtf8()+"\"";
-  for(const auto& name:files)for(const auto& line:contents.value(name).split('\n'))if(line.contains(needle)){const auto time=QJsonDocument::fromJson(line).object()["time"].toString();if(time>last)last=time;}
+  for(const auto& name:std::as_const(files))for(const auto& line:contents.value(name).split('\n'))if(line.contains(needle)){const auto time=QJsonDocument::fromJson(line).object()["time"].toString();if(time>last)last=time;}
   const auto end=QDateTime::fromString(last,Qt::ISODateWithMs);
   to=end.isValid()?qMin(now,end.addSecs(600)):now;
  }
@@ -452,22 +475,22 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // Count upload attempts from the window's records before choosing lines.
  struct Line {QString time;QByteArray bytes;};QList<Line> selected;qint64 used=0,dropped=0,eligible=0;
  const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+coredumpBytes.size()+256*1024;
- for(const auto& name:files) for(const auto& raw:contents.value(name).split('\n')) {
+ for(const auto& name:std::as_const(files)) for(const auto& raw:contents.value(name).split('\n')) {
   if(raw.isEmpty()||uploadedPackage(raw))continue;
   const auto object=QJsonDocument::fromJson(raw).object();const auto time=object["time"].toString();
   if(time.isEmpty()||time<fromText||time>toText)continue;
   if(object["message"]=="Upload attempt")attempts[object["itemId"].toString()]+=1;
  }
- for(const auto& op:operations) {
+ for(const auto& op:std::as_const(operations)) {
   QJsonArray items;for(const auto& item:op.items)items.append(itemSummary(item,attempts.value(item.artifact.id)));
-  QJsonObject summary{{"id",op.id},{"action",op.action},{"state",op.state},{"phase",op.phase},{"created",op.created},{"cancelled",op.cancelled},
+  QJsonObject summary{{"id",op.id},{"action",op.action},{"state",op.stateName()},{"phase",op.phase},{"created",op.created},{"cancelled",op.cancelled},
    {"copyStatus",op.copyStatus},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",items}};
   if(op.error)summary["error"]=op.error.toJson();
   operationList.append(summary);
  }
  const auto operationsBytes=compact(redactor.json(operationList,"operations"));
  const qint64 budget=maximumBytes-fixedBytes-operationsBytes.size();
- for(const auto& name:files) {
+ for(const auto& name:std::as_const(files)) {
   const auto lines=contents.value(name).split('\n');
   for(auto it=lines.crbegin();it!=lines.crend();++it) {
    if(it->isEmpty()||uploadedPackage(*it))continue;
@@ -497,7 +520,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // would go, from the same selection, and writes nothing.
  if(request.preview) {
   QJsonArray names;names.append("manifest.json");for(const auto& entry:entries)names.append(entry.first);
-  QJsonArray summaries;for(const auto& value:operationList){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
+  QJsonArray summaries;for(const auto& value:std::as_const(operationList)){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
   const QFileInfo output(request.output);
   const auto folder=request.output.isEmpty()?context.defaultFolder:output.isDir()?output.absoluteFilePath():output.absolutePath();
   return {{"preview",true},{"files",names},{"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"operations",operationList.size()},

@@ -24,8 +24,13 @@ const SNI_WATCHER_PATH = '/StatusNotifierWatcher';
 const CHUNK = 65536;
 // Capture sources the Shell can prepare; Edit & upload binds its own key and
 // prepares a native region selection.
-const SOURCES = ['region', 'window', 'desktop', 'clipboard'];
-const ACTIONS = [...SOURCES, 'edit', 'record'];
+// monitor (#1363) is the monitor under the pointer, frozen at Prepare; repeat is
+// a rectangle the resident remembered, passed to Acquire with its layout key.
+const SOURCES = ['region', 'window', 'desktop', 'clipboard', 'monitor', 'repeat'];
+// text (#1428, extension version 23) is Copy text: its key prepares a native
+// region selection, as edit's does.
+const ACTIONS = [...SOURCES, 'edit', 'record', 'scroll', 'text'];
+const DELAYS = [3, 5, 10];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
 <method name="SetUiProcess"><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
@@ -34,6 +39,7 @@ const XML = `<node><interface name="${IFACE}">
 <method name="Prepare"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Preview"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Acquire"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Countdown"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Read"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Release"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="BeginCopy"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="s" direction="out"/></method>
@@ -43,6 +49,13 @@ const XML = `<node><interface name="${IFACE}">
 <method name="SelectArea"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="ShowRecordingFrame"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="HideRecordingFrame"><arg type="s" direction="out"/></method>
+<method name="RecordingWindows"><arg type="s" direction="out"/></method>
+<method name="WatchClicks"><arg type="s" direction="out"/></method>
+<method name="UnwatchClicks"><arg type="s" direction="out"/></method>
+<method name="WatchPointer"><arg type="s" direction="out"/></method>
+<method name="UnwatchPointer"><arg type="s" direction="out"/></method>
+<signal name="Click"><arg type="s"/></signal>
+<signal name="Pointer"><arg type="s"/></signal>
 <signal name="Action"><arg type="s"/><arg type="s"/></signal>
 <signal name="ClipboardChanged"><arg type="t"/></signal>
 <signal name="CapabilitiesChanged"/>
@@ -76,7 +89,70 @@ function limitsFrom(json) {
         'bridge_protocol', 'Invalid capture outcome');
     check(value.regionMode === undefined || value.regionMode === 'screenshot_first',
         'bridge_protocol', 'Invalid region selection mode');
+    // Capture version 2 (#1363): a delay for a live region, and a repeat's area.
+    check(value.delaySeconds === undefined || DELAYS.includes(value.delaySeconds),
+        'bridge_protocol', 'Invalid capture delay');
+    check(value.area === undefined || (Array.isArray(value.area) && value.area.length === 4 &&
+        value.area.every(n => Number.isFinite(n) && Math.abs(n) <= 1e7) && value.area[2] > 0 && value.area[3] > 0),
+    'bridge_protocol', 'Invalid repeat area');
+    check(value.layoutKey === undefined || (typeof value.layoutKey === 'string' && value.layoutKey.length <= 2048),
+        'bridge_protocol', 'Invalid repeat layout');
     return value;
+}
+// Delayed capture (#1363): the countdown pill. A reactive label in the Shell's
+// chrome, at the top centre of one monitor: it takes no grab and no focus, so
+// the window underneath keeps its hover and key state, and a click on it
+// cancels. finished resolves true at expiry and false on a click or cancel(),
+// with the actor already destroyed, so a capture that follows cannot contain it.
+class CaptureCountdown {
+    constructor(seconds, monitor, appearance = {}) {
+        this._remaining = seconds;
+        // The resident resolves System/Dark/Light and supplies the app tokens.
+        const style = RegionSelection.pillStyle(appearance.tokens ??
+            RegionSelection.pillTokens(new Gio.Settings({schema_id: 'org.gnome.desktop.interface'}).get_string('color-scheme')));
+        this._label = new St.Label({reactive: true, track_hover: true, text: CaptureCountdown.text(seconds), style,
+            accessible_name: 'Capture countdown'});
+        this._label.connect('button-release-event', () => {
+            this._settle(false);
+            return Clutter.EVENT_STOP;
+        });
+        // Shell 50 picks reactive chrome by itself; its chrome parameters are only
+        // trackFullscreen and affectsStruts, and any other name throws.
+        Main.layoutManager.addTopChrome(this._label, {trackFullscreen: false});
+        const [, width] = this._label.get_preferred_width(-1);
+        // Below the top bar on the monitor that has it.
+        const bar = monitor.index === Main.layoutManager.primaryIndex ? Main.panel.height : 0;
+        this._label.set_position(Math.round(monitor.x + (monitor.width - width) / 2), monitor.y + bar + 24);
+        this.finished = new Promise(resolve => { this._resolve = resolve; });
+        this._timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            if (--this._remaining > 0) {
+                this._label.set_text(CaptureCountdown.text(this._remaining));
+                return GLib.SOURCE_CONTINUE;
+            }
+            this._timer = 0;
+            this._settle(true);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+    static text(remaining) {
+        return `Capturing in ${remaining} · Click to cancel`;
+    }
+    _settle(expired) {
+        if (!this._resolve)
+            return;
+        if (this._timer)
+            GLib.source_remove(this._timer);
+        this._timer = 0;
+        Main.layoutManager.removeChrome(this._label);
+        this._label.destroy();
+        this._label = null;
+        const resolve = this._resolve;
+        this._resolve = null;
+        resolve(expired);
+    }
+    cancel() {
+        this._settle(false);
+    }
 }
 // The recording helper's control bar, a frameless Qt window the Shell places.
 const RECORDING_BAR_TITLE = 'put.gd recording controls';
@@ -134,18 +210,76 @@ function barPlacement(rect, size, areas, allowOutside = true, gap = 10) {
     return {rect: inside, outside: !overlaps(inside, rect)};
 }
 
+// The helper's bar window for as long as the Shell may touch it. A Meta.Window
+// object outlives its window: JS still holds it after Mutter has unmanaged the
+// window (the helper hid its bar, exited or was killed), and its actor stays
+// listed while the close animation runs. Moving such a window crashes the
+// Shell, and a Shell crash ends a Wayland session: meta_window_move_frame()
+// asks the window's surface for its toplevel window, gets none and reads
+// through NULL (GNOME Shell 50.6, SIGSEGV in meta_window_update_monitor,
+// 2026-11-11, #1376). `live` therefore turns false the moment Mutter starts to
+// unmanage the window, and no Meta.Window method is called on a bar that is
+// not live.
+class BarWindow {
+    constructor(window) {
+        this.window = window;
+        this.live = true;
+        this.onGone = null;
+        this._ids = ['unmanaging', 'unmanaged'].map(signal => window.connect(signal, () => {
+            this.release();
+            this.onGone?.();
+        }));
+    }
+    connect(signal, handler) {
+        if (this.live)
+            this._ids.push(this.window.connect(signal, handler));
+    }
+    release() {
+        this.live = false;
+        for (const id of this._ids.splice(0))
+            this.window.disconnect(id);
+    }
+}
+
 // The ready ring just outside the recorded rectangle and, while recording, dim
 // strips over everything else except the bar. Plain non-reactive Shell actors:
 // input passes through them and none overlaps the recorded pixels, so the area
 // stream never contains them.
+//
+// `beat` (a scroll capture, #1376): Mutter's area stream is driven by damage
+// inside its area. A page that has stopped moving sends nothing, and a newly
+// linked stream does not always begin with the screen as it is: at 125% and,
+// on some logins, at 100% a capture whose image was complete ended "lost
+// track", because no fresh frame proved the end (Fedora 44, GNOME 50.6,
+// 2026-11-11). So while the frame shows, one transparent pixel of the Shell's
+// own sits at the rectangle's corner and is queued for redraw every 40 ms:
+// nothing is drawn, and the stream sends a frame for each (7 in 300 ms of a
+// still page, measured). Queueing the same pixel on the stage with a clip,
+// which is what Mutter does for its own follow-up frames, sent none.
+const BEAT_MS = 40;
+// A scroll capture's bar gives the keyboard focus back this often while a
+// mouse button is held on it.
+const FOCUS_WAIT_MS = 50;
 class RecordingFrame {
     constructor() {
         this._actors = [];
+        this._beat = 0;
     }
-    show(rect, kind, dimmed, bar) {
+    show(rect, kind, dimmed, bar, beat = false) {
         this.destroy();
         this._shown = [rect, kind, dimmed];
         this._bar = bar;
+        this._beating = beat;
+        if (beat) {
+            const pixel = new St.Widget({reactive: false, can_focus: false, track_hover: false,
+                x: rect[0], y: rect[1], width: 1, height: 1, style: 'background-color: rgba(0, 0, 0, 0);'});
+            Main.uiGroup.add_child(pixel);
+            this._actors.push(pixel);
+            this._beat = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BEAT_MS, () => {
+                pixel.queue_redraw();
+                return true;
+            });
+        }
         const add = (r, color) => {
             if (r[2] <= 0 || r[3] <= 0)
                 return;
@@ -174,11 +308,14 @@ class RecordingFrame {
     // The bar moved: cut its new spot out of the dim strips.
     moveBar(bar) {
         if (this._shown && this._bar && this._shown[2] && (bar[0] !== this._bar[0] || bar[1] !== this._bar[1] || bar[2] !== this._bar[2] || bar[3] !== this._bar[3]))
-            this.show(...this._shown, bar);
+            this.show(...this._shown, bar, this._beating);
         else if (this._bar)
             this._bar = bar;
     }
     destroy() {
+        if (this._beat)
+            GLib.source_remove(this._beat);
+        this._beat = 0;
         for (const actor of this._actors)
             actor.destroy();
         this._actors = [];
@@ -774,6 +911,7 @@ export default class PutgdExtension extends Extension {
         this._selector = null;
         this._revision = 1;
         this._copyEpoch = 0;
+        this._frameEpoch = 0;
         this._uiProcess = 0;
         this._uiProcessOwner = null;
         this._selection = global.display.get_selection();
@@ -785,15 +923,22 @@ export default class PutgdExtension extends Extension {
         });
         this._layoutSignal = Main.layoutManager.connect('monitors-changed', () => {
             for (const [id, request] of this._requests) {
-                if (request.action && request.action !== 'clipboard')
+                if (request.action && request.action !== 'clipboard' && request.action !== 'countdown')
                     this._drop(id, 'display_changed', 'Display layout changed during capture');
             }
         });
         this._sessionSignal = Main.sessionMode.connect('updated', () => {
             if (Main.sessionMode.isLocked) {
-                for (const id of this._requests.keys())
-                    this._drop(id, 'helper_unavailable', 'GNOME session locked');
+                // A delay that ends on a locked screen captures nothing (#1363).
+                for (const [id, request] of this._requests) {
+                    if (request.countdown)
+                        this._drop(id, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+                    else
+                        this._drop(id, 'helper_unavailable', 'GNOME session locked');
+                }
                 this._hideRecordingFrame();
+                this._unwatchClicks();
+                this._unwatchPointer();
             }
         });
         this._acceleratorSignal = global.display.connect('accelerator-activated', (_display, id) => {
@@ -806,6 +951,8 @@ export default class PutgdExtension extends Extension {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'Resident application disconnected');
                 this._hideRecordingFrame();
+                this._unwatchClicks();
+                this._unwatchPointer();
                 this._unbind();
                 this._uiProcess = 0;
                 this._uiProcessOwner = null;
@@ -823,9 +970,19 @@ export default class PutgdExtension extends Extension {
         this._enabled = false;
         this._trayTooltip?.disable();
         this._trayTooltip = null;
-        for (const id of this._requests.keys())
-            this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        // The Shell disables extensions when it locks, sometimes before the
+        // session handler above has run: a counting request then ends on a
+        // locked screen, which is not a helper that broke.
+        const locked = Main.sessionMode.isLocked;
+        for (const [id, request] of [...this._requests]) {
+            if (locked && request.countdown)
+                this._drop(id, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+            else
+                this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        }
         this._hideRecordingFrame();
+        this._unwatchClicks();
+        this._unwatchPointer();
         this._unbind();
         if (this._ownerSignal)
             this._selection.disconnect(this._ownerSignal);
@@ -914,6 +1071,10 @@ export default class PutgdExtension extends Extension {
             request.selector = null;
             this._selector = null;
         }
+        if (request.countdown) {
+            request.countdown.cancel();
+            request.countdown = null;
+        }
         request.data = null;
         request.parts = null;
         request.window = null;
@@ -955,7 +1116,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 1, previewVersion: 1}));
+            recordingVersion: 3, previewVersion: 1, captureVersion: 2, pointerWatchVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -996,9 +1157,53 @@ export default class PutgdExtension extends Extension {
             request.actor = actor;
             request.frame = rectangle(window.get_frame_rect());
         }
+        // The monitor under the pointer, frozen with the request like a window's focus.
+        if (action === 'monitor')
+            request.monitor = global.display.get_current_monitor();
         request.layout = action === 'clipboard' ? null : await this._layout(request.cancellable);
         this._alive(request);
+        if (action === 'monitor')
+            check(request.layout[request.monitor], 'capture_target', 'The pointer is not over a monitor');
         return {version: 1, requestId: id};
+    }
+
+    // What "the same layout" means for Repeat last region: each monitor's
+    // connectors, logical rectangle, scale and rotation, in the Shell's order.
+    _layoutKey(layout) {
+        return JSON.stringify(layout.map(m => [m.identity, m.logical, m.density, m.rotation]));
+    }
+
+    // Shows the countdown for a request and waits for it. A click cancels the
+    // request; a drop (Release, lock, disable) ends the countdown through _drop.
+    async _countdown(request, seconds, monitor, appearance) {
+        check(!request.countdown, 'bridge_protocol', 'A countdown is already running for this request');
+        const countdown = new CaptureCountdown(seconds, monitor, appearance);
+        request.countdown = countdown;
+        request.stage = 'countdown';
+        const expired = await countdown.finished;
+        if (request.countdown === countdown)
+            request.countdown = null;
+        this._alive(request);
+        check(expired, 'cancelled', 'Capture countdown cancelled');
+        check(!Main.sessionMode.isLocked, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+    }
+
+    // Delayed capture (#1363) for everything but a live region: the countdown
+    // alone, before the resident prepares the capture. It freezes no target and
+    // reads no pixels.
+    CountdownAsync([id, json], invocation) {
+        this._run(invocation, async sender => {
+            check(json.length <= 4096, 'bridge_protocol', 'Countdown options exceed the control-message limit');
+            const options = JSON.parse(json);
+            check(DELAYS.includes(options.seconds), 'bridge_protocol', 'Invalid capture delay');
+            const request = this._new(id, sender);
+            request.action = 'countdown';
+            const monitor = Main.layoutManager.monitors[global.display.get_current_monitor()] ?? Main.layoutManager.primaryMonitor;
+            check(monitor, 'capture_geometry', 'No enabled monitor is available');
+            await this._countdown(request, options.seconds, monitor, options.appearance ?? {});
+            this._finish(id);
+            return {version: 1, requestId: id};
+        });
     }
 
     async _hotkey(action) {
@@ -1009,16 +1214,16 @@ export default class PutgdExtension extends Extension {
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
             // A selection needs the pointer and keyboard put.gd's open tray menu
             // holds, and must not show that menu (#924).
-            if (action !== 'desktop' && action !== 'window')
+            if (!['desktop', 'window', 'monitor', 'repeat'].includes(action))
                 this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
-            if (action === 'record') {
+            if (action === 'record' || action === 'scroll') {
                 if (this._enabled)
                     this._dbus.emit_signal('Action', new GLib.Variant('(ss)', [action, id]));
                 return;
             }
             try {
-                await this._prepare(id, action === 'edit' ? 'region' : action, sender);
+                await this._prepare(id, action === 'edit' || action === 'text' ? 'region' : action, sender);
             } catch (error) {
                 const request = this._requests.get(id);
                 if (!request)
@@ -1169,6 +1374,7 @@ export default class PutgdExtension extends Extension {
             const right = request.layout.map(m => m.logical[0] + m.logical[2]);
             const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
+            const selection0 = selection;
             if (request.action === 'region') {
                 let selected;
                 if (request.preview) {
@@ -1201,12 +1407,39 @@ export default class PutgdExtension extends Extension {
                 }
                 check(selected, 'cancelled', 'GNOME region selection cancelled');
                 selection = rectangle(selected);
+                // Area first, then the countdown, then the pixels (#1363). Screenshot
+                // first never counts down here: its delay ran before the freeze.
+                if (limits.delaySeconds && !frozen) {
+                    const centre = [selection[0] + selection[2] / 2, selection[1] + selection[3] / 2];
+                    const monitors = Main.layoutManager.monitors;
+                    const monitor = monitors.find(m => centre[0] >= m.x && centre[0] < m.x + m.width && centre[1] >= m.y && centre[1] < m.y + m.height) ?? monitors[0];
+                    await this._countdown(request, limits.delaySeconds, monitor, request.limits.appearance ?? {});
+                    check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                    check(JSON.stringify(await this._layout(request.cancellable)) === JSON.stringify(request.layout),
+                        'display_changed', 'Display layout changed during the capture delay');
+                    this._alive(request);
+                }
+            } else if (request.action === 'monitor') {
+                selection = request.layout[request.monitor].logical;
+            } else if (request.action === 'repeat') {
+                // The resident remembered this rectangle with the layout it was chosen on.
+                check(limits.area && limits.layoutKey, 'repeat_unavailable', 'There is no region to repeat yet. Capture a region first.');
+                check(limits.layoutKey === this._layoutKey(request.layout),
+                    'repeat_layout_changed', 'The monitor layout changed since the last region capture. Capture a region again.');
+                selection = limits.area;
+                check(selection[0] >= selection0[0] && selection[1] >= selection0[1] &&
+                    selection[0] + selection[2] <= selection0[0] + selection0[2] && selection[1] + selection[3] <= selection0[1] + selection0[3],
+                'capture_geometry', 'The remembered region lies outside the desktop');
             }
             // selectAsync removes its actors and modal grab before resolving.
             // Live selection reads the desktop now; Screenshot first cuts each
             // monitor from the frozen stage texture, with no second capture.
+            // One monitor and a repeat read only the monitors they lie on.
+            const whole = request.action !== 'monitor' && request.action !== 'repeat';
             for (const monitor of request.layout) {
                 const [x, y, width, height] = monitor.logical;
+                if (!whole && !overlaps(selection, monitor.logical))
+                    continue;
                 const density = frozen ? frozen.scale : monitor.density;
                 const estimated = Math.ceil(width * density) * Math.ceil(height * density);
                 check(estimated <= limits.imagePixels - pixelCount && estimated * 4 <= limits.imageBytes - pixelCount * 4,
@@ -1244,6 +1477,9 @@ export default class PutgdExtension extends Extension {
             offset += part.length;
         }
         request.metadata = {version: 1, requestId: request.id, mime: 'application/x-putgd-capture', bytes: total, frames, selection};
+        // The resident keeps a region's rectangle and this key for Repeat last region.
+        if (request.action === 'region')
+            request.metadata.layoutKey = this._layoutKey(request.layout);
         request.actor = request.window = null;
         return request.metadata;
     }
@@ -1460,89 +1696,147 @@ export default class PutgdExtension extends Extension {
         }
     }
 
-    // Only a control bar owned by a direct child of the authenticated resident.
+    // Only a control bar owned by a direct child of the authenticated resident,
+    // and never a window Mutter has already unmanaged: its actor is still
+    // listed while it fades out.
     _recordingBar(sender, pid) {
         const resident = this._clientPid(sender);
-        const bars = global.get_window_actors().map(actor => actor.meta_window).filter(window =>
+        const bars = global.get_window_actors().filter(actor => !actor.is_destroyed()).map(actor => actor.meta_window).filter(window =>
             window && window.get_title() === RECORDING_BAR_TITLE && (!pid || window.get_pid() === pid) &&
             this._parentPid(window.get_pid()) === resident);
         return bars.length === 1 ? bars[0] : null;
     }
 
-    async _placeRecordingBar(sender, pid, rect) {
-        let window = this._recordingBar(sender, pid);
-        // Qt maps the bar a frame after the helper shows it.
-        for (let waited = 0; !window && waited < 2000; waited += 50) {
-            await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                resolve();
-                return GLib.SOURCE_REMOVE;
-            }));
-            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
-            window = this._recordingBar(sender, pid);
-        }
-        if (!window)
-            return {placed: false, outside: false};
+    // `current` throws once the frame has been hidden or the extension
+    // disabled: the resident answers "ready" before the bar is placed, so a
+    // cancel, a quit or a killed helper can arrive during any wait below.
+    async _placeRecordingBar(sender, pid, rect, current, scroll = false) {
         const pause = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
             resolve();
             return GLib.SOURCE_REMOVE;
         }));
-        // Mutter places a new window when it is first shown and would undo an
-        // earlier move: wait until it is shown, then confirm the position stays.
-        for (let waited = 0; window.is_hidden() && waited < 1000; waited += 50)
+        const none = {placed: false, outside: false};
+        let window = this._recordingBar(sender, pid);
+        // Qt maps the bar a frame after the helper shows it.
+        for (let waited = 0; !window && waited < 2000; waited += 50) {
             await pause(50);
-        const frame = window.get_frame_rect();
-        const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
-        // A later state of the same frame keeps the first decision, so a bar
-        // that had to sit inside stays in the corner as its handle.
-        const earlier = this._barFollow?.window === window && this._barFollow.rect.every((v, i) => v === rect[i]) ? this._barFollow : null;
-        const target = barPlacement(rect, [frame.width, frame.height], areas, earlier ? earlier.outside : true);
-        if (!window.is_above())
-            window.make_above();
-        let actual = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-            window.move_frame(true, target.rect[0], target.rect[1]);
-            await pause(100);
-            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
-            actual = rectangle(window.get_frame_rect());
-            if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
-                break;
+            current();
+            window = this._recordingBar(sender, pid);
         }
-        this._followRecordingBar(window, rect, earlier ? earlier.outside : target.outside);
-        return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+        if (!window)
+            return none;
+        // Watched from here on, before the first wait; a bar that is already
+        // followed keeps its watch.
+        const followed = this._barFollow?.bar.window === window && this._barFollow.bar.live ? this._barFollow : null;
+        const bar = followed?.bar ?? new BarWindow(window);
+        try {
+            // Mutter places a new window when it is first shown and would undo an
+            // earlier move: wait until it is shown, then confirm the position stays.
+            for (let waited = 0; bar.live && window.is_hidden() && waited < 1000; waited += 50) {
+                await pause(50);
+                current();
+            }
+            if (!bar.live)
+                return none;
+            const frame = window.get_frame_rect();
+            const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
+            // A later state of the same frame keeps the first decision, so a bar
+            // that had to sit inside stays in the corner as its handle.
+            const earlier = followed?.rect.every((v, i) => v === rect[i]) ? followed : null;
+            const target = barPlacement(rect, [frame.width, frame.height], areas, earlier ? earlier.outside : true);
+            if (!window.is_above())
+                window.make_above();
+            let actual = null;
+            for (let attempt = 0; attempt < 5; attempt++) {
+                window.move_frame(true, target.rect[0], target.rect[1]);
+                await pause(100);
+                current();
+                if (!bar.live)
+                    return none;
+                actual = rectangle(window.get_frame_rect());
+                if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
+                    break;
+            }
+            this._followRecordingBar(bar, rect, earlier ? earlier.outside : target.outside, scroll);
+            return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+        } finally {
+            if (this._barFollow?.bar !== bar)
+                bar.release();
+        }
     }
 
     // The helper resizes its bar when the state changes (wider while recording,
     // a handle when it has to sit inside); place it again on every size change
     // so it never runs past its monitor and the dim strips keep its hole.
-    _followRecordingBar(window, rect, outside) {
-        if (this._barFollow?.window !== window) {
+    _followRecordingBar(bar, rect, outside, scroll = false) {
+        if (this._barFollow?.bar.window !== bar.window || !this._barFollow.bar.live) {
             this._unfollowRecordingBar();
-            const id = window.connect('size-changed', () => this._replaceRecordingBar());
-            this._barFollow = {window, id};
+            const follow = this._barFollow = {bar};
+            bar.connect('size-changed', () => this._replaceRecordingBar());
+            bar.onGone = () => {
+                if (this._barFollow === follow) {
+                    this._unfollowFocus(follow);
+                    this._barFollow = null;
+                }
+            };
         }
         Object.assign(this._barFollow, {rect, outside});
+        if (scroll && !this._barFollow.focus) {
+            const follow = this._barFollow;
+            follow.focus = global.display.connect('notify::focus-window', () => this._giveFocusBack(follow));
+            this._giveFocusBack(follow);
+        }
+    }
+
+    // A scroll capture's bar never keeps the keyboard focus (#1515's
+    // acceptance): Mutter gives a window the focus when it is first shown and
+    // when it is clicked, and End, Home or Page Down then went to the bar, which
+    // takes no key, instead of the page being captured. The window used before
+    // it gets the focus back, once no mouse button is held: a press on Done or
+    // Cancel ends as a click.
+    _giveFocusBack(follow) {
+        if (this._barFollow !== follow || !follow.bar.live || global.display.focus_window !== follow.bar.window)
+            return;
+        const [, , mods] = global.get_pointer();
+        const {BUTTON1_MASK, BUTTON2_MASK, BUTTON3_MASK} = Clutter.ModifierType;
+        if (mods & (BUTTON1_MASK | BUTTON2_MASK | BUTTON3_MASK)) {
+            follow.focusWait ||= GLib.timeout_add(GLib.PRIORITY_DEFAULT, FOCUS_WAIT_MS, () => {
+                follow.focusWait = 0;
+                this._giveFocusBack(follow);
+                return GLib.SOURCE_REMOVE;
+            });
+            return;
+        }
+        // Listed now, so every window in it is still managed.
+        const before = global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null).find(window => window !== follow.bar.window && !window.minimized);
+        before?.focus(global.get_current_time());
+    }
+
+    _unfollowFocus(follow) {
+        if (follow.focus)
+            global.display.disconnect(follow.focus);
+        if (follow.focusWait)
+            GLib.source_remove(follow.focusWait);
+        follow.focus = follow.focusWait = 0;
     }
 
     _replaceRecordingBar() {
         const follow = this._barFollow;
-        if (!follow || !this._enabled)
+        if (!follow || !follow.bar.live || !this._enabled)
             return;
-        const frame = follow.window.get_frame_rect();
+        const window = follow.bar.window;
+        const frame = window.get_frame_rect();
         const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
         const target = barPlacement(follow.rect, [frame.width, frame.height], areas, follow.outside);
         if (frame.x !== target.rect[0] || frame.y !== target.rect[1])
-            follow.window.move_frame(true, target.rect[0], target.rect[1]);
+            window.move_frame(true, target.rect[0], target.rect[1]);
         this._recordingFrame?.moveBar(target.rect);
     }
 
     _unfollowRecordingBar() {
-        if (!this._barFollow)
-            return;
-        try {
-            this._barFollow.window.disconnect(this._barFollow.id);
-        } catch {
-            // The window is already gone.
-        }
+        if (this._barFollow)
+            this._unfollowFocus(this._barFollow);
+        this._barFollow?.bar.release();
         this._barFollow = null;
     }
 
@@ -1553,14 +1847,168 @@ export default class PutgdExtension extends Extension {
             const rect = frame.rect;
             check(Array.isArray(rect) && rect.length === 4 && rect.every(Number.isSafeInteger) && rect[2] > 0 && rect[3] > 0 &&
                 RECORDING_STATES.includes(frame.state) && RECORDING_KINDS.includes(frame.kind) &&
-                (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)),
+                (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)) &&
+                (frame.beat === undefined || typeof frame.beat === 'boolean'),
             'bridge_protocol', 'Invalid recording frame');
-            const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect);
+            // HideRecordingFrame, a lock, a vanished resident and disable() all end
+            // a placement that is still waiting: it must not move the bar or
+            // bring the frame and its beat back after they were taken down.
+            const epoch = this._frameEpoch;
+            const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect, () => {
+                check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
+                check(epoch === this._frameEpoch, 'cancelled', 'The recording frame was hidden while its bar was placed');
+            }, frame.beat === true);  // `beat` comes only with a scroll capture's frame (GnomeAdapter)
             check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
             this._recordingFrame ??= new RecordingFrame();
-            this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null);
+            this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null, frame.beat === true);
             return {version: 1, bar};
         });
+    }
+
+    // Recording protocol 2: the windows a recording can follow, for Mutter's
+    // RecordWindow (window-id). The focused one is `active`; put.gd's own
+    // windows (the resident and the processes it started) are left out, and
+    // activeExcluded says the focused window was one of them.
+    RecordingWindowsAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            const focus = global.display.focus_window;
+            const tracker = Shell.WindowTracker.get_default();
+            let activeExcluded = false;
+            const windows = [];
+            for (const window of global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null)) {
+                if (this._residentWindow(window, sender)) {
+                    activeExcluded ||= window === focus;
+                    continue;
+                }
+                windows.push({identity: String(window.get_id()), title: window.get_title() ?? '',
+                    appId: tracker.get_window_app(window)?.get_id() ?? window.get_wm_class() ?? '',
+                    rect: rectangle(window.get_frame_rect()), active: window === focus, minimized: window.minimized});
+            }
+            return {version: 1, windows, activeExcluded};
+        });
+    }
+
+    // Recording protocol 3 (#1364): pointer button presses while a recording
+    // draws click highlights. Mutter hands a press over a client window to the
+    // client before a Shell actor or an extension's event filter sees it, but
+    // it stamps the window's user time first, inside the same event, so the
+    // press is read from Clutter's current event there. A key press stamps the
+    // user time too and is told apart by the event's type. Presses on the
+    // Shell's own actors arrive on the stage. Nothing is grabbed or consumed.
+    // Only the resident that asked hears them: the signal goes to its unique
+    // bus name, never to the whole session bus.
+    WatchClicksAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            this._unwatchClicks();
+            this._watchClicks(sender);
+            return {version: 1};
+        });
+    }
+
+    UnwatchClicksAsync(_args, invocation) {
+        this._run(invocation, () => {
+            this._unwatchClicks();
+            return {};
+        });
+    }
+
+    _watchClicks(sender) {
+        const clicks = {windows: new Map(), lastTime: -1, lastButton: 0};
+        const emit = (event, window) => {
+            const button = event.get_button();
+            if (button < 1 || button > 3)
+                return;
+            // Both hooks can see one press on a Shell-drawn window decoration.
+            const time = event.get_time();
+            if (time === clicks.lastTime && button === clicks.lastButton)
+                return;
+            clicks.lastTime = time;
+            clicks.lastButton = button;
+            const [x, y] = event.get_coords();
+            const click = {x: Math.round(x), y: Math.round(y), button};
+            if (window)
+                click.window = {identity: String(window.get_id()), rect: rectangle(window.get_frame_rect())};
+            Gio.DBus.session.emit_signal(sender, PATH, IFACE, 'Click', new GLib.Variant('(s)', [JSON.stringify(click)]));
+        };
+        const watch = window => {
+            if (!window || clicks.windows.has(window))
+                return;
+            clicks.windows.set(window, [
+                window.connect('notify::user-time', () => {
+                    const event = Clutter.get_current_event();
+                    if (event && event.type() === Clutter.EventType.BUTTON_PRESS)
+                        emit(event, window);
+                }),
+                window.connect('unmanaged', () => {
+                    for (const id of clicks.windows.get(window) ?? [])
+                        window.disconnect(id);
+                    clicks.windows.delete(window);
+                }),
+            ]);
+        };
+        for (const actor of global.get_window_actors())
+            watch(actor.meta_window);
+        clicks.created = global.display.connect('window-created', (_display, window) => watch(window));
+        clicks.stage = global.stage.connect('captured-event', (_actor, event) => {
+            if (event.type() === Clutter.EventType.BUTTON_PRESS)
+                emit(event, null);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._clicks = clicks;
+    }
+
+    // A scroll capture's auto-scroll (#1531, extension version 24): where the
+    // pointer moves, for as long as the resident asks. The Shell sees the
+    // pointer everywhere; the helper sees it only on its bar's window, so a
+    // hand that moves while the helper's pointer is in the page for a wheel
+    // step went unseen until the helper had pulled the pointer back. Mutter's
+    // cursor tracker says when the position changes (no event handler on the
+    // stage); each change is sent with the monotonic time in milliseconds, the
+    // helper's clock, and the helper tells its own motions from the hand's.
+    // It is never on while a person scrolls: nothing is injected then.
+    WatchPointerAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            this._unwatchPointer();
+            const tracker = global.backend.get_cursor_tracker();
+            const emit = () => {
+                const [x, y] = global.get_pointer();
+                Gio.DBus.session.emit_signal(sender, PATH, IFACE, 'Pointer',
+                    new GLib.Variant('(s)', [JSON.stringify({x, y, t: Math.floor(GLib.get_monotonic_time() / 1000)})]));
+            };
+            this._pointer = {tracker, signal: tracker.connect('position-invalidated', emit)};
+            // Where it is now: the resident knows the watch is on.
+            emit();
+            return {version: 1};
+        });
+    }
+
+    UnwatchPointerAsync(_args, invocation) {
+        this._run(invocation, () => {
+            this._unwatchPointer();
+            return {};
+        });
+    }
+
+    _unwatchPointer() {
+        const pointer = this._pointer;
+        if (!pointer)
+            return;
+        this._pointer = null;
+        pointer.tracker.disconnect(pointer.signal);
+    }
+
+    _unwatchClicks() {
+        const clicks = this._clicks;
+        if (!clicks)
+            return;
+        this._clicks = null;
+        global.display.disconnect(clicks.created);
+        global.stage.disconnect(clicks.stage);
+        for (const [window, ids] of clicks.windows) {
+            for (const id of ids)
+                window.disconnect(id);
+        }
+        clicks.windows.clear();
     }
 
     HideRecordingFrameAsync(_args, invocation) {
@@ -1571,6 +2019,7 @@ export default class PutgdExtension extends Extension {
     }
 
     _hideRecordingFrame() {
+        this._frameEpoch = (this._frameEpoch ?? 0) + 1;
         this._unfollowRecordingBar();
         this._recordingFrame?.destroy();
         this._recordingFrame = null;

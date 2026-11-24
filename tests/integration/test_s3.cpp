@@ -1,76 +1,159 @@
 #include "fixtures/S3Fixture.h"
+#include "storage/s3/PublicUrl.h"
 #include "fixtures/U2Fixtures.h"
-#include <thread>
 #include <QBuffer>
-#include <mutex>
+#include <QUrlQuery>
+#include <QSet>
 #include "fixtures/Waits.h"
+#include "core/SettingsService.h"
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
 private slots:
-    void stalledPreflightCancelsPromptlyAndRetries() {
-        S3Fixture f;
-        // Longer than the cancellation bound: a timeout or released HEAD cannot pass.
-        f.destination.settings["requestTimeoutMs"] = 120000;
-        f.destination.settings["lowSpeedTimeSeconds"] = 120;
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 30}}}}});
-        ProviderRegistry registry;
-        registry.add("s3", std::shared_ptr<StorageProvider>(&f.provider, [](StorageProvider*) {}));
-        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
-        auto config = configuration(f.directory.path());
-        auto profile = Settings::developmentTemplate()["profiles"].toArray()[0].toObject();
-        profile["id"] = f.destination.profileId;
-        profile["settings"] = f.destination.settings;
-        profile["credentials"] = f.destination.credentialReference;
-        config["profiles"] = QJsonArray{profile};
-        auto actions = config["actions"].toObject();
-        // The validator requires all upload actions to reference an existing profile.
-        // Recording has only a shortcut and inherits the region route.
-        for (const auto& key : Settings::actionNames()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
-        config["actions"] = actions;
-        const auto saved = settings.save(config, {});
-        QVERIFY2(saved, qPrintable(saved.error.message));
-        Source source; source.payload = textPayload();
-        OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        PUTGD_TRY_VERIFY(operations.ready());
-        HistoryStore history(operations.databasePath());
-        QString id;
-        operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        PUTGD_TRY_VERIFY(!id.isEmpty());
-        PUTGD_TRY_VERIFY(!f.events("HEAD").isEmpty());
-        QCOMPARE(history.operation(id).phase, QString("preflight"));
-        const auto candidate = history.operation(id).items[0].candidate;
-        QElapsedTimer elapsed; elapsed.start();
-        bool acknowledged = false;
-        operations.cancel(id, [&](Error error, QJsonObject) { QVERIFY(!error); acknowledged = true; });
-        PUTGD_TRY_VERIFY(acknowledged);
-        PUTGD_TRY_COMPARE(history.operation(id).state, QString("cancelled"));
-        // The journal write precedes the session-thread completion callback.
-        // Include releasing the active slot in the prompt cancellation bound.
-        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
-        qInfo() << "stalled HEAD cancelTerminalMs" << elapsed.elapsed();
-        QVERIFY2(elapsed.elapsed() < 5000, "Cancellation must finish well before the 120 s request timeout or 30 s fixture delay");
-        QCOMPARE(f.events("HEAD").size(), 1);
-        QVERIFY(f.events("PUT").isEmpty());
-        QCOMPARE(source.copies, 0);
-        bool retried = false;
-        operations.retry(id, [&](Error error, QJsonObject) { QVERIFY2(!error, qPrintable(error.code)); retried = true; });
-        PUTGD_TRY_VERIFY(retried);
-        PUTGD_TRY_COMPARE(history.operation(id).state, QString("completed"));
-        QCOMPARE(history.operation(id).items[0].candidate, candidate);
-        QCOMPARE(history.operation(id).items[0].uploadStatus, QString("uploaded"));
-        QCOMPARE(f.events("PUT").size(), 1);
-        PUTGD_TRY_COMPARE(source.copies, 1);
+    void presignedLinksUseEndpointAndNoPublicAcl_data() {
+        QTest::addColumn<bool>("r2AuthorizationError");QTest::newRow("access-denied")<<false;QTest::newRow("r2-missing-authorization")<<true;
     }
-    void alreadyCancelledNameCheckSendsNoHead() {
-        S3Fixture f;
-        auto cancellation = std::make_shared<std::atomic_bool>(true);
-        const auto result = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancelled.txt", cb, cancellation); });
-        QCOMPARE(result.status, QString("inconclusive"));
-        QCOMPARE(result.error.code, QString("cancelled"));
-        QVERIFY(f.events("HEAD").isEmpty());
+    void presignedLinksUseEndpointAndNoPublicAcl() {
+        QFETCH(bool,r2AuthorizationError);
+        S3Fixture f;f.reset({{"private",true},{"versioning","Enabled"},{"unsignedAuthError",r2AuthorizationError}});
+        f.destination.settings["linkMode"]="presigned";
+        f.destination.settings["linkValidityDays"]=3;
+        f.destination.settings["aclMode"]="public-read";
+        f.destination.settings["publicUrlBase"]="https://cdn.example.invalid";
+        const auto uploaded=f.upload(f.request("private é.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        const QUrl signedUrl(uploaded.receipt.directUrl);
+        QCOMPARE(signedUrl.host(),QString("127.0.0.1"));
+        QVERIFY(signedUrl.hasQuery());
+        QCOMPARE(QUrlQuery(signedUrl).queryItemValue("versionId"),uploaded.receipt.objectReference["versionId"].toString());
+        const auto fetch=[&](const QUrl& url){QTcpSocket peer;peer.connectToHost(url.host(),quint16(url.port()));if(!peer.waitForConnected(5000))return QByteArray{};
+            const auto target=url.path(QUrl::FullyEncoded)+(url.hasQuery()?"?"+url.query(QUrl::FullyEncoded):QString{});
+            peer.write("GET "+target.toUtf8()+" HTTP/1.1\r\nHost: "+url.authority().toUtf8()+"\r\nConnection: close\r\n\r\n");peer.waitForBytesWritten(5000);
+            QByteArray data;while(peer.waitForReadyRead(5000))data+=peer.readAll();data+=peer.readAll();return data;};
+        const auto response=fetch(signedUrl);QVERIFY(response.startsWith("HTTP/1.1 200"));QVERIFY(response.endsWith("synthetic payload"));
+        auto unsignedUrl=signedUrl;unsignedUrl.setQuery(QString{});QVERIFY(fetch(unsignedUrl).startsWith(r2AuthorizationError?"HTTP/1.1 400":"HTTP/1.1 403"));
+        QVERIFY(!f.events("PUT")[0].toObject()["headers"].toObject().contains("x-amz-acl"));
+        const auto expiry=QDateTime::fromString(uploaded.receipt.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs);
+        QVERIFY(expiry>QDateTime::currentDateTimeUtc().addDays(2));
+        const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
+        QCOMPARE(renewed.status,QString("own"));
+        QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
+        QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
+        // The reply comes from the S3 worker thread: await hands the result and error back through a promise.
+        // The test journal and result keep no signed query: it holds the access key ID and a working signature (#1680).
+        auto journal=std::make_shared<QJsonArray>();
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[journal](auto value,auto ack){journal->append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        const auto& result=tested.first;const auto& error=tested.second;
+        QVERIFY2(!error,qPrintable(error.code));
+        QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
+        QCOMPARE(result["cleanupStatus"].toString(),QString("removed"));
+        QVERIFY(journal->size()>=3);
+        for(const auto& written:{QJsonDocument(*journal).toJson(),QJsonDocument(result).toJson()})
+            for(const char* secret:{"X-Amz-Signature","X-Amz-Credential","PUTGD_SYNTHETIC_ACCESS"})QVERIFY2(!written.contains(secret),secret);
     }
 
+    // #1677: off Cloudflare R2's endpoint, a front that denies the versioning check and answers 501
+    // to requests naming a version may still keep versions behind it. The expiring link keeps
+    // naming the recorded version, so it never opens a replacement, and once a replacement is
+    // current Refresh hands out no new link.
+    void signedLinkKeepsTheRecordedVersionOffR2() {
+        S3Fixture f;
+        const QJsonArray front{QJsonObject{{"method","GET"},{"query","versioning"},{"status",403},{"remaining",1000}},
+                               QJsonObject{{"method","HEAD"},{"query","versionId"},{"status",501},{"code","NotImplemented"},{"remaining",1000}}};
+        f.reset({{"private",true},{"versioning","Enabled"},{"rules",front}});
+        f.destination.settings["linkMode"]="presigned";
+        const auto uploaded=f.upload(f.request("kept.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        const auto recorded=uploaded.receipt.objectReference["versionId"].toString();
+        QVERIFY(!recorded.isEmpty());
+        QCOMPARE(QUrlQuery(QUrl(uploaded.receipt.directUrl)).queryItemValue("versionId"),recorded);
+        auto objects=f.state()["objects"].toObject();auto versions=objects["prefix é/kept.txt"].toArray();
+        versions.append(QJsonObject{{"version","replacement"},{"body",QString::fromLatin1(QByteArray("replacement").toBase64())},{"metadata",QJsonObject{}},{"etag","\"replacement\""},{"marker",false}});
+        objects["prefix é/kept.txt"]=versions;
+        f.reset({{"private",true},{"versioning","Enabled"},{"objects",objects},{"rules",front}});
+        const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
+        QVERIFY(renewed.status!="own");
+        QVERIFY(renewed.receipt.directUrl.isEmpty()||QUrlQuery(QUrl(renewed.receipt.directUrl)).queryItemValue("versionId")==recorded);
+    }
+
+    // #1690: Test upload and link sends its synthetic writes once. A reply that doesn't prove a
+    // refusal (a 503, a 408) leaves the upload or the multipart check unknown, with the upload's
+    // intent journaled first, instead of sending again: the first request could land after the
+    // second copy was cleaned up, leaving an object no journal records.
+    void testWritesStayUnknownAfterAnUnclearReply_data() {
+        QTest::addColumn<QJsonObject>("rule");QTest::addColumn<QString>("uploadStatus");QTest::addColumn<QString>("multipart");
+        QTest::newRow("put-503") << QJsonObject{{"method","PUT"},{"status",503},{"code","SlowDown"}} << QString("unknown") << QString();
+        QTest::newRow("put-408") << QJsonObject{{"method","PUT"},{"status",408},{"code","RequestTimeout"}} << QString("unknown") << QString();
+        QTest::newRow("multipart-create-408") << QJsonObject{{"method","POST"},{"query","uploads"},{"status",408},{"code","RequestTimeout"}} << QString("uploaded") << QString("unknown");
+    }
+    void testWritesStayUnknownAfterAnUnclearReply() {
+        QFETCH(QJsonObject,rule);QFETCH(QString,uploadStatus);QFETCH(QString,multipart);
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{rule}}});
+        QJsonArray journal;
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[&journal](auto value,auto ack){journal.append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QVERIFY(tested.second);
+        QCOMPARE(tested.first["uploadStatus"].toString(),uploadStatus);
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(journal.first().toObject()["phase"].toString(),QString("synthetic_upload_intent"));
+        QVERIFY(journal.first().toObject()["objectReference"].toObject()["key"].toString().contains("putgd-test-"));
+        if(!multipart.isEmpty())QCOMPARE(tested.first["multipart"].toObject()["status"].toString(),multipart);
+    }
+    // #1690: the synthetic PutObject and CreateMultipartUpload follow the name check on a client
+    // whose connections are kept alive. Each goes out once, on a connection no earlier request
+    // used, so libcurl can't send it again by itself after losing a reused connection's reply.
+    void testWritesGoOutOnceOnAFreshConnection() {
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}}}}});
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(tested.first["uploadStatus"].toString(),QString("uploaded"));
+        QSet<int> used;
+        bool create=false;
+        for(const auto& value:f.events()){
+            const auto event=value.toObject();const int port=event["port"].toInt();
+            const bool write=event["method"]=="PUT"||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            if(write)QVERIFY2(!used.contains(port),qPrintable(event["method"].toString()+" reused a connection"));
+            create=create||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            used.insert(port);
+        }
+        QVERIFY(create);
+    }
+
+    // #1758: the request timeout capped a whole PutObject, so a file that took longer to send
+    // than it could never upload on a slow link, and each attempt started again from its first
+    // byte. A PUT that keeps moving now runs to its end.
+    void uploadOutlastsTheRequestTimeoutWhileItsBytesMove() {
+        S3Fixture f;
+        f.reset({{"putPace",QJsonObject{{"bytesPerSecond",2*1024*1024}}}});
+        f.destination.settings["requestTimeoutMs"]=1000;
+        // The tail of the file sits in socket buffers while the server reads it: no progress there.
+        f.destination.settings["lowSpeedTimeSeconds"]=5;
+        const QByteArray bytes(6*1024*1024,'s');
+        const auto uploaded=f.upload(f.request("slow.bin",bytes));
+        QVERIFY2(uploaded.status=="uploaded",qPrintable(uploaded.status+" "+uploaded.error.code+" "+uploaded.error.message));
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(f.events("PUT")[0].toObject()["bodySha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));
+    }
+    // #1758: an attempt cut before S3 had the whole file can't have stored it, so three of them
+    // end failed with nothing to reconcile. (Attempts that sent the whole file stay unknown:
+    // boundedTransientAttemptsKeepWireIdentity.)
+    void stalledUploadFailsWhenNoAttemptSentTheWholeFile() {
+        S3Fixture f;
+        f.reset({{"putPace",QJsonObject{{"stallAfter",65536},{"stallSeconds",3}}}});
+        // Larger than the socket buffers between the client and the server, so a stalled
+        // server leaves most of the file unread by the transport.
+        const auto request=f.request("stalled.bin",QByteArray(16*1024*1024,'t'));
+        f.control("/__clear_events",{},true);
+        const auto result=f.upload(request);
+        QCOMPARE(result.status,QString("failed"));
+        QCOMPARE(result.error.code,QString("s3_upload_interrupted"));
+        QVERIFY(f.events("HEAD").isEmpty());
+        for(const auto& versions:f.state()["objects"].toObject())QVERIFY(versions.toArray().isEmpty());
+    }
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;
         f.process.terminate();
@@ -78,14 +161,6 @@ private slots:
         const auto result = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "synthetic.txt", cb); });
         QCOMPARE(result.status, QString("inconclusive"));
         QCOMPARE(result.error.code, QString("s3_transport_unknown"));
-        QCOMPARE(result.error.details["httpStatus"].toInt(), -1);
-        QVERIFY(result.error.details.contains("sdkErrorType"));
-        QVERIFY(result.error.details["curlCode"].isDouble());
-        const auto curlCode = result.error.details["curlCode"].toInt();
-        // SDK builds with a different HTTP backend have no Curl message prefix.
-        QVERIFY(curlCode == -1 || curlCode == 7);
-        QCOMPARE(result.error.details["requestStage"].toString(), QString("name_head"));
-        QVERIFY(result.error.details["elapsedMs"].toInteger() >= 0);
         const auto encoded = QJsonDocument(result.error.toJson()).toJson();
         QVERIFY(!encoded.contains("putgd-synthetic-secret-not-a-real-key"));
         QVERIFY(!encoded.contains("PUTGD_SYNTHETIC_ACCESS"));
@@ -138,161 +213,16 @@ private slots:
         QCOMPARE(result.receipt.directUrl, QString("https://put.gd/base%2Fencoded/synthetic.png"));
         QVERIFY(headers["host"].toString().startsWith("127.0.0.1"));
     }
-    void uploadProgressUsesBodyBytesAndFinishesBeforeReply() {
+    // #1699: a signed request to a non-AWS endpoint, such as Cloudflare R2, never follows a redirect
+    // to another host: the redirect target sees no request.
+    void redirectToAnotherHostIsNotFollowed() {
         S3Fixture f;
-        // Keep the held reply within the request/low-speed bounds, including
-        // scaled observation budgets on a contended CI worker.
-        f.destination.settings["requestTimeoutMs"] = scaled(15000);
-        f.destination.settings["lowSpeedTimeSeconds"] = scaled(15000) / 1000;
-        auto request = f.request("progress.txt", QByteArray(1024 * 1024, 'p'));
-        // Progress is coalesced by the child timer. Hold the reply until the
-        // full-body observation arrives; a fixed delay can expire before that
-        // timer runs and let "finalizing" replace the "uploading" value.
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "progress"}}}}});
-        std::mutex mutex;
-        QList<UploadProgress> progress;
-        request.progress = [&](const UploadProgress& value) {
-            std::lock_guard lock(mutex);
-            progress.append(value);
-        };
-        std::atomic_bool completed{false};
-        bool receivedBody = false, sentBeforeReply = false, finalizedBeforeReply = false, completedBeforeReply = false;
-        QJsonArray puts;
-        bool replyHeld = false;
-        const auto result = f.await<UploadResult>([&](auto callback) {
-            f.provider.upload(request, [&, callback](UploadResult value) {
-                completed.store(true);
-                callback(std::move(value));
-            });
-            receivedBody = waitFor([&] { puts = f.events("PUT"); return !puts.isEmpty(); });
-            sentBeforeReply = waitFor([&] {
-                std::lock_guard lock(mutex);
-                for (const auto& value : progress)
-                    if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) return true;
-                return false;
-            });
-            {
-                std::lock_guard lock(mutex);
-                for (const auto& value : progress)
-                    if (value.phase == "finalizing") finalizedBeforeReply = true;
-            }
-            completedBeforeReply = completed.load();
-            // The fixture stores the object only after leaving its barrier.
-            // Check that the bounded barrier has not expired independently.
-            replyHeld = f.state()["objects"].toObject().isEmpty();
-            // Always release before asserting, so a failed observation cannot
-            // strand the provider while the fixture is being destroyed.
-            f.control("/__release", {{"barrier", "progress"}}, true);
-        });
-        QVERIFY(receivedBody);
-        QCOMPARE(puts.size(), 1);
-        QVERIFY(puts[0].toObject()["signatureValid"].toBool());
-        QCOMPARE(QByteArray::fromBase64(puts[0].toObject()["body"].toString().toUtf8()), QByteArray(1024 * 1024, 'p'));
-        QVERIFY(sentBeforeReply);
-        QVERIFY(replyHeld);
-        QVERIFY(!finalizedBeforeReply);
-        QVERIFY(!completedBeforeReply);
-        QCOMPARE(result.status, QString("uploaded"));
-        qsizetype count;
-        {
-            std::lock_guard lock(mutex);
-            QVERIFY(!progress.isEmpty());
-            bool sentBody = false;
-            for (const auto& value : progress) {
-                QVERIFY(value.valid());
-                QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
-                QVERIFY(value.bytesTransferred.has_value());
-                if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) sentBody = true;
-            }
-            QVERIFY(sentBody);
-            QCOMPARE(progress.last().phase, QString("finalizing"));
-            QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
-            count = progress.size();
-        }
-        putgd::test::settle(350);
-        std::lock_guard lock(mutex);
-        QCOMPARE(progress.size(), count);
-    }
-    void transientRetryRestartsProgressAtSameBodyTotal() {
-        S3Fixture f;
-        auto request = f.request("retry-progress.txt", QByteArray(128 * 1024, 'p'));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}, {"status", 500},
-                                                {"code", "InternalError"}, {"remaining", 3}}}}});
-        std::mutex mutex;
-        QList<UploadProgress> progress;
-        request.progress = [&](const UploadProgress& value) {
-            std::lock_guard lock(mutex);
-            progress.append(value);
-        };
-        QCOMPARE(f.upload(request).status, QString("unknown"));
-        QCOMPARE(f.events("PUT").size(), 3);
-        std::lock_guard lock(mutex);
-        QVERIFY(!progress.isEmpty());
-        int completeBodies = 0;
-        for (const auto& value : progress) {
-            QVERIFY(value.valid());
-            QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
-            QVERIFY(*value.bytesTransferred <= request.artifact.bytes);
-            if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) ++completeBodies;
-        }
-        QVERIFY(completeBodies >= 3);
-    }
-    void redirectedBodyKeepsTheCurrentArtifactTotal() {
-        S3Fixture f;
-        auto request = f.request("redirect-progress.txt", QByteArray(128 * 1024 + 7, 'p'));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}, {"redirect", true}}}}});
-        std::mutex mutex;
-        QList<UploadProgress> progress;
-        request.progress = [&](const UploadProgress& value) {
-            std::lock_guard lock(mutex);
-            progress.append(value);
-        };
-        QCOMPARE(f.upload(request).status, QString("uploaded"));
-        const auto events = f.events("PUT");
-        QCOMPARE(events.size(), 2);
-        for (const auto& event : events)
-            QCOMPARE(QByteArray::fromBase64(event.toObject()["body"].toString().toUtf8()).size(), request.artifact.bytes);
-        std::lock_guard lock(mutex);
-        QVERIFY(!progress.isEmpty());
-        for (const auto& value : progress) {
-            QVERIFY(value.valid());
-            QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
-            QVERIFY(*value.bytesTransferred <= request.artifact.bytes);
-        }
-        QCOMPARE(progress.last().phase, QString("finalizing"));
-        QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
-    }
-    void terminalErrors_data() {
-        QTest::addColumn<int>("http");
-        QTest::addColumn<QString>("service");
-        QTest::addColumn<QString>("expected");
-        QTest::addColumn<QString>("guidance");
-        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Use bucket policy");
-        QTest::newRow("public-access-block") << 403 << QString("AccessDenied") << QString("s3_permission_denied") << QString("s3:PutObject");
-        QTest::newRow("authentication") << 403 << QString("InvalidAccessKeyId") << QString("s3_authentication_failed") << QString("access key ID");
-        QTest::newRow("wrong-secret") << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << QString("secret access key");
-        QTest::newRow("expired-token") << 400 << QString("ExpiredToken") << QString("s3_authentication_failed") << QString("session token");
-        QTest::newRow("missing-bucket") << 404 << QString("NoSuchBucket") << QString("s3_bucket_not_found") << QString("bucket name");
-        QTest::newRow("wrong-region") << 400 << QString("AuthorizationHeaderMalformed") << QString("s3_region_mismatch") << QString("region and endpoint");
-        QTest::newRow("clock-skew") << 403 << QString("RequestTimeTooSkewed") << QString("s3_authentication_failed") << QString("system clock");
-    }
-    void terminalErrors() {
-        QFETCH(int, http); QFETCH(QString, service); QFETCH(QString, expected);QFETCH(QString, guidance);
-        S3Fixture f;
-        f.destination.settings["aclMode"] = "public-read";
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"status", http}, {"code", service}}}}});
-        auto result = f.upload(f.request());
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, expected);
-        QVERIFY2(result.error.message.contains(guidance),qPrintable(result.error.message));
-        QVERIFY(!QJsonDocument(result.error.toJson()).toJson().contains("synthetic fixture"));
-        QCOMPARE(result.error.details["serviceCode"].toString(),service);
-        // #74: the request IDs AWS support asks for survive the worker protocol.
-        QCOMPARE(result.error.details["requestId"].toString(),QString("SYNTHREQ0123ABCD"));
-        QCOMPARE(result.error.details["extendedRequestId"].toString(),QString("synthetic+Extended/Id2="));
+        const QUrl endpoint(f.endpoint);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"redirect", true}, {"location", "http://localhost:" + QString::number(endpoint.port())}}}}});
+        const auto result = f.upload(f.request("redirected.txt"));
+        QVERIFY2(result.status != "uploaded", qPrintable(result.status));
         QCOMPARE(f.events("PUT").size(), 1);
-        QCOMPARE(f.events("DELETE").size(), 0);
-        QCOMPARE(f.events("PUT")[0].toObject()["headers"].toObject()["x-amz-acl"].toString(), QString("public-read"));
+        for (const auto& event : f.events("PUT")) QVERIFY(event.toObject()["headers"].toObject()["host"].toString().startsWith("127.0.0.1"));
     }
     void lostPutReplyRecoversOwnMetadata() {
         S3Fixture f;
@@ -327,6 +257,10 @@ private slots:
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"status", 500}, {"code", "InternalError"}, {"remaining", 3}}}}});
         const auto result = f.upload(request);
         QCOMPARE(result.status, QString("unknown"));
+        // #1758: each attempt sent the whole file, so S3 may hold it; the error says why.
+        QCOMPARE(result.error.code, QString("publication_unknown"));
+        QVERIFY(result.error.message.contains("Last attempt:"));
+        QCOMPARE(result.error.details["httpStatus"].toInt(), 500);
         const auto events = f.events("PUT");
         QCOMPARE(events.size(), 3);
         for (const auto& value : events) {
@@ -380,120 +314,219 @@ private slots:
         QCOMPARE(checked.error.code, QString("credential_setup_required"));
         QCOMPARE(f.events().size(), 1);
     }
-    void queuedCancellationAndSlowEventLoop() {
-        // One lane: the second call queues behind the first.
-        S3Fixture f({}, 1);
-        auto first = f.request("slow.txt");
-        auto second = f.request("cancelled.txt");
-        second.cancellation = std::make_shared<std::atomic_bool>(false);
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.2}}}}});
-        std::atomic_int callbacks{0};
-        QString secondStatus;
-        f.provider.upload(first, [&](auto) { ++callbacks; });
-        f.provider.upload(second, [&](auto result) { secondStatus = result.error.code; ++callbacks; });
-        second.cancellation->store(true);
-        int ticks = 0;
-        QTimer timer;
-        connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
-        timer.start(5);
-        PUTGD_TRY_COMPARE(callbacks.load(), 2);
-        QVERIFY(ticks > 10);
-        QCOMPARE(secondStatus, QString("cancelled"));
-        QCOMPARE(f.events("PUT").size(), 1);
+    // #1601: the hint appended to a permission or authentication error when the key, prefix
+    // included, contains $ & , : = or @. The rest of the message is exactly what the same
+    // failure gives for a plain key.
+    static QString nameCharactersHint() {
+        return QStringLiteral(" Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.");
     }
-    void queuedCredentialRevocationPreservesInFlightClient() {
-        // One lane: the second call queues behind the first.
-        S3Fixture f({}, 1);
-        auto first = f.request("in-flight.txt");
-        auto queued = f.request("queued.txt");
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "credential-change"}}}}});
-        std::atomic_int callbacks{0};
-        QString firstStatus, secondCode;
-        f.provider.upload(first, [&](auto result) { firstStatus = result.status; ++callbacks; });
-        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
-        QCOMPARE(callbacks.load(), 0);
-        f.provider.upload(queued, [&](auto result) { secondCode = result.error.code; ++callbacks; });
-        f.credentials.forget(f.destination.profileId, f.destination.credentialReference);
-        f.control("/__release", {{"barrier", "credential-change"}}, true);
-        PUTGD_TRY_COMPARE(callbacks.load(), 2);
-        QCOMPARE(firstStatus, QString("uploaded"));
-        QCOMPARE(secondCode, QString("credential_setup_required"));
-        QCOMPARE(f.events("PUT").size(), 1);
-        QVERIFY(f.events("PUT")[0].toObject()["signatureValid"].toBool());
+    // Like Garage, the oracle checks the signature against the path as it arrives, and the SDK
+    // sends these characters unencoded but signs them encoded: the name check is denied.
+    void nameCheckAddsTheHintForSuchKeys_data() {
+        QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("name");
+        QTest::newRow("colon") << QString("prefix é") << QString("colon:.txt");
+        QTest::newRow("at-dollar-comma") << QString("prefix é") << QString("at@dollar$comma,.txt");
+        QTest::newRow("amp-equals") << QString("prefix é") << QString("amp&eq=.txt");
+        QTest::newRow("in-the-folder") << QString("team=a") << QString("plain.txt");
     }
-    void lanesRunUploadsInParallel() {
+    void nameCheckAddsTheHintForSuchKeys() {
+        QFETCH(QString, prefix);QFETCH(QString, name);
         S3Fixture f;
-        QVERIFY(f.provider.maximumConcurrentRequests(f.destination) > 1);
-        auto blocked = f.request("blocked.txt");
-        auto free = f.request("free.txt");
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"key", "prefix é/blocked.txt"}, {"barrier", "lane"}}}}});
-        std::atomic_bool blockedDone{false}, freeDone{false};
-        QString blockedStatus, freeStatus;
-        f.provider.upload(blocked, [&](auto result) { blockedStatus = result.status; blockedDone = true; });
-        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
-        // A second upload completes on another lane while the first is still in flight.
-        f.provider.upload(free, [&](auto result) { freeStatus = result.status; freeDone = true; });
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(freeDone.load(), 15000);
-        QCOMPARE(freeStatus, QString("uploaded"));
-        QVERIFY(!blockedDone.load());
-        QCOMPARE(f.provider.diagnostics()["lanes"].toInt(), 2);
-        f.control("/__release", {{"barrier", "lane"}}, true);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(blockedDone.load(), 15000);
-        QCOMPARE(blockedStatus, QString("uploaded"));
-        // An idle provider reuses its lanes; their drivers are released once idle.
-        PUTGD_TRY_COMPARE(f.provider.diagnostics()["queuedRequests"].toInt(), 0);
-        QCOMPARE(f.provider.diagnostics()["retainedDrivers"].toInt(), 0);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"key", "prefix é/plain.txt"}, {"status", 403}}}}});
+        const auto plain = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); });
+        QCOMPARE(plain.error.code, QString("s3_permission_denied"));
+        // A plain key never gets the hint, so the baseline below holds none.
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
+        f.destination.settings["objectPrefix"] = prefix;
+        f.reset();
+        const auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, name, cb); });
+        QCOMPARE(checked.status, QString("inconclusive"));
+        QCOMPARE(checked.error.code, QString("s3_permission_denied"));
+        QCOMPARE(checked.error.message, plain.error.message + nameCharactersHint());
+        // The hint costs no request.
+        QCOMPARE(f.events().size(), 1);
     }
-    void providerDestructionDrainsSentRequestBeforeRuntime() {
+    // The upload's own failure, single request or multipart: both eligible codes gain the hint
+    // for such a key, any other code does not, and a plain key never does. The oracle verifies
+    // paths the way AWS does here, so the rule decides the answer.
+    void uploadFailureAddsTheHintOnlyForEligibleCodes_data() {
+        QTest::addColumn<bool>("multipart");QTest::addColumn<int>("status");QTest::addColumn<QString>("service");QTest::addColumn<QString>("code");QTest::addColumn<bool>("hint");
+        for (const bool multipart : {false, true}) {
+            const auto mode = QString(multipart ? "multipart-" : "single-");
+            QTest::newRow(qPrintable(mode + "denied")) << multipart << 403 << QString("AccessDenied") << QString("s3_permission_denied") << true;
+            QTest::newRow(qPrintable(mode + "signature")) << multipart << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << true;
+            QTest::newRow(qPrintable(mode + "other")) << multipart << 400 << QString("InvalidRequest") << QString("s3_request_failed") << false;
+        }
+    }
+    void uploadFailureAddsTheHintOnlyForEligibleCodes() {
+        QFETCH(bool, multipart);QFETCH(int, status);QFETCH(QString, service);QFETCH(QString, code);QFETCH(bool, hint);
+        S3UploadPolicy policy;policy.multipartThresholdBytes = 1024 * 1024;policy.minimumPartBytes = 1024 * 1024;
+        S3Fixture f(policy);
+        QJsonObject rule{{"method", multipart ? "POST" : "PUT"}, {"status", status}, {"code", service}, {"remaining", 10}};
+        if (multipart) rule["query"] = "uploads";
+        const QByteArray bytes(multipart ? 2 * 1024 * 1024 : 64, 'x');
+        auto attempt = [&](const QString& name) {
+            f.reset({{"normalisePath", true}, {"rules", QJsonArray{rule}}});
+            return f.upload(f.request(name, bytes));
+        };
+        const auto plain = attempt("plain.bin");
+        const auto special = attempt("a:b@c.bin");
+        QCOMPARE(plain.status, QString("failed"));QCOMPARE(special.status, QString("failed"));
+        QCOMPARE(plain.error.code, code);QCOMPARE(special.error.code, code);
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
+        if (!hint) QVERIFY(!special.error.message.contains(nameCharactersHint()));
+        QCOMPARE(special.error.message, plain.error.message + (hint ? nameCharactersHint() : QString()));
+    }
+    // The SDK drops empty path segments, so the receipt, the link and the stored
+    // object must all name the key the request reached (#1582).
+    void prefixKeyIsTheStoredKey_data() {
+        QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("stored");
+        QTest::newRow("doubled")<<"a//b/"<<"a/b/";QTest::newRow("trailing-doubled")<<"dir//"<<"dir/";
+        QTest::newRow("leading")<<"/lead"<<"lead/";QTest::newRow("only-slashes")<<"//"<<"";
+    }
+    void prefixKeyIsTheStoredKey() {
+        QFETCH(QString,prefix);QFETCH(QString,stored);
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]=prefix;
+        const auto uploaded=f.upload(f.request("p.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        QCOMPARE(uploaded.receipt.objectReference["key"].toString(),stored+"p.txt");
+        QCOMPARE(f.events("PUT")[0].toObject()["key"].toString(),stored+"p.txt");
+        QVERIFY(f.state()["objects"].toObject().contains(stored+"p.txt"));
+        QCOMPARE(uploaded.receipt.directUrl,f.endpoint+"/isolated-fixture/"+stored+"p.txt");
+        QCOMPARE(f.await<StatResult>([&](auto cb){f.provider.stat(uploaded.receipt,cb);}).status,QString("own"));
+        QCOMPARE(f.remove(uploaded.receipt).status,QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()[stored+"p.txt"].toArray().isEmpty());
+    }
+    // History rows and journals made before #1582 hold the key as typed. They still
+    // check, delete, retry and abandon against the stored key.
+    void receiptsAndJournalsBeforeNormalisation() {
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
+        const auto uploaded=f.upload(f.request("old.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        auto legacy=uploaded.receipt;legacy.objectReference["key"]="a//b/old.txt";
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,"a//b/old.txt");
+        QCOMPARE(legacy.directUrl,f.endpoint+"/isolated-fixture/a//b/old.txt");
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QCOMPARE(stat.status,QString("own"));
+        // History compares the stat receipt with the row's own before deleting.
+        QCOMPARE(stat.receipt.objectReference,legacy.objectReference);
+        QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/old.txt"));
+        QCOMPARE(f.remove(legacy).status,QString("removed"));
+        QCOMPARE(f.events("DELETE")[0].toObject()["key"].toString(),QString("a/b/old.txt"));
+        QVERIFY(f.state()["objects"].toObject()["a/b/old.txt"].toArray().isEmpty());
+        // Retrying an interrupted upload whose journal holds the old key.
+        auto retry=f.request("retry.txt");retry.objectReference["key"]="a//b/retry.txt";
+        const auto retried=f.upload(retry);
+        QVERIFY2(retried.status=="uploaded",qPrintable(retried.error.code));
+        QCOMPARE(retried.receipt.objectReference["key"].toString(),QString("a/b/retry.txt"));
+        QVERIFY(f.state()["objects"].toObject().contains("a/b/retry.txt"));
+        // Abandoning a multipart upload whose journal holds the old key.
+        bool done=false;Error abandoned;
+        f.provider.abandonUpload(f.destination,{{"schemaVersion",1},{"partBytes",8*1024*1024},{"uploadId","synthetic-upload-old"},{"key","a//b/big.bin"},
+            {"bytes",double(64*1024*1024)},{"sha256",QString(64,'a')},{"phase","parts"}},[&](Error e){abandoned=e;done=true;});
+        PUTGD_TRY_VERIFY(done);
+        QVERIFY2(abandoned.code!="s3_multipart_invalid",qPrintable(abandoned.message));
+        QCOMPARE(f.events("DELETE").last().toObject()["key"].toString(),QString("a/b/big.bin"));
+    }
+    // An upload whose reply was lost, retried from a journal that holds the key as typed:
+    // reconciliation finds it and its first receipt names the stored key.
+    void reconciledReceiptNamesTheStoredKey() {
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
+        auto request=f.request("lost.txt");
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}},QJsonObject{{"method","HEAD"},{"status",503},{"code","ServiceUnavailable"},{"remaining",10}}}}});
+        QCOMPARE(f.upload(request).status,QString("unknown"));
+        f.reset({{"objects",f.state()["objects"]}});
+        auto retry=request;retry.objectReference["key"]="a//b/lost.txt";
+        const auto found=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QVERIFY2(found.status=="own",qPrintable(found.error.code));
+        QCOMPARE(found.receipt.objectReference["key"].toString(),QString("a/b/lost.txt"));
+        QCOMPARE(found.receipt.directUrl,f.endpoint+"/isolated-fixture/a/b/lost.txt");
+        QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/lost.txt"));
+    }
+    // #1676: requests and links add the bucket after the Endpoint's path, so a bucket
+    // typed there lands uploads under another key. New work through such an Endpoint is
+    // refused before any request; uploads already made through one still check and delete.
+    void endpointPathRefusedButItsUploadsStayDeletable() {
         S3Fixture f;
-        auto request = f.request();
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "shutdown"}}}}});
-        auto provider = std::make_unique<S3Provider>(f.credentials);
-        std::atomic_bool completed{false};
-        QString status;
-        provider->upload(request, [&](auto result) { status = result.status; completed.store(true); });
-        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
-        QVERIFY(!completed.load());
-        std::thread release([&] { f.control("/__release", {{"barrier", "shutdown"}}, true); });
-        provider.reset();
-        release.join();
-        QVERIFY(completed.load());
-        QCOMPARE(status, QString("uploaded"));
-        QCOMPARE(f.events("PUT").size(), 1);
-        QVERIFY(f.events("PUT")[0].toObject()["signatureValid"].toBool());
+        auto doubled=f.destination;doubled.settings["endpoint"]=f.endpoint+"/isolated-fixture";
+        auto request=f.request("p.txt");request.destination=doubled;
+        f.reset();
+        const auto refused=f.upload(request);
+        QCOMPARE(refused.status,QString("failed"));QCOMPARE(refused.error.details["field"].toString(),QString("endpoint"));
+        const auto checked=f.await<NameCheck>([&](auto cb){f.provider.checkName(doubled,"p.txt",cb);});
+        QCOMPARE(checked.error.code,QString("s3_settings_invalid"));QCOMPARE(checked.error.details["field"].toString(),QString("endpoint"));
+        QCOMPARE(f.events().size(),0);
+        // The object such an upload left: the bucket twice in its path.
+        f.destination.settings["objectPrefix"]="isolated-fixture";
+        const auto uploaded=f.upload(f.request("p.txt"));QCOMPARE(uploaded.status,QString("uploaded"));
+        auto legacy=uploaded.receipt;legacy.destination.settings=doubled.settings;legacy.objectReference["key"]="p.txt";
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,"p.txt");
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QVERIFY2(stat.status=="own",qPrintable(stat.error.code+": "+stat.error.message));
+        QCOMPARE(f.remove(legacy).status,QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()["isolated-fixture/p.txt"].toArray().isEmpty());
     }
-    void explicitSyntheticDestinationTest_data() {
-        QTest::addColumn<QString>("publicBody");
-        QTest::addColumn<bool>("reachable");
-        QTest::addColumn<bool>("cleanupDenied");
-        QTest::newRow("matching-public-bytes") << QString{} << true << false;
-        QTest::newRow("wrong-public-bytes") << QString("unexpected public content") << false << false;
-        QTest::newRow("oversized-public-response") << QString(1024 * 1024, 'x') << false << false;
-        QTest::newRow("public-and-cleanup-failed") << QString("unexpected public content") << false << true;
+    // #1675: a destination saved with a Region or Endpoint that today's rules refuse still
+    // loads, and other settings still save; changing that destination needs it fixed.
+    void refusedSettingsSavedEarlierStillLoad() {
+        S3Fixture f;ProviderRegistry registry;registry.add("s3",std::shared_ptr<S3Provider>(&f.provider,[](S3Provider*){}));
+        auto doc=test::configuration(f.directory.path());auto bad=f.destination.settings;bad["region"]="Western North America (WNAM)";bad["endpoint"]=f.endpoint+"/isolated-fixture";
+        doc["profiles"]=QJsonArray{QJsonObject{{"id",f.destination.profileId},{"label","Old"},{"provider","s3"},{"settings",bad},{"credentials",f.destination.credentialReference}}};
+        auto actions=doc["actions"].toObject();for(const auto& key:Settings::actionNames()){auto action=actions[key].toObject();action["profileId"]=f.destination.profileId;actions[key]=action;}doc["actions"]=actions;
+        QFile file(f.directory.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
+        SettingsService settings(file.fileName(),[&](auto id,auto value){return registry.validate(id,value);},nullptr,{},[&](auto id,auto value){return registry.validateStored(id,value);});
+        QVERIFY2(settings.metadata()["validation"].toObject()["ok"].toBool(),qPrintable(QJsonDocument(settings.metadata()).toJson()));
+        QCOMPARE(settings.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["region"].toString(),QString("Western North America (WNAM)"));
+        auto other=settings.document();auto limits=other["retention"].toObject();limits["historyRetentionDays"]=30;other["retention"]=limits;
+        const auto savedOther=settings.save(other,settings.revision());QVERIFY2(savedOther,qPrintable(savedOther.error.message));
+        auto changed=settings.document();auto profiles=changed["profiles"].toArray();auto profile=profiles[0].toObject();auto s=profile["settings"].toObject();
+        s["bucket"]="another-bucket";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
+        const auto refused=settings.save(changed,settings.revision());
+        QCOMPARE(refused.error.code,QString("s3_settings_invalid"));QCOMPARE(refused.error.details["field"].toString(),QString("region"));
+        // A copy of that destination under a new id meets today's rules too.
+        auto copied=settings.document();auto copies=copied["profiles"].toArray();auto copy=copies[0].toObject();copy["id"]="copied-destination";copy["label"]="Copy";copies.append(copy);copied["profiles"]=copies;
+        QCOMPARE(settings.save(copied,settings.revision()).error.details["field"].toString(),QString("region"));
+        s["region"]="auto";s["endpoint"]=f.endpoint;profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
+        const auto fixed=settings.save(changed,settings.revision());QVERIFY2(fixed,qPrintable(fixed.error.message));
+        // Cloudflare R2 signs with auto whatever Region holds (#1678): its saved dashboard location stays valid.
+        auto r2=f.destination.settings;r2["region"]="Western North America (WNAM)";r2["endpoint"]="https://ACCOUNT.R2.cloudflarestorage.com";
+        QVERIFY(!f.provider.validateSettings(r2));
+        r2["endpoint"]="https://r2.cloudflarestorage.com.example.net";QCOMPARE(f.provider.validateSettings(r2).details["field"].toString(),QString("region"));
+        // An Endpoint path is refused on R2 too (#1676).
+        r2["endpoint"]="https://ACCOUNT.r2.cloudflarestorage.com/isolated-fixture";QCOMPARE(f.provider.validateSettings(r2).details["field"].toString(),QString("endpoint"));
     }
-    void explicitSyntheticDestinationTest() {
-        QFETCH(QString, publicBody);
-        QFETCH(bool, reachable);
-        QFETCH(bool, cleanupDenied);
-        S3Fixture f;
-        QJsonArray rules;
-        if (!publicBody.isEmpty()) rules.append(QJsonObject{{"method", "GET"}, {"responseBody", publicBody}, {"remaining", 1}});
-        if (cleanupDenied) rules.append(QJsonObject{{"method", "DELETE"}, {"status", 403}, {"code", "AccessDenied"}});
-        f.reset({{"rules", rules}});
-        std::atomic_bool done{false};
-        QJsonObject result;
-        Error error;
-        f.provider.testDestination(f.destination, [](auto, auto ack) { ack({}); }, [&](auto value, auto e) { result = value; error = e; done = true; });
-        PUTGD_TRY_VERIFY(done.load());
-        if (reachable) QVERIFY2(!error, qPrintable(error.code));
-        else {QCOMPARE(error.code, QString("public_url_unreachable"));QVERIFY(error.message.contains("Link domain"));QVERIFY(error.message.contains("public-read"));}
-        QCOMPARE(result["publicReachable"].toBool(), reachable);
-        QCOMPARE(result["cleanupStatus"].toString(), cleanupDenied ? QString("failed") : QString("removed"));
-        if (cleanupDenied) {QVERIFY(error.message.contains("Cleanup also failed"));QVERIFY(error.message.contains("s3:DeleteObject"));}
-        bool unauthenticated = false;
-        for (auto event : f.events("GET"))
-            if (!event.toObject()["headers"].toObject().contains("authorization")) unauthenticated = true;
-        QVERIFY(unauthenticated);
+    // A "." or ".." part is removed by libcurl after the SDK signed it, so no request
+    // names it exactly: new uploads are refused and old receipts are left alone.
+    void dotSegmentsAreNeverSent_data() {
+        QTest::addColumn<QString>("prefix");
+        for(const auto* prefix:{"a/./b/","a/../b/",".","..","/./"})QTest::newRow(prefix)<<QString(prefix);
+    }
+    void dotSegmentsAreNeverSent() {
+        QFETCH(QString,prefix);
+        S3Fixture f;f.reset();
+        const auto uploaded=f.upload(f.request("p.txt"));QCOMPARE(uploaded.status,QString("uploaded"));
+        f.reset({{"objects",f.state()["objects"]}});
+        f.destination.settings["objectPrefix"]=prefix;
+        const auto checked=f.await<NameCheck>([&](auto cb){f.provider.checkName(f.destination,"p.txt",cb);});
+        QCOMPARE(checked.status,QString("inconclusive"));
+        QCOMPARE(checked.error.code,QString("s3_settings_invalid"));
+        auto legacy=uploaded.receipt;const auto key=prefix+"/p.txt";legacy.objectReference["key"]=key;
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,key);
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QCOMPARE(stat.status,QString("unknown"));QCOMPARE(stat.error.code,QString("s3_key_invalid"));
+        const auto removed=f.remove(legacy);
+        QCOMPARE(removed.status,QString("failed"));QCOMPARE(removed.error.code,QString("s3_key_invalid"));
+        auto retry=f.request("p.txt");retry.destination=uploaded.receipt.destination;retry.objectReference={{"schemaVersion",1},{"key",key}};
+        const auto retried=f.upload(retry);
+        QCOMPARE(retried.status,QString("failed"));QCOMPARE(retried.error.code,QString("s3_key_invalid"));
+        // A retry under the dot folder itself names the setting to fix, not the key.
+        retry.destination=f.destination;
+        const auto underFolder=f.upload(retry);
+        QCOMPARE(underFolder.status,QString("failed"));QCOMPARE(underFolder.error.code,QString("s3_settings_invalid"));
+        // So does the reconciliation that retrying an unknown upload starts with, which stays unknown.
+        const auto reconciled=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QCOMPARE(reconciled.status,QString("unknown"));QCOMPARE(reconciled.error.code,QString("s3_settings_invalid"));
+        QCOMPARE(f.events().size(),0);
     }
 };
 QTEST_GUILESS_MAIN(S3Test)

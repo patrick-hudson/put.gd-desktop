@@ -84,6 +84,66 @@ class CompleteSources(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'checksum differs'):
             complete.validate_dsc(target, 'gtk+3.0', '3.24')
 
+    def changed_receipt(self, change):
+        receipt = json.loads(json.dumps(self.receipt))
+        change(receipt, receipt['notices']['inventory']['components'])
+        return complete.distro_cache_key(receipt)
+
+    def distro_entry(self, key='gtk+3.0@3.24.41-4ubuntu1'):
+        return self.root / 'cache/ubuntu' / complete.distro_cache_entry(key)
+
+    def collect_counting_downloads(self):
+        calls = []
+        def apt(package, version, target):
+            calls.append((package, version))
+            self.fake_apt(package, version, target)
+            return {'method': 'fixture'}
+        result = complete.build(self.path, self.root / 'output', 1700000000, self.root / 'cache',
+                                ROOT / 'packaging/appimage/runtime-source.json', git=self.fake_git, apt=apt,
+                                fetch=lambda item, path: path.write_bytes(b'synthetic runtime source'))
+        return result, calls
+
+    def bundle_names(self, result):
+        with complete.tarfile.open(self.root / 'output' / result['file']) as archive:
+            return archive.getnames()
+
+    def test_restored_tree_supplies_matches_and_loses_stale_versions(self):
+        self.collect_counting_downloads()
+        stale = self.root / 'cache/ubuntu' / complete.distro_cache_entry('gtk+3.0@3.20-old')
+        (stale / 'files').mkdir(parents=True)
+        (stale / 'files/stale-marker.tar.gz').write_bytes(b'superseded source')
+        (stale / 'download.json').write_text('{}')
+        result, calls = self.collect_counting_downloads()
+        self.assertEqual(calls, [])
+        self.assertFalse(stale.exists())
+        self.assertTrue(self.distro_entry().is_dir())
+        self.assertFalse([name for name in self.bundle_names(result) if 'stale-marker' in name])
+
+    def test_tampered_or_incomplete_restored_download_is_fetched_again(self):
+        def tamper(entry):
+            (entry / 'files/orig.tar.gz').write_bytes(b'tampered')
+        def extra(entry):
+            (entry / 'files/planted.txt').write_bytes(b'unrecorded')
+        def no_metadata(entry):
+            (entry / 'download.json').unlink()
+        def bad_metadata(entry):
+            (entry / 'download.json').write_text('{')
+        def non_object_metadata(entry):
+            (entry / 'download.json').write_text('[]')
+        def linked_dsc(entry):
+            (entry / 'files/source.dsc').rename(entry / 'moved.dsc')
+            (entry / 'files/source.dsc').symlink_to(entry / 'moved.dsc')
+        for damage in (tamper, extra, no_metadata, bad_metadata, non_object_metadata, linked_dsc):
+            with self.subTest(damage=damage.__name__), patch('sys.stderr') as stderr:
+                self.collect_counting_downloads()
+                damage(self.distro_entry())
+                result, calls = self.collect_counting_downloads()
+                self.assertEqual(calls, [('gtk+3.0', '3.24.41-4ubuntu1')])
+                self.assertIn('::warning::', ''.join(call.args[0] for call in stderr.write.call_args_list))
+                names = self.bundle_names(result)
+                self.assertFalse([name for name in names if 'planted' in name])
+                self.assertEqual(complete.verify(self.root / 'output', result, self.receipt).name, result['file'])
+
     def test_runtime_binary_change_requires_new_source_closure(self):
         self.receipt['toolLock']['tools'][0]['sha256'] = 'b' * 64
         with self.assertRaisesRegex(ValueError, 'another runtime binary'):
@@ -186,6 +246,36 @@ class ExactSourceInputs(unittest.TestCase):
         self.assertNotEqual(Path(snapshot_env['APT_CONFIG']).parent, Path('/etc/apt'))
         self.assertEqual(run.call_args_list[-2].kwargs['env']['APT_CONFIG'], snapshot_env['APT_CONFIG'])
         self.assertTrue(all('--allow-unauthenticated' not in c.args[0] for c in run.call_args_list))
+
+    def snapshot_publication(self):
+        entry = {'source_package_name': 'apparmor', 'source_package_version': '4.0-8',
+                 'date_published': '2026-10-01T00:00:00+00:00',
+                 'date_superseded': '2026-10-03T00:00:00+00:00',
+                 'self_link': 'https://api.launchpad.net/1.0/source-publication'}
+        return io.BytesIO(json.dumps({'entries': [entry]}).encode())
+
+    def test_a_failing_snapshot_service_is_retried(self):
+        ok, failed = subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 100)
+        # The live archive lacks the version; the snapshot's download fails once, then works.
+        results = [subprocess.CalledProcessError(100, 'apt-get'), ok, failed, ok, ok]
+        with patch.object(complete.subprocess, 'run', side_effect=results) as run, \
+                patch.object(complete.time, 'sleep') as sleep, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=self.snapshot_publication()):
+            result = complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(result['method'], 'apt-signed-snapshot')
+        self.assertEqual(run.call_count, 5)
+        sleep.assert_called_once_with(complete.SNAPSHOT_PAUSE_SECONDS)
+
+    def test_a_snapshot_service_that_stays_down_fails_with_its_name(self):
+        failed = subprocess.CompletedProcess([], 100)
+        results = [subprocess.CalledProcessError(100, 'apt-get')] + [failed] * complete.SNAPSHOT_ATTEMPTS
+        with patch.object(complete.subprocess, 'run', side_effect=results) as run, \
+                patch.object(complete.time, 'sleep') as sleep, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=self.snapshot_publication()), \
+                self.assertRaisesRegex(RuntimeError, r'apparmor=4\.0-8 .*snapshot\.ubuntu\.com'):
+            complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(run.call_count, 1 + complete.SNAPSHOT_ATTEMPTS)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [20, 40, 60, 80])
 
     def test_another_publication_cannot_substitute_a_source_version(self):
         response = io.BytesIO(json.dumps({'entries': [

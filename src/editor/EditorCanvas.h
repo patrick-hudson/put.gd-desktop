@@ -1,5 +1,6 @@
 #pragma once
 #include "EditDocument.h"
+#include "TextLayer.h"
 #include <QHash>
 #include <QPointer>
 #include <QWidget>
@@ -7,11 +8,12 @@
 #include <optional>
 
 namespace putgd::editor {
-enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text};
-struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;int fontPixels=28;QString fontFamily;};
+// Style (#1893) sets the document's capture style; on the canvas it picks and moves marks like Select.
+enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line,CopyText,Style};
+struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
-// Interactive view of one EditDocument. The base raster is painted directly
-// from the document; only bounded display-resolution blur tiles are cached.
+// Interactive view of one EditDocument. The base stays in the document; only
+// bounded display-resolution effect tiles are retained.
 class EditorCanvas final:public QWidget {
  Q_OBJECT
 public:
@@ -55,7 +57,6 @@ public:
  // One undoable document step (the crop stays a draft until applied). Text
  // keeps its own size; an arrow takes its tail at x/y and head at x+w/y+h.
  bool setSelectionGeometry(const QRect&);
- QRect cropDraft() const {return cropDraft_;}
  bool fitted() const {return fitted_;}
  // The image area currently shown, in source pixels.
  QRect visibleImageRect() const;
@@ -64,8 +65,18 @@ public:
  // What a screen reader hears about the canvas: the selection or crop and
  // the keys that act on it.
  QString selectionSummary() const;
- qint64 cachedBlurBytes() const {return cacheBytes_;}
+ // The label the next step gets: one more than the last one placed, or the
+ // number set here. Undo, redo and agent edits recount from the highest step.
+ int nextStepNumber() const {return nextStep_;}
+ void setNextStepNumber(int);
+ // Copy text (#1428): the recognized words this canvas selects and tints while
+ // the tool is active. The window owns the layer and the recognition.
+ void setTextLayer(TextLayer* layer) {textLayer_=layer;update();}
+ TextLayer* textLayer() const {return textLayer_;}
 signals:
+ // Copy text: the selection changed, Ctrl+C on the canvas, Escape with nothing selected.
+ void textSelectionChanged();
+ void textCopyRequested();
  void changed();
  void viewChanged();
  void selectionChanged();
@@ -82,10 +93,14 @@ protected:
  void keyReleaseEvent(QKeyEvent*) override;
  bool eventFilter(QObject*,QEvent*) override;
 private:
+ void abandonDrag();
  void announce();
  bool nudge(const QPoint& delta,bool resize);
  enum class Drag {None,Create,Move,Resize,Pan,CropNew,CropMove,CropResize};
  QRect visibleBounds() const;
+ // #1893: the capture style's padding around the shown image, in image pixels; 0 while
+ // cropping (the crop edges stay exact) or with no style.
+ int styleMargin() const;
  QPointF toImage(const QPointF&) const;
  QPointF toWidget(const QPointF&) const;
  QRectF toWidget(const QRect&) const;
@@ -97,6 +112,7 @@ private:
  int selectionHandleAt(const Shape&,const QPointF& widgetPoint) const;
  Shape boundedText(const Shape& original,Shape requested,int handle=4) const;
  Shape scaledText(const Shape& original,int handle,const QPointF& imagePoint) const;
+ Shape scaledStep(const Shape& original,int handle,const QPointF& imagePoint) const;
  quint64 shapeAt(const QPointF& imagePoint) const;
  quint64 grabAt(const QPointF& imagePoint) const;
  void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
@@ -107,8 +123,11 @@ private:
  void placeTextWarning();
  void beginText(const QPointF& imagePoint,const Shape* existing);
  const QImage& blurTile(const Shape&);
+ const QImage& highlightTile(const Shape&);
+ const QImage& cachedTile(const Shape&,const QString& key,QImage (EditDocument::*render)(const Shape&,double) const);
  Shape::Kind kindFor(Tool) const;
  bool drawingTool() const;
+ bool selecting() const {return tool_==Tool::Select||tool_==Tool::Style;}
  EditDocument& doc_;
  Tool tool_=Tool::Redact;
  ToolStyle style_;
@@ -122,5 +141,8 @@ private:
  QHash<quint64,Tile> tiles_;qint64 cacheBytes_=0;quint64 tick_=0;
  QWidget* textWarning_=nullptr;
  QPointer<QLineEdit> textEditor_;QPointF textAnchor_;quint64 textShape_=0;
+ int nextStep_=1,stepStart_=1;
+ TextLayer* textLayer_=nullptr;bool selectingText_=false;
+ bool textPress(QMouseEvent*);bool textKey(QKeyEvent*);
 };
 }

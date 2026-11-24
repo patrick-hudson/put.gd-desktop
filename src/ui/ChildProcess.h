@@ -1,10 +1,6 @@
 #pragma once
+#include "core/ParentDeath.h"
 #include <QProcess>
-#ifdef Q_OS_LINUX
-#include <csignal>
-#include <sys/prctl.h>
-#include <unistd.h>
-#endif
 
 namespace putgd {
 // Call immediately before start(), on the UI main thread. These helpers must
@@ -15,7 +11,7 @@ inline void terminateWithParent(QProcess& process) {
     process.setChildProcessModifier([parent] {
         // Qt runs this only in the child, between fork and exec. Use only
         // low-level system calls: no Qt, allocation, logging or locks here.
-        if (::prctl(PR_SET_PDEATHSIG, SIGTERM, 0L, 0L, 0L) != 0 || ::getppid() != parent)
+        if (!dieWithParent(parent, SIGTERM))
             ::_exit(127); // Also close the race where the parent already died.
     });
 #else

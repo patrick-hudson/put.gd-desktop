@@ -88,7 +88,7 @@ def shortcut_recorder(scope):
         ctx.wait(lambda:ctx.call('ui.viewState')['settings']['section']==2,'Shortcuts page')
         ctx.use_catalog('settings','06-settings-shortcuts')
         ctx.click('record'+action.title()+'Shortcut',window='settings')
-        return ctx.wait(lambda:(r if (r:=observation.recording_status()) and 'Press shortcut' in (r.get('text') or '') else None),
+        return ctx.wait(lambda:(r if (r:=observation.recording_status()) and 'Press hotkey' in (r.get('text') or '') else None),
                         'native shortcut recording ready',timeout=20)
     def cancel():
         # Do not send Esc if the person already finished/cancelled recording.

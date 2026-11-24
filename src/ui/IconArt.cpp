@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QTransform>
+#include <utility>
 
 namespace putgd::IconArt {
 namespace {
@@ -22,30 +23,99 @@ QPainterPath tray() {
 QPainterPath disc(qreal x,qreal y,qreal radius) {QPainterPath p;p.addEllipse(QPointF(x,y),radius,radius);return p;}
 // Seasonal silhouettes, before any cutouts: the contour follows only the outside,
 // so the turkey's eye stays a clean hole on any panel.
+QPainterPath smallTurkey(bool details) {
+ // A rounded, side-facing poult with a soft scalloped fan.
+ // Draw in actual 16 px coordinates, then map to the common 24-unit grid.
+ QPainterPath p;p.setFillRule(Qt::WindingFill);
+ if(details) {
+  p.addEllipse(QPointF(12.15,4.05),.65,.65);
+  // A short curved wing gives the plump body its own readable gesture.
+  QPainterPath wing;wing.moveTo(4.45,9.65);
+  wing.cubicTo(5.1,8.05,7.4,7.55,8.65,8.55);
+  wing.quadTo(8.95,8.85,8.55,9.2);
+  wing.cubicTo(7.15,8.55,5.95,8.9,5.3,10.15);
+  wing.quadTo(4.75,10.45,4.45,9.65);wing.closeSubpath();
+  p=p.united(wing);
+ } else {
+  p.moveTo(4.05,10.9);
+  // Five broad, pillowy feather tips, with rounded valleys between them.
+  p.cubicTo(1.25,11.0,.15,9.65,.65,8.35);
+  p.quadTo(.9,7.65,2.1,7.5);
+  p.cubicTo(-.2,6.75,.2,4.15,2.55,4.45);
+  p.cubicTo(.95,2.2,2.75,.65,4.45,2.45);
+  p.cubicTo(4.0,-.2,6.85,-.25,7.25,2.35);
+  p.cubicTo(8.65,.15,10.45,1.45,9.65,3.75);
+  p.cubicTo(9.3,4.8,8.9,5.55,8.95,6.25);
+  // A short, curved neck supports an oversized friendly head.
+  p.cubicTo(10.0,6.4,10.1,5.4,10.15,4.25);
+  p.cubicTo(10.15,1.3,13.85,1.05,14.0,4.05);
+  p.quadTo(14.8,4.3,15.65,5.05);
+  p.quadTo(14.9,5.7,13.65,5.7);
+  // Rounded hanging wattle, distinct from the breast.
+  p.cubicTo(14.5,6.8,14.25,8.05,13.5,8.05);
+  p.quadTo(12.85,8.05,12.95,6.8);
+  p.lineTo(12.2,6.95);
+  p.cubicTo(12.5,10.0,11.65,12.25,8.2,12.25);
+  p.cubicTo(6.25,12.25,4.85,11.8,4.05,10.9);p.closeSubpath();
+  // A small, curved U is a signature under the bird, not its pedestal.
+  QPainterPath bowl;bowl.moveTo(4.3,13.25);bowl.lineTo(5.55,13.25);
+  bowl.lineTo(5.55,13.8);bowl.quadTo(5.55,14.25,6.05,14.25);
+  bowl.lineTo(10.4,14.25);bowl.quadTo(10.9,14.25,10.9,13.8);
+  bowl.lineTo(10.9,13.25);bowl.lineTo(12.15,13.25);bowl.lineTo(12.15,13.9);
+  bowl.quadTo(12.15,15.5,10.45,15.5);bowl.lineTo(6,15.5);
+  bowl.quadTo(4.3,15.5,4.3,13.9);bowl.closeSubpath();p=p.united(bowl);
+ }
+ QTransform scale;scale.scale(1.5,1.5);return scale.map(p);
+}
 QPainterPath turkeySilhouette() {
- QPainterPath p;
- p.moveTo(9,16);p.quadTo(7.6,14.5,7.6,12.3);p.lineTo(2,10.3);p.quadTo(.5,9.7,.8,8.2);p.quadTo(1.1,6.7,2.7,7.1);p.lineTo(5.4,8.2);
- p.lineTo(3.6,5.2);p.quadTo(2.7,3.7,4,2.9);p.quadTo(5.3,2.1,6.3,3.5);p.lineTo(8.5,7);
- p.lineTo(8.8,3);p.quadTo(8.9,1.4,10.4,1.4);p.quadTo(12,1.4,11.9,3.2);p.lineTo(11.4,9);p.lineTo(14,9);
- p.lineTo(15,5.6);p.quadTo(13.9,4.7,14.1,3.1);p.quadTo(14.4,.7,16.9,.7);p.quadTo(19.3,.7,19.6,2.9);p.lineTo(23,4.2);p.lineTo(19.5,5.4);
- p.lineTo(18.5,5.8);p.quadTo(20.1,6.6,19.3,9);p.quadTo(18.9,10.1,17.8,9.2);p.lineTo(17.1,10.6);p.quadTo(16.7,13.7,14.8,16);p.closeSubpath();
- return tray().united(p);
+ // Broad scalloped fan, plump breast, and a hanging wattle: avoid long feather
+ // fingers, which read as a hand at 16 px. The smaller bowl leaves the bird room.
+ QPainterPath p;p.moveTo(7,16);
+ p.cubicTo(3,16,.5,15,.5,12);p.quadTo(.5,10,3.5,10.5);
+ p.cubicTo(-.5,9,-.5,5,3.5,5.5);p.cubicTo(1,2,4,-1,6.5,2.5);
+ p.cubicTo(6.5,-.5,10.5,-.5,11,2.5);p.cubicTo(13,-1,14.4,2,13.4,5.2);p.lineTo(13,7.8);
+ p.cubicTo(14.3,7.8,15,6.8,15,5.8);p.cubicTo(15.2,1,20,-.5,21,3.5);
+ p.lineTo(23.5,5.2);p.lineTo(20.2,6.6);p.cubicTo(21.6,7,21.6,10.5,20,10.5);
+ p.quadTo(19,10.5,19.3,8.3);p.lineTo(17.8,8.8);p.cubicTo(18,14,16.8,17,12,17);
+ p.quadTo(9,17,7,16);p.closeSubpath();
+ QPainterPath bowl;bowl.moveTo(4,18.5);bowl.lineTo(6.5,18.5);bowl.lineTo(6.5,19.5);
+ bowl.quadTo(6.5,20.5,8,20.5);bowl.lineTo(17,20.5);bowl.quadTo(18.5,20.5,18.5,19.5);
+ bowl.lineTo(18.5,18.5);bowl.lineTo(21,18.5);bowl.lineTo(21,20);
+ bowl.quadTo(21,23,17.5,23);bowl.lineTo(7.5,23);bowl.quadTo(4,23,4,20);bowl.closeSubpath();
+ return p.united(bowl);
+}
+QPainterPath turkeyDetails() {
+ // A transparent curved separation distinguishes the tail from the body.
+ QPainterPath wing;wing.moveTo(5.2,12.2);wing.cubicTo(7.2,9,10.2,8.4,12.5,10);
+ wing.lineTo(11.7,11.2);wing.cubicTo(9.8,9.8,7.8,10.4,6.4,12.8);wing.closeSubpath();
+ return disc(18,4,1.2).united(wing);
 }
 QPainterPath treeSilhouette() {
- QPainterPath p;p.moveTo(12,.5);
- // A star on a tall tree standing in the bowl's well, clear of it all round. A tree
- // on the rim needs a wide head on a stem, which at 16 px is the mark's arrow. The
- // square steps cut 1.5 units between tiers: anything shallower closes up at tray size.
- for(const auto& point:{QPointF(12.6,1.9),QPointF(14.1,2),QPointF(13,3),QPointF(13.25,3.8),QPointF(15,5.5),QPointF(15,6.25),QPointF(13,6.25),QPointF(13,7.75),QPointF(15.75,9.5),QPointF(15.75,10.25),QPointF(13.25,10.25),QPointF(13.25,11.75),QPointF(16.5,14),QPointF(16.5,14.75),QPointF(13.25,14.75),QPointF(13.25,16.5),QPointF(10.75,16.5),QPointF(10.75,14.75),QPointF(7.5,14.75),QPointF(7.5,14),QPointF(10.75,11.75),QPointF(10.75,10.25),QPointF(8.25,10.25),QPointF(8.25,9.5),QPointF(11,7.75),QPointF(11,6.25),QPointF(9,6.25),QPointF(9,5.5),QPointF(10.75,3.8),QPointF(11,3),QPointF(9.9,2),QPointF(11.4,1.9)})p.lineTo(point);
- p.closeSubpath();
- return tray().united(p);
+ // Broad fir boughs use most of the frame; the tray becomes a small tree stand.
+ QPainterPath tree;tree.moveTo(12,4.75);
+ tree.lineTo(16.25,9);tree.lineTo(13.75,9);
+ tree.lineTo(19,13.75);tree.lineTo(15.75,13.75);
+ tree.lineTo(21.5,18.5);tree.lineTo(13.25,18.5);
+ tree.lineTo(13.25,20);tree.lineTo(10.75,20);tree.lineTo(10.75,18.5);
+ tree.lineTo(2.5,18.5);tree.lineTo(8.25,13.75);
+ tree.lineTo(5,13.75);tree.lineTo(10.25,9);
+ tree.lineTo(7.75,9);tree.closeSubpath();
+ // The star's lower points stay clear of the tree's crown.
+ QPainterPath star;star.moveTo(12,.5);
+ for(const auto& point:{QPointF(12.7,1.9),QPointF(14.3,2.1),QPointF(13.1,3.2),QPointF(13.4,4.7),QPointF(12,4),QPointF(10.6,4.7),QPointF(10.9,3.2),QPointF(9.7,2.1),QPointF(11.3,1.9)})star.lineTo(point);
+ star.closeSubpath();
+ QPainterPath stand;stand.moveTo(6.5,20);stand.lineTo(8.25,20);stand.lineTo(8.25,21);stand.quadTo(8.25,21.5,8.75,21.5);
+ stand.lineTo(15.25,21.5);stand.quadTo(15.75,21.5,15.75,21);stand.lineTo(15.75,20);stand.lineTo(17.5,20);
+ stand.lineTo(17.5,21);stand.quadTo(17.5,23.25,15.25,23.25);stand.lineTo(8.75,23.25);stand.quadTo(6.5,23.25,6.5,21);stand.closeSubpath();
+ return tree.united(star).united(stand);
 }
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
 }
-const QPainterPath& glyphShape(TrayGlyph glyph) {
- static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(disc(17.5,2.9,.9));
+const QPainterPath& glyphShape(TrayGlyph glyph,bool small=false) {
+ static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(turkeyDetails()),tinyBird=smallTurkey(false).subtracted(smallTurkey(true));
+ if(small&&glyph==TrayGlyph::Turkey)return tinyBird;
  return glyph==TrayGlyph::Turkey?bird:glyphOutline(glyph);
 }
 QImage canvas(int scale) {
@@ -54,23 +124,38 @@ QImage canvas(int scale) {
 }
 }
 QImage liftTray(const QColor& color,int percent,int scale,int recording) {return liftTray(TrayIcon{color,percent,recording},scale);}
-QImage liftTray(const TrayIcon& icon,int scale) {
+QImage liftTray(const TrayIcon& icon,int scale) {auto image=liftTrayAtSize(icon,24*scale);image.setDevicePixelRatio(scale);return image;}
+QImage liftTrayAtSize(const TrayIcon& icon,int pixels) {
+ const qreal scale=pixels/24.0;
  const auto& color=icon.color;const int percent=icon.percent,recording=icon.recording;
- auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
- const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
+ QImage image(pixels,pixels,QImage::Format_ARGB32);image.fill(Qt::transparent);QPainter p(&image);p.scale(scale,scale);p.setRenderHint(QPainter::Antialiasing);
+ const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.capture||color==light.process||color==light.upload||color==light.error);
  const bool failed=percent==-2;
  const auto glyph=failed?tints.error:color;
- const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const auto& shape=glyphShape(shown);
+ const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const bool small=pixels==16&&shown==TrayGlyph::Turkey;const auto& shape=glyphShape(shown,small);
  if(percent<0) p.fillPath(shape,glyph);
  else {
   p.fillPath(shape,glyph);
   const auto bounds=shape.boundingRect();const auto level=bounds.bottom()-bounds.height()*qBound(0,percent,100)/100.0;
   // The fill climbs the whole silhouette; a clip at a full fill could round away its top row.
-  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));p.fillPath(shape,tints.encoding);p.restore();
+  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));
+  // Replace the small optical frame's band: painting over idle twice can turn
+  // a nearly opaque edge into an opaque pixel carrying both status tints.
+  if(small){p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(QRectF(0,0,24,24),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);}
+  p.fillPath(shape,tints.upload);p.restore();
  }
  // Thinner on the seasonal art, whose feathers and gap the full contour would close.
  p.setPen(QPen(Theme::trayOutline(),shown==TrayGlyph::Mark?0.65:0.45,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
- p.setBrush(Qt::NoBrush);p.drawPath(glyphOutline(shown));
+ p.setBrush(Qt::NoBrush);if(!small)p.drawPath(glyphOutline(shown));
+ // The done badge: bottom-right, so the seasonal glyph's head or star stays whole,
+ // a disc in the upload tint with a check cut out of it.
+ if(icon.done){
+  const QRectF done(13.5,13.5,10.5,10.5);
+  p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setPen(Qt::NoPen);p.setBrush(Qt::black);p.drawEllipse(done.adjusted(-1.5,-1.5,1.5,1.5));p.restore();
+  p.setPen(Qt::NoPen);p.setBrush(tints.upload);p.drawEllipse(done);
+  p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setBrush(Qt::NoBrush);p.setPen(QPen(Qt::black,1.5,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+  QPainterPath tick;tick.moveTo(16.1,18.9);tick.lineTo(18,20.7);tick.lineTo(21.4,17.1);p.drawPath(tick);p.restore();
+ }
  // A 7 px disc at 16 px, with a 1 px transparent ring, always top-right.
  const QRectF badge=failed||recording?QRectF(13.5,0,10.5,10.5):QRectF();
  if(!badge.isEmpty()){
@@ -81,7 +166,7 @@ QImage liftTray(const TrayIcon& icon,int scale) {
   else if(recording==2){p.drawRect(QRectF(16.5,2.5,1.5,5.5));p.drawRect(QRectF(19.5,2.5,1.5,5.5));}
   p.restore();
  }
- return image;
+ p.end();return image;
 }
 QImage liftApp(const QColor& color,int scale) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
@@ -115,10 +200,24 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name!="edit"){corners.moveTo(16,21);corners.lineTo(21,21);corners.lineTo(21,16);}p.drawPath(corners);
   if(name=="edit"){QPainterPath pencil;pencil.moveTo(18,10);pencil.lineTo(21,13);pencil.lineTo(13,21);pencil.lineTo(9,21);pencil.lineTo(10,18);pencil.closeSubpath();p.drawPath(pencil);p.drawLine(16,12,19,15);}
   else{p.drawLine(8,12,16,12);p.drawLine(12,8,12,16);}
+ } else if(name=="copy-text") {
+  // Copy text (#1428): a letter T inside the region's selection corners.
+  QPainterPath corners;corners.moveTo(8,3);corners.lineTo(3,3);corners.lineTo(3,8);corners.moveTo(3,16);corners.lineTo(3,21);corners.lineTo(8,21);
+  corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);corners.moveTo(16,21);corners.lineTo(21,21);corners.lineTo(21,16);p.drawPath(corners);
+  p.drawLine(QPointF(8,8),QPointF(16,8));p.drawLine(QPointF(12,8),QPointF(12,17));
+ } else if(name=="qr-code") {
+  // Show QR code (#1428): three finder squares and a few modules.
+  rounded(3,3,7,7,1.5);rounded(14,3,7,7,1.5);rounded(3,14,7,7,1.5);
+  fill(color);p.drawRect(QRectF(5.6,5.6,1.8,1.8));p.drawRect(QRectF(16.6,5.6,1.8,1.8));p.drawRect(QRectF(5.6,16.6,1.8,1.8));
+  p.drawRect(QRectF(14,14,2.6,2.6));p.drawRect(QRectF(18.4,14,2.6,2.6));p.drawRect(QRectF(14,18.4,2.6,2.6));fill(secondary);p.drawRect(QRectF(18.4,18.4,2.6,2.6));
  } else if(name=="window") {
   rounded(3,4,18,16);p.drawLine(3,9,21,9);p.drawLine(7,6.5,9,6.5);
  } else if(name=="desktop") {
   rounded(2.9,3,18.2,14);p.drawLine(12,17,12,21);p.drawLine(7,21,17,21);
+ } else if(name=="monitor") {
+  // One display with the pointer on it: the monitor under the pointer (#1363).
+  rounded(2.9,3,18.2,14);p.drawLine(12,17,12,21);p.drawLine(7,21,17,21);
+  QPainterPath pointer;pointer.moveTo(10,6.5);pointer.lineTo(10,13.5);pointer.lineTo(11.9,11.7);pointer.lineTo(14.6,11.7);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="clipboard") {
   QPainterPath board;board.moveTo(8,5);board.lineTo(6,5);board.quadTo(4,5,4,7);board.lineTo(4,19);board.quadTo(4,21,6,21);board.lineTo(18,21);board.quadTo(20,21,20,19);board.lineTo(20,7);board.quadTo(20,5,18,5);board.lineTo(16,5);p.drawPath(board);
   rounded(8,3,8,4,1);p.drawLine(12,17,12,10);QPainterPath upload;upload.moveTo(8.5,13.5);upload.lineTo(12,10);upload.lineTo(15.5,13.5);p.drawPath(upload);
@@ -149,6 +248,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath mountains;mountains.moveTo(4,18);mountains.lineTo(10,14);mountains.lineTo(14,17);mountains.lineTo(17,12);mountains.lineTo(20,15);p.drawPath(mountains);
  } else if(name=="stop") {
   fill(color);rounded(6,6,12,12,2);
+ } else if(name=="scroll") {
+  p.drawRoundedRect(QRectF(5,2,14,20),2,2);p.drawLine(QPointF(12,6),QPointF(12,18));p.drawLine(QPointF(8,14),QPointF(12,18));p.drawLine(QPointF(16,14),QPointF(12,18));
  } else if(name=="record") {
   rounded(3,6,12,12);QPainterPath lens;lens.moveTo(15,10);lens.lineTo(21,6);lens.lineTo(21,18);lens.lineTo(15,14);p.drawPath(lens);
  } else if(name=="record-dot") {
@@ -156,6 +257,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="select") {
   // 1.8 units on the 24-unit grid gives a 1.5 px stroke in 20 px tool icons.
   line(color,1.8);QPainterPath pointer;pointer.moveTo(5,3);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,21);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+ } else if(name=="cut") {
+  // Scissors: two rings below, blades crossing up to the right.
+  line(color,1.8);p.drawEllipse(QPointF(6,6),2.8,2.8);p.drawEllipse(QPointF(6,18),2.8,2.8);
+  p.drawLine(QPointF(8.2,7.8),QPointF(20,18.5));p.drawLine(QPointF(8.2,16.2),QPointF(20,5.5));
  } else if(name=="redact") {
   line(color,1.2);p.drawLine(3,5,18,5);p.drawLine(3,9,21,9);p.drawLine(3,13,20,13);p.drawLine(3,17,21,17);p.drawLine(3,21,15,21);
   fill(color);rounded(7,7,10,12,1);
@@ -166,10 +271,28 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="crop") {
   line(color,1.8);p.drawLine(7,3,7,17);p.drawLine(7,17,21,17);
   p.drawLine(3,7,17,7);p.drawLine(17,7,17,21);
+ } else if(name=="capture-style") {
+  // #1893: a framed picture: a washed backdrop, the capture card inside it with a shadow stroke under it.
+  line(color,1.8);QPainterPath frame;frame.addRoundedRect(QRectF(3,3,18,18),3,3);wash(frame);p.drawPath(frame);
+  rounded(7,7,10,8,1.5);p.drawLine(QPointF(8.5,17.5),QPointF(17.5,17.5));
  } else if(name=="annotate-arrow") {
   line(color,1.8);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
  } else if(name=="rectangle") {
   line(color,1.8);rounded(4,5,16,14,1);
+ } else if(name=="ellipse") {
+  // The rectangle's frame, rounded fully: a horizontal body overshooting to 19.
+  line(color,1.8);p.drawEllipse(QRectF(2.5,5,19,14));
+ } else if(name=="line") {
+  // The arrow's diagonal without a head; filled ends say "two points".
+  line(color,1.8);p.drawLine(QPointF(6,18),QPointF(18,6));
+  fill(color);p.drawEllipse(QPointF(5,19),2.2,2.2);p.drawEllipse(QPointF(19,5),2.2,2.2);
+ } else if(name=="pen") {
+  // A freehand stroke: one relaxed S, distinct from the highlight's marker.
+  line(color,1.8);QPainterPath stroke;stroke.moveTo(3,17);stroke.cubicTo(5,8,10,7,11.5,13);stroke.cubicTo(13,19,18,19,21,7);p.drawPath(stroke);
+ } else if(name=="step") {
+  // A numbered marker: a ring holding a 1.
+  line(color,1.8);p.drawEllipse(QRectF(2.5,2.5,19,19));
+  QPainterPath one;one.moveTo(9.5,9);one.lineTo(12.5,7);one.lineTo(12.5,17);p.drawPath(one);p.drawLine(QPointF(9.5,17),QPointF(15.5,17));
  } else if(name=="highlight") {
   line(color,1.8);QPainterPath marker;
   marker.moveTo(16,3);marker.lineTo(21,8);marker.lineTo(12,18);marker.lineTo(6,12);marker.closeSubpath();
@@ -185,6 +308,15 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
   line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
   turn.moveTo(9,4);turn.lineTo(4,9);turn.lineTo(9,14);p.drawPath(turn);
+ } else if(name=="frame-back"||name=="frame-forward") {
+  // #1613 frame step: one film frame (a cell between two rules) with a chevron
+  // beside it, distinct from skip-to-start.
+  line(color,1.8);const bool back=name=="frame-back";const qreal left=back?10:3;
+  rounded(left,4,11,16,1.5);p.drawLine(QPointF(left,8),QPointF(left+11,8));p.drawLine(QPointF(left,16),QPointF(left+11,16));
+  QPainterPath chevron;if(back){chevron.moveTo(7,8);chevron.lineTo(3,12);chevron.lineTo(7,16);}else{chevron.moveTo(17,8);chevron.lineTo(21,12);chevron.lineTo(17,16);}p.drawPath(chevron);
+ } else if(name=="zoom") {
+  // #1613 the timeline zoom: a magnifier.
+  line(color,1.8);p.drawEllipse(QPointF(10.5,10.5),6.5,6.5);p.drawLine(QPointF(15.3,15.3),QPointF(20.5,20.5));
  } else if(name=="zoom-fit") {
   line(color,1.8);rounded(4,4,16,16,2);
   QPainterPath arrows;arrows.moveTo(10,10);arrows.lineTo(7,7);arrows.lineTo(7,10);arrows.moveTo(7,7);arrows.lineTo(10,7);
@@ -210,6 +342,15 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath eye;eye.moveTo(2,12);eye.cubicTo(7,4,17,4,22,12);eye.cubicTo(17,20,7,20,2,12);eye.closeSubpath();p.drawPath(eye);p.drawEllipse(QPointF(12,12),3,3);
  } else if(name=="view-list") {
   for(int y:{5,12,19}){p.drawPoint(QPointF(4,y));p.drawLine(9,y,21,y);}
+ } else if(name=="view-grid") {
+  // History's gallery: four tiles, the first washed like a selected one.
+  QPainterPath first;first.addRoundedRect(QRectF(3.9,3.9,7.2,7.2),1.6,1.6);wash(first);
+  for(const auto& corner:{QPointF(3.9,3.9),QPointF(12.9,3.9),QPointF(3.9,12.9),QPointF(12.9,12.9)})p.drawRoundedRect(QRectF(corner,QSizeF(7.2,7.2)),1.6,1.6);
+ } else if(name=="panel-right") {
+  // The details pane beside a list: the pane side is washed.
+  QPainterPath pane;pane.addRoundedRect(QRectF(14,4,7,16),1.5,1.5);wash(pane);rounded(2.9,4,18.2,16);p.drawLine(14,4,14,20);
+ } else if(name=="filter") {
+  for(const auto& [y,inset]:{std::pair<qreal,qreal>{6,3},{12,6},{18,9}})p.drawLine(QPointF(inset,y),QPointF(24-inset,y));
  } else if(name=="view-detail") {
   rounded(3,3,18,18);p.drawLine(3,9,21,9);p.drawLine(3,15,21,15);p.drawLine(10,3,10,21);
  } else if(name=="play") {

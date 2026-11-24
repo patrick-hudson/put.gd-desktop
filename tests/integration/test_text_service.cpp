@@ -1,0 +1,252 @@
+// Text recognition in the resident (#1428), through OperationService's real
+// journal, log and copy queue with the fake backend in place of the helper.
+#include "fixtures/U2Fixtures.h"
+#include "fixtures/FakeTextBackend.h"
+#include "fixtures/Waits.h"
+#include "core/Log.h"
+#include "app/LocalServer.h"
+#include <QLocalSocket>
+#include <QDirIterator>
+#include <QScopeGuard>
+#include <QSignalSpy>
+
+using namespace putgd;using namespace putgd::test;
+
+namespace {
+// What the screen "showed": must never be found outside the clipboard and an agent's reply.
+const char textCanary[]="CANARY-7f3a-recognized-text";
+const char codeCanary[]="CANARY-91bc-code-content";
+TextResult recognized() {
+ TextResult result;result.text=QStringLiteral("Invoice ")+textCanary;result.lineTops={4};result.words={{QString::fromLatin1(textCanary),QRect(1,4,8,8),90}};
+ TextCode code;code.format="QRCode";code.text=codeCanary;code.length=qint64(sizeof(codeCanary)-1);code.quad={{0,12},{4,12},{4,15},{0,15}};result.codes={code};
+ result.languagesUsed={"eng"};return result;
+}
+TextService::Request request(bool copy,bool keepResult) {
+ TextService::Request request;request.source="monitor";request.copy=copy;request.keepResult=keepResult;
+ request.acquire=[](TextService::Deliver deliver){deliver({},[](Error&){QImage image(32,16,QImage::Format_RGB32);image.fill(Qt::white);return image;});};
+ return request;
+}
+// A desktop that cannot capture a window, for a reason of its own, and would
+// deliver pixels for anything it is asked all the same.
+class LimitedDesktop final:public SourceAdapter {
+public:
+ int reads=0;
+ quint64 clipboardRevision() const override {return 0;}
+ QJsonObject capabilities() const override {
+  const QJsonObject available{{"available",true}};
+  return {{"capture",QJsonObject{{"window",QJsonObject{{"available",false},{"code","capture_cleanup_pending"},{"error","Log out once to finish an earlier capture"}}},{"monitor",available},{"desktop",available}}}};
+ }
+ void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply) override {++reads;ClipboardPayload payload;payload.kind="image";payload.image=QImage(16,8,QImage::Format_RGB32);payload.image.fill(Qt::white);reply({payload,{}});}
+ void cancelAcquisition() override {}
+ void copy(const CopyPayload&,std::function<void(Error)> reply) override {reply({});}
+};
+// A resident's services over a private data folder, with the fake backend installed.
+struct Resident {
+ QTemporaryDir dir{QStringLiteral("/tmp/ts-XXXXXX")};ProviderRegistry registry;Source source;SourceAdapter* desktop=&source;
+ std::unique_ptr<SettingsService> settings;std::unique_ptr<OperationService> operations;FakeTextBackend* backend=nullptr;
+ bool start() {
+  settings=std::make_unique<SettingsService>(dir.filePath("config.json"));if(!settings->save(configuration(dir.path(),true),{}))return false;
+  operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,*desktop);
+  auto fake=std::make_unique<FakeTextBackend>();backend=fake.get();backend->result=recognized();operations->setTextBackend(std::move(fake));
+  return waitFor([&]{return operations->ready();});
+ }
+ // Starts one recognition and returns its operation ID once it was accepted.
+ QString recognize(TextService::Request request) {
+  QString id;Error refused;operations->text().recognize(std::move(request),[&](Error error,QJsonObject result){refused=error;id=result["operationId"].toString();});
+  return waitFor([&]{return !id.isEmpty()||refused;})?id:QString();
+ }
+ // The same through the session entry point, with the refusal when there is one.
+ QString recognizeFrom(const QJsonObject& params,Error& refused) {
+  QString id;bool answered=false;operations->recognizeText(params,[&](Error error,QJsonObject result){refused=error;id=result["operationId"].toString();answered=true;});
+  return waitFor([&]{return answered;})?id:QString();
+ }
+ QJsonObject inspect(const QString& id) {QJsonObject record;operations->text().inspect(id,record);return record;}
+ bool ended(const QString& id) {const auto state=inspect(id)["state"].toString();return state=="completed"||state=="failed"||state=="cancelled";}
+};
+bool anyFileHolds(const QString& root,const QByteArray& needle) {
+ QDirIterator files(root,QDir::Files|QDir::Hidden,QDirIterator::Subdirectories);
+ while(files.hasNext()){QFile file(files.next());if(file.open(QIODevice::ReadOnly)&&file.readAll().contains(needle))return true;}
+ return false;
+}
+}
+class TextServiceTest:public QObject {
+ Q_OBJECT
+private slots:
+ // #1981: the script check runs only for languages nobody chose (no
+ // parameter, no saved preference), and its outcome reaches the record; a
+ // page whose language data is missing says so in the notification.
+ void scriptCheckOnlyWhenNobodyChoseLanguages() {
+  Resident resident;QVERIFY(resident.start());QSignalSpy finished(resident.operations.get(),&OperationService::textFinished);
+  auto result=recognized();result.detectedScript="Cyrillic";result.detectedLanguage="rus";result.detectionOutcome="language_missing";resident.backend->result=result;
+  auto id=resident.recognize(request(true,false));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(resident.backend->options().detectScript);QVERIFY(!resident.backend->options().languagesRequired);
+  QCOMPARE(resident.inspect(id)["detection"].toObject(),(QJsonObject{{"script","Cyrillic"},{"language","rus"},{"outcome","language_missing"}}));
+  QCOMPARE(finished.size(),1);QVERIFY2(finished.first().at(2).toString().contains("Russian"),qPrintable(finished.first().at(2).toString()));
+  // Named by the caller: no check.
+  resident.backend->result=recognized();
+  auto named=request(true,false);named.languages={"eng"};id=resident.recognize(std::move(named));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.backend->options().detectScript);QVERIFY(!resident.inspect(id).contains("detection"));
+  // Chosen in Settings: no check.
+  auto doc=configuration(resident.dir.path(),true);auto preferences=doc["preferences"].toObject();preferences["textRecognitionLanguages"]=QJsonArray{"eng"};doc["preferences"]=preferences;
+  QVERIFY(resident.settings->save(doc,resident.settings->revision()));
+  id=resident.recognize(request(true,false));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.backend->options().detectScript);
+ }
+ // Recognized text or code content written to the journal, the History database
+ // or a log would stay on disk unseen; and a much-used action that kept its rows
+ // would grow the journal without limit.
+ void completedTextLeavesNoJournalRowAndNothingRecognizedOnDisk() {
+  Resident resident;logging::open(resident.dir.filePath("state/logs"));logging::setDebug(true);const auto closeLog=qScopeGuard([]{logging::close();});
+  QVERIFY(resident.start());QSignalSpy finished(resident.operations.get(),&OperationService::textFinished);
+  const auto id=resident.recognize(request(true,true));QVERIFY(!id.isEmpty());
+  PUTGD_TRY_VERIFY(resident.ended(id));
+  const auto record=resident.inspect(id);QCOMPARE(record["state"].toString(),QString("completed"));QCOMPARE(record["copyStatus"].toString(),QString("copied"));
+  // The clipboard got it, and the agent can read it while it is kept: the canary did travel.
+  QVERIFY(resident.source.copied.text.contains(textCanary));QVERIFY(resident.source.copied.text.contains(codeCanary));QVERIFY(record["text"].toString().contains(textCanary));
+  // The notification says how much was copied, and nothing of what it was.
+  QCOMPARE(finished.size(),1);const auto notification=finished.first().at(2).toString();const auto announced=QJsonDocument(finished.first().at(1).toJsonObject()).toJson();
+  QVERIFY(!notification.isEmpty());
+  for(const auto* canary:{textCanary,codeCanary}){QVERIFY2(!notification.contains(canary),canary);QVERIFY2(!announced.contains(canary),canary);}
+  // No journal row is left, in any state.
+  PUTGD_TRY_VERIFY(resident.operations->activeObservations().isEmpty());
+  {HistoryStore store(resident.operations->databasePath());Error error;store.operation(id,&error);QCOMPARE(error.code,QString("operation_not_found"));QVERIFY(store.recent(100).isEmpty());}
+  // A failed one stays, with its error and nothing else.
+  resident.backend->error=textjob::failure("text_job_failed");
+  const auto failed=resident.recognize(request(true,false));QVERIFY(!failed.isEmpty());PUTGD_TRY_VERIFY(resident.ended(failed));
+  PUTGD_TRY_VERIFY(resident.operations->activeObservations().isEmpty());
+  {HistoryStore store(resident.operations->databasePath());const auto kept=store.operation(failed);QCOMPARE(kept.stateName(),QString("failed"));QCOMPARE(kept.error.code,QString("text_job_failed"));QVERIFY(kept.items.isEmpty());}
+  // Journal, History database, logs (debug on), diagnostics and the saved configuration.
+  logging::flush();
+  const auto diagnostics=QJsonDocument(resident.operations->diagnostics()).toJson();
+  for(const auto* canary:{textCanary,codeCanary}) {
+   QVERIFY2(!anyFileHolds(resident.dir.path(),canary),canary);QVERIFY2(!diagnostics.contains(canary),canary);
+   QVERIFY2(!QJsonDocument(resident.inspect(failed)).toJson().contains(canary),canary);
+  }
+  // The scan itself reads those files: the failed operation's ID is in them.
+  QVERIFY(anyFileHolds(resident.dir.path(),failed.toUtf8()));
+ }
+ // What the user copied while recognition ran is theirs: the text must not replace it.
+ void newerUserCopyIsNotOverwritten() {
+  Resident resident;QVERIFY(resident.start());resident.backend->hold.store(true);
+  const auto id=resident.recognize(request(true,false));QVERIFY(!id.isEmpty());
+  PUTGD_TRY_VERIFY(resident.backend->running.load());
+  ++resident.source.revision; // the user copies something else
+  resident.backend->release();PUTGD_TRY_VERIFY(resident.ended(id));
+  const auto record=resident.inspect(id);QCOMPARE(record["state"].toString(),QString("completed"));QCOMPARE(record["copyStatus"].toString(),QString("suppressed"));
+  QCOMPARE(resident.source.copies,0);
+ }
+ // A QR request reserves its revision before background receipt lookup.
+ void newerUserCopySuppressesQrDispatch() {
+  Resident resident;QVERIFY(resident.start());HistoryService history(*resident.operations);
+  Operation operation;operation.id="qr-operation";operation.restore(OperationState::Completed);
+  operation.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+  operation.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="qr-item";item.artifact.name="synthetic.png";
+  item.uploadStatus="uploaded";item.receipt.directUrl="https://example.test/synthetic.png";operation.items={item};
+  {HistoryStore store(resident.operations->databasePath());QVERIFY(!store.saveOperation(operation));}
+  Error error;QJsonObject answer;bool answered=false;
+  history.qr("qr-item","copy",{},false,[&](Error e,QJsonObject value){error=e;answer=value;answered=true;});
+  ++resident.source.revision; // before the background receipt lookup is dispatched back
+  PUTGD_TRY_VERIFY(answered);QVERIFY(!error);
+  QCOMPARE(answer["copyStatus"].toString(),QString("suppressed"));QCOMPARE(resident.source.copies,0);
+ }
+ // A source this desktop cannot read must answer with the desktop's own reason.
+ // Reading another source in its place would copy text the user never pointed at.
+ void unavailableSourceReportsItsAdaptersError() {
+  LimitedDesktop desktop;Resident resident;resident.desktop=&desktop;QVERIFY(resident.start());
+  Error refused;QVERIFY(resident.recognizeFrom({{"source","window"}},refused).isEmpty());
+  QCOMPARE(refused.code,QString("capture_cleanup_pending"));QCOMPARE(desktop.reads,0);QCOMPARE(resident.backend->calls.load(),0);
+  // A region needs the adapter's own text action, which this one does not report.
+  QVERIFY(resident.recognizeFrom({{"source","region"}},refused).isEmpty());QCOMPARE(refused.code,QString("source_unsupported"));QCOMPARE(desktop.reads,0);
+  // What it can capture is read: the refusals above are not a dead entry point.
+  const auto id=resident.recognizeFrom({{"source","desktop"}},refused);QVERIFY2(!refused,qPrintable(refused.code));QVERIFY(!id.isEmpty());
+  PUTGD_TRY_VERIFY(resident.ended(id));QCOMPARE(resident.inspect(id)["state"].toString(),QString("completed"));QCOMPARE(desktop.reads,1);QCOMPARE(resident.backend->calls.load(),1);
+ }
+ // An agent's result is kept in the resident's memory: one that never left
+ // would hold megabytes, and screen text, for as long as the resident runs.
+ // #1941: a kept result lists a code holding a secret (a 2FA enrolment) by kind and corners only: an agent's
+ // text.inspect never reads the seed. An ordinary code keeps its text.
+ void keptSecretCodeIsWithheld() {
+  Resident resident;QVERIFY(resident.start());
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  auto result=recognized();
+  TextCode otp;otp.format="QRCode";otp.text="otpauth://totp/Example:alice?secret="+seed;otp.length=otp.text.size();otp.quad={{6,12},{10,12},{10,15},{6,15}};
+  result.codes.append(otp);resident.backend->result=result;
+  // An agent's recognition that copies: the clipboard gets the code by its kind too, the ordinary code whole.
+  auto agentRequest=request(true,true);agentRequest.agent=true;
+  const auto id=resident.recognize(std::move(agentRequest));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(!resident.source.copied.text.contains(seed));QVERIFY(resident.source.copied.text.contains("[2FA QR code withheld]"));QVERIFY(resident.source.copied.text.contains(codeCanary));
+  const auto record=resident.inspect(id);const auto codes=record["codes"].toArray();QCOMPARE(codes.size(),2);
+  QCOMPARE(codes.at(0).toObject()["text"].toString(),QString::fromLatin1(codeCanary));
+  QCOMPARE(codes.at(1).toObject()["kind"].toString(),QString("withheld"));QCOMPARE(codes.at(1).toObject()["withheld"].toString(),QString("otp"));
+  QVERIFY(!codes.at(1).toObject().contains("text"));
+  const auto json=QJsonDocument(record).toJson();QVERIFY2(!json.contains(seed.toLatin1())&&!json.contains("otpauth"),json.constData());
+ }
+ // #1962: History's Copy text and the Copy text action, asked for over the socket, withhold a code holding a
+ // secret unless the request comes from the putgd-ui process this resident started.
+ void agentHistoryAndActionCopiesWithholdSecretCodes() {
+  Resident resident;QVERIFY(resident.start());
+  const auto seed=QString("JBSWY3DP")+"EHPK3PXP";
+  auto result=recognized();
+  TextCode otp;otp.format="QRCode";otp.text="otpauth://totp/Example:alice?secret="+seed;otp.length=otp.text.size();otp.quad={{6,12},{10,12},{10,15},{6,15}};
+  result.codes.append(otp);resident.backend->result=result;
+  // A History image with its retained local copy, and the region the action reads.
+  QImage image(32,16,QImage::Format_RGB32);image.fill(Qt::white);
+  const auto path=resident.dir.filePath("kept.png");QVERIFY(image.save(path,"PNG"));
+  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();file.close();
+  Operation operation;operation.id="text-operation";operation.restore(OperationState::Completed);
+  operation.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);operation.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="text-item";item.artifact.name="kept.png";item.artifact.mime="image/png";item.artifact.bytes=bytes.size();
+  item.artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
+  item.local.status="saved";item.local.path=path;item.uploadStatus="uploaded";operation.items={item};
+  {HistoryStore store(resident.operations->databasePath());QVERIFY(!store.saveOperation(operation));}
+  resident.source.payload.kind="image";resident.source.payload.image=image;
+  HistoryService history(*resident.operations);LocalServer server(*resident.settings,*resident.operations,history);QVERIFY(!server.listen(resident.dir.filePath("runtime")).error);
+  QByteArray replies;
+  const auto send=[&](const QString& method,const QJsonObject& params)->QByteArray{
+   QLocalSocket socket;socket.connectToServer(server.socketPath());if(!socket.waitForConnected(1000))return {};
+   socket.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"requestId","copy-1962"},{"session",server.socketPath()},{"method",method},{"params",params}}).toJson(QJsonDocument::Compact)+'\n');
+   QByteArray reply;if(!waitFor([&]{socket.waitForReadyRead(50);reply+=socket.readAll();return reply.endsWith('\n');}))return {};
+   replies+=reply;return reply;
+  };
+  const auto call=[&](const QString& method,const QJsonObject& params)->QString{
+   const auto id=QJsonDocument::fromJson(send(method,params)).object()["result"].toObject()["operationId"].toString();
+   return !id.isEmpty()&&waitFor([&]{return resident.ended(id);})?id:QString();
+  };
+  struct Case {QString method;QJsonObject params;};
+  const QList<Case> cases{{"history.copyText",{{"id","text-item"}}},{"action.invoke",{{"action","text"}}}};
+  for(const auto& c:cases){
+   // An agent: no token, or one that is not the resident's. The clipboard gets the code by its kind, the
+   // ordinary code whole; each call copies anew (Sol on #1966).
+   auto wrong=c.params;wrong["person"]=QString(server.personToken().size(),QChar('0'));
+   for(const auto& params:{c.params,wrong}){
+    const int copies=resident.source.copies;
+    QVERIFY2(!call(c.method,params).isEmpty(),qPrintable(c.method));QCOMPARE(resident.source.copies,copies+1);
+    QVERIFY2(!resident.source.copied.text.contains(seed),qPrintable(c.method));QVERIFY2(resident.source.copied.text.contains("[2FA QR code withheld]"),qPrintable(c.method));
+    QVERIFY(resident.source.copied.text.contains(codeCanary));
+   }
+   // The person's putgd-ui, with the token from its private pipe: their own copy keeps it.
+   auto person=c.params;person["person"]=server.personToken();
+   const int copies=resident.source.copies;
+   QVERIFY2(!call(c.method,person).isEmpty(),qPrintable(c.method));QCOMPARE(resident.source.copies,copies+1);
+   QVERIFY2(resident.source.copied.text.contains(seed),qPrintable(c.method));
+  }
+  // The token is the resident's alone: long, and in no reply.
+  QVERIFY(server.personToken().size()>=32);QVERIFY(!send("capabilities",{}).isEmpty());
+  QVERIFY(!replies.contains(server.personToken().toLatin1()));
+ }
+ void keptResultExpires() {
+  Resident resident;QVERIFY(resident.start());resident.operations->text().setResultLifetimeForTesting(50);
+  const auto id=resident.recognize(request(false,true));QVERIFY(!id.isEmpty());PUTGD_TRY_VERIFY(resident.ended(id));
+  QVERIFY(resident.operations->text().cachedBytes()>0);QCOMPARE(resident.source.copies,0);
+  PUTGD_TRY_VERIFY(resident.inspect(id)["resultExpired"].toBool());
+  QCOMPARE(resident.operations->text().cachedBytes(),qsizetype(0));QVERIFY(!resident.inspect(id).contains("text"));QVERIFY(!resident.inspect(id).contains("words"));
+  // The next recognition accepted also ends an earlier result's life.
+  resident.operations->text().setResultLifetimeForTesting(TextService::resultLifetimeMs);
+  const auto kept=resident.recognize(request(false,true));QVERIFY(!kept.isEmpty());PUTGD_TRY_VERIFY(resident.ended(kept));QVERIFY(!resident.inspect(kept)["resultExpired"].toBool());
+  const auto next=resident.recognize(request(false,false));QVERIFY(!next.isEmpty());
+  QVERIFY(resident.inspect(kept)["resultExpired"].toBool());PUTGD_TRY_VERIFY(resident.ended(next));
+ }
+};
+QTEST_GUILESS_MAIN(TextServiceTest)
+#include "test_text_service.moc"

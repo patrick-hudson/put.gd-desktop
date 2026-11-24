@@ -49,6 +49,25 @@ private slots:
    const auto error=Settings::validate(rejected);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),QString("/preferences/recordingFrameRate"));
   }
  }
+ void recordingMicrophoneAndClickPreferencesDefaultValidateAndReload() {
+  // #1364: all three are absent from an untouched config: toggle off, system default input, no rings.
+  auto doc=Settings::defaults();
+  for(const auto* key:{"recordingMicrophone","recordingMicrophoneDevice","recordingClickHighlights"})QVERIFY2(!doc["preferences"].toObject().contains(key),key);
+  auto read=Settings::fromValidated(doc);QVERIFY(!read.recordingMicrophone&&read.recordingMicrophoneDevice.isEmpty()&&!read.recordingClickHighlights);
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));
+  auto preferences=doc["preferences"].toObject();preferences["recordingMicrophone"]=true;preferences["recordingMicrophoneDevice"]="alsa_input.usb-Mic-00.mono-fallback";preferences["recordingClickHighlights"]=true;doc["preferences"]=preferences;
+  QVERIFY(!Settings::validate(doc));QVERIFY(settings.save(doc,{}));
+  QVERIFY(settings.snapshot().recordingMicrophone&&settings.snapshot().recordingClickHighlights);
+  QCOMPARE(settings.snapshot().recordingMicrophoneDevice,QString("alsa_input.usb-Mic-00.mono-fallback"));
+  const QList<QPair<QString,QList<QJsonValue>>> invalid{{"recordingMicrophone",{1,"true",QJsonValue::Null}},{"recordingClickHighlights",{0,"yes",QJsonValue::Null}},
+   {"recordingMicrophoneDevice",{7,true,QJsonValue::Null,QString(257,'x'),QString("two\nlines")}}};
+  for(const auto& entry:invalid)for(const auto& value:entry.second){
+   auto rejected=doc;auto prefs=rejected["preferences"].toObject();prefs[entry.first]=value;rejected["preferences"]=prefs;
+   const auto error=Settings::validate(rejected);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),"/preferences/"+entry.first);
+  }
+  // The empty device is the system default again.
+  preferences["recordingMicrophoneDevice"]="";doc["preferences"]=preferences;QVERIFY(!Settings::validate(doc));
+ }
  void replacementsAndValidationHaveNoSideEffects() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());QVERIFY(settings.save(doc,{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QSignalSpy accepted(&settings,&SettingsService::accepted);
   for(int index=0;index<3;++index) {auto preferences=doc["preferences"].toObject();preferences["notifications"]=index%2==1;doc["preferences"]=preferences;QSaveFile file(settings.path());file.setDirectWriteFallback(false);QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());QVERIFY(file.commit());PUTGD_TRY_COMPARE(accepted.count(),index+1);QCOMPARE(settings.document(),doc);}

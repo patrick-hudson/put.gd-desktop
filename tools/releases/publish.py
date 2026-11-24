@@ -193,6 +193,31 @@ def run_provenance():
             'url': f'{server}/{repository}/actions/runs/{run_id}'}
 
 
+def reused_builder(path, release, producer, *, rehearsal=False):
+    """The push-CI run whose packages this nightly publishes (tools/ci/reuse_ci.py packages).
+
+    collect.py has already checked every package, SBOM and source against the tag;
+    this binds the run that built them into the notes and the publication receipt.
+    """
+    record = json.loads(path.read_text())
+    built = record.get('producer') or {}
+    run_id, attempt = built.get('runId'), built.get('runAttempt')
+    server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
+    url = f'{server}/{producer["repository"]}/actions/runs/{run_id}'
+    if (record.get('reused') is not True or record.get('packages') is not True
+            or (built.get('rehearsal') and not rehearsal)
+            or record.get('gitCommit') != release['gitCommit'] or built.get('gitCommit') != release['gitCommit']
+            or type(run_id) is not int or run_id <= 0 or type(attempt) is not int or attempt <= 0
+            or built.get('url') != url or not isinstance(built.get('artifacts'), dict)):
+        raise ValueError('The reused push-CI run record does not name a nightly push run of this exact commit')
+    builder = {'repository': producer['repository'], 'workflow': '.github/workflows/ci.yml',
+               'event': 'push', 'ref': 'refs/heads/nightly', 'runId': run_id, 'runAttempt': attempt, 'url': url,
+               'jobs': built.get('jobs'), 'artifacts': built['artifacts']}
+    if built.get('rehearsal'):
+        builder.update(rehearsal=True, event=built.get('event'), ref='refs/heads/' + str(built.get('headBranch')))
+    return builder
+
+
 def changes_section(tag, producer):
     """List the pull requests merged since the previous release, or say why they can't be.
 
@@ -212,7 +237,7 @@ def installer_notes(directory, release, producer):
     delivery = json.loads((directory / 'source-delivery.json').read_text())
     catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
     links = '\n'.join(f'- [{part["file"]}]({part["url"]})' for part in catalog['delivery']['parts'])
-    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 RPM. '
+    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 and 45 RPMs. '
             'Checksums, update metadata and package SBOMs accompany the installers.\n\n'
             f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
             'Its GPL-2.0-or-later codec/runtime sources and put.gd source snapshot are available from '
@@ -228,6 +253,10 @@ def publish_nightly(args, release, listed):
     layout = getattr(args, 'asset_layout', None)
     verify_inventory(args.tag, listed, layout)
     producer = run_provenance()
+    # The run that built, tested and packaged these bytes: this one, or a reused push-CI run.
+    rehearse = getattr(args, 'rehearse', False)
+    builder = (reused_builder(args.built_by, release, producer, rehearsal=rehearse)
+               if getattr(args, 'built_by', None) else producer)
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
     public = published_nightly(api, args.tag, release)
@@ -236,6 +265,10 @@ def publish_nightly(args, release, listed):
     receipt = {'schemaVersion': 1, 'tag': args.tag, 'channel': 'nightly',
                'gitCommit': release['gitCommit'], 'source': release,
                'verificationClass': 'automated-build-and-package', 'producer': producer}
+    if builder is not producer:
+        receipt['builder'] = builder
+    if public and rehearse:
+        raise ValueError('Nothing to rehearse: ' + args.tag + ' is already a published nightly')
     if public:
         receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
     else:
@@ -244,7 +277,7 @@ def publish_nightly(args, release, listed):
             f'release of commit {release["gitCommit"]}.\n\n'
             + changes_section(args.tag, producer) +
             'Automated coverage: Linux test suites, '
-            'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
+            'Ubuntu 24.04/26.04 DEB and Fedora 44/45 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
@@ -260,20 +293,28 @@ def publish_nightly(args, release, listed):
             'and unpack the resulting tar.gz. The combined ZIP includes the catalog; '
             'download the two source parts separately.\n\n'
             'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing '
-            'crash records (docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+            'crash records (docs/design/diagnostics.md); it is not part of the combined ZIP.\n\n'
             'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
-            'vulnerability scanner (docs/release.md).\n\n'
-            + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
+            'vulnerability scanner (docs/release/release.md).\n\n'
+            + 'Built, tested and packaged by ' + builder['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
-        if layout == support_assets.LAYOUT:
+        if layout in support_assets.LAYOUTS:
             notes.write_text(f'Nightly {release["version"]} from commit {release["gitCommit"]}.\n\n'
-                + changes_section(args.tag, producer) + installer_notes(args.directory, release, producer)
+                + changes_section(args.tag, producer) + installer_notes(args.directory, release, builder)
                 + 'Automated coverage: tagged native package audits, AppImage start/recording checks, '
                   'PipeWire compatibility and component vulnerability scans. Source tests pass either '
                   'in this run or in a verified CI run of this exact commit recorded by this run. '
                   'This does not certify desktop, memory or live-service acceptance.\n\n'
-                + 'Built and packaged by ' + producer['url'] + '\n')
+                + 'Built and packaged by ' + builder['url']
+                + ('\n' if builder is producer else
+                   ', the nightly branch\'s CI run of this commit; verified against the tag and published by '
+                   + producer['url'] + '\n'))
+        if rehearse:
+            # Everything above only reads GitHub; staging is the first write.
+            receipt.update(rehearsal=True, published=False)
+            (args.directory / 'publication-rehearsal.json').write_text(json.dumps(receipt, indent=2) + '\n')
+            return
         stage_draft(args.tag, args.directory, listed, release, notes)
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'], nightly=True)
         final = matching_releases(args.tag)
@@ -324,10 +365,19 @@ def main():
     mode.add_argument('--publish', action='store_true', help='Publish the existing draft after acceptance')
     mode.add_argument('--nightly', action='store_true', help='Publish a strict nightly after automated verification')
     parser.add_argument('--acceptance', type=Path, help='Current package acceptance receipt')
+    parser.add_argument('--built-by', type=Path, help='With --nightly: reuse_ci.py packages\' record of the '
+                        'push-CI run that built, tested and packaged the collected assets')
+    parser.add_argument('--rehearse', action='store_true', help='With --nightly: run every check and write the '
+                        'release notes, then stop before the first GitHub write')
     args = parser.parse_args()
+    if (args.built_by or args.rehearse) and not args.nightly:
+        parser.error('--built-by and --rehearse apply to --nightly only')
     release = verify(Path.cwd(), args.tag)
     if args.nightly and (parse_tag(args.tag).channel != 'nightly' or release.get('channel') != 'nightly'):
         raise ValueError('Automated nightly publication requires a verified strict nightly tag')
+    if args.built_by:
+        # Reject a bad record before anything is published, the linked sources release included.
+        reused_builder(args.built_by, release, run_provenance(), rehearsal=args.rehearse)
     if args.nightly and args.acceptance:
         parser.error('--nightly uses automated evidence, not package acceptance')
     if args.publish and release.get('channel') == 'nightly':
@@ -345,7 +395,7 @@ def main():
         listed[name] = digest
     args.asset_layout = bundle.get('assetLayout')
     verify_inventory(args.tag, listed, args.asset_layout)
-    if args.asset_layout == support_assets.LAYOUT:
+    if args.asset_layout in support_assets.LAYOUTS:
         if args.publish:
             # Manual acceptance runs use the same checkout/repository as the gh release commands.
             repository = subprocess.check_output(
@@ -362,7 +412,7 @@ def main():
         support_assets.verify_proton(api, proton_sources.catalog_value(args.directory / proton_sources.CATALOG_NAME))
         if args.publish:
             support_assets.verify_public(api, delivery, release)
-        else:
+        elif not args.rehearse:
             support_assets.publish(api, delivery, release, args.directory / 'sources')
     if args.nightly:
         publish_nightly(args, release, listed)
@@ -390,25 +440,25 @@ def main():
     producer = run_provenance()
     kind = 'release candidate' if release['channel'] == 'candidate' else 'release'
     notes = args.directory / 'release-notes.md'
-    notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
+    notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, Fedora RPMs, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      + changes_section(args.tag, producer) +
                      f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
                      'their corresponding source is the appimage-complete-source tarball. '
                      'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
                      'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
-                     'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'
+                     'GNOME 50 requires the included host extension.\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
                      'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing crash records '
-                     '(docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+                     '(docs/design/diagnostics.md); it is not part of the combined ZIP.\n\n'
                      'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
-                     'vulnerability scanner (docs/release.md).\n\n'
+                     'vulnerability scanner (docs/release/release.md).\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')
-    if args.asset_layout == support_assets.LAYOUT:
+    if args.asset_layout in support_assets.LAYOUTS:
         notes.write_text('Linux x86_64 ' + kind + '.\n\n' + changes_section(args.tag, producer)
                          + installer_notes(args.directory, release, producer)
                          + 'Package-specific acceptance is required before this draft is published.\n\n'

@@ -1,6 +1,6 @@
 # Live S3 transport
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [overview](../overview.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [overview](../design/overview.md). Do not use it as a work list.
 
 ## Source114: complete live-S3 regressions
 
@@ -180,7 +180,7 @@ chains and were protected. No VM image or power/compositor setting changed.
 See `lab-storage.md` for capacity gates, current-plus-one-rollback retention,
 restoration and future immutable-base migration.
 
-Committed evidence is under [source108](../evidence/live-s3-transport/source108). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
+Committed evidence is under [source108](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/live-s3-transport/source108). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
 
 
 ## OpenSSL 3.5 handshake compatibility follow-up

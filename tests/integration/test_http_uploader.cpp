@@ -1,0 +1,1215 @@
+// Custom HTTP uploader (#1361): the production provider and putgd-http-worker against the
+// scripted loopback receiver, and the journal, retry and unknown-outcome behaviour through
+// the real operation and history services. Synthetic token and payloads only.
+#include "fixtures/U2Fixtures.h"
+#include "fixtures/HttpControl.h"
+#include "fixtures/ChildProcesses.h"
+#include "fixtures/Waits.h"
+#include "storage/http/HttpImport.h"
+#include "storage/http/HttpProvider.h"
+#include "storage/http/HttpTemplate.h"
+#include "storage/worker/ProviderExchange.h"
+#include <QDirIterator>
+#include <QElapsedTimer>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QProcess>
+#include <QTcpSocket>
+#include <QTemporaryDir>
+#include <QTest>
+#include <QUrl>
+#include <cerrno>
+#include <cstring>
+using namespace putgd;
+using namespace putgd::test;
+namespace {
+const QString token = "putgd-synthetic-uploader-token-not-real";
+QJsonArray rows(std::initializer_list<QJsonObject> list) { QJsonArray out; for (const auto& row : list) out.append(row); return out; }
+QJsonObject secretRow(const QString& name) { return {{"name", name}, {"secret", true}}; }
+QJsonObject plainRow(const QString& name, const QString& value) { return {{"name", name}, {"secret", false}, {"value", value}}; }
+class HttpFixture {
+public:
+    QProcess process;
+    QTemporaryDir directory;
+    CredentialStore credentials;
+    HttpUploaderProvider provider;
+    QString base;
+    Destination destination;
+    HttpFixture() : provider(credentials) {
+        process.start("python3", {HTTP_FIXTURE_PATH});
+        if (!process.waitForStarted() || !process.waitForReadyRead()) qFatal("fixture failed to start");
+        base = "http://127.0.0.1:" + QString::fromUtf8(process.readLine()).trimmed();
+        destination = {"custom-http", "fixture-profile", "revision-one", settings("json"), {{"mode", "session"}, {"reference", QJsonValue::Null}}};
+        store({{"headers/Authorization", "Bearer " + token}});
+    }
+    ~HttpFixture() { process.terminate(); process.waitForFinished(); }
+    // A multipart upload to the reply style named, with the token in a secret header.
+    QJsonObject settings(const QString& style) const {
+        auto s = http::defaults();
+        s["requestUrl"] = base + "/upload/" + style;
+        s["headers"] = rows({secretRow("Authorization")});
+        // The helper's own deadlines are budgets like any test wait: they scale with
+        // PUTGD_TEST_TIME_SCALE, or a starved runner turns a slow 16 MiB send into "no reply".
+        s["requestTimeoutMs"] = putgd::test::scaled(5000);
+        s["connectTimeoutMs"] = putgd::test::scaled(2000);
+        if (style == "json" || style == "away" || style == "pretend") { s["responseUrl"] = "{json:files[0].url}"; s["thumbnailUrl"] = "{json:files[0].thumb}"; s["deletionUrl"] = "{json:files[0].delete}"; }
+        s["errorMessage"] = "{json:error}";
+        return s;
+    }
+    void store(const QMap<QString, QString>& values) {
+        Credentials value;
+        value.values = values;
+        credentials.setSession(destination.profileId, value);
+    }
+    QJsonObject control(const QString& path, const QJsonObject& value = {}, bool post = false) { return test::httpControl(base, path, value, post); }
+    void reset(const QJsonObject& value = {}) { control("/__reset", value, true); }
+    void rules(std::initializer_list<QJsonObject> list) { QJsonArray out; for (const auto& rule : list) out.append(rule); control("/__rules", {{"rules", out}}, true); }
+    QJsonObject state() { return control("/__state"); }
+    QJsonArray events(const QString& call) {
+        QJsonArray out;
+        for (const auto& e : state()["events"].toArray()) if (e.toObject()["call"] == call) out.append(e);
+        return out;
+    }
+    // Each look at the link answered by phase (#1393). The link answers a whole same-host
+    // redirect, which the helper follows; the address it leads to answers `before` until a
+    // deletion of the file has been asked for, and `after` from then on, however often it is
+    // asked. A reply cut off there may be asked for again by Qt Network itself: while a request
+    // is still waiting for its reply, QHttpNetworkConnectionChannel takes a closed connection for
+    // a dead keep-alive one and sends the request again. The helper's own looks are the requests
+    // for the link, counted exactly; Qt's resends land only on the address it leads to.
+    void phased(const QJsonObject& before, const QJsonObject& after) { rules({{{"call", "file"}, {"phased", QJsonObject{{"before", before}, {"after", after}}}}}); }
+    int looks(const QString& phase) { int count = 0; for (const auto& e : events("look")) if (e.toObject().value("phase").toString() == phase) ++count; return count; }
+    int stored() { int count = 0; for (const auto& file : state()["files"].toObject()) if (!file.toObject()["deleted"].toBool()) ++count; return count; }
+    Artifact artifact(const QString& name, const QByteArray& bytes, const QString& mime, const QString& category) {
+        Artifact out;
+        out.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        out.path = fixture(directory.path(), out.id, bytes);
+        out.name = name;
+        out.mime = mime;
+        out.category = category;
+        out.bytes = bytes.size();
+        out.sha256 = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
+        return out;
+    }
+    Artifact image(const QByteArray& bytes = "\x89PNG synthetic image bytes \x01\x02\x03") { return artifact("shot one.png", bytes, "image/png", "images"); }
+    Artifact text(const QByteArray& bytes = "line one\n<two> & \"three\"\n") { return artifact("note.txt", bytes, "text/plain", "text"); }
+    UploadResult upload(const Artifact& artifact, const Destination& target, std::shared_ptr<std::atomic_bool> cancel = {}, QStringList* phases = nullptr) {
+        NameCheck check;
+        provider.checkName(target, artifact.name, [&](NameCheck result) { check = result; });
+        if (check.status != "absent") return {"failed", {}, check.error};
+        UploadRequest request{target, artifact, artifact.name, "publication-" + artifact.id, "absent", check.objectReference, check.concurrencyToken, cancel};
+        if (phases) request.progress = [phases](const UploadProgress& progress) { if (phases->isEmpty() || phases->last() != progress.phase) phases->append(progress.phase); };
+        UploadResult out;
+        provider.upload(request, [&](UploadResult result) { out = result; });
+        return out;
+    }
+    UploadResult upload(const Artifact& artifact) { return upload(artifact, destination); }
+    DeleteResult remove(const StorageReceipt& receipt, const QJsonObject& progress = {}, DurableCheckpoint checkpoint = {}) {
+        DeleteResult out;
+        provider.remove({"delete-" + receipt.publicationId, receipt, progress, {}}, checkpoint ? checkpoint : [](const QJsonObject&, std::function<void(Error)> ack) { ack({}); },
+                        [&](DeleteResult result) { out = result; });
+        return out;
+    }
+    // A plain GET of a link, as a browser would make it: status and body.
+    QPair<int, QByteArray> fetch(const QString& link) {
+        const QUrl url(link);
+        QTcpSocket socket;
+        socket.connectToHost(url.host(), quint16(url.port()));
+        if (!socket.waitForConnected(5000)) return {0, {}};
+        socket.write("GET " + url.toEncoded(QUrl::RemoveScheme | QUrl::RemoveAuthority) + " HTTP/1.1\r\nHost: " + url.authority().toUtf8() + "\r\nConnection: close\r\n\r\n");
+        QByteArray response;
+        while (socket.waitForReadyRead(3000)) response += socket.readAll();
+        response += socket.readAll();
+        const auto boundary = response.indexOf("\r\n\r\n");
+        return {response.mid(9, 3).toInt(), boundary < 0 ? QByteArray() : response.mid(boundary + 4)};
+    }
+    bool tokenOnDisk(const QString& root) {
+        QDirIterator files(root, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+        while (files.hasNext()) {
+            QFile file(files.next());
+            if (file.open(QIODevice::ReadOnly) && file.readAll().contains(token.toUtf8())) return true;
+        }
+        return false;
+    }
+};
+}
+class HttpUploaderTest : public QObject {
+    Q_OBJECT
+    static QJsonObject configuration(HttpFixture& f, const QString& policy = "rename") {
+        auto doc = putgd::test::configuration(f.directory.path());
+        auto naming = doc["naming"].toObject();
+        naming["mode"] = "original";
+        naming["collisionPolicy"] = policy;
+        doc["naming"] = naming;
+        doc["profiles"] = QJsonArray{QJsonObject{{"id", f.destination.profileId}, {"label", "Scripted receiver"}, {"provider", "custom-http"}, {"settings", f.destination.settings}, {"credentials", f.destination.credentialReference}}};
+        auto actions = doc["actions"].toObject();
+        for (const auto& key : Settings::actionNames()) {
+            auto action = actions[key].toObject();
+            action["profileId"] = f.destination.profileId;
+            actions[key] = action;
+        }
+        doc["actions"] = actions;
+        return doc;
+    }
+    static Operation waitOperation(OperationService& operations, const QString& id) {
+        Operation result;
+        const bool terminal = waitFor([&] {
+            HistoryStore store(operations.databasePath());
+            result = store.operation(id);
+            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.stateName());
+        }, 20000);
+        if (!terminal) QTest::qFail("Operation did not reach a terminal state", __FILE__, __LINE__);
+        return result;
+    }
+private slots:
+    // Review of #1598. A helper that did not start is advised only from facts that cannot
+    // change meanwhile: reinstall when it is not a regular executable file, try again for a
+    // shortage Qt names, and both otherwise. The message never repeats Qt's reason, which can
+    // name the wrong cause ("No such file or directory" for an existing helper).
+    void helperStartAdviceFitsTheCause() {
+        using worker::StartFailure;
+        QTemporaryDir dir;
+        const auto script = [&](const QString& name, const QByteArray& text) {
+            const auto path = dir.filePath(name);
+            QFile file(path);
+            if (!file.open(QIODevice::WriteOnly) || file.write(text) != text.size()) qFatal("cannot write the synthetic helper");
+            file.close();
+            file.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+            return path;
+        };
+        const auto helper = script("putgd-helper", "#!/bin/sh\nexit 0\n");
+        const auto noLoader = script("putgd-no-loader", "#!/nonexistent/putgd-interpreter\n");
+        const auto reason = [](const QString& program) {
+            QProcess process;
+            process.start(program, {"--stdio"});
+            if (process.waitForStarted(10000)) { process.kill(); process.waitForFinished(); return QString(); }
+            return process.errorString();
+        };
+        const auto strerror = [](int code) { return QString::fromLocal8Bit(std::strerror(code)); };
+        // Not a helper: a searchable directory is executable too.
+        QCOMPARE(worker::classifyStartFailure(dir.path(), reason(dir.path())), StartFailure::Installation);
+        QCOMPARE(worker::classifyStartFailure(dir.filePath("missing"), reason(dir.filePath("missing"))), StartFailure::Installation);
+        QCOMPARE(worker::startFailureMessage(StartFailure::Installation, "reinstall"), QString("reinstall"));
+        // A shortage Qt names, as it writes it.
+        for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
+            QCOMPARE(worker::classifyStartFailure(helper, "pipe: " + strerror(code)), StartFailure::Temporary);
+        const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "reinstall");
+        QVERIFY2(temporary.contains("just now; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        // Everything else: an executable whose interpreter is missing, and Qt's misleading
+        // "No such file or directory" for a helper that exists.
+        const auto missing = reason(noLoader);
+        QVERIFY2(!missing.isEmpty(), "a helper without its interpreter started");
+        QCOMPARE(worker::classifyStartFailure(noLoader, missing), StartFailure::Unclear);
+        QCOMPARE(worker::classifyStartFailure(helper, "execve: " + strerror(ENOENT)), StartFailure::Unclear);
+        const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "reinstall");
+        QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd."));
+        for (const auto& message : {temporary, unclear}) QVERIFY2(!message.contains(strerror(ENOENT)), qPrintable(message));
+        // The S3 worker gives the same advice under its own name.
+        QCOMPARE(worker::startFailureMessage(StartFailure::Temporary, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start just now; try again."));
+        QCOMPARE(worker::startFailureMessage(StartFailure::Unclear, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start. Try again; if it keeps failing, reinstall put.gd."));
+    }
+    // A diagnostics package says which fields a destination sets and where its request
+    // goes: never a row value, a path someone typed a key into, or a reply template's text.
+    void diagnosticsShowTheShapeOfSettingsNotTheirText() {
+        HttpFixture f;
+        auto settings = http::defaults();
+        settings["requestUrl"] = "https://media.example.test:8443/hooks/typed-in-key/{filename}";
+        settings["headers"] = QJsonArray{QJsonObject{{"name", "Authorization"}, {"secret", true}}, QJsonObject{{"name", "X-Album"}, {"secret", false}, {"value", "private-album"}}};
+        settings["data"] = "{\"album\":\"private-album\"}";
+        settings["responseUrl"] = "https://cdn.example.test/typed-in-key/{json:files[0].name}";
+        settings["deletionUrl"] = "{json:url}/delete/{secret:headers/Authorization}";
+        settings["errorMessage"] = "typed-in-key {regex:error=(\\\\w+)|1}";
+        const auto shown = f.provider.diagnosticSettings(settings);
+        const auto bytes = QJsonDocument(shown).toJson();
+        QVERIFY(!bytes.contains("typed-in-key") && !bytes.contains("private-album") && !bytes.contains("files[0]"));
+    }
+    void replyStyles_data() {
+        QTest::addColumn<QString>("style");
+        QTest::addColumn<QString>("url");
+        QTest::addColumn<QString>("deletion");
+        QTest::newRow("json") << "json" << "{json:files[0].url}" << "{json:files[0].delete}";
+        QTest::newRow("header") << "header" << "{header:Location}" << "{header:X-Delete}";
+    }
+    void replyStyles() {
+        QFETCH(QString, style);
+        QFETCH(QString, url);
+        QFETCH(QString, deletion);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        auto s = f.settings(style);
+        s["responseUrl"] = url;
+        s["deletionUrl"] = deletion;
+        s["thumbnailUrl"] = "";
+        QVERIFY2(!http::validateSettings(s), qPrintable(http::validateSettings(s).message));
+        destination.settings = s;
+        const auto artifact = f.image();
+        const auto uploaded = f.upload(artifact, destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        const auto link = uploaded.receipt.directUrl;
+        QVERIFY2(link.startsWith(f.base + "/f/"), qPrintable(link));
+        const auto fetched = f.fetch(link);
+        QCOMPARE(fetched.first, 200);
+        QCOMPARE(qint64(fetched.second.size()), artifact.bytes);
+        QCOMPARE(uploaded.receipt.objectReference.contains("deletionUrl"), !deletion.isEmpty());
+        QCOMPARE(f.provider.receiptCapabilities(uploaded.receipt).remove, !deletion.isEmpty());
+    }
+    // A token sent as a query parameter is part of the request address: the receipt
+    // and its destination hold its name, never the value.
+    void aQueryTokenStaysOutOfTheReceipt() {
+        HttpFixture f;
+        f.reset({{"auth", "query"}});
+        auto destination = f.destination;
+        auto s = f.settings("json");
+        s["headers"] = QJsonArray{};
+        s["parameters"] = rows({secretRow("key")});
+        f.store({{"parameters/key", token}});
+        destination.settings = s;
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        QVERIFY(f.events("upload")[0].toObject()["query"].toObject().contains("key"));
+        QVERIFY(!QJsonDocument(uploaded.receipt.toJson()).toJson().contains(token.toUtf8()));
+    }
+    void refusalsAreDefiniteAndNeverEchoTheToken() {
+        HttpFixture f;
+        f.reset();
+        // A wrong token: the receiver repeats it in its error body.
+        f.store({{"headers/Authorization", "Bearer wrong-" + token}});
+        auto refused = f.upload(f.image());
+        QCOMPARE(refused.status, QString("failed"));
+        QCOMPARE(refused.error.code, QString("http_authentication_failed"));
+        QVERIFY2(refused.error.message.contains("<redacted>"), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(token));
+        QVERIFY(!QJsonDocument(refused.error.details).toJson().contains(token.toUtf8()));
+        QCOMPARE(f.stored(), 0);
+    }
+    void lostAndLateRepliesAreUnknown() {
+        HttpFixture f;
+        f.reset();
+        // Stored, then the connection drops: the reply is lost.
+        f.rules({{{"call", "upload"}, {"store", true}, {"drop", true}}});
+        auto lost = f.upload(f.image());
+        QCOMPARE(lost.status, QString("unknown"));
+        QCOMPARE(lost.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(lost.error.message.contains("second copy"), qPrintable(lost.error.message));
+        QCOMPARE(f.stored(), 1);
+        // Dropped before storing looks the same from here, and is reported the same.
+        f.rules({{{"call", "upload"}, {"drop", true}}});
+        lost = f.upload(f.image());
+        QCOMPARE(lost.status, QString("unknown"));
+        QCOMPARE(f.stored(), 1);
+        // Exactly one request each: the worker never sends an upload twice by itself.
+        QCOMPARE(f.events("upload").size(), 2);
+        // The same for an upload that has no body to send, its text travelling in the
+        // address: the transport would repeat such a request by itself.
+        f.reset();
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        QVERIFY2(!http::validateSettings(bare.settings), qPrintable(http::validateSettings(bare.settings).message));
+        f.rules({{{"call", "upload"}, {"store", true}, {"drop", true}}});
+        lost = f.upload(f.text(), bare);
+        QVERIFY2(lost.status == "unknown", qPrintable(lost.status + " " + lost.receipt.directUrl + " " + lost.error.code));
+        QCOMPARE(lost.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 1);
+    }
+    void redirectsKeepCredentialsOnTheirHost() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        // 303 to a result on another host name: followed with a GET that carries nothing.
+        destination.settings = f.settings("away");
+        auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        auto result = f.events("result");
+        QCOMPARE(result.size(), 1);
+        QVERIFY(result[0].toObject()["headers"].toObject()["host"].toString().startsWith("localhost"));
+        QVERIFY(!result[0].toObject()["headers"].toObject().contains("authorization"));
+        // 307 to another host: refused, and the file and token never go there.
+        f.reset();
+        destination.settings = f.settings("moved-away");
+        const auto refused = f.upload(f.image(), destination);
+        QCOMPARE(refused.status, QString("failed"));
+        QCOMPARE(refused.error.code, QString("http_redirect_refused"));
+        QVERIFY2(refused.error.message.contains("another host"), qPrintable(refused.error.message));
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 0);
+    }
+    void deletionUrlNamesAStoredValueInsteadOfRecordingIt() {
+        // As XBackBone's deletion URL does: a stored value is part of the address.
+        HttpFixture f;
+        f.reset();
+        const QString key = "k-" + token;
+        auto destination = f.destination;
+        destination.settings["secrets"] = rows({secretRow("delete-key")});
+        destination.settings["deletionUrl"] = "{json:files[0].delete}?key={secret:secrets/delete-key}";
+        // The request also names {input}, which is empty for a file that is not text.
+        destination.settings["arguments"] = rows({plainRow("text", "{input}"), plainRow("file", "{filename}")});
+        QVERIFY2(!http::validateSettings(destination.settings), qPrintable(http::validateSettings(destination.settings).message));
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-key", key}});
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        QCOMPARE(f.events("upload")[0].toObject()["fields"].toObject()["text"].toString(), QString());
+        // The receipt, which History keeps, has the name and not the value.
+        const auto recorded = uploaded.receipt.objectReference["deletionUrl"].toString();
+        QVERIFY2(recorded.endsWith("?key={secret:secrets/delete-key}"), qPrintable(recorded));
+        QVERIFY(!QJsonDocument(uploaded.receipt.toJson()).toJson().contains(token.toUtf8()));
+        // Without the stored value nothing is sent.
+        f.credentials.forget(destination.profileId, destination.credentialReference);
+        auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("credential_setup_required"));
+        QCOMPARE(f.events("delete").size(), 0);
+        // With it, the deletion carries the value, and only there.
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-key", key}});
+        result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("removed"));
+        const auto event = f.events("delete")[0].toObject();
+        QCOMPARE(event["query"].toObject()["key"].toString(), key);
+        QVERIFY(!event["headers"].toObject().contains("authorization"));
+        QVERIFY(!QJsonDocument(result.progress).toJson().contains(token.toUtf8()));
+        QCOMPARE(f.stored(), 0);
+    }
+    // A server that answers 200 to a deletion and deletes nothing is not believed: the
+    // file stays public, so History must not call it deleted: the whole file, byte for
+    // byte, still served shows the deletion did not work.
+    void aDeletionTheServerDidNotDoIsNotBelieved() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
+        QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. The server answers a deletion politely (and deletes nothing), and
+    // the checks of the link show nothing either way: a server error after it, or one
+    // before it so there is nothing to compare with. The deletion is unknown with its
+    // intent journaled, never removed: the look before never stands in for the one after.
+    void aDeletionWhoseCheckFailsIsUnknown_data() {
+        QTest::addColumn<int>("before");
+        QTest::addColumn<int>("after");
+        QTest::newRow("after-503") << 0 << 503;
+        QTest::newRow("before-503-after-same") << 503 << 0;
+        QTest::newRow("before-503-after-503") << 503 << 503;
+    }
+    void aDeletionWhoseCheckFailsIsUnknown() {
+        QFETCH(int, before);
+        QFETCH(int, after);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto check = [](int status) { return status ? QJsonObject{{"call", "file"}, {"status", status}} : QJsonObject{{"call", "file"}}; };
+        f.rules({check(before), check(after)});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. A deletion URL answers with a confirmation page, and its form posts
+    // to a route that answers 404, while the file still serves. The 404 is not proof:
+    // only the check of the file's link is, and it serves the whole file still, so the
+    // deletion did not work.
+    void aConfirmationAnsweredNotFoundIsNotProof() {
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        f.rules({{{"call", "delete"}, {"status", 200}, {"body", "<form method=\"post\" action=\"?confirm=1\"><input type=\"hidden\" name=\"go\" value=\"1\"></form>"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(result.error.details["checkStatus"].toInt(), 200);
+        QCOMPARE(result.error.details["confirmed"].toBool(), true);
+        QCOMPARE(result.error.details["httpStatus"].toInt(), 404);
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. Only two whole replies of the link are compared. A file larger than
+    // the 4 MiB reply cap matches only as far as the cap ("large-prefix"), and two replies
+    // cut off differ only as far as they came ("cut-differing"): neither shows the file is
+    // still there or gone, so the deletion is unknown with its intent kept.
+    void aDeletionWithoutTwoWholeRepliesIsUnknown_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::newRow("large-prefix") << QString("large-prefix");
+        QTest::newRow("cut-differing") << QString("cut-differing");
+    }
+    void aDeletionWithoutTwoWholeRepliesIsUnknown() {
+        QFETCH(QString, shape);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const bool large = shape == "large-prefix";
+        const auto artifact = large ? f.artifact("large.bin", QByteArray(4 * 1024 * 1024 + 64 * 1024, 'x'), "application/octet-stream", "other") : f.image();
+        const auto uploaded = f.upload(artifact, destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        if (!large) f.phased({{"cut", "length"}}, {{"status", 200}, {"body", "another file entirely"}, {"cut", "length"}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        if (!large) QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. Checks of the link follow a redirect to another host (a CDN), where
+    // only a status or the very same file is proof. "login-page": the look before goes to
+    // another host's page, the look after serves the file: other bytes there prove
+    // nothing, so unknown. "cdn-gone": both looks go to the CDN, which answers a whole 404
+    // after the deletion: removed. "cdn-same": the CDN serves the whole file both times:
+    // the deletion did not work. "cut-404": a 404 after the deletion whose reply is cut
+    // off proves nothing: unknown.
+    void aLinkCheckIsWeighedByWhereItWasAnswered_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("login-page") << QString("login-page") << QString("unknown");
+        QTest::newRow("cdn-gone") << QString("cdn-gone") << QString("removed");
+        QTest::newRow("cdn-same") << QString("cdn-same") << QString("failed");
+        QTest::newRow("cut-404") << QString("cut-404") << QString("unknown");
+    }
+    void aLinkCheckIsWeighedByWhereItWasAnswered() {
+        QFETCH(QString, shape);
+        QFETCH(QString, expected);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        // The same listener under another host name stands in for a CDN or a login site.
+        const auto otherHost = [&](const QString& path) { return QString(f.base).replace("127.0.0.1", "localhost") + path; };
+        const QJsonObject serve{{"call", "file"}};
+        const QJsonObject toCdn{{"call", "file"}, {"status", 302}, {"location", otherHost(QUrl(uploaded.receipt.directUrl).path(QUrl::FullyEncoded))}};
+        int checks = 2;
+        if (shape == "login-page") f.rules({{{"call", "file"}, {"status", 302}, {"location", otherHost("/__state")}}, serve});
+        else if (shape == "cdn-gone") { f.rules({toCdn, serve, toCdn, {{"call", "file"}, {"status", 404}, {"body", "gone"}}}); checks = 4; }
+        else if (shape == "cdn-same") { f.rules({toCdn, serve, toCdn, serve}); checks = 4; }
+        // "cut-404" goes through the same host's phased address (HttpFixture::phased), which Qt may ask again.
+        else f.phased({}, {{"status", 404}, {"body", "gone"}, {"cut", "length"}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), checks);
+        if (shape == "cut-404") QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. The outcome rule, on the shapes real hosts have.
+    // - "rejected-200"/"rejected-302": XBackBone 3.8.2 rejects a deletion with a 2xx page
+    //   (or a redirect back to the share page) and adds an error banner to the share page,
+    //   whose bytes then differ although the image is still public: unknown.
+    // - "unpublished": the host answers 404 to anonymous looks at an unpublished file and
+    //   to its deletion URL: already missing (a documented limit).
+    // - "normal": the deletion answers 200 and the link then 404: removed.
+    // - "same-file": the deletion answers 200 and the link still serves the same file:
+    //   failed.
+    // - "session-cookie": a rejected deletion's reply sets a session cookie, for which the
+    //   link answers 404 while any other visitor still gets the file. The checks of the
+    //   link go out as a fresh visitor, so they get the file both times: failed, never
+    //   removed.
+    // - "redirected-404": the deletion URL redirects (on its own host) to an address that
+    //   answers 404, and the link 404s: the 404 is not the deletion URL's own, so it does
+    //   not show the file was already missing: unknown.
+    void aDeletionOutcomeFollowsTheRule_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("rejected-200") << QString("rejected-200") << QString("unknown");
+        QTest::newRow("rejected-302") << QString("rejected-302") << QString("unknown");
+        QTest::newRow("unpublished") << QString("unpublished") << QString("missing");
+        QTest::newRow("normal") << QString("normal") << QString("removed");
+        QTest::newRow("same-file") << QString("same-file") << QString("failed");
+        QTest::newRow("session-cookie") << QString("session-cookie") << QString("failed");
+        QTest::newRow("redirected-404") << QString("redirected-404") << QString("unknown");
+        // #1690: a 202 for a deletion the link then confirms (404) is removed, not pending.
+        QTest::newRow("accepted-202-then-gone") << QString("accepted-202") << QString("removed");
+        // A 202 whose link still answers is pending, not removed.
+        QTest::newRow("accepted-202-still-there") << QString("accepted-202-kept") << QString("pending");
+    }
+    void aDeletionOutcomeFollowsTheRule() {
+        QFETCH(QString, shape);
+        QFETCH(QString, expected);
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QString page = "<html><body><img src=\"/raw/image.png\"></body></html>";
+        const QString banner = "<html><body><div class=\"alert\">You are not allowed to delete this file</div><img src=\"/raw/image.png\"></body></html>";
+        const QJsonObject sharePage{{"call", "file"}, {"status", 200}, {"body", page}};
+        const QJsonObject bannerPage{{"call", "file"}, {"status", 200}, {"body", banner}};
+        const QJsonObject notFound{{"call", "file"}, {"status", 404}, {"body", "not found"}};
+        if (shape == "rejected-200") f.rules({sharePage, {{"call", "delete"}, {"status", 200}, {"body", "<html>Error</html>"}}, bannerPage});
+        else if (shape == "rejected-302") f.rules({sharePage, {{"call", "delete"}, {"status", 302}, {"location", uploaded.receipt.directUrl}}, bannerPage, bannerPage});
+        else if (shape == "unpublished") f.rules({notFound, {{"call", "delete"}, {"status", 404}, {"body", "not found"}}, notFound});
+        else if (shape == "same-file") f.rules({{{"call", "delete"}, {"status", 200}, {"body", "{}"}}});
+        else if (shape == "session-cookie") f.rules({{{"call", "file"}}, {{"call", "delete"}, {"status", 200}, {"body", "<html>Rejected</html>"}, {"setCookie", "session=rejected-delete"}},
+                                                     {{"call", "file"}, {"notFoundFor", "session=rejected-delete"}}});
+        else if (shape == "redirected-404") f.rules({notFound, {{"call", "delete"}, {"status", 302}, {"location", f.base + "/gone"}}, notFound});
+        else if (shape == "accepted-202") f.rules({{{"call", "delete"}, {"status", 202}, {"store", true}, {"body", "{}"}}});
+        else if (shape == "accepted-202-kept") f.rules({{{"call", "delete"}, {"status", 202}, {"body", "{}"}}});
+        const auto result = f.remove(uploaded.receipt);
+        if (expected == "pending") {
+            QCOMPARE(result.status, QString("unknown"));
+            QCOMPARE(result.error.code, QString("http_delete_pending"));
+            QCOMPARE(f.stored(), 1);
+            return;
+        }
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(f.stored(), expected == "removed" ? 0 : 1);
+    }
+    // Review of #1603. A deletion URL that names no stored value, and redirects to
+    // another host: the redirect is not followed (the other host never sees the
+    // deletion), so the outcome is unknown with the intent kept.
+    void aDeletionRedirectedToAnotherHostIsNotFollowed() {
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto deletion = uploaded.receipt.objectReference["deletionUrl"].toString();
+        QVERIFY2(!deletion.contains("{secret:"), qPrintable(deletion));
+        f.rules({{{"call", "delete"}, {"status", 302}, {"location", QString(deletion).replace("127.0.0.1", "localhost")}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.events("delete").size(), 1);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. Only a 200 carries the whole file: a 206 range after the deletion,
+    // whatever its bytes, is not compared, and the outcome is unknown.
+    void aPartialContentCheckIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 206}, {"body", "PNG"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. A check of the link whose reply was cut off before any of it came
+    // leaves nothing to compare: unknown, never removed or failed.
+    void aDeletionWithNothingToCompareIsUnknown_data() {
+        QTest::addColumn<bool>("beforeEmpty");
+        QTest::newRow("before-cut-empty") << true;
+        QTest::newRow("after-cut-empty") << false;
+    }
+    void aDeletionWithNothingToCompareIsUnknown() {
+        QFETCH(bool, beforeEmpty);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QJsonObject whole, empty{{"cut", "empty"}};
+        f.phased(beforeEmpty ? empty : whole, beforeEmpty ? whole : empty);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY(f.looks("before") >= 1 && f.looks("after") >= 1);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Deletion progress journaled for one upload is never applied to another.
+    void deletionProgressOfAnotherUploadIsNotApplied() {
+        HttpFixture f;
+        f.reset();
+        const auto first = f.upload(f.image());
+        f.rules({{{"call", "delete"}, {"store", true}, {"drop", true}, {"remaining", 8}}});
+        const auto lost = f.remove(first.receipt);
+        QCOMPARE(lost.status, QString("unknown"));
+        QCOMPARE(lost.progress["phase"].toString(), QString("delete_intent"));
+        f.rules({});
+        const auto other = f.upload(f.image());
+        QCOMPARE(f.remove(other.receipt, lost.progress).status, QString("changed"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1371. A server can repeat what it was sent inside the addresses it
+    // returns. No address that is recorded, copied or shown holds a stored value, in any
+    // spelling: the link is refused, a thumbnail dropped, and a deletion URL recorded
+    // with the value's name where that is exact, or dropped.
+    void storedValuesEchoedInReturnedAddressesAreNotRecorded_data() {
+        QTest::addColumn<QString>("where");
+        QTest::addColumn<QString>("encoding");
+        QTest::addColumn<QString>("auth");
+        QTest::newRow("url-percent-query") << "url" << "percent" << "query";
+        QTest::newRow("thumb-raw-header") << "thumb" << "raw" << "header";
+        QTest::newRow("delete-raw-query") << "delete" << "raw" << "query";
+        QTest::newRow("delete-percent-header") << "delete" << "percent" << "header";
+    }
+    void storedValuesEchoedInReturnedAddressesAreNotRecorded() {
+        QFETCH(QString, where);
+        QFETCH(QString, encoding);
+        QFETCH(QString, auth);
+        // A credential with characters an address has to encode.
+        const QString secret = "putgd-synthetic/credential+not=real&0123";
+        const QList<QByteArray> spellings{secret.toUtf8(), QUrl::toPercentEncoding(secret), QUrl::toPercentEncoding(secret).toLower()};
+        HttpFixture f;
+        f.reset({{"auth", auth}, {"token", secret}});
+        auto destination = f.destination;
+        auto s = f.settings("json");
+        // In a header the stored value is "Bearer <credential>"; as a parameter it is the credential itself.
+        if (auth == "query") { s["headers"] = QJsonArray{}; s["parameters"] = rows({secretRow("key")}); f.store({{"parameters/key", secret}}); }
+        else f.store({{"headers/Authorization", "Bearer " + secret}});
+        destination.settings = s;
+        const QJsonObject rule{{"call", "upload"}, {"store", true}, {"echo", where}, {"encoding", encoding}};
+        f.rules({rule});
+        const auto result = f.upload(f.image(), destination);
+        const auto kept = QJsonDocument(QJsonObject{{"receipt", result.receipt.toJson()}, {"error", result.error.toJson()}}).toJson();
+        for (const auto& spelling : spellings) QVERIFY2(!kept.contains(spelling), kept.constData());
+        QCOMPARE(f.stored(), 1);
+        if (where == "url") {
+            // The file is on the server, but its link is not one put.gd may keep.
+            QCOMPARE(result.status, QString("unknown"));
+            QCOMPARE(result.error.code, QString("http_link_holds_secret"));
+            QVERIFY(result.receipt.directUrl.isEmpty());
+            // Test connection takes the same path: nothing of it reaches the result or its journal.
+            QByteArray journal;
+            QJsonObject tested;
+            Error error;
+            f.rules({rule});
+            f.provider.testDestination(destination, [&](const QJsonObject& entry, std::function<void(Error)> ack) { journal += QJsonDocument(entry).toJson(); ack({}); },
+                                       [&](QJsonObject r, Error e) { tested = r; error = e; });
+            QCOMPARE(error.code, QString("http_link_holds_secret"));
+            QVERIFY(!tested.contains("link"));
+            const auto reported = journal + QJsonDocument(tested).toJson() + QJsonDocument(error.toJson()).toJson();
+            for (const auto& spelling : spellings) QVERIFY2(!reported.contains(spelling), reported.constData());
+            return;
+        }
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        if (where == "thumb") { QVERIFY(!result.receipt.objectReference.contains("thumbnailUrl")); return; }
+        const auto recorded = result.receipt.objectReference["deletionUrl"].toString();
+        if (auth == "query" && encoding == "raw") {
+            // The stored value stands there exactly: it is recorded by name and filled in for the deletion.
+            QVERIFY2(recorded.endsWith("?key={secret:parameters/key}"), qPrintable(recorded));
+            const auto removed = f.remove(result.receipt);
+            QVERIFY2(removed.status == "removed", qPrintable(removed.error.code + ": " + removed.error.message));
+            // The request is the address as the server wrote it, byte for byte; the
+            // server reads its own "+" and "&" there as a space and a separator.
+            QCOMPARE(f.events("delete")[0].toObject()["query"].toObject()["key"].toString(), QString("putgd-synthetic/credential not=real"));
+            QCOMPARE(f.stored(), 0);
+        } else {
+            // Only part of a stored value, or another spelling of it: there is no exact name to record.
+            QVERIFY2(recorded.isEmpty(), qPrintable(recorded));
+            QVERIFY(!f.provider.receiptCapabilities(result.receipt).remove);
+        }
+    }
+    // A deletion URL may name a stored value, and its host may come from the reply. The
+    // value goes to the request URL's own host or nowhere.
+    void deletionUrlWithAStoredValueStaysOnTheRequestHost() {
+        HttpFixture f;
+        f.reset();
+        const QString key = "putgd-synthetic-delete-key-0001";
+        auto destination = f.destination;
+        destination.settings["secrets"] = rows({secretRow("delete-key")});
+        destination.settings["deletionUrl"] = "{json:files[0].delete}?key={secret:secrets/delete-key}";
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-key", key}});
+        const QJsonObject elsewhere{{"call", "upload"}, {"store", true}, {"elsewhere", "delete"}};
+        f.rules({elsewhere});
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        QVERIFY2(!uploaded.receipt.objectReference.contains("deletionUrl"), qPrintable(uploaded.receipt.objectReference["deletionUrl"].toString()));
+        QVERIFY(!f.provider.receiptCapabilities(uploaded.receipt).remove);
+        QVERIFY(!QJsonDocument(uploaded.receipt.toJson()).toJson().contains(key.toUtf8()));
+        // On the request's own host the name is recorded.
+        const auto local = f.upload(f.image(), destination);
+        QVERIFY(local.receipt.objectReference["deletionUrl"].toString().endsWith("?key={secret:secrets/delete-key}"));
+        // A record that names another host all the same is refused when its deletion is asked for.
+        auto moved = local.receipt;
+        moved.objectReference["deletionUrl"] = moved.objectReference["deletionUrl"].toString().replace("127.0.0.1", "localhost");
+        const auto refused = f.remove(moved);
+        QCOMPARE(refused.status, QString("unsupported_safe_removal"));
+        QCOMPARE(f.events("delete").size(), 0);
+        QCOMPARE(f.remove(local.receipt).status, QString("removed"));
+        QCOMPARE(f.events("delete")[0].toObject()["query"].toObject()["key"].toString(), key);
+    }
+    // {responseurl} is where a redirect led. Without a redirect it is the request's own
+    // address, secret parameters included, and that is never a link.
+    void theRequestAddressIsNeverALink() {
+        HttpFixture f;
+        f.reset({{"auth", "query"}});
+        auto destination = f.destination;
+        auto s = f.settings("nolink");
+        s["headers"] = QJsonArray{};
+        s["parameters"] = rows({secretRow("key")});
+        s["responseUrl"] = "{responseurl}";
+        f.store({{"parameters/key", token}});
+        destination.settings = s;
+        const auto result = f.upload(f.image(), destination);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("http_response_unreadable"));
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QVERIFY(!QJsonDocument(QJsonObject{{"receipt", result.receipt.toJson()}, {"error", result.error.toJson()}}).toJson().contains(token.toUtf8()));
+    }
+    // A reply that ends early is not a reply: whatever its first bytes look like, the
+    // outcome is unknown and no link is recorded.
+    void aReplyCutOffAfterItsStatusLineIsUnknown_data() {
+        QTest::addColumn<QString>("style");
+        QTest::addColumn<QString>("cut");
+        QTest::newRow("json-length") << "json" << "length";
+        QTest::newRow("json-chunk") << "json" << "chunk";
+    }
+    void aReplyCutOffAfterItsStatusLineIsUnknown() {
+        QFETCH(QString, style);
+        QFETCH(QString, cut);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings(style);
+        if (style == "header") destination.settings["responseUrl"] = "{header:Location}";
+        f.rules({{{"call", "upload"}, {"store", true}, {"cut", cut}}});
+        const auto result = f.upload(f.image(), destination);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.receipt.directUrl + " " + result.error.code));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("cut off") && result.error.message.contains("second copy"), qPrintable(result.error.message));
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.stored(), 1);
+    }
+    // #1393. The short reply is already waiting when the client has sent the last byte of
+    // the file. Qt, still finishing the request it wrote, takes the close that follows for
+    // a dead connection, tries to send the request again, cannot, and reports that (error
+    // 205), after it has handed over the status line, the headers and the bytes that came.
+    // Under load the rows above took that path now and then, and a short reply that held
+    // a whole link was recorded as an upload. This rule makes the server do it every
+    // time. Whatever the transport reports, a reply shorter than the length it declared
+    // is not a reply.
+    void aShortReplyThatWaitedWhileTheFileWasSentIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        // The reply's JSON is whole and names a link; its Content-Length promises 64 bytes more.
+        const QJsonObject body{{"files", QJsonArray{QJsonObject{{"url", f.base + "/f/synthetic/shot.png"}}}}};
+        f.rules({{{"call", "upload"}, {"early", true}, {"drain", true}, {"status", 200}, {"cut", "length"}, {"body", body}}});
+        // Large enough that the reply arrives while the file is still being sent.
+        const auto result = f.upload(f.artifact("large.bin", QByteArray(16 * 1024 * 1024, 'x'), "application/octet-stream", "files"));
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.receipt.directUrl + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("second copy"), qPrintable(result.error.message));
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.events("upload").size(), 1);
+    }
+    // Server text that is kept (a message, an excerpt, a content type) has every spelling
+    // of a stored value removed: as sent, percent-encoded, and as PHP writes JSON.
+    void serverTextIsScrubbedInEverySpelling() {
+        const QString secret = "putgd-synthetic/credential+not=real&0123";
+        const QList<QString> spellings{secret, QString(secret).replace("/", "\\/"), QString::fromLatin1(QUrl::toPercentEncoding(secret)), QString::fromLatin1(QUrl::toPercentEncoding(secret).toLower())};
+        HttpFixture f;
+        auto destination = f.destination;
+        destination.settings["errorMessage"] = "{response}";
+        for (const auto& options : {QJsonObject{{"token", secret}, {"php", true}}, QJsonObject{{"token", secret}, {"echo", "percent"}}}) {
+            f.reset(options);
+            // A refused credential comes back in the server's own words.
+            f.store({{"headers/Authorization", "Bearer wrong-" + secret}});
+            const auto refused = f.upload(f.image(), destination);
+            QCOMPARE(refused.error.code, QString("http_authentication_failed"));
+            const auto kept = refused.error.message + QString::fromUtf8(QJsonDocument(refused.error.details).toJson());
+            for (const auto& spelling : spellings) QVERIFY2(!kept.contains(spelling), qPrintable(kept));
+            QVERIFY2(refused.error.message.contains("<redacted>"), qPrintable(refused.error.message));
+        }
+        // The content type of a reply with no link is the server's text too.
+        f.reset({{"token", secret}});
+        f.store({{"headers/Authorization", "Bearer " + secret}});
+        f.rules({{{"call", "upload"}, {"store", true}, {"status", 200}, {"body", "stored"}, {"type", "text/x-" + QString::fromLatin1(QUrl::toPercentEncoding(secret))}}});
+        const auto unread = f.upload(f.image());
+        QCOMPARE(unread.error.code, QString("http_response_unreadable"));
+        const auto details = QString::fromUtf8(QJsonDocument(unread.error.details).toJson());
+        for (const auto& spelling : spellings) QVERIFY2(!details.contains(spelling), qPrintable(details));
+    }
+    // The other half: a key that is only part of a stored value, here inside a stored JSON
+    // body, is found when the server writes it into the link.
+    void aKeyEchoedOutOfAStoredBodyIsFound() {
+        const QString part = "putgdsyntheticbodypart0001";
+        HttpFixture f;
+        f.reset({{"auth", "argument"}, {"token", part}});
+        auto destination = f.destination;
+        auto s = f.settings("json");
+        s["headers"] = QJsonArray{};
+        s["body"] = "json";
+        s["dataSecret"] = true;
+        QVERIFY2(!http::validateSettings(s), qPrintable(http::validateSettings(s).message));
+        destination.settings = s;
+        f.store({{"data", "{\"key\":\"" + part + "\",\"content\":\"{input}\",\"name\":\"{filename}\"}"}});
+        f.rules({{{"call", "upload"}, {"store", true}, {"echo", "url"}}});
+        const auto result = f.upload(f.text(), destination);
+        const auto kept = QJsonDocument(QJsonObject{{"receipt", result.receipt.toJson()}, {"error", result.error.toJson()}}).toJson();
+        QVERIFY2(!kept.contains(part.toUtf8()), kept.constData());
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("http_link_holds_secret"));
+        QVERIFY2(result.error.message.contains("request body"), qPrintable(result.error.message));
+        QCOMPARE(f.stored(), 1);
+    }
+    // A value echoed with a control character inside it must not come back together when
+    // the message is made fit to show.
+    void aStoredValueEchoedAroundAControlCharacterIsScrubbed() {
+        HttpFixture f;
+        f.reset({{"echo", "control"}});
+        f.store({{"headers/Authorization", "Bearer wrong-" + token}});
+        const auto refused = f.upload(f.image());
+        QCOMPARE(refused.error.code, QString("http_authentication_failed"));
+        const auto kept = refused.error.message + QString::fromUtf8(QJsonDocument(refused.error.details).toJson());
+        QVERIFY2(!kept.contains(token) && !kept.contains("synthetic-uploader"), qPrintable(kept));
+    }
+    // A deletion URL that names a stored value is sent to the destination's own host and
+    // follows no redirect away from it: the server could write the value into Location.
+    void aDeletionThatNamesAStoredValueFollowsNoRedirectToAnotherHost() {
+        HttpFixture f;
+        f.reset();
+        const QString part = "putgd-synthetic-delete-part-0002";
+        auto destination = f.destination;
+        destination.settings["secrets"] = rows({secretRow("delete-part")});
+        destination.settings["deletionUrl"] = "{json:files[0].delete}?k={secret:secrets/delete-part}";
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-part", part}});
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        f.rules({{{"call", "delete"}, {"status", 302}, {"location", QString(f.base).replace("127.0.0.1", "localhost") + "/delete/moved/away?k=" + part}}});
+        const auto result = f.remove(uploaded.receipt);
+        const auto requests = f.events("delete");
+        for (const auto& request : requests)
+            QVERIFY2(!request.toObject()["headers"].toObject()["host"].toString().startsWith("localhost"), QJsonDocument(request.toObject()).toJson().constData());
+        QCOMPARE(requests.size(), 1);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("another host"), qPrintable(result.error.message));
+    }
+    // An import never stores under, or cleans up, a keychain entry that another
+    // destination already names.
+    void anImportDoesNotTakeAnotherDestinationsKeychainEntry() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        auto document = putgd::test::configuration(dir.path(), true);
+        auto existing = http::defaults();
+        existing["requestUrl"] = "https://first.example.test/upload";
+        document["profiles"] = QJsonArray{QJsonObject{{"id", "first"}, {"label", "First"}, {"provider", "custom-http"}, {"settings", existing},
+                                                      {"credentials", QJsonObject{{"mode", "keychain"}, {"reference", "putgd/http/shared"}}}}};
+        QVERIFY2(settings.save(document, {}), "the starting configuration was refused");
+        const auto path = dir.filePath("uploader.sxcu");
+        {
+            QFile out(path);
+            QVERIFY(out.open(QIODevice::WriteOnly));
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "Uploader"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", token}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        bool done = false;
+        Error error;
+        http::importUploaderFile(settings, credentials, {{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", "keychain"}, {"profileId", "shared"}},
+                                 [&](Error e, QJsonObject) { error = e; done = true; });
+        QVERIFY(waitFor([&] { return done; }, 10000));
+        QCOMPARE(error.code, QString("credential_reference_in_use"));
+        QCOMPARE(settings.document()["profiles"].toArray().size(), 1);
+        QVERIFY(!credentials.cached("shared", {{"mode", "keychain"}, {"reference", "putgd/http/shared"}}).has_value());
+    }
+    // A deletion is confirmed by what the link serves before and after. A check whose
+    // reply was cut short does not confirm a deletion the server did not do.
+    void aDeletionIsNotConfirmedByALinkCheckThatWasCutShort() {
+        HttpFixture f;
+        f.reset();
+        // This receiver answers the deletion politely and deletes nothing.
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        const QJsonObject whole{{"call", "file"}}, cut{{"call", "file"}, {"cut", "length"}};
+        f.rules({cut, whole});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Two imports in flight must not share a destination's stored values: the second is
+    // refused while the first is being saved.
+    void importsAreOneAtATime() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(putgd::test::configuration(dir.path(), true), {}));
+        const QString one = "PUTGD-SYNTHETIC-IMPORT-ONE-0123456789", two = "PUTGD-SYNTHETIC-IMPORT-TWO-0123456789";
+        const auto file = [&](const QString& host, const QString& value) {
+            const auto path = dir.filePath(host + ".sxcu");
+            QFile out(path);
+            if (!out.open(QIODevice::WriteOnly)) qFatal("cannot write the synthetic .sxcu file");
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "Shared name"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://" + host + ".example.test/upload"}, {"Headers", QJsonObject{{"Authorization", value}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+            return path;
+        };
+        struct Outcome { bool done = false; Error error; QJsonObject result; } first, second;
+        const auto revision = settings.metadata()["observedRevision"].toString();
+        const auto params = [&](const QString& path) {
+            return QJsonObject{{"path", path}, {"expectedRevision", revision}, {"credentialMode", "session"}, {"profileId", "shared"}};
+        };
+        http::importUploaderFile(settings, credentials, params(file("one", one)), [&](Error e, QJsonObject r) { first = {true, e, r}; });
+        http::importUploaderFile(settings, credentials, params(file("two", two)), [&](Error e, QJsonObject r) { second = {true, e, r}; });
+        QVERIFY(waitFor([&] { return first.done && second.done; }, 10000));
+        // Exactly one destination, holding the values of its own file.
+        const auto profiles = settings.document()["profiles"].toArray();
+        QCOMPARE(profiles.size(), 1);
+        const auto profile = profiles[0].toObject();
+        const bool firstWon = profile["settings"].toObject()["requestUrl"].toString().contains("one.example.test");
+        const auto cached = credentials.cached(profile["id"].toString(), profile["credentials"].toObject());
+        QVERIFY(cached.has_value());
+        QCOMPARE(cached->values.value("headers/Authorization"), firstWon ? one : two);
+        // The other was refused before it stored anything.
+        QVERIFY2(!first.error && second.error, qPrintable(first.error.code + " / " + second.error.code));
+        QCOMPARE(second.error.code, QString("import_busy"));
+    }
+    // Sol round 4 of #1614: what is saved, returned and logged is checked as saved: the ID
+    // after it was made unique, and a caller's own ID and label.
+    void importSavesNoIdOrLabelThatRepeatsACredential() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(putgd::test::configuration(dir.path(), true), {}));
+        const auto path = dir.filePath("backup.sxcu");
+        {
+            QFile out(path);
+            if (!out.open(QIODevice::WriteOnly)) qFatal("cannot write the synthetic .sxcu file");
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "backup"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", "Bearer backup-2"}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        const auto run = [&](QJsonObject extra) {
+            QJsonObject params{{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", "session"}};
+            for (auto it = extra.begin(); it != extra.end(); ++it) params[it.key()] = it.value();
+            struct { bool done = false; Error error; QJsonObject result; } outcome;
+            http::importUploaderFile(settings, credentials, params, [&](Error e, QJsonObject r) { outcome = {true, e, r}; });
+            if (!waitFor([&] { return outcome.done; }, 10000)) qFatal("the import did not answer");
+            if (outcome.error) qFatal("the import was refused");
+            return outcome.result;
+        };
+        // The first takes the ID "backup"; the second would be "backup-2", the credential.
+        QCOMPARE(run({})["profileId"].toString(), QString("backup"));
+        auto second = run({});
+        QCOMPARE(second["profileId"].toString(), QString("imported-uploader"));
+        // A caller's own ID and label that repeat it give way too.
+        auto third = run({{"profileId", "backup-2"}, {"label", "Bearer backup-2"}});
+        QCOMPARE(third["profileId"].toString(), QString("imported-uploader-2"));
+        QCOMPARE(third["label"].toString(), QString("Imported uploader"));
+        const auto saved = QJsonDocument(settings.document()).toJson();
+        QVERIFY(!saved.contains("backup-2"));
+    }
+    // The shared pipeline: journal, explicit retry and history deletion.
+    void lostReplyWaitsForAnExplicitRetryThatMayDuplicate() {
+        HttpFixture f;
+        f.reset();
+        ProviderRegistry registry;
+        auto provider = std::make_shared<HttpUploaderProvider>(f.credentials);
+        registry.add("custom-http", provider);
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        const auto saved = settings.save(configuration(f, "skip"), {});
+        QVERIFY2(saved, qPrintable(saved.error.code + ": " + saved.error.message));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {fixture(f.directory.path(), "report.pdf", "synthetic report")};
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        HistoryService history(operations);
+        PUTGD_TRY_VERIFY(operations.ready());
+        f.rules({{{"call", "upload"}, {"store", true}, {"drop", true}}});
+        QString id;
+        operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        auto operation = waitOperation(operations, id);
+        QCOMPARE(operation.stateName(), QString("partial"));
+        QCOMPARE(operation.items[0].uploadStatus, QString("unknown"));
+        QCOMPARE(operation.items[0].error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.stored(), 1);
+        // Nothing is sent again on its own.
+        PUTGD_COMPARE_STEADY(f.events("upload").size(), 1, 700);
+        // History says what Retry will do for this destination.
+        QJsonObject detail;
+        history.detail(operation.items[0].artifact.id, [&](Error e, QJsonObject data) { QVERIFY(!e); detail = data; });
+        PUTGD_TRY_VERIFY(!detail.isEmpty());
+        QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
+        QVERIFY(detail["capabilities"].toObject()["serverNamesObjects"].toBool());
+        // A retry the server refuses leaves the item unknown, never failed: the first
+        // request's copy may still be there, and History has to keep saying so.
+        f.rules({{{"call", "upload"}, {"status", 400}}});
+        // History shows the outcome as soon as it is stored; the operation stays active until its link copy has
+        // been recorded, and a Retry in between is answered operation_settling.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        bool refusedRetry = false;
+        operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); refusedRetry = true; });
+        PUTGD_TRY_VERIFY(refusedRetry);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.events("upload").size() == 2 && !Operation::activeState(HistoryStore(operations.databasePath()).operation(id).stateName()), 20000);
+        operation = HistoryStore(operations.databasePath()).operation(id);
+        QCOMPARE(operation.items[0].uploadStatus, QString("unknown"));
+        QCOMPARE(operation.items[0].error.code, QString("http_request_refused"));
+        QCOMPARE(f.stored(), 1);
+        detail = {};
+        history.detail(operation.items[0].artifact.id, [&](Error e, QJsonObject data) { QVERIFY(!e); detail = data; });
+        PUTGD_TRY_VERIFY(!detail.isEmpty());
+        QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
+        // The explicit retry sends the file again: the server now holds two copies.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        bool accepted = false;
+        operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); accepted = true; });
+        PUTGD_TRY_VERIFY(accepted);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(HistoryStore(operations.databasePath()).operation(id).stateName() == "completed", 20000);
+        operation = HistoryStore(operations.databasePath()).operation(id);
+        // A confirmed upload clears the unknown outcome; the refused request stored nothing.
+        QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
+        QVERIFY(!operation.items[0].error);
+        QCOMPARE(f.events("upload").size(), 3);
+        QCOMPARE(f.stored(), 2);
+        QCOMPARE(f.fetch(operation.items[0].receipt.directUrl).second, QByteArray("synthetic report"));
+        // The token is in no file the resident wrote: configuration, journal or artifacts.
+        QVERIFY(!f.tokenOnDisk(f.directory.path()));
+    }
+    // #1602. Quit kills the helper of a deletion that waits on its server: Quit is quick,
+    // the helper is gone and sends nothing more, the deletion is unknown with its intent,
+    // and after the next start Retry resolves it. "answered": the server answered the
+    // deletion without deleting and the check after it stalls. "before-dispatch": the
+    // intent is acknowledged and the look at the link before the deletion stalls, so the
+    // deletion was never sent (#1603 review E2).
+    void quitKillsTheHelperOfAStalledDeletion_data() {
+        QTest::addColumn<QString>("style");
+        QTest::addColumn<int>("checks");
+        QTest::addColumn<int>("sent");
+        QTest::addColumn<QString>("retried");
+        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("failed");
+        QTest::newRow("before-dispatch") << QString("json") << 1 << 0 << QString("removed");
+    }
+    void quitKillsTheHelperOfAStalledDeletion() {
+        QFETCH(QString, style);
+        QFETCH(int, checks);
+        QFETCH(int, sent);
+        QFETCH(QString, retried);
+        HttpFixture f;
+        f.reset();
+        f.destination.settings = f.settings(style);
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(configuration(f, "skip"), {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {fixture(f.directory.path(), "note.txt", "synthetic note")};
+        const auto data = f.directory.filePath("data");
+        QString deletion;
+        const auto item = [&](OperationService& operations) { return HistoryStore(operations.databasePath()).deletion(deletion)["items"].toArray()[0].toObject(); };
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            QString id;
+            operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
+            PUTGD_TRY_VERIFY(!id.isEmpty());
+            const auto target = waitOperation(operations, id).items[0];
+            QCOMPARE(target.uploadStatus, QString("uploaded"));
+            QJsonObject preparation;
+            history.prepareDelete({target.artifact.id}, [&](Error e, QJsonObject data) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); preparation = data; });
+            PUTGD_TRY_VERIFY(!preparation.isEmpty());
+            const auto seen = f.events("file").size();
+            if (checks == 2) f.rules({{{"call", "file"}}, {{"call", "file"}, {"stall", 3}}});
+            else f.rules({{{"call", "file"}, {"stall", 3}}});
+            history.deleteConfirmed({target.artifact.id}, preparation["acknowledgement"].toString(), [&](Error e, QJsonObject data) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); deletion = data["deleteOperationId"].toString(); });
+            PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.events("file").size() == seen + checks, 15000);
+            QCOMPARE(f.events("delete").size(), sent);
+            QCOMPARE(childProcesses("putgd-http-worker").size(), 1);
+            QElapsedTimer quit;
+            quit.start();
+            history.stopDeletions();
+            operations.shutdown();
+            QVERIFY2(quit.elapsed() < 2000, qPrintable(QString::number(quit.elapsed())));
+            QVERIFY(childProcesses("putgd-http-worker").isEmpty());
+            // No confirm or retry is admitted any more.
+            QString refused;
+            history.retryDelete(deletion, [&](Error e, QJsonObject) { refused = e.code; });
+            QCOMPARE(refused, QString("cancelled"));
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject()["phase"].toString(), QString("delete_intent"));
+            // The dead helper sends nothing after the stall would have ended.
+            PUTGD_COMPARE_STEADY(f.events("delete").size(), sent, 3500);
+        }
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            QCOMPARE(HistoryStore(operations.databasePath()).deletion(deletion)["state"].toString(), QString("interrupted"));
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject()["phase"].toString(), QString("delete_intent"));
+            f.rules({});
+            bool accepted = false;
+            history.retryDelete(deletion, [&](Error e, QJsonObject value) { QVERIFY2(!e, qPrintable(e.code)); accepted = value["retryAccepted"].toBool(); });
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE_WITH_TIMEOUT(HistoryStore(operations.databasePath()).deletion(deletion)["state"].toString(), QString("completed"), 20000);
+            QCOMPARE(item(operations)["status"].toString(), retried);
+            QCOMPARE(f.stored(), retried == "removed" ? 0 : 1);
+        }
+    }
+    void sameNamesAreSeparateUploadsAndHistoryDeletesByReference() {
+        HttpFixture f;
+        f.reset();
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        // "skip" would drop the second file of a name on a destination with names of its own.
+        QVERIFY(settings.save(configuration(f, "skip"), {}));
+        QDir(f.directory.path()).mkpath("a");
+        QDir(f.directory.path()).mkpath("b");
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {fixture(f.directory.filePath("a"), "same.txt", "first"), fixture(f.directory.filePath("b"), "same.txt", "second")};
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        HistoryService history(operations);
+        PUTGD_TRY_VERIFY(operations.ready());
+        QString id;
+        operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        const auto operation = waitOperation(operations, id);
+        QCOMPARE(operation.stateName(), QString("completed"));
+        QCOMPARE(operation.items.size(), 2);
+        for (const auto& item : operation.items) QCOMPARE(item.uploadStatus, QString("uploaded"));
+        QVERIFY(operation.items[0].receipt.directUrl != operation.items[1].receipt.directUrl);
+        QCOMPARE(f.stored(), 2);
+        // Deleting one from History: prepared with its effect, then exactly that upload goes.
+        const auto target = operation.items[0];
+        QJsonObject preparation;
+        history.prepareDelete({target.artifact.id}, [&](Error e, QJsonObject data) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); preparation = data; });
+        PUTGD_TRY_VERIFY(!preparation.isEmpty());
+        QVERIFY(preparation["targets"].toArray()[0].toObject()["effect"].toString().contains("deletion URL"));
+        bool confirmed = false;
+        history.deleteConfirmed({target.artifact.id}, preparation["acknowledgement"].toString(), [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); confirmed = true; });
+        PUTGD_TRY_VERIFY(confirmed);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(HistoryStore(operations.databasePath()).detail(target.artifact.id)["remoteStatus"].toString(), QString("removed"), 20000);
+        QCOMPARE(f.fetch(target.receipt.directUrl).first, 404);
+        QCOMPARE(f.fetch(operation.items[1].receipt.directUrl).second, QByteArray("second"));
+        QCOMPARE(f.stored(), 1);
+    }
+};
+QTEST_GUILESS_MAIN(HttpUploaderTest)
+#include "test_http_uploader.moc"

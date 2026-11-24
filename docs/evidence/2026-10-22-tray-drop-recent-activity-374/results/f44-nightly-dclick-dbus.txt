@@ -1,3 +1,0 @@
-member=ProvideXdgActivationToken
-member=Activate
-member=Activate

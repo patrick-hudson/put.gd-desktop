@@ -21,9 +21,6 @@ public:
  ~ShortcutEditor() override;
  using RecordingControl=std::function<void(bool,std::function<void(Error)>)>;
  void setRecordingControl(RecordingControl control){recordingControl_=std::move(control);}
- // Maps a key press to the recorded chord; the default reads the session's keyboard map.
- using ChordResolver=std::function<QKeyCombination(const QKeyEvent&)>;
- void setChordResolver(ChordResolver resolver){chordResolver_=std::move(resolver);}
  void cancelRecording();
  void setActions(const QJsonObject&);
  QJsonObject actions(const QJsonObject&) const;
@@ -38,6 +35,7 @@ public:
 protected:
  bool eventFilter(QObject*,QEvent*) override;
 private:
+ void setRecordingStatus(const QString& message);
  void startRecording(const QString& action);
  void finishRecording(const QString& message);
  QHash<QString,QLineEdit*> editors_;QHash<QString,QLabel*> bindingStates_;QLabel* status_;QPlainTextEdit* details_;
@@ -46,7 +44,6 @@ private:
  std::function<void()> promptChanged_;
  QLabel* recordingStatus_;
  RecordingControl recordingControl_;
- ChordResolver chordResolver_;
  std::unique_ptr<ShortcutKeyboard> keyboard_;
  QString recordingAction_;
  QKeySequence chord_;

@@ -162,6 +162,14 @@ class DriverContext(Context):
             if compositor.get('kind') == 'kwin-script' and before is not None:
                 compositor = dict(compositor, recording_bar_before=before)
             query = dict(query, compositor=compositor)
+        witness = query.get('compositor') or {}
+        if witness.get('kind') in ('wayland-toplevels', 'toplevel-pixels') and 'witness_source' not in witness:
+            # The probe runs from shipped source with no file of its own; send the witness it imports (review #1275).
+            query = dict(query, compositor=dict(witness, witness_source=(Path(__file__).resolve().parents[1]/'wayland_toplevels.py').read_text()))
+        if query.get('display') and len(json.dumps({'probe': name, 'query': query}))+1 > self.PROBE_REQUEST_BYTES:
+            # The whole request is capped, not only the display crop: send it without the crop (grim).
+            self.note('display crop dropped: the '+name+' request would exceed 1 MiB')
+            query = {k: v for k, v in query.items() if k != 'display'}
         source = Path(__file__).with_name('probe.py').read_text()
         persistent = getattr(self.target, 'probe', None)
         if persistent:
@@ -283,7 +291,17 @@ class DriverContext(Context):
                     return None
             result = self.wait(mapped, window + ' owned selector geometry', timeout=30)
         else:
-            result = self._probe('geometry', query)
+            for attempt in range(3):
+                try:
+                    result = self._probe('geometry', query)
+                    break
+                except RecipeBlocked as error:
+                    # An application that answers too slowly for one walk (Firefox while it closes or
+                    # loads a page) is asked again shortly; one that stays slow still blocks the read.
+                    if attempt == 2 or not any(m in str(error) for m in ('accessibility walk exceeded', 'accessibility walk incomplete')):
+                        raise
+                    self.note('geometry walk retried: ' + str(error)[:160])
+                    time.sleep(2)
         if window in ('region', 'recsel'):
             self._current_window = window
         return self._map_geometry(result)
@@ -379,23 +397,68 @@ class DriverContext(Context):
         if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
-        witness = self._probe('foreground', query)
+        witness = self._probe('foreground', self._with_display(query))
         for _ in range(3):
             if witness.get('ok'):
                 break
             if not self._try_clear_screen(obscuring=witness.get('obscuring_window_id')):
                 break
             time.sleep(.5)
-            witness = self._probe('foreground', query)
+            witness = self._probe('foreground', self._with_display(query))
+        for _ in range(2):
+            if witness.get('ok') or not witness.get('unverified') or 'display' not in self._with_display(query, probe=False):
+                break
+            # A capture of labwc's can still hold pixels the window has since replaced; look again.
+            time.sleep(.5)
+            witness = self._probe('foreground', self._with_display(query))
         if role.startswith('bar') and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
             self.note('KWin recording bar input=' + json.dumps({
                 'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
                 'rect': [geometry.get(k) for k in ('x', 'y', 'width', 'height')], 'point': point,
                 'before_prepare': getattr(self, '_recording_bar_before', None), 'foreground': witness}))
+        if not witness.get('ok') and witness.get('unverified'):
+            raise RecipeBlocked('input target '+repr(role)+' could not be verified on screen: '+str(witness.get('obscuring_window')))
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
         return witness
+
+    # The display crop travels base64-encoded in the probe request, which is capped at 1 MiB.
+    DISPLAY_BYTES = 640 * 1024
+    PROBE_REQUEST_BYTES = 1024 * 1024  # target.py's limit on one serialized probe request
+
+    def _with_display(self, query, probe=True):
+        """A pointer hit-test on labwc, with what the display shows over the target window now.
+
+        labwc's own output capture (grim) can hold a region's earlier pixels while the display
+        already shows the window's new ones (Fedora 45 Budgie, labwc 0.20: History's inspector
+        after it lays out its link row). The guest's VNC display is what the user sees, so the
+        hit-test compares the window's own capture with it instead. One head only; anything
+        else, and a request that would be too large, keeps grim.
+        """
+        geometry, point = query.get('geometry') or {}, query.get('point')
+        query = {k: v for k, v in query.items() if k != 'display'}
+        if (point is None or query.get('popup') or self.target.physical
+                or self.profile.get('compositor', {}).get('kind') != 'toplevel-pixels'
+                or str(geometry.get('window_id', '')).startswith('layer:') or len(self.profile.get('screens', [])) > 1):
+            return query
+        if not probe:
+            return dict(query, display=None)  # only says that a display would be read
+        import base64, zlib
+        # Endpoint and lease failures still stop the run; only a failed VNC read falls back to grim.
+        image = self.target.display_image(0)
+        if image is None:
+            self.note('display read failed; the hit-test keeps grim')
+            return query
+        image = image.convert('RGB')
+        rect = [int(geometry[k]) for k in ('x', 'y', 'width', 'height')]
+        if rect[0] < 0 or rect[1] < 0 or rect[0]+rect[2] > image.width or rect[1]+rect[3] > image.height:
+            return query
+        data = zlib.compress(image.crop((rect[0], rect[1], rect[0]+rect[2], rect[1]+rect[3])).tobytes(), 6)
+        if len(data) > self.DISPLAY_BYTES:
+            return query
+        return dict(query, display={'size': [image.width, image.height], 'rect': rect,
+                                    'rgb': base64.b64encode(data).decode('ascii')})
 
     def use_catalog(self, window, reference):
         self.catalog.reference(reference)
@@ -539,44 +602,58 @@ class DriverContext(Context):
             resize_before = self._probe('resize', {})
         unmanaged = (bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test') or
                      self._current_window in ('region', 'recsel'))
-        last = start
+        last = [start]
         with armed(self.review):
             try:
                 self._press(*start,w,h,button,head)
-                # QMP acknowledges queued input before Qt/X11 consumes it.
-                # On Cinnamon/Qt 6.4 an immediate motion can become the press
-                # position. Let the editor receive the press at the start point.
-                if self.profile.get('session') == 'x11' and self._current_window == 'editor':
-                    time.sleep(.1)
-                # Managed header/resize grabs can leave the client. Unmanaged
-                # selector covers/bars need pointer witnesses, not keyboard focus:
-                # WA_ShowWithoutActivating deliberately leaves that elsewhere.
-                for step in range(1,steps+1):
-                    self._check_time()
-                    x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
-                    self._guard(holding=True, **({'point':self._global_point(x,y,head)} if unmanaged else {}))
-                    self.target.pointer(x,y,w,h,head=head)
-                    last = (x,y)
-                    time.sleep(.025)
-                    if require_resize and step == 1:
-                        from .probe import resize_started
-                        deadline = min(self._deadline, time.monotonic()+2)
-                        while True:
-                            after = self._probe('resize', {})
-                            try:
-                                proof = resize_started(resize_before, after, resize_target)
-                            except (RuntimeError, KeyError, TypeError) as error:
-                                raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
-                            if proof:
-                                self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
-                                break
-                            if time.monotonic() >= deadline:
-                                raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
-                                                    'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
-                            time.sleep(.05)
+                self._drag_motion(start,end,w,h,button,head,steps,unmanaged,require_resize,
+                                  resize_before,resize_target,last)
             finally:
                 if self._press_open or not self.target.physical:
-                    self._release_pointer(last,w,h,button,head)
+                    self._release_pointer(last[0],w,h,button,head)
+
+    def _drag_motion(self,start,end,w,h,button,head,steps,unmanaged,require_resize,resize_before,resize_target,last):
+        """The motion while the button is down, in a frame of its own.
+
+        CPython 3.13 leaves some loop back-edges outside the exception table
+        (the one where an ``if`` ends the loop body). A deadline alarm handled
+        there raises in the frame with no handler, so a ``finally`` in the same
+        function never runs and the press stays down. Called from the try body,
+        any exception raised in this frame reaches ``drag``'s release at a
+        covered call, on every Python. Keep loops that run while input is held
+        out of the frame that owns the release. ``last`` holds the latest point.
+        """
+        # QMP acknowledges queued input before Qt/X11 consumes it.
+        # On Cinnamon/Qt 6.4 an immediate motion can become the press
+        # position. Let the editor receive the press at the start point.
+        if self.profile.get('session') == 'x11' and self._current_window == 'editor':
+            time.sleep(.1)
+        # Managed header/resize grabs can leave the client. Unmanaged
+        # selector covers/bars need pointer witnesses, not keyboard focus:
+        # WA_ShowWithoutActivating deliberately leaves that elsewhere.
+        for step in range(1,steps+1):
+            self._check_time()
+            x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
+            self._guard(holding=True, **({'point':self._global_point(x,y,head)} if unmanaged else {}))
+            self.target.pointer(x,y,w,h,head=head)
+            last[0] = (x,y)
+            time.sleep(.025)
+            if require_resize and step == 1:
+                from .probe import resize_started
+                deadline = min(self._deadline, time.monotonic()+2)
+                while True:
+                    after = self._probe('resize', {})
+                    try:
+                        proof = resize_started(resize_before, after, resize_target)
+                    except (RuntimeError, KeyError, TypeError) as error:
+                        raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
+                    if proof:
+                        self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
+                        break
+                    if time.monotonic() >= deadline:
+                        raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
+                                            'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
+                    time.sleep(.05)
 
     @entry
     def _release_pointer(self, point, width, height, button, head):
@@ -805,7 +882,8 @@ asyncio.run(main())
                                              'shell': self.profile.get('evidence', {}).get('shell_processes', [])})
         stopped = ['%s (%s)' % (row['title'], row['process']) for row in reply.get('stopped', [])]
         banners = 'kept' if not notifications else 'close requested' if reply.get('newest_notification') is not None else 'close failed'
-        self.note('cleared screen: banners '+banners+'; windows closed: '+(', '.join(stopped) or 'none'))
+        self.note('cleared screen: banners '+banners+'; windows closed: '+(', '.join(stopped) or 'none')
+                  + ('; surfaces with no known process left alone: %d' % reply['unknown_process'] if reply.get('unknown_process') else ''))
         return reply
 
     def _try_clear_screen(self, **options):
@@ -1003,12 +1081,91 @@ asyncio.run(main())
                        for e in n.get('action_events',[])[previous:])
         self.wait(invoked, 'real notification action '+action, timeout=5)
 
-    def tray(self):
-        return self._probe('tray', {})
+    def tray(self, pixels=False):
+        """The private resident's StatusNotifier items; with PIXELS, each IconPixmap frame's ARGB bytes too."""
+        return self._probe('tray', {'pixels': True} if pixels else {})
+
+    def click_drawn(self, x, y, head, still_drawn, button='left', *, wheel=0):
+        """Real input to a point known only by its pixels: a tray icon or menu row no API exports.
+
+        STILL_DRAWN gets a capture taken just before the input and must confirm the target is
+        still drawn there, uncovered; otherwise nothing is sent and the run is blocked. BUTTON
+        None only moves the pointer there; WHEEL turns the wheel that many clicks (up when positive).
+        """
+        if self._input_poisoned or self._press_open:
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
+        x, y = round(x), round(y)
+        w, h = self._dimensions(head)
+        if not 0 <= x < w or not 0 <= y < h:
+            raise RecipeBlocked('input point outside selected head')
+        if not still_drawn(self.target.capture_image(head)):
+            raise RecipeBlocked('the drawn target moved or was covered before the input')
+        if wheel:
+            if self.target.physical:
+                raise RecipeBlocked('wheel input on a drawn target is for guests only')
+            self.target.pointer(x, y, w, h, head=head)
+            button = 'wheel-up' if wheel > 0 else 'wheel-down'
+            for _ in range(abs(wheel)):
+                with armed(self.review):
+                    try:
+                        with input_release(self.review, label='a wheel press'):
+                            self._press_open = True
+                            self.target.events([{'type': 'btn', 'data': {'button': button, 'down': True}}], head)
+                    finally:
+                        self._release_events([{'type': 'btn', 'data': {'button': button, 'down': False}}], head)
+        elif button is None:
+            self.target.pointer(x, y, w, h, head=head)
+        else:
+            self._pointer_click(x, y, button, head, guarded=True)
+
+    def key_drawn(self, chord, head, still_drawn):
+        """A key chord for a popup known only by its pixels (a tray menu holding the keyboard grab).
+
+        STILL_DRAWN must confirm, on a capture taken just before, that the popup is still showing.
+        """
+        codes = qcodes(chord)
+        if self._input_poisoned or self._press_open or set(codes) & set(self._held_codes):
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
+        if not still_drawn(self.target.capture_image(head)):
+            raise RecipeBlocked('the drawn popup closed or changed before the key')
+        with input_release(self.review, label='a key chord'):
+            self.target.key(codes)
+
+    def _clipboard_reader(self):
+        if self.profile['session'] == 'wayland':
+            return ['wl-paste', '--no-newline', '--type', 'text'], b'Nothing is copied'
+        return ['xclip', '-selection', 'clipboard', '-out'], b'Error: target STRING not available'
+
+    def clipboard_matches(self, expected):
+        command, absent = self._clipboard_reader()
+        script = f"""LC_ALL=C python3 - <<'SD_CLIPBOARD'
+import subprocess
+try:
+    selection = subprocess.run({command!r}, stdin=subprocess.DEVNULL, capture_output=True, timeout=5)
+except (OSError, subprocess.TimeoutExpired):
+    raise SystemExit(2)
+if selection.returncode == 0:
+    print('true' if selection.stdout == {expected.encode('utf-8')!r} else 'false')
+elif selection.returncode == 1 and not selection.stdout and selection.stderr.strip() == {absent!r}:
+    print('false')
+else:
+    raise SystemExit(2)
+SD_CLIPBOARD
+"""
+        result = self.shell(script, timeout=8)
+        if result['returncode'] or result['stdout'] not in ('true\n', 'false\n'):
+            raise RecipeBlocked('clipboard text comparison unavailable on the target')
+        return result['stdout'] == 'true\n'
 
     def clipboard_text(self, *, expected_json=None):
-        command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
-        result = self.shell(command)
+        command, _ = self._clipboard_reader()
+        result = self.shell('LC_ALL=C ' + shlex.join(command))
         if result['returncode']:
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
         value, verified = result['stdout'], False
@@ -1072,8 +1229,15 @@ asyncio.run(main())
         return self._probe('layout', query)['windows']
 
     def frame(self, label, window=None, reference=None):
-        """Save evidence: the window's pixels, or the whole desktop without one."""
+        """Save evidence: the window's pixels, or the whole desktop without one.
+
+        A recipe sets ``_frames_withheld`` (a reason) while the screen can show something that
+        must never reach evidence, such as a signed link; no pixels are captured then.
+        """
         self._check_time()
+        if getattr(self, '_frames_withheld', None):
+            self.review('frame withheld: '+self._frames_withheld)
+            return None
         label = self.evidence.redactor.text(label)
         safe = re.sub('[^a-zA-Z0-9_.-]','_',label)[:80] or 'frame'
         recipe = self.recipe.name if self.recipe else 'setup'

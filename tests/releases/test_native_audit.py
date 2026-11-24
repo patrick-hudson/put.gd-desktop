@@ -25,15 +25,25 @@ class NativeInventoryTests(unittest.TestCase):
         for license_name in audit.SDK_LICENSES:
             self.write("usr/share/doc/putgd/" + license_name, "license")
         self.write("usr/share/doc/putgd/runtime-notices.txt", "notice")
+        self.write("usr/share/doc/putgd/qrcodegen-LICENSE", "MIT notice")
+        self.write("usr/share/doc/putgd/scroll-tracker-LICENSE", "MIT notice")
         self.write("usr/share/doc/putgd/copyright", "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n")
         path = self.root / "usr/share/doc/putgd/changelog.gz"
         path.write_bytes(gzip.compress(b"putgd (0.1.2-rc.1) unstable; urgency=medium\n"))
         self.write("usr/share/doc/putgd/wayland-ext-data-control-v1.xml", "protocol")
         self.write("usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml", "protocol")
+        for name in ("ext-image-copy-capture-v1", "ext-image-capture-source-v1", "ext-foreign-toplevel-list-v1",
+                     "wlr-foreign-toplevel-management-unstable-v1", "hyprland-global-shortcuts-v1",
+                     "hyprland-toplevel-mapping-v1", "wlr-layer-shell-unstable-v1",
+                     # The scrolling capture's input protocols (#1376).
+                     "wlr-virtual-pointer-unstable-v1", "fake-input"):
+            self.write(f"usr/share/doc/putgd/wayland-{name}.xml", "protocol")
         for asset in audit.DESKTOP_ASSETS:
             self.write("usr/" + asset, "asset")
         for name in audit.PROGRAMS:
             self.write("usr/bin/" + name, "binary", 0o755)
+        # ssh's askpass for the SFTP destination (#1871): shipped, C library only, not a Qt program.
+        self.write("usr/bin/putgd-sftp-askpass", "binary", 0o755)
         self.write("usr/lib64/putgd/libaws-c-common.so", "SDK")
         self.write("usr/lib64/putgd/libputgd-s3.so", "module")
         runtime = {"libraries": [{"file": "libaws-c-common.so", "sha256": audit.sha256(self.root / "usr/lib64/putgd/libaws-c-common.so")}],
@@ -47,6 +57,21 @@ class NativeInventoryTests(unittest.TestCase):
         path.write_text(data)
         path.chmod(mode)
         return path
+
+    def test_ocr_helper_cannot_be_omitted(self):
+        (self.root / "usr/bin/putgd-ocr").unlink()
+        with self.assertRaisesRegex(ValueError, "Required release file.*putgd-ocr"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_ocr_libraries_stay_out_of_resident(self):
+        for soname in ("libtesseract.so.5", "liblept.so.6", "libZXing.so.3"):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd"):
+                    return f"(NEEDED) [{soname}]"
+                return self.commands(argv, env=env)
+            with self.subTest(soname=soname), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, "OCR dependency isolation"):
+                    audit.audit_tree(self.root, self.manifest)
 
     def test_valid_native_inventory(self):
         result = audit.validate_inventory(self.root, self.manifest)
@@ -116,6 +141,38 @@ class NativeInventoryTests(unittest.TestCase):
         if argv[1] == "--update-info":
             return json.dumps({"packageTarget": "debian13", "supported": False, "reason": "development_build"})
         return Path(argv[0]).name + " " + self.manifest["version"]
+
+    def with_keeper(self, mode=0o755):
+        self.write("usr/bin/putgd-region", "binary", 0o755)
+        self.write("usr/bin/putgd-clipboard-keeper", "binary", mode)
+
+    def test_clipboard_keeper_required_with_the_wayland_helpers(self):
+        self.write("usr/bin/putgd-region", "binary", 0o755)
+        with self.assertRaisesRegex(ValueError, "Required release file.*putgd-clipboard-keeper"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_clipboard_keeper_must_be_executable(self):
+        self.with_keeper(0o644)
+        with self.assertRaisesRegex(ValueError, "Executable mode must be 0755: putgd-clipboard-keeper"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_clipboard_keeper_is_hardened_and_resolves(self):
+        self.with_keeper()
+        for option, output, error in (("-hW", "Type: EXEC", "not PIE"), ("-lW", "", "full RELRO")):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", option] and argv[2].endswith("putgd-clipboard-keeper"):
+                    return output
+                return self.commands(argv, env=env)
+            with self.subTest(option=option), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, error + ".*putgd-clipboard-keeper"):
+                    audit.audit_tree(self.root, self.manifest)
+        def unresolved(argv, *, env=None):
+            if argv[0] == "ldd" and argv[1].endswith("putgd-clipboard-keeper"):
+                return "\tlibwayland-client.so.0 => not found"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=unresolved):
+            with self.assertRaisesRegex(ValueError, "Unresolved native dependency: putgd-clipboard-keeper"):
+                audit.audit_tree(self.root, self.manifest)
 
     def test_non_pie_or_partial_relro_is_rejected(self):
         for option, output, error in (("-hW", "Type: EXEC", "not PIE"),
@@ -240,8 +297,8 @@ class RuntimePackageTests(unittest.TestCase):
     """Qt image plugins the distros package apart from Qt GUI (#189)."""
     def test_deb_and_rpm_require_the_webp_plugin_package(self):
         native.require_runtime_packages({"format": "DEB", "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, "
-                                         "qt6-image-formats-plugins, libc6 (>= 2.38) | libc6-alt"})
-        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "libc.so.6()(64bit)"]})
+                                         "qt6-image-formats-plugins, tesseract-ocr-eng, openssh-client, libc6 (>= 2.38) | libc6-alt"})
+        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "tesseract-langpack-eng", "openssh-clients", "libc.so.6()(64bit)"]})
 
     def test_missing_plugin_package_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "DEB does not require qt6-image-formats-plugins"):
@@ -254,6 +311,27 @@ class RuntimePackageTests(unittest.TestCase):
         for names in native.RUNTIME_PACKAGES.values():
             for name in names:
                 self.assertRegex(text, r"CPACK_(DEBIAN_PACKAGE_DEPENDS|RPM_PACKAGE_REQUIRES) \"[^\"]*\b" + name + r"\b")
+
+
+class RecommendedPackageTests(unittest.TestCase):
+    """The script check's language data (#1981): recommended, never required."""
+    def test_deb_and_rpm_recommend_the_script_data(self):
+        native.require_recommended_packages({"format": "DEB", "recommends": ", ".join(native.RECOMMENDED_PACKAGES["DEB"]) + ", gvfs-fuse"})
+        native.require_recommended_packages({"format": "RPM", "recommends": list(native.RECOMMENDED_PACKAGES["RPM"]) + ["gvfs-fuse"]})
+
+    def test_missing_recommendation_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "DEB does not recommend tesseract-ocr-osd"):
+            native.require_recommended_packages({"format": "DEB", "recommends": "gvfs-fuse"})
+        with self.assertRaisesRegex(ValueError, "RPM does not recommend tesseract-langpack-ell"):
+            native.require_recommended_packages({"format": "RPM", "recommends": list(native.RECOMMENDED_PACKAGES["RPM"][:-1])})
+
+    def test_package_configuration_declares_them(self):
+        text = (REPO / "packaging/linux/CMakeLists.txt").read_text()
+        for names in native.RECOMMENDED_PACKAGES.values():
+            for name in names:
+                self.assertRegex(text, r"CPACK_(DEBIAN|RPM)_PACKAGE_RECOMMENDS \"[^\"]*\b" + name + r"\b")
+        for name in native.SCRIPT_LANGUAGES:
+            self.assertIn('"' + name + '"', (REPO / "src/ocr/Script.cpp").read_text())
 
 
 if __name__ == "__main__":

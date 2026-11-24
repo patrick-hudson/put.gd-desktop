@@ -49,16 +49,51 @@ def _frame(ctx, label, reference=LIST, window='history'):
     ctx.frame(label, window=window, reference=reference)
 
 
+def _settled(ctx, what):
+    return ctx.wait(lambda: (state if not (state := _state(ctx))['busy'] else None), what)
+
+
 def _open(ctx):
-    ctx.view('ui.show', {'view': 'history'})
+    """Reset History: list view, no search or filters, nothing selected, preview
+    closed, and details wanted, so the wide list's pane follows the selection.
+
+    closeDetails is a remembered choice in the wide list (#1396): it would keep
+    the pane closed for every later selection. The reset therefore turns the
+    choice back on instead; an overlay pane (gallery, compact) closes on List view.
+    """
+    # view() shows History before each setup action.
     ctx.view('ui.history', {'action': 'clearFilters', 'scope': 'all'})
-    ctx.wait(lambda: not _state(ctx)['busy'], 'cleared History query settles before selection changes')
-    ctx.view('ui.history', {'action': 'closePreview'})
-    ctx.view('ui.history', {'action': 'closeDetails'})
-    ctx.view('ui.history', {'action': 'clearSelection'})
-    ctx.wait(lambda: not _state(ctx)['busy'], 'History query settles')
+    state = _settled(ctx, 'cleared History query settles before selection changes')
+    if state['previewExpanded']:
+        ctx.view('ui.history', {'action': 'closePreview'})
+    if state['selectedRows']:
+        ctx.view('ui.history', {'action': 'clearSelection'})
     ctx.click('historyListMode', window='history')
-    ctx.expect(not _state(ctx)['gridMode'], 'known list view')
+    state = _settled(ctx, 'History query settles')
+    if not state['detailsWanted']:
+        # With nothing selected, the details switch toggles the remembered
+        # choice in every layout.
+        state = _result(ctx.view('ui.history', {'action': 'toggleDetails'}))
+    ctx.expect(not state['gridMode'], 'known list view')
+    ctx.expect(state['detailsWanted'] and not state['detailsOpen'] and not state['previewExpanded']
+               and not state['selectedIds'] and not state['activeFilters'] and not state['query']['search'],
+               'known History state: details wanted, nothing selected, no preview, search or filters')
+
+
+def _distinct_text(ctx, row):
+    """The shortest tail of the row's own name that the resident's search
+    matches for this row alone, as a person types part of a name.
+
+    Typing a whole generated name costs most of a recipe's budget on a physical
+    desktop, where every character is a separately guarded VNC key (~1.7 s).
+    """
+    name = row['name']
+    for size in [*range(min(8, len(name)), len(name), 3), len(name)]:
+        text = name[-size:]
+        records = _result(ctx.call('history.list', {'search': text, 'limit': 2}))['records']
+        if [record['id'] for record in records] == [row['id']]:
+            return text
+    raise RecipeFailed('the resident search for the full fixture name does not find exactly that row')
 
 
 def _search(ctx, text):
@@ -180,7 +215,7 @@ def _row(ctx, fixture='history-row'):
     _open(ctx)
     detail = _result(ctx.call('history.detail', {'id': row['id']}))
     ctx.expect(detail['id'] == row['id'] and detail['name'] == row['name'], 'fixture has the expected identity')
-    _search(ctx, row['name'])
+    _search(ctx, _distinct_text(ctx, row))
     ctx.wait(lambda: _state(ctx)['rows'] == 1, 'unique fixture row is shown')
     pid = ctx.geometry('history')['pid']
     lists = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
@@ -242,9 +277,12 @@ def search(ctx):
     row = ctx.fixture('history-row').row
     _open(ctx)
     _frame(ctx, 'before')
-    _search(ctx, row['name'])
+    _search(ctx, _distinct_text(ctx, row))
     ctx.expect(_state(ctx)['rows'] == 1, 'unique search finds exactly one row')
-    _search(ctx, 'surface-history-no-such-row-828c6875')
+    unmatched = 'zq-0'
+    ctx.expect(not _result(ctx.call('history.list', {'search': unmatched, 'limit': 1}))['records'],
+               'the unmatched text matches no stored name')
+    _search(ctx, unmatched)
     ctx.wait(lambda: _state(ctx)['rows'] == 0, 'unmatched search shows no rows')
     _frame(ctx, 'no-matches', '43-history-no-matches')
     _search(ctx, '')
@@ -275,11 +313,14 @@ def categories(ctx):
 @recipe('history.clear-filters', needs=('history_rows',))
 def clear_filters(ctx):
     row = _row(ctx, 'history_rows')
+    # _row searched a distinctive part of the fixture name by real typing.
+    searched = _state(ctx)['query']['search']
+    ctx.expect(bool(searched) and searched in row['name'], 'fixture search is applied before filtering')
     _frame(ctx, 'before')
     ctx.click('historyFiltersExpanded', window='history')
-    ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
-    # The real Add Filter action focuses its newly revealed control. Bind the
+    # Filter opens the add-filter menu directly; the chosen filter's own editor
+    # opens under it inside the window with its control focused. Bind the
     # owning window, then prove that focus by the resulting query change.
     ctx.focus('history', raise_window=False)
     _frame(ctx, 'filter-revealed', None)
@@ -294,7 +335,7 @@ def clear_filters(ctx):
     ctx.note('Clear filters clicked through owned native bounds: ' + json.dumps(clear['rect']))
     _frame(ctx, 'clear-click', None)
     ctx.wait(lambda: not _state(ctx)['activeFilters'], 'advanced filters cleared')
-    ctx.expect(_state(ctx)['query']['search'] == row['name'], 'Clear filters preserves search')
+    ctx.expect(_state(ctx)['query']['search'] == searched, 'Clear filters preserves search')
     _frame(ctx, 'after')
 
 
@@ -335,11 +376,56 @@ def preview(ctx):
 
 
 
+RECEIPT_TOGGLE = {'name': 'Show advanced receipt details'}
+RECEIPT_FIELD = {'name': 'Advanced original receipt details'}
+PREVIEW = {'name': 'Expand preview', 'states': {'focusable': True}}
+
+
+def _wheel_point(ctx, anchors):
+    """The first anchor showing in the window, as a point for wheel input."""
+    box = ctx.geometry('history')
+    for anchor in anchors:
+        nodes = ctx.accessible(dict(anchor, owned=True, visible=True, showing=True, enabled=True, pid=box['pid'],
+                                    within=[box[k] for k in ('x', 'y', 'width', 'height')]))
+        if len(nodes) == 1 and nodes[0].get('rect'):
+            return _window_node(ctx, 'history', anchor)
+    ctx.blocked('No visible part of the details pane to scroll over.', issue=820)
+
+
+def _scroll_details_to_end(ctx, query, anchors):
+    """Wheel the details pane to its end, as a person scrolls to the receipt or
+    to Delete from destination… at the bottom of the pane.
+
+    The driver clicks only a control whose whole native rectangle lies inside
+    every ancestor; on a small screen these start below the pane's visible end.
+    Scrolling stops when the control no longer moves, so it ends inside the pane
+    wherever the pane ends. The wheel goes over the first anchor in view (never
+    the receipt text, which would scroll its own lines instead of the pane).
+    """
+    previous = None
+    for _ in range(16):
+        # Below the pane's visible end the control is visible but not showing;
+        # on Wayland a control reaching past its window has no placed rect yet.
+        nodes = ctx.accessible(dict(query, owned=True, visible=True, pid=ctx.geometry('history')['pid']))
+        if len(nodes) != 1 or not (nodes[0].get('rect') or nodes[0].get('coordinate_error')):
+            ctx.note('Scroll target witness: ' + json.dumps([{k: n.get(k) for k in (
+                'role', 'rect', 'coordinate_error', 'states')} for n in nodes]))
+            ctx.blocked('Scrolling requires one owned visible ' + query['name'] + ' with live bounds.', issue=820)
+        if nodes[0].get('rect') and nodes[0]['rect'] == previous:
+            return nodes[0]
+        previous = nodes[0].get('rect')
+        box, _, point = _wheel_point(ctx, anchors)
+        ctx.scroll(*point, -4, head=box.get('head', 0))
+    ctx.blocked(query['name'] + ' kept moving after repeated wheel input.', issue=820)
+
+
 @recipe('history.receipt-details', needs=('history-row',))
 def receipt_details(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
+    _scroll_details_to_end(ctx, RECEIPT_TOGGLE, (RECEIPT_TOGGLE, PREVIEW))
     ctx.click('historyReceiptExpanded', window='history')
+    _scroll_details_to_end(ctx, RECEIPT_FIELD, (RECEIPT_TOGGLE, PREVIEW))
     ctx.click('text:Advanced original receipt details', window='history')
     ctx.keys('Ctrl+A', 'Ctrl+C')
     authoritative = _result(ctx.call('history.detail', {'id': row['id']}))
@@ -404,12 +490,7 @@ def key_menu(ctx):
             'real delegate click establishes the exact selected current keyboard row')
         _frame(ctx, 'selected-' + key)
         ctx.keys(key)
-        try:
-            _wait_menu(ctx, 'Copy details')
-        except RecipeFailed:
-            if key == 'Menu':
-                ctx.blocked('Shift+F10 opened the real row menu and copied the exact receipt; the portable Menu key produced no owned popup after verified current-row focus. A native Menu-key delivery witness is still needed for this second binding.', issue=835)
-            raise
+        _wait_menu(ctx, 'Copy details')
         _frame(ctx, 'menu-' + key, None)
         _copied_row_details(ctx, row)
     _frame(ctx, 'after')
@@ -512,11 +593,15 @@ def cancel_all(ctx):
     _frame(ctx, 'after')
 
 
+DELETE_BUTTON = {'name': 'Delete from destination…', 'role': 'push button'}
+
+
 @recipe('history.delete-remote', 'confirm.history-delete', needs=('history_delete',), destinations=('local', 's3'))
 def delete_remote(ctx):
     row = _row(ctx, 'history_delete')
     original = _result(ctx.call('history.detail', {'id': row['id']}))
     _frame(ctx, 'before')
+    _scroll_details_to_end(ctx, DELETE_BUTTON, (DELETE_BUTTON, RECEIPT_TOGGLE, PREVIEW))
     ctx.click('text:Delete from destination…', window='history')
     _wait_window(ctx, 'historyConfirmAction')
     ctx.frame('question', window='historyConfirmAction')
@@ -530,6 +615,7 @@ def delete_remote(ctx):
     ctx.keys('Esc')
     _confirm_button(ctx, 'historyConfirmAction', 'Cancel')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['remoteStatus'] == original['remoteStatus'], 'Cancel preserves remote state')
+    _scroll_details_to_end(ctx, DELETE_BUTTON, (DELETE_BUTTON, RECEIPT_TOGGLE, PREVIEW))
     ctx.click('text:Delete from destination…', window='history')
     _wait_window(ctx, 'historyConfirmAction')
     _confirm_button(ctx, 'historyConfirmAction', 'Delete * file*')
@@ -627,7 +713,7 @@ def _copied_row_details(ctx, row):
 
 def _application_menu(ctx):
     ctx.click('applicationMenu', window='history')
-    expected = {'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'}
+    expected = {'How capture actions work', 'Check for updates', 'About put.gd', 'Quit put.gd'}
     ctx.wait(lambda: expected <= _menu_names(ctx), 'application menu exposes all four commands')
 
 
@@ -649,9 +735,9 @@ def capture_help(ctx):
     _row(ctx)
     _frame(ctx, 'before')
     _application_menu(ctx)
-    ctx.click('text:Capture actions', window='applicationMenuPopup')
-    ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'Capture actions'}),
-             'Capture actions help is visible')
+    ctx.click('text:How capture actions work', window='applicationMenuPopup')
+    ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'How capture actions work'}),
+             'How capture actions work help is visible')
     ctx.frame('help', window='captureHelp')
     ctx.click('text:Close', window='captureHelp')
     ctx.wait(lambda: not ctx.accessible({'owned': True, 'visible': True, 'name': 'Help'}),
@@ -1240,7 +1326,7 @@ def list_gestures(ctx):
     ctx.wait(lambda: set(_state(ctx)['selectedIds']) == set(data.ids), 'extended selection contains every independent fixture receipt')
     # Context menu at a native row point, with the native menu's Copy details
     # proving the clicked row rather than optimistic menu visibility alone.
-    _search(ctx, row['name'])
+    _search(ctx, _distinct_text(ctx, row))
     _focus_items(ctx)
     ctx.keys('Home')
     previous = ctx.profile.get('live_controls', {})
@@ -1430,7 +1516,7 @@ BLOCKED = {
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
+    'shell.narrow-labels': 'Needs a command-band row projection at several widths; ui.viewState has no oracle for which row a button is on.',
     'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
     'cli.launcher-background': 'Private resident lifecycle exists; no isolated absent-tray fixture exposes the required 10-second Settings fallback after --background.',

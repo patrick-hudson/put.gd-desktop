@@ -12,12 +12,23 @@ Font Name Plex, under SIL OFL 1.1. The sources and original per-family licences
 are in `src/ui/fonts`; packages install `OFL-sans.txt` and `OFL-mono.txt` beside
 their runtime notices.
 
+The text-recognition helper `putgd-ocr` embeds small pictures of each emoji as
+two fonts draw them, used only to recognize emoji on the screen (#1748). No font
+is included. They are drawn from Noto Color Emoji 2.051 (and 2.047 and 2.057,
+where those draw an emoji differently), copyright Google Inc.,
+under SIL OFL 1.1, and from Twemoji Mozilla 0.7.0, graphics copyright Twitter,
+Inc and other contributors, under CC-BY 4.0, for the emoji sequences of Unicode
+Emoji 16.0 (`emoji-test.txt`), copyright Unicode, Inc., under the Unicode License
+v3. The template file, its inputs and their checksums are in `src/ocr/emoji`;
+packages install `OFL.txt`, `CC-BY-4.0.txt`, `UNICODE-LICENSE.txt` and
+`SOURCE.md` in `share/doc/putgd/emoji`.
+
 The package privately includes the official AWS SDK for C++ and its CRT shared
 libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinned
 submodules. `tools/verify_dependencies.py` checks the actual source tree. Packaging
 copies the license texts from those exact sources, including the CRT components
 and s2n-tls, into the installed `share/doc/putgd` directory. The runtime manifest
-records the packaged shared-library SHA256 values. See `docs/build.md` for rebuilding
+records the packaged shared-library SHA256 values. See `docs/release/build.md` for rebuilding
 these dependencies with their normal CMake builds.
 
 The vendored `ext-data-control-v1.xml` retains the original copyright and permission
@@ -27,6 +38,28 @@ installed as `share/doc/putgd/wayland-ext-data-control-v1.xml`. The vendored
 `wlr-data-control-unstable-v1.xml`, used on compositors that predate ext (for
 example KWin 6.3), likewise retains its Simon Ser and Ivan Molodetskikh notice and
 is installed as `share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml`.
+The capture and window-list protocols used on wlroots and Mir compositors,
+`ext-image-copy-capture-v1.xml`, `ext-image-capture-source-v1.xml` and
+`ext-foreign-toplevel-list-v1.xml` from wayland-protocols 1.45 and
+`wlr-foreign-toplevel-management-unstable-v1.xml` from wlr-protocols, are vendored
+unmodified with their copyright and permission text and installed beside it as
+`share/doc/putgd/wayland-<protocol>.xml`. The Hyprland protocols
+`hyprland-global-shortcuts-v1.xml` and `hyprland-toplevel-mapping-v1.xml` from
+hyprwm/hyprland-protocols (commit `cd1aba6bd78775825eb230b3a4274c48b6705eb7`,
+BSD-3-Clause; Copyright 2022 Vaxry and 2025 WhySoBad respectively) are vendored the same way,
+unmodified with their copyright and license text, and installed as
+`share/doc/putgd/wayland-hyprland-global-shortcuts-v1.xml` and
+`share/doc/putgd/wayland-hyprland-toplevel-mapping-v1.xml`. `wlr-layer-shell-unstable-v1.xml`
+from wlr-protocols (commit `b010a03648b88d143236de193bddbfea0c08bc84`, Copyright 2017 Drew
+DeVault) is vendored unmodified the same way and installed as
+`share/doc/putgd/wayland-wlr-layer-shell-unstable-v1.xml`. The two protocols a scrolling
+capture sends its wheel steps through are vendored the same way:
+`wlr-virtual-pointer-unstable-v1.xml` from wlr-protocols (last changed in commit
+`c11408942e2fb54d41dadb84cdf844331076ae11`, Copyright 2019 Josef Gajdusek, MIT-style), installed as
+`share/doc/putgd/wayland-wlr-virtual-pointer-unstable-v1.xml`, and KWin's `fake-input.xml` from
+plasma-wayland-protocols 1.17.0 (Copyright 2015 Martin Gräßlin, LGPL-2.1-or-later), installed as
+`share/doc/putgd/wayland-fake-input.xml`. The native packages and the AppImage also ship the
+LGPL 2.1 text for that file as `share/doc/putgd/LGPL-2.1.txt`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt
@@ -46,3 +79,24 @@ every bundled component with its version, licence, source and files, and
 
 This inventory records build and package inputs. Actual installed-package notice
 inspection, lifecycle checks and the complete release matrix remain release gates.
+
+The scrolling capture's tracker, `src/core/ScrollTracker.cpp` and `ScrollTracker.h`, ports
+the band matcher of wayscrollshot (`https://github.com/jswysnemc/wayscrollshot`,
+`src/stitch/band/`, commit `703474ad7b94a504306d7a93d21668ee162ebf1c`, MIT, Copyright (c) 2025)
+and of mark-shot's `crates/shot-stitch` (`https://github.com/jswysnemc/mark-shot`, commit
+`4cf891014f584e9199e41a182c13f6f478435115`, MIT, Copyright (c) 2026 Dhahbi Fadi) to C++: the
+row signature by brightness in column bands from 4% to 96% of the width compared with a
+tolerance, the order of candidates by their distance from the expected offset, the motion
+mask that keeps what does not move out of the vote, the fixed header and footer kept once,
+the lookup of a frame inside the image already built and the growth at both ends. Both files
+carry the two copyright lines and the MIT permission notice. `putgd-record` links the tracker,
+so every package carries the same lines and notice in `scroll-tracker-LICENSE` (the AppImage's
+notices list it as a component embedded in put.gd), and the DEB and RPM packages' `runtime-notices.txt` too.
+
+Nayuki's QR Code generator v1.8.0 is vendored unmodified as
+`src/core/qrcodegen/qrcodegen.cpp` and `qrcodegen.hpp`, from tag commit
+`720f62bddb7226106071d4728c292cb1df519ceb`, under the MIT licence.
+`cmake/dependency-lock.json` pins the commit and both file hashes;
+`tools/verify_dependencies.py` verifies the actual files. Every package retains
+Project Nayuki's full copyright and permission notice in `runtime-notices.txt`
+and `qrcodegen-LICENSE`; AppImage notices and every package's SBOM identify it.

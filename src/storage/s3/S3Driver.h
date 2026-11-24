@@ -10,7 +10,12 @@ public:
     virtual ~S3Driver() = default;
     virtual void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) = 0;
     virtual void upload(const UploadRequest&, std::function<void(UploadResult)>) = 0;
+    virtual void refreshLink(const StorageReceipt& value, std::function<void(StatResult)> reply) {reply({"unknown",value,{"unsupported","Link refresh unavailable",{}}});}
+    // Copy Link's renewal; the process driver kills its helper on `kill` (#1602).
+    virtual void refreshLinkForCopy(const StorageReceipt& value, std::shared_ptr<std::atomic_bool>, std::function<void(StatResult)> reply) { refreshLink(value, std::move(reply)); }
     virtual void stat(const StorageReceipt&, std::function<void(StatResult)>) = 0;
+    // A deletion's identity check; the process driver kills its helper on `kill` (#1602).
+    virtual void statForRemoval(const StorageReceipt& value, std::shared_ptr<std::atomic_bool>, std::function<void(StatResult)> reply) { stat(value, std::move(reply)); }
     virtual void reconcile(const UploadRequest&, std::function<void(StatResult)>) = 0;
     virtual void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) = 0;
     virtual void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) = 0;
@@ -23,12 +28,18 @@ public:
     ~NetworkS3Driver() override;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
+    void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) override;
     void abandon(const Destination&, const QJsonObject&, std::function<void(Error)>) override;
 private:
+    // synthetic: Test upload and link's file (#1690). It is sent once, on a fresh connection with
+    // redirects off, and a reply that doesn't prove a refusal (a lost reply, 5xx, 408) leaves it
+    // unknown: a resend could be cleaned up before the first request lands, leaving an object no
+    // journal records. Ordinary uploads keep three attempts.
+    void upload(const UploadRequest&, std::function<void(UploadResult)>, bool synthetic);
     struct State;
     std::unique_ptr<State> state_;
 };

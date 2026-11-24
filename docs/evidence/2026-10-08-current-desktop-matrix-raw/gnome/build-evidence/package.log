@@ -1,6 +1,0 @@
-CPack: Create package using DEB
-CPack: Install projects
-CPack: - Install project: putgd []
-CPack: Create package
-CPackDeb: - Generating dependency list
-CPack: - package: /home/lab/putgd-current-a3d70dc/build/packages/putgd_0.1.0_amd64.deb generated.

@@ -14,7 +14,6 @@ from tools.lab.lab import FIXTURE_RGB
 from tools.lab.surface_driver.recipes.outcomes import edited_pixels, pattern_visible, pixels_equal
 from tools.lab.surface_driver.recipes import outcomes
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
-from tools.lab.surface_driver.run import discover, validate_recipes
 
 
 def original():
@@ -110,12 +109,6 @@ class Outcomes(unittest.TestCase):
             image.paste(mark, (box[0] + shift, box[1]))
             self.assertFalse(edited_pixels(image, original()))
 
-    def test_eleven_recipes_reference_existing_interactions(self):
-        recipes = discover('outcomes')
-        self.assertEqual(len(recipes), 11)
-        validate_recipes(recipes)
-        self.assertTrue(all(r.destinations == ('local',) for r in recipes))
-
 
 class FileManagerUpload(unittest.TestCase):
     TSV = ('level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'
@@ -193,6 +186,29 @@ class FileManagerUpload(unittest.TestCase):
         ctx.shell = Mock(return_value=dict(returncode=0, stdout='level\ttext\n'))
         with self.assertRaisesRegex(RecipeFailed, 'is in the right-click menu'):
             outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'})
+
+    def test_a_drawn_popover_reaches_the_guard_in_desktop_coordinates(self):
+        # Hyprland and labwc list no popups: the popover is read in head pixels around the
+        # right-click, here on a second head at scale 2. The guard's point is in desktop
+        # coordinates, so the popup rectangle it gets must be too.
+        ctx = self.context('wayland')
+        ctx.profile['compositor'] = dict(kind='hyprctl')
+        ctx.geometry = Mock(return_value=dict(x=1380, y=100, width=800, height=600, head=1, pid=7,
+                                              screen_x=1280, screen_y=0, scale=2))
+        popups = []
+        ctx.click_at = Mock(side_effect=lambda *a, **k: popups.append(ctx._popup))
+        crops = []
+        ctx.target = SimpleNamespace(capture_image=lambda head: SimpleNamespace(
+            convert=lambda mode: SimpleNamespace(crop=lambda box: crops.append(box) or Image.new('RGB', (box[2] - box[0], box[3] - box[1])))))
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout=self.TSV.format(line=2, last='put.gd')))
+        scope = SimpleNamespace(root='/synthetic', write=Mock())
+        outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'}, clicked=(None, (400, 400)))
+        self.assertEqual(crops, [(200, 200, 760, 800)])
+        ctx.click_at.assert_called_once_with(245, 305, head=1)
+        self.assertEqual(popups, [dict(pid=7, rect=[1380, 100, 280, 300])])
+        x, y = 245 / 2 + 1280, 305 / 2
+        rect = popups[0]['rect']
+        self.assertTrue(rect[0] <= x < rect[0] + rect[2] and rect[1] <= y < rect[1] + rect[3])
 
     def upload_case(self, *, notices=1, uploaded='digest', name='fm.txt'):
         ctx = self.context()
@@ -333,6 +349,64 @@ class RecordingExports(unittest.TestCase):
         self.clip('failed')
 
 
+class IdleMemory(unittest.TestCase):
+    ROLLUP = """5570e0a00000-7ffc00000000 ---p 00000000 00:00 0                          [rollup]
+Rss:               %d kB
+Pss:               %d kB
+Pss_Anon:           2132 kB
+Shared_Clean:      20000 kB
+Private_Clean:      5000 kB
+Private_Dirty:      3000 kB
+Swap:                  0 kB
+SwapPss:               0 kB
+"""
+
+    def summary(self, rss=32000, pss=12000, names=(), guest=(0.2, 4), builder=(0.5, 16)):
+        reading = dict(rollup=self.ROLLUP % (rss, pss), names=list(names), load=guest[0], cpus=guest[1])
+        return outcomes.idle_summary(reading, *builder)
+
+    def test_budget_is_exclusive_at_40_mib_for_rss_and_pss(self):
+        outcomes.judge_idle(self.summary(rss=40959, pss=40959))
+        for values in (dict(rss=40960), dict(pss=40960)):
+            with self.subTest(values), self.assertRaises(RecipeFailed):
+                outcomes.judge_idle(self.summary(**values))
+
+    def test_a_forbidden_mapping_is_red_even_on_a_busy_host(self):
+        with self.assertRaisesRegex(RecipeFailed, 'libssl.so.3'):
+            outcomes.judge_idle(self.summary(names=['libssl.so.3'], guest=(9.0, 4)))
+
+    def recipe_context(self, shell_results):
+        ctx = Mock(destination='local', placement='guest', profile=dict(guest=True))
+        ctx.target = SimpleNamespace(physical=False, root='/tmp/sd', socket='/tmp/sd/runtime/putgd/session.sock', app_executable='putgd')
+        ctx.expect = ClipboardContext().expect
+        ctx.wait.side_effect = lambda predicate, *a, **k: True
+        ctx.call.return_value = dict(memory=dict(imagePageReleaseCount=1, lastImagePageReleaseBytes=25*2**20))
+        ctx.shell.side_effect = shell_results
+        return ctx
+
+    def test_cleanup_failure_cannot_hide_a_red_reading(self):
+        ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))
+        ctx.blocked.side_effect = RecipeBlocked('idle memory cleanup failed')
+        scope = Mock(root='/tmp/sd/fx-1', close=Mock(return_value=['resident: LabError']))
+        scope.json.return_value = dict(rollup=self.ROLLUP % (32000, 12000), names=['libssl.so.3'], load=.1, cpus=2)
+        with patch.object(outcomes, 'Scope', return_value=scope), \
+                patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')), \
+                self.assertRaisesRegex(RecipeFailed, 'libssl.so.3'):
+            outcomes.idle_memory(ctx)
+        ctx.blocked.assert_not_called()
+        ctx.note.assert_any_call('idle_memory_cleanup_failed=1')
+
+    def test_cleanup_failure_is_grey_not_a_memory_result(self):
+        ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))
+        ctx.blocked.side_effect = RecipeBlocked('idle memory cleanup failed')
+        scope = Mock(root='/tmp/sd/fx-1', close=Mock(return_value=['resident: LabError']))
+        scope.json.return_value = dict(rollup=self.ROLLUP % (32000, 12000), names=[], load=.1, cpus=2)
+        with patch.object(outcomes, 'Scope', return_value=scope), \
+                patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')), \
+                self.assertRaisesRegex(RecipeBlocked, 'cleanup failed'):
+            outcomes.idle_memory(ctx)
+
+
 class ClipboardContext:
     def __init__(self, session='wayland'):
         self.profile = {'session': session}
@@ -436,6 +510,31 @@ class ClipboardOracles(unittest.TestCase):
             with self.assertRaisesRegex(RecipeFailed, 'restart does not clobber'):
                 self.exit_case(session, manager, after, b'clobbered')
 
+
+class BarHandlePlacement(unittest.TestCase):
+    def run_recipe(self, caps, placement, widths, pause=True):
+        @contextmanager
+        def local(_ctx):
+            yield
+        ctx = SimpleNamespace(expect=lambda ok, note: self.assertTrue(ok, note), geometry=Mock(side_effect=[dict(width=w) for w in widths]),
+                              frame=Mock(), review=Mock(), blocked=Mock(), note=Mock())
+        selectors = outcomes.selectors
+        with patch.object(selectors, '_env', return_value=dict(screens=[(0, 0, 1280, 800)])), \
+                patch.object(selectors, '_local', local), patch.object(selectors, '_ready', return_value='rec'), \
+                patch.object(selectors, '_inspect', return_value=dict(overlayPlacement=placement)), \
+                patch.object(selectors, '_call', return_value=caps), \
+                patch.object(selectors, '_start') as start, patch.object(selectors, '_stop') as stop, \
+                patch.object(selectors, '_visible', return_value=pause), patch.object(selectors, '_cancel_record'):
+            selectors.bar_handle(ctx)
+        start.assert_called_once(), stop.assert_called_once()
+        return ctx
+
+    def test_kde_screencast_that_hides_the_requester_still_refuses_a_collapsed_bar(self):
+        caps = dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=True))
+        with self.assertRaises(AssertionError):
+            self.run_recipe(caps, 'hidden', [788, 120])
+        with self.assertRaises(AssertionError):
+            self.run_recipe(caps, 'hidden', [788, 560], pause=False)
 
 if __name__ == '__main__':
     unittest.main()

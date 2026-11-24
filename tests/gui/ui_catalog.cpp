@@ -6,14 +6,26 @@
 #include "ui/HistoryModel.h"
 #include "ui/FileDialog.h"
 #include "ui/TrayController.h"
+#include "ui/TrayMenu.h"
+#include "core/CommandText.h"
+#include <QProcess>
 #include <QFileDialog>
 #include "fixtures/TrayCatalog.h"
 #include "fixtures/CatalogLabels.h"
+#include "fixtures/FakeTextBackend.h"
 #include "ui/SettingsWindow.h"
+#include "app/ErrorLog.h"
+#include <QTreeWidget>
 #include "platform/HostOpen.h"
 #include "storage/proton/ProtonProvider.h"
+#include "storage/http/HttpImport.h"
+#include "ui/CustomUploaderPanel.h"
+#include "ui/SftpPanel.h"
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
+#include "ui/QrCodeWindow.h"
+#include "ui/SensitivePrompt.h"
+#include "core/QrImage.h"
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
 #include <QApplication>
@@ -74,13 +86,24 @@
 #include <QWindow>
 #ifdef PUTGD_CATALOG_REVIEW
 #include "record/ReviewWindow.h"
+#include "record/FilmstripTimeline.h"
 #include "fixtures/ReviewLayout.h"
 #include "ui/RegionOverlay.h"
+#include "ui/CountdownPill.h"
 #include "record/Overlays.h"
+#include "record/ScrollBar.h"
 #endif
 using namespace putgd;
 using namespace putgd::test;
 namespace {
+// Text recognition (#1428) as an installed system reports it, whatever the host
+// that renders the catalog has: the helper present, English and German data.
+void installCatalogText(OperationService& operations){
+ auto text=std::make_unique<FakeTextBackend>();
+ text->report["languages"]=QJsonArray{QJsonObject{{"id","deu"},{"bytes",1525436},{"kind","system"}},QJsonObject{{"id","eng"},{"bytes",4113088},{"kind","system"}}};
+ text->installed={{"deu","system","/usr/share/tesseract-ocr/5/tessdata/deu.traineddata",1525436},{"eng","system","/usr/share/tesseract-ocr/5/tessdata/eng.traineddata",4113088}};
+ operations.setTextBackend(std::move(text));
+}
 // The real build this binary was compiled from (the generated build-info.json),
 // not the fixed identity linked for stable renders: the surface driver's live
 // gate binds a catalog to that exact commit. Empty when unreadable (refused).
@@ -103,13 +126,20 @@ QJsonObject inventory(QWidget& root){
  QJsonArray controls,keys;
  auto rectOf=[&](QWidget* w){const auto tl=w->mapTo(&root,QPoint());return QJsonArray{tl.x(),tl.y(),w->width(),w->height()};};
  auto add=[&](QWidget* w,const QString& kind,const QString& text,QJsonObject extra={}){QJsonObject c{{"name",w->objectName()},{"class",QString::fromLatin1(w->metaObject()->className())},{"kind",kind},{"text",text},{"rect",rectOf(w)},{"enabled",w->isEnabled()}};for(auto it=extra.begin();it!=extra.end();++it)c[it.key()]=it.value();controls.append(c);};
+#ifdef PUTGD_CATALOG_REVIEW
+ // CountdownPill handles cancellation on its root rather than on a child button.
+ if(dynamic_cast<CountdownPill*>(&root))add(&root,"button",root.accessibleDescription());
+#endif
  if(auto* menu=qobject_cast<QMenu*>(&root))for(auto* a:menu->actions()){if(a->isSeparator())continue;const auto r=menu->actionGeometry(a);controls.append(QJsonObject{{"name",a->objectName()},{"class","QAction"},{"kind","menu-item"},{"text",a->text()},{"rect",QJsonArray{r.x(),r.y(),r.width(),r.height()}},{"enabled",a->isEnabled()},{"submenu",a->menu()!=nullptr}});}
  for(auto* w:root.findChildren<QWidget*>()){
   // Same native window only: a child dialog's coordinates are not this capture's.
   if(w->window()!=root.window()||!w->isVisibleTo(&root)||w->width()<=0||w->height()<=0||w->visibleRegion().isEmpty())continue;
   if(auto* b=qobject_cast<QAbstractButton*>(w)){QJsonObject extra{{"checkable",b->isCheckable()},{"checked",b->isChecked()}};if(!b->shortcut().isEmpty())extra["shortcut"]=b->shortcut().toString(QKeySequence::PortableText);QString text=b->text();if(auto* t=qobject_cast<QToolButton*>(b);t&&t->defaultAction()&&text.isEmpty())text=t->defaultAction()->text();if(text.isEmpty())text=b->toolTip();add(w,"button",text,extra);}
-  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}});}
-  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip());
+  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;QJsonObject extra{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}};
+    // A masked field holds a secret whatever it is called: the surface driver's classifier reads this.
+    if(e->echoMode()!=QLineEdit::Normal||w->property("putgdSensitive").toBool())extra["sensitive"]=true;
+    add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),extra);}
+  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip(),w->property("putgdSensitive").toBool()?QJsonObject{{"sensitive",true}}:QJsonObject{});
   else if(auto* c=qobject_cast<QComboBox*>(w))add(w,"choice",c->currentText(),{{"count",c->count()}});
   else if(auto* s=qobject_cast<QAbstractSpinBox*>(w))add(w,"stepper",s->text());
   else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
@@ -205,7 +235,7 @@ QPixmap steadyGrab(QWidget& root,const std::function<void()>& prepare={}){
  qWarning("Capture of %s did not settle",qPrintable(root.objectName()));return frame;
 }
 // The synthetic data folders. Their paths show in Settings, so reference
-// renders (tools/ci/check_catalog_references.py) name a fixed, empty parent in
+// renders (tools/ci/check_catalog_render.py) name a fixed, empty parent in
 // PUTGD_CATALOG_DATA_DIR; otherwise each is a new temporary directory.
 class DataDir {
 public:
@@ -222,13 +252,13 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","capture-style","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
  auto caption=p.font();caption.setPixelSize(11);p.setFont(caption);
  for(int i=0;i<names.size();++i){const int x=24+(i%8)*156,y=52+(i/8)*94;Ui::icon(names[i]).paint(&p,QRect(x+12,y,40,40));Ui::icon(names[i]).paint(&p,QRect(x+64,y+12,16,16));const int side=Ui::scaled(names[i]=="info"?14:Ui::Metric::icon);Ui::icon(names[i]).paint(&p,QRect(x+88,y+(40-side)/2,side,side));p.drawText(QRect(x,y+48,144,22),Qt::AlignCenter,names[i]);}
- p.drawText(24,identityY,"Solid identity artwork · encoding fill");Ui::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
+ p.drawText(24,identityY,"Solid identity artwork · upload fill");Ui::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
  for(int i=0;i<5;++i){const int x=155+i*125;Ui::icon("tray",tints.idle,i*25).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x,identityY+94,64,24),Qt::AlignCenter,QString::number(i*25)+"%");}
  for(int i=0;i<2;++i){const int x=860+i*130;Ui::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x-10,identityY+94,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
  p.drawText(24,identityY+152,"Actual tray sizes: 16 / 22 / 24 / 32 px");
@@ -243,9 +273,9 @@ QImage iconSpecimen(){
 // real 20 px rows (the editor toolbar, and Recording review's mask tools that
 // share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(1800,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","remove","save"};
+ const QStringList names{"edit","select","redact","blur","crop","capture-style","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -253,8 +283,8 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40));
- show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","capture-style","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
 }
@@ -267,14 +297,41 @@ QJsonObject catalogConfig(const QString& root){
  auto doc=Settings::developmentTemplate();auto s3=doc["profiles"].toArray().first().toObject();s3["id"]="synthetic-archive";s3["label"]="Project archive";auto s=s3["settings"].toObject();s["bucket"]="design-captures";s["region"]="us-east-1";s["endpoint"]="https://s3.us-east-1.amazonaws.com";s["objectPrefix"]="screenshots/";s["aclMode"]="omit";s["publicUrlBase"]="https://captures.example.invalid";s3["settings"]=s;s3["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};
  QJsonObject proton{{"id","synthetic-proton"},{"label","Proton Drive"},{"provider","proton-drive"},{"settings",QJsonObject{{"accountRootUid","synthetic-root"},{"folderUid","synthetic-folder"},{"folderName","put.gd"},{"shareByDefault",true},{"linkExpirationDays",0},{"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};doc["profiles"]=QJsonArray{proton,s3};auto actions=doc["actions"].toObject();int index=1;for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["profileId"]="synthetic-proton";a["shortcut"]="Ctrl+"+QString::number(index++);actions[name]=a;}doc["actions"]=actions;auto archive=doc["archive"].toObject();archive["root"]=root+"/local-copies";archive["keepUploads"]=true;doc["archive"]=archive;auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;return doc;
 }
+// The native (dbusmenu) tray menu as text, one state after another: what a
+// tray host shows, from the table both trays read (ui/TrayMenu). Hidden rows
+// are left out; "[…]" rows are disabled; "#n" is the row's native ID.
+bool writeTrayLayouts(const QString& output){
+ const auto document=Settings::normalized(catalogConfig(QDir::tempPath()));
+ traymenu::State idle;int index=1;for(const auto& name:Settings::actionNames())idle.shortcuts.insert(name,"Ctrl+"+QString::number(index++));
+ const auto summary=commandtext::outputSummary(document);idle.output=summary.tray;idle.outputRows=summary.rows;
+ // Mixed outputs: two screenshots and the recording save locally, and the
+ // default goes to a destination with a long name.
+ auto mixed=document;{auto profiles=mixed["profiles"].toArray();auto proton=profiles[0].toObject();proton["label"]="Proton Drive — Design team quarterly review archive";profiles[0]=proton;mixed["profiles"]=profiles;auto actions=mixed["actions"].toObject();for(const auto& name:{"window","monitor","record"}){auto action=actions[name].toObject();action["destination"]="local";action["profileId"]=QJsonValue::Null;actions[name]=action;}mixed["actions"]=actions;}
+ const auto mixedSummary=commandtext::outputSummary(Settings::normalized(mixed));
+ QList<std::pair<QString,traymenu::State>> states;
+ states.append({"idle",idle});
+ {auto s=idle;s.upload="Uploading 1 file…";s.uploads=1;states.append({"uploading",s});}
+ {auto s=idle;s.upload="Uploading 3 files…";s.uploads=2;states.append({"several uploads",s});}
+ {auto s=idle;s.attention=true;s.attentionLabel="Failed uploads (2)";states.append({"failure",s});}
+ {auto s=idle;s.recording="Recording paused";states.append({"recording",s});}
+ {auto s=idle;s.update="Update available: 26.1231.1";states.append({"update",s});}
+ {auto s=idle;s.output=mixedSummary.tray;s.outputRows=mixedSummary.rows;states.append({"mixed outputs, long destination name",s});}
+ {auto s=idle;s.delay=5;states.append({"delay set, hotkeys capture at once",s});}
+ {auto s=idle;s.delay=5;s.hotkeysDelay=true;states.append({"delay set, hotkeys wait too",s});}
+ {auto s=idle;s.recording="Recording";s.upload="Uploading 2 files…";s.uploads=2;s.attention=true;s.attentionLabel="Failed uploads (1)";s.update="Update available: 26.1231.1";s.delay=3;s.output=mixedSummary.tray;s.outputRows=mixedSummary.rows;states.append({"everything at once",s});}
+ QString text;for(const auto& [name,state]:states)text+="## "+name+"\n\n"+traymenu::text(state)+"\n";
+ QSaveFile file(QDir(output).filePath("tray-native-layout.txt"));
+ return file.open(QIODevice::WriteOnly)&&file.write(text.toUtf8())>0&&file.commit();
+}
 bool captureTrayMenus(const QString& output,QJsonArray& captures){
+ if(!writeTrayLayouts(output))return false;
  DataDir data("pgt");if(!data.isValid())return false;
  SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
  auto config=catalogConfig(data.path());auto preferences=config["preferences"].toObject();preferences["notifications"]=false;config["preferences"]=preferences;if(!settings.save(config,{}))return false;
  ProviderRegistry registry;auto provider=std::make_shared<TrayCatalogProvider>();registry.add("proton-drive",provider);
  // Reply storage outlives the drain guard, including replies arriving after a timeout.
  Error invokeError;QString operationId;QJsonObject failed;bool inspected=false;
- Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);
+ Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);installCatalogText(operations);
  if(!waitUntil([&]{return operations.ready();}))return false;
  // Release future callbacks too: a timed-out wait can precede upload().
  auto drain=qScopeGuard([&]{provider->release();waitUntil([&]{return operations.diagnostics()["activeOperations"].toInt()==0;});});
@@ -328,31 +385,50 @@ int main(int argc,char** argv){
  // but enforce the same Linux path precondition before constructing the app.
  const auto socket=QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)).filePath("putgd/session.sock");if(socket.toUtf8().size()>107){qCritical("Resolved Unix socket exceeds 107 UTF-8 bytes");return 2;}
  {
-  QImage states(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&states);painter.setFont(Ui::font(Ui::Type::metadata));
-  const QStringList labels{"Idle","Recording","Paused","Uploading + recording","Failed","Failed + recording","Failed + paused"};
+  // Each stage the icon shows, in pipeline order, then the recording badges.
+  QImage states(1440,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&states);painter.setFont(Ui::font(Ui::Type::metadata));
+  const QStringList labels{"Idle","Capturing","Processing","Uploading 50%","Complete","Failed","Recording","Uploading + paused"};
   for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,states.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
-   for(int n=0;n<labels.size();++n){const auto icon=Ui::icon("tray",tints.idle,n>=4?-2:n==3?50:-1,n==1||n==3||n==5?1:n==2||n==6?2:0);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+   const QList<IconArt::TrayIcon> icons{{tints.idle},{tints.capture},{tints.process},{tints.process,50},{tints.upload,-1,0,IconArt::TrayGlyph::Mark,true},{tints.error,-2},{tints.idle,-1,1},{tints.process,50,2}};
+   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon(icons[n]);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
  }
  {
-  // The calendar's glyphs at idle, in transfer and on success, with the sizes a host may pick.
+  // The calendar's glyphs through each stage, with the sizes a host may pick: no stage replaces them.
   QImage seasons(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&seasons);painter.setFont(Ui::font(Ui::Type::metadata));
-  const QStringList labels{"Turkey","Turkey 50%","Turkey 100%","Turkey complete","Tree","Tree 50%","Tree 100%"};
+  const QStringList labels{"Turkey","Turkey capturing","Turkey uploading 50%","Turkey complete","Tree processing","Tree uploading 100%","Tree complete"};
   for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,seasons.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
-   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon({n==3?tints.upload:tints.idle,n==1||n==5?50:n==2||n==6?100:-1,0,n<4?IconArt::TrayGlyph::Turkey:IconArt::TrayGlyph::Tree});painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,22,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+   const auto turkey=IconArt::TrayGlyph::Turkey,tree=IconArt::TrayGlyph::Tree;
+   const QList<IconArt::TrayIcon> icons{{tints.idle,-1,0,turkey},{tints.capture,-1,0,turkey},{tints.process,50,0,turkey},{tints.upload,-1,0,turkey,true},{tints.process,-1,0,tree},{tints.process,100,0,tree},{tints.upload,-1,0,tree,true}};
+   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon(icons[n]);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,22,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!seasons.save(QDir(output).filePath("settings-tray-seasons.png")))return 2;
  }
  DataDir data("pgr");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}
  // No production provider or capture action is used. Credentials below are
  // synthetic and stored only in the fixture session, never the OS keychain.
- ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
- const auto now=QDateTime::currentDateTimeUtc();{HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){const auto path=data.filePath(QString("synthetic-preview-%1.png").arg(i));if(!syntheticCapture(i).save(path))return 2;Operation op;op.id=QString("synthetic-preview-operation-%1").arg(i);op.action=i==5?"window":i==6?"clipboard":i==7?"desktop":"region";op.created=now.addSecs(i==7?-86400:-110-i*18).toString(Qt::ISODateWithMs);op.state=i==3?"partial":"completed";op.copyStatus=i==0?"copied":"not_requested";op.settings=settings.snapshot();op.destination.providerId="proton-drive";op.destination.profileId="synthetic-proton";op.destination.profileRevision="synthetic-revision";op.destination.settings=config["profiles"].toArray().first().toObject()["settings"].toObject();OperationItem item;item.artifact.id=QString("synthetic-preview-file-%1").arg(i);item.artifact.name=i==1?"Quarterly-release-readiness-review-with-accessibility-and-localisation-notes-final-v12.png":i==5?"Window — Design review.png":i==6?"Clipboard image.png":i==7?"Desktop.png":"Screenshot "+now.addSecs(-110-i*18).toLocalTime().toString("HH:mm:ss")+".png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status=i==2?"disabled":"saved";item.local.path=i==2?QString{}:path;item.uploadStatus=i==3?"failed":"uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId="synthetic-publication";item.receipt.objectReference=QJsonObject{{"fileUid","synthetic-file"}};item.receipt.directUrl="https://drive.proton.me/urls/synthetic-preview#example";if(i==3){item.error={"synthetic_network","Connection interrupted. Try again.",{}};item.receipt={};item.shareStatus="not_requested";item.remoteStatus="not_requested";}op.items.append(item);if(ledger.saveOperation(op))return 2;}
-  Operation cancelled;cancelled.id="synthetic-cancelled";cancelled.action="region";cancelled.created=now.addSecs(-500).toString(Qt::ISODateWithMs);cancelled.state="cancelled";cancelled.cancelled=true;cancelled.settings=settings.snapshot();if(ledger.saveOperation(cancelled))return 2;
+ ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);installCatalogText(operations);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
+ const auto now=QDateTime::currentDateTimeUtc();{HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){const auto path=data.filePath(QString("synthetic-preview-%1.png").arg(i));if(!syntheticCapture(i).save(path))return 2;Operation op;op.id=QString("synthetic-preview-operation-%1").arg(i);op.action=i==5?"window":i==6?"clipboard":i==7?"desktop":"region";op.created=now.addSecs(i==7?-86400:-110-i*18).toString(Qt::ISODateWithMs);op.restore(i==3?OperationState::Partial:OperationState::Completed);op.copyStatus=i==0?"copied":"not_requested";op.settings=settings.snapshot();op.destination.providerId="proton-drive";op.destination.profileId="synthetic-proton";op.destination.profileRevision="synthetic-revision";op.destination.settings=config["profiles"].toArray().first().toObject()["settings"].toObject();OperationItem item;item.artifact.id=QString("synthetic-preview-file-%1").arg(i);item.artifact.name=i==1?"Quarterly-release-readiness-review-with-accessibility-and-localisation-notes-final-v12.png":i==5?"Window — Design review.png":i==6?"Clipboard image.png":i==7?"Desktop.png":"Screenshot "+now.addSecs(-110-i*18).toLocalTime().toString("HH:mm:ss")+".png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status=i==2?"disabled":"saved";item.local.path=i==2?QString{}:path;item.uploadStatus=i==3?"failed":"uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId="synthetic-publication";item.receipt.objectReference=QJsonObject{{"fileUid","synthetic-file"}};item.receipt.directUrl="https://drive.proton.me/urls/synthetic-preview#example";if(i==0)item.receipt.objectReference["linkExpiresAt"]=now.addDays(3).toString(Qt::ISODateWithMs);if(i==3){item.error={"synthetic_network","Connection interrupted. Try again.",{}};item.receipt={};item.shareStatus="not_requested";item.remoteStatus="not_requested";}op.items.append(item);if(ledger.saveOperation(op))return 2;}
+  // #1753: Settings → Error log, with the deletion a locked keyring stopped, a denied upload and a resolved test.
+  {const auto at=[&](int seconds){return now.addSecs(-seconds).toString(Qt::ISODateWithMs);};
+   const QJsonArray entries{
+    QJsonObject{{"id","synthetic-error-deletion"},{"time",at(60)},{"firstTime",at(60)},{"occurrences",1},{"kind","deletion"},{"code","credential_setup_required"},{"title","Credentials for this file's destination aren't loaded."},
+     {"message","Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only."},{"details",QJsonObject{{"deletionStatus","failed"}}},
+     {"subject","deletion:synthetic-preview-file-0"},{"resolved",false},{"historyId","synthetic-preview-file-0"},{"itemId","synthetic-preview-file-0"},{"deletionId","synthetic-deletion"},{"profileId","synthetic-archive"},{"provider","s3"},{"destination","Project archive"},
+     {"nextSteps",QJsonArray{"unlock_credentials","open_destination","retry","show_in_history"}}},
+    QJsonObject{{"id","synthetic-error-upload"},{"time",at(900)},{"firstTime",at(1500)},{"occurrences",3},{"kind","upload"},{"code","s3_permission_denied"},{"title","S3 denied the request (HTTP 403)."},
+     {"message","S3 denied the request (HTTP 403). Check the bucket policy and the access key's permissions."},{"details",QJsonObject{{"httpStatus",403},{"serviceCode","AccessDenied"},{"requestStage","upload_put"},{"requestId","SYNTHREQ0123ABCD"},{"extendedRequestId","synthetic+Extended/Id2="}}},
+     {"subject","item:synthetic-preview-file-3"},{"resolved",false},{"historyId","synthetic-preview-file-3"},{"itemId","synthetic-preview-file-3"},{"operationId","synthetic-preview-operation-3"},{"profileId","synthetic-archive"},{"provider","s3"},{"destination","Project archive"},
+     {"nextSteps",QJsonArray{"open_destination","retry","show_in_history","save_diagnostics"}}},
+    QJsonObject{{"id","synthetic-error-test"},{"time",at(7200)},{"firstTime",at(7200)},{"occurrences",1},{"kind","destination_test"},{"code","s3_bucket_not_found"},{"title","The bucket doesn't exist in this region."},
+     {"message","The bucket doesn't exist in this region."},{"details",QJsonObject{{"httpStatus",404},{"serviceCode","NoSuchBucket"}}},{"subject","test:synthetic-archive"},{"resolved",true},{"resolvedAt",at(6900)},{"resolution","Test connection passed"},
+     {"profileId","synthetic-archive"},{"provider","s3"},{"destination","Project archive"},{"nextSteps",QJsonArray{"open_destination","retry"}}}};
+   for(const auto& entry:entries)if(ledger.saveError(entry.toObject(),ErrorLog::keep,{}))return 2;}
+  Operation cancelled;cancelled.id="synthetic-cancelled";cancelled.action="region";cancelled.created=now.addSecs(-500).toString(Qt::ISODateWithMs);cancelled.restore(OperationState::Cancelled);cancelled.cancelled=true;cancelled.settings=settings.snapshot();if(ledger.saveOperation(cancelled))return 2;
  }
  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
  // Diagnostics packages save into the catalog's temporary state; the upload
  // destination's check is answered here, so nothing reaches the network.
- DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+ DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);ErrorLog errorLog(operations);fixture.server.setErrorLog(&errorLog);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject&,JsonReply reply,auto){if(destination.providerId=="sftp"&&kind=="inspectAccount"){const auto key=destination.settings.value("keyFile").toString();reply({},{{"line",key.isEmpty()?QString("Connects to files.example.com:2222 as alice with key id_ed25519 (agent)"):"Connects to files.example.com:2222 as alice with key "+QFileInfo(key).fileName()}});return;}loadFolders=std::move(reply);});QJsonObject catalogUpdate;fixture.server.setUiDiagnostics([&]{const QJsonObject available{{"available",true}};return QJsonObject{{"update",catalogUpdate},{"trayAvailable",true},{"capabilities",QJsonObject{{"source",QJsonObject{{"adapter","gnome-wayland"},{"capture",QJsonObject{{"region",available},{"window",available},{"desktop",available}}}}},{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* catalogStatus=new QLabel("Synthetic catalog");Ui::role(catalogStatus,"meta");window.statusBar()->addPermanentWidget(catalogStatus);QObject::connect(&window,&MainWindow::settingsCreated,catalogStatus,[catalogStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,catalogStatus,[catalogStatus,settings]{catalogStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
  // The compact tier is shared API; show it before individual surfaces adopt it.
  {
   Ui::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl),Ui::space(Ui::Space::xl));rows->setSpacing(Ui::space(Ui::Space::l));
@@ -372,7 +448,37 @@ int main(int argc,char** argv){
  QJsonArray captures,skippedCaptures;auto save=[&](const QString& name,const std::function<void()>& prepare={}){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}
   // The selected preview's arrival relayouts the inspector; steadyGrab waits for the list's thumbnails.
   putgd::test::settle(100);app.processEvents();
-  if(!checkSteppers(window))return false;if(name=="10-history-compact"){QJsonArray commands;auto* band=window.findChild<QWidget*>("commandBand");for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"labelVisible",button->toolButtonStyle()!=Qt::ToolButtonIconOnly},{"width",button->width()},{"sizeHint",button->sizeHint().width()}});QFile measurements(QDir(output).filePath("command-band-measurements.json"));if(!measurements.open(QIODevice::WriteOnly))return false;measurements.write(QJsonDocument(QJsonObject{{"windowWidth",window.width()},{"bandWidth",band->width()},{"requiredWidth",band->layout()->sizeHint().width()},{"gap",qobject_cast<QGridLayout*>(band->layout())->horizontalSpacing()},{"commands",commands}}).toJson());}const auto image=steadyGrab(window,prepare);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  if(!checkSteppers(window))return false;const auto image=steadyGrab(window,prepare);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+ // The command band (council 2026-11-14): its renders at 1,320 px, at the
+ // default 1,440 px window and at 1,060 px, and what fitBand measured. The enlarged-text pair
+ // comes from a second run of this catalog (PUTGD_CATALOG_BAR_ONLY, below).
+ const auto commandBand=[&](const QList<std::pair<QString,QSize>>& states,const QString& report)->bool{
+  QJsonArray sizes;auto* band=window.findChild<QWidget*>("commandBand");
+  const auto measure=[&](const QString& state){
+   QJsonArray commands;for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"accessibleName",button->accessibleName()},{"rect",QJsonArray{button->x(),button->y(),button->width(),button->height()}},{"sizeHint",button->sizeHint().width()}});
+   // History rows the list shows whole: the minimum height keeps four.
+   int rows=0;auto* history=window.findChild<QListView*>("historyList");for(int row=0;row<history->model()->rowCount();++row){const auto rect=history->visualRect(history->model()->index(row,0));if(rect.isValid()&&history->viewport()->rect().contains(rect))++rows;}
+   sizes.append(QJsonObject{{"state",state},{"textScale",Ui::textScale()},{"window",QJsonArray{window.width(),window.height()}},{"minimum",QJsonArray{window.minimumWidth(),window.minimumHeight()}},{"band",QJsonArray{band->width(),band->height()}},{"wrapped",band->property("wrapped").toBool()},{"widths",QJsonObject::fromVariantMap(band->property("bandWidths").toMap())},{"historyRowsVisible",rows},{"commands",commands}});
+  };
+  const auto before=window.size();window.navigate("history");
+  for(const auto& [name,size]:states){window.resize(size);if(!save(name))return false;measure(name);}
+  window.resize(before);putgd::test::settle(100);
+  QSaveFile file(QDir(output).filePath(report));return file.open(QIODevice::WriteOnly)&&file.write(QJsonDocument(sizes).toJson())>0&&file.commit();
+ };
+ if(qEnvironmentVariableIsSet("PUTGD_CATALOG_BAR_ONLY")){
+  if(!commandBand({{"82-command-band-large-text",{1440,880}},{"83-command-band-large-text-narrow",{1060,680}}},"command-band-measurements-large-text.json"))return 2;
+  {
+   // #1898: the sensitive text prompt's four choices at enlarged text: one row where the screen has room, else two.
+   QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+   {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);}
+   SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+   SensitivePrompt prompt(std::move(found));prompt.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(prompt);if(!image.save(QDir(output).filePath("70e-sensitive-prompt-large-text.png")))return 2;
+   captures.append(QJsonObject{{"file","70e-sensitive-prompt-large-text.png"},{"width",image.width()},{"height",image.height()}});prompt.hide();
+  }
+  QSaveFile file(QDir(output).filePath("large-text-captures.json"));if(!file.open(QIODevice::WriteOnly)||file.write(QJsonDocument(captures).toJson())<=0||!file.commit())return 2;
+  return source.reads==0?0:2;
+ }
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_RECORD_ONLY");
  const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_EDITOR_ONLY");
  if(!recordOnly){
@@ -384,6 +490,18 @@ int main(int argc,char** argv){
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Nothing is saved or uploaded")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=steadyGrab(menu);if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png"))||!writeInventory(output,"00-output-menu-literal-ampersand",menu))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"controls","00-output-menu-literal-ampersand.controls.json"},{"width",image.width()},{"height",image.height()}});menu.close();
  }
  if(!save("01-history-list"))return 2;
+ if(!commandBand({{"80-command-band-1320",{1320,880}},{"80a-command-band-1440",{1440,880}},{"81-command-band-1060",{1060,680}}},"command-band-measurements.json"))return 2;
+ // The split buttons' ▾ menus and the status band's capture delay, set and open.
+ if(QGuiApplication::platformName()=="offscreen"){
+  const auto popup=[&](QMenu* menu,QWidget* anchor,const QString& name){if(!menu||!anchor)return false;menu->popup(anchor->mapToGlobal(anchor->rect().bottomLeft()));putgd::test::settle(100);const auto image=steadyGrab(*menu);const auto rows=catalogMenuRows(*menu);QSaveFile controls(QDir(output).filePath(name+".controls.json"));if(!rows||!image.save(QDir(output).filePath(name+".png"))||!controls.open(QIODevice::WriteOnly)||controls.write(QJsonDocument(QJsonObject{{"width",menu->width()},{"height",menu->height()},{"class","QMenu"},{"controls",*rows},{"keys",QJsonArray{}}}).toJson())<=0||!controls.commit())return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});menu->close();return true;};
+  QToolButton* region=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")region=button;
+  if(!popup(window.findChild<QMenu*>("captureRegionMenu"),region,"84-capture-region-menu"))return 2;
+  const auto delay=[&](int seconds){auto doc=settings.document();auto prefs=doc["preferences"].toObject();prefs["captureDelaySeconds"]=seconds;doc["preferences"]=prefs;if(!settings.save(doc,settings.revision()))return false;auto* control=window.findChild<QToolButton*>("captureDelayControl");return control&&waitUntil([&]{return control->text()==commandtext::delayTitle(seconds);});};
+  const auto before=window.size();window.resize(1440,880);
+  if(!delay(5)||!save("85-command-band-delay-set"))return 2;
+  if(!popup(window.findChild<QMenu*>("captureDelayMenu"),window.findChild<QToolButton*>("captureDelayControl"),"86-capture-delay-menu"))return 2;
+  if(!delay(0))return 2;window.resize(before);putgd::test::settle(100);
+ }
  if(QGuiApplication::platformName()=="offscreen"){
   auto* header=window.findChild<Ui::WindowHeader*>("windowHeader");header->setButtonLayout(WindowButtons::fromGSettings("close,minimize,maximize:"));if(!save("01b-history-left-window-buttons"))return 2;header->setButtonLayout(WindowButtons::instance().layout());
  }
@@ -398,10 +516,11 @@ int main(int argc,char** argv){
  // a multi-selection strip, the remote-deletion confirmation and a search
  // with no match. Each returns the page to its first state.
  {auto* page=window.history();auto* failedOnly=window.findChild<QListWidget*>("historyCategories");if(!page||!failedOnly)return 2;failedOnly->setCurrentRow(5);if(!waitUntil([&]{return list->model()->rowCount()<8&&!page->historyState()["busy"].toBool();})||!save("40-history-filters-active"))return 2;
-  list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));if(!save("50-history-failure-recovery"))return 2;page->command({{"action","openDetails"}},[](Error,QJsonObject){});if(!save("50a-history-failure-inspector"))return 2;page->command({{"action","closeDetails"}},[](Error,QJsonObject){});window.findChild<QToolButton*>("historyFiltersExpanded")->setChecked(true);if(!save("history-failed-filters-locked"))return 2;window.findChild<QToolButton*>("historyFiltersExpanded")->setChecked(false);
+  list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));if(!save("50-history-failure-recovery"))return 2;page->command({{"action","openDetails"}},[](Error,QJsonObject){});if(!save("50a-history-failure-inspector"))return 2;page->command({{"action","closeDetails"}},[](Error,QJsonObject){});// A closed pane in the wide list is a standing choice; the next states show it.
+  if(!window.history()->historyState()["detailsWanted"].toBool())window.history()->command({{"action","toggleDetails"}},[](Error,QJsonObject){});window.findChild<QAction*>("historyAllFilters")->setChecked(true);if(!save("history-failed-filters-locked"))return 2;window.findChild<QAction*>("historyAllFilters")->setChecked(false);
   {HistoryWindow compact(fixture.session);compact.resize(Ui::scaled(Ui::Metric::historySidebar)+Ui::scaled(400)+160,Ui::scaled(480));compact.show();compact.findChild<QListWidget*>("historyCategories")->setCurrentRow(5);auto* rows=compact.findChild<QListView*>("historyList");if(!waitUntil([&]{return rows->model()->rowCount()==1;}))return 2;rows->selectionModel()->select(rows->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);rows->setCurrentIndex(rows->model()->index(0,0));putgd::test::settle(100);const auto image=steadyGrab(compact);if(!image.save(QDir(output).filePath("50b-history-failure-compact.png")))return 2;captures.append(QJsonObject{{"file","50b-history-failure-compact.png"},{"width",image.width()},{"height",image.height()}});compact.command({{"action","openDetails"}},[](Error,QJsonObject){});putgd::test::settle(100);const auto details=steadyGrab(compact);if(!details.save(QDir(output).filePath("50c-history-failure-compact-inspector.png")))return 2;captures.append(QJsonObject{{"file","50c-history-failure-compact-inspector.png"},{"width",details.width()},{"height",details.height()}});}
   failedOnly->setCurrentRow(0);if(!waitUntil([&]{return list->model()->rowCount()==8;}))return 2;
-  window.findChild<QToolButton*>("historyFiltersExpanded")->setChecked(true);if(!save("45-history-filters-expanded"))return 2;window.findChild<QAction*>("historyAddFilterremoteStatus")->trigger();{auto* remote=window.findChild<QComboBox*>("historyRemoteState");if(!remote)return 2;auto* scroll=window.findChild<QScrollArea*>("historyFiltersScroll");scroll->ensureWidgetVisible(remote);remote->showPopup();putgd::test::settle(80);auto* popup=remote->view()->window();QPixmap shot=steadyGrab(window);{QPainter painter(&shot);painter.drawPixmap(window.mapFromGlobal(popup->mapToGlobal(QPoint())),steadyGrab(*popup));}if(!shot.save(QDir(output).filePath("history-remote-groups.png")))return 2;captures.append(QJsonObject{{"file","history-remote-groups.png"},{"width",shot.width()},{"height",shot.height()}});remote->hidePopup();scroll->verticalScrollBar()->setValue(0);}for(const auto& key:{"from","to","mime","exactRemoteStatus"})window.findChild<QAction*>(QString("historyAddFilter")+key)->trigger();{auto* scroll=window.findChild<QScrollArea*>("historyFiltersScroll");putgd::test::settle(50);scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());if(!save("62-history-technical-filters"))return 2;scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("historyTechnicalFiltersExpanded")->setChecked(false);window.findChild<QToolButton*>("historyFiltersExpanded")->setChecked(false);
+  window.findChild<QAction*>("historyAllFilters")->setChecked(true);if(!save("45-history-filters-expanded"))return 2;window.findChild<QAction*>("historyAddFilterremoteStatus")->trigger();{auto* remote=window.findChild<QComboBox*>("historyRemoteState");if(!remote)return 2;auto* scroll=window.findChild<QScrollArea*>("historyFiltersScroll");scroll->ensureWidgetVisible(remote);remote->showPopup();putgd::test::settle(80);auto* popup=remote->view()->window();QPixmap shot=steadyGrab(window);{QPainter painter(&shot);painter.drawPixmap(window.mapFromGlobal(popup->mapToGlobal(QPoint())),steadyGrab(*popup));}if(!shot.save(QDir(output).filePath("history-remote-groups.png")))return 2;captures.append(QJsonObject{{"file","history-remote-groups.png"},{"width",shot.width()},{"height",shot.height()}});remote->hidePopup();scroll->verticalScrollBar()->setValue(0);}for(const auto& key:{"from","to","mime","exactRemoteStatus"})window.findChild<QAction*>(QString("historyAddFilter")+key)->trigger();{auto* scroll=window.findChild<QScrollArea*>("historyFiltersScroll");putgd::test::settle(50);scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());if(!save("62-history-technical-filters"))return 2;scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("historyTechnicalFiltersExpanded")->setChecked(false);window.findChild<QAction*>("historyAllFilters")->setChecked(false);
   list->selectionModel()->select(QItemSelection(list->model()->index(1,0),list->model()->index(3,0)),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);if(!save("41-history-selection"))return 2;{const auto previous=window.size();window.resize(Ui::scaled(1800),960);if(!save("41a-history-selection-inspector"))return 2;window.resize(previous);}
   // The confirmation for two of the preview's uploads, as delete.prepare answers.
   QJsonArray targets;QHash<QString,QString> names;const auto model=qobject_cast<HistoryModel*>(list->model());
@@ -425,17 +544,90 @@ int main(int argc,char** argv){
   const auto file=model->record(0)["records"].toArray().first().toObject();QJsonObject deletion{{"id","synthetic-preview-deletion"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",file["id"]},{"receipt",file["receipt"]},{"status","failed"},{"error",QJsonObject{{"code","synthetic_failure"},{"message","Connection interrupted. Retry deletion when the destination is available."}}}}}}};{HistoryStore ledger(operations.databasePath());if(ledger.saveDeletion(deletion))return 2;}page->refresh();if(!waitUntil([&]{return model->record(0)["deleteOperationId"]=="synthetic-preview-deletion";}))return 2;
   list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));if(!waitUntil([&]{return !window.findChild<QPushButton*>("retryHistoryDeletion")->isHidden();}))return 2;auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");inspector->verticalScrollBar()->setValue(0);if(!save("48-history-deletion-recovery"))return 2;
   auto settled=deletion["items"].toArray().first().toObject();settled["status"]="present";settled["error"]=QJsonObject{};deletion["items"]=QJsonArray{settled};{HistoryStore ledger(operations.databasePath());if(ledger.saveDeletion(deletion))return 2;}page->refresh();if(!waitUntil([&]{return window.findChild<QPushButton*>("retryHistoryDeletion")->isHidden();}))return 2;inspector->verticalScrollBar()->setValue(0);
+
+  // An expired S3 receipt can offer explicit original-keychain unlock; no keyring IO in this synthetic render.
+  {Operation expired;expired.id="synthetic-expired-s3";expired.created="2000-01-01T00:00:00.000Z";expired.restore(OperationState::Completed);expired.settings=settings.snapshot();
+   OperationItem item;item.artifact.id="synthetic-expired-s3-file";item.artifact.name="Private screenshot.png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=data.filePath("synthetic-preview-0.png");item.artifact.bytes=QFileInfo(item.artifact.previewPath).size();item.local={};item.local.status="saved";item.local.path=item.artifact.previewPath;item.uploadStatus="uploaded";item.remoteStatus="present";
+   auto profile=config["profiles"].toArray()[1].toObject();auto storage=profile["settings"].toObject();storage["linkMode"]="presigned";
+   item.receipt.destination={"s3","synthetic-archive","synthetic-revision",storage,{{"mode","keychain"},{"reference","synthetic-original-reference"}}};item.receipt.publicationId="synthetic-expired-publication";item.receipt.concurrencyToken="synthetic-etag";item.receipt.objectReference={{"schemaVersion",1},{"key","private.png"},{"versionId",""},{"sha256",QString(64,'a')},{"bytes",double(item.artifact.bytes)},{"linkExpiresAt","2000-01-02T00:00:00.000Z"}};item.receipt.directUrl="https://expired.example.invalid/private.png?X-Amz-Signature=synthetic-expired";expired.destination=item.receipt.destination;expired.items={item};
+   {HistoryStore ledger(operations.databasePath());if(ledger.saveOperation(expired))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==9;}))return 2;
+   window.history()->command({{"action","select"},{"ids",QJsonArray{item.artifact.id}}},[](Error,QJsonObject){});window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});
+   if(!waitUntil([&]{return window.findChild<QPushButton*>("copyHistoryLink")->text()=="Refresh and copy link";}))return 2;
+   fixture.client.failOnce["history.copyLink"]={"credential_setup_required","Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only.",{}};window.findChild<QPushButton*>("copyHistoryLink")->click();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyUnlockLinkCredentials")->isVisible();}))return 2;
+   if(!save("s3-history-expired-unlock"))return 2;
+   {HistoryStore ledger(operations.databasePath());if(ledger.expireBefore("2001-01-01T00:00:00.000Z"))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==8;}))return 2;
+   list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+   if(!waitUntil([&]{return !window.findChild<QLabel*>("historyPreview")->pixmap().isNull();}))return 2;
+   for(auto* label:window.history()->findChildren<QLabel*>())if(label->accessibleName()=="History status"){label->clear();label->hide();}
+   window.history()->command({{"action","dismissNotice"}},[](Error,QJsonObject){});
+  }
  }window.navigate("destinations");auto* destinations=window.findChild<QListWidget*>("destinationList");if(!destinations)return 2;destinations->setCurrentRow(0);if(!waitUntil([&]{return bool(loadFolders);}))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"accountEmail","designer@example.invalid"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return window.findChild<QLabel*>("protonAccountStatus")->text().contains("designer@example.invalid");}))return 2;if(!save("03-destinations-proton"))return 2;{const auto size=window.size();auto* scroll=window.findChild<QScrollArea*>("destinationScroll");for(const bool compact:{false,true}){if(compact)window.resize(1060,680);reveal(scroll,window.findChild<QWidget*>("protonKeepPrivate"),40);if(!save(compact?"settings-radio-choices-compact":"settings-radio-choices"))return 2;}window.resize(size);scroll->verticalScrollBar()->setValue(0);}window.findChild<QPushButton*>("inspectProtonAccount")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("protonFolderStatus")->isVisible();})||!save("16-proton-loading-folders"))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return !window.findChild<QLabel*>("protonFolderStatus")->isVisible();}))return 2;destinations->setCurrentRow(1);if(!save("04-destinations-s3"))return 2;
- {const auto size=window.size();auto* action=window.findChild<QPushButton*>("addDestinationCredentials");if(action&&action->isVisible()){window.resize(1060,680);window.activateWindow();action->click();if(!waitUntil([&]{return window.findChild<QLineEdit*>("credentialAccessKey")->hasFocus();})||!save("settings-add-credentials-focus"))return 2;window.resize(size);window.findChild<QScrollArea*>("destinationScroll")->verticalScrollBar()->setValue(0);}}
- window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");if(!tabs)return 2;tabs->setCurrentIndex(3);if(!save("05-settings-advanced"))return 2;{auto* support=window.findChild<QToolButton*>("desktopSupportDetailsToggle");support->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-expanded"))return 2;support->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);if(!save("settings-resource-limits-expanded"))return 2;{auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");if(!help)return 2;help->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QLabel*>("historyRetentionChoiceHelpText"),0,20);if(!save("settings-retention-help"))return 2;help->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(false);
+ {const auto size=window.size();auto* action=window.findChild<QPushButton*>("addDestinationCredentials");if(action&&action->isVisible()){window.resize(1060,680);putgd::test::settle(100);window.activateWindow();action->click();if(!waitUntil([&]{return window.findChild<QLineEdit*>("credentialAccessKey")->hasFocus();})||!save("settings-add-credentials-focus"))return 2;window.resize(size);window.findChild<QScrollArea*>("destinationScroll")->verticalScrollBar()->setValue(0);}}
+ window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");if(!tabs)return 2;tabs->setCurrentIndex(3);if(!save("05-settings-advanced"))return 2;
+ // #1937: Unhinged mode on, in Advanced's Performance card (shown only; nothing saves).
+ {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());auto* unhinged=window.findChild<QCheckBox*>("unhingedMode");if(!scroll||!unhinged)return 2;{const QSignalBlocker quiet(unhinged);unhinged->setChecked(true);}putgd::test::settle(50);scroll->ensureWidgetVisible(unhinged,0,80);if(!save("settings-advanced-unhinged-mode"))return 2;{const QSignalBlocker quiet(unhinged);unhinged->setChecked(false);}scroll->verticalScrollBar()->setValue(0);}
+ {tabs->setCurrentIndex(4);auto* table=window.findChild<QTreeWidget*>("errorLogTable");if(!table||!waitUntil([&]{return table->topLevelItemCount()>=3;}))return 2;if(!save("05f-settings-error-log"))return 2;
+  window.settings()->errorLogCommand({{"action","select"},{"id","synthetic-error-deletion"}},[](Error,QJsonObject){});if(!waitUntil([&]{return window.findChild<QWidget*>("errorLogDetails")->isVisible();}))return 2;if(!save("05g-settings-error-log-entry"))return 2;
+  tabs->setCurrentIndex(3);}{auto* support=window.findChild<QToolButton*>("desktopSupportDetailsToggle");support->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-expanded"))return 2;
+  // #1364: a desktop that draws click rings but not in window recordings (Budgie on labwc) names that here.
+  window.settings()->showClickHighlights({{"available",true},{"route","labwc-mouse-binds"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}},{"targetReasons",QJsonObject{{"window","A window recording on labwc has no pointer position: the compositor's window capture source has no cursor source, and labwc reports no window geometry."}}}});
+  putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-click-limits"))return 2;
+  support->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);if(!save("settings-resource-limits-expanded"))return 2;{auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");if(!help)return 2;help->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QLabel*>("historyRetentionChoiceHelpText"),0,20);if(!save("settings-retention-help"))return 2;help->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(false);
  {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());auto* retention=window.findChild<QLineEdit*>("historyRetentionDays");putgd::test::settle(100);scroll->ensureWidgetVisible(retention,0,100);if(!save("settings-forever-retention"))return 2;scroll->verticalScrollBar()->setValue(0);auto* limit=window.findChild<QLineEdit*>("maxFileBytes");const auto before=limit->text();limit->setText("3");if(!save("settings-numeric-limit-unit"))return 2;limit->setText(before);}
- tabs->setCurrentIndex(2);if(!save("06-settings-shortcuts"))return 2;tabs->setCurrentIndex(0);if(!save("07-settings-general"))return 2;tabs->setCurrentIndex(1);if(!save("08-settings-capture"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(true);{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("customFileNamePattern"),0,24);if(!save("settings-custom-name-pattern"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(false);scroll->verticalScrollBar()->setValue(0);}
+ tabs->setCurrentIndex(2);if(!save("06-settings-shortcuts"))return 2;tabs->setCurrentIndex(0);if(!save("07-settings-general"))return 2;tabs->setCurrentIndex(1);if(!save("08-settings-capture"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());scroll->ensureWidgetVisible(window.findChild<QWidget*>("scrollCaptureMaxHeight"),0,24);if(!save("settings-scroll-capture"))return 2;scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(true);{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("customFileNamePattern"),0,24);if(!save("settings-custom-name-pattern"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(false);scroll->verticalScrollBar()->setValue(0);}
+// #1729: Random names set to random characters shows the length and character rows.
+{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());auto* mode=window.findChild<QComboBox*>("namingMode");auto* style=window.findChild<QComboBox*>("randomStyle");if(!mode||!style)return 2;const int modeBefore=mode->currentIndex(),styleBefore=style->currentIndex();mode->setCurrentIndex(mode->findData("generated"));putgd::test::settle(40);scroll->ensureWidgetVisible(style,0,120);if(!save("settings-random-name-uuid"))return 2;style->setCurrentIndex(style->findData("string"));putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("randomDigits"),0,120);if(!save("settings-random-name-string"))return 2;style->setCurrentIndex(styleBefore);mode->setCurrentIndex(modeBefore);scroll->verticalScrollBar()->setValue(0);}
 // #984: the Screen recording section's frame rate, below Region selection.
-{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingFrameRate"),0,160);if(!save("settings-recording-frame-rate"))return 2;scroll->verticalScrollBar()->setValue(0);}
+{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
+ // #1363: the Capture delay section, between Region selection and Screen recording.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1893: Capture style, off by default; turned on (Graphite) and then Custom with a gradient, each a draft Settings can keep.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStyleEnabled"),0,160);if(!save("settings-capture-style-off"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style"))return 2;
+ {auto* look=window.findChild<QComboBox*>("captureStyleLook");emit look->activated(look->findData("custom"));auto* backdrop=window.findChild<QComboBox*>("captureStyleBackdrop");emit backdrop->activated(backdrop->findData("gradient"));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(80);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureStylePreview"),0,40);if(!save("settings-capture-style-custom"))return 2;
+ window.findChild<QCheckBox*>("captureStyleEnabled")->setChecked(false);
+ // #1804: Check captures for sensitive text before uploading, with its Look for kinds.
+ // Turned on, with its draft still a view state Settings can keep (#1804).
+ window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(true);
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextCategories"),0,160);if(!save("settings-sensitive-check"))return 2;
+ // #1820: card numbers and keys on Redact automatically, email on Warn; the draft is still a view state Settings can keep.
+ for(const auto& [kind,value]:QList<QPair<QString,QString>>{{"card","redact"},{"key","redact"},{"email","warn"}}){auto* combo=window.findChild<QComboBox*>("sensitiveTextKind_"+kind);combo->setCurrentIndex(combo->findData(value));}
+ {QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;}
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("sensitiveTextKind_name"),0,40);if(!save("settings-sensitive-kinds"))return 2;
+ for(const auto& [kind,value]:QList<QPair<QString,QString>>{{"card","warn"},{"key","warn"},{"email","off"}}){auto* combo=window.findChild<QComboBox*>("sensitiveTextKind_"+kind);combo->setCurrentIndex(combo->findData(value));}
+ window.findChild<QCheckBox*>("sensitiveTextCheck")->setChecked(false);
+ // #1618: Quick redact's saved words and regular expressions, under Text recognition; empty, then filled.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
+ window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");window.findChild<QPlainTextEdit*>("quickRedactPatterns")->setPlainText("\\bJIRA-\\d+\\b\n(?i)\\b[a-z0-9-]+\\.corp\\.example\\b");
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list"))return 2;
+ // A no-break space inside a word is kept as typed (the draft reads each line's own text), and blank lines and repeats go.
+ {const QString nbsp(QChar(0xA0));
+  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("Project"+nbsp+"Aurora\n\nProject"+nbsp+"Aurora\n  acme  ");
+  // A value set for the user is sent at once, and a checkpoint waits for its answer (#1704).
+  QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;
+  const auto kept=state["draft"].toObject()["preferences"].toObject()["quickRedactTerms"].toArray();if(kept!=QJsonArray{"Project"+nbsp+"Aurora","acme"})return 2;}
+ window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingFrameRate"),0,160);if(!save("settings-recording-frame-rate"))return 2;
+ // #1364: the microphone choice and click highlights, as the resident answers for this desktop.
+ window.settings()->showRecordingMicrophones({{"available",true},{"device",QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"},{"default",true}},QJsonObject{{"id","alsa_input.pci-0000_00_1f.3.analog-stereo"},{"label","Built-in Audio Analog Stereo"},{"default",false}}}},{"defaultIsMonitor",false}});
+ window.settings()->showClickHighlights({{"available",true},{"route","x11-xinput2"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region","window"}}});
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingClickHighlights"),0,60);if(!save("settings-recording-microphone-clicks"))return 2;
+ // No microphone (the default input is an output's monitor), and a desktop whose rings the compositor draws.
+ window.settings()->showRecordingMicrophones({{"available",false},{"reason","default_is_monitor"},{"message","The system's default input is the monitor of an output, not a microphone. Plug one in, or choose a device in Settings."},{"devices",QJsonArray{}},{"defaultIsMonitor",true}});
+ window.settings()->showClickHighlights({{"available",true},{"route","kwin-mouseclick-effect"},{"drawnBy","compositor"},{"targets",QJsonArray{"monitor","desktop","region"}},{"note","KWin draws the rings on the screen for the length of the recording; window recordings carry none."}});
+ putgd::test::settle(40);if(!save("settings-recording-no-microphone"))return 2;
+ scroll->verticalScrollBar()->setValue(0);}
  window.navigate("destinations");destinations->setCurrentRow(1);window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;auto* destinationScroll=window.findChild<QScrollArea*>("destinationScroll");destinationScroll->verticalScrollBar()->setValue(destinationScroll->verticalScrollBar()->maximum());if(!save("09-stored-credential-hint"))return 2;
- window.resize(1060,680);window.navigate("history");if(!save("10-history-compact")||window.width()!=1060||window.height()!=680)return 2;{window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});window.activateWindow();putgd::test::settle(30);auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);if(!waitUntil([&]{return focusedPreview->hasFocus();}))return 2;if(!save("10a-history-compact-preview-focus"))return 2;window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(true);if(!save("46-history-maintenance-compact"))return 2;{auto* menu=window.findChild<QMenu*>("historyManagementMenu");if(!menu||!menu->isVisible())return 2;const auto image=steadyGrab(*menu);if(!image.save(QDir(output).filePath("57-history-management-menu.png")))return 2;captures.append(QJsonObject{{"file","57-history-management-menu.png"},{"width",image.width()},{"height",image.height()}});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(false);
+ window.resize(1060,680);window.navigate("history");if(!save("10-history-compact")||window.width()!=1060||window.height()!=680)return 2;{window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});window.activateWindow();putgd::test::settle(30);auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);if(!waitUntil([&]{return focusedPreview->hasFocus();}))return 2;if(!save("10a-history-compact-preview-focus"))return 2;window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});// A closed pane in the wide list is a standing choice; the next states show it.
+  if(!window.history()->historyState()["detailsWanted"].toBool())window.history()->command({{"action","toggleDetails"}},[](Error,QJsonObject){});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(true);if(!save("46-history-maintenance-compact"))return 2;{auto* menu=window.findChild<QMenu*>("historyManagementMenu");if(!menu||!menu->isVisible())return 2;const auto image=steadyGrab(*menu);if(!image.save(QDir(output).filePath("57-history-management-menu.png")))return 2;captures.append(QJsonObject{{"file","57-history-management-menu.png"},{"width",image.width()},{"height",image.height()}});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(false);
  // Actual SettingsWindow actions build these dialogs; no copied dialog text.
  window.navigate("destinations");destinations->setCurrentRow(1);
+ {auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());if(!save("s3-presigned-links"))return 2;mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());}
  auto captureQuestion=[&](const QString& name,const std::function<void()>& open){
   bool captured=false;QTimer timer;timer.setSingleShot(true);QObject::connect(&timer,&QTimer::timeout,&app,[&]{
    if(auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget())){captured=saveDialog(output,name,*dialog,captures);dialog->reject();}
@@ -471,7 +663,9 @@ int main(int argc,char** argv){
  {const auto before=window.size();window.resize(1060,900);if(!save("70-history-taller-details"))return 2;window.resize(before);}
  {const auto before=window.size(),minimum=window.minimumSize();window.setMinimumHeight(480);window.resize(1060,480);if(!save("71-history-thumbnail-details"))return 2;window.setMinimumSize(minimum);window.resize(before);}
  window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});window.findChild<QToolButton*>("historyListMode")->click();
- {const auto size=window.size();window.resize(1440,960);auto* page=window.history();auto* model=qobject_cast<HistoryModel*>(list->model());{HistoryStore ledger(operations.databasePath());for(int i=0;i<2;++i){Operation op;op.id=QString("synthetic-history-kind-%1").arg(i);op.created=now.addSecs(i).toString(Qt::ISODateWithMs);op.action=i?"record":"clipboard";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name=i?"Product walkthrough.mp4":"Release notes.txt";item.artifact.mime=i?"video/mp4":"text/plain";item.artifact.category=i?"videos":"text";item.artifact.bytes=4096;item.local.status="disabled";item.uploadStatus="uploaded";item.shareStatus="revoked";item.receipt.directUrl="https://example.invalid/previous-link";op.items.append(item);if(ledger.saveOperation(op))return 2;}}page->refresh();if(!waitUntil([&]{return model->rowCount()==10;}))return 2;for(int i=0;i<2;++i){int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]==QString("synthetic-history-kind-%1").arg(i))row=r;if(row<0)return 2;if(i)fixture.client.failOnce["history.preview"]={"preview_failed","The recording poster could not be decoded.",{}};list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));if(page->historyState()["layout"]=="compact")page->command({{"action","openDetails"}},[](Error,QJsonObject){});if(i){auto* retry=window.findChild<QPushButton*>("retryHistoryPreview");if(!waitUntil([&]{return retry->isVisible();})||!save("66-history-preview-failed"))return 2;retry->click();if(!waitUntil([&]{return window.findChild<QLabel*>("historyPreview")->text()=="Local original unavailable";}))return 2;}if(!save(i?"59-history-recording-no-copy":"58-history-text-unavailable-link"))return 2;}window.findChild<QToolButton*>("historyReceiptExpanded")->setChecked(true);auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");putgd::test::settle(50);inspector->verticalScrollBar()->setValue(inspector->verticalScrollBar()->maximum());if(!save("60-history-previous-link-details"))return 2;window.findChild<QToolButton*>("historyReceiptExpanded")->setChecked(false);{HistoryStore ledger(operations.databasePath());Error error;auto op=ledger.operation("synthetic-history-kind-1",&error);if(error)return 2;op.items[0].shareStatus="shared";op.items[0].receipt.directUrl="unsupported://synthetic-preview";if(ledger.saveOperation(op))return 2;}page->refresh();auto* open=window.findChild<QPushButton*>("openHistoryLink");if(!waitUntil([&]{return open->isVisible()&&open->isEnabled();}))return 2;open->click();inspector->verticalScrollBar()->setValue(0);if(!save("61-history-browser-failure"))return 2;
+ // Closing details in the wide list is a standing choice; the states below show them again.
+ window.history()->command({{"action","clearSelection"}},[](Error,QJsonObject){});window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});
+ {const auto size=window.size();window.resize(1440,960);auto* page=window.history();auto* model=qobject_cast<HistoryModel*>(list->model());{HistoryStore ledger(operations.databasePath());for(int i=0;i<2;++i){Operation op;op.id=QString("synthetic-history-kind-%1").arg(i);op.created=now.addSecs(i).toString(Qt::ISODateWithMs);op.action=i?"record":"clipboard";op.restore(OperationState::Completed);op.settings=settings.snapshot();OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name=i?"Product walkthrough.mp4":"Release notes.txt";item.artifact.mime=i?"video/mp4":"text/plain";item.artifact.category=i?"videos":"text";item.artifact.bytes=4096;item.local.status="disabled";item.uploadStatus="uploaded";item.shareStatus="revoked";item.receipt.directUrl="https://example.invalid/previous-link";op.items.append(item);if(ledger.saveOperation(op))return 2;}}page->refresh();if(!waitUntil([&]{return model->rowCount()==10;}))return 2;for(int i=0;i<2;++i){int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]==QString("synthetic-history-kind-%1").arg(i))row=r;if(row<0)return 2;if(i)fixture.client.failOnce["history.preview"]={"preview_failed","The recording poster could not be decoded.",{}};list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));if(page->historyState()["layout"]=="compact")page->command({{"action","openDetails"}},[](Error,QJsonObject){});if(i){auto* retry=window.findChild<QPushButton*>("retryHistoryPreview");if(!waitUntil([&]{return retry->isVisible();})||!save("66-history-preview-failed"))return 2;retry->click();if(!waitUntil([&]{return window.findChild<QLabel*>("historyPreview")->text()=="Local original unavailable";}))return 2;}if(!save(i?"59-history-recording-no-copy":"58-history-text-unavailable-link"))return 2;}window.findChild<QToolButton*>("historyReceiptExpanded")->setChecked(true);auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");putgd::test::settle(50);inspector->verticalScrollBar()->setValue(inspector->verticalScrollBar()->maximum());if(!save("60-history-previous-link-details"))return 2;window.findChild<QToolButton*>("historyReceiptExpanded")->setChecked(false);{HistoryStore ledger(operations.databasePath());Error error;auto op=ledger.operation("synthetic-history-kind-1",&error);if(error)return 2;op.items[0].shareStatus="shared";op.items[0].receipt.directUrl="unsupported://synthetic-preview";if(ledger.saveOperation(op))return 2;}page->refresh();auto* open=window.findChild<QPushButton*>("openHistoryLink");if(!waitUntil([&]{return open->isVisible()&&open->isEnabled();}))return 2;open->click();inspector->verticalScrollBar()->setValue(0);if(!save("61-history-browser-failure"))return 2;
   for(const auto& state:QStringList{"present","removed","local_only"}){
    const auto operationId="synthetic-missing-copy-"+state;const auto rows=model->rowCount();
    {HistoryStore ledger(operations.databasePath());Error error;auto op=ledger.operation("synthetic-history-kind-1",&error);if(error)return 2;op.id=operationId;op.created=now.addSecs(rows).toString(Qt::ISODateWithMs);op.items[0].artifact.id=operationId+"-file";op.items[0].remoteStatus=state=="local_only"?"not_requested":state;op.items[0].uploadStatus=state=="local_only"?"local_only":"uploaded";op.items[0].shareStatus=state=="local_only"?"not_requested":"shared";op.items[0].receipt.directUrl=state=="local_only"?QString{}:"https://example.invalid/synthetic-recording";if(ledger.saveOperation(op))return 2;}
@@ -492,6 +686,97 @@ int main(int argc,char** argv){
   if(!save("settings-b2-stepper-1060",scrollPose(destinationScroll,hint,40,true)))return 2;
   mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));
  }
+ // #1678: Cloudflare R2 as its own destination type: the dashboard's S3 API address pasted into
+ // Account ID fills Jurisdiction and Bucket; public links with no Link domain are called out (#1679).
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("cloudflare-r2"));
+  auto* account=window.findChild<QLineEdit*>("r2AccountId");if(!account||!waitUntil([&]{return window.settings()->flushAutosave()&&account->isVisible();}))return 2;
+  // Pasted as a person pastes it, so the address is read: Account ID, Jurisdiction and Bucket filled.
+  window.settings()->r2Command({{"action","paste"},{"text","https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com/design-captures"}},[](putgd::Error,QJsonObject){});
+  auto* jurisdiction=window.findChild<QComboBox*>("r2Jurisdiction");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
+  if(account->text()!="0123456789abcdef0123456789abcdef"||jurisdiction->currentData().toString()!="eu"||bucket->text()!="design-captures")return 2;
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-r2"))return 2;
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());
+  auto* domain=window.findChild<QLineEdit*>("s3PublicUrlBase");domain->clear();emit domain->editingFinished();
+  auto* warning=window.findChild<QWidget*>("r2LinkDomainWarning");if(!warning||!waitUntil([&]{return window.settings()->flushAutosave()&&warning->isVisible();}))return 2;
+  if(!save("settings-r2-link-domain",scrollPose(destinationScroll,warning,40)))return 2;
+  provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // An S3 destination on R2 offers Move to Cloudflare R2.
+  auto* endpoint=window.findChild<QLineEdit*>("s3Endpoint");const auto original=endpoint->text();endpoint->setText("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com");emit endpoint->editingFinished();
+  auto* move=window.findChild<QWidget*>("moveToCloudflareR2Row");if(!move||!waitUntil([&]{return window.settings()->flushAutosave()&&move->isVisible();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-move-to-r2"))return 2;
+  endpoint->setText(original);emit endpoint->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
+ // #1872: Nextcloud (server, Sign in, folder) and WebDAV (folder and link addresses, user and
+ // password), filled through ui.davDestination as an agent drives them.
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");
+  const auto drive=[&](const QJsonObject& params){window.settings()->davCommand(params,[](putgd::Error,QJsonObject){});};
+  provider->setCurrentIndex(provider->findData("nextcloud"));
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLineEdit*>("nextcloudServer")->isVisible();}))return 2;
+  drive({{"action","set"},{"field","server"},{"value","https://cloud.example.com/index.php/apps/files/?dir=/"}});
+  if(window.findChild<QLineEdit*>("nextcloudServer")->text()!="https://cloud.example.com"||!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-nextcloud"))return 2;
+  drive({{"action","appPassword"},{"value","show"}});putgd::test::settle(50);
+  if(!save("settings-nextcloud-app-password",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialAccessKey"),40)))return 2;
+  drive({{"action","appPassword"},{"value","hide"}});
+  provider->setCurrentIndex(provider->findData("webdav"));
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLineEdit*>("webdavAddress")->isVisible();}))return 2;
+  drive({{"action","set"},{"field","address"},{"value","dav.example.com/uploads"}});
+  drive({{"action","set"},{"field","linkBase"},{"value","https://files.example.com/uploads/"}});
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-webdav"))return 2;
+  provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
+ // #1871: the SFTP form: a pasted sftp:// address filled into Server, User and Folder on server,
+ // with a Link address and the line saying what ssh resolves; then a test that met an unknown
+ // host key offering Trust key. The server and its key are synthetic.
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("sftp"));
+  auto* panel=window.findChild<SftpPanel*>("sftpDestinationEditor");if(!panel||!waitUntil([&]{return window.settings()->flushAutosave()&&panel->isVisible();}))return 2;
+  panel->applyAddress("sftp://alice@files.example.com:2222/srv/www/shots");
+  auto* link=window.findChild<QLineEdit*>("sftpPublicUrlBase");link->setText("https://files.example.com/shots/");emit link->editingFinished();
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // What ssh -G resolves, read by Settings once the address is saved (the fixture answers for ssh).
+  auto* resolved=window.findChild<QLabel*>("sftpResolved");if(!resolved||!waitUntil([&]{return resolved->isVisible()&&!resolved->text().isEmpty();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-sftp"))return 2;
+  const QString fingerprint="ED25519 SHA256:lKD1cde7y8vs6nPz/4s3tCa5I1qSUf7Et8Vb93KG/90";
+  panel->showTestError("ssh_host_unknown_key","The server's host key is "+fingerprint+". Trust it only if it matches the key your server's admin gave you.",{{"fingerprint",fingerprint}});
+  if(!save("settings-sftp-trust-key",scrollPose(destinationScroll,window.findChild<QWidget*>("sftpHostKeyBanner"),40)))return 2;
+  panel->clearOffers();
+  // #1892: the one Sign-in section: a key file chosen outside ~/.ssh (synthetic, private), the two
+  // optional secrets and where they are kept, then Test upload.
+  {
+   QDir().mkpath(data.filePath("keys"));QFile key(data.filePath("keys/id_deploy"));
+   if(!key.open(QIODevice::WriteOnly))return 2;key.write(QByteArray("-----BEGIN OPENSSH ")+"PRIVATE "+"KEY-----\n");key.close();key.setPermissions(QFile::ReadOwner|QFile::WriteOwner);
+   auto* keyFile=window.findChild<QLineEdit*>("sftpKeyFile");if(!keyFile)return 2;keyFile->setText(key.fileName());emit keyFile->editingFinished();
+   if(!waitUntil([&]{return window.settings()->flushAutosave()&&resolved->text().endsWith("id_deploy");}))return 2;
+   if(!save("settings-sftp-sign-in",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialsEditor"),40)))return 2;
+   keyFile->clear();emit keyFile->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  }provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
+ // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
+ // masked, and with its values stored for the session. The token is synthetic.
+ {
+  fixture.setup.setNamedCredentials(putgd::http::namedCredentials);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("custom-http"));
+  auto* uploader=window.findChild<CustomUploaderPanel*>("customUploaderEditor");if(!uploader||!waitUntil([&]{return window.settings()->flushAutosave()&&uploader->isVisible();}))return 2;
+  auto* storage=window.findChild<QComboBox*>("credentialMode");storage->setCurrentIndex(storage->findData("session"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-new"))return 2;
+  const QByteArray file="{\"Version\":\"17.0.0\",\"Name\":\"Example files\",\"DestinationType\":\"ImageUploader, TextUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://files.example.test/api/upload\",\"Headers\":{\"authorization\":\"PUTGD-SYNTHETIC-CATALOG-TOKEN-not-real\"},\"Body\":\"MultipartFormData\",\"Arguments\":{\"name\":\"{filename}\"},\"FileFormName\":\"file\",\"URL\":\"{json:files[0].url}\",\"DeletionURL\":\"{json:files[0].delete}\",\"ErrorMessage\":\"{json:error}\"}";
+  if(uploader->importBytes(file)||!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-imported"))return 2;
+  if(!save("settings-uploader-response",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderErrorMessage"),40)))return 2;
+  window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored");}))return 2;
+  if(!save("settings-uploader-stored",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderHeaders"),120,true)))return 2;
+  if(!save("settings-uploader-credentials",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialsEditor"),40)))return 2;
+  uploader->openImport();auto* dialog=window.findChild<QDialog*>("importSxcuDialog");if(!dialog||!waitUntil([&]{return dialog->isVisible();}))return 2;
+  {putgd::test::settle(150);const auto image=steadyGrab(*dialog);if(!image.save(QDir(output).filePath("settings-uploader-import-dialog.png")))return 2;captures.append(QJsonObject{{"file","settings-uploader-import-dialog.png"},{"width",image.width()},{"height",image.height()}});}
+  dialog->reject();provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // The session slot belongs to the destination, not the service: put the S3 keys back for the captures below.
+  window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;
+ }
  window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(true);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("updatePrivacyFields"),0,40);if(!save("settings-update-privacy"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(false);tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;{auto* advanced=window.findChild<QToolButton*>("advancedSettings");advanced->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("protonRequestTimeout"),0,40);if(!save("settings-proton-steppers-1060"))return 2;advanced->setChecked(false);}destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;if(!save("18-destination-credentials-compact",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialActions"),40)))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
  window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(true);putgd::test::settle(100);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("folderOther"),0,24);if(!save("settings-category-folders"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(false);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->verticalScrollBar()->setValue(0);window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureRowRegion"),0,80);if(!save("settings-exceptions-compact"))return 2;scroll->verticalScrollBar()->setValue(0);}
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);if(!waitUntil([&]{return !settings.snapshot().archive.keepUploads&&settings.snapshot().actions["region"].destination=="local";}))return 2;if(!save("15-capture-no-output"))return 2;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")button->click();if(!save("main-unavailable-recovery"))return 2;window.findChild<QToolButton*>("dismissActionRecovery")->click();
@@ -501,7 +786,7 @@ int main(int argc,char** argv){
  // Settings review: replacement storage, setup admission and deep-link focus.
  window.navigate("destinations");destinations->setCurrentRow(1);{auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->findData("keychain"));if(!waitUntil([&]{return settings.document()["profiles"].toArray()[1].toObject()["credentials"].toObject()["mode"]=="keychain";}))return 2;reveal(destinationScroll,window.findChild<QWidget*>("credentialActions"),40);if(!save("60-credential-storage-replacement"))return 2;
   fixture.client.replyDelayMs["settings.save"]=2500;auto* name=window.findChild<QLineEdit*>("destinationLabel");const auto original=name->text();name->setText("Project archive pending save");window.settings()->flushAutosave();reveal(destinationScroll,window.findChild<QWidget*>("credentialStoreReason"),16);if(!save("61-credential-store-pending"))return 2;if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;fixture.client.replyDelayMs.remove("settings.save");name->setText(original);mode->setCurrentIndex(mode->findData("session"));if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;}
- window.findChild<QToolButton*>("advancedSettings")->setChecked(true);reveal(destinationScroll,window.findChild<QWidget*>("s3LowSpeedBytesPerSecondControl"),40);if(!save("62-destination-connection-expanded"))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3EndpointValue"),0,40);if(!save("settings-endpoint-advanced"))return 2;window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
+ window.findChild<QToolButton*>("advancedSettings")->setChecked(true);reveal(destinationScroll,window.findChild<QWidget*>("s3LowSpeedBytesPerSecondControl"),40);if(!save("62-destination-connection-expanded"))return 2;{auto* storage=window.findChild<QToolButton*>("s3StorageClassHelp");auto* timeout=window.findChild<QToolButton*>("s3RequestTimeoutMsControlHelp");if(!storage||!timeout)return 2;storage->setChecked(true);timeout->setChecked(true);putgd::test::settle(40);reveal(destinationScroll,window.findChild<QWidget*>("s3RequestTimeoutMsControlHelpText"),40);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3StorageClass"),0,40);for(const auto* name:{"s3StorageClass","s3StorageClassHelpText","s3RequestTimeoutMsControlHelpText"})if(window.findChild<QWidget*>(name)->visibleRegion().isEmpty())return 2;if(!save("62b-destination-connection-help"))return 2;storage->setChecked(false);timeout->setChecked(false);}destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3EndpointValue"),0,40);if(!save("settings-endpoint-advanced"))return 2;window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
  window.activateWindow();window.showLocalCopySettings();if(!waitUntil([&]{return window.findChild<QCheckBox*>("keepUploadCopies")->hasFocus();})||!save("63-local-copies-focus"))return 2;
  // A conflict: the file changes under an unsaved draft (a typed, unstored key);
  // Reload from file… sits beside the message on both pages.
@@ -549,10 +834,41 @@ int main(int argc,char** argv){
  window.navigate("settings");window.settings()->showUpdates();catalogUpdate={{"supported",true},{"check",true},{"checkedAt",QJsonValue::Null},{"nextCheckAt",QJsonValue::Null},{"channelSource","repository"},{"channel","nightly"},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}},{"action",QJsonObject{{"kind","software-updates"},{"repository","managed"},{"file","/etc/yum.repos.d/putgd.repo"}}}};fixture.session.refreshSnapshot();if(!waitUntil([&]{return Ui::isLocked(window.findChild<QComboBox*>("updateChannel"));})||!save("65-repository-update-channel"))return 2;
  window.showActionFailure("region",{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}});if(!save("history-tray-output-recovery"))return 2;
  window.showActionFailure("region",{"s3_settings_invalid","Invalid S3 settings; choose the correct bucket and endpoint.",{}});if(!save("history-tray-destination-recovery"))return 2;
- window.navigate("history");window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});window.findChild<QToolButton*>("historyListMode")->click();
- {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("synthetic-many-active-%1").arg(i);op.created=now.addSecs(i+100).toString(Qt::ISODateWithMs);op.action="clipboard";op.state="running";op.phase="uploading";op.settings=settings.snapshot();if(ledger.saveOperation(op))return 2;}}
+ window.navigate("history");window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});window.findChild<QToolButton*>("historyListMode")->click();if(!window.history()->historyState()["detailsWanted"].toBool())window.history()->command({{"action","toggleDetails"}},[](Error,QJsonObject){});
+ {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("synthetic-many-active-%1").arg(i);op.created=now.addSecs(i+100).toString(Qt::ISODateWithMs);op.action="clipboard";op.restore(OperationState::Running);op.phase="uploading";op.settings=settings.snapshot();if(ledger.saveOperation(op))return 2;}}
  window.history()->refresh();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyMoreActive")->text()=="23 more active";})||!save("history-many-active"))return 2;
+ // Work in progress sorts first, under its own heading above the days.
+ window.history()->command({{"action","clearSelection"}},[](Error,QJsonObject){});list->scrollToTop();if(!save("history-in-progress"))return 2;
  window.history()->command({{"action","cancelAll"}},[](Error,QJsonObject){});{auto* dialog=window.history()->findChild<QDialog*>("historyCancelAllConfirmation");if(!dialog||!dialog->isVisible())return 2;putgd::test::settle(100);if(!saveDialog(output,"history-cancel-all-confirmation",*dialog,captures))return 2;}window.history()->command({{"action","keepUploading"}},[](Error,QJsonObject){});
+ // A larger history for the states that need several pages and days: the pager,
+ // day sections with a pinned and a continued heading, the selection bar in the
+ // header, filter chips on one and two lines and the gallery's day sections.
+ {
+  DataDir pagesData("pgp");if(!pagesData.isValid())return 2;SettingsService pagesSettings(pagesData.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!pagesSettings.save(config,{}))return 2;
+  ProviderRegistry pagesRegistry;Source pagesSource;OperationService pagesOperations(pagesData.filePath("data"),pagesSettings,pagesRegistry,pagesSource);installCatalogText(pagesOperations);if(!waitUntil([&]{return pagesOperations.ready();}))return 2;
+  {HistoryStore ledger(pagesOperations.databasePath());const int perDay[]={4,14,9,20,15,6};int serial=0;const auto today=QDateTime::currentDateTime();
+   for(int day=0;day<6;++day)for(int j=0;j<perDay[day];++j,++serial){
+    Operation op;op.id=QString("synthetic-page-%1").arg(serial,3,10,QChar('0'));const auto created=day==0?today.addSecs(-300-j*900):QDateTime(today.date().addDays(-day),QTime(22,0)).addSecs(-j*1500);op.created=created.toUTC().toString(Qt::ISODateWithMs);op.action=QStringList{"region","window","desktop","clipboard"}[serial%4];op.restore(OperationState::Completed);op.settings=pagesSettings.snapshot();const bool proton=serial%3!=0;op.destination.providerId=proton?"proton-drive":"s3";op.destination.profileId=proton?"synthetic-proton":"synthetic-archive";op.destination.profileRevision="synthetic-revision";
+    OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name=QString("Screenshot %1 — %2.png").arg(created.toString("yyyy-MM-dd HH.mm.ss"),QStringList{"Region","Window","Desktop","Clipboard"}[serial%4]);item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=35840+serial*97;item.artifact.previewPath=data.filePath(QString("synthetic-preview-%1.png").arg(serial%8));item.local.status="disabled";
+    item.uploadStatus="uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId=op.id;item.receipt.objectReference=QJsonObject{{"fileUid",op.id}};item.receipt.directUrl="https://captures.example.invalid/"+op.id;
+    if(serial==2||serial==30){op.restore(OperationState::Partial);item.uploadStatus="failed";item.remoteStatus="not_requested";item.shareStatus="not_requested";item.receipt={};item.error={"synthetic_network","Connection interrupted. Try again.",{}};}
+    op.items.append(item);if(ledger.saveOperation(op))return 2;}}
+  HistoryService pagesHistory(pagesOperations);UiSessionFixture pagesFixture(pagesSettings,pagesOperations,pagesHistory);MainWindow pages(pagesFixture.session);pages.resize(1440,960);pages.show();pages.navigate("history");
+  auto* rows=pages.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(rows->model());if(!waitUntil([&]{return !model->busy()&&model->total()==68;}))return 2;
+  auto drive=[&](const QJsonObject& params){bool done=false;pages.history()->command(params,[&](Error e,QJsonObject){if(e)qWarning()<<"catalog ui.history"<<params<<e.code;done=true;});waitUntil([&]{return done;});putgd::test::settle(300);return waitUntil([&]{return !model->busy()&&pages.history()->historyState()["countLabel"].toString()!="";});};
+  auto shoot=[&](const QString& name){putgd::test::settle(450);app.processEvents();const auto image=steadyGrab(pages);if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,pages))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  if(!drive({{"action","inspect"}})||!shoot("history-pages"))return 2;
+  // Scrolled into Yesterday: its heading stays pinned over the rows.
+  for(int row=0;row<model->rowCount();++row)if(model->data(model->index(row),HistoryModel::DayRole).toString()=="Yesterday"){rows->scrollTo(model->index(row+3),QAbstractItemView::PositionAtTop);break;}
+  if(!shoot("history-pinned-day"))return 2;rows->scrollToTop();
+  drive({{"action","select"},{"ids",QJsonArray{model->record(1)["operationId"].toString()}}});drive({{"action","closeDetails"}});if(!shoot("history-details-closed"))return 2;
+  drive({{"action","select"},{"ids",QJsonArray{model->record(0)["operationId"].toString(),model->record(1)["operationId"].toString(),model->record(3)["operationId"].toString()}}});if(!shoot("history-selection-header"))return 2;
+  drive({{"action","clearSelection"}});drive({{"action","openDetails"}});drive({{"action","nextPage"}});if(!shoot("history-page-continued"))return 2;
+  drive({{"action","goToPage"},{"page",1}});drive({{"action","setFilter"},{"key","profileId"},{"value","synthetic-proton"}});if(!shoot("history-filter-chips"))return 2;
+  for(const auto& [key,value]:QList<std::pair<QString,QString>>{{"from",QDate::currentDate().addDays(-5).toString(Qt::ISODate)},{"to",QDate::currentDate().toString(Qt::ISODate)},{"uploadStatus","uploaded"},{"remoteStatus","available"},{"mime","image/png"},{"localStatus","disabled"},{"includeCanceled","true"}})drive({{"action","setFilter"},{"key",key},{"value",value}});
+  pages.resize(1060,680);drive({{"action","inspect"}});if(!shoot("history-filter-chips-more"))return 2;
+  drive({{"action","clearFilters"}});pages.resize(1440,960);drive({{"action","setView"},{"view","gallery"}});if(!shoot("history-gallery-days"))return 2;
+ }
  }
  // Editor: the same widgets the --edit-image helper shows, over a synthetic capture.
  if(!editorIcons().save(QDir(output).filePath("00-editor-icons.png")))return 2;
@@ -566,7 +882,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{61,348,180,28}}}}},
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
-  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
@@ -577,8 +893,8 @@ int main(int argc,char** argv){
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
   // A selected mark with collapsed geometry, then its expanded fields and Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
-  editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews");editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
-  editor.setDestination("Private upload to Project archive");
+  editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews",false);editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
+  editor.setDestination("Private upload to Project archive",false);
   editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
   editor.viewCommand({{"action","geometryDetails"}},code,message);if(!grab("26h-editor-geometry-expanded"))return 2;editor.viewCommand({{"action","geometryDetails"}},code,message);
   editor.viewCommand({{"action","keyboardHelp"}},code,message);putgd::test::settle(100);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.selectTool(editor::Tool::Text);if(!grab("26e-editor-text-stepper-1060"))return 2;editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));editor.resize(1180,820);
@@ -606,21 +922,116 @@ int main(int argc,char** argv){
   {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(doc.imageRect().right()-20,doc.imageRect().bottom()-40,20,20);label.text="Annotation beyond the image edge";const auto id=doc.add(label);editor.documentEdited();if(!grab("25a-editor-finalizing-warning"))return 2;doc.remove(id);editor.documentEdited();}
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
-  editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");
+  editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link",true);
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
   // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
   editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;
-  editor.setDestination("Private upload to Project archive");
+  editor.setDestination("Private upload to Project archive",false);
   const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
   editor.allowClose();editor.close();
  }
  {
+  // #1362: step numbers, pen, ellipse, line, pixelate and Copy image.
+  editor::EditDocument doc(syntheticCapture(2));QJsonArray created;QString code,message;
+  const QJsonArray edits{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{90,112}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{360,236}},{"color","#facc15"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{636,236}},{"color","#3b82f6"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{600,186,300,150}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","line"},{"from",QJsonArray{61,470}},{"to",QJsonArray{640,470}},{"color","#22c55e"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"width",4},{"points",QJsonArray{QJsonArray{70,520},QJsonArray{110,500},QJsonArray{150,530},QJsonArray{195,505},QJsonArray{240,526},QJsonArray{290,498},QJsonArray{340,520}}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{337,194,256,130}},{"style","pixelate"},{"strength",14}}}}};
+  if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.show();
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::Step);if(!grab("30-editor-step"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[1].toDouble()));if(!grab("30a-editor-step-selected"))return 2;
+  editor.selectTool(editor::Tool::Pen);if(!grab("30b-editor-pen"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[5].toDouble()));if(!grab("30c-editor-pen-selected"))return 2;
+  editor.selectTool(editor::Tool::Ellipse);if(!grab("30d-editor-ellipse"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[4].toDouble()));if(!grab("30e-editor-line-selected"))return 2;
+  editor.selectTool(editor::Tool::Blur);editor.viewCommand({{"action","blurStyle"},{"style","pixelate"}},code,message);if(!code.isEmpty()||!grab("30f-editor-pixelate"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[6].toDouble()));if(!grab("30g-editor-pixelate-selected"))return 2;
+  editor.canvas().select(0);editor.showCopied();if(!grab("30h-editor-image-copied"))return 2;
+  editor.exportForCopy([](const QByteArray&,const QSize&,const QString&){});editor.showCopyFailed("the clipboard is not available");if(!grab("30i-editor-copy-failed"))return 2;
+  editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
+  editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
+  editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
+  // #1893: the Style tool with Graphite on, then Paper with large padding seen from Select: the canvas shows the frame.
+  editor.resize(1180,820);editor.setSavedStyle(CaptureStyle::preset("graphite"));editor.selectTool(editor::Tool::Style);
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","graphite"}}},code,message);if(!code.isEmpty()||!grab("30q-editor-style"))return 2;
+  editor.applyCommands({QJsonObject{{"op","style"},{"preset","paper"},{"padding","large"}}},code,message);editor.selectTool(editor::Tool::Select);if(!code.isEmpty()||!grab("30r-editor-style-canvas"))return 2;
+  editor.allowClose();editor.close();
+ }
+ {
+  // #1428: Copy text over a synthetic page with a QR code, and Quick redact.
+  // A fake stands in for the putgd-ocr helper: it returns the drawn words.
+  QImage page(1100,640,QImage::Format_RGB32);page.fill(Qt::white);
+  QList<TextWord> words;QList<int> tops;
+  {
+   QPainter painter(&page);QFont font(Ui::uiFamily());font.setPixelSize(24);painter.setFont(font);painter.setPen(QColor("#1f2328"));const QFontMetrics metrics(font);
+   const QStringList lines{"Release checklist for the November build","Send the signed notes to jane.doe@example.com today","Support line: +1 202 555 0143 between 9 and 5","Staging host 10.20.30.40 stays up until Friday"};
+   int y=70;
+   for(const auto& line:lines){int x=60;tops.append(y-metrics.ascent());for(const auto& word:line.split(' ')){painter.drawText(x,y,word);words.append({word,QRect(x,y-metrics.ascent(),metrics.horizontalAdvance(word),metrics.height()),94});x+=metrics.horizontalAdvance(word+' ');}y+=56;}
+   qr::Matrix matrix;qr::encode("https://example.com/notes/november",matrix);painter.drawImage(QPoint(780,320),qr::image(matrix,6));
+  }
+  TextResult fake;fake.lineTops=tops;fake.words=words;fake.candidates=words;
+  {QStringList text;int line=-1;for(const auto& word:words){const int index=int(tops.indexOf(word.rect.top()));if(index!=line){if(line>=0)text.append("\n");line=index;}else text.append(" ");text.append(word.text);}fake.text=text.join("");}
+  TextCode code;code.format="QRCode";code.text="https://example.com/notes/november";code.length=code.text.size();code.quad={QPoint(780,320),QPoint(1010,320),QPoint(1010,550),QPoint(780,550)};fake.codes={code};
+  editor::EditDocument doc(page);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);
+  editor.text().setRunner([fake](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){return fake;});
+  editor.show();
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::CopyText);if(!waitUntil([&]{return editor.text().state()=="completed";}))return 2;
+  editor.text().layer().select(8,14);editor.textSelectionEdited();if(!grab("30l-editor-copy-text"))return 2;
+  editor.selectTool(editor::Tool::Redact);bool redacted=false;editor.quickRedact({"email","phone","ip"},[&](Error error,QJsonObject){redacted=!error;});if(!waitUntil([&]{return redacted;}))return 2;
+  editor.canvas().select(0);if(!grab("30m-editor-quick-redact"))return 2;
+  // #1618: a selected suggested mark names the kind of text that suggested it in the Redact panel.
+  if(doc.shapes().isEmpty()||doc.shapes().first().suggested!="email")return 2;
+  editor.canvas().select(doc.shapes().first().id);if(!grab("30p-editor-quick-redact-suggested-selected"))return 2;
+  // #1618: the menu with My username and name and My redaction list, the list entry off until Settings has a list, then on; and Remove suggestions once marks were suggested.
+  {auto* menu=editor.findChild<QToolButton*>("quickRedact")->menu();
+   const auto shot=[&](const QString& name){menu->popup(editor.mapToGlobal(QPoint(40,300)));putgd::test::settle(200);app.processEvents();const auto image=menu->grab();menu->hide();if(!image.save(QDir(output).filePath(name+".png")))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+   if(!menu->findChild<QAction*>("quickRedact_name")||!menu->findChild<QAction*>("quickRedact_list")||!menu->findChild<QAction*>("quickRedact_remove"))return 2;
+   if(menu->findChild<QAction*>("quickRedact_list")->isEnabled())return 2; // nothing saved: off, with a tooltip pointing to Settings
+   if(!shot("30n-editor-quick-redact-menu-list-off"))return 2;
+   editor.setRedactList({"build-host-7","Project Aurora"},{"\\bJIRA-\\d+\\b"});
+   if(!menu->findChild<QAction*>("quickRedact_list")->isEnabled())return 2;
+   if(!shot("30o-editor-quick-redact-menu"))return 2;}
+  editor.allowClose();editor.close();
+ }
+ {
+  // #1428: History's Show QR code window, black on white in both themes.
+  QrCodeWindow window("item","screenshot.png","https://example.com/i/Kx7Qm2Zp.png",{});window.show();putgd::test::settle(300);app.processEvents();
+  const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath("69-history-qr-code.png")))return 2;
+  captures.append(QJsonObject{{"file","69-history-qr-code.png"},{"width",image.width()},{"height",image.height()}});window.close();
+ }
+ {
+  // #1804: the prompt before an upload whose capture shows sensitive text, and the one for a check that
+  // couldn't finish. Synthetic capture: a terminal line with a test card number already covered.
+  QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
+  {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);painter.drawText(40,240,"Payment accepted");}
+  const auto prompt=[&](const QString& name,SensitivePrompt::Model model){
+   SensitivePrompt window(std::move(model));window.show();putgd::test::settle(300);app.processEvents();
+   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,window))return false;
+   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});window.hide();return true;};
+  SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+  if(!prompt("70a-sensitive-prompt",found))return 2;
+  SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
+  if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.editAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  if(!prompt("70c-sensitive-prompt-files",files))return 2;
+  // #1820: card numbers on Redact automatically, email on Warn: the card is covered already, the prompt asks about the email.
+  SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;
+  if(!prompt("70d-sensitive-prompt-mixed",mixed))return 2;
+ }
+ {
   // Dark app content must keep a visible image boundary in either scheme.
   QImage image(960,600,QImage::Format_RGB32);image.fill(QColor("#191919"));
   QPainter painter(&image);painter.fillRect(QRect(0,0,960,44),QColor("#202020"));painter.setFont(Ui::font());painter.setPen(QColor("#F0F0EC"));painter.drawText(QRect(24,0,900,44),Qt::AlignVCenter,"Synthetic dark screenshot");painter.end();
-  editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
+  editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath("26l-editor-dark-content.png")))return 2;
   captures.append(QJsonObject{{"file","26l-editor-dark-content.png"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
  }
@@ -635,60 +1046,40 @@ int main(int argc,char** argv){
   if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().isEmpty()&&recover.findChild<QLabel*>("settingsStatus")->property("errorCode").toString()=="synthetic_cancelled";}))return 2;
   recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());if(!waitUntil([&]{return recover.findChild<QLabel*>("settingsStatus")->property("errorCode").toString()=="config_missing"&&!recover.findChild<QLabel*>("configEditorFailure")->isHidden();}))return 2;scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!steadyGrab(recover).save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
  }
- // The private review and the ready control bar, over a synthetic frame.
-  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
+ // #1613: the private review in the mock's four states (open; editing with a
+ // trim, a cut and two covers; compact 1100×700 with the Edits overlay open on
+ // a selected cut; the light theme), over a synthetic frame and synthetic
+ // filmstrip tiles (no clip exists here), and the ready control bar.
+  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.links=true;o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.availableSize=record::ReviewWindow::defaultSize();o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;config.audio.system=true;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
-  if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
-  RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
-  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=steadyGrab(w);if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name)||!writeInventory(output,name,w))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
-  // Each review state also keeps the window's own geometry (header, frame share).
+  QList<QImage> tileImages;for(int i=0;i<8;++i)tileImages.append(syntheticCapture(i).scaled(128,80,Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation));
+  if(auto* strip=review.findChild<record::FilmstripTimeline*>())strip->setTileSource([&tileImages](qint64 at){return tileImages.value(int(at/4000000)%8);});
+  // The frame the resident would decode: the synthetic picture with the covers active at that time.
+  RecordingEdit shown;
+  auto frameAt=[&](qint64 at){auto image=syntheticCapture(2);QPainter p(&image);for(const auto& m:shown.masks){if(!(m.start<=at&&at<m.end))continue;if(m.kind=="solid")p.fillRect(m.rect,Qt::black);else p.drawImage(m.rect,image.copy(m.rect).scaled(std::max(1,m.rect.width()/12),std::max(1,m.rect.height()/12)).scaled(m.rect.size(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation));}return image;};
+  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty()){const auto at=qint64(r->inspect()["playheadUs"].toDouble());view->setFrame(frameAt(at),at);}putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=steadyGrab(w);if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name)||!writeInventory(output,name,w))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  // Each review state also keeps the window's own state (inspect).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});
   if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
-  review.drive({{"action","seek"},{"time",1000000}});if(!shot(review,"30a-review-mask-inactive")||!inspected(review,"30a-review-mask-inactive"))return 2;
-  review.drive({{"action","seek"},{"time",25000000}});if(!shot(review,"30b-review-mask-ended")||!inspected(review,"30b-review-mask-ended"))return 2;
-  review.drive({{"action","seek"},{"time",10000000}});
-  review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
-  review.drive({{"action","addMask"},{"kind","blur"}});if(!shot(review,"31j-review-add-blur-warning")||!inspected(review,"31j-review-add-blur-warning"))return 2;
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31k-review-disabled-blur-warning")||!inspected(review,"31k-review-disabled-blur-warning"))return 2;review.drive({{"action","selectMask"},{"maskId","m-blur"}});review.drive({{"action","dismissBlurTip"}});
-  {review.drive({{"action","showMaskOptions"}});if(!shot(*review.findChild<QMenu*>("maskOptionsMenu"),"31i-review-mask-options"))return 2;review.drive({{"action","closeMaskOptions"}});}
-  {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
-  {const auto size=review.size();review.resize(1342,size.height());if(!shot(review,"31m-review-header-wide")||!inspected(review,"31m-review-header-wide"))return 2;review.resize(size);}
-  {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}
-  for(int i=0;i<3;++i){review.resize(review.minimumSizeHint());putgd::test::settle(40);}if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
-  {QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&review,&inactive);if(!shot(review,"settings-review-inactive-header"))return 2;QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&review,&active);}
-  review.drive({{"action","selectMask"},{"maskId",QJsonValue(QJsonValue::Null)}});review.drive({{"action","dismissBlurTip"}});
-  if(!shot(review,"32a-review-minimum-no-selection")||!inspected(review,"32a-review-minimum-no-selection"))return 2;
-  review.resize(record::ReviewWindow::defaultSize());
-  // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
-  // An export failure and a codec warning, each with its actions, in the status row.
-  review.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});review.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");if(!shot(review,"39-review-status-errors")||!inspected(review,"39-review-status-errors"))return 2;
-  {
-   auto constrainedOptions=o;constrainedOptions.availableSize=QSize(1366,680);
-   record::ReviewWindow constrained(constrainedOptions,config);constrained.setEdit(edit);constrained.show();
-   constrained.drive({{"action","selectMask"},{"maskId","m-blur"}});constrained.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});
-   constrained.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
-   if(auto* view=constrained.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
-   if(!shot(constrained,"67-review-680-workspace")||!inspected(constrained,"67-review-680-workspace"))return 2;
-   {auto* destination=constrained.findChild<QToolButton*>("uploadDestinationMenu");destination->menu()->popup(destination->mapToGlobal(QPoint(0,destination->height())));putgd::test::settle(100);if(!shot(*destination->menu(),"review-destination-full-text"))return 2;destination->menu()->close();}
-   constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
-  }
-  {auto* add=review.findChild<QToolButton*>("addMask");add->menu()->popup(add->mapToGlobal(QPoint(0,add->height())));putgd::test::settle(100);if(!shot(*add->menu(),"31d-review-add-mask-menu"))return 2;add->menu()->close();}
-  {QComboBox* formats=nullptr;for(auto* combo:review.findChildren<QComboBox*>())if(combo->accessibleName()=="Output format")formats=combo;if(!formats)return 2;formats->showPopup();putgd::test::settle(100);if(!shot(*formats->view()->window(),"31e-review-format-menu"))return 2;formats->hidePopup();}
-  review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
-  review.drive({{"action","format"},{"format","gif"}});if(!shot(review,"31f-review-gif-audio")||!inspected(review,"31f-review-gif-audio"))return 2;
-  review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});if(!shot(review,"31g-review-restored-audio")||!inspected(review,"31g-review-restored-audio"))return 2;
-  {auto silentOptions=o;silentOptions.audioRecorded=false;record::ReviewWindow silent(silentOptions,config);silent.show();if(!shot(silent,"31h-review-no-audio")||!inspected(silent,"31h-review-no-audio"))return 2;}
-  // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
-  review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;
-  if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);
-  review.setSavedCopy("/tmp/product-walkthrough.mp4",edit.revision,config);if(!shot(review,"49-review-saved-copy")||!inspected(review,"49-review-saved-copy"))return 2;
-  auto later=edit;later.revision++;review.setEdit(later);if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);if(!shot(review,"50-review-earlier-copy")||!inspected(review,"50-review-earlier-copy"))return 2;
-  review.drive({{"action","dismissSavedCopy"}});
+  RecordingEdit edit;edit.revision=2;edit.canUndo=true;edit.trimStart=2600000;edit.trimEnd=29400000;edit.cuts={RecordingCut{"c-wait",13000000,19500000}};
+  RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8200000;solid.end=12600000;
+  RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(613,194,256,130);blur.start=22100000;blur.end=24900000;
+  edit.masks={solid,blur};shown=edit;review.setEdit(edit);
+  review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.drive({{"action","seek"},{"time",10400000}});
+  if(!shot(review,"31-review-edit")||!inspected(review,"31-review-edit"))return 2;
+  // The edit picture's insets: placing a redaction over a time selection, and Blur's warning.
+  {auto* strip=review.findChild<record::FilmstripTimeline*>();emit strip->timeSelected(8200000,12600000);QTest::keyClick(&review,Qt::Key_X);
+   if(!shot(review,"31a-review-placing")||!inspected(review,"31a-review-placing"))return 2;QTest::keyClick(&review,Qt::Key_Escape);
+   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31b-review-blur-selected")||!inspected(review,"31b-review-blur-selected"))return 2;}
+  {auto* strip=review.findChild<record::FilmstripTimeline*>();review.resize(1100,700);putgd::test::settle(100);emit strip->cutSelected("c-wait");review.drive({{"action","seek"},{"time",19500000}});
+   auto* toggle=review.findChild<QToolButton*>("editsToggle");if(!toggle||!toggle->isVisible())return 2;toggle->click();
+   if(!shot(review,"32-review-compact")||!inspected(review,"32-review-compact"))return 2;
+   toggle->click();review.resize(record::ReviewWindow::defaultSize());}
+  {const auto scheme=Theme::scheme();Theme::setScheme(Theme::Scheme::Light);review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.drive({{"action","seek"},{"time",10400000}});
+   const bool ok=shot(review,"33-review-light")&&inspected(review,"33-review-light");Theme::setScheme(scheme);if(!ok)return 2;}
   // Discard… asks first; the dialog alone, as the desktop shows it over the review.
   review.drive({{"action","discard"}});if(auto* box=review.findChild<QMessageBox*>("confirmAction")){if(!shot(*box,"41-review-discard-confirm"))return 2;}else return 2;review.drive({{"action","keepReviewing"}});
   qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
@@ -710,17 +1101,36 @@ int main(int argc,char** argv){
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
-  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
-  record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
-  record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
-  {auto longOptions=o;longOptions.destination="Project archive for customer support in the European Union";longOptions.uploadSummary="Upload to "+longOptions.destination+" · Shared link";record::ReviewWindow longReview(longOptions,config);longReview.setEdit(edit);longReview.show();if(auto* view=longReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);if(!shot(longReview,"43a-review-long-destination")||!inspected(longReview,"43a-review-long-destination"))return 2;longReview.resize(1342,longReview.height());if(!shot(longReview,"43b-review-long-destination-header")||!inspected(longReview,"43b-review-long-destination-header"))return 2;longReview.hide();}
-  record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
-  for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
-  crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
-  if(!shot(crowded,"48-review-many-masks")||!inspected(crowded,"48-review-many-masks"))return 2;
-  crowded.drive({{"action","selectMask"},{"maskId","lane-0"}});crowded.drive({{"action","nextMaskLanes"}});
-  if(!shot(crowded,"48a-review-next-mask-lanes")||!inspected(crowded,"48a-review-next-mask-lanes"))return 2;
-  crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
+  {
+   // #1515: every state of the scrolling capture's bar, one size for all.
+   record::ScrollBar scroll;
+   scroll.setFinishKey("Esc");
+   for(const auto& state:QStringList{"ready","waiting","following","lost","scrollingToTop","autoScrolling","resuming","finishing"}){
+    scroll.setState(state);scroll.setHeight(state=="ready"||state=="waiting"?950:12340);scroll.setPicture(state!="ready");scroll.setAutoScroll(state=="autoScrolling"||state=="scrollingToTop");scroll.show();
+    if(!shot(scroll,"scroll-bar-"+state))return 2;
+   }
+   // Auto-scroll handed the wheel back: the user moved the mouse, scrolled, or nothing scrolled under the wheel.
+   scroll.setHeight(12340);scroll.setAutoScroll(false);
+   for(const auto& by:QStringList{"pointer","scrolled","no_movement","lost"}){scroll.setPaused(by);if(!shot(scroll,"scroll-bar-paused-"+by))return 2;}
+   // Auto-scroll went back five times and did not find the page (it lays itself out anew).
+   scroll.setState("lost","lost");if(!shot(scroll,"scroll-bar-lost-auto-gave-up"))return 2;
+   // X11 with a `scroll` hotkey bound: Esc and the key, within the bar's one size.
+   scroll.setFinishKey("Esc\nCtrl+Shift+F7");scroll.setState("following");if(!shot(scroll,"scroll-bar-following-x11-keys"))return 2;
+   // Wayland with no `scroll` hotkey bound: no key to name.
+   scroll.setFinishKey(QString());scroll.setState("following");if(!shot(scroll,"scroll-bar-following-no-key"))return 2;
+   scroll.hide();
+  }
+  // #1364: the microphone toggle with its meter, the state without a microphone, and a recording that lost it.
+  {
+   auto withMicrophone=bar;withMicrophone.microphoneAvailable=true;withMicrophone.microphoneLabel="Example USB Microphone";
+   record::ControlBar off(withMicrophone,config);off.fitTo(QRect(0,0,1366,768));off.show();if(!shot(off,"72-record-ready-microphone-off"))return 2;off.hide();
+   auto narrated=config;narrated.audio.microphone=true;narrated.clickHighlights=true;withMicrophone.clickHighlights=true;
+   record::ControlBar on(withMicrophone,narrated);on.fitTo(QRect(0,0,1366,768));on.show();on.setMicrophoneLevel(0.55f);if(!shot(on,"72a-record-ready-microphone-on"))return 2;
+   on.setState("recording");on.setRetained(8400000);on.setMicrophoneLevel(0.35f);if(!shot(on,"72b-record-recording-microphone"))return 2;
+   on.setMicrophoneLost("The microphone was disconnected");on.setMicrophoneLevel(0);if(!shot(on,"72c-record-microphone-lost"))return 2;on.hide();
+   auto none=bar;none.microphoneUnavailable="No microphone is connected.";
+   record::ControlBar absent(none,narrated);absent.fitTo(QRect(0,0,1366,768));absent.show();if(!shot(absent,"72d-record-ready-no-microphone"))return 2;absent.hide();
+  }
   // Pin each reference's hint phase: initial for entire-display/keyboard,
   // expired for the later drag. Rendering speed must not choose those pixels.
   RegionHintFade::setElapsedForTesting(0);
@@ -730,6 +1140,8 @@ int main(int argc,char** argv){
   RegionOverlay screenshot({selectionFrame},nullptr,"Uploads right away to Team Drive · Shared link");screenshot.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"44a-region-badge-outside-selection"))return 2;break;}
   screenshot.cancel();
+  // Delayed capture (#1363): the countdown pill, as every desktop's surface draws it.
+  {CountdownPill countdown(5,[](bool){});countdown.setWindowFlags(Qt::FramelessWindowHint);countdown.show();if(!shot(countdown,"46a-capture-countdown"))return 2;}
   RegionHintFade::setElapsedForTesting(0);
   record::SelectionOverlay selector;selector.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){if(!shot(*w,"47-record-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"45a-record-badge-outside-selection"))return 2;break;}
@@ -744,6 +1156,16 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
+ // The command band at enlarged text: a second run of this catalog, since the
+ // text scale is read once per process (Ui::textScale).
+ if(QGuiApplication::platformName()=="offscreen"&&!recordOnly&&!editorOnly){
+  auto environment=QProcessEnvironment::systemEnvironment();environment.insert("PUTGD_TEXT_SCALE","1.5");environment.insert("PUTGD_CATALOG_BAR_ONLY","1");
+  if(const auto root=environment.value("PUTGD_CATALOG_DATA_DIR");!root.isEmpty())environment.insert("PUTGD_CATALOG_DATA_DIR",QDir(root).filePath("large-text"));
+  QProcess child;child.setProcessEnvironment(environment);child.setProcessChannelMode(QProcess::ForwardedChannels);const auto large=QDir(output).filePath("large-text");child.start(QCoreApplication::applicationFilePath(),{large});
+  if(!child.waitForFinished(180000)||child.exitStatus()!=QProcess::NormalExit||child.exitCode()!=0){qCritical("The enlarged-text command band render failed");return 2;}
+  QFile listed(QDir(large).filePath("large-text-captures.json"));if(!listed.open(QIODevice::ReadOnly))return 2;for(const auto& value:QJsonDocument::fromJson(listed.readAll()).array()){// Images only: inventories are read from the catalog's own folder, and these repeat the default ones.
+  auto capture=value.toObject();capture.remove("controls");capture["file"]="large-text/"+capture["file"].toString();captures.append(capture);}
+ }
  QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"build",sourceBuild()},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures},
   // What this run covered, and every image it wrote (not all are captures),
   // so a partial render cannot pass for a complete one.

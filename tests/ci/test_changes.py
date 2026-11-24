@@ -29,7 +29,7 @@ class Selection(unittest.TestCase):
                             'tests/releases/test_publish.py', 'tests/ci/test_changes.py',
                             'tests/performance/observe_cold_family.py', 'tools/mcp/share_mcp/server.py',
                             '.github/renovate.json', '.github/dependabot.yml', 'tools/maintenance/refresh_pins.py',
-                            '.gitleaks.toml'],
+                            '.gitleaks.toml', 'tools/git-hooks/hooklib.py'],
                            False, False)
 
     def test_surface_driver_pin_and_classifier_render_the_catalog(self):
@@ -52,23 +52,33 @@ class Selection(unittest.TestCase):
         for path in ('packaging/linux/CMakeLists.txt', 'tools/releases/collect.py', 'tools/proton/runtime-lock.json',
                      'cmake/Proton.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                      'THIRD_PARTY_NOTICES.md', 'integrations/gnome/extension.js', '.github/workflows/ci.yml',
-                     'tools/ci/sdk_cache.py', 'tools/verify_dependencies.py', 'docs/build.md',
-                     'docs/proton-drive.md', '.gitignore'):
+                     'tools/ci/sdk_cache.py', 'tools/verify_dependencies.py', 'docs/release/build.md',
+                     'docs/user/proton-drive.md', '.gitignore'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, True)
 
     def test_core_app_and_their_tests_select_the_sanitizer_job(self):
-        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'tests/unit/test_settings.cpp',
-                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h',
+        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'src/ipc/UiControl.cpp', 'tests/unit/test_settings.cpp',
+                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h', 'tests/fuzz/corpus/s3wire/upload',
                      'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
                      'tools/ci/sdk_cache.py'):
             with self.subTest(path=path):
                 self.assertTrue(changes.select([path])['sanitizers'])
-        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings.cpp',
+        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings_appearance.cpp',
                      'tests/unit/test_portable_appimage.py', 'packaging/appimage/AppRun',
                      '.github/workflows/package.yml', 'docs/ci.md'):
             with self.subTest(path=path):
                 self.assertFalse(changes.select([path])['sanitizers'])
+
+    def test_every_included_cmake_file_selects_what_the_root_file_does(self):
+        def jobs(path):
+            return {job: changes.select([path])[job] for job in ('build', 'packages', 'sanitizers', 'pipewire')}
+        included = sorted((ROOT / 'cmake').glob('*.cmake'))
+        self.assertIn(ROOT / 'cmake/TestsS3.cmake', included)
+        self.assertEqual(jobs('CMakeLists.txt'), {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True})
+        for path in included:
+            with self.subTest(path=path.name):
+                self.assertEqual(jobs(path.relative_to(ROOT).as_posix()), jobs('CMakeLists.txt'))
 
     def test_recorder_sources_and_the_pipewire_check_select_the_pipewire_job(self):
         for path in ('src/record/WaylandAcquisition.cpp', 'src/record/RecordingPipeline.cpp'):
@@ -95,6 +105,29 @@ class Selection(unittest.TestCase):
         self.assertSelects(['docs/ci.md', 'packaging/appimage/AppRun'], True, True)
         self.assertSelects([], False, False)
 
+
+class CatalogSelection(unittest.TestCase):
+    def test_unlisted_inputs_skip_catalog_without_skipping_source_builds(self):
+        for path in ('src/storage/s3/S3Driver.cpp', 'src/core/Settings.cpp',
+                     'src/core/RecordingModel.h', 'src/app/OperationService.cpp',
+                     'src/record/RecordingPipeline.cpp', 'src/record/AvSync.cpp',
+                     'schemas/config.schema.json', 'CMakeLists.txt', 'CMakePresets.json',
+                     'tests/fixtures/Waits.h', 'tests/ci/test_catalog_references.py',
+                     'tools/lab/surface_driver/inspect.py', 'tools/lab/surface_driver/context.py',
+                     'some/new/directory/file.txt', 'tools/lab/new_inventory.py',
+                     'tests/unit/test_settings.cpp', 'tools/lab/lab.py', 'docs/ci.md'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['catalog'])
+        for path in ('src/core/Settings.cpp', 'src/storage/s3/S3Driver.cpp',
+                     'src/record/RecordingPipeline.cpp', 'some/new/directory/file.txt'):
+            with self.subTest(build=path):
+                self.assertTrue(changes.select([path])['build'])
+
+    def test_unknown_base_keeps_full_selection(self):
+        result = changes.select(None)
+        self.assertIsNone(result['paths'])
+        for group in ('catalog', 'build', 'packages', 'sanitizers', 'pipewire'):
+            self.assertTrue(result[group], group)
 
 class GitDiff(unittest.TestCase):
     def test_deleted_and_renamed_paths_are_both_reported(self):

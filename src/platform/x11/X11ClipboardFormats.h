@@ -3,7 +3,7 @@
 #include <QList>
 #include <functional>
 namespace putgd {
-// X11 counterpart of kdeClipboardImportFormats, in the existing X11 text order.
+// X11 counterpart of dataControlImportFormats, in the existing X11 text order.
 // The discovery callback lists Qt image types, which instantiates every
 // installed image plugin. Defer it for PNG and for offers whose other targets
 // are recognized text/file-list formats or selection atoms such as TARGETS,
@@ -26,7 +26,7 @@ inline QList<QByteArray> x11ClipboardImportTargets(const QList<QByteArray>& offe
   }
   if(!standardOnly) {
    auto imageTypes=discover();imageTypes.removeAll("image/png");imageTypes.prepend("image/png");
-   for(const auto& mime:imageTypes)if(offered.contains(mime))targets.append(mime);
+   for(const auto& mime:std::as_const(imageTypes))if(offered.contains(mime))targets.append(mime);
   }
  }
  for(const char* name:{"UTF8_STRING","text/plain;charset=utf-8","text/plain"})

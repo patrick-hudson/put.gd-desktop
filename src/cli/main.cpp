@@ -30,6 +30,8 @@ int main(int argc,char** argv) {
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
  if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials through Settings.");
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials through Settings.");
+ // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
+ if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");
  if(parser.isSet("params-stdin")&&args.size()==2)return error("invalid_request","Do not combine --params-stdin with positional parameters");
  QByteArray bytes=args.size()==2?args[1].toUtf8():QByteArray("{}");
  if(parser.isSet("params-stdin")){bytes.clear();char chunk[8192];while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){bytes.append(chunk,qsizetype(count));if(bytes.size()>1024*1024)break;}if(std::ferror(stdin))return error("invalid_request","Cannot read JSON parameters from standard input");}
@@ -49,6 +51,12 @@ int main(int argc,char** argv) {
   // The resident has its own working folder: send an absolute path.
   if(parser.isSet("output"))options["output"]=QDir::cleanPath(QDir::current().absoluteFilePath(parser.value("output")));
   params=QJsonDocument(options);
+ }
+ // settings.importUploader (#1361): the resident reads the .sxcu file itself and has
+ // its own working folder, so a relative path is resolved here. The file's contents
+ // never pass through this process.
+ if(args[0]=="settings.importUploader"&&params.object()["path"].isString()&&!params.object()["path"].toString().isEmpty()) {
+  auto object=params.object();object["path"]=QDir::cleanPath(QDir::current().absoluteFilePath(object["path"].toString()));params=QJsonDocument(object);
  }
  const auto path=parser.isSet("socket")?parser.value("socket"):putgd::LocalServer::defaultSocketPath();QLocalSocket socket;socket.connectToServer(path);
  if(!socket.waitForConnected(3000))return error("session_unavailable","Start the resident put.gd app in this user session");

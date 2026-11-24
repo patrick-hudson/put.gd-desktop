@@ -1,0 +1,59 @@
+{
+  "sourceBuiltRuntimeReused": true,
+  "verifiedNativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+  "nativePinsMatchPriorProof": true,
+  "exitCode": 0,
+  "finishedUtc": "2026-11-13T23:54:52.380300+00:00",
+  "result": {
+    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+    "proofHelperSha256": "a12b9b2bd442c48e652482a5d97c9b34479d7ae62f591bef9640204ec6879f0c",
+    "nativeCryptoProofSha256": "0e29133c684f087011897bd6ba52d276cc12904f0fdbcb8e79b996ac2b0ec4cf",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.4-canary.1+38afee6c8"
+    ],
+    "nativeVersion": "1.4.4",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 77,
+    "compiledStdioCases": 12,
+    "compiledSessionCases": 3,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "productionHelperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "applicationSourceOverlayVerified": true,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "retention": {
+    "archive": "/var/home/patrick/archives/proton-native-relink-1399/native-proof-34dda9fa-complete.tar.gz",
+    "sha256": "ce61c06ef1f12dc398eef6a722890c006a4bae38ba758df256590af9f8a780cf",
+    "bytes": 875332209,
+    "restoreIndex": "/var/home/patrick/archives/proton-native-relink-1399/restore-index-34dda9fa.json",
+    "restoreIndexSha256": "1da1da6177dfe8c7903a6ca27247185e0094c4b7008222c8a6ae712c5d6a012e",
+    "verifiedReadback": true,
+    "memberCount": 7434,
+    "priorArchiveRequiredForNativeSourcesAndToolchain": "/var/home/patrick/archives/proton-native-relink-1399/native-proof-evidence-complete.tar.gz",
+    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+    "priorArchiveSha256": "a53943e961911f2959c74d5a486820c55a3f87ccdc84a37b15de6ff3bcd372a4"
+  },
+  "testAssertionsObserved": 595
+}

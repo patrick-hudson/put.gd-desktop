@@ -1,21 +1,119 @@
 #pragma once
 #include "editor/EditorCanvas.h"
+#include "editor/EditorCommands.h"
+#include "core/Error.h"
+#include "core/TextJob.h"
+#include "editor/QuickRedact.h"
+#include "editor/TextLayer.h"
+#include <QJsonArray>
+#include <QUrl>
+#include <memory>
 #include "Ui.h"
 #include <QHash>
 #include <QJsonObject>
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QTimer;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
+class QTimer;class QCheckBox;class QThread;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
+// Text recognition in the editor (#1428): the Copy text tool and Quick redact
+// read one result per recognition revision. The editor starts the putgd-ocr
+// helper as its own child through TextJob, on a worker thread that outlives it.
+//
+// What recognition reads is the source inside the crop with every Redact mark
+// applied as opaque black; arrows, text, blur and highlight are not part of it.
+// The revision changes only with a Redact mark or the crop (TextLayer::
+// inputSignature). A new revision cancels a running job and discards its
+// result, the selection and the codes; a late result for an old revision is
+// rejected; and only while Copy text is the active tool does it start again.
+// Any word, candidate or code touching a Redact mark is dropped.
+class EditorTextRecognition final:public QObject {
+ Q_OBJECT
+public:
+ // How a job runs: TextJob in production, a fake in tests.
+ using Runner=std::function<TextResult(QImage image,const textjob::Options&,Error&,TextJob::Cancel)>;
+ explicit EditorTextRecognition(editor::EditDocument&,QObject* parent=nullptr);
+ ~EditorTextRecognition() override;
+ void setRunner(Runner);
+ void setLanguages(QStringList languages) {languages_=std::move(languages);}
+ // Unhinged mode (#1937): recognition uses every CPU.
+ void setAllCores(bool allCores) {allCores_=allCores;}
+ // idle (nothing for this revision), recognizing, done, failed.
+ QString state() const {return state_;}
+ Error error() const {return error_;}
+ // The identity of the current result; 0 without one. It changes with every result.
+ quint64 identity() const {return layer_.identity();}
+ // Counts every change to what recognition reads (a Redact mark or the crop), so a change that is undone is still a new revision.
+ quint64 revision() const {return revision_;}
+ editor::TextLayer& layer() {return layer_;}
+ const editor::TextLayer& layer() const {return layer_;}
+ // Every recognized word, unfiltered, with what touches a Redact mark dropped (Quick redact).
+ const QList<editor::RecognizedWord>& candidates() const {return candidates_;}
+ // #1941: the decoded codes whose content holds a secret (quickRedact::codeSecret), by kind and corners only,
+ // read from the whole result before codes under a Redact mark are dropped from it: such a code can still
+ // decode through its error correction. For Quick redact; the content itself is not kept here.
+ struct SecretCode {QString kind;QPolygon quad;};
+ const QList<SecretCode>& secretCodes() const {return secretCodes_;}
+ bool truncated() const {return truncated_;}
+ // Languages asked for that had no data (#1804: the sensitive text check reads that as unfinished).
+ QStringList languagesSkipped() const {return languagesSkipped_;}
+ // The Copy all text clipboard text: the words by line with each text code
+ // on a line of its own (textjob::copyText's rule), rebuilt from what is left.
+ // withhold (#1941): a copy an agent asked for, a secret code's content replaced by quickRedact::withheldText.
+ QString allText(bool withhold=false) const;
+ // Recognizes the current revision unless it has a result or a job for it
+ // runs; after a failure it tries again.
+ void start();
+ // Copy text is the active tool: a new revision starts recognition by itself.
+ void setActive(bool);
+ bool active() const {return active_;}
+ // Call after any change to the document; a new revision starts over.
+ void documentChanged();
+ // Quick redact and redactText: runs `done` once the current revision has a
+ // result (starting or joining its job), or with edit_stale when a Redact mark
+ // or the crop changes first, or with the job's failure.
+ void whenRecognized(std::function<void(Error)> done);
+ // editor.inspect's text block: state, result, words, codes, selection, truncated.
+ QJsonObject inspect() const;
+ // Code content Open link may open (decision 10): http or https with a host,
+ // no control character, at most 2,048 characters. Invalid for anything else.
+ static QUrl openableLink(const QString& content);
+ // Code content as its row shows it: any unusual character escaped as \u{XXXX}.
+ static QString shown(const QString& content);
+ // The input of the current revision: the crop, with Redact marks black.
+ static QImage input(const QImage& base,const QRect& crop,const QList<QRect>& redactions);
+signals:
+ void changed();
+private:
+ void run();
+ void finished(quint64 revision,Error,std::shared_ptr<TextResult>,const QStringList& kinds);
+ void fail(const Error&);
+ editor::EditDocument& doc_;
+ Runner runner_;
+ QStringList languages_;
+ bool allCores_=false;
+ editor::TextLayer layer_;
+ QList<editor::RecognizedWord> candidates_;
+ QList<SecretCode> secretCodes_;
+ QList<int> lineTops_;
+ bool truncated_=false,active_=false,restart_=false;QStringList languagesSkipped_;
+ QJsonValue detection_;  // #1981: the result's script check, null when it did not run
+ QString state_="idle";Error error_;
+ QByteArray signature_;quint64 revision_=1,jobRevision_=0,nextIdentity_=1;
+ TextJob::Cancel cancel_;
+ QPointer<QThread> worker_;
+ QList<std::function<void(Error)>> waiting_;
+};
+
 // One themed review window for one image. It owns no storage, credentials or
 // history; the hosting helper turns its explicit Upload into a private export.
 class EditorWindow final:public QWidget {
  Q_OBJECT
 public:
  EditorWindow(editor::EditDocument&,QWidget* parent=nullptr);
+ ~EditorWindow() override;
  editor::EditorCanvas& canvas() {return *canvas_;}
  void setBusy(const QString& message);
  void setFailure(const QString& message);
@@ -40,7 +138,8 @@ public:
  void setRecentColors(const QStringList&);
  QStringList recentColors() const {return recentColors_;}
  // The output Upload uses, as the resident phrases it, shown in the footer.
- void setDestination(const QString&);
+ // `links`: whether the destination gives a link (commandtext::givesLinks); the mode comes from it.
+ void setDestination(const QString&,bool links);
  // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();
@@ -69,9 +168,62 @@ public:
  // window's own controls (see ImageEditor.cpp for the actions).
  QJsonObject viewState() const;
  QJsonObject viewCommand(const QJsonObject& params,QString& code,QString& message);
+ // Copy image (Ctrl+Shift+C): the host hands the PNG from exportForCopy to
+ // the resident, which owns the clipboard; the window shows the outcome.
+ bool requestCopy();
+ // `stage` runs on the worker after encoding (the host writes and hashes the
+ // staged file there); `done` gets the PNG, its size and stage's result.
+ using ExportDone=std::function<void(const QByteArray& png,const QSize& size,const QString& staged)>;
+ bool exportForCopy(ExportDone done,std::function<QString(const QByteArray&)> stage={});
+ bool copying() const {return copying_;}
+ void showCopied();
+ void showCopyFailed(const QString& reason);
+ // Copy text (#1428): the tool's recognition and selection.
+ EditorTextRecognition& text() {return *text_;}
+ // The resident owns the clipboard: the host sends it the text and `done`
+ // gets its answer (copy_suppressed when the user copied something since).
+ using TextCopier=std::function<void(const QString& text,std::function<void(Error)> done)>;
+ void setTextCopier(TextCopier copier) {textCopier_=std::move(copier);}
+ // Copy selection, Copy all text and a code's Copy and Open link, as the
+ // panel's buttons. `done` gets {copyStatus, characters} or the launch result.
+ using TextDone=std::function<void(Error,QJsonObject)>;
+ // agent (#1941): asked for through a session command, so a code holding a secret is withheld: replaced in
+ // the copied text, refused as a code of its own (code_withheld). A person's own copy keeps it.
+ void copyRecognizedText(bool all,TextDone done={},bool agent=false);
+ void copyCode(int index,TextDone done={},bool agent=false);
+ void openCode(int index,TextDone done={});
+ // After an agent changed the text selection: the tint and the panel follow.
+ void textSelectionEdited();
+ // Quick redact (#1428): suggested Redact marks for these categories, added as
+ // one undo step once the current revision is recognized (starting or joining
+ // its job). edit_stale when a Redact mark or the crop changes first. `done`
+ // gets {created: [shape ids], counts: {category: matches}}.
+ // #1618: `terms` and `patterns` (an agent's redactText) join the saved ones for this run only.
+ // `first` (#1820): categories matched before the others, so their words go to them even where another kind matches too.
+ void quickRedact(const QStringList& categories,TextDone done={},QStringList terms={},QStringList patterns={},QStringList first={});
+ // Checks one redactText command: categories (1 to 7 of quickRedact::categories()),
+ // and optional terms and patterns (#1618) that follow the Settings rules and need
+ // the list category. On failure `code` is edit_command_invalid and `message` names the
+ // entry's position, never its text. Pure: it starts no recognition.
+ static bool parseRedactText(const QJsonObject& entry,QStringList& categories,QStringList& terms,QStringList& patterns,QString& code,QString& message);
+ // How long Quick redact's result waits for a drag in progress before it gives up and adds nothing; the agent
+ // supervisor answers editor_timeout after about this long, so a late result must not add marks nobody asked for.
+ void setQuickRedactGestureWaitMs(int ms){quickRedactGestureWaitMs_=ms;}
+ // The saved Quick redact words and patterns (Settings), from the bootstrap.
+ void setRedactList(QStringList terms,QStringList patterns);
+ // #1893: the look saved in Settings → Capture → Capture style, offered as Saved look when it
+ // is not one of the presets. Seeded from the bootstrap.
+ void setSavedStyle(const CaptureStyle& style);
+ // editor.apply: the commands as one undo step, answered with the ids created and the document's state. A pointer
+ // drag in progress owns the document's current undo step, so any change an agent asks for meanwhile answers
+ // editor_busy instead of joining a step the drag may roll back (U13). On failure `code` and `message` say why.
+ QJsonObject applyCommands(const QJsonArray& commands,QString& code,QString& message);
+ // Removes every suggested mark as one undo step; hand-drawn marks stay. Returns how many.
+ int removeSuggestions();
 signals:
  void uploadRequested();
  void cancelRequested();
+ void copyRequested();
 protected:
  void closeEvent(QCloseEvent*) override;
  void showEvent(QShowEvent*) override;
@@ -113,7 +265,9 @@ private:
  QToolButton* status_=nullptr;
  QToolButton *undo_=nullptr,*redo_=nullptr;
  QToolButton* savedMore_=nullptr;
- QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
+ QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr,*blurStyleRow_=nullptr,*stepRow_=nullptr;
+ QToolButton *blurStyle_=nullptr,*pixelateStyle_=nullptr;
+ QLabel* stepLabel_=nullptr;QSpinBox* stepNumber_=nullptr;QPointer<QThread> copyThread_;bool syncingStep_=false;int stepPixels_=editor::defaultStepPixels;quint64 copyFeedback_=0;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
  Ui::ElidedLabel* saveTarget_=nullptr;
@@ -127,6 +281,8 @@ private:
  QWidget *geometryFields_=nullptr,*geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
  Ui::WindowHeader* header_=nullptr;
+ QPushButton *copyImage_=nullptr;QJsonObject lastCopy_;
+ QGridLayout* toolbarGrid_=nullptr;QBoxLayout *toolsLayout_=nullptr,*actionsLayout_=nullptr;QWidget* actionsSeparator_=nullptr;bool toolbarWrapped_=false;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
@@ -142,6 +298,17 @@ private:
  // and the document generation the saved copy holds.
  QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0,folderRequest_=0;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
- bool closing_=false,busy_=false,shown_=false,savingCopy_=false;
+ bool closing_=false,busy_=false,shown_=false,savingCopy_=false,copying_=false;
+ // Copy text: state, Copy selection and Copy all text, the note, codes, the cut line.
+ EditorTextRecognition* text_=nullptr;TextCopier textCopier_;
+ QWidget *copyTextRow_=nullptr,*codeList_=nullptr;QVBoxLayout* codeLayout_=nullptr;quint64 codesShown_=~quint64(0);
+ QLabel *textState_=nullptr,*textTruncated_=nullptr,*textFeedback_=nullptr,*codesTitle_=nullptr;QPushButton *copySelection_=nullptr,*copyAllText_=nullptr;
+ void syncText();void rebuildCodes();void textOutcome(const QString& what,Error error,int characters,TextDone done);
+ // #1893: the Style tool's panel: on or off for this image, the look and the padding.
+ QWidget* styleRow_=nullptr;QCheckBox* styleEnabled_=nullptr;QComboBox* styleLook_=nullptr;QToolButton* stylePadding_[3]={};QLabel* styleSize_=nullptr;
+ CaptureStyle savedStyle_;bool syncingStyle_=false;
+ void syncCaptureStyle();void changeCaptureStyle(const std::function<void(CaptureStyle&)>& change);
+ QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
+ QStringList redactTerms_,redactPatterns_;int quickRedactGestureWaitMs_=textjob::maximumDeadlineMs;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
 };
 }

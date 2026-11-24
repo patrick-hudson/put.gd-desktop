@@ -16,6 +16,11 @@ from audit_native import audit_tree, command, sha256
 
 
 def package_metadata(package: Path, kind: str) -> dict:
+    if kind == "PACMAN":
+        from pacman_repo import info
+        fields = info(package)
+        return {"format": "PACMAN", "name": fields['pkgname'][0], "version": fields['pkgver'][0],
+                "architecture": fields['arch'][0], "requires": fields.get('depend', [])}
     if kind == "DEB":
         with subprocess.Popen(["dpkg-deb", "--fsys-tarfile", str(package)], stdout=subprocess.PIPE) as process:
             with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
@@ -57,7 +62,27 @@ def package_metadata(package: Path, kind: str) -> dict:
 # Qt loads image plugins by name, so neither dpkg-shlibdeps nor RPM's
 # dependency generator sees them: History reads WebP recordings and images
 # through the WebP plugin (#189), which the distros package apart from Qt GUI.
-RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins",), "RPM": ("qt6-qtimageformats",)}
+# The SFTP destination (#1871) runs the OpenSSH client as a program, which no
+# generator sees either.
+RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins", "tesseract-ocr-eng", "openssh-client"),
+                    "RPM": ("qt6-qtimageformats", "tesseract-langpack-eng", "openssh-clients")}
+
+
+# #1981: the script check's data (osd and one language a script), recommended
+# so that a page in another script is read in its own language. Kept in step
+# with packaging/linux/CMakeLists.txt and src/ocr/Script.cpp.
+SCRIPT_LANGUAGES = ("chi_sim", "jpn", "kor", "rus", "ara", "heb", "hin", "tha", "ell")
+RECOMMENDED_PACKAGES = {"DEB": ("tesseract-ocr-osd",) + tuple("tesseract-ocr-" + name.replace("_", "-") for name in SCRIPT_LANGUAGES),
+                        "RPM": ("tesseract-osd",) + tuple("tesseract-langpack-" + name for name in SCRIPT_LANGUAGES)}
+
+
+def require_recommended_packages(metadata: dict) -> None:
+    recommends = metadata["recommends"]
+    entries = recommends.split(",") if isinstance(recommends, str) else recommends
+    names = {alternative.split()[0] for entry in entries for alternative in entry.split("|") if alternative.strip()}
+    missing = [name for name in RECOMMENDED_PACKAGES[metadata["format"]] if name not in names]
+    if missing:
+        raise ValueError(metadata["format"] + " does not recommend " + ", ".join(missing))
 
 
 def require_runtime_packages(metadata: dict) -> None:
@@ -114,6 +139,7 @@ def main():
         package = packages[0]
         metadata = package_metadata(package, args.format)
         require_runtime_packages(metadata)
+        require_recommended_packages(metadata)
         if metadata["name"] != "putgd" or metadata["version"] != expected["packageVersion"]:
             raise ValueError("Native package name/version differs from compiled build manifest")
         extracted = output / "extracted"

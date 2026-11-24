@@ -1,11 +1,14 @@
 #include "S3WorkerProtocol.h"
 #include "IpAddress.h"
 #include "PublicUrl.h"
+#include "S3Journal.h"
 #include "S3Multipart.h"
 #include <QDir>
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QUrl>
+#include <QDateTime>
+#include <QUrlQuery>
 #include <cmath>
 #include <initializer_list>
 #include <limits>
@@ -61,10 +64,13 @@ bool webUrl(const QJsonValue& value, bool allowHttpLoopback) {
            (url.scheme() == QStringLiteral("https") ||
             (allowHttpLoopback && url.scheme() == QStringLiteral("http") && classifyIpAddress(url.host()).loopback));
 }
-bool settings(const QJsonObject& object) {
+bool settings(const QJsonObject& input) {
+    auto object=input;object.remove("linkMode");object.remove("linkValidityDays");
+    if(input.contains("linkMode")&&!choice(input.value("linkMode"),{"public","presigned"}))return false;
+    if(input.contains("linkValidityDays")&&!integer(input.value("linkValidityDays"),1,7))return false;
     if (!keys(object, {"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase",
                        "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"})) return false;
-    if (!text(object["bucket"], 3, 63) || !text(object["region"], 1, maximumFrameBytes) || !text(object["objectPrefix"], 0, 1022) ||
+    if (!text(object["bucket"], 3, 63) || !text(object["region"], s3CloudflareR2Endpoint(object["endpoint"].toString()) ? 0 : 1, maximumFrameBytes) || !text(object["objectPrefix"], 0, 1022) ||
         !webUrl(object["endpoint"], true) || (!object["publicUrlBase"].isNull() && !webUrl(object["publicUrlBase"], true)) ||
         !choice(object["storageClass"], {"STANDARD", "REDUCED_REDUNDANCY", "STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}) ||
         !choice(object["aclMode"], {"public-read", "omit"}) || !choice(object["addressing"], {"path", "virtual", "auto"})) return false;
@@ -82,15 +88,13 @@ bool credentialReference(const QJsonObject& object) {
              object["reference"].toString().toUcs4().size() <= 256));
 }
 QString objectKey(const Destination& destination, const QString& candidate) {
-    auto prefix = destination.settings["objectPrefix"].toString();
-    if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
-    return prefix + candidate;
+    return s3ObjectKey(destination.settings, candidate);
 }
 // checkName emits a two-field absent reference or a three-field present reference.
 // Receipts have exactly five fields. No generic provider object is accepted here.
 bool reference(const QJsonObject& object, bool receipt) {
     if (receipt) {
-        return keys(object, {"schemaVersion", "key", "versionId", "sha256", "bytes"}) &&
+        return keys(object, {"schemaVersion", "key", "versionId", "sha256", "bytes"}, {"linkExpiresAt"}) &&
                integer(object["schemaVersion"], 1, 1) && text(object["key"], 1, 1024) &&
                text(object["versionId"], 0, 4096) && hash(object["sha256"]) &&
                integer(object["bytes"], 0, maximumArtifactBytes);
@@ -111,7 +115,7 @@ bool resumeJournal(const QJsonObject& object) {
     static const QRegularExpression uploadId(QStringLiteral("\\A[A-Za-z0-9+/=._~-]{1,1024}\\z"));
     return !created || (text(object["uploadId"], 1, 1024) && uploadId.match(object["uploadId"].toString()).hasMatch() &&
                         text(object["key"], 1, 1024) && integer(object["bytes"], 0, maximumArtifactBytes) &&
-                        hash(object["sha256"]) && choice(object["phase"], {"parts", "completing"}));
+                        hash(object["sha256"]) && s3UploadPhase(object["phase"]));
 }
 bool deleteStatus(const QJsonValue& value) {
     return choice(value, {"removed", "missing", "changed", "failed", "unknown", "hidden_version_retained", "unsupported_safe_removal"});
@@ -119,8 +123,8 @@ bool deleteStatus(const QJsonValue& value) {
 QJsonValue optionalReceipt(const QString& status, const QString& success, const StorageReceipt& receipt) {
     return status == success ? QJsonValue(receipt.toJson()) : QJsonValue(QJsonValue::Null);
 }
-bool resultReceipt(const QJsonValue& value, bool success, StorageReceipt& receipt) {
-    return success ? value.isObject() && decode(value.toObject(), receipt) : value.isNull();
+bool resultReceipt(const QJsonValue& value, bool success, StorageReceipt& receipt, const QString& recordedLink = {}) {
+    return success ? value.isObject() && decode(value.toObject(), receipt, recordedLink) : value.isNull();
 }
 bool errorDetails(const QJsonObject& details) {
     // Error.details is an open application-owned JSON object, including durable
@@ -135,9 +139,7 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("curlCode") && !integer(details["curlCode"], -1, 999)) return false;
     if (details.contains("sdkRetryable") && !details["sdkRetryable"].isBool()) return false;
     if (details.contains("elapsedMs") && !integer(details["elapsedMs"], 0, 86400000)) return false;
-    if (details.contains("requestStage") && !choice(details["requestStage"], {"name_head", "object_head", "current_head", "upload_put",
-            "upload_create", "upload_part", "upload_list_parts", "upload_complete", "upload_abort",
-            "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"})) return false;
+    if (details.contains("requestStage") && !s3Stage(details["requestStage"])) return false;
     if (details.contains("partNumber") && !integer(details["partNumber"], 1, s3MaximumParts)) return false;
     if (details.contains("incompleteUpload") && !details["incompleteUpload"].isBool()) return false;
     if (details.contains("itemIndex") && !integer(details["itemIndex"], 0, 9999)) return false;
@@ -198,19 +200,39 @@ bool decode(const QJsonObject& object, Artifact& artifact) {
     artifact = Artifact::fromJson(object);
     return true;
 }
-bool decode(const QJsonObject& object, StorageReceipt& receipt) {
+namespace {
+// signedLink: an expiring link carries its signed query. A destination test's result never
+// does (#1680): it holds the link without its query, and one that has a query is refused.
+bool receiptFrom(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink, bool signedLink) {
     StorageReceipt value;
     if (!bounded(object) || !keys(object, {"schemaVersion", "destination", "objectReference", "concurrencyToken", "publicationId", "directUrl"}) ||
         !integer(object["schemaVersion"], 1, 1) || !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
         !object["objectReference"].isObject() || !reference(object["objectReference"].toObject(), true) ||
-        !text(object["concurrencyToken"], 1, 4096) || !text(object["publicationId"], 1, 4096) || !webUrl(object["directUrl"], true)) return false;
+        !text(object["concurrencyToken"], 1, 4096) || !text(object["publicationId"], 1, 4096) || !text(object["directUrl"], 1, maximumFrameBytes)) return false;
     value.objectReference = object["objectReference"].toObject();
     value.concurrencyToken = object["concurrencyToken"].toString();
     value.publicationId = object["publicationId"].toString();
     value.directUrl = object["directUrl"].toString();
-    if (value.directUrl != publicObjectUrl(value.destination.settings, value.objectReference["key"].toString()) || value.validate()) return false;
+    auto unsignedSettings=value.destination.settings;unsignedSettings["publicUrlBase"]=QJsonValue::Null;
+    const QUrl url(value.directUrl);auto origin=url;origin.setQuery(QString{});
+    // Receipts made before #1582 wrote the URL for the key exactly as recorded. That
+    // spelling is accepted only as the link the checked receipt already holds, never
+    // for a new publication, whose link must name the key it is stored under.
+    const auto key=value.objectReference["key"].toString();
+    const bool kept=!recordedLink.isEmpty()&&value.directUrl==recordedLink;
+    auto names=[&key,kept](const QString& url,const QJsonObject& settings){return url==publicObjectUrl(settings,key)||(kept&&url==s3LegacyPublicObjectUrl(settings,key));};
+    if(value.destination.settings.value("linkMode")=="presigned") {
+        if(!names(origin.toString(QUrl::FullyEncoded),unsignedSettings) ||
+           (signedLink ? !QUrlQuery(url).hasQueryItem("X-Amz-Signature") : url.hasQuery() || url.hasFragment()) ||
+           !QDateTime::fromString(value.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs).isValid())return false;
+    } else if(!names(value.directUrl,value.destination.settings))return false;
+    if(value.validate())return false;
     receipt = std::move(value);
     return true;
+}
+}
+bool decode(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink) {
+    return receiptFrom(object, receipt, recordedLink, true);
 }
 bool decode(const QJsonObject& object, Error& error) {
     static const QRegularExpression codePattern(QStringLiteral("\\A[a-z][a-z0-9_]{0,127}\\z"));
@@ -338,13 +360,13 @@ bool decode(const QJsonObject& object, UploadResult& result) {
     result = std::move(value);
     return true;
 }
-bool decode(const QJsonObject& object, StatResult& result) {
+bool decode(const QJsonObject& object, StatResult& result, const StorageReceipt& checked) {
     StatResult value;
     if (!bounded(object) || !keys(object, {"status", "receipt", "error"}) ||
         !choice(object["status"], {"own", "foreign", "missing", "unknown"}) ||
         !object["error"].isObject() || !decode(object["error"].toObject(), value.error)) return false;
     value.status = object["status"].toString();
-    if (!resultReceipt(object["receipt"], value.status == QStringLiteral("own"), value.receipt) ||
+    if (!resultReceipt(object["receipt"], value.status == QStringLiteral("own"), value.receipt, checked.directUrl) ||
         (value.status != QStringLiteral("unknown") && value.error)) return false;
     result = std::move(value);
     return true;
@@ -368,7 +390,7 @@ bool validateRequest(const QString& method, const QJsonObject& object) {
         return decode(object, request);
     }
     if (method == QStringLiteral("reconcile")) { UploadRequest request; return decodeReconcileRequest(object, request); }
-    if (method == QStringLiteral("stat")) {
+    if ((method == QStringLiteral("stat") || method == QStringLiteral("refreshLink"))) {
         StorageReceipt receipt;
         return decodeReceiptRequest(object, receipt);
     }
@@ -410,10 +432,16 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     if (!choice(object["uploadStatus"], {"uploaded", "collision", "failed", "unknown"})) return false;
     if (object["uploadStatus"] != QJsonValue("uploaded")) return keys(object, {"uploadStatus"});
     StorageReceipt receipt;
-    if (!object["receipt"].isObject() || !decode(object["receipt"].toObject(), receipt)) return false;
+    if (!object["receipt"].isObject() || !receiptFrom(object["receipt"].toObject(), receipt, {}, false)) return false;
     if (keys(object, {"uploadStatus", "receipt"})) return true;
-    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart"}) ||
+    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied"}) ||
         !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
+    // Its cleanup target is the same receipt, and its link carries no query or fragment either (#1680).
+    const auto target = object["cleanupProgress"].toObject().value("target");
+    if (!target.isUndefined()) {
+        const auto link = target.toObject().value("directUrl");
+        if (!target.isObject() || !link.isString() || QUrl(link.toString()).hasQuery() || QUrl(link.toString()).hasFragment()) return false;
+    }
     if (!object.contains("multipart")) return true;
     // The multipart permission probe: created, listed and aborted, or the stage S3 refused.
     const auto probe = object["multipart"].toObject();

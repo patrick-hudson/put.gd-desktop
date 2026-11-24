@@ -1,7 +1,11 @@
 #include "GnomeAdapter.h"
+#include "platform/SessionLock.h"
+#include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <memory>
 #include "GnomeProtocol.h"
+#include "GnomeExtensionSetup.h"
 #include "platform/NativeSession.h"
 #include "core/ImageJob.h"
 #include "core/Log.h"
@@ -13,6 +17,8 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QGuiApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <QKeySequence>
 #include <QUrl>
 #include <QUuid>
@@ -21,7 +27,7 @@
 #include <utility>
 namespace putgd {
 namespace {
-const QString service="org.gnome.Shell",client="org.putgd.App.Gnome50",path="/org/gnome/Shell/Extensions/Putgd",interface="org.putgd.Gnome50";
+const QString service=QStringLiteral("org.gnome.Shell"),client=QStringLiteral("org.putgd.App.Gnome50"),path=QStringLiteral("/org/gnome/Shell/Extensions/Putgd"),interface=QStringLiteral("org.putgd.Gnome50");
 QString uuid(){return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
 bool missingEndpoint(const QDBusMessage& message){
@@ -29,7 +35,7 @@ bool missingEndpoint(const QDBusMessage& message){
 }
 QJsonObject parse(const QDBusMessage& message,Error& error,bool hello=false){
  if(message.type()==QDBusMessage::ErrorMessage){
-  const auto guidance="GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd";
+  const auto guidance="GNOME capture needs the put.gd Shell extension, which is not running yet.";
   error={"helper_unavailable",hello&&missingEndpoint(message)?guidance:"GNOME native helper did not complete the request",{{"dbusError",message.errorName()}}};
   if(hello&&missingEndpoint(message))error.details["helperEndpointMissing"]=true;return {};
  }
@@ -57,22 +63,34 @@ GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection
  if(!supported){helperError_={"session_unsupported","GNOME adapter requires a native GNOME Wayland session",{}};return;}
  ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another resident process owns the GNOME bridge client name",{}};return;}
  connect(&watcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this]{helperChanged();});
- probe_.setInterval(3000);connect(&probe_,&QTimer::timeout,this,[this]{
-  if(!ready_)discover();
+ // Discovery follows events: the Shell's owner change and the extension's
+ // CapabilitiesChanged, which it sends after exporting on every enable and unlock.
+ // A failed Hello still retries, backing off to a slow safety probe, so a lost
+ // signal or a transient failure recovers without waking an idle resident every
+ // few seconds. Each retry reports itself, so the resident can release the pages
+ // it mapped again (#1187).
+ discoveryRetry_.setSingleShot(true);connect(&discoveryRetry_,&QTimer::timeout,this,[this]{if(!ready_){discover();emit discoveryRetried();}});
+ uiProcessRetry_.setSingleShot(true);uiProcessRetry_.setInterval(firstRetryMs);
+ connect(&uiProcessRetry_,&QTimer::timeout,this,[this]{
   // Closing the UI must not leave window hotkeys disabled after a transient
   // clear failure. Retry only while no helper is registered; a newer live PID
   // supersedes this recovery and stays fail-closed until its own registration.
-  else if(!uiProcess_&&uiProcessError_)setUiProcess(0);
- });probe_.start();discover();
+  if(ready_&&!uiProcess_&&uiProcessError_)setUiProcess(0);
+ });
+ discover();
+}
+void GnomeAdapter::setDiscoveryRetryForTesting(int firstMs,int capMs){
+ retryFirstMs_=firstMs;retryCapMs_=capMs;retryMs_=firstMs;uiProcessRetry_.setInterval(firstMs);
+ if(discoveryRetry_.isActive())discoveryRetry_.start(retryMs_);
 }
 GnomeAdapter::~GnomeAdapter(){
- stopping_=true;probe_.stop();cancelAll("source_unavailable","GNOME adapter closed");
+ stopping_=true;discoveryRetry_.stop();uiProcessRetry_.stop();cancelAll("source_unavailable","GNOME adapter closed");
  auto pending=std::move(pending_);pending_.clear();for(auto& reply:pending)reply({"source_unavailable","GNOME adapter closed",{}},{});
  for(auto* worker:workers_){worker->wait();delete worker;}
  if(ownsName_)bus_.unregisterService(client);
 }
 QJsonObject GnomeAdapter::sync(const QString& method,const QVariantList& args,Error& error,int timeout){
- if(owner_.isEmpty()){error=helperError_.code.isEmpty()?Error{"helper_unavailable","Install and enable putgd@put.gd in GNOME 50",{}}:helperError_;return {};}
+ if(owner_.isEmpty()){error=helperAvailabilityError(true);return {};}
  auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto response=bus_.call(message,QDBus::Block,timeout);
  auto result=parse(response,error,method=="Hello");
  if(method!="Hello"&&missingEndpoint(response)){
@@ -92,21 +110,43 @@ void GnomeAdapter::call(const QString& method,const QVariantList& args,Reply rep
   callback(error,result);
  });
 }
+void GnomeAdapter::followOwner(const QString& owner){
+ if(owner_==owner)return;
+ // Signals stay subscribed while the Shell keeps its connection, so none can be
+ // lost between an extension disable and the next enable.
+ if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));}
+ if(!owner_.isEmpty()&&pointerSink_)bus_.disconnect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ // A Shell that went away took its click and pointer watches with it.
+ clickSink_={};
+ pointerSink_={};
+ ++pointerGeneration_;
+ owner_=owner;
+ if(!owner_.isEmpty()){bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+}
 void GnomeAdapter::discover(){
  if(!ownsName_||stopping_)return;
- const auto owner=bus_.interface()->serviceOwner(service);if(!owner.isValid()||owner.value().isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
- if(owner_!=owner.value()){owner_=owner.value();bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+ // The match rules are sent before Hello, so an enable the Shell handles after
+ // this Hello still reaches the adapter as CapabilitiesChanged.
+ const auto owner=bus_.interface()->serviceOwner(service);followOwner(owner.isValid()?owner.value():QString());
+ if(owner_.isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
  call("Hello",{},[this](Error error,QJsonObject hello){
   if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
-  if(error){helperUnavailable(error);return;}
+  if(error){helperUnavailable(error);evaluateSetup();return;}
+  discoveryRetry_.stop();retryMs_=retryFirstMs_;
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
+  evaluateSetup();
+  // A run that just started reports when it ends; until then the failure it may
+  // find is unknown and the notice would ask for a logout that can't help.
+  if(outdated()&&!setupRunning_)emitSetupNotice(currentSetup());
  });
 }
-// The probe retries for as long as the helper stays away. Only a change may reach
-// the UI: every signal costs it a new snapshot and a reload of the History page.
+// The retry runs for as long as the helper stays away, each wait twice the last
+// up to the safety probe's. Only a change may reach the UI: every signal costs it
+// a new snapshot and a reload of the History page.
 void GnomeAdapter::helperUnavailable(const Error& error){
  const auto before=capabilities();ready_=false;helperError_=error;invalidateShortcutBindings();
  if(capabilities()!=before)emit capabilitiesChanged();
+ if(!stopping_&&!discoveryRetry_.isActive()){discoveryRetry_.start(retryMs_);retryMs_=std::min(retryCapMs_,retryMs_*2);}
 }
 void GnomeAdapter::setUiProcess(qint64 pid){
  uiProcess_=pid>0&&pid<=std::numeric_limits<quint32>::max()?pid:0;uiProcessError_={};
@@ -117,12 +157,14 @@ void GnomeAdapter::setUiProcess(qint64 pid){
   // Ack registration before the supervisor can let its child display a window.
   // A failed update disables window acquisition, including Shell hotkey tickets.
   sync("SetUiProcess",{quint32(uiProcess_)},uiProcessError_);
+  if(!uiProcess_&&uiProcessError_&&!stopping_)uiProcessRetry_.start();
  }
  emit capabilitiesChanged();
 }
 void GnomeAdapter::helperChanged(){
- if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
- ready_=false;invalidateShortcutBindings();owner_.clear();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
+ // A real change: rediscover now and restart the backoff from its first step.
+ discoveryRetry_.stop();retryMs_=retryFirstMs_;setupCheckedForOwner_=false;
+ ready_=false;invalidateShortcutBindings();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
 }
 void GnomeAdapter::invalidateShortcutBindings(){
  bindings_={};for(const auto& action:Settings::invocableActionNames()){
@@ -134,7 +176,7 @@ void GnomeAdapter::helperAction(const QString& action,const QString& ticket){
  if(!ready_||!Settings::invocableActionNames().contains(action)||ticket.size()!=36)return;
  if(recording_){release(ticket);return;}
  // Recording prepares its own region later; the ticket carries no frozen source.
- if(action==Settings::recordingActionName()){emit actionRequested(action);return;}
+ if(action=="scroll"||action==Settings::recordingActionName()){emit actionRequested(action);return;}
  hotkeyPrepared_[action].append(ticket);emit actionRequested(action);
  // Rejected actions do not leave unused frozen targets behind.
  if(hotkeyPrepared_[action].removeOne(ticket))release(ticket);
@@ -145,19 +187,35 @@ quint64 GnomeAdapter::clipboardRevision()const{
  return revision_;
 }
 QJsonObject GnomeAdapter::capabilities()const{
- auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError_.toJson();
+ const auto helperError=ready_?Error{}:helperAvailabilityError();
+ auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError.toJson();
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
- if(!ready_)clipboard["error"]=helperError_.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ if(!ready_)clipboard["error"]=helperError.toJson();
+ // Monitor, repeat and the countdown came with capture version 2 (#1363): an
+ // extension loaded before them is reported until the next login loads it.
+ auto monitor=capture;const auto versionError=ready_?captureVersionError():Error{};
+ if(versionError){monitor["available"]=false;monitor["error"]=versionError.toJson();}
+ auto repeat=monitor;repeat["remembered"]=lastRegion_.has_value();
+ // Copy text selects a region with the packaged extension only: one loaded before it asks for the login.
+ auto text=capture;if(ready_&&outdated()){text["available"]=false;text["error"]=recordingShellError().toJson();}
+ QJsonObject delay{{"available",monitor["available"].toBool()},{"seconds",QJsonArray{3,5,10}},{"indicator","shell-actor"}};if(!monitor["available"].toBool())delay["error"]=monitor["error"];
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"captureVersion",helper_["captureVersion"].toInt(1)},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"text",text},{"window",window},{"desktop",capture},{"monitor",monitor},{"repeat",repeat}}},{"delay",delay},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
-SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
- QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
- if(!ready_)error=helperError_.code.isEmpty()?Error{"helper_unavailable","Enable putgd@put.gd before sharing",{}}:helperError_;
+SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& requested){
+ // Copy text (#1428) selects exactly as a region does, from its own hotkey
+ // ticket; only Repeat's memory is left alone. An extension loaded before it
+ // is refused below with the region's "log out once" step.
+ const bool text=requested==QLatin1String("text");const QString action=text?QStringLiteral("region"):requested;
+ QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[requested].isEmpty();const auto id=hotkey?hotkeyPrepared_[requested].takeFirst():uuid();Error error;
+ if(!ready_)error=helperAvailabilityError(true);
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  // Both region modes require the packaged appearance protocol; an older
  // loaded extension silently ignores its tokens. Ask for re-login before preparing.
  else if(action=="region"&&outdated()){error=recordingShellError();if(hotkey)release(id);}
+ // Monitor and repeat exist only in capture version 2; a repeat needs its region.
+ else if((action=="monitor"||action=="repeat")&&captureVersionError()){error=captureVersionError();if(hotkey)release(id);}
+ else if(action=="repeat"&&!lastRegion_){error=noLastRegion();if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  // Show a live selection at the press; Acquire waits for the journal and takes
@@ -174,12 +232,46 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
    QMetaObject::invokeMethod(guard,[guard,id]{if(guard&&guard->prepared_.removeOne(id))guard->release(id);},Qt::QueuedConnection);
   });
  }
- return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
+ return [guard,id,action,error,text,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview,delay=action=="region"&&!regionScreenshotFirst_?captureDelay_:0,repeat=action=="repeat"?lastRegion_:std::optional<RegionMemory>{}](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot,delay,repeat,!text);};
 }
+Error GnomeAdapter::captureVersionError()const{
+ if(!ready_)return helperAvailabilityError(true);
+ if(helper_["captureVersion"].toInt(1)>=2)return {};
+ // The setup state decides the wording: "log out" only when a login would help.
+ return {"helper_outdated",outdated()?currentSetup().message:QStringLiteral("Update the put.gd GNOME extension to capture one monitor, repeat a region or delay a capture"),{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+}
+void GnomeAdapter::countdown(int seconds,std::function<void(Error)> reply){
+ if(const auto error=captureVersionError()){reply(error);return;}
+ if(!countdownId_.isEmpty()){reply({"busy_selecting","Another capture countdown is running",{}});return;}
+ const auto id=uuid();countdownId_=id;const auto generation=generation_;
+ // The Shell draws the pill, removes it and answers; a click on it answers cancelled.
+ call("Countdown",{id,json({{"seconds",seconds},{"appearance",captureAppearance_}})},[this,id,generation,reply=std::move(reply)](Error error,QJsonObject result){
+  if(countdownId_==id)countdownId_.clear();
+  if(!error&&generation!=generation_)error={"cancelled","Capture countdown cancelled",{}};
+  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME countdown identity is invalid",{}};
+  lockAware(std::move(error),reply);
+ },(seconds+15)*1000);
+}
+// The Shell disables its extensions when it locks, and that can beat the
+// extension's own session_locked answer: the request then fails as a helper that
+// went away. On a locked session that is the lock, not a broken helper. logind's
+// hint follows the lock screen's own animation, so the question is asked for up
+// to two seconds before the helper's error stands.
+void GnomeAdapter::lockAware(Error error,std::function<void(Error)> reply,int attempt){
+ if(!error||error.code=="cancelled"||error.code=="session_locked"||stopping_){reply(std::move(error));return;}
+ QTimer::singleShot(500,this,[this,error=std::move(error),reply=std::move(reply),attempt]{
+  querySessionLocked(this,[this,error,reply,attempt](bool locked){
+   if(locked)reply(SourceAdapter::lockedError());else if(attempt<3)lockAware(error,reply,attempt+1);else reply(error);
+  });
+ });
+}
+void GnomeAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
-void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst){
+void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat,bool remember){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
- auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
+ // A delayed live region counts down inside Acquire: the same lock question as countdown().
+ if(delaySeconds>0){auto inner=std::move(reply);reply=[this,inner=std::move(inner)](PayloadResult result){if(!result.error){inner(std::move(result));return;}lockAware(std::move(result.error),[inner](Error error){inner({{},std::move(error)});});};}
+ auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->remember=remember;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
  // Only clipboard imports choose among image types; screen captures are PNG.
  // Listing Qt's readers instantiates every installed image plugin (30 plugins,
  // 12 MiB with KDE's kimageformats), so the transient image job lists them,
@@ -204,6 +296,9 @@ void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,con
  QJsonObject bounds{{"appearance",captureAppearance_},{"outcome",transfer->outcome},{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
  // Screenshot first (#629): the Shell freezes the stage before selecting.
  if(transfer->screenshotFirst)bounds["regionMode"]="screenshot_first";
+ // Capture version 2 (#1363): a live region's delay, and a repeat's remembered area.
+ if(transfer->delaySeconds>0&&!transfer->screenshotFirst)bounds["delaySeconds"]=transfer->delaySeconds;
+ if(transfer->action=="repeat"){bounds["area"]=transfer->area;bounds["layoutKey"]=transfer->layoutKey;}
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);
@@ -224,20 +319,26 @@ void GnomeAdapter::read(const std::shared_ptr<Transfer>& transfer){
 }
 void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([transfer,result]{*result=gnome::decodeTransfer(transfer->metadata,transfer->bytes,transfer->id,transfer->limits);});workers_.append(worker);
- connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_)reply({{},{"cancelled","GNOME acquisition cancelled",{}}});else reply(std::move(*result));});worker->start();
+ connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_){reply({{},{"cancelled","GNOME acquisition cancelled",{}}});return;}
+  // Repeat last region remembers a region that was captured, here in memory only.
+  const auto selection=transfer->metadata["selection"].toArray();const auto key=transfer->metadata["layoutKey"].toString();
+  if(!result->error&&transfer->remember&&transfer->action=="region"&&selection.size()==4&&!key.isEmpty())lastRegion_=RegionMemory{selection,key};
+  reply(std::move(*result));});worker->start();
 }
 // Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
 bool GnomeAdapter::selectsRegions()const{return ready_&&!outdated()&&helper_["recordingVersion"].toInt()>=1;}
 // An extension older than the packaged one is still the one loaded at login (#131).
 bool GnomeAdapter::outdated()const{return ready_&&helper_["extensionVersion"].toInt()<gnome::extensionVersion;}
 Error GnomeAdapter::recordingShellError()const{
- if(outdated())return {"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
- if(!ready_)return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension; enable putgd@put.gd",{{"helper",helperError_.toJson()}}};
+ // The setup state decides the wording: "log out" only when a login would help.
+ if(outdated())return {"helper_outdated",currentSetup().message,{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+ if(!ready_)return {"region_unavailable",setup_.needsUser()?setup_.message:QString("Recording a region on GNOME needs the put.gd Shell extension."),{{"helper",helperAvailabilityError().toJson()}}};
  return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
 }
 Error GnomeAdapter::regionError()const{return selectsRegions()?Error{}:recordingShellError();}
-void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
- if(!selectsRegions()){reply(recordingShellError(),{});return;}
+void GnomeAdapter::selectRegion(RecordingShell::Reply reply){selectRegionImpl(std::move(reply),false);}
+void GnomeAdapter::selectRegionImpl(RecordingShell::Reply reply,bool scroll){
+ if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(recordingShellError(),{});return;}
  const auto id=uuid();recordingSelection_=id;
  // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
  call("SelectArea",{json(QJsonObject{{"id",id},{"appearance",captureAppearance_}})},[this,id,reply](Error error,QJsonObject result){
@@ -247,19 +348,109 @@ void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
  },125000);
 }
 void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
-void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){
- if(!selectsRegions()){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){showFrameImpl(frame,std::move(reply),false);}
+void GnomeAdapter::showFrameImpl(const QJsonObject& shown,RecordingShell::Reply reply,bool scroll){
+ if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ // A scroll capture reads its frames from Mutter's area stream, which sends
+ // one only for damage inside the area: the Shell keeps one pixel of it
+ // repainting while the frame shows, or a page that has come to rest gives
+ // no frame to prove it (the extension's RecordingFrame has the measurement).
+ auto frame=shown;if(scroll)frame["beat"]=true;
  // The extension waits up to two seconds for the bar window to map before placing it.
  call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
 }
 void GnomeAdapter::hideFrame(){if(selectsRegions())call("HideRecordingFrame",{},[](Error,QJsonObject){});}
+// Recording protocol 2 adds RecordingWindows. An extension loaded before the
+// upgrade that brought it is still the one running until the user logs out.
+void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
+ if(outdated()){reply(recordingShellError(),{});return;}
+ if(!ready_){reply(helperAvailabilityError(true),{});return;}
+ if(helper_["recordingVersion"].toInt()<2){reply({"helper_incompatible","Update the put.gd GNOME extension to record windows",{}},{});return;}
+ call("RecordingWindows",{},[reply](Error error,QJsonObject result){
+  if(!error&&!result["windows"].isArray())error={"bridge_protocol","GNOME helper returned an invalid window list",{}};
+  if(error){reply(error,{});return;}
+  QJsonArray windows;
+  for(const auto& value:result["windows"].toArray()){
+   const auto w=value.toObject();const auto r=w["rect"].toArray();
+   if(!w["identity"].isString()||w["identity"].toString().isEmpty()||w["identity"].toString().size()>32||r.size()!=4)continue;
+   windows.append(QJsonObject{{"identity",w["identity"].toString()},{"title",w["title"].toString().left(512)},{"appId",w["appId"].toString().left(256)},{"rect",r},{"active",w["active"].toBool()},{"minimized",w["minimized"].toBool()}});
+  }
+  reply({},{{"windows",windows},{"activeExcluded",result["activeExcluded"].toBool()}});
+ });
+}
+QJsonObject GnomeAdapter::clickCapability()const{
+ const QJsonArray targets{"monitor","desktop","region","window"};
+ QJsonObject capability{{"route","gnome-shell-extension"},{"drawnBy","recorder"},{"targets",targets}};
+ Error error;
+ if(outdated())error=recordingShellError();
+ else if(!ready_)error=helperAvailabilityError(true);
+ else if(helper_["recordingVersion"].toInt()<3)error={"helper_incompatible","Update the put.gd GNOME extension to highlight clicks",{}};
+ capability["available"]=!error;
+ if(error){capability["reason"]=error.code;capability["message"]=error.message;}
+ return capability;
+}
+void GnomeAdapter::watchClicks(const QJsonObject&,RecordingClicks::Sink sink,RecordingClicks::Reply reply){
+ const auto capability=clickCapability();
+ if(!capability["available"].toBool()){reply({capability["reason"].toString("helper_unavailable"),capability["message"].toString("The GNOME extension cannot report clicks"),{}},{});return;}
+ clickSink_=std::move(sink);
+ bus_.connect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));
+ call("WatchClicks",{},[this,reply](Error error,QJsonObject result){if(error)unwatchClicks();reply(error,result);});
+}
+void GnomeAdapter::unwatchClicks(){
+ if(!clickSink_)return;
+ clickSink_={};
+ if(owner_.isEmpty())return;
+ bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));
+ if(ready_&&!stopping_)call("UnwatchClicks",{},[](Error,QJsonObject){});
+}
+void GnomeAdapter::watchPointerImpl(std::function<void(QJsonObject)> sink){
+ if(owner_.isEmpty()||!ready_)return;
+ const bool connected=static_cast<bool>(pointerSink_);
+ pointerSink_=std::move(sink);
+ if(!connected)bus_.connect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ // A refusal that comes after a newer request (or an unwatch) is not this watch's.
+ const quint64 generation=++pointerGeneration_;
+ call("WatchPointer",{},[this,generation](Error error,QJsonObject){if(error&&generation==pointerGeneration_)unwatchPointerImpl();});
+}
+void GnomeAdapter::unwatchPointerImpl(){
+ ++pointerGeneration_;
+ if(!pointerSink_)return;
+ pointerSink_={};
+ if(owner_.isEmpty())return;
+ bus_.disconnect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ if(ready_&&!stopping_)call("UnwatchPointer",{},[](Error,QJsonObject){});
+}
+void GnomeAdapter::helperPointer(const QString& json){
+ // From the Shell's own connection; bounded and typed before use.
+ if(!pointerSink_||json.size()>256)return;
+ const auto at=QJsonDocument::fromJson(json.toUtf8()).object();
+ if(!at["x"].isDouble()||!at["y"].isDouble()||!at["t"].isDouble())return;
+ const double x=at["x"].toDouble(),y=at["y"].toDouble(),t=at["t"].toDouble();
+ if(std::abs(x)>1e6||std::abs(y)>1e6||t<0||t>9e15)return;
+ pointerSink_(QJsonObject{{"at",QJsonArray{x,y}},{"t",t}});
+}
+void GnomeAdapter::helperClick(const QString& json){
+ // From the Shell's own connection (the signal match names it); bounded and typed before use.
+ if(!clickSink_||json.size()>512)return;
+ const auto click=QJsonDocument::fromJson(json.toUtf8()).object();
+ const int button=click["button"].toInt();
+ if(!click["x"].isDouble()||!click["y"].isDouble()||button<1||button>3)return;
+ QJsonObject out{{"x",click["x"].toInt()},{"y",click["y"].toInt()},{"button",button}};
+ const auto window=click["window"].toObject();const auto rect=window["rect"].toArray();
+ if(window["identity"].isString()&&window["identity"].toString().size()<=32&&rect.size()==4)out["window"]=QJsonObject{{"identity",window["identity"].toString()},{"rect",rect}};
+ clickSink_(out);
+}
 void GnomeAdapter::release(const QString& id){if(!owner_.isEmpty()&&!stopping_)call("Release",{id},[](Error,QJsonObject){});}
 void GnomeAdapter::cancelAll(const QString& code,const QString& message){
  ++generation_;const auto hotkeys=std::move(hotkeyPrepared_);hotkeyPrepared_.clear();for(const auto& tickets:hotkeys)for(const auto& id:tickets)release(id);
  const auto prepared=std::move(prepared_);prepared_.clear();for(const auto& id:prepared)release(id);
  auto transfers=std::move(transfers_);transfers_.clear();for(const auto& transfer:transfers){release(transfer->id);auto reply=std::move(transfer->reply);if(reply)reply({{},{code,message,{}}});}
 }
-void GnomeAdapter::cancelAcquisition(){cancelAll("cancelled","GNOME acquisition cancelled");}
+void GnomeAdapter::cancelAcquisition(){
+ // Releasing the countdown's request removes its pill; its call then answers cancelled.
+ if(!countdownId_.isEmpty())release(std::exchange(countdownId_,{}));
+ cancelAll("cancelled","GNOME acquisition cancelled");
+}
 void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> answer){
  auto reply=[answer=std::move(answer)](Error e){logging::debug(logClipboard(),"Native copy finished",{{"writer","gnome-helper"},{"ok",!e},{"code",e.code}});answer(std::move(e));};
  if(!ready_){reply({"clipboard_unavailable","GNOME helper cannot own CLIPBOARD",{}});return;}
@@ -288,19 +479,77 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
   else if(text.isEmpty())entry["error"]="disabled";else if(gtk.isEmpty())entry["error"]="shortcut_unsupported";else if(!ready_)entry["error"]="helper_unavailable";
   bindings_[action]=entry;entries[action]=QJsonObject{{"requested",text},{"accelerator",gtk}};
  }
- if(!ready_){emit capabilitiesChanged();if(reply)reply({"helper_unavailable","GNOME global shortcuts are unavailable.",{}});return;}
+ if(!ready_){emit capabilitiesChanged();if(reply)reply({"helper_unavailable","put.gd's hotkeys are unavailable on GNOME.",{}});return;}
  call("Bind",{json(entries)},[this,generation,reply=std::move(reply)](Error error,QJsonObject result){
-  if(generation!=bindingGeneration_){if(reply)reply({"shortcut_recording_interrupted","Global shortcut configuration changed. Try recording again.",{}});return;}
+  if(generation!=bindingGeneration_){if(reply)reply({"shortcut_recording_interrupted","Hotkey configuration changed. Try recording again.",{}});return;}
   if(!ready_)invalidateShortcutBindings();else if(!error){
    bindings_=result["bindings"].toObject();
    for(const auto& action:Settings::invocableActionNames()){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
-    if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all global shortcuts.",{}};}
-    if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};
+    // An extension loaded before Copy text (#1428, version 23) does not know its key; that is the login step's to fix, not a failed restore.
+    const bool textUnknown=action==Settings::textActionName()&&helper_["extensionVersion"].toInt()<23;
+    if(recording_){entry["state"]="recording";if(!textUnknown&&(!entry["bound"].isBool()||entry["bound"].toBool()))error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
+    if(!recording_&&reply&&!textUnknown&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
+    if(action=="scroll"&&helper_["extensionVersion"].toInt()<22&&!recording_){entry["bound"]=false;entry["error"]="helper_outdated";}
+    if(textUnknown&&!recording_){entry["bound"]=false;entry["error"]=requested_.value(action).isEmpty()?"disabled":"helper_outdated";}
     bindings_[action]=entry;
    }
   }else for(const auto& action:Settings::invocableActionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}
   emit capabilitiesChanged();if(reply)reply(error);
  });
+}
+// What capture reports while the helper is away: the setup step the user has to
+// take when there is one, otherwise the last discovery error.
+Error GnomeAdapter::helperAvailabilityError(bool fallback)const{
+ if(setup_.needsUser())return {setup_.code,setup_.message,setup_.details};
+ if(fallback&&helperError_.code.isEmpty())return {"helper_unavailable","GNOME capture needs the put.gd Shell extension.",{}};
+ return helperError_;
+}
+gnome::SetupStatus GnomeAdapter::currentSetup()const{
+ // The first run hasn't reported yet, so a logout prompt could be the wrong answer.
+ if(setupRunning_&&setup_.state=="checking"&&outdated())return {"checking",{},QStringLiteral("Checking put.gd's GNOME extension."),{}};
+ return gnome::reportedSetup(setup_,ready_,helper_["extensionVersion"].toInt(),gnome::extensionVersion);
+}
+void GnomeAdapter::emitSetupNotice(const gnome::SetupStatus& status){
+ if(!status.needsUser()||setupNotified_.contains(status.code))return;
+ setupNotified_.append(status.code);
+ emit setupNotice(status.code,status.message);
+}
+void GnomeAdapter::evaluateSetup(bool force){
+ if(!ownsName_||stopping_)return;
+ if(!force&&setupCheckedForOwner_)return;
+ // A request during a run (a recheck, or a new Shell) needs a run of its own.
+ if(setupRunning_){setupAgain_=true;return;}
+ setupCheckedForOwner_=true;
+ setupRunning_=true;
+ auto result=std::make_shared<gnome::SetupStatus>();
+ // Loaded and current with no owned copy to retire: nothing to do. The check needs
+ // the session's data directory, which only the worker may look up.
+ const bool idle=ready_&&!outdated()&&!force;
+ auto* worker=QThread::create([idle,result]{
+  const auto inputs=gnome::defaultSetupInputs();
+  if(idle&&!gnome::ownedCopyMarkerExists(inputs)){*result={"ready",{},{},{}};return;}
+  *result=gnome::runExtensionSetup(inputs);
+ });
+ workers_.append(worker);
+ connect(worker,&QThread::finished,this,[this,worker,result]{
+  workers_.removeOne(worker);worker->deleteLater();setupRunning_=false;
+  if(stopping_)return;
+  const bool changed=setup_.state!=result->state||setup_.code!=result->code||setup_.message!=result->message;
+  setup_=*result;
+  if(changed)emit capabilitiesChanged();
+  emitSetupNotice(currentSetup());
+  // Waiters ask for the state after their request, so a queued run answers them.
+  if(setupAgain_){setupAgain_=false;evaluateSetup(true);return;}
+  auto waiters=std::move(setupWaiters_);setupWaiters_.clear();
+  for(auto& waiter:waiters)waiter(desktopSetup());
+ });
+ worker->start();
+}
+QJsonObject GnomeAdapter::desktopSetup()const{return currentSetup().toJson();}
+void GnomeAdapter::recheckDesktopSetup(std::function<void(QJsonObject)> reply){
+ setupWaiters_.append(std::move(reply));
+ if(!ownsName_||stopping_){auto waiters=std::move(setupWaiters_);setupWaiters_.clear();for(auto& waiter:waiters)waiter(desktopSetup());return;}
+ evaluateSetup(true);
 }
 }

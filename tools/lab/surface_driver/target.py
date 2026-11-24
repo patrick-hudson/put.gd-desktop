@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from functools import wraps
 import os
 from pathlib import Path
+import re
 import shlex
 import selectors
 import stat
@@ -16,14 +17,14 @@ import time
 import uuid
 from tools.lab import lab, rfb
 from tools.lab.physical_host import PhysicalHost
-from .api import RecipeBlocked, RecipeFailed
+from .api import GuestUnreachable, RecipeBlocked, RecipeFailed
 from .catalog import image_modules
 from .critical import critical, entry
 
 QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','AltGr':'alt_r','Meta':'meta_l','Super':'meta_l',
            'Return':'ret','Enter':'ret','Escape':'esc','Esc':'esc','Space':'spc','Backspace':'backspace',
            'Tab':'tab','Backtab':'tab','Delete':'delete','Insert':'insert','Home':'home','End':'end',
-           'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'menu'}
+           'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'compose'}
 PUNCTUATION = dict(zip('-=[];\'`,./\\', ['minus','equal','bracket_left','bracket_right','semicolon','apostrophe','grave_accent','comma','dot','slash','backslash']))
 SHIFTED = dict(zip('!@#$%^&*()_+{}:"~<>?|', '1234567890-=[];\'`,./\\'))
 
@@ -200,7 +201,8 @@ def installed_helper_digests(run):
         if not isinstance(receipt, dict) or not isinstance(receipt.get('installedBinarySha256'), dict):
             raise ValueError('missing installed identities')
         result = {}
-        for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
+        # putgd-kde-region is the helper's name in builds before the Wayland move.
+        for name in ('putgd-capture', 'putgd-region', 'putgd-kde-region', 'putgd-ui'):
             digest = receipt['installedBinarySha256'].get('/usr/bin/'+name)
             if digest is not None:
                 if not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
@@ -239,10 +241,47 @@ def qcodes(chord):
     return list(dict.fromkeys(result))
 
 
+def vnc_keysyms(codes):
+    """RFB key names for one chord of qcodes.
+
+    An RFB keysym names the character itself, not a key position. x11vnc's
+    modifier tweak releases Shift to produce exactly the keysym it receives, so
+    Shift plus the unshifted keysym typed "history copy.png" for "History copy.png"
+    on Mint (m74). A shifted character is therefore sent as its own keysym; Shift
+    stays pressed for servers that map keysyms to key positions.
+    """
+    aliases = {'meta_l': 'super', 'compose': 'menu', 'spc': ' ', 'pgup': 'pageup', 'pgdn': 'pagedown',
+               **{v: k for k, v in PUNCTUATION.items()}}
+    names = [aliases.get(c, c) for c in codes]
+    if 'shift' in names:
+        unshifted = {v: k for k, v in SHIFTED.items()}
+        names = [(name.upper() if name.isalpha() else unshifted.get(name, name)) if len(name) == 1 else name
+                 for name in names]
+    return names
+
+
 def checked_socket(path):
     if not path.startswith('/') or len(path.encode('utf-8')) > 107:
         raise RecipeBlocked('resolved Unix socket exceeds 107 UTF-8 bytes or is not absolute: ' + path)
     return path
+
+
+def only_unreachable(error, stop=None):
+    """Whether every blocked step behind ``error`` was the guest being unreachable.
+
+    A later transport failure can replace an earlier refusal the guest answered (the clipboard keeper
+    failed, then the exact stop lost SSH). The chain keeps both, and an answer keeps the guest from being
+    retired as lost. ``stop`` is an exception already being handled when the step ran (a fixture setup
+    failure): Python chains it, but it is not this step's, so the walk ends there.
+    """
+    seen = False
+    while error is not None and error is not stop:
+        if isinstance(error, RecipeBlocked):
+            if not isinstance(error, GuestUnreachable):
+                return False
+            seen = True
+        error = error.__context__ or error.__cause__
+    return seen
 
 
 def desktop_transport(function):
@@ -356,10 +395,15 @@ class Target:
 
     def prefix(self):
         root = shlex.quote(self.root)
+        # The tray's calendar override (a lab preview of the seasonal glyphs, docs/design/appearance.md).
+        season = os.environ.get('PUTGD_TRAY_CALENDAR_NOW', '')
+        if season and not re.fullmatch(r'\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?)?', season):
+            raise RecipeBlocked('PUTGD_TRAY_CALENDAR_NOW must be a local ISO date or date and time')
+        season = 'export PUTGD_TRAY_CALENDAR_NOW=' + season + '\n' if season else ''
         # session() (and the probe/clipboard native-session bootstrap) supplies
         # the real desktop runtime here. Preserve its PipeWire endpoint before
         # isolating the resident's session socket and other runtime files.
-        return ('umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n'
+        return (season + 'umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n'
                 'export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR:?native session runtime required}"\n') + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
             ('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_STATE_HOME','state'),
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
@@ -372,7 +416,13 @@ class Target:
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
-            raise RecipeBlocked('target session command unavailable: ' + type(error).__name__) from error
+            # Only the fixed exit status crosses the evidence boundary: 255 is SSH itself.
+            status = re.search(r'\(exit (\d+)\)', str(error))
+            # Only ssh's own connection failure (exit 255) or a timeout the host detects means the guest was
+            # not reached. Any other exit is the remote command's, so the guest answered.
+            unreachable = isinstance(error, subprocess.TimeoutExpired) or bool(status and status[1] == '255')
+            raise (GuestUnreachable if unreachable else RecipeBlocked)(
+                'target session command unavailable: ' + type(error).__name__ + (' exit ' + status[1] if status else '')) from error
 
     def identity(self):
         code="""import json,os,platform
@@ -398,6 +448,13 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
         self._created_root = True
+        # Hyprland's IPC sockets live under the session's runtime directory, and put.gd
+        # finds them through XDG_RUNTIME_DIR. Point the private runtime at that one
+        # directory only; the session socket and everything else stay private.
+        linked = self.execute('[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || ln -s "$PIPEWIRE_RUNTIME_DIR/hypr" '
+                              + shlex.quote(self.root + '/runtime/hypr'))
+        if linked['returncode']:
+            raise RecipeBlocked('cannot give the private runtime the Hyprland IPC directory')
         self.preserve_clipboard()
         if not first_launch:
             # Use the checked-in schema example as a baseline; discard every
@@ -489,7 +546,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             # probes. Only desktop connection variables cross this boundary.
             keys = ('DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','XDG_SESSION_TYPE',
                     'XDG_CURRENT_DESKTOP','WAYLAND_DISPLAY','QT_QPA_PLATFORM',
-                    'XDG_RUNTIME_DIR','XDG_CONFIG_DIRS','XDG_DATA_DIRS')
+                    'XDG_RUNTIME_DIR','XDG_CONFIG_DIRS','XDG_DATA_DIRS','HYPRLAND_INSTANCE_SIGNATURE')
             script = "python3 - <<'SD_PROBE_ENV'\nimport os,json\nprint(json.dumps({k:os.environ[k] for k in " + repr(keys) + " if k in os.environ}))\nSD_PROBE_ENV\n"
             native = json.loads(self.session(script, timeout=timeout))
             command = 'set -eu\n' + ''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in native.items())
@@ -680,8 +737,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if self.physical and not (self.run / 'qmp.sock').exists():
             if 'alt_r' in codes:
                 raise RecipeBlocked('AltGr requires QMP-compatible input; the VNC keysym backend does not support it')
-            aliases={'meta_l':'super','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
-            self.vnc().key(*(aliases.get(c,c) for c in codes))
+            self.vnc().key(*vnc_keysyms(codes))
         else:
             lab.key(self.run, codes)
 
@@ -740,6 +796,16 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 if client is not None:
                     client.close()
 
+    @desktop_transport
+    def display_image(self, head=0):
+        """capture_image after the same endpoint and lease checks, or None when only the VNC read fails."""
+        try:
+            return Target.capture_image.__wrapped__(self, head)
+        except RecipeBlocked:
+            raise
+        except (OSError, RuntimeError):  # tools/lab/rfb.py: connect, handshake and stream errors
+            return None
+
     def screenshot(self, path, head=0):
         from .redact import save_frame
         return save_frame(self.capture_image(head), path)
@@ -760,7 +826,18 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         return self._rfb
 
     def close(self):
+        """Clean up; return the error messages. ``guest_local_cleanup`` lists those that only the guest holds.
+
+        A step records a message there when its failure is the guest being unreachable (or the resident
+        refusing to quit), because retiring the guest resolves it. Failures about anything else
+        (the host-side probe, VNC, a refused cleanup the guest answered) are errors only.
+        """
         errors=[]
+        self.guest_local_cleanup=local=[]
+        def record(message, guest_local):
+            errors.append(message)
+            if guest_local:
+                local.append(message)
         try:
             self._close_probe()
         except (OSError, subprocess.TimeoutExpired):
@@ -775,31 +852,32 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             try:
                 self.execute('kill '+str(self.monitor_pid)+' 2>/dev/null || true')
                 self.monitor_pid=None
-            except RecipeBlocked:
-                errors.append('notification monitor cleanup unavailable')
+            except RecipeBlocked as error:
+                record('notification monitor cleanup unavailable', only_unreachable(error))
         if self.started:
             try:
                 result=self.cli('ui.quit')
                 if result['returncode']:
-                    errors.append('resident quit was rejected; private session retained')
+                    # The resident lives in the guest, so retiring the guest ends it.
+                    record('resident quit was rejected; private session retained', True)
                 else:
                     self.started=False
-            except RecipeBlocked:
-                errors.append('resident quit transport unavailable; private session retained')
+            except RecipeBlocked as error:
+                record('resident quit transport unavailable; private session retained', only_unreachable(error))
         if getattr(self, 'clipboard_pid', None) or getattr(self, '_clipboard_lease', None):
             try:
                 self.restore_clipboard()
-            except RecipeBlocked:
-                errors.append('previous clipboard restoration unavailable; private session retained')
+            except RecipeBlocked as error:
+                record('previous clipboard restoration unavailable; private session retained', only_unreachable(error))
         try:
             from .appimage import prepare
             prepare(self, cleanup=True)
-        except RecipeBlocked:
-            errors.append('exact mirrored KWin entry cleanup refused; private session retained')
+        except RecipeBlocked as error:
+            record('exact mirrored KWin entry cleanup refused; private session retained', only_unreachable(error))
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
-            code='''import os,shutil,stat,time
+            code='''import json,os,shutil,stat,time
 from pathlib import Path
 root=Path(ROOT)
 for attempt in range(50):
@@ -815,7 +893,9 @@ for attempt in range(50):
 else:raise RuntimeError('private resident still running')
 info=root.lstat()
 assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
-assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
+pending=sorted(p.name for p in root.glob('fx-*'))
+if pending:
+ print(json.dumps(pending));raise SystemExit(3)
 for line in Path('/proc/self/mountinfo').read_text().splitlines():
  mount=Path(line.split()[4].replace(chr(92)+'040',' '))
  assert mount!=root and not mount.is_relative_to(root)
@@ -823,12 +903,27 @@ shutil.rmtree(root)
 '''.replace('ROOT',repr(self.root))
             try:
                 result=self.execute("python3 - <<'SD_CLEANUP'\n"+code+'\nSD_CLEANUP\n',timeout=8)
-                if result['returncode']:
+                if result['returncode']==3:
+                    # Fixture directories are still there. When each belongs to a scope whose cleanup
+                    # failed only because the guest was unreachable (fixtures/base.py), they hold guest
+                    # state alone, and retiring the guest removes them with the root.
+                    try:
+                        pending=set(json.loads(result['stdout']))
+                    except (TypeError,ValueError):
+                        pending=set()
+                    local_roots=getattr(self,'guest_local_roots',None)
+                    record('private session root cleanup refused',
+                           bool(pending) and isinstance(local_roots,set) and pending<=local_roots)
+                elif result['returncode']:
                     errors.append('private session root cleanup refused')
                 else:
                     self._created_root=False
                     self._owns_root=False
                     self.private_cleanup = 'resident-log-and-state-root-removed'
-            except RecipeBlocked:
-                errors.append('private session root cleanup unavailable')
+            except RecipeBlocked as error:
+                record('private session root cleanup unavailable', only_unreachable(error))
+        # A fixture scope whose cleanup failed in a way retiring the guest would not resolve (a copy out of
+        # the guest, say) keeps the guest even when the root was never checked because the guest was lost.
+        if getattr(self, 'kept_fixture_roots', None) and getattr(self, '_created_root', False):
+            errors.append('fixture cleanup incomplete; private session retained')
         return errors

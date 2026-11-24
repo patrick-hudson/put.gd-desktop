@@ -38,7 +38,7 @@
     "unexplainedCtestFailure": false
   },
   "embeddedPreparationManifestSha256": "6e47a4b57d4a2aad919fd23343e8587dc1035f448a5373d43e46227aa1762ba6",
-  "evidence": "docs/evidence/2026-10-30-boat-snapshots/README.md",
+  "evidence": "https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md",
   "golden": {
     "path": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
     "sha256": "349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656",

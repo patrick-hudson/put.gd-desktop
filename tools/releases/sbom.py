@@ -18,7 +18,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -26,18 +25,25 @@ from urllib.parse import quote
 import urllib.request
 import uuid
 
+import http_retry
+
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS_LOCK = ROOT / 'packaging/sbom/tools.lock.json'
 POLICY = ROOT / 'packaging/sbom/policy.json'
-LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44')
+LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45', 'archlinux')
 DISTROS = {'appimage': 'ubuntu:24.04', 'ubuntu24.04': 'ubuntu:24.04', 'ubuntu26.04': 'ubuntu:26.04',
-           'debian13': 'debian:13', 'fedora44': 'fedora:44'}
+           'debian13': 'debian:13', 'fedora44': 'fedora:44', 'fedora45': 'fedora:45',
+           'archlinux': 'archlinux:base'}
 SEVERITIES = ('Critical', 'High', 'Medium', 'Low', 'Negligible', 'Unknown')
 # Origins: code put.gd builds or ships itself, and the Ubuntu packages the AppImage
 # freezes, are put.gd's to fix; components Syft found on its own are reported with them.
 BUNDLED = ('bundled', 'bundled-distro', 'detected')
 # NVD product names for components that have CVEs under them; checked with `grype db search`.
 CPES = {
+    'tesseract': ('tesseract-ocr:tesseract_ocr', 'tesseract_project:tesseract'),
+    'leptonica': ('leptonica:leptonica',),
+    # No verified NVD product for ZXing-cpp or tessdata_fast; retain their
+    # package identity and exact upstream commit rather than inventing a CPE.
     'qt': ('qt:qt',), 'ffmpeg': ('ffmpeg:ffmpeg',),
     'icu': ('icu-project:international_components_for_unicode', 'unicode:international_components_for_unicode'),
     'harfbuzz': ('harfbuzz_project:harfbuzz',), 'libpng': ('libpng:libpng',), 'pcre2': ('pcre:pcre2',),
@@ -86,8 +92,7 @@ def sha256(path):
 
 def download(url, path):
     request = urllib.request.Request(url, headers={'User-Agent': 'putgd-sbom'})
-    with urllib.request.urlopen(request, timeout=300) as response, open(path, 'wb') as output:
-        shutil.copyfileobj(response, output)
+    http_retry.download(request, path, timeout=300)
 
 
 def fetch_tools(output, lock=TOOLS_LOCK):
@@ -132,6 +137,8 @@ def extract(package, label, work):
         subprocess.run([str(package), '--appimage-extract'], check=True, cwd=work, stdout=subprocess.DEVNULL)
         root.rmdir()
         (work / 'squashfs-root').rename(root)
+    elif label == 'archlinux':
+        subprocess.run(['tar', '--zstd', '-xf', str(package.resolve()), '-C', str(root)], check=True)
     elif package.suffix == '.deb':
         subprocess.run(['dpkg-deb', '-x', str(package), str(root)], check=True)
     else:
@@ -214,6 +221,16 @@ def aws_components(lock):
     return found
 
 
+def qr_components(lock):
+    pin = lock.get('qrCodeGenerator')
+    if pin is None:
+        return []
+    return [component('qrcodegen', pin['release'],
+                      'pkg:github/nayuki/QR-Code-generator@' + pin['release'], 'bundled',
+                      license='MIT', repository=pin['repository'].removesuffix('.git'),
+                      commit=pin['commit'])]
+
+
 def proton_components(notices):
     """The packages the shipped helper's notices classify as bundled or embedded."""
     found = []
@@ -293,22 +310,31 @@ def appimage_components(root):
                                    'bundled-distro', license=item.get('license'),
                                    properties=[('putgd:sourcePackage', source.get('sourcePackage', ''))]))
             continue
-        if identifier in ('aws-sdk-cpp', 'proton-helper'):
+        if identifier in ('aws-sdk-cpp', 'proton-helper', 'qrcodegen'):
             continue  # Itemized below from their own locks.
         key = 'qt' if identifier.startswith('qt') and identifier != 'qtkeychain' else identifier
-        found.append(component(identifier, version, generic_purl(identifier, version), 'bundled', cpes=cpes_for(key, version),
+        name = 'zxing-cpp' if identifier == 'zxing' else identifier
+        found.append(component(name, version, generic_purl(name, version), 'bundled', cpes=cpes_for(key, version),
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
                                commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
+        if identifier == 'zxing':
+            for embedded in item.get('embedded', []):
+                found.append(component(embedded['name'], embedded['version'],
+                                       generic_purl(embedded['name'], embedded['version']), 'bundled',
+                                       license=embedded['license'], repository=source['repository'].removesuffix('.git'),
+                                       commit=source['commit'], properties=[('putgd:embeddedIn', 'zxing-cpp')]))
         if key == 'qt':
             found += [entry for entry in (qt_embedded(identifier, embedded, embedded_scope_properties(root, item, embedded))
                                           for embedded in item.get('embedded', [])) if entry]
     found += aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 
 
 def native_components(root):
     found = aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 
@@ -413,6 +439,18 @@ def load_policy(path=POLICY):
     for entry in policy['ignore']:
         if 'scope' in entry and entry['component'] != policy['scopes'][entry['scope']]['component']:
             raise ValueError('Acceptance component differs from its scope: ' + entry['id'])
+    # Official upstream advisories (audit_assets.py) that Grype does not see: one advisory, Bun version and helper each.
+    for entry in policy.get('upstreamAdvisories', []):
+        if (set(entry) != {'id', 'component', 'version', 'helperSha256', 'reason', 'expires', 'issue', 'evidence'}
+                or not all(isinstance(entry[key], str) and entry[key].strip()
+                           for key in ('id', 'component', 'version', 'reason', 'expires'))
+                or not isinstance(entry['helperSha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', entry['helperSha256'])
+                or not isinstance(entry['issue'], int) or isinstance(entry['issue'], bool) or entry['issue'] < 1
+                or not isinstance(entry['evidence'], str)
+                or not re.fullmatch(r'packaging/sbom/dispositions/[0-9]+\.json', entry['evidence'])):
+            raise ValueError('Upstream advisory acceptances need id, component, version, helperSha256, a reason, '
+                             'an expiry, an issue and evidence: ' + json.dumps(entry))
+        datetime.date.fromisoformat(entry['expires'])
     return policy
 
 

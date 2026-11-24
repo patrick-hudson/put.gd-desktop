@@ -1,4 +1,8 @@
 #include "core/SettingsService.h"
+#include "core/CommandText.h"
+#include "core/TextJobProtocol.h"
+#include "core/CpuShare.h"
+#include "core/PosterJob.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -25,6 +29,35 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+ // #1759: deletion goes through the destination this picks; a wrong match deletes from the wrong place.
+ void receiptsFindTheirCurrentDestination(){
+  const QJsonObject s3{{"providerId","s3"},{"profileId","old"},{"settings",QJsonObject{{"endpoint","https://S3.example.com/"},{"addressing","path"},{"bucket","shots"}}}};
+  const QJsonObject same{{"id","old"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://elsewhere.example.com"},{"bucket","other"}}}};
+  const QJsonObject readded{{"id","new"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","path"},{"bucket","shots"}}}};
+  const QJsonObject otherBucket{{"id","b"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","path"},{"bucket","shots2"}}}};
+  const QJsonObject otherService{{"id","r"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{same,readded})["id"].toString(),QString("old"));
+  QCOMPARE(putgd::Settings::profileForDestination(s3,{otherBucket,readded})["id"].toString(),QString("new"));
+  QVERIFY(putgd::Settings::profileForDestination(s3,{otherBucket,otherService}).isEmpty());
+  QVERIFY(putgd::Settings::profileForDestination(s3,{}).isEmpty());
+  // #1778: addressing picks the host S3 requests go to, and an IPv6 literal keeps its brackets.
+  QVERIFY(putgd::Settings::profileForDestination(s3,{QJsonObject{{"id","v"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.example.com"},{"addressing","virtual"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject r2{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QCOMPARE(putgd::Settings::profileForDestination(r2,{QJsonObject{{"id","a"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://acct.r2.cloudflarestorage.com"},{"addressing","auto"},{"bucket","shots"}}}}})["id"].toString(),QString("a"));
+  const QJsonObject aws{{"providerId","s3"},{"profileId","gone"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","path"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(aws,{QJsonObject{{"id","c"},{"provider","s3"},{"settings",QJsonObject{{"endpoint","https://s3.us-east-2.amazonaws.com"},{"addressing","auto"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject ipv6{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1]:443"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","u"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:db8::1:443]"},{"bucket","shots"}}}}}).isEmpty());
+  QCOMPARE(putgd::Settings::profileForDestination(ipv6,{QJsonObject{{"id","t"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://[2001:DB8::1]:443/"},{"bucket","shots"}}}}})["id"].toString(),QString("t"));
+  // A path compares exactly (a key must never go to another tenant's path); a custom uploader never moves.
+  const QJsonObject b2{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://API.example.com/Tenant-A"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","x"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant-a"},{"bucket","shots"}}}}}).isEmpty());
+  QCOMPARE(putgd::Settings::profileForDestination(b2,{QJsonObject{{"id","y"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/Tenant-A/"},{"bucket","shots"}}}}})["id"].toString(),QString("y"));
+  const QJsonObject nested{{"providerId","backblaze-b2"},{"profileId","gone"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant/a"},{"bucket","shots"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(nested,{QJsonObject{{"id","w"},{"provider","backblaze-b2"},{"settings",QJsonObject{{"apiUrl","https://api.example.com/tenant%2Fa"},{"bucket","shots"}}}}}).isEmpty());
+  const QJsonObject http{{"providerId","custom-http"},{"profileId","gone"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}};
+  QVERIFY(putgd::Settings::profileForDestination(http,{QJsonObject{{"id","z"},{"provider","custom-http"},{"settings",QJsonObject{{"requestUrl","https://up.example.com/upload"}}}}}).isEmpty());
+ }
     void startupUnlockAndRecentColorPreferencesAreOptionalAndBounded() {
         auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
         QVERIFY(!putgd::Settings::validate(doc,validator));
@@ -37,6 +70,27 @@ private slots:
         for(const auto& colors:invalid){preferences["editorRecentColors"]=colors;doc["preferences"]=preferences;QCOMPARE(putgd::Settings::validate(doc,validator).code,QString("config_invalid"));}
         QJsonArray seven;for(int i=0;i<7;++i)seven.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=seven;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
         preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+    }
+    // #1937: Unhinged mode is off unless set, and with it off every share is today's.
+    void unhingedModeIsOffByDefaultAndLiftsEachCpuShare() {
+        auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        QVERIFY(!doc["preferences"].toObject().contains("unhingedMode"));QVERIFY(!putgd::Settings::fromValidated(doc).unhingedMode);
+        auto preferences=doc["preferences"].toObject();preferences["unhingedMode"]=true;doc["preferences"]=preferences;
+        QVERIFY(!putgd::Settings::validate(doc,validator));QVERIFY(putgd::Settings::fromValidated(doc).unhingedMode);
+        for(const QJsonValue& bad:{QJsonValue(1),QJsonValue("on"),QJsonValue(QJsonValue::Null)}){preferences["unhingedMode"]=bad;doc["preferences"]=preferences;
+            const auto error=putgd::Settings::validate(doc,validator);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),QString("/preferences/unhingedMode"));}
+        // Recording's encoder and conversion threads: two thirds of the CPUs, bounded; on, all of them.
+        QCOMPARE(putgd::cpu::share(12,2,8,false),8);QCOMPARE(putgd::cpu::share(12,2,8,true),12);
+        QCOMPARE(putgd::cpu::share(4,2,4,false),2);QCOMPARE(putgd::cpu::share(4,2,4,true),4);
+        QCOMPARE(putgd::cpu::share(1,2,4,false),2);QCOMPARE(putgd::cpu::share(1,2,4,true),2);
+        // The video poster child: low priority, two threads' CPU time; on, normal priority and every CPU's.
+        QCOMPARE(putgd::PosterJob::arguments(9,false),QStringList({"--poster","9"}));QCOMPARE(putgd::PosterJob::arguments(9,true),QStringList({"--poster","9","--all-cores"}));
+        QCOMPARE(putgd::PosterJob::niceness(false),10);QCOMPARE(putgd::PosterJob::niceness(true),0);
+        QCOMPARE(putgd::PosterJob::cpuSeconds(10000,false,12),21);QCOMPARE(putgd::PosterJob::cpuSeconds(10000,true,12),121);QCOMPARE(putgd::PosterJob::cpuSeconds(10000,true,1),21);
+        // History previews in parallel stay within half the free memory.
+        constexpr qint64 mib=1024*1024;
+        QCOMPARE(putgd::cpu::workersWithin(12,8192*mib,128*mib),12);QCOMPARE(putgd::cpu::workersWithin(12,1024*mib,128*mib),4);
+        QCOMPARE(putgd::cpu::workersWithin(12,100*mib,128*mib),1);QCOMPARE(putgd::cpu::workersWithin(12,-1,128*mib),1);
     }
     // #293: no updates object means a daily check on this build's channel.
     void updatePreferencesAreOptionalWithKnownChannels() {
@@ -86,6 +140,18 @@ private slots:
         doc.remove("captureDefaults");QVERIFY(putgd::Settings::validate(doc,validator));
     }
 
+    void randomNameOptionsAreOptionalAndBounded() {
+        auto document=putgd::Settings::defaults();
+        auto defaults=putgd::Settings::fromValidated(document).randomName;
+        QCOMPARE(defaults.style,QString("uuid"));QCOMPARE(defaults.length,12);QVERIFY(defaults.uppercase);QVERIFY(defaults.digits);
+        auto naming=document["naming"].toObject();
+        naming["randomStyle"]="string";naming["randomLength"]=4;naming["randomUppercase"]=false;naming["randomDigits"]=false;document["naming"]=naming;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto chosen=putgd::Settings::fromValidated(document).randomName;
+        QCOMPARE(chosen.style,QString("string"));QCOMPARE(chosen.length,4);QVERIFY(!chosen.uppercase);QVERIFY(!chosen.digits);
+        const QList<QPair<QString,QJsonValue>> invalid{{"randomStyle","base64"},{"randomLength",3},{"randomLength",65},{"randomLength",8.5},{"randomLength","8"},{"randomUppercase","yes"},{"randomDigits",1}};
+        for(const auto& [key,value]:invalid){auto bad=naming;bad[key]=value;document["naming"]=bad;QCOMPARE(putgd::Settings::validate(document).code,QString("config_invalid"));}
+    }
     void pendingImageBudgetIsOptionalAndValidated() {
         auto document=putgd::Settings::defaults();
         auto limits=document["limits"].toObject();
@@ -156,6 +222,123 @@ private slots:
         QVERIFY(!service.patch({{"retention", QJsonObject{{"recentActivityLimit", 50}}}}, service.metadata()["observedRevision"].toString()).error);
         const auto saved = QJsonDocument::fromJson(read(path)).object();
         QCOMPARE(saved["limits"].toObject()["maxFileBytes"], QJsonValue("auto"));
+    }
+    // #1618: settings.patch, the CLI and agents write Quick redact's lists as given; the file
+    // always holds them trimmed and without repeats, the way the Settings window writes them.
+    // #1804: off with card, key and list until chosen; only the seven Quick redact names, each once.
+    void sensitiveTextCheckIsOffByDefaultAndTakesOnlyKnownKinds() {
+        const auto defaults = putgd::Settings::fromValidated(putgd::SettingsService::defaults());
+        QVERIFY(!defaults.sensitiveTextCheck);
+        QCOMPARE(defaults.sensitiveTextCategories, (QStringList{"card", "key", "list"}));
+        const auto with = [](const QJsonValue& check) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["sensitiveTextCheck"] = check;doc["preferences"] = preferences;return doc;};
+        const auto document = with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "email"}}});
+        const auto refused = putgd::Settings::validate(document);
+        QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(document);
+        QVERIFY(chosen.sensitiveTextCheck);QCOMPARE(chosen.sensitiveTextCategories, (QStringList{"email", "key"}));
+        for (const auto& wrong : {QJsonValue(true), QJsonValue(QJsonObject{{"enabled", true}}), QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"card", "card"}}}), QJsonValue(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"password"}}}),
+                                  QJsonValue(QJsonObject{{"enabled", "yes"}, {"categories", QJsonArray{"card"}}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+    }
+    // #1893: capture style is off and absent by default, and takes only its own fields.
+    void captureStyleIsOffByDefaultAndTakesOnlyItsFields() {
+        const auto defaults = putgd::SettingsService::defaults();
+        QVERIFY(!defaults["preferences"].toObject().contains("captureStyle"));
+        QVERIFY(!putgd::Settings::fromValidated(defaults).captureStyle.enabled);
+        const auto with = [](const QJsonValue& style) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["captureStyle"] = style;doc["preferences"] = preferences;return doc;};
+        const auto document = with(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "color"}, {"color", "#AABBCC"}}}, {"padding", "large"}, {"corners", false}});
+        const auto refused = putgd::Settings::validate(document);
+        QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(document).captureStyle;
+        QVERIFY(chosen.enabled);QCOMPARE(chosen.backdrop, QString("color"));QCOMPARE(chosen.color, QString("#aabbcc"));QCOMPARE(chosen.padding, QString("large"));QVERIFY(!chosen.corners);QVERIFY(chosen.shadow);
+        // A full object round-trips; enabled alone is a whole style (Graphite).
+        QCOMPARE(putgd::CaptureStyle::fromJson(chosen.toJson()), chosen);
+        QCOMPARE(putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}})).captureStyle.presetId(), QString("graphite"));
+        for (const auto& wrong : {QJsonValue(true), QJsonValue(QJsonObject{}), QJsonValue(QJsonObject{{"enabled", "yes"}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"padding", "huge"}}), QJsonValue(QJsonObject{{"enabled", true}, {"blur", 3}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "picture"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "picture"}, {"picture", "relative.png"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "color"}, {"color", "red"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"backdrop", QJsonObject{{"kind", "stripes"}}}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+        // Padding grows with the capture and is clamped; the shadow always ends inside it.
+        const auto style = putgd::CaptureStyle::preset("graphite");
+        QCOMPARE(style.geometry({300, 80}).padding, 24);QCOMPARE(style.geometry({1920, 1080}).canvas, QSize(2072, 1232));QCOMPARE(style.geometry({3840, 2160}).padding, 151);
+        for (const auto& size : {QSize(300, 80), QSize(3840, 2160), QSize(900, 30000)}) {const auto geometry = style.geometry(size);QVERIFY(geometry.offsetY + 3 * geometry.sigma < geometry.padding);}
+        // Over the limit, padding steps down a size; nothing fits, nothing is styled.
+        QCOMPARE(style.fitted({1920, 1080}, 2072 * 1232 - 1).padding, putgd::CaptureStyle::preset("graphite").geometry({1920, 1080}, 0).padding);
+        QVERIFY(!style.fitted({1920, 1080}, 1920 * 1080).valid());
+    }
+    // #1820: each kind is off, warn or redact; #1804's categories list carries forward with its kinds on warn.
+    void sensitiveTextKindsAreOffWarnOrRedactAndTheOldListMeansWarn() {
+        const auto with = [](const QJsonValue& check) {auto doc = putgd::SettingsService::defaults();auto preferences = doc["preferences"].toObject();preferences["sensitiveTextCheck"] = check;doc["preferences"] = preferences;return doc;};
+        const auto legacy = putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "email"}}}));
+        QCOMPARE(legacy.sensitiveTextCategories, (QStringList{"email", "key"}));QVERIFY(legacy.sensitiveTextCover.isEmpty());
+        const auto kinds = with(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "redact"}, {"key", "warn"}, {"list", "off"}, {"email", "redact"}}}});
+        const auto refused = putgd::Settings::validate(kinds);QVERIFY2(!refused, qPrintable(refused.message));
+        const auto chosen = putgd::Settings::fromValidated(kinds);
+        QCOMPARE(chosen.sensitiveTextCategories, (QStringList{"email", "card", "key"}));QCOMPARE(chosen.sensitiveTextCover, (QStringList{"email", "card"}));
+        // A kind kinds doesn't name follows the older list beside it (a patch of one kind keeps the rest).
+        const auto patched = putgd::Settings::fromValidated(with(QJsonObject{{"enabled", true}, {"categories", QJsonArray{"key", "phone"}}, {"kinds", QJsonObject{{"card", "redact"}}}}));
+        QCOMPARE(patched.sensitiveTextCategories, (QStringList{"phone", "card", "key"}));QCOMPARE(patched.sensitiveTextCover, (QStringList{"card"}));
+        // Every kind off is allowed: nothing is checked.
+        QVERIFY(!putgd::Settings::validate(with(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "off"}, {"key", "off"}, {"list", "off"}}}})));
+        for (const auto& wrong : {QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"card", "hide"}}}}), QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{{"password", "warn"}}}}),
+                                  QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonArray{"card"}}}), QJsonValue(QJsonObject{{"enabled", true}, {"kinds", QJsonObject{}}, {"extra", 1}})})
+            QVERIFY(bool(putgd::Settings::validate(with(wrong))));
+    }
+    void quickRedactListsAreStoredTrimmedAndOnceWhoeverSendsThem() {
+        QTemporaryDir dir;
+        const auto path = dir.filePath("config.json");
+        putgd::SettingsService service(path);
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto patched = service.patch({{"preferences", QJsonObject{{"quickRedactTerms", QJsonArray{"  Project Aurora ", "Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "d69 ", "acme"}},
+                                                                        {"quickRedactPatterns", QJsonArray{"\\bJIRA-\\d+\\b", "\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}}}}},
+                                          service.metadata()["observedRevision"].toString());
+        QVERIFY2(!patched.error, qPrintable(patched.error.message));
+        const auto saved = QJsonDocument::fromJson(read(path)).object()["preferences"].toObject();
+        // Only exact repeats go: entries that differ in case can match differently (ProjectAlpha also reads as Project Alpha).
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
+        // A pattern's spaces are part of it, so only exact repeats go.
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}));
+        QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
+    }
+    // Round 2 (U12): the limits apply to what was sent, before repeats are dropped.
+    void quickRedactListLimitsCountRepeatsToo() {
+        QTemporaryDir dir;
+        putgd::SettingsService service(dir.filePath("config.json"));
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto many = [](int count, const QString& entry) { QJsonArray list; for (int i = 0; i < count; ++i) list.append(entry); return list; };
+        const auto send = [&](const char* key, const QJsonArray& list) { return service.patch({{"preferences", QJsonObject{{key, list}}}}, service.metadata()["observedRevision"].toString()); };
+        const auto terms = send("quickRedactTerms", many(201, "same"));
+        QCOMPARE(terms.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(terms.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactTerms"));
+        const auto patterns = send("quickRedactPatterns", many(51, "\\bsame\\b"));
+        QCOMPARE(patterns.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(patterns.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns"));
+        QVERIFY(!QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject().contains("quickRedactTerms"));
+        // At the limits they are accepted, and stored once.
+        QVERIFY(!send("quickRedactTerms", many(200, "same")).error);
+        QVERIFY(!send("quickRedactPatterns", many(50, "\\bsame\\b")).error);
+        const auto saved = QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject();
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"same"}));
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bsame\\b"}));
+    }
+    // CodeRabbit 4613753597: a pattern is never trimmed when it runs, so its length is counted as written.
+    void quickRedactPatternLengthCountsThePatternAsWritten() {
+        const auto withPattern = [](const QString& pattern) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences["quickRedactPatterns"] = QJsonArray{pattern};
+            document["preferences"] = preferences;
+            return putgd::Settings::validate(document);
+        };
+        QVERIFY(!withPattern(QString(500, 'x')));
+        const auto error = withPattern(QString(500, ' ') + "x");
+        QCOMPARE(error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns/0"));
+        QVERIFY(error.message.startsWith("Pattern 1:"));
     }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
@@ -436,7 +619,7 @@ private slots:
         const auto settings = putgd::Settings::fromValidated(document);
         QCOMPARE(settings.actions.value("record").destination, QStringLiteral("local"));
         QVERIFY(settings.actions.value("record").shortcut.isEmpty());
-        QCOMPARE(putgd::Settings::invocableActionNames().last(), QStringLiteral("record"));
+        QVERIFY(putgd::Settings::invocableActionNames().contains(QStringLiteral("record")));
         // A document that binds the recording key keeps it; it never inherits the region key.
         auto bound = normalized;
         auto boundActions = bound["actions"].toObject();
@@ -447,6 +630,144 @@ private slots:
         QVERIFY(!putgd::Settings::validate(bound));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("record").shortcut, QStringLiteral("Ctrl+Shift+9"));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("region").shortcut, QStringLiteral("Ctrl+Shift+1"));
+    }
+    // Capture monitor and Repeat last region (#1363) came after schema 1 shipped:
+    // an older document's monitor captures go where its desktop captures go, and a
+    // repeat where its region captures go, never to a default upload.
+    void absentMonitorAndRepeatKeepTheirCapturesRoutes() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        auto desktop = actions["desktop"].toObject();
+        desktop["destination"] = "local";
+        actions["desktop"] = desktop;
+        actions.remove("monitor");
+        actions.remove("repeat");
+        document["actions"] = actions;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto normalized = putgd::Settings::normalized(document);
+        const auto monitor = normalized["actions"].toObject()["monitor"].toObject();
+        QCOMPARE(monitor["destination"].toString(), QStringLiteral("local"));
+        QVERIFY(monitor["shortcut"].toString().isEmpty());
+        QCOMPARE(normalized["actions"].toObject()["repeat"].toObject().keys(), QStringList{"shortcut"});
+        const auto settings = putgd::Settings::fromValidated(document);
+        QCOMPARE(settings.actions.value("monitor").destination, QStringLiteral("local"));
+        // Repeat always follows the region route and only its key is its own.
+        QCOMPARE(settings.actions.value("repeat").destination, settings.actions.value("region").destination);
+    }
+    // A configuration written before Copy text existed (#1428) has no text action
+    // and no languages preference. It must still load, with its routes as they
+    // were; a refusal here would stop the resident starting after an update.
+    void configurationFromBeforeCopyTextStillLoads() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        actions.remove("text");
+        document["actions"] = actions;
+        QVERIFY(!document["preferences"].toObject().contains("textRecognitionLanguages"));
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto normalized = putgd::Settings::normalized(document);
+        QCOMPARE(normalized["actions"].toObject()["text"].toObject(), (QJsonObject{{"shortcut", QString{}}}));
+        QVERIFY(!putgd::Settings::validate(normalized));
+        const auto settings = putgd::Settings::fromValidated(document);
+        QVERIFY(settings.actions.value("text").shortcut.isEmpty());
+        QVERIFY(settings.actions.value("text").destination.isEmpty());
+        QVERIFY(settings.textRecognitionLanguages.isEmpty());
+        QCOMPARE(settings.actions.value("region").destination, putgd::Settings::fromValidated(putgd::Settings::defaults()).actions.value("region").destination);
+        // What the new build writes is a hotkey and nothing else, and language identifiers only.
+        auto routed = normalized;
+        actions = routed["actions"].toObject();
+        actions["text"] = actions["region"];
+        routed["actions"] = actions;
+        QCOMPARE(putgd::Settings::validate(routed).details["path"].toString(), QStringLiteral("/actions/text"));
+        const auto withLanguages = [&](const QJsonValue& languages) {
+            auto changed = normalized;
+            auto preferences = changed["preferences"].toObject();
+            preferences["textRecognitionLanguages"] = languages;
+            changed["preferences"] = preferences;
+            return changed;
+        };
+        QVERIFY(!putgd::Settings::validate(withLanguages(QJsonArray{"deu", "eng", "chi_sim"})));
+        QCOMPARE(putgd::Settings::fromValidated(withLanguages(QJsonArray{"deu", "eng"})).textRecognitionLanguages, (QStringList{"deu", "eng"}));
+        for (const auto& refused : {QJsonValue(QJsonArray{}), QJsonValue(QJsonArray{"eng", "eng"}), QJsonValue(QJsonArray{"../eng"}), QJsonValue(QJsonArray{"eng", "deu", "fra", "spa"}), QJsonValue("eng")})
+            QCOMPARE(putgd::Settings::validate(withLanguages(refused)).details["path"].toString(), QStringLiteral("/preferences/textRecognitionLanguages"));
+    }
+    // #1618: Quick redact's saved words and regular expressions are optional
+    // arrays under preferences, absent by default.
+    void quickRedactListDefaultsAndRoundTrip() {
+        const auto defaults = putgd::Settings::defaults();
+        QVERIFY(!defaults["preferences"].toObject().contains("quickRedactTerms"));
+        QVERIFY(!defaults["preferences"].toObject().contains("quickRedactPatterns"));
+        QVERIFY(!putgd::Settings::validate(defaults));
+        const auto none = putgd::Settings::fromValidated(defaults);
+        QVERIFY(none.quickRedactTerms.isEmpty());
+        QVERIFY(none.quickRedactPatterns.isEmpty());
+        auto document = defaults;
+        auto preferences = document["preferences"].toObject();
+        // Terms are trimmed and each exact repeat is dropped, in the order written; a different case is a different entry.
+        preferences["quickRedactTerms"] = QJsonArray{"Project Aurora", "  acme.corp  ", "Project Aurora ", "PROJECT aurora", "d69"};
+        preferences["quickRedactPatterns"] = QJsonArray{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"};
+        document["preferences"] = preferences;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto settings = putgd::Settings::fromValidated(document);
+        QCOMPARE(settings.quickRedactTerms, (QStringList{"Project Aurora", "acme.corp", "PROJECT aurora", "d69"}));
+        QCOMPARE(settings.quickRedactPatterns, (QStringList{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"}));
+        QVERIFY(!putgd::Settings::validate(putgd::Settings::normalized(document)));
+    }
+    void quickRedactListLimitsAndErrors() {
+        const auto withPreference = [](const char* key, const QJsonValue& value) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences[key] = value;
+            document["preferences"] = preferences;
+            return document;
+        };
+        const auto repeated = [](int count, const QString& entry) {
+            QJsonArray array;
+            for (int i = 0; i < count; ++i) array.append(entry + QString::number(i));
+            return array;
+        };
+        // The limits: 200 words of 1 to 100 characters, 50 patterns of up to 500.
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactTerms", repeated(200, "w"))));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactTerms", QJsonArray{QString(100, 'a')})));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactPatterns", repeated(50, "x"))));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactPatterns", QJsonArray{QString(500, 'a')})));
+        const auto refuse = [&](const char* key, const QJsonValue& value, const QString& path) {
+            const auto error = putgd::Settings::validate(withPreference(key, value));
+            QTest::qVerify(static_cast<bool>(error), "refused", qPrintable(path), __FILE__, __LINE__);
+            QTest::qCompare(error.code, QStringLiteral("config_invalid"), "error.code", "config_invalid", __FILE__, __LINE__);
+            QTest::qCompare(error.details["path"].toString(), path, "path", "expected", __FILE__, __LINE__);
+            return error;
+        };
+        refuse("quickRedactTerms", repeated(201, "w"), "/preferences/quickRedactTerms");
+        refuse("quickRedactTerms", QJsonValue("word"), "/preferences/quickRedactTerms");
+        refuse("quickRedactTerms", QJsonArray{3}, "/preferences/quickRedactTerms");
+        refuse("quickRedactPatterns", repeated(51, "x"), "/preferences/quickRedactPatterns");
+        refuse("quickRedactPatterns", QJsonValue(true), "/preferences/quickRedactPatterns");
+        // A bad entry is named by its position, and its text is in no error.
+        const QString secret = QStringLiteral("Synthetic-Hostname-Not-Real");
+        for (const auto& bad : {QString(), QString("   "), QString(101, 'a'), secret + "\nsecond line", secret + "\rsecond line"}) {
+            const auto error = refuse("quickRedactTerms", QJsonArray{"fine", bad}, "/preferences/quickRedactTerms/1");
+            QVERIFY(error.message.startsWith("Word 2:"));
+            QVERIFY(!error.message.contains(secret));
+            QVERIFY(!QJsonDocument(error.details).toJson().contains(secret.toUtf8()));
+        }
+        refuse("quickRedactPatterns", QJsonArray{QString(501, 'a')}, "/preferences/quickRedactPatterns/0");
+        refuse("quickRedactPatterns", QJsonArray{"ok", QString()}, "/preferences/quickRedactPatterns/1");
+    }
+    // A pattern that does not compile or matches empty text is refused by its position.
+    void quickRedactInvalidPatternsAreRefusedWithoutTheirText() {
+        const QString secret = QStringLiteral("(Synthetic-Pattern-Not-Real");
+        for (const auto& bad : {QString("("), QString("[a-"), secret, QString("a*"), QString("^"), QString("(?:)")}) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences["quickRedactPatterns"] = QJsonArray{"\\bJIRA-\\d+\\b", bad};
+            document["preferences"] = preferences;
+            const auto error = putgd::Settings::validate(document);
+            QVERIFY2(error, qPrintable(bad));
+            QCOMPARE(error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns/1"));
+            QVERIFY(error.message.startsWith("Pattern 2:"));
+            QVERIFY(!error.message.contains("Synthetic-Pattern"));
+            QVERIFY(!QJsonDocument(error.details).toJson().contains("Synthetic-Pattern"));
+        }
     }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document
@@ -490,6 +811,33 @@ private slots:
         }
         const auto badKey = withRecord(QJsonObject{{"shortcut", "Ctrl+Shift+Nope"}});
         QCOMPARE(badKey.details["path"].toString(), QStringLiteral("/actions/record/shortcut"));
+    }
+    // The tray's output submenu and the window's popup read these rows. A timing
+    // word goes only on a row it is true for: editing and recording upload or
+    // save when you choose, the others right away, and nothing promises a save
+    // when there is no output (council round 4).
+    void outputRowsSayTimingOnlyWhereItIsTrue() {
+        auto document = putgd::Settings::developmentTemplate();
+        auto profiles = document["profiles"].toArray(); auto profile = profiles.first().toObject(); profile["id"] = "s3"; profile["label"] = "Archive"; profiles[0] = profile; document["profiles"] = profiles;
+        document["captureDefaults"] = QJsonObject{{"destination", "upload"}, {"profileId", "s3"}, {"publicationMode", "default"}};
+        auto actions = document["actions"].toObject();
+        for (const auto& name : putgd::Settings::actionNames()) { auto action = actions[name].toObject(); action["destination"] = "default"; action.remove("profileId"); action.remove("publicationMode"); actions[name] = action; }
+        document["actions"] = actions;
+        auto archive = document["archive"].toObject(); archive["keepUploads"] = false; document["archive"] = archive;
+        auto summary = putgd::commandtext::outputSummary(document);
+        QVERIFY(!summary.mixed); QCOMPARE(summary.tray, QString("Capture output: Shared link · Archive"));
+        QCOMPARE(summary.rows, QStringList({"All actions: Shared link · Archive · No local copy", "Capture region & edit · Record screen: Upload when you choose"}));
+        // Recording saves locally while editing uploads: separate rows, each true.
+        actions["record"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}}; actions["window"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}};
+        archive["keepUploads"] = true; document["archive"] = archive; document["actions"] = actions;
+        summary = putgd::commandtext::outputSummary(document);
+        QVERIFY(summary.mixed); QCOMPARE(summary.tray, QString("Capture output: mixed")); QCOMPARE(summary.band, QString("Mixed outputs")); QCOMPARE(summary.exceptions, 2);
+        QCOMPARE(summary.rows, QStringList({"Default: Shared link · Archive + local copy", "Capture region & edit: Upload when you choose", "Capture window: Saves locally · Local only", "Record screen: Save when you choose · Local only"}));
+        // With no output at all nothing is promised.
+        document["captureDefaults"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"publicationMode", "default"}};
+        archive["keepUploads"] = false; document["archive"] = archive; actions["record"] = QJsonObject{{"shortcut", ""}}; actions["window"] = QJsonObject{{"destination", "default"}, {"shortcut", ""}}; document["actions"] = actions;
+        summary = putgd::commandtext::outputSummary(document);
+        QCOMPARE(summary.band, QString("Captures have no output")); QCOMPARE(summary.rows, QStringList({"All actions: Nothing is saved or uploaded"}));
     }
 };
 QTEST_GUILESS_MAIN(SettingsContract)

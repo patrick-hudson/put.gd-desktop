@@ -305,6 +305,8 @@ def _unchanged(watch, request, window):
 def drive(watch, request):
     """One guarded real click on the backend dialog's accept button."""
     ctx, consent = watch.ctx, watch.consent
+    if not consent or consent.get('kind') != 'portal-dialog':
+        raise RecipeBlocked('automatic ScreenCast consent is disabled for this profile', issue=ISSUE)
     if watch.clicked:
         raise RecipeBlocked('ScreenCast consent was already clicked once for this request; never twice', issue=ISSUE)
     if getattr(ctx.target, 'physical', None):

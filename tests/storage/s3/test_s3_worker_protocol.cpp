@@ -1,5 +1,6 @@
 #include "storage/s3/S3WorkerProtocol.h"
 #include "storage/s3/PublicUrl.h"
+#include "storage/s3/S3Journal.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTest>
@@ -233,6 +234,25 @@ private slots:
         modified["objectReference"] = object;
         QVERIFY(wire::decode(modified, decoded));
     }
+    // A link spelled for the key as typed (before #1582) is accepted only as the link the
+    // checked receipt already holds, never for a new publication.
+    void oldLinkSpellingOnlyForTheCheckedReceipt() {
+        auto old = receipt();
+        old.objectReference["key"] = "a//b/p.txt";
+        old.directUrl = s3LegacyPublicObjectUrl(old.destination.settings, "a//b/p.txt");
+        QVERIFY(old.directUrl != publicObjectUrl(old.destination.settings, "a//b/p.txt"));
+        StorageReceipt decoded;
+        QVERIFY(!wire::decode(old.toJson(), decoded));
+        QVERIFY(wire::decode(old.toJson(), decoded, old.directUrl));
+        UploadResult uploaded;
+        QVERIFY(!wire::decode(wire::encode(UploadResult{"uploaded", old, {}}), uploaded));
+        StatResult stat;
+        QVERIFY(!wire::decode(wire::encode(StatResult{"own", old, {}}), stat));
+        QVERIFY(wire::decode(wire::encode(StatResult{"own", old, {}}), stat, old));
+        auto other = old;
+        other.directUrl = s3LegacyPublicObjectUrl(old.destination.settings, "a//b/q.txt");
+        QVERIFY(!wire::decode(wire::encode(StatResult{"own", old, {}}), stat, other));
+    }
     void resultStatusDomainsAndNullUnusedReceipts() {
         NameCheck checked;
         const NameCheck absent{"absent", {{"schemaVersion", 1}, {"key", "key"}}, {}, {}};
@@ -343,6 +363,14 @@ private slots:
         const QJsonObject completed{{"uploadStatus", "uploaded"}, {"receipt", receipt().toJson()}, {"publicReachable", true},
                                    {"cleanupStatus", "removed"}, {"cleanupProgress", QJsonObject{}}};
         QVERIFY(wire::decodeTestDestinationResult(completed));
+        // #1680: the result's cleanup target never carries a signed link back into the test journal.
+        for (const auto* suffix : {"?x-amz-signature=abc&X-Amz-Credential=AKIDSYNTHETIC", "#Authorization=token"}) {
+            auto target = receipt().toJson();
+            target["directUrl"] = target["directUrl"].toString() + suffix;
+            auto withTarget = completed;
+            withTarget["cleanupProgress"] = QJsonObject{{"target", target}};
+            QVERIFY2(!wire::decodeTestDestinationResult(withTarget), suffix);
+        }
         auto modified = completed;
         modified["publicReachable"] = "true";
         QVERIFY(!wire::decodeTestDestinationResult(modified));
@@ -367,6 +395,30 @@ private slots:
             modified["multipart"] = probe;
             QVERIFY(!wire::decodeTestDestinationResult(modified));
         }
+    }
+    // Every saved stage and phase string reads back as itself (#1435): a journal one
+    // build writes resumes on the next, and a value no build writes is unreadable,
+    // never taken for another one on the way to a DELETE.
+    void savedStagesAndPhasesRoundTripAndAnUnknownOneIsUnreadable() {
+        auto check = [](const QStringList& expected, const auto& names, auto parse, auto name) {
+            QCOMPARE(qsizetype(std::size(names)), expected.size());
+            for (const auto& text : expected) {
+                const auto value = parse(QJsonValue(text));
+                QVERIFY2(value && name(*value) == text, qPrintable(text));
+            }
+            QVERIFY(!parse(QJsonValue("completed_later")));
+            QVERIFY(!parse(QJsonValue(1)));
+        };
+        check({"name_head", "object_head", "current_head", "upload_put", "upload_create", "upload_part", "upload_list_parts", "upload_complete",
+               "upload_abort", "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object",
+               "delete_version_list"},
+              s3StageNames, s3Stage, s3StageName);
+        check({"parts", "completing"}, s3UploadPhaseNames, s3UploadPhase, s3UploadPhaseName);
+        check({"", "marker_intent", "marker_unknown", "marker_failed", "marker_cancelled", "marker_done", "version_ready", "version_intent",
+               "version_unknown", "version_failed", "version_cancelled", "object_intent", "object_unknown", "object_failed", "object_cancelled", "done"},
+              s3DeletePhaseNames, s3DeletePhase, s3DeletePhaseName);
+        QCOMPARE(s3DeletePhase(QJsonValue(QJsonValue::Undefined)), std::optional(S3DeletePhase::None));
+        QVERIFY(!s3DeletePhase(QJsonValue(QJsonValue::Null)));
     }
     void multipartJournalRoundTripsAndStaysStrict() {
         auto original = upload();

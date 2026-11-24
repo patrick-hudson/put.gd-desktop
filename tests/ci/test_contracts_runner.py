@@ -23,13 +23,14 @@ class ContractsRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='contracts-runner-') as directory:
             root = Path(directory)
             (root / 'suites').mkdir()
-            (root / 'suites/test_a_pass.py').write_text('print("quiet pass")\n')
+            (root / 'suites/test_a_pass.py').write_text('if __name__ == "__main__":\n    print("quiet pass")\n')
             (root / 'suites/test_b_fail.py').write_text(textwrap.dedent('''\
                 import unittest
                 class Synthetic(unittest.TestCase):
                     def test_reaped_descendant(self):
                         raise ProcessLookupError(3, 'No such process')
-                unittest.main()
+                if __name__ == '__main__':
+                    unittest.main()
             '''))
             output = root / 'out'
             output.mkdir()
@@ -49,6 +50,22 @@ class ContractsRunnerTests(unittest.TestCase):
             report = json.loads((output / 'synthetic-contracts.json').read_text())
             self.assertEqual([suite['exitCode'] for suite in report['suites']], [0, 1])
             self.assertIn('quiet pass', (output / 'synthetic-contracts.log').read_text())
+
+    def test_suite_without_a_main_entry_runs_under_pytest_and_zero_tests_fail(self):
+        with tempfile.TemporaryDirectory(prefix='contracts-runner-') as directory:
+            root = Path(directory)
+            (root / 'suites').mkdir()
+            (root / 'suites/test_a_pytest_fail.py').write_text('def test_it():\n    assert False\n')
+            (root / 'suites/test_b_pytest_pass.py').write_text('def test_it():\n    assert True\n')
+            (root / 'suites/test_c_no_tests.py').write_text('VALUE = 1\n')
+            output = root / 'out'
+            output.mkdir()
+            groups = {'synthetic': {'globs': ('suites/test_*.py',), 'scope': 'synthetic'}}
+            with patch.object(contracts, 'ROOT', root), patch.dict(contracts.GROUPS, groups), \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                contracts.run_group('synthetic', output)
+            report = json.loads((output / 'synthetic-contracts.json').read_text())
+            self.assertEqual([suite['exitCode'] != 0 for suite in report['suites']], [True, False, True])
 
 
 if __name__ == '__main__':

@@ -36,12 +36,12 @@ UiProcessController::~UiProcessController(){
 void UiProcessController::activate(const QString& view,Reply reply,const QString& activationToken){
  if(stopping_){if(reply)reply(unavailable("ui_stopping"));return;}
  // Internal tray recovery carries the specific error to its settings control.
- if(!view.startsWith("historyCancelAll:")&&view!="historyFailed"&&!view.startsWith("actionRecovery:")&&!QStringList{"settings","updates","history","activity","destinations","about","editFile","captureSettings"}.contains(view)){
+ if(!view.startsWith("historyCancelAll:")&&view!="historyFailed"&&!view.startsWith("actionRecovery:")&&!view.startsWith("errors:")&&!QStringList{"settings","updates","history","activity","destinations","about","editFile","captureSettings","errors"}.contains(view)){
   if(reply)reply(unavailable("ui_view"));
   return;
  }
- int queued=0;for(const auto& callbacks:pending_)queued+=callbacks.size();
- for(const auto& activation:activations_)queued+=activation.replies.size();
+ int queued=0;for(const auto& callbacks:std::as_const(pending_))queued+=callbacks.size();
+ for(const auto& activation:std::as_const(activations_))queued+=activation.replies.size();
  if(queued>=64){if(reply)reply(unavailable("ui_busy"));return;}
  // Keep one activation per view while its acknowledgement is outstanding;
  // a new token is a new click, which still has to reach the window.
@@ -89,7 +89,7 @@ void UiProcessController::launch(){
   QPointer<UiProcessController> guard(this);
   emit helperPidChanged(child->processId());
   if(!guard||process_!=child||stopping_)return;
-  control_->send("bootstrap",{{"socketPath",socketPath_},{"residentEpoch",epoch_},{"build",build()},{"state",state_}});
+  control_->send("bootstrap",{{"socketPath",socketPath_},{"residentEpoch",epoch_},{"build",build()},{"state",state_},{"personToken",personToken_}});
  });
  connect(child,&QProcess::errorOccurred,this,[this,child,generation](QProcess::ProcessError error){
   if(process_!=child||processGeneration_!=generation)return;
@@ -214,7 +214,7 @@ void UiProcessController::updateShortcutRecording(){
   if(guard->control_)guard->control_->send("shortcutRecordingChanged",{{"replyTo",request.sequence},{"active",!error&&request.active},{"error",error.toJson()}});
   if(guard)guard->updateShortcutRecording();
  };
- if(!shortcutRecordingHandler_){complete({"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}});return;}
+ if(!shortcutRecordingHandler_){complete({"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}});return;}
  shortcutRecordingHandler_(request.active,[guard,generation,request,complete](Error error){
   if(!guard||guard->recordingGeneration_!=generation)return;
   if(error&&request.active){
@@ -311,7 +311,7 @@ void UiProcessController::killHelper(const QString& reason,QJsonObject context){
  if(!context.contains("phase"))context["phase"]=QString::fromLatin1(phaseName());
  QJsonArray pending,activations;
  for(auto it=pending_.begin();it!=pending_.end();++it)pending.append(it.key());
- for(const auto& activation:activations_)activations.append(activation.view);
+ for(const auto& activation:std::as_const(activations_))activations.append(activation.view);
  context["pendingViews"]=pending;context["activations"]=activations;
  if(!commands_.isEmpty())context["commands"]=int(commands_.size());
  if(!closeSequence_.isEmpty())context["closeConfirmed"]=closeConfirmed_;

@@ -23,7 +23,7 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
   // A timeout is not evidence of suspension: discard capture and restore via
   // the ordered private pipe. The supervisor also restores if this pipe dies.
   control_.send("shortcutRecording",{{"active",false}});
-  finishShortcutRecordingRequests({"shortcut_recording_timeout","Global shortcuts could not be paused. Try recording again.",{}});
+  finishShortcutRecordingRequests({"shortcut_recording_timeout","Hotkeys could not be paused. Try recording again.",{}});
  });
  // #60: the setting picks the scheme and "system" follows the desktop live;
  // CLI/MCP patches arrive through the same accepted revisions.
@@ -62,7 +62,7 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings"}.contains(name)){
+ if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||name.startsWith("errors:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings","errors"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
    connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
@@ -93,6 +93,8 @@ QWidget* UiApplicationController::view(const QString& name){
   if(name=="captureSettings"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->showCaptureSettings();});return main_.get();}
   if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
   if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
+  // Settings → Error log (#1753); "errors:<target JSON>" opens it on one entry.
+  if(name=="errors"||name.startsWith("errors:")){const auto target=name=="errors"?QJsonObject{}:QJsonDocument::fromJson(name.mid(7).toUtf8()).object();main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),target]{if(main)main->showErrorLog(target);});return main_.get();}
   if(name.startsWith("historyCancelAll:")){QStringList ids;for(const auto& id:QJsonDocument::fromJson(name.mid(17).toUtf8()).array())if(id.isString())ids<<id.toString();main_->navigate("history");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),ids]{if(main)main->history()->confirmUploads(ids);});return main_.get();}
   if(name.startsWith("actionRecovery:")){const auto data=QJsonDocument::fromJson(name.mid(15).toUtf8()).object();main_->showActionFailure(data["action"].toString(),{data["code"].toString(),data["message"].toString(),{}});return main_.get();}
   main_->navigate(name);return main_.get();
@@ -154,7 +156,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto it=recordingRequests_.find(payload["replyTo"].toString());if(it==recordingRequests_.end())return;
   const auto request=std::move(it.value());recordingRequests_.erase(it);if(recordingRequests_.isEmpty())recordingDeadline_.stop();
   const auto value=payload["error"].toObject();Error error{value["code"].toString(),value["message"].toString(),value["details"].toObject()};
-  if(!error&&payload["active"]!=request.active)error={"ui_protocol","Invalid shortcut recording acknowledgement.",{}};
+  if(!error&&payload["active"]!=request.active)error={"ui_protocol","Invalid hotkey recording acknowledgement.",{}};
   if(request.reply)request.reply(error);
   return;
  }
@@ -173,8 +175,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
-  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","historyQr","fileDialog","customUploader","r2Destination","davDestination","sftpDestination","errorLog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"||name=="historyQr"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
   // #259: the open, save and folder choosers, as their buttons open them.
   else if(name=="fileDialog"){
    const auto dialog=params["dialog"].toString(),action=params["action"].toString();
@@ -193,6 +195,18 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
   else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
   else if(name=="history"){main_->history()->command(params,answer);return;}
+  // #1753: Settings → Error log, its rows, filters, next steps and Clear.
+  else if(name=="errorLog"){if(params["action"]!="inspect")main_->navigate("settings");main_->settings()->errorLogCommand(params,answer);return;}
+  // #1428: history.qr show, after the resident refreshed the link.
+  else if(name=="historyQr"){main_->history()->showQrCode(params,answer);return;}
+  // #1361: the Custom uploader form in Destinations; its secret values never leave the window.
+  else if(name=="customUploader"){main_->navigate("destinations");main_->settings()->uploaderCommand(params,answer);return;}
+  // #1678: the Cloudflare R2 form in Destinations and Move to Cloudflare R2; it carries no credentials.
+  // It acts on Destinations as shown, never opening it: inspect changes nothing on screen.
+  else if(name=="r2Destination"){main_->settings()->r2Command(params,answer);return;}
+  else if(name=="davDestination"){main_->settings()->davCommand(params,answer);return;}
+  // #1871: the SFTP form in Destinations; it carries no credentials.
+  else if(name=="sftpDestination"){main_->settings()->sftpCommand(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }
@@ -261,9 +275,12 @@ void UiApplicationController::requestAction(const QString& action){
  if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::invocableActionNames().contains(action))return;
  pendingAction_=action;pendingOptions_={};prepareAction();
 }
-void UiApplicationController::requestEdit(const QString& source,const QString& path){
+void UiApplicationController::requestEdit(const QString& source,const QString& path,bool captureStyle){
  if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||(source!="clipboard"&&source!="file"))return;
- pendingAction_="edit";pendingOptions_={{"source",source}};if(source=="file")pendingOptions_["path"]=path;prepareAction();
+ pendingAction_="edit";pendingOptions_={{"source",source}};if(source=="file")pendingOptions_["path"]=path;
+ // #1893: Edit again of a styled capture opens its original with the capture style on.
+ if(source=="file"&&captureStyle)pendingOptions_["captureStyle"]=true;
+ prepareAction();
 }
 void UiApplicationController::prepareAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()){pendingAction_.clear();return;}
@@ -286,7 +303,10 @@ void UiApplicationController::prepareAction(){
 void UiApplicationController::invokeAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()||actionDispatching_)return;
  actionDispatching_=true;const auto action=pendingAction_;const bool screen=action!="clipboard"&&!pendingOptions_.contains("source");
- auto params=pendingOptions_;params["action"]=action;
+ auto params=pendingOptions_;params["action"]=action;params["sensitiveText"]="prompt"; // #1804: a person answers the sensitive text prompt
+ if(action==Settings::textActionName())params["person"]=session_.personToken(); // #1962: the person's own Copy text
+ // The dashboard's captures start after the chosen delay (#1363), as the tray's do.
+ if(Settings::delayableAction(action)&&(action!="edit"||Settings::delayableEditSource(params.value("source").toString("region"))))if(const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delay>0)params["delaySeconds"]=delay;
  session_.request("action.invoke",params,this,[this,screen](Error error,QJsonObject){
   actionDispatching_=false;if(exiting_||quitting_||closing_){clearPendingAction(false);return;}
   if(error){clearPendingAction(true);notify(error);return;}

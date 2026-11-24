@@ -19,10 +19,15 @@ public:
     ProviderCapabilities capabilities(const Destination&) const override;
     QString serializationKey(const Destination&, const QJsonObject&, const QString&) const override;
     Error validateSettings(const QJsonObject&) const override;
+    Error validateStoredSettings(const QJsonObject&) const override;
     Error readiness(const Destination&) const;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
+    void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
+    void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
+    void refreshLinkForCopy(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
+    void statForRemoval(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;
     void abandonUpload(const Destination&, const QJsonObject& journal, std::function<void(Error)>) override;

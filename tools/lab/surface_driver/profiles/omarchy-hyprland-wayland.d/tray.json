@@ -1,0 +1,43 @@
+{
+  "tray": {
+    "icon": {
+      "name": "put.gd",
+      "role": "label",
+      "application": "quickshell*"
+    },
+    "notification_server": "quickshell",
+    "resident_notifications": false,
+    "shortcut_channel": "hyprland-global-shortcuts",
+    "fixture_issue": 670,
+    "references": {
+      "full": "00-tray-menu-idle",
+      "output": "00-tray-output-submenu",
+      "uploading": "00-tray-menu-uploading",
+      "proton-busy": "00-tray-menu-proton-busy",
+      "edit": "00-tray-edit-submenu"
+    },
+    "pixels": {
+      "edge": "top",
+      "thickness": 26,
+      "reveal": "omarchy-pin",
+      "scroll_menu": true
+    }
+  },
+  "windows": {
+    "trayFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "name": "putgd synthetic fixture",
+        "role": "frame"
+      }
+    },
+    "trayAbout": {
+      "title": "^About put.gd$",
+      "accessible": {
+        "name": "About put.gd",
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  }
+}

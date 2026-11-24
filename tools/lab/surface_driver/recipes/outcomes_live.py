@@ -6,11 +6,13 @@ No preuploaded result, fake endpoint, direct provider delete or account sign-in.
 import io
 import json
 import sys
+from urllib.parse import urlsplit
 
 from ..api import recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
 from ..catalog import image_modules
-from ..fixtures.live_outcomes import provider, verify_s3, reconcile_refused_s3
+from ..fixtures.live_outcomes import (R2_CUSTOM_DOMAIN, capture_name, provider, verify_presigned, verify_r2,
+                                     verify_s3, reconcile_refused_s3)
 from . import history, outcomes, selectors
 
 
@@ -22,13 +24,53 @@ def _owned(ctx, service, detail, oid):
                and destination['credentials']['reference'] == service.credential_reference,
                'cleanup receipt belongs to this exact operation and bridged destination')
     if ctx.destination == 's3':
-        ctx.expect(destination['providerId'] == 's3' and destination['settings']['objectPrefix'] == service.prefix
+        # Only a key inside this campaign's prefix may replace the marker's key; a rejected receipt leaves the
+        # planned key in place. Then require it to be the one recorded before publishing (a unique prefix and
+        # name leave nothing to rename).
+        kind = 'cloudflare-r2' if service.get('r2') else 's3'
+        if (destination['providerId'] == kind and destination['settings']['objectPrefix'] == service.prefix
+                and receipt['objectReference']['key'].startswith(service.prefix)):
+            service.pending.record_key(receipt['objectReference']['key'])
+        ctx.expect(destination['providerId'] == kind and destination['settings']['objectPrefix'] == service.prefix
                    and receipt['objectReference']['key'].startswith(service.prefix),
                    'cleanup cannot leave the new S3 campaign prefix')
+        ctx.expect(receipt['objectReference']['key'] == service.object_key,
+                   'stored object key equals the exact key recorded before publication')
     else:
         ctx.expect(destination['providerId'] == 'proton-drive'
                    and destination['settings']['folderUid'] == service.folder_uid,
                    'cleanup cannot leave the newly created Proton folder')
+
+
+DELETION_SETTLED = ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
+                    'hidden_version_retained', 'unsupported_safe_removal')
+
+
+def _retry_deletion(ctx, current):
+    """An unresolved delete leaves Retry deletion, not the first-delete button."""
+    ctx.call('delete.retry', {'id': current['deleteOperationId']})
+    ctx.note('deletion_retried=1')
+    # The retry is answered before it runs, so the status it started from can still be read back.
+    settled = [status for status in DELETION_SETTLED if status != current['remoteStatus']]
+    return ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': current['id']})).get('remoteStatus')
+                             in settled else None), 'retried deletion settled', timeout=90)
+
+
+def _delete_from_row_menu(ctx, detail):
+    """Delete from destination… in the exact row's own menu, as history_delete does.
+
+    On labwc every capture of History (the driver places it by its own pixels) puts its details
+    pane back at the top, so the pane's button, below the window's end, cannot be scrolled to.
+    """
+    history._search(ctx, history._distinct_text(ctx, detail))
+    ctx.wait(lambda: history._state(ctx)['rows'] == 1, 'the live row is the one row shown')
+    node = history._searched_row_node(ctx)
+    history._click_history_node(ctx, {'role': 'list item', 'name': node['name']})
+    ctx.wait(lambda: history._state(ctx)['selectedIds'] == [detail['id']], 'the live row is selected with real input')
+    history._focus_items(ctx)
+    ctx.keys('Shift+F10')
+    history._wait_menu(ctx, 'Delete from destination…')
+    ctx.click('text:Delete from destination…', window='historyRowMenu')
 
 
 def _cleanup(ctx, detail):
@@ -37,8 +79,16 @@ def _cleanup(ctx, detail):
     ctx.focus('history', raise_window=ctx.profile.get('session') == 'x11')
     box = ctx.geometry('history')
     # The remote actions live below the preview in the inspector. Scroll its
-    # right side with guarded real input; older Qt does not export its ID.
-    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.6*box['height']), -16, head=box.get('head', 0))
+    # right side with guarded real input; older Qt does not export its ID. Below
+    # the preview: resting on it shows its tooltip over the point (Hyprland).
+    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.85*box['height']), -16, head=box.get('head', 0))
+    button = ({'name': 'Revoke link…', 'role': 'push button'} if ctx.destination == 'proton' else history.DELETE_BUTTON)
+    # On labwc the read below captures History to place it, which puts the pane back at the top:
+    # whatever it saw is gone by the click, so cleanup there always uses the row's own menu.
+    labwc = ctx.profile.get('compositor', {}).get('kind') == 'toplevel-pixels'
+    in_view = not labwc and ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
+                                                within=[box[k] for k in ('x', 'y', 'width', 'height')]))
+    in_view = bool(in_view) and len(in_view) == 1 and bool(in_view[0].get('rect'))
     ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
         # Qt 6.4 does not publish objectName, and the pinned S3 catalog has
@@ -61,20 +111,28 @@ def _cleanup(ctx, detail):
         ctx.expect(final['shareStatus'] == 'revoked' and not final['linkAvailable'], 'History confirms link revoked')
         ctx.note('revocation_count=1')
     else:
-        # Qt 6.4 does not expose this button's objectName. The exact caption
-        # still binds the unique visible owned inspector action.
-        ctx.click('text:Delete from destination…', window='history')
-        history._wait_window(ctx, 'confirmAction')
-        ctx.call('ui.history', {'action': 'copyDeletionDetails'})
-        prepared = json.loads(ctx.clipboard_text())
-        ctx.expect([t['historyId'] for t in prepared['targets']] == [detail['id']]
-                   and bool(prepared['acknowledgement']), 'deletion confirms exact owned history ID and effects')
-        ctx.frame('delete-exact-owned-object', window='confirmAction')
-        history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
-        final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
-                                 in ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
-                                     'hidden_version_retained', 'unsupported_safe_removal') else None),
-                         'UI deletion settled', timeout=180)
+        current = ctx.call('history.detail', {'id': detail['id']})
+        if current.get('deleteOperationId') and current.get('remoteStatus') in ('failed', 'unknown'):
+            final = _retry_deletion(ctx, current)
+        else:
+            if in_view:
+                # Qt 6.4 does not expose this button's objectName. The exact caption
+                # still binds the unique visible owned inspector action.
+                ctx.click('text:Delete from destination…', window='history')
+            else:
+                _delete_from_row_menu(ctx, detail)
+            history._wait_window(ctx, 'confirmAction')
+            ctx.call('ui.history', {'action': 'copyDeletionDetails'})
+            prepared = json.loads(ctx.clipboard_text())
+            ctx.expect([t['historyId'] for t in prepared['targets']] == [detail['id']]
+                       and bool(prepared['acknowledgement']), 'deletion confirms exact owned history ID and effects')
+            ctx.frame('delete-exact-owned-object', window='confirmAction')
+            history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
+            final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
+                                     in DELETION_SETTLED else None), 'UI deletion settled', timeout=180)
+            if not in_view:
+                # The search that picked the row would hide the next pass's row from History.
+                history._search(ctx, '')
         ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
                    'History confirms object removal')
         ctx.note('deletion_count=1')
@@ -91,6 +149,9 @@ def _published(ctx, oid, pending):
                                if r.get('operationId') == oid], 'live publication has durable history')
     ctx.expect(len(records) == 1, 'one live capture has exactly one durable row')
     detail = ctx.call('history.detail', {'id': records[0]['id']})
+    if 'X-Amz-' in urlsplit(detail.get('receipt', {}).get('directUrl') or '').query:
+        # History shows a signed link in full (key ID and signature): no frame for the rest of the recipe.
+        ctx._frames_withheld = 'a signed link may be on screen'
     ctx.note('operationId='+oid)
     ctx.note('historyId='+detail['id'])
     # Register cleanup even for partial publication, before checking its outcome.
@@ -137,7 +198,7 @@ def _copy_history_link(ctx, scope, detail):
 def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
-    service = provider(scope)
+    service = ctx._live_service = provider(scope)
     outcomes._clipboard_reader(scope)
     scene, oracle = outcomes._pattern(ctx)
     if ctx.destination == 's3':
@@ -262,19 +323,143 @@ def _region_upload(ctx):
                     raise
 
 
-def _live_flow(ctx):
+def _capture_once(ctx, service, scene, owned):
+    """One real region capture of the pattern to the live destination; its History row and rectangle.
+
+    OWNED receives the row as soon as it is proven to be this operation's, before anything else is
+    asserted, so a later failure still deletes the object it published.
+    """
+    x, y, w, h = scene.rect
+    rect = (x+20, y+20, x+w-20, y+h-20)
+    with selectors._portal_scope(ctx):
+        service.pending['remote'] = True
+        oid = selectors._open_region(ctx, accessible=False)
+        ctx.drag(rect[:2], rect[2:])
+        op, detail = _published(ctx, oid, service.pending)
+    if detail.get('uploadStatus') == 'uploaded':
+        _owned(ctx, service, detail, oid)
+        owned.append(detail)
+    ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
+               and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
+    return detail, rect
+
+
+def _settle_extra(ctx, service, detail, gone):
+    """Delete an extra live object through History and prove it gone (GONE); never hide a failed delete."""
+    _cleanup(ctx, detail)
+    gone(detail)
+    service.pending['remote'] = False
+    ctx.click('windowClose', window='history')
+
+
+def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
+    """Switch the live destination's link settings, publish one capture, CHECK it, delete it, GONE proves it.
+
+    Each pass has its own object key, recorded in the cleanup marker before anything is published.
+    With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop. A SIGNED link
+    carries the access key ID and a working signature, and History shows it in full: no frame is saved
+    from the start of the pass to the end of the driver process, the runner's after-frame included.
+    """
+    scope = ctx._fixture_manager.scope
+    service = ctx._live_service
+    scene = ctx.fixture('selector-desktop')
+    current = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
+    template, key = capture_name(service.prefix)
+    service['object_key'] = key
+    service.pending.details['objectKey'] = key
+    scope.patch({'profiles': [dict(current, settings=dict(current['settings'], **settings))],
+                 'naming': {'captureTemplate': template}})
+    scene.command('freeze')
+    scene.command('raise')
+    if signed:
+        ctx._frames_withheld = 'a signed link may be on screen'
+    owned = []
+    try:
+        detail, rect = _capture_once(ctx, service, scene, owned)
+        data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
+        if oracle is not None:
+            Image, _, _ = image_modules()
+            ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
+                       'live region pixels equal independently captured pattern crop (tolerance=0)')
+        check(detail, data)
+    finally:
+        if owned:
+            failed = sys.exc_info()[0] is not None
+            try:
+                # The frame guard stays set to the end of the recipe, after-frame included: closing
+                # History is a click, and the window can still be on screen when the runner's frame comes.
+                _settle_extra(ctx, service, owned[0], gone)
+            except Exception as error:
+                ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
+                if not failed:
+                    raise
+    return detail
+
+
+def _presigned_upload(ctx):
+    """#1366: the same S3 destination switched to expiring links publishes a signed link; unsigned is refused."""
+    service = ctx._live_service
+    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1),
+               lambda detail, data: verify_presigned(ctx, service, detail, data, host='s3.'+service.region+'.amazonaws.com'),
+               lambda detail: verify_s3(ctx, service, detail, absent=True), signed=True)
+    ctx.note('presigned_link_count=1')
+
+
+def _live_flow(ctx, extra=None):
     try:
         _region_upload(ctx)
+        if extra:
+            extra(ctx)
     except BaseException:
         outcomes.note_app_error_banners(ctx)
         raise
     outcomes.no_app_error_banner(ctx)
 
 
+def _r2_flow(ctx):
+    """#1699: Cloudflare R2 public links on the custom domain and on r2.dev, then an expiring link.
+
+    Each pass uploads a region capture, checks the copied link with an unauthenticated GET (and the
+    object with the bucket-scoped key), deletes it from History and proves the origin no longer has it.
+    """
+    ctx.fixture('app-profile')
+    scope = ctx._fixture_manager.scope
+    service = ctx._live_service = provider(scope, r2=True)
+    outcomes._clipboard_reader(scope)
+    _, oracle = outcomes._pattern(ctx)
+    for name, base in (('custom domain', R2_CUSTOM_DOMAIN), ('r2.dev', service.public_base)):
+        def check(detail, data, base=base):
+            outcomes._auto_copy(ctx, scope, detail)
+            verify_r2(ctx, service, detail, data, base=base)
+        _link_pass(ctx, dict(linkMode='public', publicUrlBase=base), check,
+                   lambda detail, base=base: verify_r2(ctx, service, detail, absent=True, base=base),
+                   oracle=oracle if name == 'custom domain' else None)
+        ctx.note('r2_public_link_count=1; host='+base.split('//', 1)[1])
+    def signed(detail, data):
+        verify_r2(ctx, service, detail, data)
+        # R2 refuses an unsigned S3 API request; the status it uses is not AWS's.
+        verify_presigned(ctx, service, detail, data, host=service.account+'.r2.cloudflarestorage.com',
+                         refused=(400, 401, 403))
+    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1), signed,
+               lambda detail: verify_r2(ctx, service, detail, absent=True), signed=True)
+    ctx.note('r2_presigned_link_count=1')
+
+
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
-        'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=720)
+        'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=840)
 def s3_region_upload(ctx):
-    _live_flow(ctx)
+    _live_flow(ctx, _presigned_upload)
+
+
+@recipe('region.to-upload', 'region.drag', 'history.delete-remote', 'confirm.history-delete',
+        destinations=('s3',), desktop_drawn=True, timeout=600)
+def s3_r2_region_upload(ctx):
+    try:
+        _r2_flow(ctx)
+    except BaseException:
+        outcomes.note_app_error_banners(ctx)
+        raise
+    outcomes.no_app_error_banner(ctx)
 
 
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',

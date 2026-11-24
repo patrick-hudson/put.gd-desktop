@@ -36,22 +36,33 @@ public:
  void abandonUpload(const Destination&,const QJsonObject& journal,std::function<void(Error)> cb) override {if(beforeAbandon)beforeAbandon();Error error;{QMutexLocker lock(&mutex);abandoned.append(journal);error=abandonError;}cb(error);}
  // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
  int concurrency=1;QSet<QString> failCandidates;
+ // What a failed upload answers (#1692), such as a refused sign-in; a generic failure without it.
+ Error uploadError;
  int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
+ // The session one operation holds around its requests to a destination that takes one
+ // at a time (Proton keeps a signed-in helper in it): how many were opened and are open,
+ // and how many requests ran outside one or off the thread that opened it.
+ std::atomic_int sessionsOpened{0},sessionsOpen{0},requestsOutsideSession{0};std::atomic<std::thread::id> sessionThread{};
+ std::shared_ptr<void> openSession(const Destination&) override {++sessionsOpened;++sessionsOpen;sessionThread=std::this_thread::get_id();return std::shared_ptr<void>(this,[this](void*){--sessionsOpen;});}
+ // What the provider was asked to ready ahead of an operation, and how much of it is still held.
+ std::atomic_int anticipations{0},anticipationsHeld{0};
+ std::shared_ptr<void> anticipate(const Destination&) override {++anticipations;++anticipationsHeld;return std::shared_ptr<void>(this,[this](void*){--anticipationsHeld;});}
+ void countRequest() {if(concurrency==1&&(sessionsOpen.load()!=1||sessionThread.load()!=std::this_thread::get_id()))++requestsOutsideSession;}
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}
  bool reportsUploadProgress() const override {return prepareUploads;}
  ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();ProviderCapabilities c{true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};c.maximumObjectBytes=maximumObjectBytes;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name) const override {return d.settings["workspace"].toString()+":"+(ref.isEmpty()?fileId(name):ref["fileId"].toString());}
  Error validateSettings(const QJsonObject& s) const override {if(s.size()!=1||!s["workspace"].isString())return {"config_invalid","A workspace is required",{}};return {};}
- void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {if(cancellation&&cancellation->load()){cb({"inconclusive",{},{},{"cancelled","Synthetic name check cancelled",{}}});return;}++checks;QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}
+ void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {if(cancellation&&cancellation->load()){cb({"inconclusive",{},{},{"cancelled","Synthetic name check cancelled",{}}});return;}++checks;countRequest();QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}
  void upload(const UploadRequest& request,std::function<void(UploadResult)> cb) override {
-  ++uploads;
+  ++uploads;countRequest();
   {QMutexLocker lock(&mutex);resumes.append(request.resume);}
   if(journalThenFail&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"uploadId","opaque-upload"}},[cb](Error e){cb({"failed",{},e?e:Error{"fixture_failed","Synthetic failure",{}}});});return;}
   if(journalThenUnknown&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"upload","opaque-resumable"}},[cb](Error e){cb({"unknown",{},e?e:Error{"fixture_interrupted","Synthetic interruption",{}}});});return;}
   if(prepareUploads&&request.progress)request.progress({"preparing",0,request.artifact.bytes});
   auto complete=[this,request,cb] {
-   if(failUpload||failCandidates.contains(request.candidate)) {cb({"failed",{}, {"fixture_failed","Synthetic failure",{}}});return;}
+   if(failUpload||failCandidates.contains(request.candidate)) {cb({"failed",{},uploadError?uploadError:Error{"fixture_failed","Synthetic failure",{}}});return;}
    QMutexLocker lock(&mutex);const auto id=request.objectReference["fileId"].toString();const auto existing=objects.value(id);
    if((request.condition=="absent"&&objects.contains(id))||(request.condition=="match"&&existing.concurrencyToken!=request.concurrencyToken)) {lock.unlock();cb({"collision",{}, {"precondition_changed","Synthetic collision",{}}});return;}
    StorageReceipt r;r.destination=request.destination;r.publicationId=request.publicationId;r.objectReference={{"format",1},{"fileId",id},{"revisionId","opaque-version!"+request.publicationId}};r.concurrencyToken="opaque-token!"+request.publicationId;r.directUrl="https://example.invalid/direct?file="+request.publicationId+"#unrelated";objects.insert(id,r);lock.unlock();cb({loseReply?"unknown":"uploaded",r,{}});
@@ -60,7 +71,10 @@ public:
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=receipt.objectReference["fileId"].toString();auto r=objects.value(id);if(wrongStatDestination)r.destination.settings["workspace"]="different-namespace";QString status=!objects.contains(id)?"missing":r.publicationId==receipt.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=request.objectReference["fileId"].toString();auto r=objects.value(id);QString status=!objects.contains(id)?"missing":r.publicationId==request.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
+ // A test's own deletion driver, in place of the one below.
+ std::function<void(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>)> removeOverride;
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> cb) override {
+  if(removeOverride) {removeOverride(request,checkpoint,cb);return;}
   const QJsonObject progress{{"schemaVersion",1},{"phase","recorded-intent"},{"opaqueMutationId",request.receipt.publicationId}};
   checkpoint(progress,[this,request,progress,cb](Error e) {if(e) {cb({"failed",{},e});return;}if(checkpointObserver)checkpointObserver(request);++deletes;QMutexLocker lock(&mutex);auto id=request.receipt.objectReference["fileId"].toString();auto status=deletionResults.value(id,"removed");if(status=="removed")objects.remove(id);lock.unlock();if(slowDelete)std::thread([cb,status,progress] {std::this_thread::sleep_for(std::chrono::milliseconds(250));cb({status,progress,{}});}).detach();else cb({status,progress,{}});});
  }

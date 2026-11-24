@@ -285,6 +285,18 @@ private slots:
  void destructionDuringCompletionDoesNotRetainInput(){
   for(int mode=0;mode<3;++mode){auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error&){++completed;overlay.reset();});connect(overlay.get(),&RegionSelector::selected,this,[&](const QRectF&){++completed;overlay.reset();});overlay->start();PUTGD_TRY_COMPARE(drawables().size(),2);if(mode==0){motion({40,40});button(1,true);motion({400,400});button(1,false);}else if(mode==1){keyClick(0xff53);keyClick(0xff0d);}else escape();PUTGD_TRY_COMPARE(completed,1);QVERIFY(!overlay);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();}
  }
+ // The resident's crosshair hold (#1436): a drag held through the handoff ends
+ // the selection inside the grab, and a release after a cancel takes no grab.
+ void pointerHandoffEndsWithoutRetainingInput_data(){QTest::addColumn<bool>("drag");QTest::newRow("held-drag-selects")<<true;QTest::newRow("cancel-while-held")<<false;}
+ void pointerHandoffEndsWithoutRetainingInput(){
+  QFETCH(bool,drag);NativeRegionOverlay overlay(frames());int handedOff=0,cancelled=0,selected=0;QRectF result;
+  connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& rect){result=rect;++selected;});
+  overlay.setPointerHandoff(XCB_CURSOR_NONE,[&]{++handedOff;});overlay.start();PUTGD_TRY_COMPARE(handedOff,1);QCOMPARE(drawables().size(),2);
+  if(!drag)overlay.cancel();
+  overlay.pointerReleased({{true,1,QPoint(40,40)},{false,1,QPoint(400,400)}});
+  QCOMPARE(selected,drag?1:0);QCOMPARE(cancelled,drag?0:1);if(drag)QCOMPARE(result,QRectF(40,40,360,360));
+  PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
  void cancellationDuringStartup(){
   auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;
   connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("cancelled"));++completed;overlay.reset();});

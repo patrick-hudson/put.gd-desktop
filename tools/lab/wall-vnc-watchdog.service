@@ -2,7 +2,7 @@
 #   cp tools/lab/wall_vnc_watchdog.py ~/.local/bin/wall-vnc-watchdog
 #   cp tools/lab/wall-vnc-watchdog.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload && systemctl --user enable --now wall-vnc-watchdog.service
-# See docs/remote-builders.md ("Visual results are required").
+# See docs/lab/remote-builders.md ("Visual results are required").
 [Unit]
 Description=Restart the wall VNC server when its screencast stream stops
 PartOf=graphical-session.target

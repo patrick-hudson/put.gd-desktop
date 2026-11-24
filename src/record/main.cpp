@@ -2,26 +2,37 @@
 // one per recording session and speaks UiControl frames over private pipes;
 // `--capabilities` prints the media inventory and exits. The helper owns the
 // live GStreamer capture, the private working clip, frame previews and the
-// FFmpeg export; only control metadata crosses the pipes.
+// FFmpeg export; only control metadata crosses the pipes. A bootstrap with
+// `session: "scroll"` makes it a scroll-capture session instead (#1376): the
+// same selectors and sources, frames into a stitcher, one PNG at the end.
+// `--scroll-capabilities` prints what that session would use on this desktop.
 #include "MediaProbe.h"
+#include "Microphones.h"
 #include "BundledRuntime.h"
 #include "Poster.h"
 #include "ClipExporter.h"
+#include "Filmstrip.h"
 #include "DebugLog.h"
 #include "AvSync.h"
+#include "ClickCheck.h"
 #include "AppIdentity.h"
 #include "RecordSession.h"
-#include "app/UiControl.h"
+#include "ScrollCapture.h"
+#include "ScrollInjectors.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
-#include "ui/StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
 #include "ui/Fonts.h"
 #include "ui/Ui.h"
+#include "ui/DialogAttachment.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QImage>
 #include <QCoreApplication>
+#include <algorithm>
 #include <atomic>
+#include <memory>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <gst/gst.h>
@@ -51,7 +62,28 @@ int main(int argc, char** argv) {
         std::fputc('\n', stdout);
         return 0;
     }
-    if (argc == 3 && std::strcmp(argv[1], "--poster") == 0) {
+    if (argc == 2 && std::strcmp(argv[1], "--scroll-capabilities") == 0) {
+        // #1376: the frame source, injector and selector a scroll capture would
+        // use here. Opens no capture source, shows nothing and sends no input.
+        QCoreApplication app(argc, argv);
+        const auto json = QJsonDocument(record::probeScroll()).toJson(QJsonDocument::Compact);
+        std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--microphones") == 0) {
+        // #1364: the inputs a recording can narrate from, and which one the given
+        // device name (or the system default) resolves to. Asks the sound
+        // server; opens no device. Monitors of outputs are never listed.
+        QCoreApplication app(argc, argv);
+        GError* error = nullptr;
+        if (!gst_init_check(nullptr, nullptr, &error)) { if (error) g_error_free(error); return 6; }
+        const auto json = QJsonDocument(record::microphonesJson(argc == 3 ? QString::fromLocal8Bit(argv[2]) : QString())).toJson(QJsonDocument::Compact);
+        std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if ((argc == 3 || (argc == 4 && std::strcmp(argv[3], "--all-cores") == 0)) && std::strcmp(argv[1], "--poster") == 0) {
         // History's poster frame for a finished video (#112). The resident opens
         // the stored file and passes it as standard input; the PNG (long edge at
         // most 256 px, duration in a text chunk) goes to standard output. The
@@ -62,7 +94,7 @@ int main(int argc, char** argv) {
         const qint64 maxPixels = QByteArray(argv[2]).toLongLong(&ok);
         if (!ok || maxPixels < 1) return 2;
         record::Poster poster;
-        if (const auto error = record::renderPoster(QStringLiteral("/proc/self/fd/0"), 256, maxPixels, poster)) return error.code == "input_excessive" ? 3 : 1;
+        if (const auto error = record::renderPoster(QStringLiteral("/proc/self/fd/0"), 256, maxPixels, poster, argc == 4)) return error.code == "input_excessive" ? 3 : 1;
         poster.image.setText(QStringLiteral("putgd-duration-ms"), QString::number(poster.durationUs / 1000));
         QByteArray png;
         QBuffer buffer(&png);
@@ -117,18 +149,90 @@ int main(int argc, char** argv) {
         std::printf("motion=%.3f compared=%d samples=%d durationMs=%lld size=%dx%d\n", compared ? total / compared : 0.0, compared, samples, static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
         return 0;
     }
-    if (argc == 4 && std::strcmp(argv[1], "--av-marker") == 0) {
-        // Lab diagnostic: write the synthetic A/V marker clip to play while recording.
+    if ((argc == 4 || argc == 5) && std::strcmp(argv[1], "--filmstrip") == 0) {
+        // Lab diagnostic (#1613): asks the review filmstrip for N tiles spread
+        // over the clip, the two ends first, and prints one JSON line: the time
+        // from open() to the first two tiles and to all N (the clip's open
+        // included), tiles decoded, and the peak resident set.
         QCoreApplication app(argc, argv);
-        if (auto error = record::writeAvMarker(QString::fromLocal8Bit(argv[2]), std::atoi(argv[3]))) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        av_log_set_level(AV_LOG_QUIET);
+        const QString clip = QString::fromLocal8Bit(argv[2]);
+        const int count = std::clamp(std::atoi(argv[3]), 1, 48);
+        const int width = argc == 5 ? std::clamp(std::atoi(argv[4]), 8, 1024) : 128;
+        qint64 durationUs = 0;
+        QSize canvas;
+        if (auto error = record::probeClip(clip, durationUs, canvas)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        const QSize tile(width, std::max(1, int(std::lround(double(width) * canvas.height() / std::max(1, canvas.width())))));
+        QList<qint64> times;
+        const auto center = [&](int i) { return durationUs * (2 * i + 1) / (2 * count); };
+        times.append(center(0));
+        if (count > 1) times.append(center(count - 1));
+        for (int i = 1; i < count - 1; ++i) times.append(center(i));
+        record::Filmstrip strip;
+        QElapsedTimer clock;
+        qint64 firstTwoNs = 0, allNs = 0;
+        int arrived = 0;
+        QString failure;
+        QObject::connect(&strip, &record::Filmstrip::tileReady, &app, [&](qint64, qint64, const QImage&) {
+            ++arrived;
+            if (arrived == std::min(2, count)) firstTwoNs = clock.nsecsElapsed();
+            if (arrived == count) { allNs = clock.nsecsElapsed(); QCoreApplication::quit(); }
+        });
+        QObject::connect(&strip, &record::Filmstrip::failed, &app, [&](const QString& message) { failure = message; QCoreApplication::quit(); });
+        QTimer::singleShot(60000, &app, [&] { failure = QStringLiteral("timed out"); QCoreApplication::quit(); });
+        clock.start();
+        strip.open(clip, durationUs, canvas);
+        strip.request(times, tile);
+        app.exec();
+        if (!failure.isEmpty() || arrived != count) { std::fprintf(stderr, "filmstrip: %s (%d of %d tiles)\n", failure.isEmpty() ? "incomplete" : qPrintable(failure), arrived, count); return 1; }
+        rusage used{};
+        getrusage(RUSAGE_SELF, &used);
+        std::printf("{\"tiles\":%d,\"tile\":\"%dx%d\",\"first_two_ms\":%.1f,\"all_ms\":%.1f,\"decoded\":%d,\"cached\":%d,\"peak_rss_kib\":%ld,\"duration_ms\":%lld,\"canvas\":\"%dx%d\"}\n",
+                    count, tile.width(), tile.height(), firstTwoNs / 1e6, allNs / 1e6, strip.stats().decoded, strip.stats().cached, used.ru_maxrss,
+                    static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
         return 0;
     }
-    if (argc == 3 && std::strcmp(argv[1], "--av-sync") == 0) {
+    if ((argc == 4 || (argc == 5 && std::strcmp(argv[4], "--moving") == 0)) && std::strcmp(argv[1], "--av-marker") == 0) {
+        // Lab diagnostic: write the synthetic A/V marker clip to play while recording.
+        // `--moving` adds a sweeping bar, for clips that must also show motion.
+        QCoreApplication app(argc, argv);
+        if (auto error = record::writeAvMarker(QString::fromLocal8Bit(argv[2]), std::atoi(argv[3]), 0, -1, 0, argc == 5)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        return 0;
+    }
+    if (argc >= 3 && argc % 2 == 1 && std::strcmp(argv[1], "--av-sync") == 0) {
         // Lab diagnostic: A/V sync of a recording of the synthetic marker clip
         // (flashes with simultaneous tone bursts); prints one JSON object.
+        // `--tone HZ` (repeatable, #1364) adds that tone's level across the track.
         QCoreApplication app(argc, argv);
         QJsonObject result;
-        if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        QList<double> tones;
+        for (int i = 3; i + 1 < argc; i += 2) {
+            bool number = false;
+            const double hz = QString::fromLocal8Bit(argv[i + 1]).toDouble(&number);
+            if (std::strcmp(argv[i], "--tone") != 0 || !number || hz <= 0) { std::fprintf(stderr, "usage: --av-sync CLIP [--tone HZ]...\n"); return 2; }
+            tones.append(hz);
+        }
+        if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result, tones)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
+        return 0;
+    }
+    if (argc >= 4 && std::strcmp(argv[1], "--click-check") == 0) {
+        // Lab diagnostic (#1364): what changes near a place in the clip between
+        // two times, against the first frame of that span: a pointer arriving, a
+        // click ring. `FROM_MS,TO_MS,X,Y` per watch, in clip time and clip pixels;
+        // prints one JSON object.
+        QCoreApplication app(argc, argv);
+        QList<record::ClickWatch> watches;
+        for (int i = 3; i < argc; ++i) {
+            const auto parts = QString::fromLocal8Bit(argv[i]).split(',');
+            bool ok[4] = {};
+            record::ClickWatch watch;
+            if (parts.size() == 4) { watch.fromMs = parts[0].toLongLong(&ok[0]); watch.toMs = parts[1].toLongLong(&ok[1]); watch.x = parts[2].toInt(&ok[2]); watch.y = parts[3].toInt(&ok[3]); }
+            if (!ok[0] || !ok[1] || !ok[2] || !ok[3] || watch.toMs <= watch.fromMs) { std::fprintf(stderr, "usage: --click-check CLIP FROM_MS,TO_MS,X,Y...\n"); return 2; }
+            watches.append(watch);
+        }
+        QJsonObject result;
+        if (auto error = record::measureClicks(QString::fromLocal8Bit(argv[2]), watches, result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
         return 0;
     }
@@ -147,6 +251,7 @@ int main(int argc, char** argv) {
             if (arg == "--codec" && i + 1 < argc) request.config.codec = QString::fromLocal8Bit(argv[++i]);
             else if (arg == "--max-edge" && i + 1 < argc) request.config.maxEdge = std::atoi(argv[++i]);
             else if (arg == "--trim" && i + 2 < argc) { request.edit.trimStart = std::atoll(argv[++i]); request.edit.trimEnd = std::atoll(argv[++i]); }
+            else if (arg == "--cut" && i + 2 < argc) { RecordingCut cut; cut.start = std::atoll(argv[++i]); cut.end = std::atoll(argv[++i]); request.edit.cuts.append(cut); }
             else if (arg == "--no-audio") request.config.audio.system = false;
             else { std::fprintf(stderr, "unknown export option %s\n", argv[i]); return 2; }
         }
@@ -171,6 +276,8 @@ int main(int argc, char** argv) {
     if (!handles.valid()) return 2;
     // Raster overlays and frame previews only: no desktop theme plugins.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && qEnvironmentVariableIsEmpty("DISPLAY") && qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) qputenv("QT_QPA_PLATFORM", "offscreen");
+    // The review window's confirmations move on their own on GNOME.
+    keepModalDialogsDetached();
     QGuiApplication::setDesktopSettingsAware(false);
     qunsetenv("QT_QPA_PLATFORMTHEME");
     qunsetenv("QT_STYLE_OVERRIDE");
@@ -192,8 +299,12 @@ int main(int argc, char** argv) {
     QJsonObject envelope;
     bool ready = false;
     record::RecordSession session;
-    QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { app.exit(5); });
-    QObject::connect(&control, &UiControl::failed, &app, [&] { app.exit(3); });
+    // A scroll-capture session, made at bootstrap when the resident asks for one.
+    std::unique_ptr<record::ScrollCapture> scroll;
+    // The resident is gone or broke the protocol: a scroll capture injects
+    // nothing more from here, not even the pointer's way back.
+    QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { if (scroll) scroll->abandon(); app.exit(5); });
+    QObject::connect(&control, &UiControl::failed, &app, [&] { if (scroll) scroll->abandon(); app.exit(3); });
     auto result = [&](const QString& requestId, const QJsonObject& value) {
         auto frame = envelope;
         frame["requestId"] = requestId;
@@ -210,16 +321,22 @@ int main(int argc, char** argv) {
         frame["details"] = error.details;
         control.send("commandResult", frame);
     };
-    QObject::connect(&session, &record::RecordSession::event, &app, [&](const QJsonObject& payload) {
+    const auto forward = [&](const QJsonObject& payload) {
         if (!ready) return;
         auto frame = envelope;
         for (auto it = payload.begin(); it != payload.end(); ++it) frame[it.key()] = it.value();
         control.send("event", frame);
-    });
+    };
+    QObject::connect(&session, &record::RecordSession::event, &app, forward);
     QObject::connect(&control, &UiControl::frame, &app, [&](const QString& type, const QString&, const QJsonObject& payload) {
         if (type == "bootstrap") {
             if (ready || payload["role"].toString() != "record" || !payload["nonce"].isString() || !payload["generation"].isString() || !payload["build"].isObject()) { app.exit(3); return; }
+            if (payload.contains("session") && payload["session"].toString() != "scroll") { app.exit(3); return; }
             envelope = {{"role", "record"}, {"nonce", payload["nonce"]}, {"generation", payload["generation"]}};
+            if (payload["session"].toString() == "scroll") {
+                scroll = std::make_unique<record::ScrollCapture>();
+                QObject::connect(scroll.get(), &record::ScrollCapture::event, &app, forward);
+            }
             // #198: the interface's resolved scheme; the overlays follow it.
             Theme::setScheme(payload["appearance"].toObject()["scheme"].toString() == "light" ? Theme::Scheme::Light : Theme::Scheme::Dark);
             ready = true;
@@ -238,9 +355,17 @@ int main(int argc, char** argv) {
         }
         if (type != "command" || !payload["requestId"].isString() || !payload["command"].isString() || !payload["params"].isObject()) { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
+        if (scroll) {
+            record::debugLog("scroll command " + command);
+            scroll->command(command, payload["params"].toObject(), [requestId, command, &result, &failure](Error error, QJsonObject value) { record::debugLog("scroll result " + command + (error ? " error " + error.code + " " + error.message : QString(" ok"))); if (error) failure(requestId, error); else result(requestId, value); });
+            return;
+        }
         if (command == "capabilities") { result(requestId, record::probeMedia()); return; }
         record::debugLog("command " + command);
         session.command(command, payload["params"].toObject(), [requestId, command, &result, &failure](Error error, QJsonObject value) { record::debugLog("result " + command + (error ? " error " + error.code + " " + error.message : QString(" ok"))); if (error) failure(requestId, error); else result(requestId, value); });
     });
-    return app.exec();
+    const int code = app.exec();
+    // Before the control channel goes: the worker ends and nothing more is injected.
+    scroll.reset();
+    return code;
 }

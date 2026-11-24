@@ -1,5 +1,7 @@
 #pragma once
 #include "core/RecordingModel.h"
+#include "core/RecordingWindows.h"
+#include <QJsonArray>
 #include <functional>
 #include <memory>
 
@@ -21,9 +23,19 @@ public:
     virtual ~RecordingBackend() = default;
     // {available, reason?, targets, formats, codecs, audio:{system,microphone}, overlayExclusion}
     virtual QJsonObject capabilities() const = 0;
+    // #1364: the inputs a recording can narrate from and the one `device` (a
+    // source name; empty for the system default input) resolves to:
+    // {available, reason?, message?, device?: {id, label}, devices: [{id, label,
+    // default}], defaultIsMonitor}. Asks the sound server and opens no device.
+    virtual void microphones(const QString& device, Reply reply) {
+        Q_UNUSED(device);
+        reply({}, {{"available", false}, {"reason", "microphone_unsupported"}, {"message", "Microphone recording is not available on this installation."}, {"devices", QJsonArray{}}, {"defaultIsMonitor", false}});
+    }
     // Makes capabilities() current (a lazy helper probe); never starts capture.
     virtual void refreshCapabilities(std::function<void()> done) { done(); }
-    // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}.
+    // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}; from
+    // the helper backend also "lateResult" {command, ok}: a command answered after
+    // its deadline, whose caller already had recording_helper_timeout (#1443).
     virtual void setEventSink(Event) = 0;
     // Shows ready bounds/controls and asks for any consent. Result: {canvas:[w,h]}.
     virtual void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) = 0;
@@ -37,11 +49,16 @@ public:
     virtual void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) = 0;
     // Pushes the authoritative edit (and config) to the helper's review window.
     // limits: {animationSeconds, animationEdge} so the review can warn before an export is refused.
-    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) { Q_UNUSED(limits); }
+    // answer, when the push answers a window proposal: {proposal} once applied,
+    // plus refused {code, message, revision} when it was not.
+    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits, const QJsonObject& answer = {}) { Q_UNUSED(limits); Q_UNUSED(answer); }
     // Releases helper/staging ownership for the id without an upload.
     virtual void discard(const QString& id) = 0;
     // The process that owns the session's windows (the control bar), or 0.
     virtual qint64 processId(const QString&) const { return 0; }
+    // How long a starting, recording or paused capture may go without an event
+    // before the service counts its backend hung and ends the session (#1994); 0 never does.
+    virtual int silenceLimitMs() const { return 0; }
 };
 // Presentation the helper cannot do itself where the compositor keeps clients
 // from placing their own surfaces. On GNOME the put.gd Shell extension runs the
@@ -65,6 +82,13 @@ public:
     // and paused) and bar placement. Replies {bar: {placed, outside, rect}}.
     virtual void showFrame(const QJsonObject&, Reply) = 0;
     virtual void hideFrame() = 0;
+    // Where the pointer moves anywhere on the desktop, for the length of a
+    // scroll capture's auto-scroll (#1531): {x, y, t} in logical desktop
+    // pixels and CLOCK_MONOTONIC milliseconds, every motion, the capture's own
+    // included. False where the shell cannot (an older extension still loaded).
+    virtual bool watchesPointer() const { return false; }
+    virtual void watchPointer(std::function<void(QJsonObject)>) {}
+    virtual void unwatchPointer() {}
 };
 class UnavailableRecordingBackend final : public RecordingBackend {
 public:

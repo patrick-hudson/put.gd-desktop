@@ -16,6 +16,21 @@ struct ProviderCapabilities {
  // Largest object the provider accepts in one upload; zero when it reports no
  // fixed limit (a server may still refuse a file for quota or plan reasons).
  qint64 maximumObjectBytes=0;
+ // The server names what it stores (a custom HTTP uploader, #1361): the proposed name
+ // is only sent along, the collision policy does not apply, and an upload whose
+ // outcome is unknown cannot be checked, so an explicit Retry sends it again.
+ bool serverNamesObjects=false;
+ // Deletion goes through a reference the upload itself returned and addresses exactly
+ // that upload, so it needs no stat, precondition or version.
+ bool referenceDelete=false;
+ // The provider checks the key itself before it reports a collision or ends an uncertain
+ // upload, and its answer stands: History neither checks the key again after the upload
+ // nor before a Retry of an upload the provider journaled (S3, #1627).
+ bool settlesUploads=false;
+ // Why this recorded upload cannot be deleted, when remove is false for it alone.
+ QString removeUnavailable;
+ // Whether a recorded object can be deleted without risking another object.
+ bool safeRemoval() const {return remove&&!deletionEffect.isEmpty()&&(referenceDelete||(stat&&(conditionalDelete||versionAddressing)));}
  QJsonObject toJson() const;
 };
 struct NameCheck {
@@ -57,6 +72,9 @@ struct UploadRequest {
  // never names, object keys, URLs, credentials or payload. "event" is "part" (one
  // successful part request, kept with debug logging) or "complete".
  std::function<void(const QJsonObject&)> trace={};
+ // The operation makes a share link for this file as soon as it is uploaded. A provider
+ // whose link costs local work may do that work while the file is in transit.
+ bool linkFollows=false;
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown
@@ -64,6 +82,10 @@ struct DeleteRequest {
  QString id; StorageReceipt receipt;
  QJsonObject progress;
  std::shared_ptr<std::atomic_bool> cancellation;
+ // Quit (#1602): the helper process doing this deletion is killed at once, with no
+ // cancel exchange, so it sends nothing more. A request it had sent may or may not have
+ // reached the server: the result is unknown, with the last acknowledged progress kept.
+ std::shared_ptr<std::atomic_bool> kill={};
 };
 struct DeleteResult { QString status; QJsonObject progress; Error error; }; // removed, missing, changed, failed, unknown, hidden_version_retained
 // A driver must await a successful durable checkpoint callback BEFORE the associated
@@ -84,6 +106,15 @@ bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
+ // Explicit user action only: never called by refreshLink or background history reads.
+ virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
+ // Copy Link's renewal of an expiring link. A provider whose renewal runs in a helper
+ // kills it when `kill` is set (quit, #1602) and answers unknown: the recorded link stays.
+ virtual void refreshLinkForCopy(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> /*kill*/,std::function<void(StatResult)> reply) {refreshLink(receipt,std::move(reply));}
+ // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
+ virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
+  reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});
+ }
  // True when uploads reliably report preparing/uploading/finalizing phases.
  // Such uploads become active only upon uploading/finalizing; telemetry remains optional.
  virtual bool reportsUploadProgress() const { return false; }
@@ -92,6 +123,16 @@ public:
  // destination takes a single request at a time (Proton locks its account), so an
  // operation holds it for all of its provider work; more lets uploads overlap.
  virtual int maximumConcurrentRequests(const Destination&) const { return 1; }
+ // Lets the provider keep what it can reuse between one operation's requests to this
+ // destination (Proton: one signed-in helper for the name check, upload and link) until
+ // the handle is released. Requests made on the calling thread meanwhile use it. Release
+ // the handle on that thread; a provider with nothing to keep returns none.
+ virtual std::shared_ptr<void> openSession(const Destination&) { return {}; }
+ // A hint that requests to this destination are about to follow: an action that uploads
+ // there was just invoked. The provider may get ready ahead of them (Proton starts and
+ // signs in a helper). Never waits, and is callable from any thread; whatever it readied
+ // and no request used ends when the handle is released.
+ virtual std::shared_ptr<void> anticipate(const Destination&) { return {}; }
  // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
  virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }
  virtual QString defaultPublicationMode(const Destination&) const { return "share"; }
@@ -101,14 +142,26 @@ public:
  // Bounded non-secret resource counters only; no settings, payloads or credentials.
  virtual QJsonObject diagnostics() const { return {}; }
  virtual ProviderCapabilities capabilities(const Destination&) const=0;
+ // The capabilities of one recorded upload, for a provider where they depend on
+ // what that upload returned (its deletion URL) and not on the destination alone.
+ virtual ProviderCapabilities receiptCapabilities(const StorageReceipt& receipt) const { return capabilities(receipt.destination); }
+ // A profile's settings as a diagnostics package may carry them. Settings hold no
+ // credentials; a provider whose settings carry free-form values drops those too.
+ virtual QJsonObject diagnosticSettings(const QJsonObject& settings) const { return settings; }
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
+ // Saved settings that met an earlier version's rules: they still load and can be
+ // fixed in Settings. New settings and new uploads use validateSettings.
+ virtual Error validateStoredSettings(const QJsonObject& settings) const { return validateSettings(settings); }
  virtual Error validateCredentials(const QJsonObject&) const { return {}; }
  // A cancelled name check must stop queued/in-flight work and complete promptly.
  // It is read-only: an inconclusive/cancelled result never reserves a target.
  virtual void checkName(const Destination&,const QString&,std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {})=0;
  virtual void upload(const UploadRequest&,std::function<void(UploadResult)>)=0;
  virtual void stat(const StorageReceipt&,std::function<void(StatResult)>)=0;
+ // The identity check before a deletion. A provider whose check runs in a helper kills it
+ // when `kill` is set (quit, #1602) and answers unknown.
+ virtual void statForRemoval(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> /*kill*/,std::function<void(StatResult)> reply) {stat(receipt,std::move(reply));}
  virtual void reconcile(const UploadRequest&,std::function<void(StatResult)>)=0;
  virtual void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>)=0;
  // Removes the remote state a failed upload's journal (UploadRequest::resume) still
@@ -121,6 +174,7 @@ public:
  void add(const QString&,std::shared_ptr<StorageProvider>);
  std::shared_ptr<StorageProvider> find(const QString&) const;
  Error validate(const QString&,const QJsonObject&) const;
+ Error validateStored(const QString&,const QJsonObject&) const;
  Error validateCredentials(const QString&,const QJsonObject&) const;
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;

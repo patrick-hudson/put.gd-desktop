@@ -52,8 +52,8 @@
     "qt": "6.12.0",
     "layerShellQt": {
       "repository": "https://github.com/KDE/layer-shell-qt.git",
-      "release": "6.8.1",
-      "commit": "7103418a91fd5f756ef281a5c59555c2a86d9c0c"
+      "release": "6.8.2",
+      "commit": "842f397180f349380e9f7d466c9e746e4dd7faaa"
     },
     "extraCmakeModules": {
       "repository": "https://github.com/KDE/extra-cmake-modules.git",
@@ -99,13 +99,79 @@
     },
     "ffmpeg": {
       "repository": "https://github.com/FFmpeg/FFmpeg.git",
-      "release": "7.1.5",
-      "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+      "release": "9.0.2",
+      "commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8"
     },
     "mimalloc": {
       "repository": "https://github.com/microsoft/mimalloc.git",
       "release": "2.1.7",
       "commit": "8c532c32c3c96e5ba1f2283e032f69ead8add00f"
+    },
+    "tesseract": {
+      "repository": "https://github.com/tesseract-ocr/tesseract.git",
+      "release": "5.5.4",
+      "commit": "7e548e6eff172f38f97664afe7f7ce40db36c8d6",
+      "configure": [
+        "-DDISABLED_LEGACY_ENGINE=OFF",
+        "-DDISABLE_CURL=ON",
+        "-DDISABLE_ARCHIVE=ON",
+        "-DDISABLE_TIFF=ON",
+        "-DOPENMP_BUILD=OFF",
+        "-DBUILD_TRAINING_TOOLS=OFF",
+        "-DBUILD_TESTS=OFF",
+        "-DGRAPHICS_DISABLED=ON",
+        "-DINSTALL_CONFIGS=OFF",
+        "-DENABLE_NATIVE=OFF"
+      ]
+    },
+    "leptonica": {
+      "repository": "https://github.com/DanBloomberg/leptonica.git",
+      "release": "1.87.0",
+      "commit": "13275a278eb55b5746e33f95fbf5a2c8f604b3ab",
+      "configure": [
+        "-DBUILD_PROG=OFF",
+        "-DSW_BUILD=OFF",
+        "-DENABLE_ZLIB=OFF",
+        "-DENABLE_PNG=OFF",
+        "-DENABLE_GIF=OFF",
+        "-DENABLE_JPEG=OFF",
+        "-DENABLE_TIFF=OFF",
+        "-DENABLE_WEBP=OFF",
+        "-DENABLE_OPENJPEG=OFF"
+      ]
+    },
+    "zxing": {
+      "repository": "https://github.com/zxing-cpp/zxing-cpp.git",
+      "release": "3.1.1",
+      "commit": "287c85df6f961c8efbfb5ffd736cd9457b8b890e",
+      "configure": [
+        "-DZXING_READERS=ON",
+        "-DZXING_WRITERS=OFF",
+        "-DZXING_EXAMPLES=OFF",
+        "-DZXING_C_API=OFF",
+        "-DZXING_UNIT_TESTS=OFF",
+        "-DZXING_BLACKBOX_TESTS=OFF",
+        "-DZXING_DEPENDENCIES=LOCAL"
+      ]
+    },
+    "tessdata_fast": {
+      "repository": "https://github.com/tesseract-ocr/tessdata_fast.git",
+      "ref": "main",
+      "commit": "87416418657359cb625c412a48b6e1d6d41c29bd",
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "file": "eng.traineddata",
+      "scriptFiles": {
+        "osd.traineddata": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff",
+        "chi_sim.traineddata": "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730",
+        "jpn.traineddata": "1f5de9236d2e85f5fdf4b3c500f2d4926f8d9449f28f5394472d9e8d83b91b4d",
+        "kor.traineddata": "6b85e11d9bbf07863b97b3523b1b112844c43e713df8b66418a081fd1060b3b2",
+        "rus.traineddata": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225",
+        "ara.traineddata": "e3206d3dc87fd50c24a0fb9f01838615911d25168f4e64415244b67d2bb3e729",
+        "heb.traineddata": "11f9e43ab227f786352a50f75c94c2e9906f1baba86d93276da19da7ce0904db",
+        "hin.traineddata": "4c73ffc59d497c186b19d1e90f5d721d678ea6b2e277b719bee4e2af12271825",
+        "tha.traineddata": "294227cc2d1292b0acb28d61d4115c88252b96d466ca90b417cf4cf0c67bf07c",
+        "ell.traineddata": "4fba8a0b461038d51f1c20d043d4f2ac38c4e778f1b90830847f7bd8fa3ba726"
+      }
     }
   }
 }

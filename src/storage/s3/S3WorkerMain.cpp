@@ -1,8 +1,8 @@
 #include "S3Module.h"
 #include "S3WorkerProtocol.h"
 #include "S3Multipart.h"
-#include "app/UiControl.h"
-#include "ui/StdioDevice.h"
+#include "ipc/UiControl.h"
+#include "ipc/StdioDevice.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonArray>
@@ -141,9 +141,11 @@ private:
    if(!pending){fail();return;}
    pendingKind_.clear();pendingRpc_.clear();{std::lock_guard lock(pending->mutex);if(pending->complete){fail();return;}pending->reply=object["data"].toObject();pending->complete=true;pending->changed.notify_all();}return;
   }
-  if(type=="lanes"&&active_&&!terminal_&&object.size()==4&&object["lanes"].isDouble()){
+  // The resident asks for idle lanes every 100 ms while it waits, so one request can cross the result on the
+  // wire. It is checked like any other, but once the result is out nothing is left to lend: it is dropped, not a failure.
+  if(type=="lanes"&&active_&&object.size()==4&&object["lanes"].isDouble()){
    const auto lanes=object["lanes"].toDouble(-1);if(lanes<0||lanes>=s3MaximumPartLanes||lanes!=int(lanes)){fail();return;}
-   extraLanes_->store(int(lanes));return;
+   if(!terminal_)extraLanes_->store(int(lanes));return;
   }
   if(type!="activate"||!ready_||active_||object.size()!=5||!object["method"].isString()||!object["request"].isObject()||!s3wire::validateRequest(object["method"].toString(),object["request"].toObject())){fail();return;}
   active_=true;heartbeat_.start();if(object["method"]=="upload")progressTimer_.start();
@@ -158,6 +160,7 @@ private:
     else if(method=="upload"||method=="reconcile"){UploadRequest value;if(method=="reconcile")s3wire::decodeReconcileRequest(request,value);else s3wire::decode(request,value);value.cancellation=cancellation_;if(method=="upload")value.checkpoint=checkpoint;if(method=="upload")value.progress=[this](const UploadProgress& progress){if(!progress.valid())return;std::lock_guard lock(progressMutex_);if(!progressClosed_)latestProgress_=progress;};
      if(method=="upload"){value.extraLanes=[lanes=extraLanes_](int wanted){return qMin(wanted,lanes->load());};value.trace=[this](const QJsonObject& record){std::lock_guard lock(progressMutex_);if(progressClosed_)return;if(traces_.size()<256)traces_.append(record);else ++droppedTraces_;};}if(method=="upload")driver_->upload(value,[&](UploadResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});else driver_->reconcile(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="stat"){StorageReceipt value;s3wire::decodeReceiptRequest(request,value);driver_->stat(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
+    else if(method=="refreshLink"){StorageReceipt value;s3wire::decodeReceiptRequest(request,value);driver_->refreshLink(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="remove"){DeleteRequest value;s3wire::decode(request,value);value.cancellation=cancellation_;driver_->remove(value,checkpoint,[&](DeleteResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="abandon"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->abandon(destination,request["journal"].toObject(),[&](Error error){if(!delivered){result={{"error",s3wire::encode(error)}};delivered=true;}});}
     else if(method=="testDestination"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->testDestination(destination,checkpoint,[&](QJsonObject value,Error error){if(!delivered){result={{"result",value},{"error",s3wire::encode(error)}};delivered=true;}});}

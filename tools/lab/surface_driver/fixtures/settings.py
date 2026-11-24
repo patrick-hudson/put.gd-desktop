@@ -95,7 +95,7 @@ def observations(scope):
         return Fixture(control=row,expanded=expanded,text=[r.get('text') or r.get('name','') for r in rows
                       if not r.get('protected') and r.get('role') in ('label','text','paragraph','static')])
     def recording_status():
-        rows=scope.ctx.accessible({'owned':True,'name':'Shortcut recording status','visible':True,'showing':True})
+        rows=scope.ctx.accessible({'owned':True,'name':'Hotkey recording status','visible':True,'showing':True})
         if len(rows)>1:raise RecipeBlocked('shortcut recording status is ambiguous',issue=681)
         if not rows:return None
         row=rows[0]

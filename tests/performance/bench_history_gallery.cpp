@@ -2,6 +2,7 @@
 // history (N image captures with previews, some failed), switches to the
 // gallery and times the switch, full repaints, scrolling and hover, and counts
 // viewport paints while idle. Synthetic measurement only; not desktop evidence.
+#include "fixtures/ControlDevice.h"
 #include "fixtures/UiSessionFixture.h"
 #include "fixtures/Waits.h"
 #include "ui/UiApplicationController.h"
@@ -26,16 +27,6 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
-class ControlDevice final:public QIODevice {
-public:
- QByteArray input,output;quint64 sequence=0;
- ControlDevice(){open(ReadWrite|Unbuffered);}
- bool isSequential()const override{return true;}
- qint64 bytesAvailable()const override{return input.size();}
- qint64 readData(char* data,qint64 max)override{const auto n=qMin(max,qint64(input.size()));memcpy(data,input.constData(),n);input.remove(0,n);return n;}
- qint64 writeData(const char* data,qint64 n)override{output.append(data,n);if(output.size()>(1<<20))output=output.right(1<<16);return n;}
- void send(const QString& type,QJsonObject payload={}){input+=QJsonDocument(QJsonObject{{"version",1},{"type",type},{"sequence",QString::number(++sequence)},{"payload",payload}}).toJson(QJsonDocument::Compact)+'\n';emit readyRead();}
-};
 class PaintCounter final:public QObject {
 public:int paints=0;
 protected:bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint)++paints;return false;}
@@ -63,11 +54,11 @@ int main(int argc,char** argv){
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){
   const auto path=data.filePath(QString("synthetic-%1.png").arg(i));if(!capture(i).save(path))return 2;
   const bool failed=i%7==3;
-  Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=i%3==0?"region":i%3==1?"window":"desktop";op.created=now.addSecs(-60-i*7200).toString(Qt::ISODateWithMs);op.state=failed?"failed":"completed";op.copyStatus="not_requested";op.settings=settings.snapshot();
+  Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=i%3==0?"region":i%3==1?"window":"desktop";op.created=now.addSecs(-60-i*7200).toString(Qt::ISODateWithMs);op.restore(failed?OperationState::Failed:OperationState::Completed);op.copyStatus="not_requested";op.settings=settings.snapshot();
   OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=QString("Screenshot from 2026-10-%1 %2.png").arg(1+i%28,2,10,QChar('0')).arg(i);item.artifact.mime="image/png";item.artifact.category="images";item.artifact.path=path;item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status="saved";item.local.path=path;
   item.uploadStatus=failed?"failed":"local_only";if(failed)item.error={"synthetic_failure","The connection was interrupted while sending the file. Check the destination and retry.",{}};
   op.items.append(item);if(ledger.saveOperation(op))return 2;}}
- HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+ HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device(1<<20);UiControl control(device);UiApplicationController controller(fixture.session,control,{});
  const auto rssStart=rssKb();
  QElapsedTimer open;open.start();
  device.send("activate",{{"view","history"}});

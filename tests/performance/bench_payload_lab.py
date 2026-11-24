@@ -157,7 +157,7 @@ save('isolated-config.json', document)
 identity={'baseRevision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
           'scope':'Production Release binaries with uncommitted source hashes; no temporary allocator instrumentation',
           'files':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in [('putgd',APP),('putgd-cli',CLI),('fixture',FIXTURE)]},
-          'source':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ['src/app/OperationService.cpp','src/app/OperationService.h','src/main.cpp','CMakeLists.txt']},
+          'source':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ['src/app/OperationService.cpp','src/app/OperationService.h','src/main.cpp','CMakeLists.txt',*sorted(f'cmake/{p.name}' for p in (ROOT/'cmake').glob('*.cmake'))]},
           'controllerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
           'command':sys.argv}
 save('source-build-identity.json', identity)

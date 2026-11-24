@@ -2,7 +2,7 @@
 """Build an exact public commit in parallel, disposable Boat workers.
 
 Requires the authenticated boat CLI, OpenSSH and distro python3-yaml locally.
-All compilation and rendering happen remotely. See docs/boat-candidates.md.
+All compilation and rendering happen remotely. See docs/lab/boat-candidates.md.
 """
 import argparse
 from contextlib import contextmanager
@@ -26,7 +26,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[3]
 REPOSITORY = 'https://github.com/patrick-hudson/put.gd-desktop.git'
-TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44',
+TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45',
            'ui-catalog', 'lab-fixture')
 CANCEL = threading.Event()
 CREATE_TIMEOUT = 120
@@ -189,13 +189,14 @@ def recipe(target, packages, ci):
     common += 'export CCACHE_DIR=$PWD/build/ccache CCACHE_BASEDIR=$PWD CCACHE_MAXSIZE=256M\n'
     common += 'export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache\n'
     common += 'export PUTGD_SDK_JOBS=$(nproc) npm_config_fetch_retries=5 RELEASE_TAG=\n'
-    common += '(\n' + step(native, 'Bootstrap checkout tools', {'matrix.name': target}) + ')\n'
-    common += 'git config --global --add safe.directory "$PWD"\n'
+    # CI runs these jobs in prebuilt images; the same script builds them from the plain base image here.
+    def provision(profile):
+        return f'bash tools/ci/images/provision.sh {profile}\ngit config --global --add safe.directory "$PWD"\n'
     if target in matrix:
         row = matrix[target]
         if not re.fullmatch(r'[a-z0-9:./-]+@sha256:[0-9a-f]{64}', row['image']):
             raise ValueError('Native CI image must be pinned by digest')
-        script = common + step(native, 'Standard distro dependencies')
+        script = common + provision('native-' + target)
         script += step(native, 'Verify pinned SDK source')
         # Cache restore/save are Actions operations. Provision from the exact same scripts cold.
         script += 'bash tools/releases/provision-sdk.sh\n'
@@ -208,40 +209,33 @@ def recipe(target, packages, ci):
         return row['image'], script, 'release'
     if target == 'appimage':
         app = packages['jobs']['appimage']
-        # The minimal container lacks the hosted runner's preinstalled Python.
-        script = common + 'bash tools/ci/install-packages.sh python3\n'
-        script += step(app, 'Use official Ubuntu archive mirrors')
-        script += step(app, 'Standard build dependencies')
-        # install-qt-action uses aqtinstall 3.3.*, py7zr 1.1.0; install its locked Qt/modules.
-        script += 'export LOG_CFG=$PWD/tools/ci/aqt-logging.ini\n'
-        script += 'bash tools/ci/install-packages.sh python3-venv\npython3 -m venv /opt/aqt\n/opt/aqt/bin/pip install "aqtinstall==3.3.*" "py7zr==1.1.0"\n'
+        # The image's Qt and the environment its Dockerfile sets (tools/ci/images/Dockerfile).
+        script = common + provision('appimage')
         script += 'qt_version=$(python3 -c \'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])\')\n'
-        script += '/opt/aqt/bin/aqt install-qt linux desktop "$qt_version" linux_gcc_64 -m qtimageformats -O /opt/Qt\n'
-        script += 'export QT_ROOT_DIR=/opt/Qt/$qt_version/gcc_64\nexport PATH=$QT_ROOT_DIR/bin:$PATH\nexport LD_LIBRARY_PATH=$QT_ROOT_DIR/lib\nexport QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml\n'
-        script += 'export PKG_CONFIG_PATH=${PKG_CONFIG_PATH:+$PKG_CONFIG_PATH:}$QT_ROOT_DIR/lib/pkgconfig\n'
+        script += 'export QT_ROOT_DIR=/opt/Qt/$qt_version/gcc_64\nexport PATH=$QT_ROOT_DIR/bin:/usr/local/bin:$PATH\nexport LD_LIBRARY_PATH=$QT_ROOT_DIR/lib\nexport QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml\n'
+        script += 'export PKG_CONFIG_PATH=$QT_ROOT_DIR/lib/pkgconfig\n'
         script += step(app, 'Verify pinned SDK source')
         script += 'bash tools/releases/provision-sdk.sh\npython3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"\n'
         script += step(app, 'Provision pinned Proton helper')
-        script += step(app, "Headless Wayland compositor for the image's start check")
         script += step(app, 'Build and audit AppImage')
         script += 'python3 tools/releases/stage_artifacts.py --kind appimage --packages-only\ncp -a build/release-artifact/. /out/\n'
         return base, script, 'release'
     if target == 'ui-catalog':
         linux = ci['jobs']['linux']
-        script = common + step(linux, 'Install distro dependencies', {'matrix.distribution': '26.04'})
+        script = common + provision('linux-26.04')
         script += 'bash tools/ci/provision-linux-sdk.sh\n'
         script += step(linux, 'Provision pinned Proton helper')
         script += step(linux, 'Build', {"matrix.distribution == '26.04' && 'ON' || 'OFF'": 'ON'})
         script += 'catalog_runtime=$(mktemp -d /tmp/pgc.XXXXXX)\n'
         script += 'python3 tools/diagnostics/check_socket_paths.py --socket "$catalog_runtime/putgd/session.sock" > /out/socket-preflight.json\n'
-        # CI renders the catalog inside CTest (ui_catalog_dark); a worker renders it directly.
+        # CI renders the catalog inside CTest (ui_catalog_render); a worker renders it directly.
         script += ('mkdir -p build/ui-catalog\n'
                    'QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$catalog_runtime" build/dev/putgd-ui-catalog build/ui-catalog\n'
                    'python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog\n')
         script += 'cp -a build/ui-catalog /out/\n'
         return matrix['ubuntu26.04']['image'], script, 'dev'
     # Disposable VM drivers need putgd-desktop-fixture in a separately labeled DEB.
-    script = common + step(native, 'Standard distro dependencies')
+    script = common + provision('native-ubuntu24.04')
     script += step(native, 'Verify pinned SDK source') + 'bash tools/releases/provision-sdk.sh\n'
     script += step(native, 'Provision pinned Proton helper')
     script += 'cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=ON -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF\n'
@@ -287,7 +281,7 @@ def verify_identity(directory, commit, target):
         raise ValueError('Built source is dirty or does not match the requested SHA')
     if binary.get('gitCommit') != commit or binary.get('version') != identity['version']:
         raise ValueError('Compiled CLI identity does not match build-info.json')
-    expected = '*.AppImage' if target == 'appimage' else '*.rpm' if target == 'fedora44' else '*.deb'
+    expected = '*.AppImage' if target == 'appimage' else '*.rpm' if target.startswith('fedora') else '*.deb'
     if target == 'ui-catalog':
         if not any((directory / 'ui-catalog').rglob('*.png')):
             raise ValueError('UI catalog contains no rendered PNGs')

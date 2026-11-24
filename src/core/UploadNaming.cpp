@@ -1,11 +1,12 @@
 #include "UploadNaming.h"
 #include <QFileInfo>
 #include <QHash>
+#include <QRandomGenerator>
 #include <QUuid>
 
 namespace putgd {
 namespace {
-const QStringList tokens{"name", "ext", "yyyy", "MM", "dd", "HH", "mm", "ss", "uuid"};
+const QStringList& tokens() {static const QStringList value{"name", "ext", "yyyy", "MM", "dd", "HH", "mm", "ss", "uuid"};return value;}
 
 bool safeCharacter(QChar character) {
  return character != '/' && character != '\\' && character.category() != QChar::Other_Control;
@@ -53,13 +54,29 @@ QString boundedName(QString name, int maximumBytes, const QString& addition = {}
 }
 }
 
+namespace {
+// A Random names name without its extension: a UUID or a random string.
+QString randomName(const RandomNameSettings& random) {
+ if (random.style != "string") return QUuid::createUuid().toString(QUuid::WithoutBraces);
+ QString alphabet = QStringLiteral("abcdefghijklmnopqrstuvwxyz");
+ if (random.uppercase) alphabet += QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+ if (random.digits) alphabet += QStringLiteral("0123456789");
+ const int length = qBound(4, random.length, 64);
+ QString name;
+ name.reserve(length);
+ auto* generator = QRandomGenerator::system();
+ for (int index = 0; index < length; ++index) name += alphabet.at(generator->bounded(int(alphabet.size())));
+ return name;
+}
+}
+
 Error UploadNaming::validateTemplate(const QString& format) {
  if (auto error = checkName(format)) return error;
  for (qsizetype index = 0; index < format.size(); ++index) {
   if (format[index] == '}') return {"filename_template_invalid", "A filename template contains an unmatched closing brace", {}};
   if (format[index] != '{') continue;
   const auto end = format.indexOf('}', index + 1);
-  if (end < 0 || !tokens.contains(format.mid(index + 1, end - index - 1)))
+  if (end < 0 || !tokens().contains(format.mid(index + 1, end - index - 1)))
    return {"filename_template_invalid", "A filename template contains an unknown or unclosed token", {}};
   index = end;
  }
@@ -91,6 +108,12 @@ FilenameResult UploadNaming::renderTemplate(const QString& format, const Artifac
 FilenameResult UploadNaming::acquiredName(const Artifact& artifact, const Settings& settings,
                                          const QString& action, const QDateTime& acquired) {
  QString format;
+ if (settings.namingMode == "generated" && settings.randomName.style == "string") {
+  const auto extension = QFileInfo(QFileInfo(artifact.name).fileName()).suffix();
+  auto name = randomName(settings.randomName) + (extension.isEmpty() ? QString{} : "." + extension);
+  if (auto error = checkName(name)) return {{}, error};
+  return {boundedName(name, 255), {}};
+ }
  if (settings.namingMode == "generated") format = QFileInfo(artifact.name).suffix().isEmpty() ? "{uuid}" : "{uuid}.{ext}";
  else if (artifact.originalFile) {
   if (settings.namingMode == "original") {
@@ -108,36 +131,42 @@ FilenameResult UploadNaming::acquiredName(const Artifact& artifact, const Settin
  return result;
 }
 
-QString UploadNaming::candidate(const Artifact& artifact, const QString& mode, bool rename, int maximumBytes) {
+QString UploadNaming::candidate(const Artifact& artifact, const QString& mode, bool rename, int maximumBytes,
+                               const RandomNameSettings& random) {
  auto name = QFileInfo(artifact.name).fileName();
  name.replace(QChar(0), QChar('_'));
  if (!artifact.namingPrepared && mode == "generated") {
   const auto extension = QFileInfo(name).suffix();
-  name = QUuid::createUuid().toString(QUuid::WithoutBraces) + (extension.isEmpty() ? QString{} : "." + extension);
+  name = randomName(random) + (extension.isEmpty() ? QString{} : "." + extension);
  }
- return rename ? renamedCandidate(name, maximumBytes) : boundedName(name, maximumBytes);
+ return rename ? renamedCandidate(name, maximumBytes, mode == "generated" ? &random : nullptr) : boundedName(name, maximumBytes);
 }
 
-QString UploadNaming::renamedCandidate(const QString& name, int maximumBytes) {
+QString UploadNaming::renamedCandidate(const QString& name, int maximumBytes, const RandomNameSettings* fresh) {
+ if (fresh && fresh->style == "string") {
+  const auto extension = QFileInfo(name).suffix();
+  return boundedName(randomName(*fresh) + (extension.isEmpty() ? QString{} : "." + extension), maximumBytes);
+ }
  return boundedName(name, maximumBytes, "-" + QUuid::createUuid().toString(QUuid::WithoutBraces));
 }
 
 QList<NamedItem> UploadNaming::batch(const QList<Artifact>& artifacts, const QString& mode,
-                                   const QString& policy, int maximumBytes) {
+                                   const QString& policy, int maximumBytes, const RandomNameSettings& random) {
  QList<NamedItem> result;
  QHash<QString, QList<int>> groups;
  for (const auto& artifact : artifacts) {
-  auto name = candidate(artifact, mode, false, maximumBytes);
+  auto name = candidate(artifact, mode, false, maximumBytes, random);
   const int index = result.size();
   result.append({name, "pending"});
-  if (groups.contains(name)) {
+  // "keep": the destination names what it stores, so equal names are separate objects.
+  if (groups.contains(name) && policy != "keep") {
    if (policy == "overwrite") {
     result[index].status = "conflict";
     for (const int previous : groups[name]) result[previous].status = "conflict";
    } else if (policy == "skip") result[index].status = "skipped";
    else {
     int attempts=0;
-    do { name = renamedCandidate(result[index].name, maximumBytes); ++attempts; }
+    do { name = renamedCandidate(result[index].name, maximumBytes, mode == "generated" ? &random : nullptr); ++attempts; }
     while (groups.contains(name) && attempts < 32);
     if (groups.contains(name)) result[index].status = "conflict";
     result[index].name = name;

@@ -1,6 +1,6 @@
 # Cumulative code review — 2026-10-11
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [memory-strategy](../../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../design/overview.md); see [memory-strategy](../../design/memory-strategy.md). Do not use it as a work list.
 
 The review completed with ten confirmed P2 findings. No fixes were applied. This is a draft publication checkpoint; live-S3 and full release acceptance remain pending.
 
@@ -103,7 +103,7 @@ Validation: When fixture_run is repeated in one run directory, lab.py:383-389 re
 
 ## Acceptance and review limits
 
-The [memory strategy](../../memory-strategy.md) retains the measured local source63 results and exact workloads. Those results do not close these defects or the current guest live-S3, remote History copy/delete, post-S3 memory, full fresh-agent walkthrough, package lifecycle and broader compositor release gates. The image-oracle finding limits the strength of existing graphical image assertions. Existing attempts and measurements are preserved.
+The [memory strategy](../../design/memory-strategy.md) retains the measured local source63 results and exact workloads. Those results do not close these defects or the current guest live-S3, remote History copy/delete, post-S3 memory, full fresh-agent walkthrough, package lifecycle and broader compositor release gates. The image-oracle finding limits the strength of existing graphical image assertions. Existing attempts and measurements are preserved.
 
 Claude’s review adapter failed with a concurrent OAuth refresh conflict. A subsequent installed-CLI authenticated request succeeded. The adversarial review was completed locally; independent cross-model corroboration is absent. The validator confirmed all ten findings in one batch; the normal eight-item cap overage is recorded in the original report. Some findings were confirmed from reachable code paths without executing their crash or concurrency schedules.
 

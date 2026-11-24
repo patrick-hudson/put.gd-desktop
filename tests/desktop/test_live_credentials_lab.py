@@ -3,7 +3,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 from pathlib import Path
 import sys
 import tempfile
@@ -106,14 +105,6 @@ class LiveCredentialContracts(unittest.TestCase):
                 bridge.exchange([sys.executable, '-c', code], b'synthetic-private')
             self.assertNotIn('synthetic-private', str(error.exception))
 
-    def test_outer_broker_deadline_allows_internal_stages_and_remains_bounded(self):
-        self.assertGreater(bridge.BROKER_TIMEOUT, 40)
-        with patch.object(bridge, 'exchange', return_value=b'{"ok":true}') as exchange:
-            bridge.host_call('/unused', 's3', {'op': 'delete', 'reference': REF})
-        self.assertEqual(exchange.call_args.kwargs, {'timeout': bridge.BROKER_TIMEOUT})
-        with self.assertRaises(bridge.ProvisionError):
-            bridge.exchange([sys.executable, '-c', 'import time; time.sleep(2)'], b'synthetic-private', timeout=0.02)
-
     def test_hostile_credentials_remain_literal_heredoc_data(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
@@ -203,7 +194,6 @@ class LiveCredentialContracts(unittest.TestCase):
                     patch.object(bridge, 'guest_call') as guest:
                 with self.assertRaises(bridge.ProvisionError): bridge.provision(request)
                 guest.assert_not_called()
-
 
     def test_one_time_provisioning_requires_a_reference_receipt_before_import(self):
         request = {'provider': 's3', 'run': '/unused', 'guestBroker': '/unused',

@@ -32,6 +32,12 @@
     "recsel": ".*"
   },
   "catalog_windows": {},
+  "live_controls": {
+    "play": {
+      "name": "Play",
+      "role": "push button"
+    }
+  },
   "shell_health": {
     "process": "cinnamon",
     "crash_windows": [

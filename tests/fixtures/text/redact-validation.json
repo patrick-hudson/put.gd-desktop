@@ -1,0 +1,456 @@
+{
+ "description": "Quick redact list entries and patterns (#1618, round 3 of #1631): the same inputs for the editor's C++ validator (tests/unit/test_text_protocol.cpp) and the MCP server (tests/integration/test_mcp.py). Rules, in order. Terms: a raw line break (\\n, \\r, U+2028, U+2029) is refused; then the value is trimmed of what Qt's QChar::isSpace calls whitespace (U+0085 and U+00A0 included, U+001C not); it must be non-empty, at most 100 code points, and contain a letter or digit. Patterns: a raw line break is refused; then, trimmed the same way, it must be non-empty and at most 500 code points; the raw value must compile and not match empty text. A pattern's shape is not judged: the editor matches in a child process it kills at the deadline, so any pattern PCRE2 compiles is allowed, (* verbs, \\C, lookarounds and back references included. Rules compile and emptyMatch need PCRE2; a checker that has no PCRE2 may leave them to the editor. A compile error is Qt's message with its offset, so its rows give only errorPrefix.",
+ "messages": {
+  "termLineBreak": "An entry has a line break",
+  "termEmpty": "An entry is empty",
+  "termLength": "An entry is longer than 100 characters",
+  "termLetter": "An entry needs a letter or digit",
+  "patternLineBreak": "A pattern has a line break",
+  "patternEmpty": "A pattern is empty",
+  "patternLength": "A pattern is longer than 500 characters",
+  "patternCompilePrefix": "This pattern does not compile: ",
+  "patternEmptyMatch": "This pattern matches empty text"
+ },
+ "terms": [
+  {
+   "value": "Patrick Hudson",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "  Patrick Hudson  ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": ".env",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "env.",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "# 42",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "x+y?",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[ACME]*",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "ab",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "word\n",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a\rb",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "\nword",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "   ",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "\t",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "length",
+   "error": "An entry is longer than 100 characters"
+  },
+  {
+   "value": "𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸",
+   "rule": "length",
+   "error": "An entry is longer than 100 characters"
+  },
+  {
+   "value": ".",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "--",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "*?",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": " ... ",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "word",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "#42",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "  ",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "\u001cproject\u001d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\u001c\u001f",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  }
+ ],
+ "patterns": [
+  {
+   "value": "\\bJIRA-\\d+\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?i)\\b[a-z0-9-]+\\.corp\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(foo|bar)+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[a-z0-9-]+(?:\\.[a-z0-9-]+)+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:[a-z0-9-]+\\.)+example\\.com",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:\\w+\\s)+done",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\p{Lu}{3}-\\d{4}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": ".+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\\\C",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[A-Z]{2,}-\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:ab)+c",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\d{3}(?:-\\d{4})+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "x\n",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a\rb",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": "   ",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "length",
+   "error": "A pattern is longer than 500 characters"
+  },
+  {
+   "value": "(*LIMIT_MATCH=99999999)(a+)+$",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(*UCP)\\w+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "  (*NO_JIT)x",
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
+  },
+  {
+   "value": "a\\Cb",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\C+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(abc",
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
+  },
+  {
+   "value": "[z-a]",
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
+  },
+  {
+   "value": "a*",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "^",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "|x",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "(\\w)\\1",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?<n>\\w)\\k<n>",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\((?:[^()]|(?R))+\\)",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(a)(?1)",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(a+)+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(a*)*b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(\\w+\\s?)*x",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:a+|b)+c",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(a+)+$",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "((ab)*c?)+d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(x+x+){2,}y",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "((ab)*c)+d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:(?=.*+)){3000}\\w{12}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:(?=.*+).)+\\d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:(?=[^z]*+)){1000}\\w{12}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?<=ID-)\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\d+(?=%)",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:\\p{L}+-)+ID",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "ID[\\55_]\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\c\\Q|\\C",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\u001c",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "  x  ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": " 　",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": "\u001c\u001dx",
+   "rule": "ok",
+   "error": null
+  }
+ ]
+}

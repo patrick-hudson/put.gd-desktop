@@ -62,6 +62,14 @@ class RecipeBlocked(RuntimeError):
         self.issue = issue
 
 
+class GuestUnreachable(RecipeBlocked):
+    """The transport to the guest failed (SSH or QMP), so the step could not reach it.
+
+    Whatever the step would have cleaned lives inside the guest, and retiring the guest resolves it.
+    Cleanup records these separately from refusals the guest itself answered.
+    """
+
+
 @dataclass(frozen=True)
 class Recipe:
     interactions: tuple[str, ...]
@@ -294,6 +302,10 @@ class Context:
         receipt. A matching local copy uses structured secret-field/link
         registration; live copies remain opaque. A mismatch fails closed.
         """
+        raise NotImplementedError
+
+    def clipboard_matches(self, expected: str) -> bool:
+        """Compare clipboard text on the target and return only the match result."""
         raise NotImplementedError
 
     def shell(self, script: str, timeout: float = 60.0, cleanup: bool = False) -> dict:

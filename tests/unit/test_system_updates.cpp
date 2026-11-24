@@ -39,9 +39,20 @@ private slots:
   QCOMPARE(action("debian13")["repository"].toString(),QString("other"));
   write("/etc/apt/sources.list.d/putgd.sources",sources({},"https://mirror.example/apt/debian13"));
   QCOMPARE(action("debian13")["repository"].toString(),QString("other"));
-  // AppImage, Flatpak and development builds never have one.
+  // AppImage and development builds never have one.
   QCOMPARE(action("appimage")["repository"].toString(),QString("none"));
   QCOMPARE(action("")["repository"].toString(),QString("none"));
+ }
+ void archRepositoryChannelAndDowngradeCommands(){
+  QCOMPARE(action("archlinux")["repository"].toString(),QString("absent"));
+  write("/etc/pacman.d/putgd.conf","[putgd-nightly]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/nightly\n");
+  const auto result=action("archlinux");
+  QCOMPARE(result["manager"].toString(),QString("pacman"));
+  QCOMPARE(result["channel"].toString(),QString("nightly"));
+  QCOMPARE(result["command"].toString(),QString("sudo pacman -Syu"));
+  QCOMPARE(result["otherChannel"].toObject()["commands"].toArray().last().toString(),QString("sudo pacman -Syuu putgd"));
+  write("/etc/pacman.d/putgd.conf","[putgd-nightly]\nServer = https://other.example/pacman/x86_64/nightly\n");
+  QCOMPARE(action("archlinux")["repository"].toString(),QString("other"));
  }
  void dnfRepositoryFollowsItsEnabledFlag(){
   const QByteArray repo="[putgd-nightly]\nname=put.gd (nightly)\nbaseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=0\n";
@@ -53,6 +64,19 @@ private slots:
   // The apt file means nothing to an RPM install.
   QFile::remove(root.filePath("etc/yum.repos.d/putgd.repo"));write("/etc/apt/sources.list.d/putgd.sources",sources());
   QCOMPARE(action("fedora44")["repository"].toString(),QString("absent"));
+ }
+ // Fedora 45 has its own RPM; the package's file names $releasever, and a file
+ // written by an older Fedora 44 RPM names 44.
+ void dnfRepositoryMatchesReleaseverOrTheBuildsOwnRelease(){
+  const QByteArray repo="[putgd-stable]\nname=put.gd (stable)\nbaseurl=https://pkg.put.gd/rpm/fedora/$releasever/x86_64/stable\nenabled=1\ngpgcheck=1\n";
+  write("/etc/yum.repos.d/putgd.repo",repo);
+  for(const auto& target:{"fedora44","fedora45"}){
+   const auto result=action(target);QCOMPARE(result["manager"].toString(),QString("dnf"));QCOMPARE(result["channel"].toString(),QString("stable"));
+  }
+  write("/etc/yum.repos.d/putgd.repo",QByteArray(repo).replace("$releasever","44"));
+  QCOMPARE(action("fedora44")["channel"].toString(),QString("stable"));
+  // Another release's fixed path is not this build's repository.
+  QCOMPARE(action("fedora45")["repository"].toString(),QString("other"));
  }
  // #386: put.gd never changes the repository; it names the commands that move
  // to the other channel, which someone runs in a terminal.

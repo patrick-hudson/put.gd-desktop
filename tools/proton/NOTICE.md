@@ -38,8 +38,8 @@ insufficient. Consult SOURCES.json for the current native Bun and Argon2 WASM pr
 decision is to ship and maintain this experimental integration; upstream
 endorsement is not a release gate. Current redistribution review, authenticated
 recovery/resources, shipping-pipeline integration and final-package acceptance
-follow [Proton verification](../../docs/proton-drive.md#building-and-verification)
-and the [release runbook](../../docs/release-runbook.md). The
+follow [Proton verification](../../docs/user/proton-drive.md#building-and-verification)
+and the [release runbook](../../docs/release/release-runbook.md). The
 [2026-10-15 register](../../docs/history/proton-drive-release-gates.md) preserves the earlier audit.
 Building or protocol testing alone does not establish those gates.
 

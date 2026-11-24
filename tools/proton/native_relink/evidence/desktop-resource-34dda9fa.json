@@ -1,0 +1,1942 @@
+{
+  "schemaVersion": 1,
+  "issue": 1399,
+  "status": "passed",
+  "recordedUtc": "2026-11-14T01:50:45.254067+00:00",
+  "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+  "sourcePins": {
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+    "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+    "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+    "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+    "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+  },
+  "historicalProofTransferred": false,
+  "scope": "Current-helper Proton P6 on the user-authorized successful nightly push CI packages, installed on physical Cinnamon X11, GNOME Wayland and KDE Wayland. Not stable release acceptance or acceptance of later application-only nightly merges.",
+  "packageProducer": {
+    "conclusion": "success",
+    "headSha": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+    "status": "completed",
+    "requestedRun": 43530291167,
+    "requestedRunOutcome": "cancelled, superseded by 43530643130",
+    "selectedRun": 43530643130,
+    "requiredFixCommit": "0bd72510d09c044ca8659e904e8836483761fc38",
+    "requiredFixAncestryVerified": true
+  },
+  "packageVersion": "26.1113.4926-dev+gff636bba2bee",
+  "testedEmbeddedCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4",
+  "embeddedCatalogRetainsBuildTimePendingFlags": true,
+  "requiredResourceEvidence": {
+    "postUseIdleWindows": 2,
+    "minimumSecondsPerWindow": 300,
+    "idleRssMiBMaximum": 40,
+    "idlePssMiBMaximum": 40,
+    "idleCpuOneCorePercentStrictUpperBound": 0.5,
+    "idleSwapBytes": 0,
+    "idleHelperProcesses": 0,
+    "hostLoadOneMinuteMaximum": 1,
+    "nativeSettlingSeconds": 180
+  },
+  "observation": {
+    "wholeProductFamilySampling": true,
+    "sampleCadenceSeconds": 0.2,
+    "scope": "Same-UID putgd-prefixed processes, including CLI and all product helpers; PID/PPID/startTicks/executable, RSS/PSS/private memory, CPU ticks, swap and load retained. Finite sampling is not an exhaustive exec trace.",
+    "identity": "Socket peer UID/PID/startTicks and installed --version-json commit/tree/executable hashes checked.",
+    "privateProfile": true,
+    "sessionSocketUtf8Bytes": 45,
+    "waylandSocketUtf8Bytes": 24,
+    "busSocketUtf8Bytes": 18,
+    "noAccountLoginOrSecretsInExport": true
+  },
+  "desktops": [
+    {
+      "host": "m74",
+      "desktop": "cinnamon",
+      "sessionType": "x11",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1113.4926-dev+gff636bba2bee",
+        "baseVersion": "26.1113.4926",
+        "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+        "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+        "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+        "commitCount": 4926,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "functionalRun": "w34m3",
+      "functionalPassed": 26,
+      "functionalTotal": 26,
+      "cases": [
+        {
+          "name": "account-folder",
+          "passed": true,
+          "state": "completed",
+          "seconds": 5.514805648010224
+        },
+        {
+          "name": "editor-private",
+          "passed": true,
+          "state": "completed",
+          "seconds": 2.03,
+          "operationId": "b5a6c6b7-b4c5-45d1-a639-c3af7694cd32",
+          "helpersObserved": [
+            {
+              "pid": 892697,
+              "startTicks": "201339957"
+            }
+          ]
+        },
+        {
+          "name": "history.share",
+          "passed": true,
+          "state": "shared",
+          "seconds": 2.5725970820058137
+        },
+        {
+          "name": "history.inspectLink",
+          "passed": true,
+          "state": "shared",
+          "seconds": 1.8883442860096693
+        },
+        {
+          "name": "history.revokeLink",
+          "passed": true,
+          "state": "revoked",
+          "seconds": 2.2886751890182495
+        },
+        {
+          "name": "file-64k",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.25,
+          "operationId": "d0b6262f-ccdc-4870-8578-eab61bbbd115",
+          "helpersObserved": [
+            {
+              "pid": 892902,
+              "startTicks": "201340802"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "file-1m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 5.44,
+          "operationId": "d14ce2e0-db85-47ee-9fdd-a13bca34ca4d",
+          "helpersObserved": [
+            {
+              "pid": 893013,
+              "startTicks": "201341128"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "file-8m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 9.54,
+          "operationId": "020be715-6579-4ebb-bb73-d9de9115dc37",
+          "helpersObserved": [
+            {
+              "pid": 893166,
+              "startTicks": "201341677"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "batch-3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 8.09,
+          "operationId": "1fadbf26-5762-4ec5-b18a-83c6dd290ca4",
+          "helpersObserved": [
+            {
+              "pid": 893398,
+              "startTicks": "201342632"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "text-small",
+          "passed": true,
+          "state": "completed",
+          "seconds": 2.85,
+          "operationId": "93f8bc14-8a21-499c-9f4f-710a2a90704b",
+          "helpersObserved": [
+            {
+              "pid": 893615,
+              "startTicks": "201343442"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "back-to-back",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.78,
+          "helperGoneAfter": 0.02
+        },
+        {
+          "name": "desktop-now",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.57,
+          "operationId": "1acec221-1359-4bfa-b5c0-2e3f49be9a51",
+          "helpersObserved": [
+            {
+              "pid": 893930,
+              "startTicks": "201344410"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.51,
+          "operationId": "76971d88-140a-45c9-b8b2-e65c64ae2c66",
+          "helpersObserved": [
+            {
+              "pid": 894117,
+              "startTicks": "201344867"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-delay3-again",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.34,
+          "operationId": "b13c6ee8-6357-437f-bd43-3541b046033d",
+          "helpersObserved": [
+            {
+              "pid": 894326,
+              "startTicks": "201345619"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "monitor-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.3,
+          "operationId": "d0528157-1381-447e-8bf1-1123f2d103c8",
+          "helpersObserved": [
+            {
+              "pid": 894525,
+              "startTicks": "201346354"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.35,
+          "operationId": "bc0a7be3-077a-47d8-9718-ba995081d64c",
+          "helpersObserved": [
+            {
+              "pid": 894732,
+              "startTicks": "201347086"
+            }
+          ],
+          "helperGoneAfter": 0.02
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.66,
+          "operationId": "f6b1a353-7a63-4f46-afda-eb71a656d5d1",
+          "helpersObserved": [
+            {
+              "pid": 894892,
+              "startTicks": "201347822"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "cancel-countdown",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.66,
+          "operationId": "634ed9c3-e0b3-40a3-9e01-e05d229ed35f",
+          "helpersObserved": [
+            {
+              "pid": 894963,
+              "startTicks": "201347990"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "after-cancel",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.82,
+          "operationId": "db2330d5-50e8-44cb-91d9-9b5153caba98",
+          "helpersObserved": [
+            {
+              "pid": 895033,
+              "startTicks": "201348157"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "history-picture",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.58,
+          "operationId": "f4e9e1a1-e60d-4ec8-8d2d-e7a987d3a486",
+          "helpersObserved": [
+            {
+              "pid": 895159,
+              "startTicks": "201348845"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "link-answers",
+          "passed": true,
+          "state": "200",
+          "seconds": 0.59
+        },
+        {
+          "name": "revoke-all",
+          "passed": true,
+          "state": "16 revoked",
+          "seconds": 40.17,
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-1",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.5,
+          "operationId": "af9fa0b3-f2f6-40a4-b189-417328f4a8db",
+          "helpersObserved": [
+            {
+              "pid": 896318,
+              "startTicks": "201353382"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-2",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.6,
+          "operationId": "b9ada664-faa8-47e8-b09e-ea67113e4f4d",
+          "helpersObserved": [
+            {
+              "pid": 896471,
+              "startTicks": "201353833"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.87,
+          "operationId": "206ca4f7-c727-4e26-bdcf-71cac10d1712",
+          "helpersObserved": [
+            {
+              "pid": 896622,
+              "startTicks": "201354294"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "revoke-additions",
+          "passed": true,
+          "state": "3 revoked",
+          "seconds": 7.64,
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "unknownFindings": [],
+      "unchangedFilesReportedChanged": 0,
+      "uiExit": {
+        "code": 0,
+        "generation": 1,
+        "status": "normal"
+      },
+      "settlingSeconds": 180,
+      "installedBinaries": {
+        "putgd": {
+          "sha256": "f34bb9ed6eb8fa3682f82b842ab2fcf7659d52968d80f98737f5708e0921b9b2",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "4b8d58972235b4ec13ca9f8e5062a0c09625318cfd599af30ccc5be570d08a14",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-ui": {
+          "sha256": "6274bc330b569e5a09d451d804037db2a0187e57a3bb266a7e6701b381d692a1",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "resident": {
+        "pid": 892501,
+        "startTicks": "201338645"
+      },
+      "sameUsedResidentTwoDisjointWindows": true,
+      "idleWindows": [
+        {
+          "index": 1,
+          "elapsed": 300.8558601150289,
+          "cpuPercent": 0.00664770165764869,
+          "rssPeak": 11476992,
+          "pssPeak": 8023040,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.5126953125,
+            0.74462890625,
+            0.53759765625
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "18:23:49 up 23 days,  7:22, 50 users,  load average: 0.28, 0.74, 0.54",
+            "lockSession": "w7-34-m74",
+            "lockPurpose": "helper34dda9fa P6 quiet memory; /home/patrick/work/sweep-1113/w7-34dda9fa"
+          },
+          "privateCleanPeak": 3215360,
+          "privateDirtyPeak": 4530176,
+          "swapPeak": 0
+        },
+        {
+          "index": 2,
+          "elapsed": 300.961079478031,
+          "cpuPercent": 0.0,
+          "rssPeak": 11476992,
+          "pssPeak": 8023040,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.88671875,
+            0.56201171875,
+            0.498046875
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "18:28:51 up 23 days,  7:27, 50 users,  load average: 0.13, 0.41, 0.45",
+            "lockSession": "w7-34-m74",
+            "lockPurpose": "helper34dda9fa P6 quiet memory; /home/patrick/work/sweep-1113/w7-34dda9fa"
+          },
+          "privateCleanPeak": 3215360,
+          "privateDirtyPeak": 4530176,
+          "swapPeak": 0
+        }
+      ],
+      "activeRun": "w34m4",
+      "activeFamilyPeakBytes": {
+        "Rss": 282308608,
+        "Pss": 226827264,
+        "Private_Clean": 66674688,
+        "Private_Dirty": 151638016,
+        "Swap": 0
+      },
+      "activePeakHostLoads": {
+        "Rss": [
+          1.7236328125,
+          0.7333984375,
+          0.5517578125
+        ],
+        "Pss": [
+          1.7236328125,
+          0.7333984375,
+          0.5517578125
+        ],
+        "Private_Clean": [
+          1.58544921875,
+          0.72119140625,
+          0.54833984375
+        ],
+        "Private_Dirty": [
+          1.7236328125,
+          0.7333984375,
+          0.5517578125
+        ],
+        "Swap": [
+          0.12158203125,
+          0.38720703125,
+          0.43896484375
+        ]
+      },
+      "activeHostLoadMax": 1.8740234375,
+      "activeNumbersAreDiagnostic": true,
+      "residentLibraries": [
+        "ld-linux-x86-64.so.2",
+        "libEGL.so.1.1.0",
+        "libGLX.so.0.0.0",
+        "libGLdispatch.so.0.0.0",
+        "libLerc.so.4",
+        "libOpenGL.so.0.0.0",
+        "libQt6Core.so.6.4.2",
+        "libQt6DBus.so.6.4.2",
+        "libQt6Gui.so.6.4.2",
+        "libQt6Sql.so.6.4.2",
+        "libQt6Svg.so.6.4.2",
+        "libQt6Widgets.so.6.4.2",
+        "libX11.so.6.4.0",
+        "libXau.so.6.0.0",
+        "libXdmcp.so.6.0.0",
+        "libb2.so.1.0.4",
+        "libblkid.so.1.1.0",
+        "libbrotlicommon.so.1.1.0",
+        "libbrotlidec.so.1.1.0",
+        "libbsd.so.0.12.1",
+        "libbz2.so.1.0.4",
+        "libc.so.6",
+        "libcap.so.2.66",
+        "libdbus-1.so.3.32.4",
+        "libdeflate.so.0",
+        "libdouble-conversion.so.3.1",
+        "libexpat.so.1.9.1",
+        "libffi.so.8.1.4",
+        "libfontconfig.so.1.12.1",
+        "libfreetype.so.6.20.1",
+        "libgcc_s.so.1",
+        "libgcrypt.so.20.4.3",
+        "libgio-2.0.so.0.8000.0",
+        "libglib-2.0.so.0.8000.0",
+        "libgmodule-2.0.so.0.8000.0",
+        "libgobject-2.0.so.0.8000.0",
+        "libgomp.so.1.0.0",
+        "libgpg-error.so.0.34.0",
+        "libgraphite2.so.3.2.1",
+        "libharfbuzz.so.0.60830.0",
+        "libicudata.so.74.2",
+        "libicui18n.so.74.2",
+        "libicuuc.so.74.2",
+        "libjbig.so.0",
+        "libjpeg.so.8.2.2",
+        "liblcms2.so.2.0.14",
+        "liblz4.so.1.9.4",
+        "liblzma.so.5.4.5",
+        "libm.so.6",
+        "libmd.so.0.1.0",
+        "libmd4c.so.0.4.8",
+        "libmng.so.2.0.2",
+        "libmount.so.1.1.0",
+        "libpcre2-16.so.0.11.2",
+        "libpcre2-8.so.0.11.2",
+        "libpng16.so.16.43.0",
+        "libqgif.so",
+        "libqicns.so",
+        "libqico.so",
+        "libqjpeg.so",
+        "libqmng.so",
+        "libqsqlite.so",
+        "libqsvg.so",
+        "libqt6keychain.so.0.14.2",
+        "libqtga.so",
+        "libqtiff.so",
+        "libqwbmp.so",
+        "libqwebp.so",
+        "libselinux.so.1",
+        "libsharpyuv.so.0.0.1",
+        "libsqlite3.so.0.8.6",
+        "libstdc++.so.6.0.33",
+        "libsystemd.so.0.38.0",
+        "libtiff.so.6.0.1",
+        "libwayland-client.so.0.22.0",
+        "libwebp.so.7.1.8",
+        "libwebpdemux.so.2.0.14",
+        "libwebpmux.so.3.0.13",
+        "libxcb-damage.so.0.0.0",
+        "libxcb-keysyms.so.1.0.0",
+        "libxcb-randr.so.0.1.0",
+        "libxcb-render.so.0.0.0",
+        "libxcb-xfixes.so.0.0.0",
+        "libxcb-xinput.so.0.1.0",
+        "libxcb.so.1.1.0",
+        "libxkbcommon.so.0.0.0",
+        "libz.so.1.3",
+        "libzstd.so.1.5.5"
+      ],
+      "qtPlatformLibraries": [
+        "libqxcb.so"
+      ],
+      "helpersLeft": [],
+      "sampleCadenceSeconds": 0.2,
+      "processScope": "Same-UID putgd-prefixed processes, including CLI and all product helpers; PID/PPID/startTicks/executable, RSS/PSS/private memory, CPU ticks, swap and load retained. Finite sampling is not an exhaustive exec trace.",
+      "environment": {
+        "os": "Linux Mint 22.3",
+        "desktop": "Cinnamon 6.6.9+zena",
+        "compositor": "Muffin 6.6.3",
+        "qt": "6.4.2"
+      },
+      "installedPackage": {
+        "file": "ubuntu24.04/putgd_26.1113.4926~dev+gff636bba2bee_amd64.deb",
+        "sha256": "fcc47bc323088841e9e5b4e75831158be85bc42e67ac0cb6720a6bcab4773ad3",
+        "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+      },
+      "automaticUploadLinkItemsShared": 19,
+      "extensionActiveForCapture": null,
+      "status": "passed",
+      "regionHelperLifetimes": [
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.35,
+          "operationId": "bc0a7be3-077a-47d8-9718-ba995081d64c",
+          "helpersObserved": [
+            {
+              "pid": 894732,
+              "startTicks": "201347086"
+            }
+          ],
+          "helperGoneAfter": 0.02
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.66,
+          "operationId": "f6b1a353-7a63-4f46-afda-eb71a656d5d1",
+          "helpersObserved": [
+            {
+              "pid": 894892,
+              "startTicks": "201347822"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "retainedNumericArchive": {
+        "host": "m74",
+        "archive": "/home/patrick/archives/proton-p6-34dda9fa/m74-numeric.tar.gz",
+        "sha256": "c52025bf8d83099190b826750cf0e7b71d43d9785766dce5bcfc6cac8f7bbc64",
+        "bytes": 799915,
+        "memberFileCount": 42,
+        "verifiedReadback": true,
+        "excluded": "Private profiles, credentials, login, capability URLs, payloads and raw captures."
+      }
+    },
+    {
+      "host": "f44",
+      "desktop": "gnome-shell",
+      "sessionType": "wayland",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1113.4926-dev+gff636bba2bee",
+        "baseVersion": "26.1113.4926",
+        "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+        "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+        "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+        "commitCount": 4926,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "functionalRun": "w34f3",
+      "functionalPassed": 22,
+      "functionalTotal": 22,
+      "cases": [
+        {
+          "name": "account-folder",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.151038287905976
+        },
+        {
+          "name": "editor-private",
+          "passed": true,
+          "state": "completed",
+          "seconds": 1.87,
+          "operationId": "a39f37c7-e601-4e94-b780-a4442e5ba71a",
+          "helpersObserved": [
+            {
+              "pid": 89294,
+              "startTicks": "107026089"
+            }
+          ]
+        },
+        {
+          "name": "history.share",
+          "passed": true,
+          "state": "shared",
+          "seconds": 2.311269677011296
+        },
+        {
+          "name": "history.inspectLink",
+          "passed": true,
+          "state": "shared",
+          "seconds": 1.861473822966218
+        },
+        {
+          "name": "history.revokeLink",
+          "passed": true,
+          "state": "revoked",
+          "seconds": 2.3064440169837326
+        },
+        {
+          "name": "file-64k",
+          "passed": true,
+          "state": "completed",
+          "seconds": 2.87,
+          "operationId": "02cb3ead-2d17-46ab-afeb-e019474c1e5b",
+          "helpersObserved": [
+            {
+              "pid": 89500,
+              "startTicks": "107026896"
+            }
+          ],
+          "helperGoneAfter": 0.02
+        },
+        {
+          "name": "file-1m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 5.0,
+          "operationId": "74bfce59-d8e4-415e-8449-12c16586201f",
+          "helpersObserved": [
+            {
+              "pid": 89612,
+              "startTicks": "107027187"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "file-8m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 15.15,
+          "operationId": "2e6b64ac-d0f9-46da-9d83-94df5866a197",
+          "helpersObserved": [
+            {
+              "pid": 89773,
+              "startTicks": "107027690"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "batch-3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.44,
+          "operationId": "608fc6fa-6776-4ab7-9232-efad6fa9bea4",
+          "helpersObserved": [
+            {
+              "pid": 90220,
+              "startTicks": "107029207"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "text-small",
+          "passed": true,
+          "state": "completed",
+          "seconds": 2.74,
+          "operationId": "e0aedb75-db0a-4910-8f97-4aa2b27f234b",
+          "helpersObserved": [
+            {
+              "pid": 90453,
+              "startTicks": "107029951"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "back-to-back",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.96,
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-now",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.88,
+          "operationId": "f29cd71d-2e5f-40f9-a229-2b6eb62111ee",
+          "helpersObserved": [
+            {
+              "pid": 90784,
+              "startTicks": "107030923"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.41,
+          "operationId": "3d8de38e-65fc-44d3-8b4a-6704c12a10fa",
+          "helpersObserved": [
+            {
+              "pid": 90921,
+              "startTicks": "107031312"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-delay3-again",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.4,
+          "operationId": "3f3df44d-60cd-4037-9c26-ae745fffbebc",
+          "helpersObserved": [
+            {
+              "pid": 91159,
+              "startTicks": "107031954"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "monitor-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.29,
+          "operationId": "0b050ffc-d76e-47a3-b3f9-14c08d2ed8d2",
+          "helpersObserved": [
+            {
+              "pid": 91359,
+              "startTicks": "107032594"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.92,
+          "operationId": "a4fae231-c6a8-4b07-86dc-e72fb600851c",
+          "helpersObserved": [
+            {
+              "pid": 91557,
+              "startTicks": "107033223"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.64,
+          "operationId": "b93cd880-ad58-4386-9fae-21819f37dae4",
+          "helpersObserved": [
+            {
+              "pid": 91718,
+              "startTicks": "107033916"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "cancel-countdown",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.62,
+          "operationId": "2b10428e-8486-4be7-9269-05b17ea4506c",
+          "helpersObserved": [
+            {
+              "pid": 91791,
+              "startTicks": "107034080"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "after-cancel",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.06,
+          "operationId": "5c1ecf71-063b-4f6e-8671-ef8da3434994",
+          "helpersObserved": [
+            {
+              "pid": 91863,
+              "startTicks": "107034243"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "history-picture",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.9,
+          "operationId": "dd524c51-dba1-45db-a33e-c3235ceb0326",
+          "helpersObserved": [
+            {
+              "pid": 91982,
+              "startTicks": "107034853"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "link-answers",
+          "passed": true,
+          "state": "200",
+          "seconds": 0.42
+        },
+        {
+          "name": "revoke-all",
+          "passed": true,
+          "state": "16 revoked",
+          "seconds": 35.77,
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "unknownFindings": [],
+      "unchangedFilesReportedChanged": 0,
+      "uiExit": {
+        "code": 0,
+        "generation": 1,
+        "status": "normal"
+      },
+      "settlingSeconds": 180,
+      "installedBinaries": {
+        "putgd": {
+          "sha256": "049bb33ad5b7f7086603df9ecaa963dc68c5a98f12956ea1deffab7af9e20c69",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "06ca0bccee977fefbee5dded0124d093a21b3c83565fc371f92b03dc32c5874a",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-ui": {
+          "sha256": "be1e8c78e0584fa4d01248307d1283405eb9fc3f13f4c0056689c922fd80d54f",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "resident": {
+        "pid": 89102,
+        "startTicks": "107024701"
+      },
+      "sameUsedResidentTwoDisjointWindows": true,
+      "idleWindows": [
+        {
+          "index": 1,
+          "elapsed": 300.92732452997006,
+          "cpuPercent": 0.0033230614785876903,
+          "rssPeak": 13225984,
+          "pssPeak": 8670208,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.1708984375,
+            0.40966796875,
+            0.44873046875
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "19:25:54 up 12 days,  9:22,  6 users,  load average: 0.06, 0.41, 0.45",
+            "lockSession": "w7-34-f44b",
+            "lockPurpose": "Proton P6 installed RPM functional quiet memory; no guests or builds"
+          },
+          "privateCleanPeak": 3420160,
+          "privateDirtyPeak": 5058560,
+          "swapPeak": 0
+        },
+        {
+          "index": 2,
+          "elapsed": 300.8076196361799,
+          "cpuPercent": 0.0,
+          "rssPeak": 13225984,
+          "pssPeak": 8670208,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.25048828125,
+            0.19677734375,
+            0.33935546875
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "19:30:55 up 12 days,  9:27,  6 users,  load average: 0.09, 0.20, 0.34",
+            "lockSession": "w7-34-f44b",
+            "lockPurpose": "Proton P6 installed RPM functional quiet memory; no guests or builds"
+          },
+          "privateCleanPeak": 3420160,
+          "privateDirtyPeak": 5058560,
+          "swapPeak": 0
+        }
+      ],
+      "activeRun": "w34f4",
+      "activeFamilyPeakBytes": {
+        "Rss": 345776128,
+        "Pss": 255839232,
+        "Private_Clean": 62992384,
+        "Private_Dirty": 162304000,
+        "Swap": 0
+      },
+      "activePeakHostLoads": {
+        "Rss": [
+          0.4423828125,
+          0.20361328125,
+          0.2802734375
+        ],
+        "Pss": [
+          0.4423828125,
+          0.20361328125,
+          0.2802734375
+        ],
+        "Private_Clean": [
+          0.48095703125,
+          0.20751953125,
+          0.2822265625
+        ],
+        "Private_Dirty": [
+          0.4423828125,
+          0.20361328125,
+          0.2802734375
+        ],
+        "Swap": [
+          0.15087890625,
+          0.1328125,
+          0.25927734375
+        ]
+      },
+      "activeHostLoadMax": 0.60888671875,
+      "activeNumbersAreDiagnostic": true,
+      "residentLibraries": [
+        "ld-linux-x86-64.so.2",
+        "libEGL.so.1.1.0",
+        "libGLX.so.0.0.0",
+        "libGLdispatch.so.0.0.0",
+        "libLayerShellQtInterface.so.6.7.5",
+        "libOpenGL.so.0.0.0",
+        "libQt6Core.so.6.11.2",
+        "libQt6DBus.so.6.11.2",
+        "libQt6Gui.so.6.11.2",
+        "libQt6Sql.so.6.11.2",
+        "libQt6WaylandClient.so.6.11.2",
+        "libQt6Widgets.so.6.11.2",
+        "libX11.so.6.4.0",
+        "libXau.so.6.0.0",
+        "libXext.so.6.4.0",
+        "libb2.so.1.0.4",
+        "libblkid.so.1.1.0",
+        "libbrotlicommon.so.1.2.0",
+        "libbrotlidec.so.1.2.0",
+        "libbz2.so.1.0.8",
+        "libc.so.6",
+        "libcrypto.so.3.5.9",
+        "libdbus-1.so.3.38.3",
+        "libdouble-conversion.so.3.4.0",
+        "libffi.so.8.2.0",
+        "libfontconfig.so.1.16.0",
+        "libfreetype.so.6.20.6",
+        "libgcc_s-16-20260819.so.1",
+        "libgio-2.0.so.0.8800.4",
+        "libglib-2.0.so.0.8800.4",
+        "libgmodule-2.0.so.0.8800.4",
+        "libgobject-2.0.so.0.8800.4",
+        "libgomp.so.1.0.0",
+        "libgraphite2.so.3.2.1",
+        "libharfbuzz.so.0.61410.0",
+        "libicudata.so.77.1",
+        "libicui18n.so.77.1",
+        "libicuuc.so.77.1",
+        "liblzma.so.5.8.2",
+        "libm.so.6",
+        "libmount.so.1.1.0",
+        "libpcre2-16.so.0.15.0",
+        "libpcre2-8.so.0.15.0",
+        "libpng16.so.16.58.0",
+        "libqsqlite.so",
+        "libqt6keychain.so.0.16.0",
+        "libselinux.so.1",
+        "libsqlite3.so.3.51.2",
+        "libstdc++.so.6.0.36",
+        "libsystemd.so.0.42.0",
+        "libwayland-client.so.0.26.0",
+        "libwayland-cursor.so.0.26.0",
+        "libxcb-damage.so.0.0.0",
+        "libxcb-keysyms.so.1.0.0",
+        "libxcb-randr.so.0.1.0",
+        "libxcb-render.so.0.0.0",
+        "libxcb-xfixes.so.0.0.0",
+        "libxcb-xinput.so.0.1.0",
+        "libxcb.so.1.1.0",
+        "libxkbcommon.so.0.13.1",
+        "libxml2.so.2.12.10",
+        "libz.so.1.3.1.zlib-ng",
+        "libzstd.so.1.5.7"
+      ],
+      "qtPlatformLibraries": [
+        "libqwayland.so"
+      ],
+      "helpersLeft": [],
+      "sampleCadenceSeconds": 0.2,
+      "processScope": "Same-UID putgd-prefixed processes, including CLI and all product helpers; PID/PPID/startTicks/executable, RSS/PSS/private memory, CPU ticks, swap and load retained. Finite sampling is not an exhaustive exec trace.",
+      "environment": {
+        "os": "Fedora 44",
+        "desktop": "GNOME 50.6",
+        "compositor": "Mutter 50.6",
+        "qt": "6.11.2"
+      },
+      "installedPackage": {
+        "file": "fedora44/putgd-26.1113.4926~dev+gff636bba2bee-1.fc44.x86_64.rpm",
+        "sha256": "2e81d4602d483c71ec1ddc2b6c041bff29e7415259f95f9d54dd55ebbb4f5285",
+        "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+      },
+      "automaticUploadLinkItemsShared": 16,
+      "extensionActiveForCapture": true,
+      "status": "passed",
+      "regionHelperLifetimes": [
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.92,
+          "operationId": "a4fae231-c6a8-4b07-86dc-e72fb600851c",
+          "helpersObserved": [
+            {
+              "pid": 91557,
+              "startTicks": "107033223"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.64,
+          "operationId": "b93cd880-ad58-4386-9fae-21819f37dae4",
+          "helpersObserved": [
+            {
+              "pid": 91718,
+              "startTicks": "107033916"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "retainedNumericArchive": {
+        "host": "f44",
+        "archive": "/home/patrick/archives/proton-p6-34dda9fa/f44-numeric.tar.gz",
+        "sha256": "9ca24acf3ea1f125bc67d318684f527f353ec2fc236869efabf5398c943f9a19",
+        "bytes": 2880377,
+        "memberFileCount": 54,
+        "verifiedReadback": true,
+        "excluded": "Private profiles, credentials, login, capability URLs, payloads and raw captures."
+      }
+    },
+    {
+      "host": "k72",
+      "desktop": "plasmashell",
+      "sessionType": "wayland",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1113.4926-dev+gff636bba2bee",
+        "baseVersion": "26.1113.4926",
+        "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+        "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+        "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+        "commitCount": 4926,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "functionalRun": "w34k1",
+      "functionalPassed": 26,
+      "functionalTotal": 26,
+      "cases": [
+        {
+          "name": "account-folder",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.981715638889
+        },
+        {
+          "name": "editor-private",
+          "passed": true,
+          "state": "completed",
+          "seconds": 1.94,
+          "operationId": "d2206326-67d4-416c-b809-4d0a76057fbc",
+          "helpersObserved": [
+            {
+              "pid": 1621070,
+              "startTicks": "129752601"
+            }
+          ]
+        },
+        {
+          "name": "history.share",
+          "passed": true,
+          "state": "shared",
+          "seconds": 2.437873604008928
+        },
+        {
+          "name": "history.inspectLink",
+          "passed": true,
+          "state": "shared",
+          "seconds": 1.8743046480230987
+        },
+        {
+          "name": "history.revokeLink",
+          "passed": true,
+          "state": "revoked",
+          "seconds": 2.4979403868783265
+        },
+        {
+          "name": "file-64k",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.24,
+          "operationId": "e748eec5-5122-4770-92f4-213cadfcbe7c",
+          "helpersObserved": [
+            {
+              "pid": 1621295,
+              "startTicks": "129753450"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "file-1m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 5.36,
+          "operationId": "e3cfad11-1817-4643-b9cd-8e155b4cb1b3",
+          "helpersObserved": [
+            {
+              "pid": 1621431,
+              "startTicks": "129753775"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "file-8m",
+          "passed": true,
+          "state": "completed",
+          "seconds": 8.34,
+          "operationId": "b1bab794-8514-479d-a47f-69fcea031c35",
+          "helpersObserved": [
+            {
+              "pid": 1621603,
+              "startTicks": "129754315"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "batch-3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 8.01,
+          "operationId": "c76e62c4-ce1c-4c41-aca4-e6cfee59cd8c",
+          "helpersObserved": [
+            {
+              "pid": 1621836,
+              "startTicks": "129755149"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "text-small",
+          "passed": true,
+          "state": "completed",
+          "seconds": 2.89,
+          "operationId": "dae09d58-2f08-4fb3-b164-623505f1c81f",
+          "helpersObserved": [
+            {
+              "pid": 1622101,
+              "startTicks": "129755951"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "back-to-back",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.69,
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-now",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.34,
+          "operationId": "680345d7-c41a-434e-8945-956b14d8805d",
+          "helpersObserved": [
+            {
+              "pid": 1622476,
+              "startTicks": "129756910"
+            }
+          ],
+          "helperGoneAfter": 0.12
+        },
+        {
+          "name": "desktop-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.57,
+          "operationId": "e3d344d6-b4d2-414e-bd88-75b4acf40616",
+          "helpersObserved": [
+            {
+              "pid": 1622639,
+              "startTicks": "129757356"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "desktop-delay3-again",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.97,
+          "operationId": "24adbac4-ca4d-4396-946a-3abef6e9f9e1",
+          "helpersObserved": [
+            {
+              "pid": 1622849,
+              "startTicks": "129758016"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "monitor-delay3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.5,
+          "operationId": "b443ec46-cc58-4409-9b30-9d361e55871e",
+          "helpersObserved": [
+            {
+              "pid": 1623061,
+              "startTicks": "129758712"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.01,
+          "operationId": "05f8e549-a101-4335-8fce-3df3a12f1dee",
+          "helpersObserved": [
+            {
+              "pid": 1623271,
+              "startTicks": "129759362"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.68,
+          "operationId": "b43e5a1b-7cb0-4d07-bb2c-b3bf1cf2c451",
+          "helpersObserved": [
+            {
+              "pid": 1623452,
+              "startTicks": "129760064"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "cancel-countdown",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.67,
+          "operationId": "9891c4c2-02ba-4f9f-971b-b54af1f7e830",
+          "helpersObserved": [
+            {
+              "pid": 1623530,
+              "startTicks": "129760232"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "after-cancel",
+          "passed": true,
+          "state": "completed",
+          "seconds": 3.25,
+          "operationId": "021d4d40-722a-4d41-b067-0b251bd31f46",
+          "helpersObserved": [
+            {
+              "pid": 1623609,
+              "startTicks": "129760400"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "history-picture",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.48,
+          "operationId": "edb610a9-1240-4e43-a6ee-0e19edf47848",
+          "helpersObserved": [
+            {
+              "pid": 1623786,
+              "startTicks": "129761030"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "link-answers",
+          "passed": true,
+          "state": "200",
+          "seconds": 0.61
+        },
+        {
+          "name": "revoke-all",
+          "passed": true,
+          "state": "16 revoked",
+          "seconds": 39.88,
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-1",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.33,
+          "operationId": "49de1626-f961-439d-92ae-00950dccc9fb",
+          "helpersObserved": [
+            {
+              "pid": 1625022,
+              "startTicks": "129765532"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-2",
+          "passed": true,
+          "state": "completed",
+          "seconds": 6.53,
+          "operationId": "2dcd4359-aa59-46c9-b36c-46d6c4560b00",
+          "helpersObserved": [
+            {
+              "pid": 1625188,
+              "startTicks": "129765966"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "sequential-desktop-3",
+          "passed": true,
+          "state": "completed",
+          "seconds": 4.49,
+          "operationId": "6002fa42-bad7-4417-82ed-6bb3c538039e",
+          "helpersObserved": [
+            {
+              "pid": 1625398,
+              "startTicks": "129766620"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "revoke-additions",
+          "passed": true,
+          "state": "3 revoked",
+          "seconds": 7.34,
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "unknownFindings": [],
+      "unchangedFilesReportedChanged": 0,
+      "uiExit": {
+        "code": 0,
+        "generation": 1,
+        "status": "normal"
+      },
+      "settlingSeconds": 180,
+      "installedBinaries": {
+        "putgd": {
+          "sha256": "a5f4e94674527ec06dd11c19d267a4b161790a50699371706f4290d283e8d424",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "ba1ac79de014e633858155a2cf22228ba814cdb21814bc94427efb3a6d3e281a",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-ui": {
+          "sha256": "f5b98bd8f7d75af87e25989f0fda83751c5809364b808bbe42a7674ff836c075",
+          "build": {
+            "schemaVersion": 1,
+            "version": "26.1113.4926-dev+gff636bba2bee",
+            "baseVersion": "26.1113.4926",
+            "packageVersion": "26.1113.4926~dev+gff636bba2bee",
+            "gitCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+            "gitTree": "3c2f1545479b5a1da97624fa45d52de2226fbe89",
+            "commitCount": 4926,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "resident": {
+        "pid": 1620871,
+        "startTicks": "129751354"
+      },
+      "sameUsedResidentTwoDisjointWindows": true,
+      "idleWindows": [
+        {
+          "index": 1,
+          "elapsed": 301.011009701062,
+          "cpuPercent": 0.0066442752442384964,
+          "rssPeak": 11538432,
+          "pssPeak": 6095872,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.30126953125,
+            0.32177734375,
+            0.1884765625
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "18:45:46 up 15 days, 31 min,  6 users,  load average: 0.13, 0.32, 0.18",
+            "lockSession": "w7-34-k72",
+            "lockPurpose": "helper34dda9fa P6 quiet memory; /home/patrick/work/sweep-1113/w7-34dda9fa"
+          },
+          "privateCleanPeak": 1265664,
+          "privateDirtyPeak": 4505600,
+          "swapPeak": 0
+        },
+        {
+          "index": 2,
+          "elapsed": 300.84946737485006,
+          "cpuPercent": 0.00997176437165529,
+          "rssPeak": 11538432,
+          "pssPeak": 6095872,
+          "gates": {
+            "rss": true,
+            "pss": true,
+            "cpu": true,
+            "swap": true,
+            "quiet": true,
+            "noHelpers": true
+          },
+          "hostLoadMaxima": [
+            0.25634765625,
+            0.23779296875,
+            0.185546875
+          ],
+          "preflight": {
+            "qemuCount": 0,
+            "builders": [],
+            "uptime": "18:50:47 up 15 days, 36 min,  6 users,  load average: 0.12, 0.22, 0.17",
+            "lockSession": "w7-34-k72",
+            "lockPurpose": "helper34dda9fa P6 quiet memory; /home/patrick/work/sweep-1113/w7-34dda9fa"
+          },
+          "privateCleanPeak": 1265664,
+          "privateDirtyPeak": 4505600,
+          "swapPeak": 0
+        }
+      ],
+      "activeRun": "w34k2",
+      "activeFamilyPeakBytes": {
+        "Rss": 315539456,
+        "Pss": 227473408,
+        "Private_Clean": 55779328,
+        "Private_Dirty": 158040064,
+        "Swap": 0
+      },
+      "activePeakHostLoads": {
+        "Rss": [
+          0.42333984375,
+          0.23046875,
+          0.1923828125
+        ],
+        "Pss": [
+          0.42333984375,
+          0.23046875,
+          0.1923828125
+        ],
+        "Private_Clean": [
+          0.42333984375,
+          0.23046875,
+          0.1923828125
+        ],
+        "Private_Dirty": [
+          0.42333984375,
+          0.23046875,
+          0.1923828125
+        ],
+        "Swap": [
+          0.08154296875,
+          0.16162109375,
+          0.16943359375
+        ]
+      },
+      "activeHostLoadMax": 0.693359375,
+      "activeNumbersAreDiagnostic": true,
+      "residentLibraries": [
+        "ld-linux-x86-64.so.2",
+        "libEGL.so.1.1.0",
+        "libGLX.so.0.0.0",
+        "libGLdispatch.so.0.0.0",
+        "libLayerShellQtInterface.so.6.6.4",
+        "libOpenGL.so.0.0.0",
+        "libQt6Core.so.6.10.2",
+        "libQt6DBus.so.6.10.2",
+        "libQt6Gui.so.6.10.2",
+        "libQt6Sql.so.6.10.2",
+        "libQt6WaylandClient.so.6.10.2",
+        "libQt6Widgets.so.6.10.2",
+        "libX11.so.6.4.0",
+        "libXau.so.6.0.0",
+        "libXdmcp.so.6.0.0",
+        "libatomic.so.1.2.0",
+        "libb2.so.1.0.4",
+        "libblkid.so.1.1.0",
+        "libbrotlicommon.so.1.2.0",
+        "libbrotlidec.so.1.2.0",
+        "libbz2.so.1.0.4",
+        "libc.so.6",
+        "libdbus-1.so.3.38.3",
+        "libdouble-conversion.so.3.1",
+        "libexpat.so.1.11.2",
+        "libffi.so.8.2.0",
+        "libfontconfig.so.1.16.1",
+        "libfreetype.so.6.20.5",
+        "libgcc_s.so.1",
+        "libgio-2.0.so.0.8800.0",
+        "libglib-2.0.so.0.8800.0",
+        "libgmodule-2.0.so.0.8800.0",
+        "libgobject-2.0.so.0.8800.0",
+        "libgomp.so.1.0.0",
+        "libgraphite2.so.3.2.1",
+        "libharfbuzz.so.0.61232.0",
+        "libicudata.so.78.2",
+        "libicui18n.so.78.2",
+        "libicuuc.so.78.2",
+        "libm.so.6",
+        "libmd4c.so.0.5.2",
+        "libmount.so.1.1.0",
+        "libpcre2-16.so.0.14.0",
+        "libpcre2-8.so.0.14.0",
+        "libpng16.so.16.57.0",
+        "libqsqlite.so",
+        "libqt6keychain.so.0.15.0",
+        "libselinux.so.1",
+        "libsqlite3.so.0.8.6",
+        "libstdc++.so.6.0.35",
+        "libsystemd.so.0.42.0",
+        "libwayland-client.so.0.24.0",
+        "libwayland-cursor.so.0.24.0",
+        "libxcb-damage.so.0.0.0",
+        "libxcb-keysyms.so.1.0.0",
+        "libxcb-randr.so.0.1.0",
+        "libxcb-render.so.0.0.0",
+        "libxcb-xfixes.so.0.0.0",
+        "libxcb-xinput.so.0.1.0",
+        "libxcb.so.1.1.0",
+        "libxkbcommon.so.0.13.1",
+        "libz.so.1.3.1",
+        "libzstd.so.1.5.7"
+      ],
+      "qtPlatformLibraries": [
+        "libqwayland.so"
+      ],
+      "helpersLeft": [],
+      "sampleCadenceSeconds": 0.2,
+      "processScope": "Same-UID putgd-prefixed processes, including CLI and all product helpers; PID/PPID/startTicks/executable, RSS/PSS/private memory, CPU ticks, swap and load retained. Finite sampling is not an exhaustive exec trace.",
+      "environment": {
+        "os": "Kubuntu 26.04",
+        "desktop": "Plasma 6.6.6",
+        "compositor": "KWin 6.6.6",
+        "qt": "6.10.2"
+      },
+      "installedPackage": {
+        "file": "ubuntu26.04/putgd_26.1113.4926~dev+gff636bba2bee_amd64.deb",
+        "sha256": "63495102c47abac682866d4875691d9daf8a16b7ae8d6b6af97e6d7c1374067d",
+        "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+        "identity": {
+          "schemaVersion": 1,
+          "runtime": "putgd-proton-runtime",
+          "appVersion": "external-drive-put_gd@0.1.1-alpha",
+          "sdkVersion": "js@0.23.0",
+          "bunVersion": "1.4.4",
+          "protocolVersion": 1
+        },
+        "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+      },
+      "automaticUploadLinkItemsShared": 19,
+      "extensionActiveForCapture": null,
+      "status": "passed",
+      "regionHelperLifetimes": [
+        {
+          "name": "region-complete",
+          "passed": true,
+          "state": "completed",
+          "seconds": 7.01,
+          "operationId": "05f8e549-a101-4335-8fce-3df3a12f1dee",
+          "helpersObserved": [
+            {
+              "pid": 1623271,
+              "startTicks": "129759362"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        },
+        {
+          "name": "region-cancel",
+          "passed": true,
+          "state": "cancelled",
+          "seconds": 1.68,
+          "operationId": "b43e5a1b-7cb0-4d07-bb2c-b3bf1cf2c451",
+          "helpersObserved": [
+            {
+              "pid": 1623452,
+              "startTicks": "129760064"
+            }
+          ],
+          "helperGoneAfter": 0.01
+        }
+      ],
+      "retainedNumericArchive": {
+        "host": "k72",
+        "archive": "/home/patrick/archives/proton-p6-34dda9fa/k72-numeric.tar.gz",
+        "sha256": "bd90d7e266faa23ddaf4b23c5a5e1cdd3686213c2c0546f7c017694ecad1a5ba",
+        "bytes": 466594,
+        "memberFileCount": 31,
+        "verifiedReadback": true,
+        "excluded": "Private profiles, credentials, login, capability URLs, payloads and raw captures."
+      }
+    }
+  ],
+  "unknownRecovery": {
+    "liveUnknownObserved": false,
+    "retryWithoutReuploadConditionalCase": "not triggered; no live item ended unknown or changed. No live read-count or recovery claim."
+  },
+  "findings": [
+    {
+      "finding": "Cinnamon shows a window-could-not-be-opened notification although History is visibly open.",
+      "currentImage": "m74/history.png",
+      "earlierImage": "findings/earlier-nightly-ui-notification.png",
+      "predatesTestedBuild": true,
+      "earlierBuild": "26.1113.4757-nightly",
+      "earlierEvidenceCommit": "1c5cd560aba11e20758ee317da29256db610a87e",
+      "earlierArchiveMember": "records/2026-11-13-proton-relink-1399/m74-numeric.tar.gz -> m74/w7m2/history.png",
+      "messageCallPoint": "src/app/UiProcessController.cpp:12",
+      "causeEstablished": true,
+      "productCodeChanged": false,
+      "issueFiled": false,
+      "acceptanceAssessment": "Not evidence of a current UI failure: all matching queued warnings predate both W7 package rounds, and their source PIDs differ. Current UI is ready and exits normally; no driver kill precedes the frame. Coordinator accepted the retained-lab-state finding. The original cause of the older warnings is not attributed.",
+      "displayedWarningCause": "Cinnamon retained critical no-expiry notifications from earlier lab residents; extra post-use History activation reveals the old queue.",
+      "currentProductFailure": false,
+      "labStateArtifact": true,
+      "exactStep": "After revoke-additions and update.check, ui.show(view=history) precedes the pre-close frame; the same full sequence without this final activation shows no error toast.",
+      "onScreenNotification": {
+        "id": 511,
+        "sourcePid": 726275,
+        "timestamp": "2026-11-13T11:23:46.187Z",
+        "expires": 0,
+        "urgency": 2
+      },
+      "matchingNoticeCountBeforeCleanup": 81,
+      "newestMatchingTimestamp": "2026-11-13T18:10:47.812Z",
+      "oldWarningGenerationCauseEstablished": false,
+      "originalRunTimelines": "findings/ui-historical.json",
+      "notificationServerMetadata": "findings/toast-server-metadata.json",
+      "reproductions": [
+        {
+          "run": "w34m5",
+          "functional": "26/26",
+          "toastBeforeTeardown": false,
+          "driverSignalBeforeFrame": false
+        },
+        {
+          "run": "w34m6",
+          "functional": "26/26",
+          "toastBeforeNormalClose": true,
+          "uiPid": 904621,
+          "normalExitCode": 0,
+          "driverSignalBeforeFrame": false,
+          "sameMemoryPrelude": true,
+          "laterIdleObserverSkipped": true
+        }
+      ],
+      "residentUiUnavailableOrIncompatibleLines": [],
+      "cleanup": {
+        "closed": 81,
+        "remainingMatching": 0,
+        "receipt": "findings/toast-cleanup.json"
+      },
+      "provenance": "findings/toast-provenance.json"
+    }
+  ],
+  "activeLoadScope": "Active process-family peaks are diagnostic with actual host loads retained. Above-load-one traces were repeated; Cinnamon active repeat itself also exceeded one and is not quiet evidence. Every accepted idle sample is below one for all three host load averages, with no VM/build process, no swap and no helper.",
+  "installerAudits": {
+    "passed": true,
+    "count": 5,
+    "receipt": "tools/proton/native_relink/evidence/installers-34dda9fa.json",
+    "receiptSha256": "783a4e86142cff947658a975c07f4ad0b82b651541c215056422c571846e6513",
+    "scope": "Three DEBs, Fedora RPM and AppImage integrity/extraction/embedded-runtime/advisory audits, matching the prior five-audit scope. No VM clean-install lifecycle claimed."
+  },
+  "notRun": [],
+  "evidenceRecord": {
+    "repository": "patrick-hudson/put.gd-evidence",
+    "record": "2026-11-14-proton-helper-34dda9fa",
+    "commitPinnedLinkLocation": "Pull request and worker report; omitted here to avoid a catalog/manifest/evidence hash cycle."
+  }
+}

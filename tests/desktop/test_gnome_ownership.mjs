@@ -39,7 +39,7 @@ const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;
 const context = {
-    Clutter: {EVENT_PROPAGATE: 0, EventType: {BUTTON_PRESS: 1}},
+    Clutter: {EVENT_PROPAGATE: 0, EventType: {BUTTON_PRESS: 1}, ModifierType: {BUTTON1_MASK: 256, BUTTON2_MASK: 512, BUTTON3_MASK: 1024}},
     Gio: {_promisify() {}, Cancellable: class {cancel() {}}, DBusCallFlags: {NONE: 0},
         DBus: {session: {call_sync(_service, _path, _iface, method) {
             return {deep_unpack: () => [method === 'GetNameOwner' ? resident : residentPid]};
@@ -49,9 +49,10 @@ const context = {
     Shell: {Screenshot: class {}}, GObject: {registerClass: cls => cls}, St: {Widget: class {}},
     Extension: class {}, Main: {sessionMode: {isLocked: false}},
     global: {display: {focus_window: null}},
+    Meta: {TabList: {NORMAL_ALL: 2}},
 };
 // Direct eval captures only these deliberately mocked Shell dependencies.
-const {Clutter, Gio, GLib, Shell, GObject, St, Extension, Main, global} = context;
+const {Clutter, Gio, GLib, Shell, GObject, St, Extension, Main, global, Meta} = context;
 eval(source);
 context.PutgdExtension = globalThis.PutgdExtension;
 function fixture() {
@@ -492,16 +493,22 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     let moved = null, above = false, parent = residentPid;
     // The first move is undone once, as Mutter's initial placement does; the extension re-applies it.
     let hidden = 2, undo = 1;
-    let size = [400, 40], resized = null, disconnected = 0;
+    let size = [400, 40], resized = null, connections = 0;
+    // The extension watches the bar's end of life as well as its size, and releases every handler.
+    const handlers = new Map();
     const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
         get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: size[0], height: size[1]}),
         is_hidden: () => hidden-- > 0, is_above: () => above, make_above() {above = true;},
         move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];},
-        connect(signal, handler) {assert.equal(signal, 'size-changed'); resized = handler; return 7;},
-        disconnect(id) {disconnected = id;}};
+        connect(signal, handler) {
+            assert.equal(['size-changed', 'unmanaging', 'unmanaged'].includes(signal), true);
+            if (signal === 'size-changed') resized = handler;
+            handlers.set(++connections, signal); return connections;
+        },
+        disconnect(id) {assert.equal(handlers.delete(id), true);}};
     const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(50); tick(100);} return promise;};
     context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
-    context.global.get_window_actors = () => [{meta_window: bar}];
+    context.global.get_window_actors = () => [{meta_window: bar, is_destroyed: () => false}];
     context.global.stage = {width: 1920, height: 1080};
     context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
     const before = context.Main.uiGroup.get_children().length;
@@ -509,6 +516,7 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     const frame = state => JSON.stringify({rect: area, kind: 'region', state, pid: helperPid});
     assert.deepEqual(await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')])), {version: 1, bar: {placed: true, outside: true, rect: [600, 670, 400, 40]}});
     assert.equal(above, true);
+    assert.deepEqual([...handlers.values()].sort(), ['size-changed', 'unmanaged', 'unmanaging']);
     assert.equal(context.Main.uiGroup.get_children().length - before, 8);
     await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
     const actors = context.Main.uiGroup.get_children().slice(before);
@@ -536,12 +544,210 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     const foreign = bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]);
     for (let i = 0; i < 41; i++) {await flush(); tick(50);}
     assert.deepEqual((await foreign).bar, {placed: false, outside: false}); assert.equal(moved, null);
+    parent = 4321;
     assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [0, 0, 0, 10], kind: 'region', state: 'ready'})])).error.code, 'bridge_protocol');
     assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'exporting'})])).error.code, 'bridge_protocol');
     assert.deepEqual(await bridge(extension, 'HideRecordingFrameAsync', []), {});
     assert.equal(context.Main.uiGroup.get_children().length, before); assert.equal(timers.size, 0);
-    assert.equal(disconnected, 7); assert.equal(extension._barFollow, null);
+    // One watch per bar window however many states were shown, and none left behind.
+    assert.equal(connections, 3); assert.equal(handlers.size, 0); assert.equal(extension._barFollow, null);
     print('PASS recording frame places only the resident child\'s bar, follows its size and keeps every actor outside the area');
+}
+{
+    // #1376: a Meta.Window object outlives its window. The resident answers "ready" while the Shell
+    // still places the bar, so a cancel, a quit or a killed helper lands inside the placement's waits;
+    // meta_window_move_frame() on the unmanaged Wayland window then took GNOME Shell 50.6 down
+    // (SIGSEGV in meta_window_update_monitor, 2026-11-11). From the moment Mutter starts to unmanage
+    // the bar, no method of it is called again; a hidden frame ends a waiting placement and neither
+    // the frame nor its beat comes back.
+    const {extension} = fixture();
+    let parent = residentPid, hidden = false, destroyed = false, sticks = true, position = [700, 400];
+    let touches = 0, moves = 0, connections = 0;
+    const handlers = new Map();
+    const touch = method => (...args) => {touches++; return method(...args);};
+    const bar = {get_title: touch(() => 'put.gd recording controls'), get_pid: touch(() => helperPid),
+        get_frame_rect: touch(() => ({x: position[0], y: position[1], width: 400, height: 40})),
+        is_hidden: touch(() => hidden), is_above: touch(() => true), make_above: touch(() => {}),
+        move_frame: touch((_user, x, y) => {moves++; if (sticks) position = [x, y];}),
+        connect(signal, handler) {handlers.set(++connections, {signal, handler}); return connections;},
+        disconnect(id) {assert.equal(handlers.delete(id), true);}};
+    // Mutter emits unmanaging first and unmanaged last; a handler released by the first is not called by the second.
+    const unmanage = () => {
+        for (const signal of ['unmanaging', 'unmanaged'])
+            for (const entry of [...handlers.values()]) if (entry.signal === signal && [...handlers.values()].includes(entry)) entry.handler();
+    };
+    const reset = () => {hidden = false; destroyed = false; sticks = true; position = [700, 400]; touches = moves = 0;};
+    const step = async delay => {await flush(); tick(delay); await flush();};
+    // A scroll capture's bar follows the focus (its own test below); here it is never focused.
+    const focusHandlers = new Map();
+    let focusIds = 0;
+    Object.assign(context.global.display, {focus_window: null,
+        connect: (signal, handler) => {focusHandlers.set(++focusIds, {signal, handler}); return focusIds;},
+        disconnect: id => assert.equal(focusHandlers.delete(id), true)});
+    context.global.get_pointer = () => [0, 0, 0];
+    const settle = async promise => {for (let i = 0; i < 45; i++) {await flush(); tick(50); tick(100);} return promise;};
+    context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
+    context.global.get_window_actors = () => [{meta_window: bar, is_destroyed: () => destroyed}];
+    context.global.stage = {width: 1920, height: 1080};
+    context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
+    const before = context.Main.uiGroup.get_children().length;
+    const area = [600, 300, 640, 360];
+    const show = (state = 'ready') => bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state, pid: helperPid, beat: true})]);
+    const beats = () => [...timers.values()].filter(timer => timer.delay === 40);
+    const none = {placed: false, outside: false};
+    const hide = () => bridge(extension, 'HideRecordingFrameAsync', []);
+
+    // Unmanaged while the placement waits for the bar to be shown.
+    hidden = true;
+    let pending = show();
+    await step(50); await step(50);
+    assert.equal(handlers.size, 2);
+    unmanage();
+    assert.equal(handlers.size, 0);
+    let touched = touches;
+    assert.deepEqual((await settle(pending)).bar, none);
+    assert.deepEqual([touches - touched, moves], [0, 0]);
+    // The frame without a bar still shows and beats until the resident hides it.
+    assert.equal(beats().length, 1);
+    assert.deepEqual(await hide(), {});
+    assert.deepEqual([context.Main.uiGroup.get_children().length, timers.size], [before, 0]);
+
+    // Unmanaged between two moves: Mutter undid the first, and the second is never made.
+    reset(); sticks = false;
+    pending = show();
+    await flush();
+    assert.equal(moves, 1);
+    unmanage();
+    touched = touches;
+    assert.deepEqual((await settle(pending)).bar, none);
+    assert.deepEqual([touches - touched, moves, handlers.size], [0, 1, 0]);
+    assert.deepEqual(await hide(), {});
+
+    // Already unmanaged when the frame is asked for: its actor is still listed while it fades out.
+    reset(); destroyed = true;
+    assert.deepEqual((await settle(show())).bar, none);
+    assert.deepEqual([touches, moves, connections, handlers.size], [0, 0, 4, 0]);
+    assert.deepEqual(await hide(), {});
+
+    // Hidden while the placement waits (a cancel right after "ready"): by the bridge call, and by what
+    // disable(), a lock and a vanished resident run. The placement ends "cancelled" without a move.
+    for (const end of [hide, async () => extension._hideRecordingFrame()]) {
+        reset(); hidden = true;
+        pending = show();
+        await step(50);
+        assert.equal(handlers.size, 2);
+        await end();
+        assert.equal((await settle(pending)).error.code, 'cancelled');
+        assert.deepEqual([moves, handlers.size, context.Main.uiGroup.get_children().length, timers.size], [0, 0, before, 0]);
+    }
+    // The same while it waits for the bar's window to appear at all.
+    reset(); destroyed = true;
+    pending = show();
+    await step(50);
+    assert.deepEqual(await hide(), {});
+    destroyed = false;
+    assert.equal((await settle(pending)).error.code, 'cancelled');
+    assert.deepEqual([moves, handlers.size, context.Main.uiGroup.get_children().length, timers.size], [0, 0, before, 0]);
+    // And between two moves.
+    reset(); sticks = false;
+    pending = show();
+    await flush();
+    assert.equal(moves, 1);
+    assert.deepEqual(await hide(), {});
+    assert.equal((await settle(pending)).error.code, 'cancelled');
+    assert.deepEqual([moves, handlers.size, context.Main.uiGroup.get_children().length, timers.size], [1, 0, before, 0]);
+
+    // A placed bar that is unmanaged is no longer followed: a late size change moves nothing.
+    reset();
+    assert.deepEqual((await settle(show())).bar, {placed: true, outside: true, rect: [600, 670, 400, 40]});
+    assert.deepEqual([moves, handlers.size, beats().length], [1, 3, 1]);
+    const resized = [...handlers.values()].find(entry => entry.signal === 'size-changed').handler;
+    unmanage();
+    assert.deepEqual([handlers.size, extension._barFollow], [0, null]);
+    touched = touches;
+    resized(); extension._replaceRecordingBar();
+    assert.deepEqual([touches - touched, moves], [0, 1]);
+    // A capturing frame asked for after the helper's window went away shows without a bar.
+    destroyed = true;
+    assert.deepEqual((await settle(show('recording'))).bar, none);
+    assert.deepEqual([touches - touched, moves], [0, 1]);
+    assert.deepEqual(await hide(), {});
+    assert.deepEqual([context.Main.uiGroup.get_children().length, timers.size, handlers.size, focusHandlers.size], [before, 0, 0, 0]);
+    parent = 4321;
+    print('PASS recording bar is never touched once Mutter unmanages it, and a hidden frame ends its placement and beat');
+}
+{
+    // #1515's acceptance: Mutter focuses a window when it is first shown and when it is clicked, and
+    // End, Home and Ctrl+End went to the scroll bar instead of the page. A scroll capture's bar gives
+    // the focus back to the window used before it, after a held button is released (a press on
+    // Done stays a click); a recording's bar, which takes Esc, keeps it.
+    const {extension} = fixture();
+    const handlers = new Map(), focusHandlers = new Map();
+    let ids = 0, buttons = 0;
+    const focused = [];
+    const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
+        get_frame_rect: () => ({x: 600, y: 670, width: 400, height: 40}), is_hidden: () => false, is_above: () => true,
+        make_above() {}, move_frame() {}, minimized: false, focus() {focused.push('bar');},
+        connect(signal, handler) {handlers.set(++ids, {signal, handler}); return ids;},
+        disconnect(id) {assert.equal(handlers.delete(id), true);}};
+    const page = {minimized: false, focus(time) {focused.push(['page', time]);}};
+    const hiddenAway = {minimized: true, focus() {focused.push('minimized');}};
+    const contents = context.GLib.file_get_contents;
+    context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${residentPid} 1 1 0`)];
+    context.global.get_window_actors = () => [{meta_window: bar, is_destroyed: () => false}];
+    context.global.get_current_time = () => 77;
+    context.global.get_pointer = () => [0, 0, buttons];
+    context.global.stage = {width: 1920, height: 1080};
+    Object.assign(context.global.display, {focus_window: bar,
+        get_tab_list: type => type === context.Meta.TabList.NORMAL_ALL ? [bar, hiddenAway, page] : [],
+        connect: (signal, handler) => {focusHandlers.set(++ids, {signal, handler}); return ids;},
+        disconnect: id => assert.equal(focusHandlers.delete(id), true)});
+    context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
+    const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(100);} return promise;};
+    const show = (beat, state = 'recording') => bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [600, 300, 640, 360], kind: 'region', state, pid: helperPid, ...(beat ? {beat} : {})})]);
+    const focusChanged = () => {for (const entry of [...focusHandlers.values()]) entry.handler();};
+
+    // A recording's bar: nothing watches the focus.
+    assert.equal((await settle(show(false))).bar.placed, true);
+    assert.deepEqual([focusHandlers.size, focused], [0, []]);
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    // The scroll bar, focused when Mutter showed it: the page gets it back at once.
+    assert.equal((await settle(show(true))).bar.placed, true);
+    assert.deepEqual([[...focusHandlers.values()].map(entry => entry.signal), focused], [['notify::focus-window'], [['page', 77]]]);
+    // Another state of the same frame keeps one watch.
+    await settle(show(true, 'paused'));
+    assert.equal(focusHandlers.size, 1);
+    // Clicked: the button is still held, so the focus waits for its release.
+    focused.length = 0; buttons = 256;
+    focusChanged();
+    assert.deepEqual([focused, [...timers.values()].filter(timer => timer.delay === 50).length], [[], 1]);
+    focusChanged();
+    assert.equal([...timers.values()].filter(timer => timer.delay === 50).length, 1);
+    tick(50);
+    assert.deepEqual(focused, []);
+    buttons = 0;
+    tick(50);
+    assert.deepEqual([focused, [...timers.values()].filter(timer => timer.delay === 50).length], [[['page', 77]], 0]);
+    // The focus elsewhere: left alone.
+    focused.length = 0;
+    context.global.display.focus_window = page;
+    focusChanged();
+    assert.deepEqual(focused, []);
+    // Hidden while a release is awaited: the watch and its wait end with the frame.
+    context.global.display.focus_window = bar; buttons = 256;
+    focusChanged();
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    assert.deepEqual([focusHandlers.size, [...timers.values()].filter(timer => timer.delay === 50).length, extension._barFollow], [0, 0, null]);
+    // Unmanaged: its handlers go with it.
+    buttons = 0;
+    await settle(show(true));
+    assert.equal(focusHandlers.size, 1);
+    for (const entry of [...handlers.values()]) if (entry.signal === 'unmanaging') entry.handler();
+    assert.deepEqual([focusHandlers.size, extension._barFollow], [0, null]);
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    assert.deepEqual([timers.size, handlers.size], [0, 0]);
+    context.GLib.file_get_contents = contents;
+    print('PASS a scroll capture\'s bar gives the keyboard focus back after a click; a recording\'s bar keeps it');
 }
 {
     // #924: a selection hotkey closes put.gd's own open tray menu first; desktop
@@ -562,7 +768,7 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     extension._dbus = {emit_signal() {}};
     let uuid = 0;
     GLib.uuid_string_random ??= () => `00000000-0000-0000-0001-${String(++uuid).padStart(12, '0')}`;
-    for (const action of ['region', 'edit', 'record']) {
+    for (const action of ['region', 'edit', 'record', 'scroll']) {
         const own = menu(':1.60');
         context.Main.panel.menuManager = {activeMenu: own};
         await extension._hotkey(action);
@@ -650,4 +856,118 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
         print('PASS Preview leaves a failed request for Acquire to report');
     }
     delete context.Gio.MemoryOutputStream;
+}
+{
+    // Recording protocol 2: the windows a window recording can follow (Mutter's
+    // window ids), the focused one active, put.gd's own never listed.
+    const {extension} = fixture();
+    const window = (pid, id, title, minimized = false) => ({get_pid: () => pid, get_id: () => id, get_title: () => title,
+        get_wm_class: () => title.toLowerCase(), minimized, get_frame_rect: () => ({x: id, y: 2, width: 300, height: 200})});
+    const notes = window(3000, 42, 'Notes'), video = window(3000, 43, 'Video', true), dashboard = window(residentPid, 7, 'put.gd');
+    context.global.display.get_tab_list = type => type === context.Meta.TabList.NORMAL_ALL ? [dashboard, notes, video] : [];
+    context.Shell.WindowTracker = {get_default: () => ({get_window_app: w => w === notes ? {get_id: () => 'org.example.Notes.desktop'} : null})};
+    context.global.display.focus_window = notes;
+    assert.deepEqual(await bridge(extension, 'RecordingWindowsAsync', []), {version: 1, windows: [
+        {identity: '42', title: 'Notes', appId: 'org.example.Notes.desktop', rect: [42, 2, 300, 200], active: true, minimized: false},
+        {identity: '43', title: 'Video', appId: 'video', rect: [43, 2, 300, 200], active: false, minimized: true}], activeExcluded: false});
+    context.global.display.focus_window = dashboard;
+    const own = await bridge(extension, 'RecordingWindowsAsync', []);
+    assert.equal(own.activeExcluded, true);
+    assert.deepEqual(own.windows.map(w => [w.identity, w.active]), [['42', false], ['43', false]]);
+    globalThis.Config = {PACKAGE_VERSION: '50.0'};
+    extension.metadata = {version: 22};
+    assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 3);
+    print('PASS RecordingWindows lists external windows, marks the focused one and leaves out put.gd\'s own');
+}
+{
+    // Recording protocol 3 (#1364): presses for click highlights. A press over a
+    // client window is read from Clutter's current event when Mutter stamps the
+    // window's user time; a key press stamps it too and is not a click. Presses
+    // on the Shell's own actors come from the stage. The signal goes to the
+    // resident's own bus name, and nothing stays connected after Unwatch.
+    const {extension} = fixture();
+    const sent = [];
+    context.Gio.DBus.session.emit_signal = (destination, path, iface, name, variant) => sent.push({destination, path, iface, name, click: JSON.parse(variant.value[0])});
+    const connectable = extra => {
+        const signals = new Map();
+        let next = 1;
+        return Object.assign(extra, {
+            connect(name, handler) { signals.set(next, [name, handler]); return next++; },
+            disconnect(id) { signals.delete(id); },
+            emit(name, ...args) { let result; for (const [signal, handler] of [...signals.values()]) if (signal === name) result = handler(...args); return result; },
+            connected: () => signals.size,
+        });
+    };
+    const window = (id, x) => connectable({get_id: () => id, get_frame_rect: () => ({x, y: 30, width: 800, height: 600})});
+    const editor = window(42, 100);
+    connectable(context.global.display);
+    context.global.stage = connectable({});
+    context.global.get_window_actors = () => [{meta_window: editor}];
+    let current = null;
+    context.Clutter.get_current_event = () => current;
+    context.Clutter.EventType.KEY_PRESS = 2;
+    const press = (button, x, y, time) => ({type: () => context.Clutter.EventType.BUTTON_PRESS, get_button: () => button, get_coords: () => [x, y], get_time: () => time});
+    assert.deepEqual(await bridge(extension, 'WatchClicksAsync', []), {version: 1});
+    assert.equal(editor.connected(), 2);
+    assert.equal(context.global.display.connected(), 1);
+    assert.equal(context.global.stage.connected(), 1);
+    current = press(1, 640.4, 360.6, 1000);
+    editor.emit('notify::user-time');
+    assert.deepEqual(sent, [{destination: resident, path: '/org/gnome/Shell/Extensions/Putgd', iface: 'org.putgd.Gnome50', name: 'Click',
+        click: {x: 640, y: 361, button: 1, window: {identity: '42', rect: [100, 30, 800, 600]}}}]);
+    // A key press stamps the user time as well; so does a stamp outside any event.
+    current = {type: () => context.Clutter.EventType.KEY_PRESS};
+    editor.emit('notify::user-time');
+    current = null;
+    editor.emit('notify::user-time');
+    assert.equal(sent.length, 1);
+    // A closed window lets go of its handlers; Unwatch lets go of the rest.
+    editor.emit('unmanaged');
+    assert.equal(editor.connected(), 0);
+    assert.deepEqual(await bridge(extension, 'UnwatchClicksAsync', []), {});
+    assert.equal(context.global.display.connected(), 0);
+    assert.equal(context.global.stage.connected(), 0);
+    assert.equal(extension._clicks, null);
+    delete context.Gio.DBus.session.emit_signal;
+    print('PASS WatchClicks reports presses to the resident only, never key presses, and Unwatch disconnects everything');
+}
+// The capture countdown (#1363) on a locked screen: a delay that ends there
+// captures nothing. Synthetic Shell, not graphical acceptance.
+{
+    const tokens = {surfaceRaised: '#2a2a2a', text: '#f0f0ec', borderStrong: '#737373'};
+    const chrome = [];
+    const originalLayout = context.Main.layoutManager;
+    context.Main.layoutManager = {monitors: [{index: 0, x: 0, y: 0, width: 1920, height: 1080}, {index: 1, x: 1920, y: 0, width: 2560, height: 1440}], primaryIndex: 0,
+        addTopChrome: actor => chrome.push(actor),
+        removeChrome: actor => chrome.splice(chrome.indexOf(actor), 1)};
+    context.Main.panel.height = 32;
+    globalThis.Config = {PACKAGE_VERSION: '50.0'};
+    {
+        context.global.display.get_current_monitor = () => 1;
+        const {extension} = fixture();
+        // A delay that ends on a locked screen captures nothing.
+        const locked = id();
+        const ending = bridge(extension, 'CountdownAsync', [locked, JSON.stringify({seconds: 3, appearance: {tokens}})]); await flush();
+        tick(1000); tick(1000);
+        context.Main.sessionMode.isLocked = true;
+        tick(1000);
+        assert.equal((await ending).error.code, 'session_locked');
+        context.Main.sessionMode.isLocked = false;
+        assert.equal(chrome.length, 0);
+        assert.equal((await bridge(extension, 'CountdownAsync', [id(), JSON.stringify({seconds: 4})])).error.code, 'bridge_protocol');
+        print('PASS a countdown that ends on a locked screen answers session_locked');
+        // The Shell disables extensions when it locks, and may do so before the
+        // extension's own session handler runs: still the lock, not a broken helper.
+        const disabledByLock = id();
+        const lockedOut = bridge(extension, 'CountdownAsync', [disabledByLock, JSON.stringify({seconds: 10, appearance: {tokens}})]); await flush();
+        assert.equal(chrome.length, 1);
+        // What disable() releases besides the requests.
+        Object.assign(extension, {_bindings: new Map(), _dbus: {emit_signal() {}, unexport() {}}});
+        context.Main.sessionMode.isLocked = true;
+        extension.disable();
+        assert.equal((await lockedOut).error.code, 'session_locked'); assert.equal(chrome.length, 0);
+        context.Main.sessionMode.isLocked = false;
+        print('PASS a lock that disables the extension mid-countdown answers session_locked');
+    }
+    context.Main.layoutManager = originalLayout;
 }

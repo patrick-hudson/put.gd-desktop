@@ -1,0 +1,13 @@
+# The same Nextcloud behind a certificate from a CA nobody exports (#1872): a desktop that
+# connects here sees an untrusted self-signed certificate.
+{
+	admin off
+	auto_https disable_redirects
+	local_certs
+	skip_install_trust
+	default_sni @BIND@
+}
+https://@BIND@:18373 {
+	tls internal
+	reverse_proxy 127.0.0.1:80
+}

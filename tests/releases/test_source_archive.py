@@ -13,9 +13,25 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import source_archive
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import verify_dependencies
 
 
 class SourceArchive(unittest.TestCase):
+    def test_changed_vendored_qr_source_is_rejected(self):
+        # Otherwise an edited vendored dependency silently retains a trusted pin.
+        with tempfile.TemporaryDirectory(prefix="pgqrpin-") as directory:
+            root = Path(directory)
+            source = root / "qrcodegen.cpp"
+            source.write_bytes(b"original source")
+            lock = root / "dependency-lock.json"
+            lock.write_text(json.dumps({"qrCodeGenerator": {"files": [{
+                "path": source.name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest()}]}}))
+            verify_dependencies.verify_vendored(root, lock)
+            source.write_bytes(b"changed source")
+            with self.assertRaisesRegex(ValueError, "Vendored QR generator differs"):
+                verify_dependencies.verify_vendored(root, lock)
+
     def test_appimage_build_script_and_local_import_closure_are_exported(self):
         root = Path(__file__).resolve().parents[2]
         script = root / 'tools/releases/build-appimage.sh'
@@ -42,6 +58,14 @@ class SourceArchive(unittest.TestCase):
             if path.is_file():
                 self.assertTrue(source_archive._included(path.relative_to(root).as_posix()), path.name)
 
+    def test_every_file_the_root_cmake_includes_is_exported(self):
+        root = Path(__file__).resolve().parents[2]
+        included = re.findall(r'^\s*include\((cmake/[A-Za-z0-9_]+\.cmake)\)$', (root / 'CMakeLists.txt').read_text(), re.M)
+        self.assertIn('cmake/TestsS3.cmake', included)
+        for name in included:
+            self.assertTrue((root / name).is_file(), name)
+            self.assertTrue(source_archive._included(name), name)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='pgsource-')
         self.addCleanup(self.temp.cleanup)
@@ -57,7 +81,7 @@ class SourceArchive(unittest.TestCase):
             'packaging/linux/CMakeLists.txt': '# synthetic package input\n',
             'integrations/gnome/extension.js': '// synthetic extension\n',
             'integrations/gnome/metadata.json': '{}\n',
-            'docs/build.md': '# synthetic build guide\n',
+            'docs/release/build.md': '# synthetic build guide\n',
             'tools/verify_dependencies.py': '# synthetic verifier\n',
             'tools/releases/provision-sdk.sh': '#!/bin/sh\nexit 0\n',
             'tools/proton/runtime.ts': '// committed Proton helper\n',
@@ -67,7 +91,7 @@ class SourceArchive(unittest.TestCase):
             'tools/proton/provision_runtime.py': '# pinned provisioner\n',
             'tools/proton/notices/SOURCES.json': '{}\n',
             'tools/proton/notices/REBUILD.md': '# rebuild instructions\n',
-            'docs/proton-drive.md': '# Proton setup\n',
+            'docs/user/proton-drive.md': '# Proton setup\n',
             'tools/proton/credentials.txt': 'synthetic excluded credential input\n',
             'tools/proton/work/session.json': '{}\n',
             'work/tracked.txt': 'synthetic excluded work\n',
@@ -124,12 +148,12 @@ class SourceArchive(unittest.TestCase):
         contents = self.contents()
         for name in ['CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                      'src/main.cpp', 'cmake/dependency-lock.json', 'packaging/linux/CMakeLists.txt',
-                     'integrations/gnome/extension.js', 'docs/build.md', 'tools/verify_dependencies.py',
+                     'integrations/gnome/extension.js', 'docs/release/build.md', 'tools/verify_dependencies.py',
                      'tools/releases/provision-sdk.sh', 'tools/proton/runtime.ts',
                      'tools/proton/runtime.test.ts', 'tools/proton/runtime-lock.json',
                      'tools/proton/package-lock.json', 'tools/proton/provision_runtime.py',
                      'tools/proton/notices/SOURCES.json', 'tools/proton/notices/REBUILD.md',
-                     'docs/proton-drive.md', 'README_SOURCE.md', 'source-info.json']:
+                     'docs/user/proton-drive.md', 'README_SOURCE.md', 'source-info.json']:
             self.assertIn(name, contents)
         for name in ['credentials.txt', 'src/credentials.txt', 'src/.env', 'src/context/private.md', 'src/.context/session.md',
                      'src/.claude/commands.md', 'src/CLAUDE.md', 'src/MEMORY.md',

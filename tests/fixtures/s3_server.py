@@ -2,6 +2,7 @@
 """Offline S3 wire oracle. Fake credentials only; no AWS network access."""
 import base64, hashlib, hmac, json, os, socket, threading, time, urllib.parse, uuid
 import xml.etree.ElementTree as ElementTree
+from xml.sax.saxutils import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -18,7 +19,7 @@ TIME_SCALE = _time_scale()
 
 lock = threading.RLock()
 barriers = {}
-state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}}
+state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}}
 # Large bodies (multipart parts and the objects they complete) stay out of the
 # JSON state so /__state remains bounded; events and versions record their digest.
 blobs = {}
@@ -46,13 +47,38 @@ def signature(handler, body):
         query = '&'.join(urllib.parse.quote(k, safe='-_.~') + '=' + urllib.parse.quote(v, safe='-_.~') for k, v in sorted(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)))
         payload = handler.headers['x-amz-content-sha256']
         assert payload == digest(body)
-        canonical = '\n'.join((handler.command, parsed.path, query, canonical_headers, parts['SignedHeaders'], payload))
+        # 'normalisePath': verify against the path encoded the way the SDK signs it, as AWS does;
+        # by default the path is checked as it arrives, like Garage (#1601).
+        path = urllib.parse.quote(urllib.parse.unquote(parsed.path), safe='/-_.~') if state.get('normalisePath') else parsed.path
+        canonical = '\n'.join((handler.command, path, query, canonical_headers, parts['SignedHeaders'], payload))
         scope = '/'.join((date, region, service, terminal))
         to_sign = 'AWS4-HMAC-SHA256\n' + handler.headers['x-amz-date'] + '\n' + scope + '\n' + digest(canonical.encode())
         key = ('AWS4' + SECRET).encode()
         for value in (date, region, service, terminal): key = hmac.new(key, value.encode(), hashlib.sha256).digest()
         assert hmac.compare_digest(hmac.new(key, to_sign.encode(), hashlib.sha256).hexdigest(), parts['Signature'])
         return True
+    except (AssertionError, KeyError, TypeError, ValueError): return False
+
+def presigned_signature(handler):
+    try:
+        parsed = urllib.parse.urlsplit(handler.path)
+        query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+        signature_value = query.pop('X-Amz-Signature')
+        access, date, region, service, terminal = query['X-Amz-Credential'].split('/')
+        assert access == ACCESS and service == 's3' and terminal == 'aws4_request'
+        assert query['X-Amz-Algorithm'] == 'AWS4-HMAC-SHA256'
+        signed_at = __import__('calendar').timegm(time.strptime(query['X-Amz-Date'], '%Y%m%dT%H%M%SZ'))
+        assert 1 <= int(query['X-Amz-Expires']) <= 604800
+        assert signed_at <= time.time() <= signed_at + int(query['X-Amz-Expires'])
+        names = query['X-Amz-SignedHeaders'].split(';')
+        headers = ''.join(name + ':' + ' '.join(handler.headers[name].split()) + '\n' for name in names)
+        encoded = '&'.join(urllib.parse.quote(k, safe='-_.~') + '=' + urllib.parse.quote(v, safe='-_.~') for k, v in sorted(query.items()))
+        canonical = '\n'.join((handler.command, parsed.path, encoded, headers, query['X-Amz-SignedHeaders'], 'UNSIGNED-PAYLOAD'))
+        scope = '/'.join((date, region, service, terminal))
+        to_sign = 'AWS4-HMAC-SHA256\n' + query['X-Amz-Date'] + '\n' + scope + '\n' + digest(canonical.encode())
+        key = ('AWS4' + SECRET).encode()
+        for value in (date, region, service, terminal): key = hmac.new(key, value.encode(), hashlib.sha256).digest()
+        return hmac.compare_digest(hmac.new(key, to_sign.encode(), hashlib.sha256).hexdigest(), signature_value)
     except (AssertionError, KeyError, TypeError, ValueError): return False
 
 class Handler(BaseHTTPRequestHandler):
@@ -76,8 +102,9 @@ class Handler(BaseHTTPRequestHandler):
             if not self.path.startswith('/__'):
                 return self.handle_wire(body)
             if self.path == '/__reset':
+                state['normalisePath'] = False
                 blobs.clear()
-                state.update({'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versioningReported': None, 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}, 'putPace': None})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -92,6 +119,10 @@ class Handler(BaseHTTPRequestHandler):
                 request = json.loads(body)
                 state['uploads'][request['uploadId']]['parts'][request['part']]['etag'] = request['etag']
                 self.respond(200, b'{}')
+            elif self.path == '/__replace':
+                # Another client writes the key now, outside any request put.gd sends.
+                state['objects'][json.loads(body)['key']] = [{'version': '', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False}]
+                self.respond(200, b'{}')
             elif self.path == '/__release':
                 barriers.setdefault(json.loads(body)['barrier'], threading.Event()).set()
                 self.respond(200, b'{}')
@@ -100,8 +131,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self): self.handle_wire()
     def do_PUT(self): self.handle_wire()
     def do_DELETE(self): self.handle_wire()
+    def paced_read(self, length, pace):
+        # 'putPace': read a PUT body at 'bytesPerSecond', or stop reading it after 'stallAfter'
+        # bytes for 'stallSeconds' and then drop the connection without a reply.
+        data = bytearray()
+        while len(data) < length:
+            if 'stallAfter' in pace and len(data) >= pace['stallAfter']:
+                time.sleep(pace.get('stallSeconds', 3))
+                self.close_connection = True
+                return None
+            chunk = self.rfile.read(min(65536, length - len(data)))
+            if not chunk: return None
+            data += chunk
+            if pace.get('bytesPerSecond'): time.sleep(len(chunk) / pace['bytesPerSecond'])
+        return bytes(data)
     def handle_wire(self, body=None):
-        if body is None: body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        if body is None:
+            length = int(self.headers.get('Content-Length', 0))
+            with lock: pace = state.get('putPace') if self.command == 'PUT' else None
+            body = self.paced_read(length, pace) if pace else self.rfile.read(length)
+            if body is None: return
         if self.path == '/__state':
             with lock: self.respond(200, json.dumps(state).encode())
             return
@@ -110,16 +159,22 @@ class Handler(BaseHTTPRequestHandler):
         bucket = split[0]
         key = split[1] if len(split) > 1 else ''
         query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
-        signed = bool(self.headers.get('Authorization'))
-        event = {'method': self.command, 'path': self.path, 'bucket': bucket, 'key': key,
+        presigned = 'X-Amz-Signature' in query
+        signed = bool(self.headers.get('Authorization')) or presigned
+        # 'port': the client's port, which tells a reused connection from a new one.
+        event = {'port': self.client_address[1], 'method': self.command, 'path': self.path, 'bucket': bucket, 'key': key,
                  'headers': {k.lower(): v for k,v in self.headers.items()}, 'body': base64.b64encode(body).decode() if len(body) <= INLINE_BYTES else '',
                  'bodyBytes': len(body), 'bodySha256': digest(body),
-                 'signatureValid': signature(self, body) if signed else False}
+                 'signatureValid': presigned_signature(self) if presigned else signature(self, body) if signed else False}
         with lock:
             state['events'].append(event)
             rule = None
             for candidate in state['rules']:
                 if candidate.get('method') == self.command and (not candidate.get('key') or candidate['key'] == key) and (not candidate.get('query') or candidate['query'] in parsed.query) and candidate.get('remaining', 1) > 0:
+                    # 'after': let that many matching requests through first.
+                    if candidate.get('after', 0) > 0:
+                        candidate['after'] -= 1
+                        continue
                     candidate['remaining'] = candidate.get('remaining', 1) - 1
                     rule = candidate
                     break
@@ -137,36 +192,57 @@ class Handler(BaseHTTPRequestHandler):
                 time.sleep(rule['delay'])
                 lock.acquire()
             if rule and rule.get('redirect'):
-                self.respond(307, headers={'Location': self.path}); return
+                # 'location': an absolute base, such as another host name for this server (#1699).
+                self.respond(307, headers={'Location': rule.get('location', '') + self.path}); return
             if rule and rule.get('status'):
                 self.error(rule['status'], rule.get('code', 'AccessDenied')); return
             # Like Cloudflare R2 (#145): writes return a version ID, but versions cannot be addressed.
             if state['versionless'] and 'versionId' in query:
                 self.error(501, 'NotImplemented'); return
+            # Like Garage: writes return a version ID, and a request naming one is served as if it named none (no version header in the reply).
+            if state.get('versionIgnored'): query.pop('versionId', None)
             versions = state['objects'].setdefault(key, []) if key else []
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
             current = versions[-1] if versions else None
-            selected = next((v for v in versions if v['version'] == query['versionId'][0]), None) if 'versionId' in query else current
+            # An object written before versioning was on has the version ID "null", as in S3.
+            selected = next((v for v in versions if (v['version'] or 'null') == query['versionId'][0]), None) if 'versionId' in query else current
             if 'uploads' in query or 'uploadId' in query:
                 return self.multipart(key, query, body, versions, rule)
             if self.command == 'GET' and 'versioning' in query:
-                xml = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + ('<Status>' + state['versioning'] + '</Status>' if state['versioning'] else '') + '</VersioningConfiguration>'
+                # 'versioningReported': the status the bucket reports, when it differs from what it does.
+                status = state['versioning'] if state.get('versioningReported') is None else state['versioningReported']
+                xml = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + ('<Status>' + status + '</Status>' if status else '') + '</VersioningConfiguration>'
                 self.respond(200, xml.encode()); return
+            if self.command == 'GET' and 'versions' in query:
+                # ListObjectVersions, newest first for each key, in one page.
+                prefix, entries = query.get('prefix', [''])[0], ''
+                for name in sorted(k for k in state['objects'] if k.startswith(prefix)):
+                    for v in reversed(state['objects'][name]):
+                        common = '<Key>' + escape(name) + '</Key><VersionId>' + (v['version'] or 'null') + '</VersionId>'
+                        entries += ('<DeleteMarker>' + common + '</DeleteMarker>' if v.get('marker') else
+                                    '<Version>' + common + '<ETag>' + escape(v['etag']) + '</ETag><Size>' + str(len(payload(v))) + '</Size></Version>')
+                return xml_reply(self, 'ListVersionsResult', '<Name>' + escape(bucket) + '</Name><Prefix>' + escape(prefix) + '</Prefix><IsTruncated>false</IsTruncated>' + entries)
             if self.command in ('GET', 'HEAD'):
+                if self.command == 'GET' and state.get('private') and not signed:
+                    if state.get('unsignedAuthError'):
+                        self.respond(400,b'<Error><Code>InvalidArgument</Code><Message>Authorization header is required</Message></Error>'); return
+                    self.error(403); return
                 if self.command == 'GET' and rule and 'responseBody' in rule:
                     self.respond(200, rule['responseBody'].encode()); return
                 if not selected or selected.get('marker'):
                     headers = {'x-amz-delete-marker': 'true', 'x-amz-version-id': selected['version']} if selected else {}
                     self.error(404, 'NoSuchKey', headers); return
                 headers = {'ETag': selected['etag'], 'Content-Length': len(payload(selected))}
-                if selected.get('version'): headers['x-amz-version-id'] = selected['version']
+                if selected.get('version') or 'versionId' in query: headers['x-amz-version-id'] = selected['version'] or 'null'
                 for k,v in selected['metadata'].items(): headers['x-amz-meta-' + k] = v
                 self.respond(200, payload(selected), headers); return
+            # Like Garage and Zenko CloudServer (#1583): If-None-Match and If-Match are accepted and ignored.
+            conditional = not state.get('ignoreConditions')
             if self.command == 'PUT':
-                if self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
+                if conditional and self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
                     self.error(412, 'PreconditionFailed'); return
-                if self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
+                if conditional and self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return
                 state['sequence'] += 1
                 version = str(state['sequence']) if state['versioning'] == 'Enabled' else ('null' if state['versioning'] == 'Suspended' else '')
@@ -178,14 +254,16 @@ class Handler(BaseHTTPRequestHandler):
                 versions.append(value)
                 headers = {'ETag': value['etag']}
                 if version: headers['x-amz-version-id'] = version
-                elif state['versionless']: headers['x-amz-version-id'] = uuid.uuid4().hex
+                elif state['versionless'] or state.get('versionIgnored'): headers['x-amz-version-id'] = uuid.uuid4().hex
             else:
-                if self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
+                if conditional and self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return
                 headers = {}
                 if 'versionId' in query:
                     versions[:] = [v for v in versions if v['version'] != query['versionId'][0]]
                     headers['x-amz-version-id'] = query['versionId'][0]
+                    # 'markerReply': answer as some services do when a suspended bucket's null version goes.
+                    if rule and rule.get('markerReply'): headers['x-amz-delete-marker'] = 'true'
                 elif state['versioning']:
                     state['sequence'] += 1
                     marker = str(state['sequence']) if state['versioning'] == 'Enabled' else 'null'
@@ -241,9 +319,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(204)
         # CompleteMultipartUpload: conditional on the key's current object.
         current = versions[-1] if versions else None
-        if self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
+        conditional = not state.get('ignoreConditions')
+        if conditional and self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
             return self.error(412, 'PreconditionFailed')
-        if self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
+        if conditional and self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
             return self.error(412, 'PreconditionFailed')
         listed = [(int(p.findtext('{*}PartNumber')), p.findtext('{*}ETag')) for p in ElementTree.fromstring(body).iter('{http://s3.amazonaws.com/doc/2006-03-01/}Part')]
         if not listed or [n for n, _ in listed] != sorted(n for n, _ in listed) or any(str(n) not in upload['parts'] or upload['parts'][str(n)]['etag'] != e for n, e in listed):
@@ -259,6 +338,10 @@ class Handler(BaseHTTPRequestHandler):
         if state['versioning'] != 'Enabled': versions[:] = [v for v in versions if v['version'] != version]
         versions.append(value)
         del uploads[upload_id]
+        # Published, but the answer put.gd gets is an error: as when libcurl resends a
+        # completion whose first reply was lost and only the resend's refusal comes back.
+        if rule and rule.get('statusAfter'):
+            return self.error(rule['statusAfter'], rule.get('code', 'InternalError'))
         headers = {'x-amz-version-id': version} if version else ({'x-amz-version-id': uuid.uuid4().hex} if state['versionless'] else {})
         headers.update({'x-amz-request-id': 'SYNTHDONE0001', 'x-amz-id-2': 'synthetic+Complete/Id2='})
         return xml_reply(self, 'CompleteMultipartUploadResult', '<Key>' + key + '</Key><ETag>' + value['etag'].replace('"', '&quot;') + '</ETag>', headers)

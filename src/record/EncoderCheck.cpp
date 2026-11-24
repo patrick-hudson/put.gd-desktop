@@ -1,3 +1,4 @@
+#include "VaapiFrames.h"
 #include "EncoderCheck.h"
 #include "BundledRuntime.h"
 #include <QElapsedTimer>
@@ -58,27 +59,6 @@ QString runTest(const QString& description) {
     gst_object_unref(pipeline);
     return failure;
 }
-// The same device search as the export: the default render node, then each
-// node in turn (the display GPU may have no VA driver).
-bool vaapiFrames(AVBufferRef*& device, AVBufferRef*& frames) {
-    QStringList nodes{QString()};
-    for (int i = 128; i < 136; ++i) { const auto node = QStringLiteral("/dev/dri/renderD%1").arg(i); if (QFile::exists(node)) nodes.append(node); }
-    for (const auto& node : nodes) {
-        if (av_hwdevice_ctx_create(&device, AV_HWDEVICE_TYPE_VAAPI, node.isEmpty() ? nullptr : node.toUtf8().constData(), nullptr, 0) < 0) { device = nullptr; continue; }
-        if ((frames = av_hwframe_ctx_alloc(device))) {
-            auto* pool = reinterpret_cast<AVHWFramesContext*>(frames->data);
-            pool->format = AV_PIX_FMT_VAAPI;
-            pool->sw_format = AV_PIX_FMT_NV12;
-            pool->width = testWidth;
-            pool->height = testHeight;
-            pool->initial_pool_size = 4;
-            if (av_hwframe_ctx_init(frames) == 0) return true;
-            av_buffer_unref(&frames);
-        }
-        av_buffer_unref(&device);
-    }
-    return false;
-}
 QString openEncoder(const QString& name) {
     const AVCodec* codec = avcodec_find_encoder_by_name(name.toUtf8().constData());
     if (!codec) return QStringLiteral("not built into this FFmpeg");
@@ -96,7 +76,7 @@ QString openEncoder(const QString& name) {
     AVBufferRef* device = nullptr;
     AVBufferRef* frames = nullptr;
     const bool vaapi = name.endsWith("_vaapi");
-    if (vaapi && !vaapiFrames(device, frames)) return QStringLiteral("no VA-API device accepts it");
+    if (vaapi && !openVaapiFrames(QSize(testWidth,testHeight), 4, device, frames)) return QStringLiteral("no VA-API device accepts it");
     AVCodecContext* c = avcodec_alloc_context3(codec);
     c->width = testWidth;
     c->height = testHeight;

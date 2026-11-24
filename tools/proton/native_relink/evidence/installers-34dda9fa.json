@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "scope": "CI installer Proton integrity, embedded runtime identity and official Bun advisories only",
+  "date": "2026-11-14T00:09:56.039934+00:00",
+  "host": "debian",
+  "auditorCommit": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+  "auditorScriptSha256": "53f29df4e20b6f8183b400456af84178af858889aba001c907ccd5ed07838b32",
+  "packages": [
+    {
+      "file": "appimage/putgd-26.1113.4926-dev+gff636bba2bee-x86_64.AppImage",
+      "sha256": "4db9c10b13e7b55fdf4c4ab9a35e745170d10cd0fb43f8d301248227c9da35db",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+    },
+    {
+      "file": "debian13/putgd_26.1113.4926~dev+gff636bba2bee_amd64.deb",
+      "sha256": "3f45ecda9029ba67b3b8afac5bed0a3d45c8f1db1051ae310295c270195ba1a2",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+    },
+    {
+      "file": "fedora44/putgd-26.1113.4926~dev+gff636bba2bee-1.fc44.x86_64.rpm",
+      "sha256": "2e81d4602d483c71ec1ddc2b6c041bff29e7415259f95f9d54dd55ebbb4f5285",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+    },
+    {
+      "file": "ubuntu24.04/putgd_26.1113.4926~dev+gff636bba2bee_amd64.deb",
+      "sha256": "fcc47bc323088841e9e5b4e75831158be85bc42e67ac0cb6720a6bcab4773ad3",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+    },
+    {
+      "file": "ubuntu26.04/putgd_26.1113.4926~dev+gff636bba2bee_amd64.deb",
+      "sha256": "63495102c47abac682866d4875691d9daf8a16b7ae8d6b6af97e6d7c1374067d",
+      "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "44941c91d7ce3d139566906375996c45bcc83b41cb9aa4e0c11dbb60a560e5a4"
+    }
+  ],
+  "errors": [],
+  "bunFindings": [],
+  "packageProducer": {
+    "conclusion": "success",
+    "headSha": "ff636bba2bee89caccf9dddeb1a4992d0a411acd",
+    "status": "completed",
+    "requestedRun": 43530291167,
+    "requestedRunOutcome": "cancelled, superseded by 43530643130",
+    "selectedRun": 43530643130,
+    "requiredFixCommit": "0bd72510d09c044ca8659e904e8836483761fc38",
+    "requiredFixAncestryVerified": true
+  },
+  "advisoryTransport": "Public official Bun GitHub advisory JSON fetched on the workstation, transported without credentials, then served by an exact-argument gh wrapper on d69. Snapshot and wrapper retained in evidence."
+}

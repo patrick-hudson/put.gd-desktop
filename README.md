@@ -1,83 +1,189 @@
-# put.gd
+<p align="center">
+  <img src="packaging/linux/putgd.svg" width="88" alt="">
+</p>
 
-[![Website](https://img.shields.io/badge/website-app.put.gd-0a7ea4)](https://app.put.gd/)
-[![CI](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml/badge.svg?branch=nightly)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml?query=branch%3Anightly)
-[![Nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=v*-nightly&label=nightly)](https://github.com/patrick-hudson/put.gd-desktop/releases)
-[![Download AppImage](https://img.shields.io/badge/download-AppImage-2ea44f?logo=linux&logoColor=white)](https://app.put.gd/dl/nightly/appimage)
-[![License: MIT](https://img.shields.io/github/license/patrick-hudson/put.gd-desktop)](LICENSE)
+<h1 align="center">put.gd</h1>
 
-put.gd captures screenshots and screen recordings on Linux, uploads them to your storage, and copies a shareable link to the clipboard. Edit and redact images before uploading, then find previous captures and links in History. Use S3-compatible storage, Backblaze B2 or Proton Drive, or keep captures local.
+<p align="center">
+  <b>Capture anything on your Linux screen and share it as a link.</b>
+</p>
 
-Downloads and release notes: **[app.put.gd](https://app.put.gd/)**.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#your-first-link">Your first link</a> ·
+  <a href="https://app.put.gd/userguide">User guide</a> ·
+  <a href="https://app.put.gd/">Downloads</a>
+</p>
 
-![The put.gd image editor with crop, annotation, redaction and blur tools, and an explicit Upload button](docs/readme/editor.png)
+> [!NOTE]
+> put.gd is under heavy development. It's heavily tested, but it's one person and a lot
+> of LLMs. It works for my use case, and maybe it'll work for yours. Fork it, steal it,
+> change it, contribute, do whatever you want with it.
 
-## How to use it
+Press a hotkey, drag over what you want to show, and a link is on your clipboard, ready
+to paste into a chat, a ticket or a pull request. put.gd takes screenshots, scrolling
+pages and screen recordings, lets you annotate and redact an image or trim and blur a
+clip first, and can copy the text and QR codes straight off your screen. Uploads go to
+storage you control: an S3 bucket, Backblaze B2, Proton Drive or your own server.
+There is no put.gd account and no put.gd cloud.
 
-### Install
+If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built for Linux.
 
-Install the package for your Linux x86_64 distribution:
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/shots/desktop-dark.webp">
+    <img src="docs/readme/shots/desktop-light.webp" width="900" alt="put.gd on Fedora 44 with GNOME: the History window open on the desktop, listing today's captures and recordings, with the newest one shared and its link ready to copy">
+  </picture>
+</p>
+
+## Why
+
+I was tired of screenshot tools built on a webview, and with LLMs, native code is easier to
+write than ever. put.gd is C++ and Qt, and memory is a deliberate design choice: a
+screenshot tool shouldn't use 100 MB or more sitting in your system tray. It's been
+ruthlessly trimmed to idle well under 40 MB, often 10–20 MB, and less once the kernel
+reclaims its pages.
+The main window, the editor and the recorder are separate processes that exit when you're
+done with them ([memory strategy](docs/design/memory-strategy.md)).
+
+C++20 was a choice I regret. I'd like to move to C++23 eventually.
+
+## Install
+
+put.gd runs on x86_64 Linux. This installs the right package for your distribution
+([see where it runs](#where-it-runs)) and verifies it first:
 
 ```sh
 curl -fsSL https://app.put.gd/install | sh
 ```
 
-For a per-user AppImage install without sudo:
+For an AppImage just for your user, with no `sudo`:
 
 ```sh
 curl -fsSL https://app.put.gd/install | sh -s -- --appimage
 ```
 
-The installer verifies SHA-256 before installing. Native packages use sudo only for `apt install` or `dnf install`; AppImage installs to `~/.local/bin/putgd.AppImage`. It defaults to stable, falling back to nightly until the first stable release. Add `--dry-run`, `--channel nightly` or `--help` after `sh -s --` as needed. [Read the installer](packaging/install.sh).
+Many features on this page are new and in nightly builds until the next stable
+release, among them scrolling capture, Copy text, custom uploaders, Budgie and
+Hyprland. To get them now, use the nightly channel (add `--appimage` for an AppImage):
 
-Manual downloads are currently **nightly previews**, for Linux x86_64:
+```sh
+curl -fsSL https://app.put.gd/install | sh -s -- --channel nightly
+```
 
-- **DEB:** [Ubuntu 24.04 / Mint 22](https://app.put.gd/dl/nightly/ubuntu24.04), [Ubuntu / Kubuntu 26.04](https://app.put.gd/dl/nightly/ubuntu26.04) or [Debian 13](https://app.put.gd/dl/nightly/debian13). Install with `sudo apt install ./putgd-*.deb`.
-- **RPM:** [Fedora 44](https://app.put.gd/dl/nightly/fedora44). Install with `sudo dnf install ./putgd-*.rpm`. For recording, also run `sudo dnf install openh264 gstreamer1-plugin-openh264` to replace Fedora's placeholder; the one-line installer runs this codec step for you when the Cisco repository is enabled. If it is disabled, the installer prints the enable-then-install commands; see [codec setup](docs/recording.md#packages-and-codecs).
-- **AppImage:** [Download](https://app.put.gd/dl/nightly/appimage) for Aurora and other distributions with glibc 2.39+. Make it executable with `chmod +x putgd-*.AppImage`, then open it.
+Packages are also on [app.put.gd](https://app.put.gd/), and the guide explains
+[switching between stable and nightly](https://app.put.gd/userguide/updating.html#switch-between-nightly-and-stable).
+A few desktops need one more thing:
 
-DEB and RPM installs add the put.gd package repository for updates. AppImage updates are offered in the app. See [updates](docs/updates.md).
+- **GNOME 50:** log out and back in [once](https://app.put.gd/userguide/desktops.html#gnome) when put.gd asks. The current stable release
+  then also needs `gnome-extensions enable putgd@put.gd`.
+- **KDE Plasma on Ubuntu 24.04 (Wayland):** use the AppImage. The package there has no
+  region selector.
+- **Budgie:** window capture needs labwc 0.20 or newer. With an older labwc, capture a
+  region instead.
 
-**GNOME 50:** after installing a DEB or RPM, log out and back in, then run `gnome-extensions enable putgd@put.gd`. AppImage users also need the matching host extension; follow [GNOME setup](docs/desktops/gnome.md#setup).
+## Your first link
 
-### First run
+1. Open put.gd, go to **Destinations** and click **Add destination**. Choose
+   [Amazon S3 or Cloudflare R2](https://app.put.gd/userguide/destinations-s3.html),
+   [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Proton Drive](https://app.put.gd/userguide/destinations-proton.html)
+   or a [custom uploader](https://app.put.gd/userguide/destinations-custom.html) (import a ShareX `.sxcu` file),
+   and fill in its details.
+2. Click **Save to keychain** (for Proton Drive, **Connect account…** and pick a
+   folder), then **Test upload and link** (for Proton Drive, **Check account and
+   folder**, which checks access but tries no upload or share link), and
+   **Make default** if it isn't already.
+3. Press a hotkey:
 
-Open put.gd and choose **Destinations → Add destination**. Enter your storage details and credentials, or connect a Proton Drive account and choose a folder. Use **Test connection**, then select the destination in **Settings → Capture**. To save locally too, turn on **Settings → General → Local copies → Keep a local copy**.
+   | Hotkey | Captures |
+   | --- | --- |
+   | `Ctrl+Shift+1` | A region you drag (Escape cancels) |
+   | `Ctrl+Shift+2` | The active window |
+   | `Ctrl+Shift+3` | The whole desktop |
 
-### Everyday use
+The capture uploads and its link is on your clipboard. Every capture is also in the
+main window and the tray menu. **Settings → Hotkeys** lets you change any key and says
+why one couldn't be set, for example when another app already uses it. Closing the
+window leaves put.gd running in the tray. The [quick start](https://app.put.gd/userguide/quickstart.html) walks
+through it with pictures.
 
-Use the buttons across the top of the window, the tray menu, or a shortcut:
+## What it does
 
-| Default shortcut | Action |
+**Capture what you need.** A region, a window, one monitor or the whole desktop; the
+same region again; or after a 3, 5 or 10 second delay, so a menu can stay open.
+**Capture scrolling region** scrolls a page, chat or document for you and stitches it
+into one tall image. **Upload clipboard** sends whatever you copied, and
+**Upload with put.gd** in your file manager sends files and folders.
+[Capturing →](https://app.put.gd/userguide/capture.html) · [File manager →](https://app.put.gd/userguide/file-manager.html)
+· [Scrolling capture →](docs/user/user-guide.md#capture-a-scrolling-region)
+
+**Mark it up first.** **Capture region & edit** opens an editor with crop, arrows,
+shapes, highlights, text and numbered steps. **Redact** removes pixels for good, and
+**Quick redact** suggests covers for email addresses, phone numbers, card numbers,
+keys, your own username and name, and words you list (check them before you share). Nothing uploads until you click **Upload**.
+[The editor →](https://app.put.gd/userguide/edit.html)
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/shots/edit-dark.webp">
+    <img src="docs/readme/shots/edit-light.webp" width="820" alt="The put.gd editor on a photo of the Apollo 11 lunar plaque: a box and two numbered steps, an arrow with the label Both hemispheres, a highlight and a redaction, with Upload at the bottom right">
+  </picture>
+</p>
+
+**Record your screen.** Record MP4 or WebM with system audio and your microphone, or a
+silent GIF or animated WebP, with optional click highlights. Stopping opens a private
+review where you trim the clip and blur or cover parts of it before you save or upload.
+[Screen recording →](https://app.put.gd/userguide/record.html)
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/shots/record-bar-dark.webp">
+    <img src="docs/readme/shots/record-bar-light.webp" width="820" alt="A region chosen over a playing video, with the recording bar below it: Ready to record, the region size, System audio, Microphone with its level meter, Compatible video and Start recording">
+  </picture>
+</p>
+
+**Copy text off the screen.** Drag over text you can't select (an error dialog, a
+slide, a video frame, a screenshot of a terminal) and it's on your clipboard, along
+with what any QR code in it holds. It's read on your computer by a sandboxed helper
+with no network access, and put.gd saves and uploads none of it. The editor can select
+and copy text from an image too. [Copy text →](docs/user/user-guide.md#copy-text-from-the-screen)
+
+**Find it again.** History keeps your captures in a list or a gallery, searchable by
+name and filterable. Copy a link again, refresh an expired S3 or B2 link, show a link
+as a QR code for your phone, or retry a failed upload. [History →](https://app.put.gd/userguide/history.html)
+
+**Script it.** [`putgd-cli`](https://app.put.gd/userguide/cli.html) runs every action from a script, and the
+optional [MCP helper](https://app.put.gd/userguide/cli.html#mcp-for-agents) gives AI agents the same controls.
+
+## Where it runs
+
+| | |
 | --- | --- |
-| `Ctrl+Shift+1` | Capture a region |
-| `Ctrl+Shift+2` | Capture the active window |
-| `Ctrl+Shift+3` | Capture the whole desktop |
+| **Desktops** | [Cinnamon](https://app.put.gd/userguide/desktops.html#cinnamon), [GNOME 50](https://app.put.gd/userguide/desktops.html#gnome), [KDE Plasma](https://app.put.gd/userguide/desktops.html#kde-plasma), [Budgie](https://app.put.gd/userguide/desktops.html#budgie), [Hyprland](https://app.put.gd/userguide/desktops.html#hyprland) (tested on Omarchy) |
+| **Distributions** | Ubuntu 24.04 and 26.04, Linux Mint 22, Debian 13, Fedora 44 and 45, Arch and Arch-based; any other distribution with glibc 2.39 or newer through the AppImage. x86_64 only. |
+| **Storage** | Amazon S3, Cloudflare R2 and other [S3-compatible services](https://app.put.gd/userguide/destinations-s3.html#s3-compatible-services), [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Proton Drive](https://app.put.gd/userguide/destinations-proton.html) (experimental; links open a share page), or your own server through a [custom uploader](https://app.put.gd/userguide/destinations-custom.html) |
 
-Change keys in **Settings → Shortcuts**. **Capture region & edit**, **Record screen** and **Upload clipboard** have no default shortcut.
+[Your desktop](https://app.put.gd/userguide/desktops.html) says what put.gd can and can't do on each one.
 
-- **Capture:** drag a region, capture the active window, or capture all screens. Escape cancels region selection. Ordinary captures upload immediately to the selected destination; shared uploads copy their link.
-- **Edit:** choose **Capture region & edit**, or **Edit image** in History for a file or clipboard image. Crop, add arrows or text, and use **Redact** to remove private pixels. Nothing uploads until you choose **Upload**.
-- **Record:** choose **Record screen**, drag a region, and start from the floating bar. Include system audio, pause or resume, then stop to review. Trim or add timed blur/solid covers before saving a copy or choosing **Upload**. Export MP4, WebM, GIF or animated WebP. See [recording setup](docs/recording.md), including Fedora's encoder requirements.
+## Your data
 
-![The recording bar with system audio enabled, Pause and Stop recording controls](docs/readme/recording-bar.png)
+- Uploads go only to the destination you choose.
+- Edits and recordings stay on your computer until you upload them.
+- put.gd never saves or uploads text you copy off the screen, though a clipboard
+  manager may keep it.
+- Passwords and keys live in your system keychain, never in config files.
+- put.gd checks app.put.gd for updates once a day. You can turn that off.
 
-- **History:** search captures, switch between list and gallery, copy a link again, or reopen a saved local image for editing. Closing the window keeps put.gd running in the tray; click the tray icon to reopen History, or right-click for capture and upload commands. **Upload clipboard** accepts files, images and text.
+## More
 
-![History in gallery view, with search, filters and capture actions](docs/readme/history.png)
+[User guide](https://app.put.gd/userguide) ·
+[Troubleshooting](https://app.put.gd/userguide/troubleshooting.html) ·
+[Build from source](docs/release/build.md) ·
+[Developer docs](docs/README.md) ·
+[Report a bug](https://github.com/patrick-hudson/put.gd-desktop/issues) ·
+[MIT license](LICENSE)
 
-## Other information
-
-**Desktops.** Cinnamon on X11, GNOME 50 on Wayland, and KDE Plasma on Wayland or X11. Aurora uses the AppImage on Plasma Wayland. See the desktop notes for [Cinnamon](docs/desktops/cinnamon.md), [GNOME](docs/desktops/gnome.md) and [KDE](docs/desktops/kde.md).
-
-**Destinations.** Amazon S3, Cloudflare R2 and other S3-compatible services; Backblaze B2 through its native API; and [Proton Drive](docs/proton-drive.md), an experimental third-party integration. Proton links open a share page rather than a direct image URL. Local saving is independent of uploads.
-
-**CLI and MCP.** `putgd-cli` controls the running app from scripts. The optional MCP helper exposes capture, editing, recording, uploads and History to agents. See [CLI](docs/cli.md) and [MCP setup](docs/mcp.md).
-
-**Build from source.** C++20, Qt 6 Widgets, CMake, Ninja and the official AWS C++ SDK. Follow the [build instructions](docs/build.md).
-
-**Privacy and credentials.** Uploads go to the destination you choose. Image edits and recordings stay private until you explicitly upload them. Saved credentials use the system keychain; configuration stores references, not secret values. S3 credentials can also stay in memory for the session. The daily update check can be disabled, and updates require your action. See [credentials](docs/credentials.md) and [updates](docs/updates.md).
-
-**License.** [MIT](LICENSE).
-
-[User guide](docs/user-guide.md) · [Image editor](docs/image-editor.md) · [Screen recording](docs/recording.md) · [Configuration](docs/configuration.md) · [Troubleshooting](docs/diagnostics.md) · [Developer documentation](docs/agents.md) · [Issues](https://github.com/patrick-hudson/put.gd-desktop/issues)
+<sub>Screenshots: put.gd 26.1111.4633 nightly on GNOME 50.6 (Wayland), Fedora Linux 44.
+Demo media: [Sintel](https://commons.wikimedia.org/wiki/File:Sintel_trailer-1080p.ogv)
+© copyright Blender Foundation | durian.blender.org,
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/); NASA photos (public domain).</sub>

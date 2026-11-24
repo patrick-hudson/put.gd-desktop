@@ -2,8 +2,8 @@
 // editor_job_integration to prove the resident's failure handling. The product
 // helper never reads PUTGD_TEST_EDITOR_MODE; EditorJob selects this executable
 // through its constructor.
-#include "app/UiControl.h"
-#include "ui/StdioDevice.h"
+#include "ipc/UiControl.h"
+#include "ipc/StdioDevice.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCryptographicHash>

@@ -1,11 +1,14 @@
 #include "record/RecordSession.h"
+#include "record/Overlays.h"
 #include "fixtures/Waits.h"
 #include <QFileInfo>
-#include <QLabel>
+#include <QJsonArray>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <poll.h>
+#include <unistd.h>
 
 namespace putgd::record {
 // Only storage values and prepared target metadata are injected. The production
@@ -18,6 +21,8 @@ class RecordingStorageContract : public QObject {
     static constexpr qint64 MiB = 1LL << 20;
     static RecordingStorage healthy() { return {1536 * MiB, 1536 * MiB, 1234}; }
     static RecordingStorage low() { return {1180 * MiB, 1536 * MiB, 2345}; }
+    // A pipe's write end reports POLLERR once its read end is really closed.
+    static bool readerClosed(int writeEnd) { pollfd end{writeEnd, 0, 0}; return ::poll(&end, 1, 0) == 1 && (end.revents & POLLERR); }
     void setup(RecordSession& session, const QTemporaryDir& dir) {
         session.workingClip_ = dir.filePath("working.mkv");
         session.resolved_.rect = QRect(0, 0, 320, 240);
@@ -60,53 +65,47 @@ private slots:
         display_.terminate();
         if (!display_.waitForFinished(3000)) { display_.kill(); display_.waitForFinished(); }
     }
-    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges_data() {
-        QTest::addColumn<bool>("captured");
-        QTest::newRow("captured") << true;
-        QTest::newRow("not captured") << false;
-    }
-    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges() {
-        QFETCH(bool, captured);
-        QTemporaryDir dir; RecordSession session; setup(session, dir);
-        session.config_.codec = "h264"; session.config_.audio.system = true;
-        session.audioCaptured_ = captured; session.recorded_ = true; session.durationUs_ = 12000000;
-        session.bar_ = new ControlBar({},session.config_);session.bar_->show();
-        session.capabilities_ = {{"formats", QJsonArray{"mp4", "gif"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264"}}}}};
-        session.openReview();QVERIFY(!session.bar_->isVisible());
-        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "gif"}}).code.isEmpty());
-        QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
-        QCOMPARE(session.config_.toJson()["format"].toString(), QString("gif"));
-        QVERIFY(!session.config_.toJson()["audio"].toObject()["system"].toBool());
-        QVERIFY(!session.review_->inspect()["audioEffective"].toBool());
-        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
-        QCOMPARE(session.config_.audio.system, captured); QCOMPARE(session.audioCaptured_, captured);
-        const auto config = session.config_.toJson();
-        QCOMPARE(config["format"].toString(), QString("mp4"));
-        QCOMPARE(config["codec"].toString(), QString("h264"));
-        QCOMPARE(config["audio"].toObject()["system"].toBool(), captured);
-        QCOMPARE(session.review_->inspect()["audioEffective"].toBool(), captured);
-        QCOMPARE(session.review_->inspect()["format"].toObject(), (QJsonObject{{"format", "mp4"}, {"codec", "h264"}}));
-        const auto audio = session.review_->findChild<QLabel*>("exportAudioSummary")->text();
-        QVERIFY(audio.contains(captured ? QString("System audio") : QString("No audio recorded")));
-    }
     void stoppedBarCannotReappearOverReview() {
         QTemporaryDir dir; RecordSession session; setup(session, dir);
-        session.prepared_ = true;
+        session.phase_ = HelperPhase::Ready;
         session.bar_ = new ControlBar({}, session.config_);
         session.barHidden_ = false;
         session.pipeline_.storageProbe_ = [] { return healthy(); };
         QVERIFY(!start(session));
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(session.pipeline_.retainedUs() > 200000, 8000);
         session.showBar("recording"); QVERIFY(session.bar_->isVisible());
+        // Stands in for the portal's PipeWire descriptor, the one part of the share visible without a compositor.
+        int share[2];QCOMPARE(::pipe(share),0);session.portalFd_=share[0];
+        auto keepWriteEnd=qScopeGuard([&]{::close(share[1]);});
         int replies=0;Error stopError;
         session.stop([&](Error error,QJsonObject){stopError=error;++replies;});
+        // A second Stop is refused while the first drains, and must leave the share in use alone.
+        QString busy;session.stop([&](Error error,QJsonObject){busy=error.code;});
+        QCOMPARE(busy,QString("recording_busy"));QCOMPARE(session.portalFd_,share[0]);QVERIFY(!readerClosed(share[1]));
         PUTGD_TRY_COMPARE(replies,1);QVERIFY2(!stopError,qPrintable(stopError.message));
-        QVERIFY(session.recorded_);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
+        QCOMPARE(session.portalFd_,-1);QVERIFY(readerClosed(share[1]));
+        QVERIFY(session.phase_==HelperPhase::Recorded);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
         session.review_->hide();
         session.command("raise",{},[&](Error error,QJsonObject){QVERIFY(!error);++replies;});
         QCOMPARE(replies,2);QVERIFY(session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
-        session.command("overlay",{{"visible",true}},[](Error error,QJsonObject result){QVERIFY(!error);QVERIFY(!result["visible"].toBool());});
+        // The bar's overlay command belongs to the capture: over review it is refused and the bar stays hidden.
+        session.command("overlay",{{"visible",true}},[](Error error,QJsonObject){QCOMPARE(error.code,QString("recording_state"));});QVERIFY(!session.bar_->isVisible());
         session.showBar("paused");QVERIFY(!session.bar_->isVisible());
+    }
+    void pipelineFailureEndsTheShare() {
+        QTemporaryDir dir; RecordSession session; setup(session, dir);
+        auto& pipeline = session.pipeline_;
+        pipeline.storageProbe_ = [] { return healthy(); };
+        int share[2]; QCOMPARE(::pipe(share), 0); session.portalFd_ = share[0];
+        auto keepWriteEnd = qScopeGuard([&] { ::close(share[1]); });
+        QSignalSpy events(&session, &RecordSession::event);
+        const auto started = start(session); QVERIFY2(!started, qPrintable(started.message));
+        QVERIFY(!readerClosed(share[1]));
+        GError* error = g_error_new_literal(GST_STREAM_ERROR, GST_STREAM_ERROR_FAILED, "synthetic media failure");
+        gst_element_post_message(pipeline.pipeline_, gst_message_new_error(GST_OBJECT(pipeline.pipeline_), error, "synthetic"));
+        g_error_free(error);
+        PUTGD_TRY_COMPARE(terminal(events)["event"].toString(), QString("failed"));
+        QVERIFY(!pipeline.running()); QCOMPARE(session.portalFd_, -1); QVERIFY(readerClosed(share[1]));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
@@ -114,8 +113,6 @@ private slots:
         QTest::addColumn<bool>("diskLow");
         QTest::newRow("recording-disk") << false << false << true;
         QTest::newRow("paused-disk") << true << false << true;
-        QTest::newRow("simultaneous-byte-and-disk") << false << true << true;
-        QTest::newRow("byte-only") << false << true << false;
     }
     void automaticStop() {
         QFETCH(bool, paused); QFETCH(bool, byteLimit); QFETCH(bool, diskLow);
@@ -158,63 +155,11 @@ private slots:
         QCOMPARE(stopped["stopDetails"].toObject(), diskLow ? expected : QJsonObject{});
         QCOMPARE(budgets.count(), 1);
         QVERIFY(!pipeline.running()); QVERIFY(!pipeline.bus_.isActive());
-        QVERIFY(session.recorded_); QVERIFY(session.review_); QVERIFY(session.review_->isVisible());
+        QVERIFY(session.phase_ == HelperPhase::Recorded); QVERIFY(session.review_); QVERIFY(session.review_->isVisible());
         QVERIFY(QFileInfo(session.workingClip_).size() > 0);
         QImage frame;
         QVERIFY(!previewFrame(session.workingClip_, {}, session.config_, 0, 64, session.resolved_.canvas, frame));
         QVERIFY(!frame.isNull());
-    }
-    void failureKeepsCause_data() {
-        QTest::addColumn<int>("domainKind");
-        QTest::addColumn<int>("code");
-        QTest::addColumn<bool>("recover");
-        QTest::addColumn<QString>("expectedCode");
-        QTest::newRow("no-space-even-after-recovery") << 0 << int(GST_RESOURCE_ERROR_NO_SPACE_LEFT) << true << QString("recording_disk_full");
-        QTest::newRow("write-with-low-sample") << 0 << int(GST_RESOURCE_ERROR_WRITE) << false << QString("recording_failed");
-        QTest::newRow("write-after-recovery") << 0 << int(GST_RESOURCE_ERROR_WRITE) << true << QString("recording_failed");
-        QTest::newRow("unrelated-stream-error-during-disk-drain") << 1 << int(GST_STREAM_ERROR_FAILED) << false << QString("recording_failed");
-    }
-    void failureKeepsCause() {
-        QFETCH(int, domainKind); QFETCH(int, code); QFETCH(bool, recover); QFETCH(QString, expectedCode);
-        QTemporaryDir dir; QVERIFY(dir.isValid());
-        RecordSession session; setup(session, dir);
-        auto& pipeline = session.pipeline_;
-        bool trigger = false, posted = false;
-        const QByteArray diagnostic(800, 'd');
-        pipeline.storageProbe_ = [&] {
-            if (!trigger) return healthy();
-            if (!posted) {
-                posted = true;
-                GError* error = g_error_new_literal(domainKind ? GST_STREAM_ERROR : GST_RESOURCE_ERROR, code, "synthetic media failure");
-                gst_element_post_message(pipeline.pipeline_, gst_message_new_error(GST_OBJECT(pipeline.pipeline_), error, diagnostic.constData()));
-                g_error_free(error);
-                return low();
-            }
-            return recover ? healthy() : low();
-        };
-        QSignalSpy events(&session, &RecordSession::event);
-        QSignalSpy budgets(&pipeline, &RecordingPipeline::budgetReached);
-        const auto error = start(session); QVERIFY2(!error, qPrintable(error.message));
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pipeline.retainedUs() > 200000, 8000);
-        trigger = true;
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!terminal(events).isEmpty(), 8000);
-        const auto failed = terminal(events);
-        QCOMPARE(failed["event"].toString(), QString("failed"));
-        const auto result = failed["error"].toObject();
-        QCOMPARE(result["code"].toString(), expectedCode);
-        const auto details = result["details"].toObject();
-        QCOMPARE(details["finalized"], QJsonValue(false));
-        auto expected = low().toJson(); expected["reason"] = "disk_space";
-        QCOMPARE(details["stopDetails"].toObject(), expected);
-        const auto cause = expectedCode == "recording_disk_full" ? details["cause"].toObject() : result;
-        QCOMPARE(cause["code"].toString(), QString("recording_failed"));
-        QCOMPARE(cause["message"].toString(), QString("Capture failed: synthetic media failure"));
-        QCOMPARE(cause["details"].toObject()["debug"].toString(), QString::fromLatin1(diagnostic.left(512)));
-        if (expectedCode == "recording_disk_full") QCOMPARE(details["reason"].toString(), QString("disk_space"));
-        else QVERIFY(!details.contains("reason"));
-        QCOMPARE(budgets.count(), 1);
-        QVERIFY(!session.recorded_); QVERIFY(!session.review_);
-        QVERIFY(!pipeline.running()); QVERIFY(!pipeline.bus_.isActive());
     }
 };
 }

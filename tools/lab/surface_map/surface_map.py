@@ -611,6 +611,8 @@ def classify_receipt(doc):
         return 'edit_acceptance'
     if doc.get('scenario') == 'mcp-editor-e2e' and isinstance(doc.get('checks'), dict):
         return 'mcp_editor_e2e'
+    if doc.get('scenario') == 'editor-tools-1362' and isinstance(doc.get('checks'), dict):
+        return 'editor_tools_check'
     if 'testId' in doc and str(doc.get('scenario', '')).endswith('-independent-paste'):
         return 'lab_run'
     if 'protocolPassed' in doc and ('coverage' in doc or 'witnesses' in doc):
@@ -637,7 +639,7 @@ def import_receipt(model, path, desktop=None, package=None):
     at = doc.get('finishedAt') or doc.get('at') or dt.datetime.fromtimestamp(
         path.stat().st_mtime, dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     entries = []
-    if source in ('edit_acceptance', 'mcp_editor_e2e'):
+    if source in ('edit_acceptance', 'mcp_editor_e2e', 'editor_tools_check'):
         frames = 'frames' if doc.get('witnesses') and source == 'edit_acceptance' else None
         for check, result in doc.get('checks', {}).items():
             for target in mapping.get('checks.' + check, []):

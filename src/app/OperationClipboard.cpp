@@ -47,7 +47,7 @@ QJsonObject OperationService::nativeCopyGuard(const Error& error) {return {{"gua
 quint64 OperationService::invalidateCopyEligibility() {
  ++uploadCopyEpoch_;
  if(currentCopy_&&currentCopy_->preparationState)currentCopy_->preparationState->cancelled->store(true);
- for(const auto& copy:copies_)if(copy->preparationState)copy->preparationState->cancelled->store(true);
+ for(const auto& copy:std::as_const(copies_))if(copy->preparationState)copy->preparationState->cancelled->store(true);
  source_.invalidateCopyEligibility();
  return ++invocation_;
 }
@@ -87,6 +87,9 @@ bool OperationService::detachCompletedUploadCopies(const QString& id,JsonReply& 
  // The upload has finished; only its automatic list is waiting. A deliberate
  // Activity copy takes ownership of the final copy status and any retry reply.
  state->recorded=true;pendingReply=std::move(state->reply);
+ // Its finished result was waiting for the list copy; it is reported now, before the
+ // explicit copy reports only its copy (#1753).
+ emit outcome(state->operation.publicJson());
  state->group->members.remove(state->operation.invocation);
  uploadCopies_.remove(id);releaseActive(id);return true;
 }
@@ -176,7 +179,7 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
   CopyPayload payload;payload.kind="text";QStringList urls;included->clear();
   for(const auto& state:members)if(!state->cancellation->load()&&!state->links.isEmpty()) {
    included->insert(state->operation.id);
-   for(const auto& url:state->links)urls.append(url);
+   for(const auto& url:std::as_const(state->links))urls.append(url);
   }
   payload.text=urls.join('\n');return payload;
  },[this,members,included,group](Error error) {
@@ -240,15 +243,17 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
  }
  const auto path=databasePath();
  background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return op.publicJson();},[this,state,op](Error error,QJsonObject result) {
+  // The copy outcome is a History write too: if it is refused, the row is stale until a restart (#1579).
+  if(error.code=="history_io")rememberUnsavedHistory(op.id);
   uploadCopies_.remove(op.id);releaseActive(op.id);
-  emit changed(op.id);if(!error)emit resultReady(op.id);
+  emit changed(op.id);if(!error){emit outcome(result);emit resultReady(op.id);}
   if(state->reply)state->reply(error,result);
  });
 }
 void OperationService::acknowledgeCopyRevision(quint64 before,quint64 after) {
  // Advance only snapshots that still expected the overwritten revision. A
  // manual change, even one received before the queued callback, stays distinct.
- for(const auto& state:uploadCopies_) {
+ for(const auto& state:std::as_const(uploadCopies_)) {
   if(state->revision==before)state->revision=after;
   if(state->group&&state->group->revision==before)state->group->revision=after;
  }

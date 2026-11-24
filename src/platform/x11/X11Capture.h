@@ -1,5 +1,6 @@
 #pragma once
 #include "platform/Geometry.h"
+#include <QJsonArray>
 #include <QObject>
 #include <xcb/xcb.h>
 namespace putgd {
@@ -7,13 +8,22 @@ struct X11Target {
  QString action;
  xcb_window_t window=XCB_WINDOW_NONE;
  QRect nativeWindowRect;
+ // Capture monitor (#1363): the native rectangle of the output under the pointer.
+ QRect nativeArea;
+ // Delayed capture (#1363): a live region counts down between selection and pixels.
+ int delaySeconds=0;
  QList<CaptureFrame> layout;
  QRectF logicalSelection;
  QString outcome;
  // Region screenshots in Screenshot first mode (#629): every monitor is read
  // before selection, and the result is cut from those frames.
  bool screenshotFirst=false;
+ // Copy text uses region selection without replacing Repeat last region.
+ bool rememberRegion=true;
 };
+// The monitors a region was chosen on, for Repeat last region (#1363): one
+// {identity, logical, native, rotation} per monitor, in layout order.
+QJsonArray describeLayout(const QList<CaptureFrame>&);
 class X11Capture final:public QObject {
  Q_OBJECT
 public:

@@ -1,1 +1,0 @@
-harness r3 status: 6 cleanup_failure cases + 5 propagation cases pass

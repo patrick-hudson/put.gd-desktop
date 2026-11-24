@@ -1,13 +1,18 @@
 #include "TrayController.h"
+#include "core/SensitiveText.h"
 #include <QScopeGuard>
 #include <QJsonDocument>
 #include "app/FileManagerIntegration.h"
 #include "Ui.h"
 #include "Theme.h"
-#include "ByteSize.h"
+#include "core/ByteSize.h"
+#include "core/CommandText.h"
+#include "TrayMenu.h"
+#include "core/Operation.h"
 #include "core/Log.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"
+#include "core/NotificationServer.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
 #include <QDBusConnection>
@@ -20,6 +25,7 @@
 #include <QCursor>
 #include <QCoreApplication>
 #include <QAction>
+#include <QActionGroup>
 #include <QKeySequence>
 #include <QMenu>
 #include <QWidgetAction>
@@ -28,6 +34,7 @@
 #include <QSystemTrayIcon>
 #include <QScreen>
 #include <QDir>
+#include <QDateTime>
 #include <QHash>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -39,8 +46,8 @@ namespace {
 bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
-const QString idleTooltip = "put.gd";
-const QString seasonalTooltip = "put.gd - Happy Holidays!";
+const QString idleTooltip = QStringLiteral("put.gd");
+const QString seasonalTooltip = QStringLiteral("put.gd - Happy Holidays!");
 // Which way a link or folder opened on the host (#326), never the target itself.
 void logOpened(const QString& target,const QJsonObject& result) {
  auto fields=result;fields["target"]=target;
@@ -79,18 +86,11 @@ bool recordingHandedOver(const QJsonObject& operation) {
 }
 QString phaseLabel(const QJsonObject& operation) {
  const auto phase=operation["phase"].toString(operation["state"].toString());
- if(operation["action"]=="record"&&operation["state"]=="recording") {
-  if(phase=="preparing")return "Setting up the recording";
-  if(phase=="ready")return "Ready to record";
-  if(phase=="recording")return "Recording";
-  if(phase=="paused")return "Recording paused";
-  if(phase=="stopping")return "Stopping the recording";
-  if(phase=="reviewing")return "Reviewing the recording";
-  if(phase=="exporting")return "Saving a copy of the recording";
-  if(phase=="encoding")return "Encoding the recording";
- }
+ if(const auto recording=commandtext::recordingPhase(operation);!recording.isEmpty())return recording;
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
+ if(phase=="checking")return "Checking for sensitive text"; // #1804
+ if(phase=="sensitive_text_found")return "Waiting for your decision";
  if(phase=="sharing")return "Creating share link";
  if(phase=="reconciling")return "Checking previous upload";
  auto text=phase;text.replace('_',' ');
@@ -161,6 +161,78 @@ QString activityText(const QJsonArray& observations) {
  if(observations.size()>3)lines.append(QString("%1 more active operations").arg(observations.size()-3));
  return lines.join('\n');
 }
+// The tooltip's title, its text and the icon's colour each switch on the one
+// Activity, with no default: a new value fails to compile until all three say what it shows.
+using Activity=TrayController::Activity;
+bool workingStage(Activity activity){return activity==Activity::Capturing||activity==Activity::Processing||activity==Activity::Uploading;}
+QString activityName(Activity activity) {
+ switch(activity) {
+ case Activity::Idle: return "idle";
+ case Activity::Capturing: return "capturing";
+ case Activity::Processing: return "processing";
+ case Activity::Uploading: return "uploading";
+ case Activity::Complete: return "complete";
+ case Activity::Failed: return "failed";
+ }
+ return "idle";
+}
+// uploaded: the work that completed sent something to its destination, not only a local copy.
+QString completeText(bool uploaded){return uploaded?QStringLiteral("Upload complete"):QStringLiteral("Saved");}
+QString activityTitle(Activity activity,const QString& identity,bool uploaded) {
+ switch(activity) {
+ case Activity::Failed: return "Needs attention";
+ case Activity::Complete: return completeText(uploaded);
+ case Activity::Uploading: return "Uploading";
+ case Activity::Processing: return "Processing";
+ case Activity::Capturing: return "Capturing";
+ case Activity::Idle: return identity;
+ }
+ return identity;
+}
+QString activityStatus(Activity activity,const QString& attentionLabel,const QString& lines,bool uploaded) {
+ switch(activity) {
+ case Activity::Failed: return attentionLabel+QString(" — open the tray menu to review")+(lines.isEmpty()?QString{}:"\n"+lines);
+ case Activity::Complete: return completeText(uploaded);
+ case Activity::Capturing: case Activity::Processing: case Activity::Uploading: case Activity::Idle: return lines;
+ }
+ return lines;
+}
+// Uploading keeps the processing blue under the climbing upload fill, so a full
+// fill is the finished glyph.
+QColor activityColor(Activity activity,const Theme::TrayTints& tints) {
+ switch(activity) {
+ case Activity::Failed: return tints.error;
+ case Activity::Complete: return tints.upload;
+ case Activity::Uploading: case Activity::Processing: return tints.process;
+ case Activity::Capturing: return tints.capture;
+ case Activity::Idle: return tints.idle;
+ }
+ return tints.idle;
+}
+// The upload fill never starts empty: a sliver of green says bytes are going out.
+constexpr int minimumUploadFill=10;
+constexpr int finishingBoundMs=5000,startBoundMs=10000;
+}
+
+TrayController::Activity TrayController::stageOf(const QJsonObject& operation) {
+ // A recording shows its own badge until Upload hands it over.
+ if(operation["action"]=="record"&&!recordingHandedOver(operation))return Activity::Idle;
+ const auto state=operation["state"].toString();
+ // Once the source has handed over its picture (queued for import, or preparing it), it is processing.
+ if(state=="accepted"||(state=="acquiring"&&!QStringList{"queued","preparing"}.contains(operation["phase"].toString())))return Activity::Capturing;
+ // Only a running operation uploads: a stored one may still be "preparing" its artifact.
+ if(state!="running")return Activity::Processing;
+ if(operation["destination"].toObject()["providerId"].toString().isEmpty())return Activity::Processing;
+ if(QStringList{"uploading","finalizing","preparing","sharing","reconciling"}.contains(operation["phase"].toString()))return Activity::Uploading;
+ for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploading")return Activity::Uploading;
+ return Activity::Processing;
+}
+
+TrayController::Activity TrayController::activityFor(const ActivityInputs& in) {
+ if(workingStage(in.working))return in.working;
+ if(in.failure)return Activity::Failed;
+ if(in.complete)return Activity::Complete;
+ return Activity::Idle;
 }
 
 TrayController::TrayController(OperationService& operations,
@@ -168,22 +240,65 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+ // #1804, #1829: one notification leads back to a prompt another window may cover.
+ connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){announceSensitivePrompt(id);});
+ connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
+  logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
+  if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
+  else if(reason=="lost_track")notifyMessage("scroll_lost_track","put.gd — scrolling capture incomplete",message,true);
+  else if(reason=="done")notifyMessage("scroll_blank_stretch","put.gd — scrolling capture stopped",message,true);
+  else if(reason=="found_again")notifyMessage("scroll_found_again","put.gd — check the scrolling capture",message,true);
+  else notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
+ // put.gd's own notices stay out of a scroll capture: those on screen are
+ // closed, later ones wait for the capture's end. The capture starts
+ // noticeGoneMs after the server has reported them closed (a popup fades
+ // out; Omarchy's card takes 200 ms to leave), and no later than that after
+ // noticeConfirmMs when the server does not say.
+ static constexpr int noticeGoneMs=500,noticeConfirmMs=NativeTray::closeConfirmMs+200;
+ connect(&operations_.scroll(),&ScrollCaptureService::preparing,this,[this]{
+  holdNotices_=true;
+  const auto id=operations_.scroll().activeId();
+  const int closed=closeOwnNotifications([this,id]{if(operations_.scroll().activeId()==id)operations_.scroll().holdStart(noticeGoneMs,true);});
+  if(closed){
+   operations_.scroll().holdStart(noticeConfirmMs+noticeGoneMs);
+   logging::info(logUi(),"Notifications closed for a scroll capture",{{"count",closed}});
+  }
+ });
+ connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
+  if(operations_.scroll().active())return;
+  holdNotices_=false;
+#ifdef Q_OS_LINUX
+  for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
+#endif
+  for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
+  // A prompt announced during the capture, if it still waits (#1829).
+  for(const auto& id:std::exchange(heldSensitivePrompts_,{}))if(operations_.sensitivePromptWaiting(id))announceSensitivePrompt(id);
+  for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
+ },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
+  logError("recording",{"recording_budget_stopped",stop["message"].toString(),{}},{},Settings::recordingActionName());
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
+ });
+ // History could not save some results; a restart's recovery saves them (#1579). Once per session.
+ connect(&operations_,&OperationService::historyResultsUnsaved,this,[this]{
+  logError("history",{"history_results_unsaved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",{}},"history_results_unsaved");
+  if(operations_.settingsSnapshot().notifications)notifyMessage("history_results_unsaved","put.gd — History not saved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",true);
  });
  // Uploads an automatic cleanup could not abort, once for each (#226).
  connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
+  logError("upload",{"incomplete_uploads_kept",notice["message"].toString(),{{"count",notice["count"]},{"bytes",notice["bytes"]}}});
   if(available())notifyMessage("incomplete_uploads_kept","put.gd — incomplete uploads left",notice["message"].toString(),true);
  });
 #ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
-  connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value) {
+  connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value,const QString& token) {
    if(key=="save-diagnostics")saveDiagnostics(value);
    else if(key=="show-in-folder")showSavedPackage(value);
    else if(key.startsWith("restart-file-manager-"))restartFileManager(value);
+   else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,token);
   });
   connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
@@ -191,18 +306,7 @@ TrayController::TrayController(OperationService& operations,
    // Views opened for this click carry the host's token, so Wayland activates them.
    activationToken_ = token;
    const auto clear = qScopeGuard([guard = QPointer<TrayController>(this)] { if (guard) guard->activationToken_.clear(); });
-   if (Settings::invocableActionNames().contains(action)) invokeAction(action);
-   else if (action == "cancel-upload") cancelUploads();
-   else if (action == "failed-uploads") acknowledgeFailures();
-   else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
-   else if (action == "edit-file") showView("editFile");
-   else if (action == "capture-settings") showView("captureSettings");
-   else if (action == "settings") showSettings();
-   else if (action == "destinations") showView("destinations");
-   else if (action == "history") showHistory();
-   else if (action == "about") showAbout();
-   else if (action == "update") showView("updates");
-   else if (action == "quit") { const auto quit = quit_; quit(); }
+   runCommand(action);
   });
  } else
 #endif
@@ -210,63 +314,68 @@ TrayController::TrayController(OperationService& operations,
  tray_ = new QSystemTrayIcon(Ui::trayIcon({Theme::trayTints(panel_.light()).idle,-1,0,calendar_.glyph()}), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(calendar_.glyph()==IconArt::TrayGlyph::Mark?idleTooltip:seasonalTooltip);
- uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);uploadStatus_->setProperty("visualRole","information");auto* statusSeparator=menu_->addSeparator();statusSeparator->setObjectName("trayStatusSeparator");cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
- outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);const auto* screen=outputMenu_->screen();const int available=screen?screen->availableGeometry().width():Ui::scaled(480);label->setMinimumWidth(qMin(Ui::scaled(280),available));label->setMaximumWidth(qMin(Ui::scaled(480),available));label->setContentsMargins(Ui::space(Ui::Space::m),Ui::space(Ui::Space::s),Ui::space(Ui::Space::m),Ui::space(Ui::Space::s));Ui::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
- // Capture entries first, in the order people reach for them; QAction text
- // treats a single & as a mnemonic marker, so && shows one &.
- const auto capture = [this](const QString& action, const QString& label) {
-  auto* entry = menu_->addAction(label);
-  entry->setData(action);entry->setProperty("commandLabel",label);
-  connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
+ // The same table as the native menu (TrayMenu); QAction text treats a single
+ // & as a mnemonic marker, so refreshMenu doubles it.
+ std::function<void(QMenu*,int)> build=[&](QMenu* into,int id){
+  QActionGroup* choices=nullptr;
+  for(const int child:traymenu::children(id)){
+   QAction* entry=nullptr;const auto kind=traymenu::kind(child);
+   if(kind==traymenu::Kind::Separator)entry=into->addSeparator();
+   else if(kind==traymenu::Kind::Submenu){auto* submenu=into->addMenu(QString{});entry=submenu->menuAction();build(submenu,child);}
+   else entry=into->addAction(QString{});
+   entry->setObjectName(traymenu::name(child));entry->setData(traymenu::name(child));
+   if(kind==traymenu::Kind::Info)entry->setProperty("visualRole","information");
+   if(kind==traymenu::Kind::Choice){if(!choices)choices=new QActionGroup(into);entry->setCheckable(true);choices->addAction(entry);}
+   if(const auto command=traymenu::action(child);!command.isEmpty())connect(entry,&QAction::triggered,this,[this,command]{runCommand(command);});
+   menuRows_.insert(child,entry);
+  }
  };
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
- for(const auto& action:Settings::presentationOrder())capture(action,labels.value(action));
- // Other editor sources stay one level down so the menu does not grow.
- auto* editImage = menu_->addMenu("Edit image");
- editImage->menuAction()->setData("edit-sources");auto* before=menu_->actions().value(menu_->actions().indexOf(editImage->menuAction()));for(auto* entry:menu_->actions())if(entry->data()=="record")before=entry;menu_->insertMenu(before,editImage);
- connect(editImage->addAction("Edit clipboard image"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
- connect(editImage->addAction("Edit an image file…"), &QAction::triggered, this, [this] { showView("editFile"); });
- menu_->addSeparator();
- for(const auto& name:QStringList{"History","Destinations","Settings"}){
-  auto* entry=menu_->addAction(name);const auto view=name.toLower();entry->setData(view=="settings"?"preferences":view);connect(entry,&QAction::triggered,this,[this,view]{showView(view);});
- }
- failedUploads_=menu_->addAction("Failed uploads");failedUploads_->setObjectName("trayFailedUploads");failedUploads_->setData("failed-uploads");failedUploads_->setVisible(false);connect(failedUploads_,&QAction::triggered,this,&TrayController::acknowledgeFailures);
- updateAction_ = menu_->addAction("Update available");
- updateAction_->setData("update");updateAction_->setVisible(false);
- // Lands on Settings → General → Updates with its action focused, not the first settings page.
- connect(updateAction_, &QAction::triggered, this, [this] { showView("updates"); });
- menu_->addSeparator();
- connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
- connect(menu_->addAction("Quit put.gd"), &QAction::triggered, this, [this] {
-  const auto quit = quit_;
-  quit();
- });
+ build(menu_.get(),0);
+ connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
  retintMenu();
  tray_->setContextMenu(menu_.get());
  connect(tray_, &QSystemTrayIcon::activated, this, [this](auto reason) {
   if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
-   showHistory();
+   {if(!operations_.raiseSensitivePrompt())showHistory();}
  });
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
  }
- uploadRevealTimer_.setSingleShot(true);uploadRevealTimer_.setInterval(200);
- uploadRevealTimer_.setTimerType(Qt::PreciseTimer);
- connect(&uploadRevealTimer_,&QTimer::timeout,this,[this] {
-  if(operations_.storageActive()&&!errorPending_) {uploadVisible_=true;uploadVisibleClock_.start();}
-  refreshActivity();
- });
- uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setTimerType(Qt::PreciseTimer);
- connect(&uploadCompleteTimer_,&QTimer::timeout,this,[this] {
-  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();refreshActivity();
- });
+ // The icon's timers are children so a test can find them by name and shorten them.
+ const auto timer=[this](QTimer& t,const char* name,int ms,std::function<void()> fired){
+  t.setParent(this);t.setObjectName(QString::fromLatin1(name));t.setSingleShot(true);t.setTimerType(Qt::PreciseTimer);if(ms>0)t.setInterval(ms);
+  connect(&t,&QTimer::timeout,this,[this,fired=std::move(fired)]{if(fired)fired();refreshActivity();});
+ };
+ timer(startTimer_,"trayStartTimer",startBoundMs,[this]{startPending_=0;});
+ timer(dwellTimer_,"trayDwellTimer",0,{});
+ timer(completeTimer_,"trayCompleteTimer",completeMs,[this]{completeShown_=false;});
+ timer(failureTimer_,"trayFailureTimer",failureMs,[this]{failureShown_=false;});
+ // "Finishing" holds the last stage while finished operations are inspected for
+ // Complete; an inspection that never answers must not hold it for ever.
+ timer(finishingTimer_,"trayFinishingTimer",finishingBoundMs,{});
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
  // The calendar's glyph takes over at local midnight with no restart.
  connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
+ // Copy text (#1428): one notification after the clipboard has the text. It
+ // carries counts only, never what was recognized, and has no action buttons.
+ connect(&operations_,&OperationService::textFinished,this,[this](const QString& id,const QJsonObject& record,const QString& notification){
+  refreshActivity();
+  if(record["state"]=="failed") {
+   const auto error=record["error"].toObject();const Error failure{error["code"].toString(),error["message"].toString(),error["details"].toObject()};
+   latchFailure(failure,{{"id",id},{"action",Settings::textActionName()},{"state","failed"},{"error",error}});
+   if(operations_.settingsSnapshot().notifications)notifyMessage("operation_failed","Text recognition failed",failure.message,true);
+   return;
+  }
+  if(!notification.isEmpty()&&operations_.settingsSnapshot().notifications)notifyMessage("text_"+record["copyStatus"].toString(),"Copy text",notification,false);
+ });
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
+ // Not every tray host asks before it shows the menu (Cinnamon's does not), so the
+ // output summary, the shortcuts and the capture delay follow the configuration
+ // when it changes, not when the menu opens.
+ connect(&operations_,&OperationService::settingsAccepted,this,&TrayController::refreshMenu);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
  connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {
@@ -301,7 +410,6 @@ TrayController::TrayController(OperationService& operations,
  });
 }
 
-QString TrayController::describeActivity(const QJsonArray& observations) {return activityText(observations);}
 // What went wrong, in plain words, from an operation or item error code (#152).
 QString TrayController::failureReason(const QJsonObject& error) {
  const auto code=error["code"].toString();
@@ -355,10 +463,17 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // the link still is.
  const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from History.":"Link not copied: the clipboard changed during the upload. Copy it from History."):QString{};
+ // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
+ const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("The original before covering couldn't be saved locally."):QString();
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
   if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
+  // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
+  if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
+  if(!originalNote.isEmpty())parts.append(originalNote);
   if(!copied.isEmpty())parts.append(copied);
+  // #1871: an SFTP upload without a Link address says where the file went; the clipboard is left as it was.
+  if(!hasLink&&items.size()==1){const auto receipt=items.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())parts.append("Saved to "+place+".");}
   if(hasLink)parts.append("Click to open in browser.");
   return parts.join(' ');
  }
@@ -378,10 +493,28 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  }
  const auto cause=failureReason(!itemError.isEmpty()?itemError:meaningfulError(error)?error:QJsonObject{});
  const auto what=localFailed&&!uploaded&&failed==1?QString("Local save failed"):state=="interrupted"?QString("Upload interrupted"):QString("Upload failed");
+ // An uploaded file whose link step did not finish is on the storage: say that,
+ // and name the History action its link state offers (#1399).
+ // A link still wanted (intent create, not confirmed or not yet made) is finished by
+ // History's Finish share link, or by Retry upload while other files still need theirs (#1496).
+ int unconfirmed=0,unmade=0,finishable=0,inspect=0,create=0;QString linkCause;
+ for(const auto& value:items){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"||state=="interrupted")continue;const auto share=item["shareStatus"].toString();const bool wanted=item["shareIntent"]=="create";
+  // Only a file still stored as uploaded gets Finish share link, as in History.
+  if(share=="unknown"||share=="changed"){++unconfirmed;if(share=="unknown"&&wanted&&OperationItem::shareableRemote(item["remoteStatus"].toString()))++finishable;else ++inspect;}
+  else if(share=="failed"||(share=="private"&&wanted)){++unmade;if(share=="failed"){++create;if(linkCause.isEmpty())linkCause=failureReason(item["error"].toObject());}else if(OperationItem::shareableRemote(item["remoteStatus"].toString()))++finishable;else ++inspect;}}
+ QString link;
+ if(const int links=unconfirmed+unmade){
+  const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");
+  const auto outcome=unconfirmed&&unmade?QString("were not made or could not be confirmed"):unconfirmed?QString("could not be confirmed"):QString(links==1?"was not made":"were not made");
+  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;actions<<(stored?QString("Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
+  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Use "+actions.join(" or ")+" in History.";
+ }
  QString text;
- if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".");
+ if(!link.isEmpty()&&uploaded==items.size())text=(items.size()>1?QString("%1 files uploaded, but ").arg(uploaded):QString("Uploaded, but "))+link;
+ else if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".")+(link.isEmpty()?QString{}:" "+link);
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
+ if(!originalNote.isEmpty())text+=" "+originalNote;
  if(!copied.isEmpty())text+=" "+copied;
  if(hasLink)text+=" Click to open in browser.";
  return text;
@@ -406,15 +539,21 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
- for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
+ static const QHash<QString,QString> glyphs{{"region","region"},{"repeat","refresh"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"monitor","monitor"},{"desktop","desktop"},{"scroll","scroll"},{"text","copy-text"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"update","download"}};
+ for(auto* action:std::as_const(menuRows_))if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
+QJsonObject TrayController::trayMenuState()const {
+ return native_?native_->menuActivity():QJsonObject{{"native",false}};
+}
 QJsonObject TrayController::trayIconState()const {
  const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
- return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()}};
+ // activity is the stage the icon shows; history its last changes, oldest first, so a lab
+ // run can check the sequence on trays that expose nothing to accessibility tools.
+ return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()},
+         {"activity",activityName(shown_)},{"history",stageHistory_}};
 }
 void TrayController::cancelUploads() {
  QStringList ids;for(const auto& value:operations_.activeObservations()){
@@ -423,116 +562,184 @@ void TrayController::cancelUploads() {
  if(ids.size()>1){showView("historyCancelAll:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(ids)).toJson(QJsonDocument::Compact)));return;}
  if(ids.size()==1)operations_.cancel(ids.first(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
 }
-void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
+void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;failureShown_=false;failureTimer_.stop();attentionOperation_.clear();refreshActivity();showView(view);}
 void TrayController::refreshMenu() {
- QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::presentationOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
- const auto outputName=[&](const QString& action){const auto route=settings.actions.value(action);if(route.destination=="local"||route.profileId.isEmpty())return settings.archive.keepUploads?QString("Local only"):QString("Nothing is saved or uploaded");const auto profile=settings.profiles.value(route.profileId);const bool privateUpload=route.publicationMode=="private"||(route.publicationMode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return QString(privateUpload?"Private upload":"Shared link")+" · "+profile["label"].toString()+(settings.archive.keepUploads?" + local copy":"");};
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
+ QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::shortcutOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
  const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
   for(const auto& v:op["items"].toArray()){const auto item=v.toObject();if(item["uploadStatus"]=="uploading"||item["uploadStatus"]=="pending")++files;}
  }
- QString recording;for(const auto& value:operations_.activeObservations()){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording")recording=phaseLabel(op);}
- const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
+ traymenu::State state;
+ for(const auto& value:operations_.activeObservations())if(const auto phase=commandtext::recordingPhase(value.toObject());!phase.isEmpty())state.recording=phase;
+ state.upload=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
+ state.uploads=uploads;state.attention=errorPending_;state.attentionLabel=attention;state.shortcuts=shortcuts;
+ // The words the window's status band and output popup use (commandtext::outputSummary).
+ const auto output=commandtext::outputSummary(settings.document);state.output=output.tray;state.outputRows=output.rows;
+ state.delay=settings.captureDelaySeconds;state.hotkeysDelay=settings.captureDelayShortcuts;state.update=updateLabel_;
 #ifdef Q_OS_LINUX
- if(native_){native_->setOutput(output,outputs);native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attention);return;}
+ if(native_){native_->setMenu(state);return;}
 #endif
  if(!menu_)return;
- outputSummary_->setText(QString(output).replace('&',QStringLiteral("&&")));int outputIndex=0;for(auto* entry:outputMenu_->actions())entry->setText(outputs.value(outputIndex++));
- for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
- // Tab-separated menu text displays a shortcut without registering another key handler.
- failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attention);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
- uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,menu_->findChild<QAction*>("trayStatusSeparator"),cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
+ for(auto it=menuRows_.cbegin();it!=menuRows_.cend();++it){
+  const auto shown=traymenu::shown(it.key(),state);auto* entry=it.value();
+  if(traymenu::kind(it.key())!=traymenu::Kind::Separator){
+   // Tab-separated menu text displays a shortcut without registering another key handler.
+   const auto key=QKeySequence(shown.shortcut).toString(QKeySequence::NativeText);
+   entry->setText(QString(shown.label).replace('&',QStringLiteral("&&"))+(key.isEmpty()?QString{}:"\t"+key));
+  }
+  entry->setVisible(shown.visible);entry->setEnabled(shown.enabled);if(shown.toggle>=0)entry->setChecked(shown.toggle==1);
+ }
+ if(auto* failed=menuRows_.value(22))failed->setProperty("operationId",attentionOperation_);
 }
 void TrayController::refreshActivity() {
  calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;
+ QSet<QString> activeIds;Activity working=Activity::Idle;bool transferring=false,outstanding=false,fresh=false;int uploadedItems=0;
  for(const auto& value:observations) {
-  const auto op=value.toObject();
-  activeIds.insert(op["id"].toString());
-  if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
+  const auto op=value.toObject();const auto id=op["id"].toString();activeIds.insert(id);
+  auto stage=stageOf(op);
+  // A recording handed over to Upload is new work; one handed back to review (its
+  // export failed) shows its badge again instead of the stage it had reached.
+  if(const auto known=opStages_.constFind(id);known==opStages_.cend()){
+   fresh=true;
+   // Retry local save publishes a bare live observation (no items, saving_local): its own
+   // attempt only saves, so the operation's earlier upload must not decide what it shows.
+   if(op["phase"]=="saving_local"&&!op.contains("items"))localRetries_.insert(id);
+  }
+  else if(stage!=Activity::Idle){if(*known==Activity::Idle)fresh=true;else if(int(*known)>int(stage))stage=*known;}
+  opStages_.insert(id,stage);if(int(stage)>int(working))working=stage;
+  // Full only when no file of the uploading operations still waits, transfers or checks a
+  // name (a skipped or failed file is settled): one finished file while another waits keeps below full.
+  if(stage==Activity::Uploading)for(const auto& item:op["items"].toArray()){const auto status=item.toObject().value("uploadStatus").toString();transferring|=status=="uploading";outstanding|=status=="uploading"||status=="pending"||status=="stored";uploadedItems+=status=="uploaded";}
  }
- auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
- const bool working=operations_.storageActive()||!activeUploads_.isEmpty();
- if(errorPending_) {
-  uploadRevealTimer_.stop();uploadCompleteTimer_.stop();
-  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();
- } else if(working) {
-  uploadCompleteTimer_.stop();uploadCompleted_=false;
-  if(!uploadVisible_&&operations_.storageActive()&&!uploadRevealTimer_.isActive())uploadRevealTimer_.start();
- } else uploadRevealTimer_.stop();
+ if(startPending_>0&&int(working)<int(Activity::Capturing))working=Activity::Capturing;
+ // New work replaces a failure or a completion still on the icon.
+ if(fresh){failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();}
+ QStringList finished;for(auto it=opStages_.begin();it!=opStages_.end();)if(activeIds.contains(it.key()))++it;else{finished.append(it.key());it=opStages_.erase(it);}
+ const bool confirmed=uploadedItems>0&&!outstanding;const int ceiling=outstanding?99:100;
  for(const auto& id:finished) {
-  ++pendingUploadFinishes_;
-  operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
+  ++pendingFinishes_;finishingTimer_.start();
+  const bool localRetry=localRetries_.remove(id);
+  operations_.inspect(id,[guard=QPointer<TrayController>(this),localRetry](Error error,QJsonObject operation) {
    if(!guard)return;
-   --guard->pendingUploadFinishes_;
-   if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorPending_&&
-      !guard->operations_.storageActive()&&guard->operations_.activeObservations().isEmpty()) {
-    for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
-     guard->uploadCompleted_=true;break;
+   if(--guard->pendingFinishes_==0)guard->finishingTimer_.stop();
+   // Only the last work to finish shows Complete: an earlier one must not flash it after a later cancel.
+   bool busy=guard->startPending_>0;for(const auto stage:std::as_const(guard->opStages_))busy|=workingStage(stage);
+   // A completed operation with an item or local-copy error is a failure (resultReady latches it), never Complete.
+   bool problem=meaningfulError(operation["error"].toObject());
+   for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();problem|=meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());}
+   if(!error&&operation["state"]=="completed"&&!guard->failureShown_&&!busy&&!problem) {
+    bool uploaded=false,saved=false;
+    for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();uploaded|=item["uploadStatus"]=="uploaded";saved|=item["local"].toObject()["status"]=="saved";}
+    uploaded&=!localRetry;
+    if(uploaded||saved){
+     // Observations are batched, so a quick operation can end before its processing or upload
+     // was seen; its outcome proves which stages ran, and the icon walks them before Complete.
+     const auto ran=uploaded?Activity::Uploading:Activity::Processing;
+     if(workingStage(guard->shown_)&&int(ran)>int(guard->reached_))guard->reached_=ran;
+     guard->completeShown_=true;guard->completeUploaded_=uploaded;
     }
    }
    guard->refreshActivity();
   });
  }
- if(uploadVisible_&&!working&&pendingUploadFinishes_==0&&!uploadCompleteTimer_.isActive())
-  uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
+ if(workingStage(working)&&int(working)>int(reached_))reached_=working;
+ auto target=activityFor({working,failureShown_,completeShown_});
+ // While finished operations are still being inspected, hold the stage the run
+ // reached instead of dropping to Idle before Complete is known.
+ if(target==Activity::Idle&&pendingFinishes_>0&&finishingTimer_.isActive()&&workingStage(reached_))target=reached_;
+ auto next=target;
+ if(workingStage(shown_)&&next!=shown_) {
+  // Walk forward through each stage this run reached, so none is skipped.
+  if(int(shown_)<int(reached_)&&(!workingStage(next)||int(next)>int(shown_)+1))next=Activity(int(shown_)+1);
+  if(shownClock_.isValid()&&shownClock_.elapsed()<stageDwellMs)next=shown_;
+ }
+ if(next!=shown_)showStage(next);
+ // A working stage that is not yet the target moves on when its dwell ends, even if
+ // nothing else changes (a stage stepped through after the work already finished).
+ if(workingStage(shown_)&&shown_!=target){if(!dwellTimer_.isActive())dwellTimer_.start(int(qMax(qint64(1),stageDwellMs-shownClock_.elapsed())));}
+ else dwellTimer_.stop();
+ const auto shown=shown_;
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused"&&!recording)recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
- auto text=errorPending_?attentionLabel_+QString(" — open the tray menu to review")+(activity.isEmpty()?QString{}:"\n"+activity):
-                 uploadCompleted_?QString("Upload complete"):
-                 uploadVisible_&&!working?QString("Finishing upload"):activity;
- // Active work keeps the idle glyph; only a confirmed completion turns green.
- const auto& tints=Theme::trayTints(panel_.light());
- const auto color=errorPending_?tints.error:
-                  uploadCompleted_?tints.upload:tints.idle;
- int percent=errorPending_?-2:-1;
- if(uploadVisible_&&!errorPending_) {
-  if(uploadCompleted_)percent=-1;
-  else if(operations_.storageActive())percent=uploadPercent(observations);
-  else percent=iconPercent_;
- }
+ auto text=activityStatus(shown,attentionLabel_,activity,completeUploaded_);
+ const auto color=activityColor(shown,Theme::trayTints(panel_.light()));
+ // Uploading fills with the real progress while bytes move. Once they are confirmed (a share
+ // link being made, or the walk to Complete) it is full; in a gap between transfers it keeps its level.
+ const int percent=shown==Activity::Failed?-2:shown!=Activity::Uploading?-1:transferring?qBound(minimumUploadFill,uploadPercent(observations),ceiling):
+                   confirmed||completeShown_?100:qBound(minimumUploadFill,iconPercent_,ceiling);
+ const bool done=shown==Activity::Complete;
  const auto glyph=calendar_.glyph();const bool seasonal=glyph!=IconArt::TrayGlyph::Mark;
  // Only an idle tray makes the greeting its title. Preparation, recording,
  // review and local saving keep their ordinary title above the activity rows.
  const auto& identity=seasonal&&text.isEmpty()?seasonalTooltip:idleTooltip;
- const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):identity;
+ const auto tooltipTitle=activityTitle(shown,identity,completeUploaded_);
  // Status keeps the title; the greeting stays on as the last line, so the season doesn't hide it.
  if(seasonal&&tooltipTitle!=seasonalTooltip)text=text.isEmpty()||text==tooltipTitle?seasonalTooltip:text+"\n"+seasonalTooltip;
- if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_)return;
+ if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_&&done==iconDone_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph);
+ if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph,done);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph}));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_||done!=iconDone_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph,done}));
   if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_||tooltipTitle!=activityTitle_)logging::debug(logUi(),"Tray tooltip changed",{{"title",tooltipTitle},{"activity",text}});
- iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;activityText_=text;activityTitle_=tooltipTitle;
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;iconDone_=done;activityText_=text;activityTitle_=tooltipTitle;
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";
- for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
+ for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
  attentionOperation_=operation["id"].toString();attentionLabel_="Action needs attention";attentionView_="history";
  const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
- if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted")failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
+ if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted"))failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
  else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
  else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture needs attention";
  flashError();
 }
 void TrayController::flashError() {
- uploadCompleteTimer_.stop();
- errorPending_=true;refreshActivity();
+ completeShown_=false;completeTimer_.stop();
+ errorPending_=true;failureShown_=true;
+ // A second failure while the badge shows gives it its full time again.
+ if(shown_==Activity::Failed)failureTimer_.start();
+ refreshActivity();
+}
+void TrayController::showStage(Activity stage) {
+ // A run that steps back (its furthest operation finished first) walks on only from here.
+ if(!workingStage(stage))reached_=Activity::Idle;else if(int(stage)<int(shown_))reached_=stage;
+ shown_=stage;shownClock_.start();
+ if(stage==Activity::Complete)completeTimer_.start();
+ if(stage==Activity::Failed)failureTimer_.start();
+ stageHistory_.append(QJsonObject{{"activity",activityName(stage)},{"at",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
+ while(stageHistory_.size()>16)stageHistory_.removeFirst();
+ logging::debug(logUi(),"Tray activity changed",{{"activity",activityName(stage)}});
 }
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
 void TrayController::showHistory() { showView("history"); }
-void TrayController::showAbout() { showView("about"); }
+void TrayController::runCommand(const QString& action) {
+ if (Settings::invocableActionNames().contains(action)) invokeAction(action);
+ else if (action.startsWith("delay-")) operations_.setCaptureDelayPreference(action.mid(6).toInt());
+ // Raises the recording's bar or review window; with none running (it ended
+ // while the menu was open) it does nothing rather than start one.
+ else if (action == "show-recording") { for(const auto& value:operations_.activeObservations())if(!commandtext::recordingPhase(value.toObject()).isEmpty()){invokeAction(Settings::recordingActionName());break;} }
+ else if (action == "cancel-upload") cancelUploads();
+ else if (action == "failed-uploads") acknowledgeFailures();
+ else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
+ else if (action == "edit-file") showView("editFile");
+ else if (action == "capture-settings") showView("captureSettings");
+ else if (action == "settings") showSettings();
+ else if (action == "history") showHistory();
+ // A click on the icon brings a waiting sensitive text prompt forward before History (#1804).
+ else if (action == "icon") {if(!operations_.raiseSensitivePrompt(activationToken_))showHistory();}
+ // Lands on Settings → General → Updates with its action focused, not the first settings page.
+ else if (action == "update") showView("updates");
+ else if (action == "quit") { const auto quit = quit_; quit(); }
+}
 void TrayController::showView(const QString& view) {
  const auto open = openView_;
  open(view, activationToken_);
@@ -540,7 +747,7 @@ void TrayController::showView(const QString& view) {
 void TrayController::invokeShortcut(const QString& action) {
  // This tray's own open menu holds the keyboard and mouse a selection needs,
  // so close it first. A desktop or window capture keeps it in the picture (#341).
- if (menu_ && menu_->isVisible() && action != "desktop" && action != "window") menu_->hide();
+ if (menu_ && menu_->isVisible() && !QStringList{"desktop", "window", "monitor", "repeat"}.contains(action)) menu_->hide();
  invokeAction(action, true);
 }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
@@ -548,9 +755,26 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
  // A click's token raises the editor that is already open (#657).
  if (action == "edit" && !activationToken_.isEmpty()) effective["activationToken"] = activationToken_;
- operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
+ // The tray's captures start after the chosen delay (#1363). A shortcut waits
+ // only when preferences.captureDelayShortcuts says so, and an edit only when it
+ // captures the screen (the clipboard and a file have nothing to wait for).
+ if (const auto settings = operations_.settingsSnapshot(); (!fromShortcut || settings.captureDelayShortcuts) && settings.captureDelaySeconds > 0 && Settings::delayableAction(action) && !effective.contains("delaySeconds") && (action != "edit" || Settings::delayableEditSource(effective.value("source").toString("region"))))
+  effective["delaySeconds"] = settings.captureDelaySeconds;
+ // The icon answers the press itself, before the service has accepted the work: a
+ // recording has its own bar and badge instead.
+ // A sensitive text finding (#1804) is answered by the person at the prompt.
+ effective["sensitiveText"] = "prompt";
+ const bool capture=action!=Settings::recordingActionName();
+ if(capture){++startPending_;startTimer_.start();failureShown_=false;completeShown_=false;failureTimer_.stop();completeTimer_.stop();refreshActivity();}
+ operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action,capture](Error error, QJsonObject) {
+  // Accepted work is an observation by now; a refusal ends the press.
+  if (guard && capture) {guard->startPending_=qMax(0,guard->startPending_-1);if(!guard->startPending_)guard->startTimer_.stop();guard->refreshActivity();}
+  if (guard && !error && guard->errorLog_) guard->errorLog_->resolve("action.invoke:"+action,"It worked when tried again");
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
+   if (error.code != "busy_selecting") guard->logError(ErrorLog::kindForAction(action),error,"action.invoke:"+action,action);
+   // A second Copy text press while one runs: say so and change nothing else.
+   if (error.code == "text_busy") { if (guard->operations_.settingsSnapshot().notifications) guard->notifyMessage("text_busy", "Copy text", error.message, false); return; }
    if (fromShortcut) {
     // Re-entry must not map a view over selection or startup recovery.
     if (error.code == "busy_selecting" || error.code == "initializing") return;
@@ -575,8 +799,43 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
+int TrayController::closeOwnNotifications(std::function<void()> gone) {
+#ifdef Q_OS_LINUX
+ if(native_)return native_->closeNotifications(std::move(gone));
+ ++trayNoticeGeneration_;
+ auto bus=QDBusConnection::sessionBus();
+ const auto open=std::exchange(trayOpen_,{});
+ const bool balloon=std::exchange(trayBalloon_,false);
+ if(balloon&&tray_){
+  // Qt's X11 fallback removes its balloon when its tray icon is hidden.
+  const bool visible=tray_->isVisible();tray_->hide();if(visible)tray_->show();disconnect(trayRestartClick_);
+ }
+ if(!bus.isConnected()&&!balloon)return 0;
+ for(const uint id:open)closeTrayNotification(id);
+ const int pending=trayMessagesInFlight_+trayClosesInFlight_+int(balloon);
+ if(pending){
+  const auto id=operations_.scroll().activeId();
+  operations_.scroll().holdStart(5000,true);
+  auto* waiting=new QTimer(this);waiting->setInterval(50);
+  connect(waiting,&QTimer::timeout,this,[this,waiting,id,gone]{
+   if(operations_.scroll().activeId()!=id){waiting->stop();waiting->deleteLater();return;}
+   if(trayMessagesInFlight_||trayClosesInFlight_){operations_.scroll().holdStart(5000,true);return;}
+   waiting->stop();waiting->deleteLater();if(gone)gone();
+  });
+  waiting->start();
+ }
+ return pending;
+#else
+ Q_UNUSED(gone);
+ return 0;
+#endif
+}
 void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath,const QString& diagnosticsLabel) {
  Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);Q_UNUSED(diagnosticsLabel);
+ if(holdNotices_&&operations_.scroll().active()){
+  if(heldNotices_.size()<32)heldNotices_.append({code,title,message,warning,link,diagnosticsOperation,revealPath,diagnosticsLabel});
+  return;
+ }
  // Each toast, so "a toast appeared" can be matched to its cause (#250). The
  // text can name files: diagnostics packages hash it unless --include-names.
  QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
@@ -602,24 +861,77 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
-void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
- auto bus=QDBusConnection::sessionBus();
- if(actions.isEmpty()||!bus.isConnected()){sendTrayMessage(title,message,warning,actions);return;}
- // A server with no buttons, like UKUI's, would keep the notice up with nothing to press.
- auto* asked=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetCapabilities")),this);
- connect(asked,&QDBusPendingCallWatcher::finished,this,[this,title,message,warning,actions](QDBusPendingCallWatcher* p) {
-  p->deleteLater();
-  const QDBusPendingReply<QStringList> capabilities=*p;
-  sendTrayMessage(title,message,warning,capabilities.isValid()&&!capabilities.value().contains("actions")?QList<NotificationAction>{}:actions);
+void TrayController::closeTrayNotification(uint id,int attempt) {
+ if(trayKnownClosed_.contains(id)){trayClosingIds_.removeAll(id);return;}
+ if(!trayClosingIds_.contains(id))trayClosingIds_.append(id);
+ trayActions_.remove(id);
+ auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+ close<<id;++trayClosesInFlight_;
+ auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close,1000),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id,attempt](QDBusPendingCallWatcher* p){
+  const QDBusPendingReply<> reply=*p;p->deleteLater();
+  if(reply.isError()&&!trayKnownClosed_.contains(id)&&operations_.scroll().active()){
+   if(attempt>=2){
+    --trayClosesInFlight_;trayClosingIds_.removeAll(id);trayOpen_.append(id);
+    operations_.scroll().failPreparation({"notification_close_failed","A put.gd notification could not be closed. Dismiss it and try capture again.",{}});
+    return;
+   }
+   QTimer::singleShot(500,this,[this,id,attempt]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id,attempt+1);else {trayClosingIds_.removeAll(id);if(!trayKnownClosed_.contains(id))trayOpen_.append(id);}});
+   return;
+  }
+  --trayClosesInFlight_;trayClosingIds_.removeAll(id);if(reply.isError()&&!trayKnownClosed_.contains(id))trayOpen_.append(id);
  });
 }
-void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+void TrayController::trayNotificationClosed(uint id,uint reason) {
+ Q_UNUSED(reason);
+ trayOpen_.removeAll(id);trayActions_.remove(id);
+ if(trayClosingIds_.contains(id)||trayMessagesInFlight_){
+  if(!trayKnownClosed_.contains(id))trayKnownClosed_.append(id);
+  if(trayKnownClosed_.size()>256)trayKnownClosed_.removeFirst();
+ }
+}
+void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+ if(!trayMessagesInFlight_&&!trayClosesInFlight_)trayKnownClosed_.clear();
+ auto bus=QDBusConnection::sessionBus();
+ if(!trayClosedConnected_&&bus.isConnected())trayClosedConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",this,SLOT(trayNotificationClosed(uint,uint)));
+ // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
+ if(warning&&bus.isConnected()){
+  auto* named=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation")),this);
+  connect(named,&QDBusPendingCallWatcher::finished,this,[this,title,message,actions](QDBusPendingCallWatcher* p) {
+   p->deleteLater();
+   const QDBusPendingReply<QString,QString,QString,QString> server=*p;
+   askCapabilities(title,message,true,actions,server.isValid()&&putgd::notifications::failuresTransient(server.argumentAt<0>()));
+  });
+  return;
+ }
+ askCapabilities(title,message,warning,actions,false);
+}
+void TrayController::askCapabilities(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ auto bus=QDBusConnection::sessionBus();
+ if(actions.isEmpty()||!bus.isConnected()){sendTrayMessage(title,message,warning,actions,transient);return;}
+ // A server with no buttons, like UKUI's, would keep the notice up with nothing to press.
+ auto* asked=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetCapabilities")),this);
+ connect(asked,&QDBusPendingCallWatcher::finished,this,[this,title,message,warning,actions,transient](QDBusPendingCallWatcher* p) {
+  p->deleteLater();
+  const QDBusPendingReply<QStringList> capabilities=*p;
+  sendTrayMessage(title,message,warning,capabilities.isValid()&&!capabilities.value().contains("actions")?QList<NotificationAction>{}:actions,transient);
+ });
+}
+void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ if(holdNotices_){if(heldTrayMessages_.size()<32)heldTrayMessages_.append({title,message,warning,actions,transient});return;}
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
-  if(!tray)return;
-  disconnect(trayRestartClick_);
+  if(!tray||holdNotices_)return;
+  trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
+  // A waiting sensitive text prompt (#1829): a click on the balloon brings it forward.
+  if(actions.first().key=="show-sensitive"){
+   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[this,tray,id=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))operations_.raiseSensitivePrompt(id,{});},Qt::SingleShotConnection);
+   tray->showMessage(title,message+" Click here to show it.",icon,balloonMs);
+   QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
+   return;
+  }
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
   // Qt reports a click on the tray icon as a click on the balloon too; that one only dismisses it.
   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[tray,name=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))restartFileManager(name);},Qt::SingleShotConnection);
@@ -631,6 +943,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
  if(trayMessagesInFlight_>=8)return;
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
  QStringList names;QHash<QString,QString> values;QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(warning?2:1))}};
+ if(transient)hints.insert("transient",true);
  for(const auto& action:actions){names<<action.key<<action.label;values.insert(action.key,action.value);}
  // Buttons stay until used, as NativeTray's do where the server has no list to keep them in.
  if(!values.isEmpty()){
@@ -638,12 +951,19 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   if(!trayActionsConnected_)trayActionsConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",this,SLOT(trayNotificationAction(uint,QString)));
  }
  call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,names,hints,values.isEmpty()?10000:0});
+ const auto generation=trayNoticeGeneration_;
  ++trayMessagesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values](QDBusPendingCallWatcher* p) {
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values,generation](QDBusPendingCallWatcher* p) {
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
+  if(generation!=trayNoticeGeneration_||holdNotices_){
+   if(reply.isValid())closeTrayNotification(reply.value());
+   return;
+  }
+  if(reply.isValid()&&trayKnownClosed_.contains(reply.value()))return;
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
+  if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();
   if(error==QDBusError::ServiceUnknown||error==QDBusError::UnknownObject||error==QDBusError::UnknownInterface||error==QDBusError::UnknownMethod)fallback();
  });
@@ -655,6 +975,7 @@ void TrayController::trayNotificationAction(uint id,const QString& key) {
  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
  close<<id;QDBusConnection::sessionBus().asyncCall(close);
  if(key.startsWith("restart-file-manager-"))restartFileManager(value);
+ else if(key=="show-sensitive")operations_.raiseSensitivePrompt(value,{});
 }
 #endif
 void TrayController::setUpdateStatus(const QJsonObject& status) {
@@ -663,14 +984,20 @@ void TrayController::setUpdateStatus(const QJsonObject& status) {
  const auto label=status["channel"]=="stable"&&result["updateAvailable"].toBool()?"Update available: "+result["latest"].toString():QString();
  if(label==updateLabel_)return;
  updateLabel_=label;
-#ifdef Q_OS_LINUX
- if(native_)native_->setUpdateLabel(label);
-#endif
- if(updateAction_){updateAction_->setText(label);updateAction_->setVisible(!label.isEmpty());}
+ refreshMenu();
 }
 void TrayController::notifyUpdate(const QJsonObject& result) {
  if(!available())return;
  notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
+}
+void TrayController::notifyDesktopSetup(const QString& code, const QString& message) {
+ if(code != "gnome_login_required" && code != "gnome_extension_updated")logError("desktop_setup",{code,message,{}},"desktop:"+code);
+ notifyMessage(code, "put.gd", message, code != "gnome_login_required" && code != "gnome_extension_updated");
+}
+void TrayController::logError(const QString& kind,const Error& error,const QString& subject,const QString& action) {
+ if(!errorLog_||!ErrorLog::userFacing(error))return;
+ ErrorLog::Entry context;context.subject=subject;context.action=action;
+ errorLog_->record(kind,error,context);
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)latchFailure(error);
@@ -678,8 +1005,9 @@ void TrayController::notifyFailure(const Error& error) {
 }
 void TrayController::saveDiagnostics(const QString& operationId) {
  if(!saveDiagnostics_||operationId.isEmpty())return;
- saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this)](Error error,QJsonObject result) {
+ saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this),operationId](Error error,QJsonObject result) {
   if(!guard)return;
+  if(error)guard->logError("diagnostics",error,"diagnostics.bundle:"+operationId);
   if(error)guard->notifyMessage("diagnostics_not_saved","put.gd — diagnostics not saved",error.message,true);
   else guard->notifyDiagnosticsSaved(result);
  });
@@ -696,11 +1024,12 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
 }
 namespace {
 QString fileManagerName(const QString& name){
- static const QHash<QString,QString> names{{"nautilus","Files"},{"caja","Caja"},{"peony","Peony"},{"pcmanfm","PCManFM"},{"pcmanfm-qt","PCManFM-Qt"}};
+ static const QHash<QString,QString> names{{"pcmanfm","PCManFM"},{"pcmanfm-qt","PCManFM-Qt"}};
  return names.value(name,name);
 }
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
+ if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.
@@ -717,7 +1046,28 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
 #endif
 }
-void TrayController::notifyFileManagerProblem(const QString& message) {notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
+// #1804, #1829: one notice per prompt a person is shown, on every desktop: a tray host may open the menu on
+// a click instead of activating put.gd (Ubuntu's AppIndicator). Show raises the prompt another window covers.
+void TrayController::announceSensitivePrompt(const QString& id) {
+ if(!operations_.settingsSnapshot().notifications)return;
+ // Once per prompt: a file selection's later prompt is new, a repeat of one already announced is not.
+ const int prompt=operations_.sensitivePromptNumber(id);
+ // Already answered (0), or already announced: nothing to say. -1 is no check session (a test's signal).
+ if(prompt==0||(prompt>0&&announcedSensitive_.value(id)>=prompt))return;
+ // Never into a scrolling capture's frames: it goes out after the capture, if the prompt still waits.
+ if(holdNotices_){if(!heldSensitivePrompts_.contains(id)&&heldSensitivePrompts_.size()<32)heldSensitivePrompts_.append(id);return;}
+ if(prompt>0){announcedSensitive_.insert(id,prompt);while(announcedSensitive_.size()>64)announcedSensitive_.erase(announcedSensitive_.begin());}
+ const auto message=QStringLiteral("A capture is waiting for your decision");
+ logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
+#ifdef Q_OS_LINUX
+ const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
+ if(native_){native_->notify("put.gd",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("put.gd",message,false,actions);
+#else
+ if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
+#endif
+}
+void TrayController::notifyFileManagerProblem(const QString& message) {logError("other",{"file_manager_menu_problem",message,{}},"file_manager_menu");notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
 bool TrayController::restartFileManager(const QString& name) {
  const auto script=FileManagerIntegration::restartScript(name);
  if(script.isEmpty())return false;
@@ -728,6 +1078,7 @@ bool TrayController::restartFileManager(const QString& name) {
 void TrayController::showSavedPackage(const QString& path) {
  const auto error=revealPackage(path,true);if(!error)return;
  qWarning("Show in folder refused: %s",qPrintable(error.code));
+ logError("diagnostics",error);
  notifyMessage("show_in_folder_refused","put.gd — Show in folder",error.message,true);
 }
 Error TrayController::revealPackage(const QString& path,bool savedHere) {

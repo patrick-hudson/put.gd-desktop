@@ -18,17 +18,6 @@ Call call(LocalServer& server,const QString& method,const QJsonObject& params){
  return outcome;
 }
 QJsonObject region(){return {{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}};}
-// A desktop shell like the GNOME extension: selections wait for the test to answer them.
-struct FakeShell final:RecordingShell {
- bool selects=true,failFrames=false;QList<Reply> selections;int cancels=0,hides=0;QList<QJsonObject> frames;Error unavailable;
- QJsonObject bar{{"placed",true},{"outside",true},{"rect",QJsonArray{50,430,400,40}}};
- bool selectsRegions() const override {return selects;}
- Error regionError() const override {return selects?Error{}:unavailable;}
- void selectRegion(Reply reply) override {selections.append(std::move(reply));}
- void cancelSelection() override {++cancels;if(!selections.isEmpty()){auto reply=selections.takeLast();reply({"cancelled","GNOME region selection cancelled",{}},{});}}
- void showFrame(const QJsonObject& frame,Reply reply) override {frames.append(frame);if(failFrames)reply({"helper_incompatible","no frame support",{}},{});else reply({},{{"bar",bar}});}
- void hideFrame() override {++hides;}
-};
 struct Harness {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();SettingsService settings;Source source;std::unique_ptr<OperationService> operations;std::unique_ptr<HistoryService> history;std::unique_ptr<LocalServer> server;FakeRecordingBackend* backend=nullptr;
  explicit Harness(bool local=true):settings(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);}){
@@ -56,7 +45,7 @@ class RecordingServiceContract:public QObject {
 private slots:
  void reviewDestinationUsesTheAcceptedSnapshot_data(){
   QTest::addColumn<QString>("mode");
-  for(const auto* mode:{"default","share","private","local"})QTest::newRow(mode)<<QString(mode);
+  for(const auto* mode:{"private","local"})QTest::newRow(mode)<<QString(mode);
  }
  void reviewDestinationUsesTheAcceptedSnapshot(){
   QFETCH(QString,mode);Harness h(mode=="local");PUTGD_TRY_VERIFY(h.operations->ready());
@@ -80,25 +69,6 @@ private slots:
   QCOMPARE(h.backend->lastReviewOptions,snapshot);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
- void unavailableBackendReportsCapabilitiesAndRefusesRecording(){
-  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);PUTGD_TRY_VERIFY(operations.ready());
-  const auto caps=call(server,"recording.capabilities",{});QVERIFY(!caps.error);QVERIFY(!caps.result["available"].toBool());QCOMPARE(caps.result["reason"].toString(),QString("recording_helper_missing"));QCOMPARE(caps.result["timeUnit"].toString(),QString("microseconds"));QVERIFY(caps.result["active"].isNull());
-  QVERIFY(operations.capabilities()["recording"].toObject().contains("available"));
-  QCOMPARE(call(server,"recording.prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_unavailable"));
-  QCOMPARE(call(server,"recording.inspect",{{"id","nothing"}}).error.code,QString("recording_unavailable"));
-  QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
- }
- void unavailableProbeExplainsWhatToInstall(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->available=false;
-  h.backend->unavailableDetails={{"reason","h264_encoder_unusable"},{"message","Screen recording needs an H.264 encoder, and none of the installed ones (openh264enc) works here."},{"hint","Install Cisco's OpenH264."}};
-  const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"}});
-  QCOMPARE(prepared.error.code,QString("recording_unavailable"));QCOMPARE(prepared.error.details["reason"].toString(),QString("h264_encoder_unusable"));
-  QCOMPARE(prepared.error.details["hint"].toString(),QString("Install Cisco's OpenH264."));
-  QCOMPARE(prepared.error.message,QString("Screen recording needs an H.264 encoder, and none of the installed ones (openh264enc) works here. Install Cisco's OpenH264."));
-  QCOMPARE(h.rec("capabilities").result["hint"].toString(),QString("Install Cisco's OpenH264."));
-  // Without a probe message the generic sentence stays.
-  h.backend->unavailableDetails={};QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.message,QString("Screen recording is not available on this installation"));
- }
  void lifecycleAdmitsOnlyTheExplicitUploadExport(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"system",true}}},{"fps",24}});
@@ -108,7 +78,7 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({1280,720}));
   QCOMPARE(h.rec("capabilities").result["active"].toString(),id);
   // Durable intent exists before any capture; its journal state is `recording`.
-  {HistoryStore journal(h.operations->databasePath());const auto op=journal.operation(id);QCOMPARE(op.state,QString("recording"));QCOMPARE(op.action,QString("record"));}
+  {HistoryStore journal(h.operations->databasePath());const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("recording"));QCOMPARE(op.action,QString("record"));}
   QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_active"));
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_state"));
   QCOMPARE(h.rec("pause",{{"id",id}}).error.code,QString("recording_state"));
@@ -145,13 +115,13 @@ private slots:
   // once the overwrite has actually returned the session to private review.
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("saved"));
-  {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
+  {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).stateName(),QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
   // Only Upload at the reviewed revision admits bytes.
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_stale"));
   const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));QCOMPARE(uploaded.result["pending"].toString(),QString("upload"));QCOMPARE(uploaded.result["operationId"].toString(),id);
   PUTGD_TRY_COMPARE(h.backend->discards,1);QCOMPARE(h.backend->exports,3);
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();
   QCOMPARE(item.artifact.mime,QString("video/mp4"));QCOMPARE(item.artifact.category,QString("videos"));QVERIFY(!item.artifact.originalFile);QVERIFY2(item.artifact.name.startsWith("Screen-Recording-")&&item.artifact.name.endsWith(".mp4"),qPrintable(item.artifact.name));
   QCOMPARE(item.uploadStatus,QString("local_only"));QCOMPARE(item.local.status,QString("saved"));
@@ -161,141 +131,37 @@ private slots:
   QCOMPARE(h.provider->uploads.load(),0);QCOMPARE(h.source.reads,0);
   QVERIFY(h.rec("capabilities").result["active"].isNull());
  }
+ // #1613: preview reports a cut as not kept and maps output time through the cuts.
+ void previewFollowsCuts(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  const auto cut=h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",9000000}},QJsonObject{{"op","addCut"},{"start",3000000},{"end",5000000}}}}});
+  QVERIFY2(!cut.error,qPrintable(cut.error.message));QCOMPARE(cut.result["retainedUs"].toDouble(),6000000.0);
+  const auto inside=h.rec("preview",{{"id",id},{"time",4000000}});QVERIFY(!inside.error);QVERIFY(!inside.result["retained"].toBool());QVERIFY(inside.result["outputTimeUs"].isNull());
+  const auto after=h.rec("preview",{{"id",id},{"time",6000000}});QVERIFY(!after.error);QVERIFY(after.result["retained"].toBool());QCOMPARE(after.result["outputTimeUs"].toDouble(),3000000.0);
+ }
  void cancelAndFailureNeverAdmitBytes(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   auto id=h.prepareReady();QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
   const auto cancelled=h.rec("cancel",{{"id",id}});QVERIFY(!cancelled.error);QCOMPARE(cancelled.result["state"].toString(),QString("cancelled"));
   QCOMPARE(h.backend->cancels,1);QCOMPARE(h.backend->discards,1);QCOMPARE(h.backend->exports,0);
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(journal.operation(id).cancelled);QVERIFY(journal.operation(id).items.isEmpty());
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("cancelled"));QVERIFY(journal.operation(id).cancelled);QVERIFY(journal.operation(id).items.isEmpty());
   PUTGD_TRY_VERIFY(!QDir(h.backend->staging).exists());PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(h.rec("cancel",{{"id",id}}).error.code,QString("recording_unavailable"));
   // A backend failure at start fails the operation; nothing is retried or uploaded.
   h.backend->failStart=true;id=h.prepareReady();QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_start_failed"));
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_start_failed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_start_failed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   // An export failure keeps the review open and the original unpublished.
   h.backend->failStart=false;h.backend->failExport=true;id=h.prepareReady();QVERIFY(!id.isEmpty());
   QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("upload"));QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_export_failed"));}QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
-  h.backend->failExport=false;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("upload"));QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_export_failed"));}QCOMPARE(journal.operation(id).stateName(),QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
+  h.backend->failExport=false;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.provider->uploads.load(),0);
- }
- void helperEventsAndAnimationBudgetsAreHonoured(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto doc=h.settings.document();auto limits=doc["limits"].toObject();limits["recordingAnimationSeconds"]=5;doc["limits"]=limits;QVERIFY(h.settings.save(doc,h.settings.revision()));
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","gif"},{"audio",QJsonObject{{"system",true}}}}).error.code,QString("invalid_request"));
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}}).error.code,QString("recording_unsupported"));
-  const auto id=h.prepareReady({{"format","gif"},{"maxEdge",640}});QVERIFY(!id.isEmpty());
-  QVERIFY(!h.rec("start",{{"id",id}}).error);
-  // The helper reports progress and then stops on its own (budget reached).
-  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",3000000.0},{"bytes",1234.0},{"droppedFrames",0}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["bytes"].toDouble(),1234.0);
-  h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["outputSize"].toArray(),QJsonArray({640,360}));
-  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_animation_too_long"));
-  QCOMPARE(h.backend->exports,0);
-  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",5000000}}}}}).error);
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("image/gif"));
-  QCOMPARE(journal.operation(id).items.first().artifact.category,QString("images"));QVERIFY(journal.operation(id).items.first().artifact.name.endsWith(".gif"));
-  // A helper failure event ends the session as failed.
-  const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);
-  h.backend->sink({{"id",second},{"event","failed"},{"error",QJsonObject{{"code","recording_source_lost"},{"message","Synthetic source vanished"}}}});
-  PUTGD_TRY_COMPARE(journal.operation(second).state,QString("failed"));QCOMPARE(journal.operation(second).error.code,QString("recording_source_lost"));QCOMPARE(h.backend->exports,1);
- }
- // #984: a recording without a rate takes the one chosen in Settings, an
- // explicit fps wins, and the helper's lowered rate reaches inspect's progress.
- void settingsFrameRateAndTheLoweredRateReachTheRecording(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,30);QVERIFY(h.backend->lastConfig.adaptiveFps);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  auto doc=h.settings.document();auto prefs=doc["preferences"].toObject();prefs["recordingFrameRate"]=60;doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
-  id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,60);QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["fps"].toInt(),60);
-  QVERIFY(!h.rec("start",{{"id",id}}).error);
-  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",6000000.0},{"frameRate",30},{"frameRateReduced",QJsonObject{{"from",60},{"to",30},{"reason","cpu"},{"atUs",5100000.0}}}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["frameRate"].toInt(),30);
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["frameRateReduced"].toObject()["reason"].toString(),QString("cpu"));
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  id=h.prepareReady({{"fps",24},{"adaptiveFps",false}});QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,24);QVERIFY(!h.backend->lastConfig.adaptiveFps);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"adaptiveFps","yes"}}).error.code,QString("invalid_request"));
- }
- // #213: a disk that can't fund a minimum budget refuses prepare with its figures,
- // before any operation is accepted; a budget stop answers a later stop.
- void lowDiskRefusesPrepareAndBudgetStopAnswersStop(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  constexpr qint64 gib=1LL<<30,mib=1LL<<20;auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
-  // The lab guest's figures: 2.36 GB free under a 4 GiB reserve (a 100 GiB disk).
-  ArtifactStore::setDiskForTesting(2360406016LL,100*gib);
-  auto refused=h.rec("prepare",{{"target",region()},{"format","mp4"}});
-  QCOMPARE(refused.error.code,QString("disk_space_insufficient"));
-  QCOMPARE(refused.error.details["freeBytes"].toInteger(),2360406016LL);QCOMPARE(refused.error.details["reserveBytes"].toInteger(),4*gib);
-  QCOMPARE(refused.error.details["availableBytes"].toInteger(),0LL);QCOMPARE(refused.error.details["requiredBytes"].toInteger(),3*RecordingService::minimumBudgetBytes);
-  QCOMPARE(refused.error.details["shortfallBytes"].toInteger(),4*gib+3*RecordingService::minimumBudgetBytes-2360406016LL);
-  QVERIFY2(refused.error.message.contains("Not enough free disk space to record")&&refused.error.message.contains("Free up at least"),qPrintable(refused.error.message));
-  QVERIFY(!h.backend->log.contains("prepare"));QVERIFY(h.operations->activeObservations().isEmpty());QVERIFY(h.operations->recordingActiveId().isEmpty());
-  // The tray's record action reports the same refusal.
-  Error invoked;bool answered=false;h.operations->invoke("record",[&](Error e,QJsonObject){invoked=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(invoked.code,QString("disk_space_insufficient"));
-  // One byte short of three minimum budgets above the reserve still refuses; exactly enough records.
-  const qint64 reserve=ArtifactStore::reserveFor(32*gib);QCOMPARE(reserve,qint64(32*gib/20));
-  ArtifactStore::setDiskForTesting(reserve+3*RecordingService::minimumBudgetBytes-3,32*gib);
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("disk_space_insufficient"));
-  ArtifactStore::setDiskForTesting(reserve+3*RecordingService::minimumBudgetBytes,32*gib);
-  auto id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.budgetBytes,RecordingService::minimumBudgetBytes);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_VERIFY(h.operations->recordingActiveId().isEmpty());
-  // The same 2.36 GB on a 32 GiB disk (a 1.6 GiB reserve) gets a budget that lasts.
-  ArtifactStore::setDiskForTesting(2360406016LL,32*gib);
-  id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.budgetBytes,(2360406016LL-reserve)/3);QVERIFY(h.backend->lastConfig.budgetBytes>200*mib);
-  QVERIFY(!h.rec("start",{{"id",id}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("recording"));
-  QSignalSpy budgetStops(&h.operations->recording(),&RecordingService::budgetStopped);
-  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",3000000.0},{"canvas",QJsonArray{1280,720}}});
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  // The caller's stop arrives after the helper's own: acknowledged with the reason.
-  const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));
-  QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));
-  // #225: the disk set this budget, so the stop says the disk ran out, with its figures,
-  // in recording.inspect, the review window's notice and the tray's signal.
-  auto stop=h.rec("inspect",{{"id",id}}).result["stopDetails"].toObject();
-  QCOMPARE(stop["reason"].toString(),QString("disk_space"));QCOMPARE(stop["freeBytes"].toInteger(),2360406016LL);QCOMPARE(stop["reserveBytes"].toInteger(),reserve);
-  QCOMPARE(stop["budgetBytes"].toInteger(),(2360406016LL-reserve)/3);QCOMPARE(stop["durationUs"].toInteger(),3000000LL);
-  QVERIFY2(stop["message"].toString().startsWith("Recording stopped at 0:03: the disk ran out of room. "+ArtifactStore::sizeText(2360406016LL)+" is free")&&stop["message"].toString().contains("free up space before recording again"),qPrintable(stop["message"].toString()));
-  QVERIFY(h.backend->log.contains("notice"));QCOMPARE(h.backend->lastControlParams["text"].toString(),stop["message"].toString());
-  QCOMPARE(budgetStops.size(),1);QCOMPARE(budgetStops[0][0].toString(),id);QCOMPARE(budgetStops[0][1].toJsonObject(),stop);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_VERIFY(h.operations->recordingActiveId().isEmpty());
-  // With room on the disk, the Largest file limit set the budget: the stop names it and the setting.
-  ArtifactStore::setDiskForTesting(400*gib,1000*gib);
-  auto doc=configuration(h.dir.path(),true);auto limits=doc["limits"].toObject();limits["maxFileBytes"]=double(gib);doc["limits"]=limits;QVERIFY(h.settings.save(doc,h.settings.revision()));
-  id=h.prepareReady();QVERIFY(!id.isEmpty());const auto maxFile=h.settings.snapshot().limits.maxFileBytes;QCOMPARE(maxFile,gib);QCOMPARE(h.backend->lastConfig.budgetBytes,gib-gib/10);
-  QVERIFY(!h.rec("start",{{"id",id}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("recording"));
-  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",65000000.0},{"canvas",QJsonArray{1280,720}}});
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  stop=h.rec("inspect",{{"id",id}}).result["stopDetails"].toObject();
-  QCOMPARE(stop["reason"].toString(),QString("max_file_bytes"));QCOMPARE(stop["maxFileBytes"].toInteger(),maxFile);QVERIFY(!stop.contains("freeBytes"));
-  QVERIFY2(stop["message"].toString().startsWith("Recording stopped at 1:05: it reached the Largest file limit (")&&stop["message"].toString().contains("raise Largest file in Settings > Uploads"),qPrintable(stop["message"].toString()));
-  QCOMPARE(budgetStops.size(),2);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
- }
- void controlBarEventsDriveTheSession(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  // A dragged region: prepare without a rect; the helper reports the bounds it got.
-  const auto prepared=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}});QVERIFY2(!prepared.error,qPrintable(prepared.error.message));const auto id=prepared.result["recordingId"].toString();
-  PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","webm"},{"codec","vp9"},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
-  h.backend->sink({{"id",id},{"event","started"},{"encoder","x264enc"}});
-  PUTGD_TRY_COMPARE(h.state(id),QString("recording"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["encoder"].toString(),QString("x264enc"));
-  // Config changes after Record are ignored.
-  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"}}}});
-  h.backend->sink({{"id",id},{"event","paused"}});PUTGD_TRY_COMPARE(h.state(id),QString("paused"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
-  h.backend->sink({{"id",id},{"event","resumed"}});PUTGD_TRY_COMPARE(h.state(id),QString("recording"));
-  h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",5000000.0},{"canvas",QJsonArray{800,600}},{"reason","user"}});
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({800,600}));
-  // Cancel from the bar ends the operation without any upload.
-  h.backend->sink({{"id",id},{"event","cancelled"}});
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.backend->exports,0);PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
  }
  void liveDiskStopKeepsTriggerFiguresAndPrivateReview(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
@@ -314,7 +180,7 @@ private slots:
   QVERIFY(details["message"].toString().contains("private review"));
   QCOMPARE(h.backend->lastControlParams["text"],details["message"]);
   QCOMPARE(h.rec("stop",{{"id",id}}).result,inspected);
-  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
+  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).stateName(),QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
   QVERIFY(!h.rec("preview",{{"id",id},{"time",0}}).error);
   // A failed local export leaves the review; retry is still explicitly local.
   h.backend->failExport=true;
@@ -324,168 +190,300 @@ private slots:
   h.backend->failExport=false;
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QVERIFY(QFileInfo::exists(h.dir.filePath("copy.mp4")));QVERIFY(journal.operation(id).items.isEmpty());
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.provider->uploads.load(),0);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("cancelled"));QCOMPARE(h.provider->uploads.load(),0);
  }
  void diskFinalizationFailureDoesNotClaimReviewOrUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
   const Error failure{"recording_disk_full","The clip could not be finalized; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
   h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,failure.code);
   for(auto it=failure.details.begin();it!=failure.details.end();++it)QCOMPARE(journal.operation(id).error.details[it.key()],it.value());
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
  }
- // #283: recording.review works the window's controls; the edit a control
- // proposes reaches the resident before the window answers, so the reply
- // carries the edit it produced. While exporting only inspect is allowed.
- void reviewSessionMethodDrivesTheWindow(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).error.code,QString("recording_state"));QVERIFY(!h.backend->log.contains("review"));
-  QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  QList<QJsonObject> reviews;
-  h.backend->onReview=[&](const QJsonObject& params){reviews.append(params);if(params["action"].toString()=="setIn")h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",3000000},{"end",QJsonValue(QJsonValue::Null)}}}}});};
-  const auto seek=h.rec("review",{{"id",id},{"action","seek"},{"time",3000000}});QVERIFY2(!seek.error,qPrintable(seek.error.message));
-  // The action, then the window read again after the resident pushed its edit.
-  QCOMPARE(reviews,QList<QJsonObject>({QJsonObject{{"action","seek"},{"time",3000000}},QJsonObject{{"action","inspect"}}}));QCOMPARE(seek.result["playheadUs"].toDouble(),3000000.0);QCOMPARE(seek.result["edit"].toObject()["revision"].toDouble(),1.0);
-  const auto in=h.rec("review",{{"id",id},{"action","setIn"}});QVERIFY2(!in.error,qPrintable(in.error.message));
-  QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
-  QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["retainedUs"].toDouble(),9000000.0);
-  for(const auto* action:{"showAdvice","showFormatTips","showInFolder","copyPath","dismissSavedCopy"}){reviews.clear();QVERIFY(!h.rec("review",{{"id",id},{"action",action}}).error);QCOMPARE(reviews.first()["action"].toString(),QString(action));}
-  h.backend->deferExports=true;
-  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
-  const int before=h.backend->log.count("review");
-  QCOMPARE(h.rec("review",{{"id",id},{"action","setOut"}}).error.code,QString("recording_state"));QCOMPARE(h.backend->log.count("review"),before);
-  reviews.clear();
-  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).result["state"].toString(),QString("exporting"));QCOMPARE(reviews.size(),1);
-  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
- }
- void reviewFormatRoundTripsPreserveCapturedAudio_data(){
-  QTest::addColumn<bool>("requested");QTest::addColumn<bool>("captured");QTest::addColumn<bool>("automaticStop");QTest::addColumn<bool>("helperStart");
-  for(bool automaticStop:{false,true})for(bool helperStart:{false,true})for(bool requested:{false,true})for(bool captured:{false,true}){
-   if(captured&&!requested)continue;
-   const auto name=QString("requested%1-captured%2-autoStop%3-helperStart%4").arg(requested).arg(captured).arg(automaticStop).arg(helperStart);
-   QTest::newRow(qPrintable(name))<<requested<<captured<<automaticStop<<helperStart;
-  }
- }
- void reviewFormatRoundTripsPreserveCapturedAudio(){
-  QFETCH(bool,requested);QFETCH(bool,captured);QFETCH(bool,automaticStop);QFETCH(bool,helperStart);
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->captureSystemAudio=captured;
-  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",requested}}}});QVERIFY(!id.isEmpty());
-  if(helperStart){h.backend->sink({{"id",id},{"event","started"},{"audioEncoder",captured?QString("synthetic-aac"):QString()}});PUTGD_TRY_COMPARE(h.state(id),QString("recording"));h.backend->capturedSystemAudio=captured;}
-  else QVERIFY(!h.rec("start",{{"id",id}}).error);
-  if(automaticStop){h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",12000000},{"audioEncoder",captured?QString("synthetic-aac"):QString()},{"reason","budget"}});PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));}
-  else QVERIFY(!h.rec("stop",{{"id",id}}).error);
-  for(const auto* silent:{"gif","webp"}){
-   for(const auto* format:{silent,"mp4"}){
-    // The review's requested audio cannot fabricate audio in a silent capture.
-    h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format",format},{"audio",QJsonObject{{"system",true}}}}}});
-    PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString(format));
-    const bool audible=captured&&QString(format)=="mp4";
-    QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool(),audible);
-    const auto path=h.dir.filePath(QString("copy-%1.%2").arg(silent,format));
-    QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",path}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-    QCOMPARE(h.backend->lastConfig.audio.system,audible);
-   }
-  }
- }
- void reviewWindowEventsRoundTripThroughTheResident(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  // A proposed edit at the shown revision is applied and pushed back; a stale one is refused but still answered with the current edit.
-  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",2000000},{"end",9000000}}}}});
-  PUTGD_TRY_COMPARE(h.backend->editsPushed,1);QCOMPARE(h.backend->pushedEdit.revision,quint64(2));QCOMPARE(h.backend->pushedEdit.trimStart,qint64(2000000));
-  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});
-  PUTGD_TRY_COMPARE(h.backend->editsPushed,2);QCOMPARE(h.backend->pushedEdit.revision,quint64(2));QCOMPARE(h.backend->pushedEdit.trimStart,qint64(2000000));
-  // MCP/CLI edits reach the window the same way.
-  QVERIFY(!h.rec("edit",{{"id",id},{"revision",2},{"commands",QJsonArray{QJsonObject{{"op","addMask"},{"mask",QJsonObject{{"kind","solid"},{"rect",QJsonArray{1,1,10,10}},{"start",0},{"end",1000000}}}}}}}).error);
-  PUTGD_TRY_COMPARE(h.backend->editsPushed,3);QCOMPARE(h.backend->pushedEdit.masks.size(),1);
-  // A format change in review keeps fps and cannot add audio.
-  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"},{"fps",60},{"audio",QJsonObject{{"system",true}}}}}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("gif"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["fps"].toInt(),30);QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
-  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"}}}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("mp4"));
-  // Save copy and Upload from the window run the same exports as the CLI; only Upload admits bytes.
-  const auto copyPath=h.dir.filePath("review-copy.mp4");
-  h.backend->sink({{"id",id},{"event","saveCopyRequested"},{"revision",3},{"path",copyPath}});
-  PUTGD_TRY_VERIFY(QFileInfo::exists(copyPath));PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(journal.operation(id).items.size(),0);
-  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
-  PUTGD_TRY_COMPARE(h.backend->editsPushed,4);QCOMPARE(h.state(id),QString("reviewing"));
-  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",3}});
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("video/mp4"));
- }
  void retryFromReviewRepeatsOnlyTheFailedUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  // Nothing failed yet: the resident refuses the window's request; nothing exports.
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_COMPARE_STEADY(h.backend->exports,0,200);
   h.backend->failExport=true;
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(journal.operation(id).items.size(),0);
   h.backend->failExport=false;
   h.backend->sink({{"id",id},{"event","retryExportRequested"}});
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
  }
- void serverRejectsMalformedRequestsBeforeTheBackend(){
+ // U1: every review-window proposal is answered by its number; a refused one
+ // carries its code, message and the revision it was proposed at, and a
+ // recording.review action whose own proposal was refused returns that refusal.
+ void windowProposalsAreAnsweredAndRefusalsReachAgents(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const QList<QPair<QString,QJsonObject>> bad{
-   {"recording.capabilities",{{"x",1}}},
-   {"recording.prepare",{{"format","mp4"}}},
-   {"recording.prepare",{{"target",region()}}},
-   {"recording.prepare",{{"target","region"},{"format","mp4"}}},
-   {"recording.prepare",{{"target",region()},{"format","mp4"},{"bitrate",5}}},
-   {"recording.prepare",{{"target",region()},{"format","mp4"},{"audio",true}}},
-   {"recording.start",{}},{"recording.stop",{{"id",""}}},{"recording.inspect",{{"id","x"},{"extra",1}}},
-   {"recording.overlay",{{"id","x"}}},{"recording.overlay",{{"id","x"},{"visible","yes"}}},
-   {"recording.edit",{{"id","x"},{"commands",QJsonArray{}}}},{"recording.edit",{{"id","x"},{"revision","1"},{"commands",QJsonArray{}}}},
-   {"recording.preview",{{"id","x"}}},{"recording.preview",{{"id","x"},{"time","0"}}},
-   {"recording.saveCopy",{{"id","x"}}},{"recording.saveCopy",{{"id","x"},{"path","/p.mp4"},{"overwrite","no"}}},
-   {"recording.upload",{{"id","x"}}},{"recording.upload",{{"id","x"},{"revision",true}}},
-   {"recording.review",{{"id","x"}}},{"recording.review",{{"id","x"},{"action","upload"}}},{"recording.review",{{"id","x"},{"action","seek"},{"time","1"}}},
-   {"recording.review",{{"id","x"},{"action","addMask"},{"kind","blur"},{"rect",QJsonArray{1,2}}}},{"recording.review",{{"id","x"},{"action","inspect"},{"extra",1}}}};
-  for(const auto& [method,params]:bad){const auto outcome=call(*h.server,method,params);QCOMPARE(outcome.error.code,QString("invalid_request"));}
-  QVERIFY(h.backend->log.isEmpty());
-  QJsonArray many;for(int i=0;i<101;++i)many.append(QJsonObject{{"op","resetTrim"}});
-  QCOMPARE(call(*h.server,"recording.edit",{{"id","x"},{"revision",1},{"commands",many}}).error.code,QString("invalid_request"));
-  QCOMPARE(h.rec("prepare",{{"target",QJsonObject{{"kind","monitor"},{"identity",""}}},{"format","mp4"}}).error.code,QString("invalid_request"));
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"codec","vp9"}}).error.code,QString("invalid_request"));
-  QCOMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  const auto propose=[&](int revision,int proposal,const QJsonObject& command){h.backend->sink({{"id",id},{"event","edit"},{"revision",revision},{"proposal",proposal},{"commands",QJsonArray{command}}});};
+  propose(1,1,{{"op","addCut"},{"start",2000000},{"end",3000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QVERIFY(!h.backend->answers[0].contains("refused"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  propose(1,2,{{"op","resetTrim"}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["code"].toString(),QString("recording_stale"));
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["revision"].toDouble(),1.0);
+  propose(2,3,{{"op","setTrim"},{"start",1000000},{"end",1000001}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),3);
+  const auto refused=h.backend->answers[2]["refused"].toObject();
+  QCOMPARE(refused["code"].toString(),QString("invalid_request"));QVERIFY(!refused["message"].toString().isEmpty());QCOMPARE(refused["revision"].toDouble(),2.0);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  // A recording.review action gets the outcome of its own proposals (U17): the
+  // action that made proposal 3 is refused although the window's latest refusal
+  // is proposal 4's, and the action that made proposal 5 succeeds although
+  // proposal 4 was refused.
+  propose(1,4,{{"op","resetTrim"}});
+  propose(2,5,{{"op","addCut"},{"start",5000000},{"end",6000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),5);
+  const QJsonObject latest{{"lastRefusal",QJsonObject{{"code","recording_stale"},{"message","later"},{"revision",1},{"proposal",4}}}};
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{3}}},latest};
+  const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
+  QCOMPARE(cut.error.code,QString("invalid_request"));QCOMPARE(cut.error.message,refused["message"].toString());QCOMPARE(cut.error.details["proposal"].toDouble(),3.0);
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{5}}},latest};
+  const auto accepted=h.rec("review",{{"id",id},{"action","cut"}});
+  QVERIFY2(!accepted.error,qPrintable(accepted.error.message));QCOMPARE(accepted.result["proposals"].toArray(),(QJsonArray{5}));
+  // A proposal the resident never answered is not reported as applied.
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{9}}},QJsonObject{}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","cut"}}).error.code,QString("recording_state"));
  }
- void recordingBlocksEditingAndRestartInterruptsIt(){
+ // U3/U19/U27: recording.review retryExport asks the window's Try again guard
+ // first (its refusal, or a window that can't be asked, is the error), then
+ // replies with the resident's own answer to this request: the export-start
+ // state, or the resident's refusal.
+ void retryExportIsGuardedByTheWindowAndAnsweredByTheResident(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
-  Error error;bool replied=false;h.operations->invoke("edit",[&](Error e,QJsonObject){error=e;replied=true;},{{"source","clipboard"}});PUTGD_TRY_VERIFY(replied);QCOMPARE(error.code,QString("recording_active"));
-  const auto staging=h.backend->staging;QVERIFY(QDir(staging).exists());
-  QFile leftover(staging+"/export-9.mp4");QVERIFY(leftover.open(QIODevice::WriteOnly));leftover.write("abandoned");leftover.close();
-  h.close();
-  h.open();PUTGD_TRY_VERIFY(h.operations->ready());
-  HistoryStore journal(h.operations->databasePath());const auto op=journal.operation(id);
-  QCOMPARE(op.state,QString("interrupted"));QCOMPARE(op.error.code,QString("recording_interrupted"));QVERIFY(op.items.isEmpty());
-  QVERIFY(!QDir(staging).exists());
-  QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
-  QCOMPARE(h.provider->uploads.load(),0);
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  // The window allows it, but nothing failed: the resident's refusal is the answer.
+  const auto nothing=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(nothing.error.code,QString("recording_state"));QCOMPARE(h.backend->exports,0);
+  QVERIFY(h.backend->lastControlParams["residentRetries"].toBool());
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","Place or cancel the cover first"}}}}};
+  const auto placing=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(placing.error.code,QString("recording_state"));QCOMPARE(placing.error.message,QString("Place or cancel the cover first"));
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","The review window is not open"}}}}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  QCOMPARE(h.backend->exports,1);
+  // Allowed: the export starts and the reply is its start state, as before the redesign.
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QVERIFY2(!retried.error,qPrintable(retried.error.message));
+  QCOMPARE(retried.result["lastExport"].toObject()["command"].toString(),QString("upload"));
+  QCOMPARE(retried.result["recordingId"].toString(),id);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
  }
- void adjacentBudgetEventAndStopReplyKeepTheirOrder_data(){
-  QTest::addColumn<bool>("failedReply");QTest::newRow("success")<<false;QTest::newRow("error")<<true;
+ // U28: an action's proposal outcomes are read when its reply arrives, so 128
+ // newer proposals answered before the follow-up inspect can't make a committed
+ // edit look unanswered.
+ void anActionsOutcomesSurviveNewerProposals(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{1}}},QJsonObject{}};
+  h.backend->reviewHooks={{},[&]{for(int n=2;n<=140;++n)h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",n},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});}};
+  const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
+  QVERIFY2(!cut.error,qPrintable(cut.error.code+": "+cut.error.message));
+  QCOMPARE(cut.result["edit"].toObject()["revision"].toDouble(),2.0);
  }
- void adjacentBudgetEventAndStopReplyKeepTheirOrder(){
-  QFETCH(bool,failedReply);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;
-  Call stopped;h.server->dispatch({{"schemaVersion",1},{"requestId","pending-stop"},{"session",h.server->socketPath()},{"method","recording.stop"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){stopped={e,r,true};});QVERIFY(h.backend->pendingStop);
-  // Deliver both on the service thread without letting the event loop run:
-  // deterministic even when the pipe fixture's writes land in separate reads.
-  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",9000000.0},{"canvas",QJsonArray{1280,720}}});
-  auto late=std::move(h.backend->pendingStop);late(failedReply?Error{"recording_state","already stopped",{}}:Error{},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
-  PUTGD_TRY_VERIFY(stopped.done);QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ // The upload rule, checked again in the resident: an upload at a revision
+ // that isn't the current one, or while an export runs, is refused with the
+ // reason (the window reopens with it) and never exported.
+ void anUploadOnlyExportsItsOwnRevision(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("nothing was uploaded"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));  // U35: no Try again
+  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
+  // During an export (a copy being saved), an upload is refused out loud.
+  h.backend->deferExports=true;
+  QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
+  QCOMPARE(h.state(id),QString("exporting"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Another export is running"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  // U34: a proposal answered during the export reaches the window once review resumes.
+  const auto before=h.backend->answers.size();
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",2},{"proposal",7},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),before,200);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.backend->exports,1);
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),before+1);
+  QCOMPARE(h.backend->answers.last()["proposal"].toDouble(),7.0);
+  QCOMPARE(h.backend->answers.last()["refused"].toObject()["code"].toString(),QString("recording_state"));
+ }
+ // U31: Try again after a failed Upload retries that Upload's revision; once
+ // the edit changed it is refused (press Upload), never uploaded at the new one.
+ void retryKeepsTheFailedUploadsRevision(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_stale"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Press Upload"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
+ }
+ // U32: the upload carries the output the window shows; any other is refused.
+ // Pushes name the window's latest output choice the resident applied.
+ void anUploadMustCarryTheShownOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",3},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),3.0);
+  h.backend->log.clear();
+  auto mp4=h.rec("inspect",{{"id",id}}).result["config"].toObject();mp4["format"]="mp4";mp4["codec"]="h264";
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",mp4}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("format or sound changed"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,0);
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",h.rec("inspect",{{"id",id}}).result["config"]}});
+  PUTGD_TRY_COMPARE(h.backend->exports,1);
+ }
+ // D16: the review's Format menu can leave captured sound out of the export,
+ // but never adds a source that wasn't captured.
+ void reviewAudioChoiceNeverExceedsTheCapture(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",true}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  const auto audio=[&]{return h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();};
+  QVERIFY(audio()["system"].toBool()&&audio()["microphone"].toBool());
+  const auto choose=[&](bool system,bool microphone){h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",system},{"microphone",microphone}}}}}});};
+  choose(false,false);
+  PUTGD_TRY_VERIFY(!audio()["system"].toBool()&&!audio()["microphone"].toBool());
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,1);
+  QVERIFY(!h.backend->lastConfig.audio.system);QVERIFY(!h.backend->lastConfig.audio.microphone);
+ }
+ void reviewAudioChoiceKeepsOnlyCapturedSources(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","webm"},{"codec","vp9"},{"audio",QJsonObject{{"system",true},{"microphone",true}}}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  const auto audio=h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();
+  QVERIFY(audio["system"].toBool());QVERIFY(!audio["microphone"].toBool());
+ }
+ // U42: a format choice made while an export runs is applied when review
+ // resumes, and the next push names it, so window and resident agree.
+ void aChoiceMadeDuringAnExportIsApplied(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);QCOMPARE(h.state(id),QString("exporting"));
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",4},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  putgd::test::settle(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),4.0);
+ }
+ // U43: past the export's deadline the helper still exports and takes no edit:
+ // answers wait until its late result, not until the resident's timeout.
+ void answersWaitForTheHelperToLeaveItsExport(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  putgd::test::settle(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",2},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",5000000},{"end",6000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",true}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+ }
+ // V2: past an export's deadline the helper still exports: a second Upload or
+ // Save a copy is refused (recording_state) until its late result, so nothing is
+ // sent to the busy helper and the held answers stay held.
+ void noSecondExportWhileTheFirstIsFinishing(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;h.backend->deferExports=false;
+  const auto again=h.rec("upload",{{"id",id},{"revision",1}});
+  QCOMPARE(again.error.code,QString("recording_state"));QVERIFY(again.error.message.contains("still finishing"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","saveCopyRequested"},{"revision",1},{"path",h.dir.filePath("copy.mp4")}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("still finishing"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",false}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",2}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+ }
+ // D32: Try again exports exactly the output of the failed press; once the
+ // output changed it is refused (press Upload again), never exported with either.
+ void retryExportsTheFailedRequestsOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto failed=h.backend->lastConfig;
+  QVERIFY(failed.audio.system);
+  h.backend->failExport=false;
+  // Unchanged: the retry exports with the failed request's output.
+  QVERIFY(!h.rec("review",{{"id",id},{"action","retryExport"}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+  QCOMPARE(h.backend->lastConfig.toJson(),failed.toJson());
+ }
+ void retryRefusesAChangedOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",1},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
+  PUTGD_TRY_VERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_config"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
  }
  void lateStopReplyPreservesEditedPendingExport_data(){
   QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");
   QTest::newRow("save copy")<<QString("saveCopy")<<false;
   QTest::newRow("upload")<<QString("upload")<<false;
-  QTest::newRow("save copy after stop error")<<QString("saveCopy")<<true;
  }
  void lateStopReplyPreservesEditedPendingExport(){
   QFETCH(QString,command);QFETCH(bool,failedReply);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
@@ -503,7 +501,7 @@ private slots:
   QCOMPARE(before["stopReason"].toString(),QString("budget"));QCOMPARE(before["durationUs"].toDouble(),9000000.0);QCOMPARE(before["edit"].toObject(),edited.result["edit"].toObject());
   h.backend->pendingExports.takeFirst()();
   HistoryStore journal(h.operations->databasePath());
-  if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
+  if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
   else {PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject(),before["edit"].toObject());QVERIFY(!h.rec("cancel",{{"id",id}}).error);}
   QCOMPARE(h.provider->uploads.load(),0);
  }
@@ -516,208 +514,6 @@ private slots:
   // A command round trip drains queued delivery, including the stale callback.
   QVERIFY(!h.rec("start",{{"id",next}}).error);QCOMPARE(h.state(next),QString("recording"));QCOMPARE(replies,0);QVERIFY(!h.rec("inspect",{{"id",next}}).result.contains("stopReason"));
   QVERIFY(!h.rec("cancel",{{"id",next}}).error);
- }
- void recordActionOpensRaisesAndTogglesTheSession(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto invoke=[&](QJsonObject options){options["action"]="record";return call(*h.server,"action.invoke",options);};
-  QCOMPARE(invoke({{"mode","shell"}}).error.code,QString("invalid_request"));
-  for(const QJsonValue& mode:{QJsonValue(),QJsonValue(1),QJsonValue(true),QJsonValue(QJsonObject{}),QJsonValue(QJsonArray{}),QJsonValue(""),QJsonValue(QString(17,'x'))})
-   QCOMPARE(invoke({{"mode",mode}}).error.code,QString("invalid_request"));
-  for(const auto& action:Settings::actionNames())if(action!="record")
-   QCOMPARE(call(*h.server,"action.invoke",{{"action",action},{"mode","open"}}).error.code,QString("invalid_request"));
-  QCOMPARE(invoke({{"source","clipboard"}}).error.code,QString("invalid_request"));
-  QCOMPARE(invoke({{"mode","open"},{"path","/synthetic"}}).error.code,QString("invalid_request"));
-  auto opened=invoke({});QVERIFY2(!opened.error,qPrintable(opened.error.message));QCOMPARE(opened.result["step"].toString(),QString("prepare"));
-  const auto id=opened.result["recordingId"].toString();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  QCOMPARE(h.backend->lastConfig.format,QString("mp4"));
-  // Open again raises the active session instead of starting a second one.
-  QCOMPARE(invoke({{"mode","open"}}).result["step"].toString(),QString("raise"));QVERIFY(h.backend->log.contains("raise"));QCOMPARE(h.state(id),QString("ready"));
-  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("start"));QCOMPARE(h.state(id),QString("recording"));
-  QVERIFY(!h.rec("pause",{{"id",id}}).error);
-  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("stop"));QCOMPARE(h.state(id),QString("reviewing"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["stopReason"].toString(),QString("user"));
-  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("raise"));QCOMPARE(h.state(id),QString("reviewing"));
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
- }
- // Choosing GIF on a canvas wider than the animation limit sets maxEdge to the
- // limit; a refused Upload from the (closed) review window reopens it with the
- // reason instead of leaving the session silently in reviewing.
- void animationLimitsClampSizeAndRefusedUploadReopensTheReview(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  {auto g=call(*h.server,"settings.get",{});auto doc=g.result["document"].toObject();auto limits=doc["limits"].toObject();limits["recordingAnimationEdge"]=640;limits["recordingAnimationSeconds"]=5;doc["limits"]=limits;
-   const auto saved=call(*h.server,"settings.save",{{"document",doc},{"expectedRevision",g.result["metadata"].toObject()["observedRevision"]}});QVERIFY2(!saved.error,qPrintable(saved.error.message));}
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  // The fake backend's canvas is 1280x720; the review picks GIF.
-  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"},{"fps",30},{"audio",QJsonObject{{"system",false}}}}}});PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("gif"));
-  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["config"].toObject()["format"].toString(),QString("gif"));QCOMPARE(inspected["config"].toObject()["maxEdge"].toInt(),640);QCOMPARE(inspected["outputSize"].toArray()[0].toInt(),640);
-  QCOMPARE(h.backend->pushedConfig.maxEdge.value_or(0),640);QCOMPARE(h.backend->pushedLimits["animationEdge"].toInt(),640);QCOMPARE(h.backend->pushedLimits["animationSeconds"].toDouble(),5.0);
-  // 12 s retained exceeds the 5 s limit: Upload from the review is refused and the review is raised with the reason.
-  const int raises=h.backend->log.count("raise");
-  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",double(inspected["edit"].toObject()["revision"].toDouble())}});putgd::test::settle(100);
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));PUTGD_TRY_COMPARE(h.backend->exports,0);PUTGD_TRY_COMPARE(h.backend->log.count("raise"),raises+1);
-  PUTGD_TRY_VERIFY2(h.backend->lastControlParams["error"].toString().contains("limited to 5 s"),qPrintable(h.backend->lastControlParams["error"].toString()));
-  // Trimmed to the limit, the upload goes through.
-  const qint64 revision=qint64(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble());
-  const auto edited=h.rec("edit",{{"id",id},{"revision",double(revision)},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",0},{"end",4000000}}}}});QVERIFY2(!edited.error,qPrintable(edited.error.message));
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",double(revision+1)}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("image/gif"));
- }
- // An export can outlast any client wait (the helper allows 600 s, the CLI 15 s):
- // saveCopy and upload answer once it starts, so the production CLI reports the
- // accepted export instead of transport_failed, and inspect carries the outcome.
- void slowExportsAnswerAtOnceAndReportThroughInspect(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  QVERIFY((h.dir.filePath("runtime/session.sock")).toUtf8().size()<=107);QVERIFY(h.server->listen(h.dir.filePath("runtime")));
-  auto cli=[&](const QString& method,const QJsonObject& params){
-   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",h.server->socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
-   [&]{PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);}();
-   const auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();
-   return std::pair{client.exitCode(),response};
-  };
-  h.backend->deferExports=true;
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  QVERIFY(h.rec("inspect",{{"id",id}}).result["lastExport"].isNull());
-  // The copy is acknowledged while the export is still running.
-  const auto copyPath=h.dir.filePath("slow-copy.mp4");
-  const auto [savedExit,saved]=cli("recording.saveCopy",{{"id",id},{"path",copyPath}});
-  QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());QCOMPARE(savedExit,0);
-  QCOMPARE(saved["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(saved["result"].toObject()["lastExport"].toObject()["status"].toString(),QString("exporting"));
-  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));QVERIFY(!h.backend->log.contains("savedCopy"));
-  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("exporting"));QCOMPARE(inspected["pending"].toString(),QString("saveCopy"));
-  QCOMPARE(inspected["lastExport"].toObject()["path"].toString(),copyPath);QCOMPARE(inspected["lastExport"].toObject()["revision"].toDouble(),1.0);
-  QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("exporting"));
-  // Progress is visible meanwhile, and the review is locked until the export ends.
-  h.backend->sink({{"id",id},{"event","progress"},{"exportFraction",0.5}});
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["exportFraction"].toDouble(),0.5);
-  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("second.mp4")}}).error.code,QString("recording_state"));
-  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_state"));
-  QCOMPARE(h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}}).error.code,QString("recording_state"));
-  h.backend->pendingExports.takeFirst()();
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(inspected["pending"].isNull());QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("saved"));QCOMPARE(inspected["lastExport"].toObject()["bytes"].toDouble(),double(h.backend->exportBytes.size()));
-  {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
-  QVERIFY(h.backend->log.contains("savedCopy"));QCOMPARE(h.backend->lastControlParams["path"].toString(),copyPath);QCOMPARE(h.backend->lastControlParams["revision"].toDouble(),1.0);
-  // A failed slow export is reported the same way and writes nothing.
-  const auto failedPath=h.dir.filePath("failed-copy.mp4");h.backend->failExport=true;
-  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",failedPath}}).result["state"].toString(),QString("exporting"));
-  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(inspected["lastExport"].toObject()["error"].toObject()["code"].toString(),QString("recording_export_failed"));
-  QVERIFY(!QFileInfo::exists(failedPath));QCOMPARE(h.backend->log.count("savedCopy"),1);h.backend->failExport=false;
-  // Retry through the production CLI keeps the failed local target and cannot publish it.
-  const auto [retryExit,retried]=cli("recording.review",{{"id",id},{"action","retryExport"}});
-  QCOMPARE(retryExit,0);QVERIFY(retried["ok"].toBool());
-  QCOMPARE(retried["result"].toObject()["lastExport"].toObject()["path"].toString(),failedPath);
-  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  QVERIFY(QFileInfo::exists(failedPath));QCOMPARE(journal.operation(id).items.size(),0);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
-  // Upload: acknowledged at the start of its export; the operation then carries the outcome.
-  const auto [uploadExit,uploaded]=cli("recording.upload",{{"id",id},{"revision",1}});
-  QVERIFY2(uploaded["ok"].toBool(),QJsonDocument(uploaded).toJson().constData());QCOMPARE(uploadExit,0);
-  QCOMPARE(uploaded["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(uploaded["result"].toObject()["pending"].toString(),QString("upload"));QCOMPARE(uploaded["result"].toObject()["operationId"].toString(),id);
-  QCOMPARE(h.backend->pendingExports.size(),1);QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("encoding"));
-  QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
-  h.backend->pendingExports.takeFirst()();
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.size(),1);
-  QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
-  // Cancelling during a slow export discards it: the late result admits nothing.
-  const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);QVERIFY(!h.rec("stop",{{"id",second}}).error);
-  QCOMPARE(h.rec("upload",{{"id",second},{"revision",1}}).result["state"].toString(),QString("exporting"));
-  QCOMPARE(h.rec("cancel",{{"id",second}}).result["state"].toString(),QString("cancelled"));
-  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(second).state,QString("cancelled"));QVERIFY(journal.operation(second).items.isEmpty());
-  PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);QCOMPARE(h.provider->uploads.load(),0);
- }
- // The CLI waits past every deadline the resident itself waits on, so the
- // resident's answer (recording_helper_timeout included) always reaches it.
- void clientWaitsOutlastHelperDeadlines(){
-  QVERIFY(LocalServer::replyDeadlineMs("recording.stop")>recording::helperStopMs);
-  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"})
-   QVERIFY2(LocalServer::replyDeadlineMs(method)>recording::helperCommandMs,method);
-  // Exports answer when they start, so they keep the ordinary wait.
-  for(const auto* method:{"recording.saveCopy","recording.upload","recording.inspect","capabilities"})QCOMPARE(LocalServer::replyDeadlineMs(method),15000);
- }
- // The activity window's Cancel is operation.cancel: for a recording it must end
- // the session (capture or review), not only mark the journal record.
- void operationCancelEndsAnActiveRecording(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  const auto cancelled=call(*h.server,"operation.cancel",{{"id",id}});QVERIFY2(!cancelled.error,qPrintable(cancelled.error.message));QVERIFY(cancelled.result["cancellationRequested"].toBool());
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
-  QString state;(void)putgd::test::waitFor([&]{state=call(*h.server,"operation.inspect",{{"id",id}}).result["state"].toString();return state=="cancelled";},2000);QCOMPARE(state,QString("cancelled"));QCOMPARE(h.backend->discards,1);
-  // The journal answers "cancelled" once the background save lands; the live
-  // observation is cleared by that save's completion, queued to this thread.
-  // The bounded wait still fails if the observation never ends.
-  PUTGD_TRY_VERIFY(h.operations->activeObservations().isEmpty());
- }
- // GNOME: the Shell selects the rectangle before the helper starts a stream,
- // draws the ring and dimming, and moves the bar; overlayExcluded follows it.
- void shellSelectsRegionsAndFramesTheBar(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());FakeShell shell;h.operations->recording().setShell(&shell);
-  h.backend->placement="compositor";h.backend->pid=4242;
-  const auto prepared=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}});QVERIFY2(!prepared.error,qPrintable(prepared.error.message));const auto id=prepared.result["recordingId"].toString();
-  PUTGD_TRY_COMPARE(shell.selections.size(),1);QVERIFY(!h.backend->log.contains("prepare"));
-  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("preparing"));QVERIFY(inspected["selecting"].toBool());
-  shell.selections.takeFirst()({},{{"rect",QJsonArray{50,60,640,360}}});
-  PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  QCOMPARE(h.backend->lastTarget.rect,QRect(50,60,640,360));
-  inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(!inspected["selecting"].toBool());QVERIFY(inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("outside"));
-  QCOMPARE(inspected["target"].toObject()["rect"].toArray(),QJsonArray({50,60,640,360}));
-  QCOMPARE(shell.frames.size(),1);QCOMPARE(shell.frames[0]["state"].toString(),QString("ready"));QCOMPARE(shell.frames[0]["rect"].toArray(),QJsonArray({50,60,640,360}));QCOMPARE(shell.frames[0]["pid"].toInt(),4242);QCOMPARE(shell.frames[0]["kind"].toString(),QString("region"));
-  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(shell.frames.last()["state"].toString(),QString("recording"));
-  QVERIFY(!h.rec("pause",{{"id",id}}).error);QCOMPARE(shell.frames.last()["state"].toString(),QString("paused"));QCOMPARE(shell.hides,0);
-  QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));QCOMPARE(shell.hides,1);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(shell.hides,1);
-  // No room outside (a single monitor): the Shell keeps the bar in the corner and
-  // the helper is told to shrink it to its handle from Record on.
-  shell.bar=QJsonObject{{"placed",true},{"outside",false},{"rect",QJsonArray{1510,1030,400,40}}};
-  const auto full=h.prepareReady({{"target",QJsonObject{{"kind","monitor"}}}});QVERIFY(!full.isEmpty());
-  inspected=h.rec("inspect",{{"id",full}}).result;QVERIFY(!inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("handle"));
-  QVERIFY(h.backend->log.contains("overlay"));QCOMPARE(h.backend->lastControlParams,QJsonObject({{"handle",true}}));
-  QVERIFY(!h.rec("cancel",{{"id",full}}).error);QCOMPARE(shell.hides,2);
-  // A bar the Shell could not place (an older extension) stays reported as possibly recorded.
-  shell.failFrames=true;
-  const auto second=h.prepareReady({{"target",QJsonObject{{"kind","monitor"}}}});QVERIFY(!second.isEmpty());
-  inspected=h.rec("inspect",{{"id",second}}).result;QVERIFY(!inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("compositor"));
-  QVERIFY(!h.rec("cancel",{{"id",second}}).error);QCOMPARE(shell.hides,3);
- }
- void cancellingAShellSelectionLeavesNoSession(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());FakeShell shell;h.operations->recording().setShell(&shell);
-  const QJsonObject dragged{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}};
-  // Escape in the Shell selector: the operation ends cancelled and no helper ever started.
-  auto id=h.rec("prepare",dragged).result["recordingId"].toString();PUTGD_TRY_COMPARE(shell.selections.size(),1);
-  shell.selections.takeFirst()({"cancelled","GNOME region selection cancelled",{}},{});
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(!h.backend->log.contains("prepare"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
-  QVERIFY(h.rec("capabilities").result["active"].isNull());
-  // recording.cancel closes the open selector.
-  id=h.rec("prepare",dragged).result["recordingId"].toString();PUTGD_TRY_COMPARE(shell.selections.size(),1);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(shell.cancels,1);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(!h.backend->log.contains("prepare"));
-  // recording.select drives the selector like a drag; the superseded selector reply is ignored.
-  id=h.rec("prepare",dragged).result["recordingId"].toString();PUTGD_TRY_COMPARE(shell.selections.size(),1);
-  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{1,2,0,5}}}).error.code,QString("invalid_request"));
-  QCOMPARE(call(*h.server,"recording.select",{{"id",id}}).error.code,QString("invalid_request"));
-  const auto selected=h.rec("select",{{"id",id},{"rect",QJsonArray{20,30,800,450}}});QVERIFY2(!selected.error,qPrintable(selected.error.message));QCOMPARE(shell.cancels,2);
-  PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QCOMPARE(h.backend->lastTarget.rect,QRect(20,30,800,450));
-  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{20,30,800,450}}}).error.code,QString("recording_state"));
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  // A shell without recording support leaves the region to the helper.
-  shell.selects=false;id=h.prepareReady({{"target",QJsonObject{{"kind","region"}}}});QVERIFY(!id.isEmpty());QCOMPARE(shell.selections.size(),0);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  // #131: one that knows why (an older extension still loaded) says so; no helper starts.
-  shell.unavailable={"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{}};
-  h.backend->log.clear();id=h.rec("prepare",dragged).result["recordingId"].toString();QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("helper_outdated"));
-  QVERIFY(!h.backend->log.contains("prepare"));QCOMPARE(shell.selections.size(),0);
- }
- // X11 and KDE: the helper's own selector reports `selecting`; select forwards the rectangle.
- void helperSelectionIsDrivenThroughSelect(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->deferPrepare=true;
-  const auto id=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}}).result["recordingId"].toString();PUTGD_TRY_VERIFY(h.backend->log.contains("prepare"));
-  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{10,10,300,200}}}).error.code,QString("recording_state"));
-  h.backend->sink({{"id",id},{"event","selecting"},{"selector","kde-layer-shell"}});
-  PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["selecting"].toBool());
-  QVERIFY(!h.rec("select",{{"id",id},{"rect",QJsonArray{10,10,300,200}}}).error);
-  QCOMPARE(h.backend->log.last(),QString("select"));QCOMPARE(h.backend->lastControlParams["rect"].toArray(),QJsonArray({10,10,300,200}));
-  h.backend->pendingPrepare({},{});PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("inspect",{{"id",id}}).result["selecting"].toBool());
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
 };
 

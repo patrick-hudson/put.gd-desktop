@@ -1,6 +1,6 @@
 #include "X11Shortcuts.h"
 #include "X11Reply.h"
-#include "X11SessionLock.h"
+#include "platform/SessionLock.h"
 #include "core/Log.h"
 #include "platform/NativeSession.h"
 #include <QKeySequence>
@@ -34,7 +34,7 @@ void X11Shortcuts::syncMatcher(const xcb_get_modifier_mapping_reply_t* map){
  std::array<uint16_t,256> bits{};
  if(map){auto* codes=xcb_get_modifier_mapping_keycodes(map);for(int m=0;m<8;++m)for(int i=0;i<map->keycodes_per_modifier;++i)if(const auto code=codes[m*map->keycodes_per_modifier+i])bits[code]|=uint16_t(1<<m);}
  matcher_.setModifierMap(bits);matcher_.setLocks(locks_);
- QList<X11RawKeyMatcher::Binding> bindings;for(const auto& grab:grabs_)bindings.append({grab.action,grab.code,grab.modifiers});matcher_.setBindings(std::move(bindings));
+ QList<X11RawKeyMatcher::Binding> bindings;for(const auto& grab:std::as_const(grabs_))bindings.append({grab.action,grab.code,grab.modifiers});matcher_.setBindings(std::move(bindings));
 }
 void X11Shortcuts::deliver(const QString& action,const QString& path,uint32_t time){
  // A raw-only press means another client holds the keyboard, such as an open
@@ -57,7 +57,7 @@ void X11Shortcuts::deliverRaw(const Pending& press){
 X11Shortcuts::~X11Shortcuts(){clear();if(symbols_)xcb_key_symbols_free(symbols_);if(connection_)xcb_disconnect(connection_);}
 bool X11Shortcuts::available()const{return notifier_&&connection_&&!xcb_connection_has_error(connection_);}
 uint16_t X11Shortcuts::modifier(const xcb_get_modifier_mapping_reply_t* map,xcb_keysym_t one,xcb_keysym_t two){if(!map)return 0;auto* codes=xcb_get_modifier_mapping_keycodes(map);uint16_t result=0;for(int m=0;m<8;++m)for(int i=0;i<map->keycodes_per_modifier;++i){auto code=codes[m*map->keycodes_per_modifier+i];if(!code)continue;for(int col=0;col<4;++col){auto sym=xcb_key_symbols_get_keysym(symbols_,code,col);if(sym==one||sym==two)result|=uint16_t(1<<m);}}return result;}
-void X11Shortcuts::clear(){matcher_.setBindings({});if(!connection_)return;for(const auto& grab:grabs_)xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);grabs_.clear();xcb_flush(connection_);}
+void X11Shortcuts::clear(){matcher_.setBindings({});if(!connection_)return;for(const auto& grab:std::as_const(grabs_))xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);grabs_.clear();xcb_flush(connection_);}
 void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
  requested_=bindings;status_={};
  if(recording_){for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"state","recording"}};emit bindingsChanged();return;}
@@ -71,7 +71,7 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
  locks_=mask(XK_Caps_Lock,XK_Shift_Lock)|mask(XK_Num_Lock,XK_Num_Lock)|mask(XK_Scroll_Lock,XK_Scroll_Lock);
  QList<uint16_t> ignored{0};for(int bit=0;bit<8;++bit)if(locks_&(1<<bit)){auto old=ignored;for(auto value:old)ignored.append(uint16_t(value|(1<<bit)));}
  QStringList actions=bindings.keys();actions.sort();QSet<QString> accepted;
- for(const auto& action:actions){const QString text=bindings.value(action);QJsonObject entry{{"requested",text},{"bound",false}};if(text.isEmpty()){entry["error"]="disabled";status_[action]=entry;continue;}
+ for(const auto& action:std::as_const(actions)){const QString text=bindings.value(action);QJsonObject entry{{"requested",text},{"bound",false}};if(text.isEmpty()){entry["error"]="disabled";status_[action]=entry;continue;}
   const auto sequence=QKeySequence::fromString(text,QKeySequence::PortableText);const auto combination=sequence[0];const auto key=symbol(combination.key());uint16_t modifiers=0;const auto qt=combination.keyboardModifiers();
   if(((qt&Qt::ControlModifier)&&!control)||((qt&Qt::ShiftModifier)&&!shift)||((qt&Qt::AltModifier)&&!alt)||((qt&Qt::MetaModifier)&&!meta)){entry["error"]="shortcut_unmapped";status_[action]=entry;continue;}
   if(qt&Qt::ControlModifier)modifiers|=control;
@@ -86,7 +86,7 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
    if(base!=key&&shifted!=key){unsupported=true;continue;}
    uint16_t effective=modifiers;
    if(base!=key){if(!shift){unsupported=true;continue;}effective|=shift;}
-   for(auto lock:ignored){
+   for(auto lock:std::as_const(ignored)){
     const auto mask=uint16_t(effective|lock);const QString id=identity(*code,mask);
     if(attemptIds.contains(id))continue;
     attemptIds.insert(id);
@@ -110,19 +110,19 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
 void X11Shortcuts::setRecording(bool active,std::function<void(Error)> reply){
  if(active){
   recording_=true;clear();
-  if(!available()){reply({"shortcut_unavailable","Global shortcuts cannot be paused in this session.",{}});return;}
+  if(!available()){reply({"shortcut_unavailable","Hotkeys cannot be paused in this session.",{}});return;}
   xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
   auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);
   const bool acknowledged=sync&&!xcb_connection_has_error(connection_);free(sync);
   // Discard shortcut presses queued before ungrabbing, including those read
   // during the roundtrip. Mapping events may update the saved bindings only.
   events();bind(requested_);
-  reply(acknowledged?Error{}:Error{"shortcut_unavailable","The desktop did not acknowledge pausing global shortcuts.",{}});
+  reply(acknowledged?Error{}:Error{"shortcut_unavailable","The desktop did not acknowledge pausing hotkeys.",{}});
  }else{
   if(available())events();
   recording_=false;bind(requested_);
-  Error error;if(!available())error={"shortcut_unavailable","Global shortcuts could not be restored.",{}};
-  else for(auto it=status_.begin();it!=status_.end();++it){const auto entry=it.value().toObject();if(!entry["requested"].toString().isEmpty()&&!entry["bound"].toBool()){error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};break;}}
+  Error error;if(!available())error={"shortcut_unavailable","Hotkeys could not be restored.",{}};
+  else for(auto it=status_.begin();it!=status_.end();++it){const auto entry=it.value().toObject();if(!entry["requested"].toString().isEmpty()&&!entry["bound"].toBool()){error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};break;}}
   reply(error);
  }
 }
@@ -141,11 +141,17 @@ void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){con
   if(generic->extension==xinputOpcode_&&(generic->event_type==XCB_INPUT_RAW_KEY_PRESS||generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)){
    const auto* key=reinterpret_cast<xcb_input_raw_key_press_event_t*>(raw);const auto code=uint8_t(key->detail);
    if(generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)matcher_.release(code);
-   else if(const auto action=matcher_.press(code);(symbols_&&xcb_key_symbols_get_keysym(symbols_,code,0)==XK_Escape&&(emit escapePressed(),false))||(action&&!recording_)){
-    // The server queues a passive grab's core press right after this raw
-    // event. A roundtrip brings it into this drain, so both are matched here.
-    auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
-    pending_.append({*action,code,key->time});
+   else{
+    const auto action=matcher_.press(code);
+    // Escape cancels a held crosshair; the handler ignores it otherwise, even
+    // while shortcuts are paused for recording.
+    if(symbols_&&xcb_key_symbols_get_keysym(symbols_,code,0)==XK_Escape)emit escapePressed();
+    if(action&&!recording_){
+     // The server queues a passive grab's core press right after this raw
+     // event. A roundtrip brings it into this drain, so both are matched here.
+     auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
+     pending_.append({*action,code,key->time});
+    }
    }
   }
  }

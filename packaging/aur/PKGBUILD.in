@@ -1,0 +1,39 @@
+# Unpublished draft: substitute exact stable VERSION and SHA256 from SHA256SUMS.
+# Build an already verified CMake Release tree. Run tools/releases/arch.py.
+pkgname=putgd-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='Native Linux screen and clipboard sharing'
+arch=('x86_64')
+url='https://put.gd'
+license=('MIT' 'Apache-2.0' 'GPL-3.0-or-later')
+# tesseract-data-eng stays before tesseract: pacman resolves in this order, and with the data first
+# tesseract's own need for "tessdata" is already met. The other way round pacman asks which of 128
+# language packages to use and takes Afrikaans by default.
+depends=('tesseract-data-eng' 'tesseract' 'zxing-cpp' 'gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
+         'qt6-imageformats' 'qtkeychain-qt6' 'layer-shell-qt' 'libxcb'
+         'xcb-util-keysyms' 'xcb-util-image' 'libxcursor' 'libxkbcommon'
+         'libxkbcommon-x11' 'curl' 'openssl' 'zlib' 'glib2' 'gtk3'
+         'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-base' 'gst-plugins-good'
+         'gst-plugins-bad' 'gst-plugins-ugly' 'gst-libav' 'gst-plugin-pipewire'
+         'ffmpeg' 'libsecret' 'xdg-utils' 'openssh' 'hicolor-icon-theme')
+optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal services'
+            'nautilus: Files upload menu' 'caja: Caja upload menu'
+            'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'
+            'thunar: Thunar send-to menu'
+            'gst-plugin-va: hardware (VA-API) video encoding for screen recording'
+            'tesseract-data-osd: detect the script of a page read in another language'
+            'tesseract-data-chi_sim: read Chinese pages' 'tesseract-data-jpn: read Japanese pages'
+            'tesseract-data-kor: read Korean pages' 'tesseract-data-rus: read Cyrillic pages'
+            'tesseract-data-ara: read Arabic pages' 'tesseract-data-heb: read Hebrew pages'
+            'tesseract-data-hin: read Devanagari pages' 'tesseract-data-tha: read Thai pages'
+            'tesseract-data-ell: read Greek pages')
+options=('!strip' '!debug')
+provides=('putgd')
+conflicts=('putgd')
+source=("putgd-${pkgver}-archlinux-x86_64.pkg.tar.zst::https://github.com/patrick-hudson/put.gd-desktop/releases/download/v${pkgver}/putgd-${pkgver}-archlinux-x86_64.pkg.tar.zst")
+sha256sums=('@SHA256@')
+package() {
+    cp -a "$srcdir/usr" "$pkgdir/"
+    install -Dm644 "$srcdir/usr/share/doc/putgd/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

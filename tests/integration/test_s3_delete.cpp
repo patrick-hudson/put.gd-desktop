@@ -1,4 +1,5 @@
 #include "fixtures/S3Fixture.h"
+#include <stdexcept>
 using namespace putgd::test;
 class S3DeleteTest : public QObject {
     Q_OBJECT
@@ -8,6 +9,27 @@ class S3DeleteTest : public QObject {
         return {{"rules", result}};
     }
 private slots:
+    // A deletion whose journal write throws, before or after acknowledging, is never sent.
+    void throwingCheckpointNeverDeletes() {
+        S3Fixture fixture;
+        auto uploaded = fixture.upload(fixture.request("checkpoint-exception.txt"));
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto removed = fixture.remove(uploaded.receipt, {}, [](auto, auto) {
+            throw std::runtime_error("synthetic checkpoint exception");
+        });
+        QCOMPARE(removed.status, QString("unknown"));
+        QCOMPARE(removed.error.code, QString("s3_transport_unknown"));
+        QVERIFY(removed.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+        auto acknowledgedThenThrown = fixture.remove(uploaded.receipt, {}, [](auto, auto ack) {
+            ack({});
+            throw std::runtime_error("synthetic exception after checkpoint acknowledgement");
+        });
+        QCOMPARE(acknowledgedThenThrown.status, QString("unknown"));
+        QCOMPARE(acknowledgedThenThrown.error.code, QString("s3_transport_unknown"));
+        QVERIFY(acknowledgedThenThrown.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+    }
     void guardedUnversionedAndOriginalDestination() {
         S3Fixture f;
         f.reset();
@@ -58,21 +80,6 @@ private slots:
         auto result = f.remove(uploaded.receipt, {}, [](auto, auto ack) { ack({"disk_full", "synthetic checkpoint failure", {}}); });
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("disk_full"));
-        QCOMPARE(f.events("DELETE").size(), 0);
-    }
-    void deniedVersioningCheckExplainsRequiredPermission() {
-        S3Fixture f;
-        f.reset();
-        const auto uploaded = f.upload(f.request());
-        QCOMPARE(uploaded.status, QString("uploaded"));
-        auto configuration = rules({{{"method", "GET"}, {"query", "versioning"}, {"status", 403}}});
-        configuration["objects"] = f.state()["objects"];
-        f.reset(configuration);
-        const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.error.code, QString("s3_permission_denied"));
-        QCOMPARE(result.error.details["requestStage"].toString(), QString("delete_versioning"));
-        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
-        QVERIFY(result.error.message.contains("bucket policy"));
         QCOMPARE(f.events("DELETE").size(), 0);
     }
     void unsupportedJournalNeverDeletes_data() {
@@ -217,6 +224,19 @@ private slots:
         QVERIFY(f.events("DELETE")[0].toObject()["path"].toString().contains("versionId=null"));
         QCOMPARE(f.events("DELETE")[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
     }
+    // #1690 review: deleting a suspended bucket's null version can be answered with a delete marker
+    // whose version is "null". The null version itself is gone, so the object is removed, and Test
+    // upload and link's cleanup doesn't fail on such buckets.
+    void suspendedNullVersionAnsweredWithANullMarkerIsRemoved() {
+        S3Fixture f;
+        f.reset({{"versioning", "Suspended"}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.receipt.objectReference["versionId"].toString(), QString("null"));
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", "Suspended"}, {"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"markerReply", true}}}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
     void partialVersionFailureRetainsMarkerAndResumesOnlyExactVersion() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});
@@ -243,6 +263,35 @@ private slots:
         auto versions = f.state()["objects"].toObject()["prefix é/a b.txt"].toArray();
         QCOMPARE(versions.size(), 1);
         QCOMPARE(versions[0].toObject()["version"], marker);
+    }
+    // #1771: an unversioned delete answered with a delete marker leaves the object's bytes as a
+    // version. Retry only reads whether that version is still there, so once it is removed in the
+    // bucket the deletion ends removed instead of staying hidden_version_retained.
+    void retryAfterMarkerSettlesOnceTheKeptVersionIsRemoved() {
+        S3Fixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.request());
+        QVERIFY(uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        // Versioning was turned on later, and the bucket still reports it off.
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", "Enabled"}, {"versioningReported", ""}});
+        const auto marked = f.remove(uploaded.receipt);
+        QCOMPARE(marked.status, QString("hidden_version_retained"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        auto versions = f.state()["objects"].toObject()["prefix é/a b.txt"].toArray();
+        QCOMPARE(versions.size(), 2);
+        const auto stillThere = f.remove(uploaded.receipt, marked.progress);
+        QCOMPARE(stillThere.status, QString("hidden_version_retained"));
+        QCOMPARE(stillThere.error.code, QString("delete_marker_created"));
+        QVERIFY(!stillThere.error.message.contains("could not check"));
+        QVERIFY(f.events("HEAD").last().toObject()["path"].toString().contains("versionId=null"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        // The kept version is removed in the bucket; the marker stays.
+        versions.removeAt(0);
+        f.reset({{"objects", QJsonObject{{"prefix é/a b.txt", versions}}}, {"versioning", "Enabled"}, {"versioningReported", ""}});
+        const auto settled = f.remove(uploaded.receipt, stillThere.progress);
+        QCOMPARE(settled.status, QString("removed"));
+        QCOMPARE(settled.progress["phase"].toString(), QString("done"));
+        QCOMPARE(f.events("DELETE").size(), 0);
     }
     void cancellationAfterMarkerRetainsExactHiddenVersion() {
         S3Fixture f;
@@ -292,8 +341,9 @@ private slots:
         configuration["versioning"] = "Enabled";
         f.reset(configuration);
         auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("hidden_version_retained"));
+        QCOMPARE(result.status, QString("unknown"));
         QCOMPARE(result.progress["phase"].toString(), QString("version_unknown"));
+        QVERIFY(result.progress.contains("markerVersionId"));
         auto retry = f.remove(uploaded.receipt, result.progress);
         QCOMPARE(retry.status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 2);
@@ -346,6 +396,110 @@ private slots:
         // A retry from that journal stays unversioned and finds the object gone.
         QCOMPARE(f.remove(uploaded.receipt, journal).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
+    }
+    // Garage (#1581): a version ID on every write, no versioning, a request naming a version is
+    // answered with the current object and no version ID, and DELETE ignores If-Match. put.gd took
+    // that for another object ("changed") and never deleted what it had uploaded. It now checks the
+    // current object without the version and removes it with the conditional DELETE, as on R2.
+    void versionIgnoringBucketChecksAndRemovesLikeUnversioned() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(stat.status, QString("own"));
+        QCOMPARE(stat.receipt.objectReference, uploaded.receipt.objectReference);
+        QJsonObject journal;
+        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) {
+            journal = progress;
+            ack({});
+        });
+        QCOMPARE(removed.status, QString("removed"));
+        QVERIFY(journal["versionless"].toBool());
+        const auto deletes = f.events("DELETE");
+        QCOMPARE(deletes.size(), 1);
+        QVERIFY(!deletes[0].toObject()["path"].toString().contains("versionId"));
+        QCOMPARE(deletes[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
+    // A read that fails while telling Garage's version-only mismatch from another object ends
+    // unknown, not "changed" (which History never retries). A later Retry removes the file.
+    void versionIgnoringBucketTransientReadStaysRetryable_data() {
+        QTest::addColumn<QString>("method");QTest::addColumn<QString>("query");QTest::addColumn<int>("after");
+        // The second HEAD, of the current object without the version.
+        QTest::newRow("current-head") << QString("HEAD") << QString() << 1;
+        QTest::newRow("bucket-versioning") << QString("GET") << QString("versioning") << 0;
+    }
+    void versionIgnoringBucketTransientReadStaysRetryable() {
+        QFETCH(QString, method);QFETCH(QString, query);QFETCH(int, after);
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto objects = f.state()["objects"].toObject();
+        QJsonObject rule{{"method", method}, {"status", 503}, {"code", "SlowDown"}, {"after", after}};
+        if (!query.isEmpty()) rule["query"] = query;
+        f.reset({{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}, {"rules", QJsonArray{rule}}});
+        const auto checked = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(checked.status, QString("unknown"));
+        QCOMPARE(checked.error.details["httpStatus"].toInt(), 503);
+        rule["remaining"] = 1;
+        f.reset({{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}, {"rules", QJsonArray{rule}}});
+        const auto first = f.remove(uploaded.receipt);
+        QCOMPARE(first.status, QString("unknown"));
+        QCOMPARE(first.error.details["httpStatus"].toInt(), 503);
+        QCOMPARE(f.events("DELETE").size(), 0);
+        const auto retried = f.remove(uploaded.receipt, first.progress);
+        QCOMPARE(retried.status, QString("removed"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
+    // The same answer from an object someone else wrote (other bytes) is still "changed", and nothing is sent.
+    void versionIgnoringBucketStillRefusesAReplacedObject() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto objects = f.state()["objects"].toObject();
+        auto versions = objects["prefix é/a b.txt"].toArray();
+        auto replaced = versions.last().toObject();
+        replaced["etag"] = "\"someone-else\"";
+        versions.replace(versions.size() - 1, replaced);
+        objects["prefix é/a b.txt"] = versions;
+        QJsonObject configuration{{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}};
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("changed"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
+    // A denied versioning check stops deletion with the versioning guidance (#1677). Off Cloudflare
+    // R2's endpoint that holds even when a front answers 501 to requests naming a version: the
+    // bucket behind it may keep versions, and an unversioned delete would leave the recorded
+    // version behind a marker (Enabled) or remove a null version for good (Suspended).
+    void deniedVersioningCheckNeverDeletesWithoutProof_data() {
+        QTest::addColumn<QString>("versioning");QTest::addColumn<bool>("refusesVersions");QTest::addColumn<bool>("recordedVersion");
+        QTest::newRow("versioned-bucket") << QString("Enabled") << false << true;
+        QTest::newRow("unversioned-bucket") << QString() << false << true;
+        QTest::newRow("versioned-bucket-behind-501") << QString("Enabled") << true << true;
+        QTest::newRow("suspended-bucket-behind-501") << QString("Suspended") << true << false;
+    }
+    void deniedVersioningCheckNeverDeletesWithoutProof() {
+        QFETCH(QString, versioning);QFETCH(bool, refusesVersions);QFETCH(bool, recordedVersion);
+        S3Fixture f;
+        f.reset({{"versioning", versioning}});
+        auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        if (!recordedVersion) uploaded.receipt.objectReference["versionId"] = "";
+        QJsonArray denied{QJsonObject{{"method", "GET"}, {"query", "versioning"}, {"status", 403}, {"remaining", 1000}}};
+        if (refusesVersions) denied.append(QJsonObject{{"method", "HEAD"}, {"query", "versionId"}, {"status", 501}, {"code", "NotImplemented"}, {"remaining", 1000}});
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", versioning}, {"rules", denied}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
+        QVERIFY(!result.progress.contains("versionless"));
+        QCOMPARE(f.events("DELETE").size(), 0);
     }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;

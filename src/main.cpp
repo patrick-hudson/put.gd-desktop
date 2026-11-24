@@ -5,7 +5,13 @@
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
+#include "storage/s3/R2Provider.h"
+#include "storage/s3/R2Settings.h"
 #include "storage/b2/B2Provider.h"
+#include "storage/http/HttpImport.h"
+#include "storage/http/HttpProvider.h"
+#include "storage/dav/DavProvider.h"
+#include "storage/sftp/SftpProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -16,12 +22,15 @@
 #include "app/UiProcessController.h"
 #include "app/UploadClient.h"
 #include "app/RecordingHelperBackend.h"
+#include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/DestinationTestJournal.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
 #include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
+#include <algorithm>
 #include <QApplication>
 #include <QScreen>
 #include "platform/NativeSession.h"
@@ -37,6 +46,8 @@
 #include <QTimer>
 #include <QFileSystemWatcher>
 #include <atomic>
+#include <fcntl.h>
+#include <unistd.h>
 #include <mutex>
 #include <memory>
 #include <cstdio>
@@ -56,9 +67,19 @@
 #endif
 #ifdef PUTGD_NATIVE_GNOME
 #include "platform/gnome/GnomeAdapter.h"
+#include "platform/gnome/GnomeExtensionSetup.h"
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+#include "platform/budgie/BudgieSourceAdapter.h"
+#include "platform/budgie/BudgieClicks.h"
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+#include "platform/hyprland/HyprlandSourceAdapter.h"
+#include "platform/hyprland/HyprlandClicks.h"
 #endif
 #ifdef PUTGD_NATIVE_KDE
 #include "platform/kde/KdeSourceAdapter.h"
+#include "platform/kde/KWinClickEffect.h"
 #include "platform/wayland/DataControlSourceAdapter.h"
 #endif
 namespace {
@@ -125,6 +146,14 @@ int activateResident(const QString& view,bool background,QJsonObject& replaced) 
  else launcherError(code+": Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.");
  return 1;
 }
+// fsync of a file or folder; false when it can't be opened or synced.
+bool syncToDisk(const QString& path,bool folder) {
+ const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|(folder?O_DIRECTORY:0));
+ if(fd<0)return false;
+ const bool synced=::fsync(fd)==0;
+ ::close(fd);
+ return synced;
+}
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  const auto parent=QFileInfo(path).absolutePath();
  if(!QDir().mkpath(parent)||!QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {"setup_journal_io","Cannot create private destination test journal",{}};
@@ -142,6 +171,10 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return {"setup_journal_io","Cannot open destination test journal",{}};
  const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson(QJsonDocument::Compact);
  if(file.write(bytes)!=bytes.size()||!file.commit())return {"setup_journal_io","Cannot commit destination test journal",{}};
+ // The record is on disk before the step it records is sent (#1690): the file, the folder that
+ // names it, and the data folder that names destination-tests/, every time.
+ if(!syncToDisk(path,false)||!syncToDisk(parent,true)||!syncToDisk(QFileInfo(parent).absolutePath(),true))
+  return {"setup_journal_io","Cannot write the destination test journal to disk",{}};
  return {};
 }
 }
@@ -157,6 +190,17 @@ int main(int argc,char* argv[]) {
  if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
+#ifdef PUTGD_NATIVE_GNOME
+ // The GNOME extension copy put.gd installed for an AppImage: removed exactly
+ // the way it was added, without touching a copy it didn't create.
+ if(argc==2&&std::strcmp(argv[1],"--remove-gnome-extension")==0){
+  QCoreApplication removal(argc,argv);
+  const auto result=putgd::gnome::removeOwnedUserCopy(putgd::gnome::defaultSetupInputs());
+  if(result.needsUser()){std::fprintf(stderr,"put.gd: %s\n",qUtf8Printable(result.message));return 1;}
+  std::printf("put.gd: %s\n",result.details["removed"].toBool()?"removed the GNOME extension copy it installed; log out and back in to unload it.":"no put.gd-installed GNOME extension copy was found.");
+  return 0;
+ }
+#endif
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)) {
   std::printf("putgd %s\n",putgd::buildVersion());return 0;
  }
@@ -175,6 +219,16 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_KDE
  kdeCoreResident=putgd::kdeCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
 #endif
+ bool budgieCoreResident=false;
+#ifdef PUTGD_NATIVE_BUDGIE
+ // The same safe argument set as KDE's Core route.
+ budgieCoreResident=putgd::budgieCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
+#endif
+ bool hyprlandCoreResident=false;
+#ifdef PUTGD_NATIVE_HYPRLAND
+ // The same safe argument set as KDE's Core route (#1275).
+ hyprlandCoreResident=putgd::hyprlandCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
+#endif
 #if defined(Q_OS_LINUX) && defined(__GLIBC__)
  // Every resident handles large transient rasters: captures, bridge transfers
  // and Edit & upload staging/handoffs. A fixed mmap threshold returns them on
@@ -185,7 +239,7 @@ int main(int argc,char* argv[]) {
   qWarning("Could not apply the resident allocation policy");
 #endif
  std::unique_ptr<QCoreApplication> application;
- if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
+ if(coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident||hyprlandCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
  else {
   std::unique_ptr<QApplication> graphical;
   {putgd::GenericResidentTheme theme;graphical=std::make_unique<QApplication>(argc,argv);}
@@ -214,28 +268,44 @@ int main(int argc,char* argv[]) {
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
- putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
+ auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
+ auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
+ auto nextcloud=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::nextcloudId);providers.add(putgd::dav::nextcloudId,nextcloud);
+ auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
+ auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/ssh/known_hosts");providers.add(putgd::sftp::providerId,sftp);
+ putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
- const auto wayland=gnomeCoreResident||kdeCoreResident||(!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland");
+ const auto wayland=gnomeCoreResident||kdeCoreResident||budgieCoreResident||hyprlandCoreResident||(!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland");
  const auto desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts);
 
 #ifdef PUTGD_NATIVE_X11
  putgd::X11SourceAdapter* native=nullptr;
  putgd::X11CoreSourceAdapter* coreNative=nullptr;
  if(coreResident){auto adapter=std::make_unique<putgd::X11CoreSourceAdapter>();coreNative=adapter.get();source=std::move(adapter);}
- if(!coreResident&&!gnomeCoreResident&&!kdeCoreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
+ if(!coreResident&&!gnomeCoreResident&&!kdeCoreResident&&!budgieCoreResident&&!hyprlandCoreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
   auto adapter=std::make_unique<putgd::X11SourceAdapter>();native=adapter.get();source=std::move(adapter);
  }
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  putgd::GnomeAdapter* gnome=nullptr;
- if(wayland&&desktop.contains("GNOME",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::GnomeAdapter>();gnome=adapter.get();source=std::move(adapter);bindSource=[gnome,bindings]{gnome->bindShortcuts(bindings());};}
+ // A Budgie session may carry a GNOME token; Budgie wins (decision 2, #1275).
+ if(wayland&&desktop.contains("GNOME",Qt::CaseInsensitive)&&!putgd::desktopNamesBudgie()){auto adapter=std::make_unique<putgd::GnomeAdapter>();gnome=adapter.get();source=std::move(adapter);bindSource=[gnome,bindings]{gnome->bindShortcuts(bindings());};}
 #endif
 #ifdef PUTGD_NATIVE_KDE
  putgd::KdeSourceAdapter* kde=nullptr;
- if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+ if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)&&!putgd::desktopNamesBudgie()){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ putgd::BudgieSourceAdapter* budgie=nullptr;
+ if(budgieCoreResident){auto adapter=std::make_unique<putgd::BudgieSourceAdapter>();budgie=adapter.get();source=std::move(adapter);bindSource=[budgie,bindings,&settings]{budgie->setResourceLimits(settings.snapshot().limits);budgie->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+ putgd::HyprlandSourceAdapter* hyprland=nullptr;
+ if(hyprlandCoreResident){auto adapter=std::make_unique<putgd::HyprlandSourceAdapter>();hyprland=adapter.get();source=std::move(adapter);bindSource=[hyprland,bindings,&settings]{hyprland->setResourceLimits(settings.snapshot().limits);hyprland->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_KDE
  // Any other Wayland desktop has no capture, but may still offer the clipboard.
  putgd::DataControlSourceAdapter* dataControl=nullptr;
  if(!source&&wayland){auto adapter=std::make_unique<putgd::DataControlSourceAdapter>();dataControl=adapter.get();source=std::move(adapter);}
@@ -258,13 +328,49 @@ int main(int argc,char* argv[]) {
   QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);
  }
  operations.setRecordingBackend(std::move(recordingBackend));
+ if(QFileInfo(QCoreApplication::applicationDirPath()+"/putgd-record").isExecutable()){
+  auto scrollBackend=std::make_unique<putgd::ScrollHelperBackend>();
+  auto* scrollHelper=scrollBackend.get();
+  const auto followScroll=[&appearance,scrollHelper]{scrollHelper->setAppearance(putgd::Theme::name(appearance.scheme()));};
+  followScroll();
+  QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,followScroll);
+  operations.setScrollBackend(std::move(scrollBackend));
+ }else operations.setScrollBackend(std::make_unique<putgd::UnavailableScrollBackend>());
 #ifdef PUTGD_NATIVE_GNOME
  // GNOME keeps clients from placing their own windows: the Shell extension
  // selects recording regions, frames them and moves the control bar.
+ if(gnome)operations.scroll().setShell(gnome->scrollShell());
  if(gnome)operations.recording().setShell(gnome);
+ // Window recordings follow a window Mutter names by id (#1278).
+ if(gnome)operations.recording().setWindows(gnome);
+ // Click highlights (#1364): the extension reports presses; the recorder draws the rings.
+ if(gnome)operations.recording().setClicks(gnome);
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ // KWin streams a window by its UUID; the adapter lists them (#1278).
+ if(kde)operations.recording().setWindows(kde);
+ // Click highlights (#1364): KWin's own Mouse Click Animation effect, on for the recording.
+ if(kde)operations.recording().setClicks(new putgd::KWinClickEffect(QCoreApplication::instance()));
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)operations.recording().setWindows(budgie);
+ // Click highlights (#1364): labwc mouse binds for the length of a recording; the helper knows the pointer's place.
+ if(budgie)operations.recording().setClicks(new putgd::BudgieClicks(QCoreApplication::instance()));
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+ // Window recordings follow a window by Hyprland's stableId, put.gd's own refused by PID (#1275).
+ if(hyprland)operations.recording().setWindows(hyprland);
+ // Click highlights (#1364): non-consuming runtime mouse binds report each press on the event socket.
+ if(hyprland)operations.recording().setClicks(new putgd::HyprlandClicks(QCoreApplication::instance()));
 #endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
+ // The error log (#1753): what failed, kept for Settings → Error log. Fed by operation
+ // results, deletions, sharing changes, setup jobs, session methods and the tray.
+ putgd::ErrorLog errorLog(operations);server.setErrorLog(&errorLog);
+ QObject::connect(&history,&putgd::HistoryService::deletionFinished,&errorLog,&putgd::ErrorLog::deletionFinished);
+ QObject::connect(&history,&putgd::HistoryService::sharingFinished,&errorLog,&putgd::ErrorLog::sharingFinished);
+ QObject::connect(&history,&putgd::HistoryService::recordsForgotten,&errorLog,&putgd::ErrorLog::historyForgotten);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly,replacedResident);return retry>=0?retry:1;}return 1;}
  // This process now owns the session: open its persistent log (#74) and the
  // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
@@ -301,35 +407,156 @@ int main(int argc,char* argv[]) {
  if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
   const auto provider=profile["provider"].toString();
-  if(provider!="s3"&&provider!="backblaze-b2"){reply({"test_unsupported","This provider has no destination test",{}});return;}
+  if(provider!="s3"&&provider!="backblaze-b2"&&provider!=putgd::r2::providerId){reply({"test_unsupported","This provider has no destination test",{}});return;}
   const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  // Journal recovery first takes the journal lock and rewrites earlier tests' journals without
+  // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
+  // A test that never reached the provider leaves the last check as it was (#1692).
+  if(!operations.destinationTestsReady()){auto error=operations.notReadyError();error.details["notAttempted"]=true;reply(error);return;}
   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
-  auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
-  auto finished=[path,reply](QJsonObject result,putgd::Error error){
-   auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+  // The storage test journal boundary (#1680): whatever the worker sends, and whatever its
+  // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's
+  // test writes its journal on its own path below.
+  auto trail=std::make_shared<putgd::DestinationTestTrail>();
+  auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+   const auto written=putgd::withoutSignedTestLinks(data);
+   auto error=checkpointFile(path,written);
+   // Only a checkpoint on disk counts as acknowledged (#1690).
+   if(!error)trail->record(written);
+   ack(error);
+  };
+  auto finished=[path,trail,reply](QJsonObject result,putgd::Error error){
+   // A test refused before it recorded or sent anything leaves no journal and the last check (#1692).
+   if(result.isEmpty()&&error.details.value("notAttempted").toBool()){reply(error);return;}
+   // A worker that ended mid-test sent no outcome: each step keeps what its own checkpoints show,
+   // and one they don't show finished is unknown, never nothing (#1690).
+   result=trail->completed(result);
+   auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
   };
   if(provider=="s3"){s3->testDestination(destination,checkpoint,finished);return;}
+  if(provider==putgd::r2::providerId){r2->testDestination(destination,checkpoint,finished);return;}
   // The B2 helper call blocks; it runs on an operations worker, never this thread (#282).
   operations.background([b2,destination,checkpoint](putgd::Error& error){
    QJsonObject out;b2->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
   },[finished](putgd::Error error,QJsonObject result){finished(result,error);});
  };
  QJsonObject loginStatus,fileManagerStatus;
+ // Each destination's last check (#1692): what a Test found, new credentials, and what
+ // uploads found, kept in the data folder so Settings shows it after a restart.
+ putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
+ // The destinations whose keys a session-mode check would outlive: the ones SetupService stores keys for.
+ destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]==putgd::r2::providerId||putgd::dav::isDav(profile["provider"].toString())||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
+ destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
+ server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
+ setup.setDestinationStatus(&destinationStatus);
+ QObject::connect(&setup,&putgd::SetupService::changed,&errorLog,[&setup,&errorLog](const QString& id){
+  setup.inspect(id,[guard=QPointer<putgd::ErrorLog>(&errorLog)](putgd::Error error,QJsonObject job){if(guard&&!error)guard->setupFinished(job);});
+ });
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
-  if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2")){
+  // Nextcloud and WebDAV (#1872): sign-in, sign-out, account and folder steps, and a Test whose
+  // result (warnings, the account) comes back with it. Share tokens never reach its journal.
+  if(putgd::dav::isDav(destination.providerId)){
+   const auto dav=destination.providerId==putgd::dav::nextcloudId?nextcloud:webdav;
+   // A sign-in or a binding is kept only while the destination still exists with the server it was for.
+   const auto current=[&settings](const putgd::Destination& d){const auto p=settings.snapshot().profiles.value(d.profileId);const auto s=p["settings"].toObject();return p["provider"]==d.providerId&&s["server"]==d.settings["server"]&&s["address"]==d.settings["address"]&&p["credentials"].toObject()==d.credentialReference;};
+   const putgd::DavProvider::Background background=[&operations](auto work,auto done){operations.background(std::move(work),std::move(done));};
+   if(kind!="testDestination"){dav->setup(kind,destination,input,background,std::move(reply),std::move(event),setup.cancellation(destination.profileId,kind),current);return;}
+   // Journal recovery first, as for S3, B2 and R2: a test that never reached the provider leaves the last check as it was.
+   if(!operations.destinationTestsReady()){auto error=operations.notReadyError();error.details["notAttempted"]=true;reply(error,{});return;}
+   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+   auto trail=std::make_shared<putgd::DestinationTestTrail>();
+   auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+    // A share link's token is a secret in its path: no journal keeps one (#1872).
+    const auto written=putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks(data))).toObject();auto error=checkpointFile(path,written);if(!error)trail->record(written);ack(error);
+   };
+   // An app password stored by hand is bound to its account first, as an inspection does.
+   dav->bindThen(destination,background,current,[&operations,dav,destination,checkpoint,path,trail,reply=std::move(reply)](putgd::Error bound)mutable{
+   if(bound){reply(bound,{});return;}
+   operations.background([dav,destination,checkpoint](putgd::Error& error){
+    QJsonObject out;dav->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+   },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    result=trail->completed(result);
+    auto journalError=checkpointFile(path,putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}))).toObject());
+    if(!error&&journalError)error=journalError;
+    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+    reply(error,result);
+   });
+   });
+   return;
+  }
+  if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2"||destination.providerId==putgd::r2::providerId)){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
+  }
+  // A custom uploader's test says what it did: the link it got and whether the
+  // server offered deletion (#1361). The helper call blocks, so it runs on a worker.
+  if(kind=="testDestination"&&destination.providerId==putgd::http::providerId){
+   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+   auto trail=std::make_shared<putgd::DestinationTestTrail>();
+   auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+    auto error=checkpointFile(path,data);
+    // Only a checkpoint on disk counts (#1690).
+    if(!error)trail->record(data);
+    ack(error);
+   };
+   operations.background([http,destination,checkpoint](putgd::Error& error){
+    QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+   },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    result=trail->completed(result);
+    auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+    if(!error&&journalError)error=journalError;
+    reply(error,result);
+   });
+   return;
+  }
+  // SFTP (#1871): its test writes its own journal, as the custom uploader's does; Settings and
+  // agents also resolve the connection, trust a host key and create the folder. Each blocks on a worker.
+  if(destination.providerId==putgd::sftp::providerId){
+   if(kind=="testDestination"){
+    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+    auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+    operations.background([sftp,destination,checkpoint,event](putgd::Error& error){
+     QJsonObject out;sftp->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;},[event](const QString& message){event({{"event","notice"},{"message",message}});});return out;
+    },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+     auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+     if(!error&&journalError)error=journalError;
+     reply(error,result);
+    });
+    return;
+   }
+   if(kind=="trustHostKey"){
+    // The resident records the trusted key in the destination itself, only while the configuration is
+    // still the one the trust began with; the record changes its check, so an earlier Test no longer vouches.
+    operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},
+     [&settings,destination,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+      if(error){reply(error,result);return;}
+      auto document=settings.document();auto profiles=document["profiles"].toArray();bool found=false;
+      for(qsizetype i=0;i<profiles.size();++i){auto p=profiles[i].toObject();if(p["id"]!=destination.profileId||p["provider"]!=putgd::sftp::providerId)continue;auto s=p["settings"].toObject();s["hostKeyFingerprint"]=result["fingerprint"];p["settings"]=s;profiles[i]=p;found=true;}
+      if(!found){reply({"profile_not_found","The destination was removed while its host key was trusted",{}},result);return;}
+      document["profiles"]=profiles;
+      settings.saveAsync(document,destination.profileRevision,[reply,result](putgd::Result saved){
+       if(saved.error){auto e=saved.error;e.message="The key was trusted, but recording it in the destination failed: "+e.message+" Test the destination again.";reply(e,result);return;}
+       reply({},result);
+      });
+     });
+    return;
+   }
+   operations.background([sftp,kind,destination,input](putgd::Error& error){return sftp->setup(kind,destination,input,error);},std::move(reply));
+   return;
   }
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
+ setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
+ setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);
+ server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
  // A diagnostics package uploads only to a destination whose Test connection
  // passes now, with the credentials already loaded (#123).
  // A Test connection that passes in Settings clears an earlier failed upload's block.
@@ -338,10 +565,21 @@ int main(int argc,char* argv[]) {
    if(!error&&job["kind"]=="testDestination"&&job["state"]=="completed")bundles.destinationTested(job["profileId"].toString());
   });
  });
- bundles.setDestinationTest([&settings,providerSetup](const QString& profileId,std::function<void(putgd::Error)> done){
-  const auto profile=settings.snapshot().profiles.value(profileId);
-  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
-  providerSetup("testDestination",destination,{},[done](putgd::Error error,QJsonObject){done(error);},[](QJsonObject){});
+ // Through SetupService, so it takes the destination's one setup slot like any other Test (#1872).
+ bundles.setDestinationTest([&settings,&setup](const QString& profileId,std::function<void(putgd::Error)> done){
+  setup.start("testDestination",profileId,settings.revision(),{},[&setup,done](putgd::Error error,QJsonObject started){
+   if(error){done(error);return;}
+   const auto id=started["setupId"].toString();auto connection=std::make_shared<QMetaObject::Connection>();
+   *connection=QObject::connect(&setup,&putgd::SetupService::changed,&setup,[&setup,id,done,connection](const QString& changed){
+    if(changed!=id)return;
+    setup.inspect(id,[done,connection](putgd::Error e,QJsonObject job){
+     if(!e&&job["state"]=="running")return;
+     QObject::disconnect(*connection);
+     const auto failed=job["error"].toObject();
+     done(e?e:putgd::Error{failed["code"].toString(),failed["message"].toString(),failed["details"].toObject()});
+    });
+   });
+  });
  });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.
@@ -349,10 +587,18 @@ int main(int argc,char* argv[]) {
  // upload waits until it has (#1105): it would otherwise reach the destination
  // with no credentials and fail.
  QTimer::singleShot(startedForUpload?0:3000,&setup,[&setup]{setup.unlockSavedCredentials();});
+ // With a Proton destination configured, check its bundled runtime once in the background,
+ // so the first upload does not wait for the hash of a 110 MB file.
+ const auto prepareProton=[&settings,proton]{
+  const auto profiles=settings.snapshot().profiles;
+  if(std::any_of(profiles.cbegin(),profiles.cend(),[](const QJsonObject& profile){return profile["provider"]=="proton-drive";}))proton->prepare();
+ };
+ QTimer::singleShot(startedForUpload?0:3000,&app,prepareProton);QObject::connect(&settings,&putgd::SettingsService::accepted,&app,prepareProton);
  operations.setUploadGate([&setup]()->putgd::Error{return setup.savedCredentialsSettled()?putgd::Error{}:putgd::Error{"initializing","put.gd is reading its saved credentials",{}};});
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);
+ ui.setPersonToken(server.personToken());
  ui.setShortcutRecordingHandler([&](bool active,std::function<void(putgd::Error)> reply){
   // Gate dispatch before asking native services to release their registrations.
   // The adapter acknowledgement, not this flag, makes capture safe to start.
@@ -367,7 +613,13 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_KDE
   if(kde){kde->setShortcutRecording(active,std::move(reply));return;}
 #endif
-  reply(active?putgd::Error{"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}}:putgd::Error{});
+#ifdef PUTGD_NATIVE_BUDGIE
+  if(budgie){budgie->setShortcutRecording(active,std::move(reply));return;}
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+  if(hyprland){hyprland->setShortcutRecording(active,std::move(reply));return;}
+#endif
+  reply(active?putgd::Error{"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}}:putgd::Error{});
  });
  QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
@@ -377,12 +629,23 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+ // A timed retry for an unavailable extension maps D-Bus pages again; releasing
+ // them after it keeps the resident at its quiet size (#1187).
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::discoveryRetried,&operations,&putgd::OperationService::requestImagePageRelease);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
  if(dataControl)QObject::connect(dataControl,&putgd::DataControlSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
- const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)QObject::connect(budgie,&putgd::BudgieSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+ if(hyprland)QObject::connect(hyprland,&putgd::HyprlandSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+#endif
+ // Deletions stop first, before the UI helper is waited for: none is admitted from here
+ // on, and running ones have their helpers killed (#1602).
+ const auto quitApplication=[&]{history.stopDeletions();ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
  putgd::TrayController tray(operations,[&](const QString& requested,const QString& activationToken){startupRecovery.stop();ui.activate(requested,{},activationToken);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
@@ -393,13 +656,27 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::actionRequested,&tray,requested);
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::setupNotice,&tray,&putgd::TrayController::notifyDesktopSetup);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
 #endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)QObject::connect(budgie,&putgd::BudgieSourceAdapter::actionRequested,&tray,requested);
+ // Budgie's settings and rc.xml keep nothing of put.gd once it quits.
+ if(budgie)QObject::connect(&app,&QCoreApplication::aboutToQuit,budgie,[budgie]{budgie->clearShortcuts();});
+#endif
+#ifdef PUTGD_NATIVE_HYPRLAND
+ if(hyprland)QObject::connect(hyprland,&putgd::HyprlandSourceAdapter::actionRequested,&tray,requested);
+ // Runtime binds are put.gd's until it quits; a reload restores the desktop's own.
+ if(hyprland)QObject::connect(&app,&QCoreApplication::aboutToQuit,hyprland,[hyprland]{hyprland->clearShortcuts();});
+#endif
  server.setUiQuit(quitApplication);
  // A file-manager upload with no destination to go to opens Destinations (#1105).
  QObject::connect(&operations,&putgd::OperationService::destinationRequired,&app,[&]{startupRecovery.stop();ui.activate("destinations",{});});
+ // A capture, the editor or a recording asked for by any route counts as
+ // activation too: Settings must not open over its window (#1252).
+ QObject::connect(&operations,&putgd::OperationService::explicitRequest,&startupRecovery,&QTimer::stop);
  // #490: the resident ends with its login session, whatever the session manager
  // does with its autostart entries: when logind reports the session closing,
  // or when the X server it shortcuts and captures through goes away.
@@ -418,6 +695,7 @@ int main(int argc,char* argv[]) {
 #endif
  // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
  updates.setBusy([&]()->QString{
+  if(operations.scroll().active())return "A scrolling capture is running; install the update when it has finished";
   if(operations.recording().active())return "A recording is running; install the update when it has finished";
   if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running; install the update when it has finished";
   return {};
@@ -431,15 +709,15 @@ int main(int argc,char* argv[]) {
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setLinkOpener([](const QUrl& link,std::function<void(const QJsonObject&)> done){putgd::TrayController::openLink(link,"history-link",std::move(done));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["fileManagerMenu"]=fileManagerStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["trayIcon"]=tray.trayIconState();diagnostics["update"]=updates.status();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["fileManagerMenu"]=fileManagerStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["trayIcon"]=tray.trayIconState();diagnostics["trayMenu"]=tray.trayMenuState();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.
  bundles.setEnvironment([&]{
   QJsonArray screens;
   if(qobject_cast<QGuiApplication*>(QCoreApplication::instance()))for(const auto* screen:QGuiApplication::screens())screens.append(QJsonObject{{"devicePixelRatio",screen->devicePixelRatio()},{"logicalDpi",screen->logicalDotsPerInch()}});
-  return QJsonObject{{"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
-   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},{"trayAvailable",tray.available()},
+  return QJsonObject{{"platform",coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident||hyprlandCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":budgieCoreResident?"budgie-core":hyprlandCoreResident?"hyprland-core":"graphical"},{"trayAvailable",tray.available()},
    {"portal",portalStatus},{"screenCount",screens.size()},{"screens",screens}};
  });
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
@@ -447,7 +725,10 @@ int main(int argc,char* argv[]) {
  QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&history,&putgd::HistoryService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&destinationStatus,&putgd::DestinationStatus::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&updates,&putgd::UpdateService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&errorLog,&putgd::ErrorLog::changed,&ui,&putgd::UiProcessController::invalidate);
+ tray.setErrorLog(&errorLog);
  QObject::connect(&updates,&putgd::UpdateService::changed,&tray,[&]{tray.setUpdateStatus(updates.status());});
  QObject::connect(&updates,&putgd::UpdateService::updateAvailable,&tray,&putgd::TrayController::notifyUpdate);
  updates.start();tray.setUpdateStatus(updates.status());
@@ -472,12 +753,12 @@ int main(int argc,char* argv[]) {
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  // "Upload with put.gd" in file managers (#1105): the per-user entries, written
  // at every start (DING or COSMIC may have arrived since) and when the AppImage's
- // switch changes; the notice once per installation.
+ // switch changes; the AppImage's notice once per installation (DEB/RPM have none).
  const auto fileManagerMutex=std::make_shared<std::mutex>();
  const auto fileManagerGeneration=std::make_shared<std::atomic_ullong>(0);
  const auto configureFileManagers=[&] {
   // A development build's DEB/RPM-style run has no system menu files to go with
-  // per-user ones, and its stamp would announce a menu that isn't there.
+  // per-user ones.
   if(putgd::host::installationClass()=="system"&&QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath()!=QStringLiteral("/usr/bin/putgd"))return;
   const auto ticket=++*fileManagerGeneration;
   putgd::FileManagerContext context;
@@ -518,15 +799,16 @@ int main(int argc,char* argv[]) {
  else if(!tray.available()&&!startedForUpload) {
   // XDG autostart can precede the desktop's tray watcher or host. Give them a
   // bounded startup grace period before exposing the no-tray recovery window.
-  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});
+  // An editor or recording window already open has shown put.gd is running.
+  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available()&&operations.editingOperation().isEmpty()&&!operations.recording().active())showInitialView();});
   startupRecovery.start(10000);
  }
  {
   QJsonObject startup{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"os",QSysInfo::prettyProductName()},
    {"kernel",QSysInfo::kernelVersion()},{"architecture",QSysInfo::currentCpuArchitecture()},{"desktop",qEnvironmentVariable("XDG_CURRENT_DESKTOP")},
    {"sessionType",qEnvironmentVariable("XDG_SESSION_TYPE")},{"qtRuntime",qVersion()},{"qtCompiled",QT_VERSION_STR},
-   {"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
-   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},
+   {"platform",coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident||hyprlandCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":budgieCoreResident?"budgie-core":hyprlandCoreResident?"hyprland-core":"graphical"},
    {"trayAvailable",tray.available()},{"locations",locations.report},{"capabilities",source->capabilities()}};
   putgd::logging::info(putgd::logApp(),"Resident started",startup);
   if(!replacedResident.isEmpty())putgd::logging::info(putgd::logApp(),"Replaced a resident from an ended login session",replacedResident);
@@ -541,7 +823,8 @@ int main(int argc,char* argv[]) {
   },[&portalStatus](putgd::Error,QJsonObject portal){portalStatus=portal;putgd::logging::info(putgd::logApp(),"Desktop portal availability",portal);});
 #endif
  }
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
+ // A quit that did not come through quitApplication (a signal) stops deletions here.
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();sftp->shutdown();operations.shutdown();errorLog.flush();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
 #ifdef Q_OS_LINUX

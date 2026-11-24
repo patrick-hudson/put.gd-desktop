@@ -56,11 +56,11 @@ if(PUTGD_LAB_FIXTURE)
   install(TARGETS putgd-desktop-fixture RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
 
-# SDK provisioned by docs/build.md remains privately bundled and replaceable; Qt is distro-owned.
+# SDK provisioned by docs/release/build.md remains privately bundled and replaceable; Qt is distro-owned.
 set(PUTGD_AWS_RUNTIME_DIR "${PROJECT_SOURCE_DIR}/build/sdk/lib" CACHE PATH "Official SDK runtime library directory")
 file(GLOB aws_runtime "${PUTGD_AWS_RUNTIME_DIR}/libaws*.so*" "${PUTGD_AWS_RUNTIME_DIR}/libs2n.so*")
 if(NOT aws_runtime)
-  message(FATAL_ERROR "Official AWS shared runtime missing: provision docs/build.md or set PUTGD_AWS_RUNTIME_DIR")
+  message(FATAL_ERROR "Official AWS shared runtime missing: provision docs/release/build.md or set PUTGD_AWS_RUNTIME_DIR")
 endif()
 install(FILES ${aws_runtime} DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 set(runtime_manifest "{\n  \"schemaVersion\": 1,\n  \"libraries\": [\n")
@@ -101,12 +101,33 @@ if(PUTGD_RELEASE_TAG)
 endif()
 configure_file(runtime-notices.txt.in package-inputs/runtime-notices.txt @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/runtime-notices.txt" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
-putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-data-control-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
-putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-data-control-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-data-control-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-image-copy-capture-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-image-copy-capture-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-image-capture-source-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-image-capture-source-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-foreign-toplevel-list-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-foreign-toplevel-list-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-foreign-toplevel-management-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-foreign-toplevel-management-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-layer-shell-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-layer-shell-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/hyprland-global-shortcuts-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-hyprland-global-shortcuts-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/hyprland-toplevel-mapping-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-hyprland-toplevel-mapping-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-zkde-screencast-unstable-v1.xml)
+# Scrolling capture (#1376): the wheel goes through these on wlroots compositors and on KWin.
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-virtual-pointer-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-virtual-pointer-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/fake-input.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-fake-input.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/packaging/linux/LGPL-2.1.txt"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME LGPL-2.1.txt)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")
@@ -154,9 +175,19 @@ foreach(embedded IN ITEMS "src/aws-cpp-sdk-core/source/external/cjson/cJSON.cpp|
     "From ${embedded_source} in the AWS SDK for C++ source:\n\n${embedded_text}\n")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 endforeach()
+putgd_install_snapshot(qrcodegen-LICENSE "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+# The scrolling capture's tracker ports wayscrollshot's and mark-shot's band
+# matcher (MIT): their copyright lines and permission notice, for every package.
+putgd_install_snapshot(scroll-tracker-LICENSE "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 foreach(font_notice IN ITEMS OFL-sans.txt OFL-mono.txt SOURCE.md)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ui/fonts/${font_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/fonts")
+endforeach()
+# putgd-ocr's emoji templates are drawn from Noto Color Emoji (OFL-1.1) and
+# Twemoji Mozilla (CC-BY-4.0), for the sequences of Unicode's emoji-test.txt
+# (Unicode-3.0) (#1748): their licences and where they came from.
+foreach(emoji_notice IN ITEMS OFL.txt CC-BY-4.0.txt UNICODE-LICENSE.txt SOURCE.md)
+  putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ocr/emoji/${emoji_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/emoji")
 endforeach()
 
 # Tagged DEB/RPM builds add their channel's signed repository at pkg.put.gd
@@ -172,7 +203,7 @@ elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+$")
 endif()
 set(repo_dir "${CMAKE_CURRENT_SOURCE_DIR}/repo")
 include("${PROJECT_SOURCE_DIR}/cmake/PackageRepositoryFiles.cmake")
-if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13|fedora44)$")
+if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13|fedora44|fedora45)$")
   putgd_repository_files("${PUTGD_PACKAGE_TARGET}" "${PUTGD_PACKAGE_REPOSITORY_URL}" "${repo_dir}" "${CMAKE_CURRENT_BINARY_DIR}/repo")
 endif()
 if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13)$")
@@ -185,7 +216,7 @@ if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/repo/conffiles")
   # 0644 whatever the builder's umask, as dpkg and lintian expect.
   set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
-elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
+elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^fedora4[45]$")
   # rpm-post.sh copies putgd.repo, this package's own channel, on the first install.
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${PUTGD_REPO_CHANNEL}.repo" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo" RENAME putgd.repo)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-nightly.repo" "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-stable.repo"
@@ -200,6 +231,14 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
   set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${repo_dir}/rpm-post.sh")
   set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
   list(APPEND putgd_rpm_system_dirs /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
+endif()
+if(PUTGD_PACKAGE_TARGET STREQUAL "archlinux")
+  foreach(channel nightly stable)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "[putgd-${channel}]\nSigLevel = PackageRequired DatabaseRequired\nServer = ${PUTGD_PACKAGE_REPOSITORY_URL}/pacman/x86_64/${channel}\n")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "${repo_dir}/keys/putgd-${channel}.asc" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  endforeach()
 endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
@@ -231,7 +270,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 # History previews of WebP recordings and images read through Qt's WebP image
 # plugin (#189), which Debian, Ubuntu and Fedora ship apart from Qt GUI (GIF and
-# JPEG come with it). The AppImage and the Flatpak runtime carry it already.
+# JPEG come with it). The AppImage carries it already.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, hicolor-icon-theme, gtk-update-icon-cache")
 configure_file(refresh-icon-cache.sh package-inputs/postinst COPYONLY)
 configure_file(refresh-icon-cache.sh package-inputs/postrm COPYONLY)
@@ -247,6 +286,9 @@ set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2, hicolor-icon-theme, /usr/bin/gtk-update-icon-cache")
+# The SFTP destination (#1871) runs the user's own OpenSSH client, ssh.
+string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", openssh-client")
+string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", openssh-clients")
 set(CPACK_RPM_POST_TRANS_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postinst")
 # Keep the repository erase handling as well as refreshing the theme cache.
 if(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE)
@@ -277,6 +319,10 @@ set(putgd_rpm_private_dirs "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putg
 list(JOIN putgd_rpm_private_dirs "|" putgd_rpm_private_dirs)
 set(CPACK_RPM_SPEC_MORE_DEFINE
   "%global __provides_exclude_from ^(${putgd_rpm_private_dirs})/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n|libnautilus-extension|libcaja-extension)[.]so.*$\n%define __spec_install_post /bin/true")
+if(TARGET putgd-ocr)
+  string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", tesseract-ocr-eng")
+  string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", tesseract-langpack-eng")
+endif()
 if(TARGET putgd-record)
   # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
   # those); element plugins are separate packages that must be present.
@@ -301,6 +347,15 @@ foreach(recommends CPACK_DEBIAN_PACKAGE_RECOMMENDS CPACK_RPM_PACKAGE_RECOMMENDS)
     set(${recommends} gvfs-fuse)
   endif()
 endforeach()
+if(TARGET putgd-ocr)
+  # #1981: script detection (osd) and one language for each script it reads
+  # again (Simplified Chinese, Japanese, Korean, Russian, Arabic, Hebrew, Hindi,
+  # Thai, Greek). Recommended, not required: without them a page in another
+  # script is read with the job's own languages, as before. Kept in step with
+  # tools/releases/native.py RECOMMENDED_PACKAGES and src/ocr/Script.cpp.
+  string(APPEND CPACK_DEBIAN_PACKAGE_RECOMMENDS ", tesseract-ocr-osd, tesseract-ocr-chi-sim, tesseract-ocr-jpn, tesseract-ocr-kor, tesseract-ocr-rus, tesseract-ocr-ara, tesseract-ocr-heb, tesseract-ocr-hin, tesseract-ocr-tha, tesseract-ocr-ell")
+  string(APPEND CPACK_RPM_PACKAGE_RECOMMENDS ", tesseract-osd, tesseract-langpack-chi_sim, tesseract-langpack-jpn, tesseract-langpack-kor, tesseract-langpack-rus, tesseract-langpack-ara, tesseract-langpack-heb, tesseract-langpack-hin, tesseract-langpack-tha, tesseract-langpack-ell")
+endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")

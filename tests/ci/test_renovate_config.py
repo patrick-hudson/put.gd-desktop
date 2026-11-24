@@ -26,7 +26,7 @@ class RenovateConfig(unittest.TestCase):
         self.assertFalse(CONFIG['automerge'])
         self.assertFalse(CONFIG['platformAutomerge'])
         self.assertLessEqual(CONFIG['prConcurrentLimit'], 5)
-        # The workflow token cannot push .github/workflows changes (docs/ci.md).
+        # The workflow token cannot push .github/workflows changes (docs/release/ci.md).
         self.assertEqual(CONFIG['enabledManagers'], ['custom.regex', 'npm', 'pep621'])
 
     def test_every_regex_manager_matches_in_every_file_it_names(self):
@@ -50,10 +50,20 @@ class RenovateConfig(unittest.TestCase):
             self.assertEqual(seen, {tool['name'] for tool in lock['tools']}, name)
         lock = json.loads((ROOT / 'packaging/appimage/tools.lock.json').read_text())['buildInputs']
         pinned = {item['repository'].removeprefix('https://github.com/').removesuffix('.git')
-                  for item in [*lock['qtLicenseSources'], *(value for value in lock.values() if isinstance(value, dict))]}
+                  for item in [*lock['qtLicenseSources'], *(value for value in lock.values() if isinstance(value, dict) and 'release' in value)]}
         text = (ROOT / 'packaging/appimage/tools.lock.json').read_text()
         seen = {match['depName'] for match in python_pattern(managers[1]['matchStrings'][0]).finditer(text)}
         self.assertEqual(seen, pinned)
+
+    def test_ignore_paths_never_hide_a_regex_managed_file(self):
+        # Renovate skips ignorePaths before custom managers read their files.
+        def glob(pattern):
+            text = re.escape(pattern).replace(r'\*\*/', '(?:.*/)?').replace(r'\*\*', '.*').replace(r'\*', '[^/]*')
+            return re.compile(text + r'\Z')
+        ignored = [glob(pattern) for pattern in CONFIG['ignorePaths']]
+        for manager in CONFIG['customManagers']:
+            for path in managed_files(manager):
+                self.assertFalse(any(pattern.match(path) for pattern in ignored), path)
 
     def test_regex_managers_leave_workflow_actions_to_dependabot(self):
         for manager in CONFIG['customManagers']:

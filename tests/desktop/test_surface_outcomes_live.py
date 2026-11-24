@@ -14,7 +14,8 @@ from unittest.mock import Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.fixtures.base import Fixture
-from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3
+from tools.lab.surface_driver.fixtures.live_outcomes import (key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3,
+                                                             r2_scoped, verify_presigned, verify_r2)
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
 from tools.lab.surface_driver import browser
@@ -186,6 +187,90 @@ class LiveOutcomes(unittest.TestCase):
                      first.replace('AWS Region ID: us-east-2\n','')+pair+other, 'unlabelled text'):
             with self.assertRaises(RecipeBlocked):key_set_two(text)
 
+    def test_r2_takes_only_the_bucket_scoped_key_never_the_broad_one(self):
+        account='0123456789abcdef0123456789abcdef'
+        broad=('Cloudflare R2\nAccess key ID: broad-expired\nSecret access key: broad-secret\n'
+               'S3 API: https://'+account+'.r2.cloudflarestorage.com\n')
+        scoped=('\nR2 object-scoped\nAccess key ID: '+'c'*32+'\nSecret access key: '+'d'*64+'\n'
+                'R2 public URL: https://pub-0a1b2c.r2.dev\nR2 bucket: putgd-test\n')
+        text='AKIA'+'A'*16+' '+'b'*40+'\n'+broad+scoped
+        parsed=r2_scoped(text)
+        self.assertEqual(parsed['credentials'],dict(accessKey='c'*32,secretKey='d'*64,sessionToken=''))
+        self.assertEqual(parsed['settings'],dict(accountId=account,bucket='putgd-test',publicUrlBase='https://pub-0a1b2c.r2.dev'))
+        for bad in (broad, text+scoped, text.replace('R2 bucket: putgd-test\n',''),
+                    text.replace('R2 public URL: https://pub-0a1b2c.r2.dev\n',''),
+                    text.replace(account+'.r2', 'f'*32+'.r2')+'https://'+account+'.r2.cloudflarestorage.com\n',
+                    text.replace('Secret access key: '+'d'*64+'\n',''),
+                    # An AWS pair under the R2 heading must never reach Cloudflare.
+                    text.replace('c'*32,'AKIA'+'A'*16).replace('d'*64,'b'*40)):
+            with self.subTest(bad=bad[-60:]), self.assertRaises(RecipeBlocked):
+                r2_scoped(bad)
+
+    def test_r2_public_link_is_judged_before_delete_and_only_recorded_after(self):
+        data=b'synthetic r2 bytes'
+        digest=hashlib.sha256(data).hexdigest()
+        key='acceptance/tier1-live/'+'a'*32+'/Tier1-x.png'
+        notes=[]
+        def expect(ok, message):
+            if not ok: raise RecipeFailed(message)
+        ctx=SimpleNamespace(expect=expect, note=notes.append)
+        client=Mock()
+        client.exceptions.NoSuchKey=KeyError
+        client.head_object.return_value={'ContentLength':len(data)}
+        client.get_object.return_value={'Body':io.BytesIO(data)}
+        fx=Fixture(prefix='acceptance/tier1-live/'+'a'*32+'/', bucket='putgd-test', client=client)
+        detail={'receipt':{'objectReference':{'key':key},'destination':{'settings':{'bucket':'putgd-test'}},
+                           'directUrl':'https://cf.ul.gy/'+key}}
+        answers={'https://cf.ul.gy/'+key: dict(status=200, sha256=digest)}
+        with patch('tools.lab.surface_driver.fixtures.live_outcomes._public_get', side_effect=lambda u: answers[u]):
+            verify_r2(ctx, fx, detail, data, base='https://cf.ul.gy')
+            with self.assertRaises(RecipeFailed):  # The link must be on the base it was published with.
+                client.get_object.return_value={'Body':io.BytesIO(data)}
+                verify_r2(ctx, fx, detail, data, base='https://pub-0a1b.r2.dev')
+            answers['https://cf.ul.gy/'+key]=dict(status=404)
+            with self.assertRaises(RecipeFailed):
+                client.get_object.return_value={'Body':io.BytesIO(data)}
+                verify_r2(ctx, fx, detail, data, base='https://cf.ul.gy')
+            # After the delete: the origin decides; a cached 200 on the public host is only recorded.
+            answers['https://cf.ul.gy/'+key]=dict(status=200, sha256=digest)
+            client.get_object.side_effect=KeyError
+            verify_r2(ctx, fx, detail, absent=True, base='https://cf.ul.gy')
+            self.assertIn('r2_origin_absence_count=1', notes)
+            self.assertTrue(any('after_delete_informational' in n and '200' in n for n in notes))
+            client.get_object.side_effect=None
+            client.get_object.return_value={'Body':io.BytesIO(data)}
+            with self.assertRaises(RecipeFailed):
+                verify_r2(ctx, fx, detail, absent=True, base='https://cf.ul.gy')
+
+    def test_presigned_link_must_work_signed_and_be_refused_unsigned(self):
+        data=b'synthetic presigned bytes'
+        digest=hashlib.sha256(data).hexdigest()
+        key='acceptance/tier1-live/'+'a'*32+'/x.png'
+        url=('https://s3.us-east-2.amazonaws.com/put.gd/'+key+'?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+             '&X-Amz-Expires=86400&X-Amz-Signature=abc')
+        fx=Fixture(prefix='acceptance/tier1-live/'+'a'*32+'/', bucket='put.gd')
+        host='s3.us-east-2.amazonaws.com'
+        receipt=lambda u: dict(directUrl=u, linkExpiresAt='x', objectReference=dict(key=key),
+                               destination=dict(settings=dict(bucket='put.gd')))
+        def expect(ok, message):
+            if not ok: raise RecipeFailed(message)
+        ctx=SimpleNamespace(expect=expect, note=lambda _text: None)
+        detail=dict(receipt=receipt(url))
+        answers={url: dict(status=200, sha256=digest), url.split('?')[0]: dict(status=403)}
+        with patch('tools.lab.surface_driver.fixtures.live_outcomes._public_get', side_effect=lambda u: answers[u]):
+            verify_presigned(ctx, fx, detail, data, host=host)
+            answers[url.split('?')[0]]=dict(status=200, sha256=digest)
+            with self.assertRaisesRegex(RecipeFailed, 'without the signature'):
+                verify_presigned(ctx, fx, detail, data, host=host)
+            answers[url.split('?')[0]]=dict(status=403)
+            for broken in (url.replace('86400','604800'), url.replace('&X-Amz-Signature=abc',''),
+                           'https://put.gd/'+key, url.replace(host, 's3.us-west-1.amazonaws.com'),
+                           url.replace('/put.gd/', '/other-bucket/'), url.replace(key, key.replace('x.png', 'y.png')),
+                           url.replace(host, '0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com')):
+                answers[broken]=dict(status=200, sha256=digest)
+                with self.subTest(broken=broken), self.assertRaises(RecipeFailed):
+                    verify_presigned(ctx, fx, dict(receipt=receipt(broken)), data, host=host)
+
     def test_live_rejects_boat_native_wrong_desktop_before_secret_read(self):
         for placement,host,desktop in [('boat','boat','mint-cinnamon-x11'),('native','f44','kubuntu-kde-wayland'),
                                         ('guest','d69','kubuntu-kde-wayland')]:
@@ -228,6 +313,59 @@ class LiveOutcomes(unittest.TestCase):
                     with self.assertRaisesRegex(RecipeBlocked, reason):
                         admit(ctx)
 
+    def test_budgie_and_hyprland_live_are_their_own_golden_on_their_builder(self):
+        budgie, omarchy = 'fedora45-budgie', 'omarchy-hyprland-20261108'
+        for host, desktop, package, actual, image, reason in (
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
+                ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
+                # Omarchy's clipboard history keeps copied links on disk: live only once a copy is seen to stay off it.
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'synthetic lock denied'),
+                ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'not on an authorized builder'),
+                ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'not on an authorized builder'),
+                ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', budgie, 'requires an approved guest package/profile'),
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'omarchy-hyprland', budgie, "own lab golden"),
+                # The right profile label on another image is still refused.
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'fedora44-budgie', "own lab golden")):
+            image, off = image.split('/')[0], image.endswith('/off')
+            with self.subTest(host=host, desktop=desktop, package=package, actual=actual, image=image, off=off):
+                report = json.dumps(dict(historyOff=off, reason='' if off else 'a clipboard history watcher still runs'))
+                ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop, package=package,
+                                      target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
+                                      profile={'guest': actual}, _live_admitted=True,
+                                      shell=Mock(return_value=dict(returncode=0, stdout=report)))
+                state = {'profile': actual, 'golden': str(Path.home()/'work/put.gd/work/lab-images'/image/'image.qcow2')}
+                with patch('tools.lab.lab.state', return_value=state), \
+                     patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                     patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
+                    with self.assertRaisesRegex(RecipeBlocked, reason):
+                        admit(ctx)
+
+    def test_omarchy_live_needs_its_clipboard_history_seen_off_after_the_lease_and_slot(self):
+        # Omarchy's clipboard history stores copied links on disk: live starts only once the guest shows
+        # it off, and that check (it replaces the clipboard) runs only after the lease and the exact slot.
+        with tempfile.TemporaryDirectory() as home:
+            run = Path(home)/'run'
+            slot = Path(home)/'putgd-lab/locks/tier1-guest.lock.d'
+            slot.mkdir(parents=True)
+            (slot/'session').write_text('synthetic-session\n')
+            (slot/'owner.json').write_text(json.dumps({'run': str(run)}))
+            image = Path(home)/'work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2'
+            for off, reason in ((False, 'history is not verified off'), (True, 'private app root must be on guest tmpfs')):
+                with self.subTest(off=off):
+                    report = json.dumps(dict(historyOff=off, reason='' if off else 'a clipboard history watcher still runs'))
+                    shell = Mock(side_effect=[dict(returncode=0, stdout=report), dict(returncode=0, stdout='ext4')])
+                    ctx = SimpleNamespace(destination='s3', placement='guest', host='m74', desktop='omarchy-hyprland-wayland',
+                                          package='appimage', profile={'guest': 'omarchy-hyprland'}, _live_admitted=True,
+                                          target=SimpleNamespace(physical=None, run=run, root=str(run/'root')), shell=shell)
+                    with patch('pathlib.Path.home', return_value=Path(home)), \
+                         patch('tools.lab.lab.state', return_value={'profile': 'omarchy-hyprland', 'golden': str(image)}), \
+                         patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                         patch('tools.lab.desktop_lock.Desktop') as lock:
+                        with self.assertRaisesRegex(RecipeBlocked, reason):
+                            admit(ctx)
+                    lock.return_value.heartbeat.assert_called_once_with('synthetic-session')
+                    self.assertIn('clipboard-history.json', shell.call_args_list[0].args[0])
+
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
         """Reject unsupported or misidentified AppImages before any lease or credential access."""
         for host, desktop, guest, actual in (
@@ -264,7 +402,8 @@ class LiveOutcomes(unittest.TestCase):
 
     def test_destinations_claim_only_supported_cleanup_interactions(self):
         recipes=discover('outcomes_live');validate_recipes(recipes)
-        self.assertEqual(len(recipes),2)
+        self.assertEqual(sorted(r.name for r in recipes),['outcomes_live.proton_region_upload',
+                         'outcomes_live.s3_r2_region_upload','outcomes_live.s3_region_upload'])
         for r in recipes:
             self.assertEqual(len(r.destinations),1)
             self.assertIn('region.to-upload',r.interactions)
@@ -288,7 +427,7 @@ class LiveOutcomes(unittest.TestCase):
     def test_proton_revoke_uses_message_box_geometry_and_restores_profile(self):
         previous={'confirmAction':{'accessible':{'role':'dialog'}}}
         ctx=SimpleNamespace(destination='proton',profile={'windows':previous},click=Mock(),focus=Mock(),scroll=Mock(),
-                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),note=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),frame=Mock(),note=Mock(),
                             wait=lambda fn,*a,**kw:fn(),call=lambda *a,**kw:{'shareStatus':'revoked','linkAvailable':False},
                             expect=lambda ok,note:self.assertTrue(ok,note))
         def observed(*args):
@@ -301,30 +440,81 @@ class LiveOutcomes(unittest.TestCase):
         ctx.click.assert_any_call('text:Revoke link…',window='history')
         ctx.note.assert_called_once_with('revocation_count=1')
 
+    def test_retried_delete_ignores_its_stale_status_and_reports_a_new_failure(self):
+        details=[{'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
+                 {'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
+                 {'id':'owned','remoteStatus':'failed','linkAvailable':False}]
+        def wait(fn,*a,**kw):
+            for _ in range(5):
+                if value:=fn():return value
+            raise AssertionError('wait never settled')
+        def call(method,params=None):
+            if method=='history.detail':return details.pop(0)
+            return {}
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
+                            wait=wait,call=Mock(side_effect=call),expect=lambda ok,note:self.assertTrue(ok,note))
+        with patch.object(outcomes_live.outcomes,'_history'),self.assertRaisesRegex(AssertionError,'object removal'):
+            outcomes_live._cleanup(ctx,{'id':'owned'})
+        self.assertEqual(details,[])
+
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
         ctx=SimpleNamespace(destination='s3',expect=expect)
-        service=Fixture(profile_id='owned-profile',credential_reference='owned-reference',prefix='owned/')
+        recorded=[]
+        service=Fixture(profile_id='owned-profile',credential_reference='owned-reference',prefix='owned/',
+                        object_key='owned/object',pending=SimpleNamespace(record_key=recorded.append))
         detail={'operationId':'owned-operation','receipt':{'destination':{'profileId':'owned-profile',
           'providerId':'s3','credentials':{'reference':'owned-reference'},'settings':{'objectPrefix':'owned/'}},
           'objectReference':{'key':'foreign/object'}}}
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'owned-operation')
+        # A rejected receipt never replaces the key recorded before publishing.
+        self.assertEqual(recorded,[])
         detail['receipt']['objectReference']['key']='owned/object'
         outcomes_live._owned(ctx,service,detail,'owned-operation')
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')
+        # A key under the prefix that is not the one recorded before publishing fails, after the marker follows it.
+        detail['receipt']['objectReference']['key']='owned/renamed'
+        with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'owned-operation')
+        self.assertEqual(recorded[-1],'owned/renamed')
 
     def test_s3_caption_binding_still_refuses_foreign_prepared_target(self):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
         ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),
-                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),frame=Mock(),
                             call=Mock(),clipboard_text=lambda:json.dumps({'targets':[{'historyId':'foreign'}],
                                                                          'acknowledgement':'synthetic'}),expect=expect)
         with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'),patch.object(outcomes_live.history,'_confirm_button') as confirm:
             with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
         ctx.click.assert_called_once_with('text:Delete from destination…',window='history')
         confirm.assert_not_called()
+
+    def test_s3_delete_below_the_window_goes_through_the_rows_own_menu(self):
+        # labwc: each capture of History puts its details pane back at the top, so the pane's button
+        # can stay below the window; the exact row's menu then deletes, through the same confirmation.
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[]),frame=Mock(),
+                            call=Mock(),clipboard_text=lambda:json.dumps({'targets':[{'historyId':'foreign'}],
+                                                                         'acknowledgement':'synthetic'}),expect=expect)
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live,'_delete_from_row_menu') as menu,patch.object(outcomes_live.history,'_confirm_button') as confirm:
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        menu.assert_called_once_with(ctx,{'id':'owned'})
+        ctx.click.assert_not_called()
+        confirm.assert_not_called()  # a foreign prepared target is still refused
+        # On labwc the button read itself resets the pane: the row menu deletes even when it saw the button.
+        ctx.profile={'compositor':{'kind':'toplevel-pixels'}}
+        ctx.accessible=Mock(return_value=[{'rect':[0,700,100,20]}])
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live,'_delete_from_row_menu') as menu,patch.object(outcomes_live.history,'_confirm_button'):
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        menu.assert_called_once_with(ctx,{'id':'owned'})
+        ctx.accessible.assert_not_called()
+        ctx.click.assert_not_called()
 
     def test_saved_hash_cannot_read_a_foreign_file_or_symlink(self):
         def execute(code):

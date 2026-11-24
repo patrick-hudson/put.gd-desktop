@@ -1,7 +1,0 @@
-{
-  "id": "ubuntu",
-  "packageTarget": "ubuntu26.04",
-  "qtVersion": "6.10.2",
-  "ubuntuCodename": "resolute",
-  "versionId": "26.04"
-}

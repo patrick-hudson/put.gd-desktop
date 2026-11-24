@@ -1,0 +1,1 @@
+{"accepts":["image","text","file"],"allowInsecureHttp":"{\"a\":\example.test/upload/{secbet:secrets/k}","responseUrl":"{json:data."}

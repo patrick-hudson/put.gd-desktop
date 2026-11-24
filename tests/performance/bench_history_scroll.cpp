@@ -3,6 +3,7 @@
 // previews), focuses the list and times each PageDown from the key press to the
 // end of the list's next viewport paint, the frame that shows the new selection.
 // Synthetic measurement only; not desktop evidence.
+#include "fixtures/ControlDevice.h"
 #include "fixtures/UiSessionFixture.h"
 #include "fixtures/Waits.h"
 #include "ui/UiApplicationController.h"
@@ -28,16 +29,6 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
-class ControlDevice final:public QIODevice {
-public:
- QByteArray input,output;quint64 sequence=0;
- ControlDevice(){open(ReadWrite|Unbuffered);}
- bool isSequential()const override{return true;}
- qint64 bytesAvailable()const override{return input.size();}
- qint64 readData(char* data,qint64 max)override{const auto n=qMin(max,qint64(input.size()));memcpy(data,input.constData(),n);input.remove(0,n);return n;}
- qint64 writeData(const char* data,qint64 n)override{output.append(data,n);if(output.size()>(1<<20))output=output.right(1<<16);return n;}
- void send(const QString& type,QJsonObject payload={}){input+=QJsonDocument(QJsonObject{{"version",1},{"type",type},{"sequence",QString::number(++sequence)},{"payload",payload}}).toJson(QJsonDocument::Compact)+'\n';emit readyRead();}
-};
 // Counts viewport paints; a sample ends when the paint the key caused has run.
 class PaintCounter final:public QObject {
 public:int paints=0;
@@ -88,14 +79,14 @@ int main(int argc,char** argv){
  const auto now=QDateTime::currentDateTimeUtc();QElapsedTimer seed;seed.start();
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){
   const bool video=i%2;Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=video?"record":i%4==0?"region":"window";
-  op.created=now.addSecs(-60-i*600).toString(Qt::ISODateWithMs);op.state="completed";op.copyStatus="copied";op.settings=settings.snapshot();
+  op.created=now.addSecs(-60-i*600).toString(Qt::ISODateWithMs);op.restore(OperationState::Completed);op.copyStatus="copied";op.settings=settings.snapshot();
   OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=video?QString("Recording %1.webm").arg(i):QString("Screenshot %1.png").arg(i);
   item.artifact.mime=video?"video/webm":"image/png";item.artifact.category=video?"videos":"images";item.artifact.path=originals.at(i%6);item.artifact.bytes=QFileInfo(originals.at(i%6)).size();
   item.artifact.previewPath=previews+"/"+item.artifact.id+".png";if(i<200&&!picture(i,{960,540}).save(item.artifact.previewPath))return 2;
   item.uploadStatus="local_only";item.local.status="saved";item.local.path=originals.at(i%6);
   op.items.append(item);if(ledger.saveOperation(op))return 2;}}
  const double seedMs=ms(seed);
- HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+ HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device(1<<20);UiControl control(device);UiApplicationController controller(fixture.session,control,{});
  device.send("activate",{{"view","history"}});
  MainWindow* window=nullptr;for(auto* w:QApplication::topLevelWidgets())if(auto* m=qobject_cast<MainWindow*>(w))window=m;
  if(!window){qCritical("Main window did not open");return 2;}window->resize(1320,880);

@@ -1,0 +1,1 @@
+{"w":20.,"h":100,"s":200,"result":{"text":"nvoice 2026\nYotal 12.00","lineTops":[12,30],"words":[{"text":"Invoice","rect":[20,112,30,14],"confidence":88}],"candidates":[],"codes":[{"format":"tt/a","length":39,"quad":[[120,40],[16080],[120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

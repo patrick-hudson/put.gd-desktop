@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from urllib.error import HTTPError
 from urllib.parse import unquote, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import xml.etree.ElementTree as ET
@@ -104,8 +105,14 @@ def primary_tags(data):
     return tags
 
 
-def rpm_tags(base, get):
-    root = ET.fromstring(get(base + 'repodata/repomd.xml'))
+def rpm_tags(base, get, *, absent_ok=False):
+    try:
+        repomd = get(base + 'repodata/repomd.xml')
+    except HTTPError as error:
+        if absent_ok and error.code == 404:
+            return set()
+        raise
+    root = ET.fromstring(repomd)
     if root.tag != REPO_NS + 'repomd':
         raise ValueError('Invalid repomd metadata')
     entries = [entry for entry in root.findall(REPO_NS + 'data') if entry.get('type') == 'primary']
@@ -142,9 +149,14 @@ def repository_tags(get=fetch):
         for suite in ('nightly', 'stable'):
             url = MIRROR + f'apt/{distro}/dists/{suite}/main/binary-amd64/Packages'
             indexes[url] = sorted(apt_tags(get(url)))
-    for suite in ('nightly', 'stable'):
-        base = MIRROR + f'rpm/fedora/44/x86_64/{suite}/'
-        indexes[base + 'repodata/repomd.xml'] = sorted(rpm_tags(base, get))
+    for release in ('44', '45'):
+        for suite in ('nightly', 'stable'):
+            base = MIRROR + f'rpm/fedora/{release}/x86_64/{suite}/'
+            # A Fedora release added after the last stable release has no stable repository until
+            # a stable release carries its RPM. A stable index names no nightly, so no deletion
+            # depends on it. A missing nightly repository, or a repository whose repomd is present
+            # and whose primary index is not, still aborts the plan.
+            indexes[base + 'repodata/repomd.xml'] = sorted(rpm_tags(base, get, absent_ok=suite == 'stable'))
     return indexes
 
 

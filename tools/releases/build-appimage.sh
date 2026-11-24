@@ -8,15 +8,47 @@ fi
 # The AppImage bundles its own runtime, including putgd-record's GStreamer
 # plugins and the pinned FFmpeg from build/appimage-deps (packaging/appimage/media.json).
 # Its file-manager entries are per-user files, not the native packages' plugins (#1105).
-cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RECORDING=ON \
+export PKG_CONFIG_PATH="$PWD/build/appimage-deps/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+cmake --preset release -DPUTGD_OCR=ON -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RECORDING=ON \
   -DPUTGD_NAUTILUS_PLUGIN=OFF -DPUTGD_CAJA_PLUGIN=OFF -DPUTGD_PEONY_PLUGIN=OFF \
   -DPUTGD_RELEASE_TAG="$release_tag" -DPUTGD_PACKAGE_TARGET=appimage -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_PREFIX_PATH="$PWD/build/appimage-deps;$QT_ROOT_DIR;$PWD/build/sdk"
 cmake --build --preset release --parallel "${PUTGD_BUILD_JOBS:-2}"
 # The helper must link the pinned FFmpeg, never the builder's distro libraries.
-if ! readelf -d build/release/putgd-record | grep -q 'libavcodec\.so\.61'; then
-  echo 'putgd-record is not linked against the pinned FFmpeg in build/appimage-deps' >&2; exit 1
+# Each library's soname comes from the pinned build itself, so a new FFmpeg major
+# needs no edit here; a library missing from the prefix or linked at another
+# soname still fails. pkg-config resolves each library to a full path on the
+# helper's link line, so that path must be the pinned copy too: a distro FFmpeg
+# with the same sonames would otherwise pass.
+ffmpeg_lib="$PWD/build/appimage-deps/lib"
+record_needed=$(readelf -d build/release/putgd-record | sed -n 's/.*(NEEDED).*\[\(.*\)\]$/\1/p')
+record_link=$(awk '/^build putgd-record:/ { found = 1 } found && /^  LINK_LIBRARIES = / { print; exit }' build/release/build.ninja | tr ' ' '\n')
+if [ -z "$record_link" ]; then
+  echo 'build/release/build.ninja has no link line for putgd-record' >&2; exit 1
 fi
+for library in avcodec avformat avfilter avutil swscale swresample; do
+  soname=$(readelf -d "$ffmpeg_lib/lib$library.so" 2>/dev/null | sed -n 's/.*(SONAME).*\[\(.*\)\]$/\1/p' || true)
+  if [ -z "$soname" ] || [ ! -f "$ffmpeg_lib/$soname" ]; then
+    echo "The pinned FFmpeg in build/appimage-deps has no lib$library" >&2; exit 1
+  fi
+  if ! grep -qxF "$soname" <<<"$record_needed"; then
+    echo "putgd-record is not linked against the pinned FFmpeg $soname in build/appimage-deps" >&2; exit 1
+  fi
+  link_inputs=$(grep -E "/lib$library\.so(\.[0-9.]+)?$" <<<"$record_link" || true)
+  pinned=$(realpath -e "$ffmpeg_lib/lib$library.so")
+  if [ -z "$link_inputs" ] || [ "$(xargs -r realpath -e <<<"$link_inputs" | sort -u)" != "$pinned" ]; then
+    echo "putgd-record links lib$library from ${link_inputs:-nowhere}, not the pinned $ffmpeg_lib/lib$library.so" >&2; exit 1
+  fi
+done
+# Do not silently pick distro OCR libraries with the same SONAMEs.
+ocr_link=$(awk '/^build putgd-ocr:/ { found = 1 } found && /^  LINK_LIBRARIES = / { print; exit }' build/release/build.ninja | tr ' ' '\n')
+for library in tesseract ZXing; do
+  pinned=$(realpath -e "$ffmpeg_lib/lib$library.so")
+  inputs=$(grep -E "/lib$library\.so(\.[0-9.]+)?$" <<<"$ocr_link" || true)
+  if [ -z "$inputs" ] || [ "$(xargs -r realpath -e <<<"$inputs" | sort -u)" != "$pinned" ]; then
+    echo "putgd-ocr does not link the pinned lib$library" >&2; exit 1
+  fi
+done
 # The update check offers the AppImage download (#293).
 if ! build/release/putgd-cli --update-info | grep -q '"packageTarget":"appimage"'; then
   echo 'putgd-cli was not built for the AppImage update target' >&2; exit 1
@@ -27,6 +59,11 @@ if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit
 # under libavcodec) resolve from the prefix only through the loader path while
 # the install step checks each executable's identity.
 LD_LIBRARY_PATH="$PWD/build/appimage-deps/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DESTDIR="$stage" cmake --install build/release
+install -Dm644 build/appimage-deps/share/putgd/tessdata/eng.traineddata "$stage/usr/share/putgd/tessdata/eng.traineddata"
+# #1981: the script check's data (osd and one language a script), pinned beside English.
+for data in $(python3 -c 'import json; print(" ".join(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["tessdata_fast"]["scriptFiles"]))'); do
+  install -Dm644 "build/appimage-deps/share/putgd/tessdata/$data" "$stage/usr/share/putgd/tessdata/$data"
+done
 version=$(python3 -c 'import json; print(json.load(open("build/release/build-identity/build-info.json"))["version"])')
 # Tagged builds embed their channel's update information and write the
 # matching .zsync (tools/releases/appimage_update.py); untagged builds embed
@@ -54,9 +91,13 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --license-source build/dependencies/appimage/icu \
   --license-source build/dependencies/appimage/qtkeychain \
   --license-source build/dependencies/appimage/layershell \
+  --license-source build/dependencies/appimage/leptonica \
+  --license-source build/dependencies/appimage/tesseract \
+  --license-source build/dependencies/appimage/zxing \
+  --license-source build/dependencies/appimage/tessdata_fast \
   --license-source build/dependencies/appimage/ffmpeg \
   --license-source build/dependencies/appimage/mimalloc
-# The image's own putgd-record must run the lab diagnostics (docs/recording.md)
+# The image's own putgd-record must run the lab diagnostics (docs/design/recording.md)
 # on every export format: headless, on the extracted image, nothing captured.
 images=("$PWD"/build/appimage-output/*.AppImage)
 if [ "${#images[@]}" -ne 1 ] || [ ! -f "${images[0]}" ]; then echo 'Expected one built AppImage' >&2; exit 1; fi

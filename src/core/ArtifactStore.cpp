@@ -61,7 +61,15 @@ std::shared_ptr<void> ArtifactStore::reserveDisk(const QString& path,qint64 byte
 }
 void ArtifactStore::setDiskForTesting(qint64 freeBytes,qint64 totalBytes) {freeOverride.store(freeBytes);totalOverride.store(totalBytes);}
 QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath},{"namingPrepared",namingPrepared}};}
-Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
+namespace {
+// A JSON number as a size. A saved value outside what a qint64 holds (a damaged journal row)
+// reads as zero; NaN fails both comparisons.
+qint64 wholeNumber(const QJsonValue& value) {
+ const double number=value.toDouble();
+ return number>=-9.2e18&&number<=9.2e18?qint64(number):0;
+}
+}
+Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),wholeNumber(o["bytes"]),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
 ArtifactStore::ArtifactStore(QString root):root_(std::move(root)) {QDir().mkpath(root_); QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);}
 qint64 ArtifactStore::bytes() const {qint64 n=0; QDirIterator it(root_,QDir::Files,QDirIterator::Subdirectories); while(it.hasNext()) {const QFileInfo file(it.next());if(!QUuid(file.fileName()).isNull())n+=file.size();} return n;}
 Error ArtifactStore::remove(const QString& id) {
@@ -106,12 +114,12 @@ QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 max
  return cache(artifact.id,png,budget);
 }
 void ArtifactStore::setPosterHelperForTesting(const QString& path) {std::lock_guard lock(posterHelperMutex);posterHelper=path;}
-QString ArtifactStore::poster(const Artifact& artifact,qint64 budget,qint64 maxPixels,std::shared_ptr<std::atomic_bool> cancelled,Error* failure) {
+QString ArtifactStore::poster(const Artifact& artifact,qint64 budget,qint64 maxPixels,std::shared_ptr<std::atomic_bool> cancelled,Error* failure,bool allCores) {
  if(budget<=0||artifact.category!="videos"||QUuid(artifact.id).isNull())return {};
  QString helper;{std::lock_guard lock(posterHelperMutex);helper=posterHelper;}
  // A codec or helper this package lacks, or a corrupt, truncated or oversized
  // file, leaves no preview: History then says "Preview unavailable".
- Error error;const auto png=PosterJob(helper).render(artifact.path,maxPixels,budget,error,std::move(cancelled));
+ Error error;const auto png=PosterJob(helper,10000,allCores).render(artifact.path,maxPixels,budget,error,std::move(cancelled));
  const auto path=error||png.isEmpty()?QString{}:cache(artifact.id,png,budget);
  if(failure)*failure=error?error:path.isEmpty()?Error{"artifact_io","Cannot store the video preview",{}}:Error{};
  return path;
@@ -247,7 +255,7 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
   if(!output.commit()) {fail("artifact_io","Artifact commit failed",i); return result;}
   QFile::setPermissions(a.path,QFile::ReadOwner); a.sha256=QString::fromLatin1(hash.result().toHex()); if(p.kind=="files")a.mime=QMimeDatabase().mimeTypeForFile(a.path,QMimeDatabase::MatchContent).name();a.category=category(a.mime); total+=a.bytes; result.artifacts.append(a);
  }
- QJsonArray entries;for(const auto& artifact:result.artifacts) {auto stored=artifact;stored.path=target+"/"+artifact.id;entries.append(stored.toJson());}
+ QJsonArray entries;for(const auto& artifact:std::as_const(result.artifacts)) {auto stored=artifact;stored.path=target+"/"+artifact.id;entries.append(stored.toJson());}
  const auto metadata=QJsonDocument(QJsonObject{{"schemaVersion",1},{"operationId",op},{"artifacts",entries}}).toJson(QJsonDocument::Compact);
  QSaveFile manifest(staging+"/_manifest.json");manifest.setDirectWriteFallback(false);
  if(metadata.size()>16*1024*1024||!manifest.open(QIODevice::WriteOnly)||!manifest.setPermissions(QFile::ReadOwner)||manifest.write(metadata)!=metadata.size()||!manifest.commit()) {fail("artifact_io","Cannot commit batch recovery metadata",0);return result;}

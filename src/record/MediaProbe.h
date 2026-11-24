@@ -7,4 +7,6 @@ namespace putgd::record {
 // It opens no capture source, no audio device and no portal session. The
 // resident never runs this code; it reads the JSON from a transient process.
 QJsonObject probeMedia();
+// "x11", "wayland", "none" or the session type the environment names.
+QString sessionType();
 }

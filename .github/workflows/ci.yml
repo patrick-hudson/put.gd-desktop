@@ -8,6 +8,11 @@ on:
   push:
     branches: [nightly]
   workflow_dispatch:
+    inputs:
+      planned_nightly:
+        description: Test only. Build the packages under the nightly name this commit would get; no tag is pushed and nothing is published
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_tag:
@@ -23,7 +28,6 @@ permissions:
 concurrency:
   group: ci-${{ inputs.release_tag || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ !inputs.release_tag }}
-
 jobs:
   changes:
     runs-on: ubuntu-24.04
@@ -32,6 +36,7 @@ jobs:
       actions: read
     outputs:
       build: ${{ steps.select.outputs.build }}
+      catalog: ${{ steps.select.outputs.catalog }}
       packages: ${{ steps.select.outputs.packages }}
       sanitizers: ${{ steps.select.outputs.sanitizers }}
       pipewire: ${{ steps.select.outputs.pipewire }}
@@ -54,6 +59,17 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  images:
+    # The prebuilt images the container jobs below and in package.yml run in: no job downloads
+    # distro packages (.github/workflows/ci-images.yml).
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ci-images.yml
+    with:
+      ref: ${{ inputs.release_tag || github.sha }}
+      ci: true
+
   contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
@@ -67,7 +83,7 @@ jobs:
       - name: Install QEMU disk utilities and dwz for the contracts
         env:
           PUTGD_PKG_LABEL: contracts
-        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends qemu-utils dwz python3-pil python3-pytest tesseract-ocr
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends qemu-utils dwz python3-dbus python3-pil python3-pytest tesseract-ocr
       - name: Release, packaging and CI tool contracts
         if: always()
         run: python3 tools/ci/contracts.py release
@@ -91,8 +107,7 @@ jobs:
         if: always()
         run: |
           archive="$RUNNER_TEMP/actionlint.tar.gz"
-          curl --fail --silent --show-error --location --retry 3 --connect-timeout 30 --max-time 300 --output "$archive" \
-            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          python3 tools/releases/http_retry.py https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz "$archive"
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
@@ -102,11 +117,10 @@ jobs:
         if: always()
         run: |
           archive="$RUNNER_TEMP/gitleaks.tar.gz"
-          curl --fail --silent --show-error --location --output "$archive" \
-            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          python3 tools/releases/http_retry.py https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz "$archive"
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
-          GITLEAKS_BIN="$RUNNER_TEMP/gitleaks" python3 -m unittest discover -s tests/ci -p test_gitleaks.py -v
+          GITLEAKS_BIN="$RUNNER_TEMP/gitleaks" python3 -m unittest discover -s tests/ci -p "test_git*.py" -v
           mkdir -p build/contracts
           report_dir=$(mktemp -d "$RUNNER_TEMP/gitleaks-report.XXXXXX")
           trap 'rm -rf "$report_dir"' EXIT
@@ -129,15 +143,21 @@ jobs:
 
   linux:
     name: linux (${{ matrix.distribution }})
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes (#467).
     timeout-minutes: 60
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
-    container: ubuntu:${{ matrix.distribution }}
+    container:
+      # tools/ci/images/provision.sh installed its packages and the putgd-ci test user.
+      image: ${{ fromJSON(needs.images.outputs.images)[format('linux-{0}', matrix.distribution)] }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
@@ -146,19 +166,6 @@ jobs:
       matrix:
         distribution: ['24.04', '26.04']
     steps:
-      - name: Install distro dependencies
-        # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
-        timeout-minutes: 20
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
-          apt-get update "${apt[@]}"
-          DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-libav
-          if [ '${{ matrix.distribution }}' = '26.04' ]; then
-            # faketime pins the UI catalog's clock; Pillow and numpy speed up its image comparison.
-            apt-get install -y "${apt[@]}" liblayershellqtinterface-dev faketime python3-pil python3-numpy
-          fi
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -213,9 +220,9 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
-          # Only the 26.04 leg matches the UI catalog's reference images (tests/gui/catalog-references).
+          # Render selected PR inputs and every full run for nightly consumers.
           cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON -DPUTGD_TEST_TIMEOUT_SCALE=3 \
-            -DPUTGD_UI_CATALOG_REFERENCES=${{ matrix.distribution == '26.04' && 'ON' || 'OFF' }} \
+            -DPUTGD_UI_CATALOG_RENDER=${{ matrix.distribution == '26.04' && needs.changes.outputs.catalog == 'true' && 'ON' || 'OFF' }} \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset dev --parallel "$(nproc)"
@@ -243,15 +250,17 @@ jobs:
       - name: Test
         # Wait budgets scale with PUTGD_TEST_TIME_SCALE (tests/fixtures/Waits.h).
         # A failed integration test is retried once and reported; unit tests never are.
+        # Tests labelled `nightly` (gui_theme_contrast) run on pushes, not pull requests.
         env:
           PUTGD_TEST_TIME_SCALE: '3'
           PUTGD_CI_JOB: linux (${{ matrix.distribution }})
           PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PUTGD_CTEST_EXCLUDE: ${{ github.event_name == 'pull_request' && '^nightly$' || '' }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3" ${4:+--label-exclude "$4"}' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json" "$PUTGD_CTEST_EXCLUDE"
       - name: Report flaky tests
         # Every test that passed only on its retry is listed in the job summary
         # and recorded in its `flaky-test` tracker issue.
@@ -268,29 +277,19 @@ jobs:
         with:
           path: build/dev/Testing/Temporary/CTestCostData.txt
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Preserve the UI catalog's failed comparisons
-        # The ui_catalog_* tests (tools/ci/check_catalog_references.py) leave each
-        # render, its catalog-check.json and failures/ (expected, actual and diff
-        # images). tools/ci/update_catalog_references.py --run takes the renders.
-        if: failure() && matrix.distribution == '26.04' && hashFiles('build/dev/ui-catalog/*/catalog-check.json') != ''
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: ui-catalog-check
-          path: build/dev/ui-catalog
-          retention-days: 30
       - name: Check the surface map against the UI catalog
-        # ui_catalog_dark rendered every window, menu, editor, review and overlay
+        # ui_catalog_render rendered every window, menu, editor, review and overlay
         # state offscreen, with each capture's controls and key bindings
         # (tools/lab/surface_map). The nightly workflow publishes the map
         # rendered from this artifact to map.put.gd.
-        if: matrix.distribution == '26.04'
+        if: matrix.distribution == '26.04' && needs.changes.outputs.catalog == 'true'
         run: |
           python3 tools/lab/surface_map/surface_map.py check --catalog build/dev/ui-catalog/dark
           # The surface driver's live gate admits only catalogs whose secret-control
           # states equal this pin; a UI change must update it in the same commit.
           python3 -m tools.lab.surface_driver.gate check-catalog build/dev/ui-catalog/dark
       - name: Preserve the UI catalog
-        if: matrix.distribution == '26.04'
+        if: matrix.distribution == '26.04' && needs.changes.outputs.catalog == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ui-catalog
@@ -324,28 +323,24 @@ jobs:
   sanitizers:
     # Not in the required `CI` summary until it has proven stable (#90).
     name: sanitizers (clang ASan/UBSan)
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.sanitizers == 'true'
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes, more when the instrumented QtCore is rebuilt (#467).
     timeout-minutes: 90
-    container: ubuntu:26.04
+    container:
+      image: ${{ fromJSON(needs.images.outputs.images).sanitizers }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     steps:
-      - name: Install distro dependencies
-        # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
-        timeout-minutes: 20
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
-          apt-get update "${apt[@]}"
-          DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -476,9 +471,10 @@ jobs:
 
   caches:
     # Deletes the caches this push superseded and those of closed pull requests and
-    # deleted branches (docs/ci.md, "Cache budget"). Not part of the `CI` summary.
+    # deleted branches (docs/release/ci.md, "Cache budget"). Not part of the `CI` summary.
+    # After the package jobs too, so their superseded compiler caches go in the same run.
     name: prune caches
-    needs: [linux, sanitizers]
+    needs: [linux, sanitizers, packages]
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/nightly' }}
     runs-on: ubuntu-24.04
     permissions:
@@ -496,19 +492,29 @@ jobs:
         run: python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"
 
   packages:
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.packages == 'true'
+    permissions:
+      contents: read
+      packages: read  # the CI images
     uses: ./.github/workflows/package.yml
     with:
       release_tag: ${{ inputs.release_tag || '' }}
+      images: ${{ needs.images.outputs.images }}
+      # Nightly pushes build under the nightly name, so the nightly cut can publish
+      # these packages instead of rebuilding the same commit (nightly.yml).
+      planned_nightly: ${{ !inputs.release_tag && ((github.event_name == 'push' && github.ref == 'refs/heads/nightly') || (github.event_name == 'workflow_dispatch' && inputs.planned_nightly == true)) }}
 
   pipewire:
     # Package runs test their own image immediately after assembly. Only
     # recorder/check-only PRs need the last published image here.
-    needs: [changes, packages]
-    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' }}
+    needs: [changes, images, packages]
+    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' && needs.images.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read  # the CI image
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -528,10 +534,13 @@ jobs:
           chmod +x "$image"
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
+        env:
+          IMAGE: ${{ fromJSON(needs.images.outputs.images).pipewire }}
+          TOKEN: ${{ github.token }}
         run: |
-          docker run --rm --volume "$PWD:/src:ro" --workdir /src \
-            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
-            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+          printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src "$IMAGE" \
+            bash tests/desktop/pipewire/ci_check.sh build/pipewire/squashfs-root
 
   ci:
     name: CI

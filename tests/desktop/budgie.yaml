@@ -1,0 +1,55 @@
+profile: fedora45-budgie
+profiles:
+  - fedora44-budgie
+  - ubuntu-budgie-2604
+  - fedora45-budgie
+# ubuntu-budgie-2404 is Budgie 10.9 on X11: it uses the X11 adapter, so its rows
+# follow the X11 contract, never these Wayland scenarios (review #1275).
+baseline:
+  distribution: Fedora 45 Budgie (also Fedora 44, Ubuntu Budgie 26.04)
+  compositor: Budgie 10.10 / labwc 0.20 (0.9 on Fedora 44 and Ubuntu 26.04)
+  session: Wayland
+  qt_platform: wayland;xcb
+status: awaiting-real-session-acceptance
+required_environments:
+  - disposable-qemu-guest
+safety:
+  payloads: synthetic-only
+  destination: isolated-test-destination
+  host_guest_clipboard: disabled
+  physical_display_coordination: none-vm-only
+witness:
+  kind: wayland-toplevels
+  limits: identifiers, app IDs, titles and the activated window; no PID and no geometry, so placement comes from VNC frames
+metadata_required:
+  - budgie-and-labwc-version
+  - ext-image-copy-capture-and-toplevel-source-versions
+  - ext-data-control-version
+  - labwc-bridge-rc-xml-before-and-after
+  - iso-sha256
+  - qt-version-and-platform
+  - app-build-identity
+  - display-layout-native-logical-scale-rotation
+  - acceleration
+scenarios:
+  - region-drag-exact-fixture-pixels-no-selector-outline-live-and-screenshot-first
+  - escape-and-right-click-no-publication-no-clipboard-change
+  - window-active-external-client-content-only-or-unavailable-with-protocol-reason
+  - own-windows-refused-by-app-id-including-editor
+  - desktop-all-outputs-fractional-scale-rotated-output
+  - display-change-during-selection-gives-display-changed
+  - bridge-hotkeys-real-qemu-keyboard-ctrl-shift-1-2-3
+  - budgie-print-conflict-reported-and-budgie-binding-kept
+  - rebind-unbind-uninstall-leave-rc-xml-clean
+  - control-center-edit-shows-in-settings
+  - hotkey-with-no-resident-harmless
+  - clipboard-import-unfocused-result-paste-into-gtk-app-primary-unchanged
+  - recording-no-dialog-cursor-visible-motion-score-fps-1080p60
+  - region-recording-excludes-bar
+  - recording-audio-av-sync
+  - tray-notifications-file-dialogs-theme-link-open-nemo-upload
+  - resident-and-post-use-memory-vs-kde-same-vm
+  - installed-package-startup
+artifacts_required:
+  - results-json-and-junit
+  - vnc-frames

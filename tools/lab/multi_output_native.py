@@ -92,6 +92,9 @@ def main():
         (run / name).mkdir(mode=0o700)
     multi_output.save(run / 'socket-preflight.json', {'paths': [{'path': str(s), 'utf8Bytes': len(str(s).encode())} for s in paths]})
     env, desktop = record_run.session_environment()
+    if desktop == 'quickshell':
+        # Monitor discovery below covers X11, KWin and Mutter only.
+        raise RuntimeError('Native multi-output checks do not support Hyprland sessions')
     session_env = dict(env)
     env.update(XDG_CONFIG_HOME=str(run / 'config'), XDG_DATA_HOME=str(run / 'data'),
                XDG_CACHE_HOME=str(run / 'cache'), XDG_STATE_HOME=str(run / 'state'),

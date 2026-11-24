@@ -1,0 +1,23 @@
+{
+  "file_manager": {
+    "process": "nautilus",
+    "command": [
+      "nautilus",
+      "--new-window"
+    ],
+    "quit": [
+      "nautilus",
+      "-q"
+    ],
+    "menu": "drawn",
+    "window": {
+      "accessible": {
+        "coordinates": "window"
+      }
+    },
+    "accessible": {
+      "coordinates": "window"
+    },
+    "submenu": "Scripts"
+  }
+}

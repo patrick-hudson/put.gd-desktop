@@ -1,1 +1,0 @@
-putgd-26.1030.3203-nightly-x86_64.AppImage: OK

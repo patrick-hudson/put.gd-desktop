@@ -3,12 +3,12 @@
 and assemble the release asset putgd-<version>-debug-<arch>.tar.zst from them.
 
 Release builds compile with -g and split each product binary's debug information
-into <binary>.debug at link time (CMakeLists.txt). `stage` checks every product
+into <binary>.debug at link time (cmake/ProductBinaries.cmake). `stage` checks every product
 binary in a build tree against its .debug file and against the binary the
 package installs (same GNU build ID), then writes debug-symbols-<label>.tar and
 its manifest. `combine` checks every staged build and writes one tar.zst laid
 out like a debuginfod cache: .build-id/<2 hex>/<rest>.debug, plus manifest.json
-naming each build's programs and build IDs. See docs/diagnostics.md.
+naming each build's programs and build IDs. See docs/design/diagnostics.md.
 
 The builds keep zlib-compressed debug sections, which keeps the staged files
 and the jobs' artifacts small. The asset decompresses them, moves the DWARF
@@ -31,12 +31,12 @@ import subprocess
 import tarfile
 import tempfile
 
-PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-kde-region', 'putgd-record',
-            'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
+PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-region', 'putgd-record',
+            'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'putgd-webdav-worker', 'putgd-sftp-worker', 'libputgd-s3.so')
 # Built on every Linux packaging job; the others depend on the desktop libraries present.
-REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
+REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'putgd-webdav-worker', 'putgd-sftp-worker', 'libputgd-s3.so')
 # Package matrix names in .github/workflows/package.yml, plus the AppImage.
-LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'appimage')
+LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45', 'archlinux', 'appimage')
 ARCHITECTURE = 'x86_64'
 BUILD_ID = re.compile(r'[0-9a-f]{16,64}')
 SHT_NOTE = 7

@@ -7,7 +7,8 @@ import shlex
 import shutil
 import sys
 
-from tools.lab import lab
+from tools.lab import gnome_tray_host, lab
+from tools.lab.gnome_tray_host import TRAY_HOST_PACKAGE
 
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
@@ -15,9 +16,178 @@ DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-o
              'libqt6keychain1')  # The native stdin credential bridge also runs beside AppImages.
 
 FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+# Fedora 45 Budgie: the panel, labwc and its bridge, the display manager, the
+# portals, the media stack and the Secret Service the session starts.
+BUDGIE_DESKTOP = ('budgie*', 'labwc*', 'wlroots*', 'gtk-layer-shell*', 'gtklock*', 'swaybg*', 'sddm*',
+                  'xdg-desktop-portal*', 'pipewire*', 'wireplumber*', 'mesa*', 'oo7*', 'kernel*')
+PROTECTED_DESKTOPS = {'fedora45-budgie': BUDGIE_DESKTOP}
 FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
                 'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
                 'openh264 gstreamer1-plugin-openh264')
+
+# The Debian-family guests' own package updaters. Ubuntu's apt-daily-upgrade fires between 06:00 and 07:00
+# guest time, which is when the nightly runs: on 2026-11-20 it upgraded openssh-server mid-row in the
+# Kubuntu guest, restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
+# Fedora installs no updates by itself (dnf-makecache only refreshes metadata), Aurora's uupd is held by
+# ATOMIC_TOOLS and Omarchy has no updater unit.
+UPDATE_TIMERS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
+                 'mintupdate-automation-autoremove.timer')
+UPDATE_SERVICES = ('apt-daily.service', 'apt-daily-upgrade.service', 'mintupdate-automation-upgrade.service',
+                   'mintupdate-automation-autoremove.service')
+UPDATE_UNITS = UPDATE_TIMERS + UPDATE_SERVICES
+# The apt goldens' only passwordless root command is apt-get, and their lab passwords differ (Mint's is
+# not the standard one), so root steps run from apt-get's Pre-Invoke hook, as lab.py's helper staging
+# does: no sources (nothing is fetched), no package cache written, and no lists lock, which a running
+# apt-daily holds. No updater is ever stopped: apt-daily-upgrade's KillMode=process would leave
+# unattended-upgrade running behind an inactive unit, and Mint's upgrade service would lose dpkg mid-way.
+# The timers are stopped and masked, so nothing new starts; then a running or queued updater is left to
+# finish (its unit inactive, no job, an empty cgroup) within the deadline, and only then masked.
+UPDATE_DRAIN_SECONDS = 1200
+# Idle needs positive evidence: a job list that was read, and a unit cgroup that a successful listing of
+# system.slice doesn't show or whose cgroup.events reports `populated 0`. A failed read counts as busy.
+_IDLE = r'''idle() {
+ [ -e /sys/fs/cgroup/cgroup.controllers ] || return 1
+ case "$(systemctl show -P ActiveState "$1" 2>/dev/null)" in inactive|failed) ;; *) return 1 ;; esac
+ jobs=$(systemctl list-jobs --no-legend --no-pager 2>/dev/null) || return 1
+ printf '%s\n' "$jobs" | awk '{print $2}' | grep -qxF -- "$1" && return 1
+ groups=$(ls -A /sys/fs/cgroup/system.slice 2>/dev/null) || return 1
+ if printf '%s\n' "$groups" | grep -qxF -- "$1"; then
+  grep -qx 'populated 0' "/sys/fs/cgroup/system.slice/$1/cgroup.events" 2>/dev/null || return 1
+ fi
+ return 0
+}
+'''
+HOLD_UPDATES = (r'''set -u
+# The root hooks live in a private directory only lab can write; any failure to make them stops here.
+# tmpfs-ok: runs in the guest and holds a few hook files
+hold=$(mktemp -d) || exit 1
+''' + _IDLE + r'''as_root() {
+ command -v apt-get >/dev/null 2>&1 || return 0
+ LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
+  -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
+  -o "APT::Update::Pre-Invoke::=sh $1" update >/dev/null 2>&1 < /dev/null || true
+}
+for unit in @TIMERS@ @SERVICES@; do
+ printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)"
+done > "$hold/before" || exit 1
+cat > "$hold/timers" <<'NIGHTLY_TIMERS' || exit 1
+for unit in @TIMERS@; do
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ]; then
+  systemctl stop "$unit" >/dev/null 2>&1 && systemctl mask "$unit" >/dev/null 2>&1
+ fi
+done
+exit 0
+NIGHTLY_TIMERS
+as_root "$hold/timers"
+deadline=$(( $(date +%s) + @DRAIN@ ))
+while :; do
+ busy=
+ for unit in @SERVICES@; do idle "$unit" || busy=1; done
+ [ -z "$busy" ] || [ "$(date +%s)" -ge "$deadline" ] && break
+ sleep 5
+done
+{ cat <<'NIGHTLY_IDLE'
+''' + _IDLE + r'''NIGHTLY_IDLE
+cat <<'NIGHTLY_SERVICES'
+for unit in @SERVICES@; do
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ] && idle "$unit"; then
+  systemctl mask "$unit" >/dev/null 2>&1
+ fi
+done
+exit 0
+NIGHTLY_SERVICES
+} > "$hold/services" || exit 1
+as_root "$hold/services"
+while read -r unit before; do
+ if idle "$unit"; then drained=drained; else drained=busy; fi
+ printf '%s %s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
+  "$(systemctl show -P ActiveState "$unit" 2>/dev/null)" "$drained"
+done < "$hold/before"
+rm -f -- "$hold/before" "$hold/timers" "$hold/services"
+rmdir -- "$hold"
+''').replace('@TIMERS@', ' '.join(UPDATE_TIMERS)).replace(
+    '@SERVICES@', ' '.join(UPDATE_SERVICES)).replace('@DRAIN@', str(UPDATE_DRAIN_SECONDS))
+
+
+def hold_package_updates(run, out):
+    """Hold the guest's own package updaters in this disposable overlay, before anything is installed.
+
+    Every unit must end absent or masked, not running, with no queued job and no process left in its
+    cgroup, or the row stops here: an updater left running can restart sshd or the desktop under a live
+    cell. The report is written whatever happens.
+    """
+    lab.verify_owned_guest(run)
+    report = dict(overlayOnly=True, units={})
+    try:
+        for line in lab.ssh(run, HOLD_UPDATES, timeout=UPDATE_DRAIN_SECONDS+300).splitlines():
+            fields = line.split()
+            if len(fields) == 5 and fields[0] in UPDATE_UNITS:
+                report['units'][fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3],
+                                                  drained=fields[4])
+    except Exception as error:
+        report['error'] = type(error).__name__
+        raise
+    finally:
+        units = report['units']
+        held = {name for name, unit in units.items()
+                if unit['after'] in ('not-found', 'masked') and unit['active'] in ('inactive', 'failed')
+                and unit['drained'] == 'drained'}
+        report.update(held=sorted(name for name in held if units[name]['after'] == 'masked'),
+                      notHeld=sorted(set(UPDATE_UNITS) - held))
+        lab.write_json(Path(out)/'package-updates.json', report)
+    if report['notHeld']:
+        raise RuntimeError('guest package updaters could not be held: '+', '.join(report['notHeld']))
+    return report
+
+
+def rpm_inventory(run):
+    """Every installed RPM in the guest: {name.arch: [epoch:version-release]}."""
+    value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
+    packages = {}
+    for line in value.splitlines():
+        name, version = line.split(maxsplit=1)
+        packages.setdefault(name, []).append(version)
+    return {name: sorted(versions) for name, versions in packages.items()}
+
+
+def protected_packages(packages, desktop):
+    return {name: version for name, version in packages.items()
+            if any(fnmatch.fnmatchcase(name, pattern) for pattern in desktop)}
+
+
+# The tray host (gnome_tray_host.py) joins the desktop; nothing it brings may move the Shell, Mutter, GDM or the portals.
+TRAY_HOST_PROTECTED = ('gnome-shell.*', 'gnome-shell-common.*', 'gnome-shell-extension-common.*', 'mutter*',
+                       'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+
+
+def install_tray_host(run, out):
+    """Install Fedora's AppIndicator extension in the disposable guest, before the Shell restarts."""
+    lab.verify_owned_guest(run)
+    run, out = Path(run), Path(out)
+    before = rpm_inventory(run)
+    exclude = shlex.quote('--exclude=' + ','.join(p.rstrip('.*') if p.endswith('.*') else p
+                                                   for p in TRAY_HOST_PROTECTED))
+    result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
+        input=f'sudo -n dnf --color=never {exclude} install -y {TRAY_HOST_PACKAGE}\n')
+    (out/'tray-host-install.txt').write_text(result.stdout+'\n'+result.stderr)
+    after = rpm_inventory(run)
+    changes = [dict(package=name, before=before.get(name), after=after.get(name))
+               for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
+    report = dict(exitCode=result.returncode, package=TRAY_HOST_PACKAGE, packagesChanged=changes,
+                  installed=any(name.startswith(TRAY_HOST_PACKAGE + '.') for name in after),
+                  desktopUnchanged=protected_packages(before, TRAY_HOST_PROTECTED) == protected_packages(after, TRAY_HOST_PROTECTED),
+                  # New packages only: an upgrade of something the desktop already runs is refused.
+                  nothingUpgraded=all(c['before'] is None for c in changes))
+    lab.write_json(out/'tray-host.json', report)
+    if result.returncode or not report['installed']:
+        raise RuntimeError('Fedora AppIndicator tray host could not be installed; private transaction retained')
+    if not report['desktopUnchanged'] or not report['nothingUpgraded']:
+        raise RuntimeError('installing the AppIndicator tray host changed the desktop; private transaction retained')
+    return report
+
+
+TRAY_HOST_READY = ("python3 - <<'NIGHTLY_TRAY_HOST'\n" + gnome_tray_host.probe_source(enable=True, wait=20)
+                   + 'NIGHTLY_TRAY_HOST\n')
 
 
 def install_rpm(run, package, out):
@@ -27,26 +197,22 @@ def install_rpm(run, package, out):
     under test must retain its exact installed packages. Record the full RPM
     inventory delta as well as verifying the installed application bytes.
     """
-    lab.verify_owned_guest(run)
+    info = lab.verify_owned_guest(run)
     run, package, out = Path(run), Path(package), Path(out)
     (run/'package.json').unlink(missing_ok=True)
+    # The guest's own profile names the desktop stack that must not move.
+    desktop = PROTECTED_DESKTOPS.get(info.get('profile'), FEDORA_DESKTOP)
 
     def inventory():
-        value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
-        packages = {}
-        for line in value.splitlines():
-            name, version = line.split(maxsplit=1)
-            packages.setdefault(name, []).append(version)
-        return {name: sorted(versions) for name, versions in packages.items()}
+        return rpm_inventory(run)
 
     def protected(packages):
-        return {name: version for name, version in packages.items()
-                if any(fnmatch.fnmatchcase(name, pattern) for pattern in FEDORA_DESKTOP)}
+        return protected_packages(packages, desktop)
 
     before = inventory()
     lab.write_json(out/'rpm-before.json', before)
     lab.put(run, str(package), 'putgd-nightly.rpm')
-    exclude = shlex.quote('--exclude='+','.join(FEDORA_DESKTOP))
+    exclude = shlex.quote('--exclude='+','.join(desktop))
     result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
         input=f'sudo -n dnf --color=never {exclude} install -y "$HOME/putgd-nightly.rpm" {FEDORA_TOOLS}\n')
     (out/'rpm-install.txt').write_text(result.stdout+'\n'+result.stderr)
@@ -54,7 +220,7 @@ def install_rpm(run, package, out):
     lab.write_json(out/'rpm-after.json', after)
     changes = [dict(package=name, before=before.get(name), after=after.get(name))
                for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
-    report = dict(exitCode=result.returncode, excluded=list(FEDORA_DESKTOP),
+    report = dict(exitCode=result.returncode, excluded=list(desktop),
                   desktopUnchanged=protected(before) == protected(after), packagesChanged=changes)
     lab.write_json(out/'rpm-transaction.json', report)
     if not report['desktopUnchanged']:
@@ -168,6 +334,85 @@ NIGHTLY_RAM
 '''
 
 
+ISOLATED_SECRET_SERVICES = ('ksecretd', 'oo7-daemon')
+
+
+LIVE_KEYRING_ROOT = '/dev/shm/nd-keys'
+# One gnome-keyring-daemon for the live keyring. FRESH makes its folders on the guest's
+# tmpfs; a restart reuses them, so the blank collection and its items come back as they were.
+LIVE_KEYRING_DAEMON = '''import json,os,subprocess
+from pathlib import Path
+root=Path(ROOT)
+if FRESH:
+ root.mkdir(mode=0o700)
+ for name in ('config','data','cache','control'):(root/name).mkdir(mode=0o700)
+log=root/'daemon.log'
+for index in range(1,100):
+ if FRESH or not log.exists():break
+ log=root/('daemon-restart-%d.log'%index)
+with log.open('xb') as stream:
+ p=subprocess.Popen(['gnome-keyring-daemon','--foreground','--components=secrets',
+                     '--control-directory='+str(root/'control')],
+  env=dict(os.environ,XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),
+           XDG_CACHE_HOME=str(root/'cache')),stdin=subprocess.DEVNULL,stdout=stream,stderr=stream,start_new_session=True)
+print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rsplit(')',1)[1].split()[19])))
+'''
+# Read only: whether the recorded connection still has an owner, and which daemons still
+# serve this keyring's control folder (none may be running when it is started again).
+LIVE_KEYRING_STATE = '''import json,os
+from pathlib import Path
+from gi.repository import Gio,GLib
+bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+owned=bus.call_sync('org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','NameHasOwner',
+ GLib.Variant('(s)',(NAME,)),GLib.VariantType('(b)'),Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
+control=('--control-directory='+ROOT+'/control').encode()
+daemons=[]
+for entry in Path('/proc').iterdir():
+ try:
+  if entry.name.isdigit() and entry.stat().st_uid==os.getuid() and control in (entry/'cmdline').read_bytes().split(b'\\0'):
+   daemons.append(int(entry.name))
+ except OSError:pass
+print(json.dumps(dict(owned=owned,daemons=daemons,data=(Path(ROOT)/'data/keyrings').is_dir())))
+'''
+
+
+class KeyringRestartRefused(RuntimeError):
+    """The live keyring was not started again; the message is fixed text, safe to record."""
+
+
+def _start_live_keyring(run, fresh):
+    from tools.lab.surface_driver.fixtures.keyring import UNIQUE_SERVICE
+    import time
+    script = LIVE_KEYRING_DAEMON.replace('ROOT', repr(LIVE_KEYRING_ROOT)).replace('FRESH', repr(fresh))
+    identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
+    probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
+    deadline = time.monotonic()+10
+    try:
+        while True:
+            names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
+            if len(names) == 1:
+                return identity, names[0]
+            if len(names) > 1 or time.monotonic() >= deadline:
+                raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
+            time.sleep(.2)
+    except BaseException:
+        _stop_live_keyring(run, identity)  # never a daemon nobody can name
+        raise
+
+
+def _stop_live_keyring(run, identity):
+    """End exactly the daemon this restart started (pid and start time), best effort."""
+    pid, start = int(identity['pid']), str(identity['start'])
+    if not start.isdigit():
+        return
+    try:
+        lab.guest_session(run, f'''p=/proc/{pid}
+[ "$(sed 's/.*) //' $p/stat 2>/dev/null | cut -d' ' -f20)" = {start} ] && kill -TERM {pid} || true
+''')
+    except (lab.LabError, OSError, ValueError):
+        pass
+
+
 def prepare_live_keyring(run, out):
     """Use the local fixture's unique GNOME connection alongside Atomic KWallet.
 
@@ -175,40 +420,21 @@ def prepare_live_keyring(run, out):
     Its unique bus name is shared by the bridge and every private app resident.
     KWallet keeps its original owner, collections and default alias.
     """
-    from tools.lab.surface_driver.fixtures.keyring import OWNER, UNIQUE_SERVICE
+    from tools.lab.surface_driver.fixtures.keyring import OWNER
     lab.verify_owned_guest(run)
     prior = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
-    if prior['provider'] != 'ksecretd':
+    # Atomic's KWallet (ksecretd) and Fedora 45 Budgie's oo7-daemon, whose login
+    # collection stays locked after autologin, keep their name and collections.
+    if prior['provider'] not in ISOLATED_SECRET_SERVICES:
         return
-    root = '/dev/shm/nd-keys'
+    root = LIVE_KEYRING_ROOT
     from tools.lab.surface_driver.target import checked_socket
     checked_socket(root+'/control/control')
-    script = '''import json,os,subprocess
-from pathlib import Path
-root=Path(ROOT);root.mkdir(mode=0o700)
-for name in ('config','data','cache','control'):(root/name).mkdir(mode=0o700)
-with (root/'daemon.log').open('xb') as log:
- p=subprocess.Popen(['gnome-keyring-daemon','--foreground','--components=secrets',
-                     '--control-directory='+str(root/'control')],
-  env=dict(os.environ,XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),
-           XDG_CACHE_HOME=str(root/'cache')),stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
-print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rsplit(')',1)[1].split()[19])))
-'''.replace('ROOT', repr(root))
-    identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
-    probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
-    import time
-    deadline = time.monotonic()+10
-    while True:
-        names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
-        if len(names) == 1:
-            break
-        if len(names) > 1 or time.monotonic() >= deadline:
-            raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
-        time.sleep(.2)
+    identity, name = _start_live_keyring(run, fresh=True)
     # Establish the collection before importing either real credential.
     lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), root+'/lab_keyring.py')
     info = lab.state(run)
-    info['secret_service'] = names[0]
+    info['secret_service'] = name
     prefix = lab.guest_secret_prefix(info)
     created = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py'))
     status = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py --status'))
@@ -216,8 +442,63 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
     if after != prior or status.get('locked') is not False or status.get('default') != created['collection']:
         raise RuntimeError('isolated live keyring readiness or preserved KWallet owner failed')
     lab.write_json(run/'state.json', info)
-    (out/'live-keyring.json').write_text(json.dumps(dict(identity, busName=names[0],
+    (out/'live-keyring.json').write_text(json.dumps(dict(identity, busName=name,
         root=root, collection=status, desktopServicePreserved=after == prior), indent=2))
+
+
+def restart_live_keyring(run):
+    """Start the guest's live keyring daemon again if it has died; None when the guest has none.
+
+    The recorded unique connection must have no owner and no daemon may still serve the
+    keyring's folder: a daemon that is only slow is never replaced. The desktop's own Secret
+    Service must be up before and unchanged after, so the new daemon never takes its name.
+    The new daemon reads the same tmpfs files, so the blank collection and the lent entry are
+    back once it is opened with its empty password. Only then does the run's state name the
+    new connection for the bridge and every later guest step. One restart per run at a time.
+    Returns only connection names, the process identity and the collection's label and lock state.
+    """
+    import fcntl
+    from tools.lab.surface_driver.fixtures.keyring import OWNER
+    run = Path(run)
+    lab.verify_owned_guest(run)
+    with (run/'live-keyring-restart.lock').open('a') as serial:
+        fcntl.flock(serial, fcntl.LOCK_EX)
+        info = lab.state(run)
+        previous = info.get('secret_service')
+        if previous is None:
+            return None
+        lab.guest_secret_prefix(info)  # the recorded name is a unique connection
+        check = LIVE_KEYRING_STATE.replace('NAME', repr(previous)).replace('ROOT', repr(LIVE_KEYRING_ROOT))
+        found = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+check+'\nPY\n'))
+        if found['owned']:
+            return {'restarted': False, 'busName': previous, 'reason': 'the live keyring daemon still answers'}
+        if found['daemons']:
+            raise KeyringRestartRefused('a daemon still serves the live keyring folder without its connection')
+        if not found['data']:
+            raise KeyringRestartRefused('the live keyring files are missing from the guest')
+        owner = "python3 - <<'PY'\n"+OWNER+'\nPY\n'
+        prior = json.loads(lab.guest_session(run, owner))
+        if prior.get('provider') not in ISOLATED_SECRET_SERVICES:
+            raise KeyringRestartRefused("the desktop's own Secret Service is not running")
+        identity, name = _start_live_keyring(run, fresh=False)
+        try:
+            # A new daemon loads the blank collection locked: open it with its empty password, on
+            # the new connection, before the run's state names it.
+            lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), LIVE_KEYRING_ROOT+'/lab_keyring.py')
+            prefix = lab.guest_secret_prefix(dict(info, secret_service=name))
+            status = json.loads(lab.guest_session(run, prefix+'python3 '+LIVE_KEYRING_ROOT+'/lab_keyring.py --unlock'))
+            if status.get('label') != 'putgd lab' or status.get('locked') is not False:
+                raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
+            if json.loads(lab.guest_session(run, owner)) != prior:
+                raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+            info['secret_service'] = name
+            lab.write_json(run/'state.json', info)
+        except BaseException:
+            # Never leave the new daemon behind: it could hold the desktop's name or the folder.
+            _stop_live_keyring(run, identity)
+            raise
+        return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
+                    start=identity['start'], collection=status)
 
 
 # A broken repository stops rpm-ostree from layering anything, and it reads its
@@ -225,7 +506,7 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
 # Fedora's updates-archive has broken this way (#1206) and is not needed for
 # these tools. Only then, install them with dnf on a /usr overlay, which lasts
 # until the next reboot; the sudo rule does not cover dnf, so this uses the
-# standard guest password (docs/remote-golden-images.md).
+# standard guest password (docs/lab/remote-golden-images.md).
 ATOMIC_TOOLS = '''set -eu
 sudo -n systemctl stop uupd.service
 sudo -n systemctl disable --now uupd.timer
@@ -249,12 +530,216 @@ fi
 '''
 
 
+# Omarchy's golden has no synced package databases, and its mirror moves: a
+# sync then -S is a partial upgrade. Only packages that are not installed may
+# enter; a transaction that would upgrade, downgrade or remove any installed
+# package (Hyprland, quickshell, Qt, Mesa, PipeWire, portals...) is refused.
+# qtkeychain-qt6: the lab's credential bridge (live S3, R2 and Proton lends) links libqt6keychain, as DEB_TOOLS' libqt6keychain1.
+PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base', 'qtkeychain-qt6')
+PACMAN = r'''set -eu
+before=$(pacman -Q)
+sudo -n pacman -Sy --noconfirm >/dev/null
+plan=$(sudo -n pacman -S --needed --print --print-format '%n %v' TOOLS)
+printf '%s\n' "$plan" > "$HOME/nightly-pacman-plan.txt"
+conflict=''
+while read -r name version; do
+ [ -n "$name" ] || continue
+ installed=$(printf '%s\n' "$before" | awk -v n="$name" '$1==n{print $2}')
+ if [ -n "$installed" ] && [ "$installed" != "$version" ]; then conflict="$conflict $name:$installed->$version"; fi
+done <<PLAN
+$plan
+PLAN
+if [ -n "$conflict" ]; then echo "NIGHTLY_PACMAN_REFUSED$conflict"; exit 3; fi
+[ -z "$plan" ] || sudo -n pacman -S --needed --noconfirm TOOLS
+after=$(pacman -Q)
+changed=$(printf '%s\n' "$before" | while read -r name version; do
+ now=$(printf '%s\n' "$after" | awk -v n="$name" '$1==n{print $2}')
+ [ "$now" = "$version" ] || printf '%s %s->%s\n' "$name" "$version" "${now:-removed}"
+done)
+if [ -n "$changed" ]; then printf 'NIGHTLY_PACMAN_CHANGED\n%s\n' "$changed"; exit 4; fi
+printf 'NIGHTLY_PACMAN_OK\n%s\n' "$plan"
+'''.replace('TOOLS', ' '.join(PACMAN_TOOLS))
+
+# Probe programs each desktop's cells use. X11 tools only where X11 runs the session.
+WAYLAND_TOOLS = {'fedora45-budgie': ('tesseract', 'wl-copy', 'wl-paste', 'grim', 'wlr-randr'),
+                 'omarchy-hyprland': ('tesseract', 'wl-copy', 'wl-paste', 'grim')}
+X11_TOOLS = ('tesseract', 'xdotool', 'xprop', 'xwininfo', 'xrandr', 'xclip', 'wl-copy', 'wl-paste')
+
+QUIET_OMARCHY = r'''python3 - <<'NIGHTLY_OMARCHY'
+import json,os,subprocess
+from pathlib import Path
+# Omarchy's update and first-run notices are critical quickshell cards that stay on screen.
+state=Path.home()/'.local/state/omarchy/notifications/live.json'
+cards=[]
+try:cards=json.loads(state.read_text())
+except (OSError,ValueError):pass
+print(json.dumps(dict(overlayOnly=True,liveNotificationsBefore=len(cards) if isinstance(cards,list) else None,
+                      stayAwake=(Path.home()/'.local/state/omarchy/indicators/stay-awake').exists())))
+NIGHTLY_OMARCHY
+'''
+
+
+# Omarchy's shell keeps a clipboard history on disk, and put.gd auto-copies every link it makes, a signed one
+# included. The disposable overlay turns the history plugin off through Omarchy's own command, which records
+# it in shell.json (so a restarted shell keeps it off) and unloads the plugin with its wl-paste watchers.
+OMARCHY_CLIPBOARD = r'''qs=$(pgrep -u "$(id -un)" -x quickshell | head -n 1)
+[ -n "$qs" ]
+omarchy=$(tr '\0' '\n' < /proc/$qs/environ | sed -n 's/^OMARCHY_PATH=//p')
+[ -n "$omarchy" ]
+# The shell names its IPC socket after the display as it was given (wayland-1), not as an absolute path.
+WAYLAND_DISPLAY=${WAYLAND_DISPLAY##*/} OMARCHY_PATH=$omarchy PATH=$omarchy/bin:$PATH \
+ "$omarchy/bin/omarchy-plugin-disable" omarchy.clipboard < /dev/null > /dev/null
+'''
+
+
+def prepare_omarchy_clipboard(run, out):
+    """Turn Omarchy's clipboard history off in the overlay, and check it the way live admission does."""
+    from tools.lab.surface_driver.fixtures.live_outcomes import CLIPBOARD_HISTORY_OFF
+    lab.verify_owned_guest(run)
+    lab.guest_session(run, OMARCHY_CLIPBOARD, timeout=60)
+    report = json.loads(lab.guest_session(run, CLIPBOARD_HISTORY_OFF, timeout=60))
+    lab.write_json(Path(out)/'omarchy-clipboard.json', report)
+    if report.get('historyOff') is not True:
+        raise RuntimeError('Omarchy clipboard history could not be turned off: '+str(report.get('reason'))[:200])
+    return report
+
+
+def prepare_pacman(run, out):
+    """Probe tools for the Omarchy golden: new packages only, nothing installed may move."""
+    result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900, input=PACMAN)
+    (out/'pacman-install.txt').write_text(result.stdout+'\n'+result.stderr)
+    report = dict(exitCode=result.returncode, tools=list(PACMAN_TOOLS),
+                  installedUnchanged=result.returncode == 0 and 'NIGHTLY_PACMAN_OK' in result.stdout,
+                  refused=next((line for line in result.stdout.splitlines() if line.startswith('NIGHTLY_PACMAN_REFUSED')), None))
+    lab.write_json(out/'pacman-transaction.json', report)
+    if not report['installedUnchanged']:
+        raise RuntimeError('Omarchy probe tools would change an installed package; private transaction retained')
+    return report
+
+
+def merge_labwc_rules(text, rules):
+    """labwc's rc.xml with the lab's window rules, each replacing an earlier rule for the same window.
+
+    A rule turns the window's server-side decoration off and moves it to its position when it
+    first maps, so its content's top left is exactly there (probe.rule_rect reads the same rules).
+    labwc matches titles as globs: a rule title holds no glob characters.
+    """
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(text)
+    section = root.find('windowRules')
+    if section is None:
+        section = ET.SubElement(root, 'windowRules')
+    for rule in rules:
+        if any(c in rule['title'] + rule['app_id'] for c in '*?[]') or len(rule['position']) != 2:
+            raise ValueError('a lab window rule names one exact window and one position')
+        for old in [e for e in section.findall('windowRule')
+                    if (e.get('identifier'), e.get('title')) == (rule['app_id'], rule['title'])]:
+            section.remove(old)
+        element = ET.SubElement(section, 'windowRule', identifier=rule['app_id'], title=rule['title'],
+                                serverDecoration='no')
+        ET.SubElement(element, 'action', name='MoveTo', x=str(int(rule['position'][0])), y=str(int(rule['position'][1])))
+    ET.indent(root, space='\t')
+    return ET.tostring(root, encoding='unicode')
+
+
+# Budgie's labwc bridge loads rc.xml once, when it starts, and writes its own copy back on every
+# change it makes (put.gd's shortcuts reach it as gsettings). Rules written while it runs are
+# dropped at its next write. So: stop the bridge, write the rules, start it again from its own
+# environment, and wait for its first write (it reloads labwc) to still hold them.
+LABWC_RULES = r'''python3 - <<'NIGHTLY_LABWC'
+import json,os,select,signal,subprocess,time
+from pathlib import Path
+MERGE
+RULES=json.loads(RULES_JSON)
+BRIDGE='/usr/libexec/budgie-desktop/labwc-bridge'
+def own(match):
+ found=[]
+ for p in Path('/proc').iterdir():
+  try:
+   if p.name.isdigit() and p.stat().st_uid==os.getuid():
+    args=[v.decode() for v in (p/'cmdline').read_bytes().split(b'\0') if v]
+    if args and match(args):found.append(int(p.name))
+  except (OSError,UnicodeDecodeError):pass
+ return found
+labwc=own(lambda a:Path(a[0]).name=='labwc')
+assert len(labwc)==1,'labwc is not running exactly once'
+args=[v.decode() for v in Path('/proc/%d/cmdline'%labwc[0]).read_bytes().split(b'\0') if v]
+assert '--config-dir' in args,'labwc runs without the Budgie configuration folder'
+rc=Path(args[args.index('--config-dir')+1])/'rc.xml'
+bridge=lambda a:a[1:2]==[BRIDGE]
+old=own(bridge)
+assert len(old)==1,'the Budgie labwc bridge is not running exactly once'
+env=dict(v.split('=',1) for v in Path('/proc/%d/environ'%old[0]).read_bytes().decode().split('\0') if '=' in v)
+original=rc.read_text()
+merged=merge_labwc_rules(original,RULES)  # a bad rule or rc.xml fails here, with the bridge still running
+start=lambda:subprocess.Popen(['/usr/bin/python3',BRIDGE],env=env,cwd=env.get('HOME','/'),stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+# Both files are written before the bridge stops; each later change of rc.xml is one rename.
+staged,kept=rc.with_name('rc.xml.putgd-lab'),rc.with_name('rc.xml.putgd-lab-original')
+staged.write_text(merged)
+kept.write_text(original)
+def stop(pids):
+ for pid in pids:
+  try:fd=os.pidfd_open(pid)
+  except ProcessLookupError:continue
+  try:
+   signal.pidfd_send_signal(fd,signal.SIGTERM)
+   assert select.select([fd],[],[],10)[0],'the labwc bridge did not stop'
+  except ProcessLookupError:pass
+  finally:os.close(fd)
+stop(old)
+try:
+ os.replace(staged,rc)
+ before=rc.stat().st_mtime_ns
+ p=start()
+ deadline=time.monotonic()+30
+ while rc.stat().st_mtime_ns==before:
+  assert p.poll() is None,'the restarted labwc bridge exited'
+  assert time.monotonic()<deadline,'the restarted labwc bridge did not write rc.xml'
+  time.sleep(.2)
+ time.sleep(1)
+ import xml.etree.ElementTree as ET
+ held=[(e.get('identifier'),e.get('title'),e.get('serverDecoration'),[(a.get('name'),a.get('x'),a.get('y')) for a in e])
+       for e in ET.fromstring(rc.read_text()).iter('windowRule')]
+ for r in RULES:
+  assert (r['app_id'],r['title'],'no',[('MoveTo',str(r['position'][0]),str(r['position'][1]))]) in held,'the bridge dropped a lab window rule'
+ assert p.poll() is None and own(bridge)==[p.pid],'the labwc bridge is not running exactly once after the restart'
+except BaseException:
+ # Leave the session as it was: no bridge of ours still writing, its own rc.xml, one bridge running.
+ # A bridge that will not stop is left as the one running, and this setup fails with it.
+ stop(own(bridge))
+ try:
+  os.replace(kept,rc)
+ finally:
+  start()
+ raise
+kept.unlink()
+print(json.dumps(dict(rcXml=str(rc),rules=RULES,bridgeBefore=old[0],bridgeAfter=p.pid,heldAfterBridgeWrite=True)))
+NIGHTLY_LABWC
+'''
+
+
+def prepare_labwc_rules(run, out, rules):
+    """Install the profile's labwc window rules in this disposable guest's Budgie session."""
+    import inspect
+    lab.verify_owned_guest(run)
+    merge_labwc_rules('<labwc_config/>', rules)  # refuse a bad rule before the guest's bridge is touched
+    script = (LABWC_RULES.replace('MERGE', inspect.getsource(merge_labwc_rules))
+              .replace('RULES_JSON', repr(json.dumps(rules))))
+    report = json.loads(lab.guest_session(run, script, timeout=90))
+    lab.write_json(Path(out)/'labwc-rules.json', report)
+    return report
+
+
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
     # AppImages also run on Debian-derived guests. Their probe dependencies
     # still come from apt; selecting the probes never changes the app artifact.
-    package = row.get('probePackageManager', row['package'])
-    if package == 'deb':
+    guest = lab.state(run)['profile']
+    package = 'pacman' if guest == 'omarchy-hyprland' else row.get('probePackageManager', row['package'])
+    if package == 'pacman':
+        prepare_pacman(run, out)
+    elif package == 'deb':
         plan = lab.ssh(run, 'sudo -n apt-get -s install --no-install-recommends '+DEB_TOOLS, timeout=120)
         for line in plan.splitlines():
             if line.startswith('Inst ') and re.search(r'\b(?:mutter|gnome-shell|kwin|plasma|xorg|mesa|pipewire|xdg-desktop-portal)', line):
@@ -279,9 +764,9 @@ modules={}
 for name in ('pyatspi','dbus','PyQt6.QtGui'):
  try:importlib.import_module(name);modules[name]=True
  except Exception:modules[name]=False
-print(json.dumps(dict(modules=modules,tools={name:bool(shutil.which(name)) for name in ('tesseract','xdotool','xprop','xwininfo','xrandr','xclip','wl-copy','wl-paste')})))
+print(json.dumps(dict(modules=modules,tools={name:bool(shutil.which(name)) for name in TOOLS})))
 PROBES
-''')
+'''.replace('TOOLS', repr(WAYLAND_TOOLS.get(guest, X11_TOOLS))))
     (out/'guest-probes.json').write_text(probes)
     missing = [name for group in json.loads(probes).values() for name,present in group.items() if not present]
     if missing:
@@ -309,13 +794,31 @@ NIGHTLY_IMAGE_EXTENSION
             (out/'appimage-gnome-extension.json').write_text(lab.guest_session(run, extension))
         from tools.lab.surface_driver.compositor.stage_gnome_witness import stage
         from tools.lab.guest_reboot import reboot
+        if row['desktop'] == 'fedora-gnome-wayland':
+            # The Shell loads a newly installed extension only when it starts: the reboot below.
+            install_tray_host(run, out)
         (out/'witness.txt').write_text(stage(run, Path(__file__).parent/'surface_driver/compositor/gnome-witness'))
         (out/'reboot.json').write_text(json.dumps(reboot(run), indent=2))
         prepare_gnome_desktop(run, out)
+        if row['desktop'] == 'fedora-gnome-wayland':
+            # The resident starts only after this: its tray must find a registered host.
+            try:
+                report = lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+TRAY_HOST_READY, timeout=60)
+            except lab.LabError as error:
+                raise RuntimeError('could not verify that the Fedora AppIndicator extension registered a tray host '
+                                   'after the reboot') from error
+            (out/'tray-host-ready.json').write_text(report)
     elif 'kde' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
         (out/'accessibility.txt').write_text(stage(run))
     (out/'nag-suppression.json').write_text(lab.guest_session(run, QUIET, timeout=60))
+    from tools.lab.surface_driver.profiles import load_profile
+    rules = load_profile(row['desktop']).get('compositor', {}).get('window_rules')
+    if rules:
+        prepare_labwc_rules(run, out, rules)
+    if guest == 'omarchy-hyprland':
+        (out/'omarchy-state.json').write_text(lab.guest_session(run, QUIET_OMARCHY, timeout=60))
+        prepare_omarchy_clipboard(run, out)
     (out/'ram-placement.json').write_text(lab.guest_session(run, RAM))
     from tools.lab.stage_firefox import stage
     browser = json.loads(stage(run))

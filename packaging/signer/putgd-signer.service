@@ -1,5 +1,5 @@
 # put.gd package signer (#293 phase 2): a systemd user unit on one lab builder.
-# Install: tools/releases/pkgrepo.py documents the layout; docs/release.md has the steps.
+# Install: tools/releases/pkgrepo.py documents the layout; docs/release/release.md has the steps.
 [Unit]
 Description=put.gd package signer: publish new releases to pkg.put.gd
 After=network-online.target

@@ -1,6 +1,9 @@
 #pragma once
+#include <functional>
 #include "IconArt.h"
+#include "TrayMenu.h"
 #include <QDBusConnection>
+#include <QJsonObject>
 #include <QObject>
 #include <QColor>
 #include <QUrl>
@@ -22,20 +25,40 @@ public:
  ~NativeTray() override;
  bool available() const;
  bool availabilityKnown() const;
- void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark);
+ void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark,bool done = false);
  // Shows the "update" menu entry with this label; empty hides it (#293).
  void setUpdateLabel(const QString& label);
- void setCommands(const QHash<QString,QString>& shortcuts,const QString& uploadStatus,int uploads=1,bool failed=false,const QString& recording = {},const QString& attention = "Failed uploads");
- void setOutput(const QString& summary,const QStringList& details);
+ // The menu's live state (TrayMenu's table): the live block, shortcuts,
+ // capture delay, output rows and update label. The host hears what changed.
+ void setMenu(const traymenu::State& state);
+ // What tray hosts asked of the menu, for agents and the lab (ui.snapshot
+ // diagnostics.trayMenu): `shows` counts AboutToShow or AboutToShowGroup calls
+ // for the root menu, `opened` and `closed` its "opened" and "closed" events (not
+ // every host sends them), `clicked` the last eight rows a host reported clicked
+ // ({id, name, label}), and `rows` the top-level rows served now, in order,
+ // separators left out ({id, name, label, visible, enabled, submenu}).
+ QJsonObject menuActivity() const;
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
+ // Closes every notification this tray sent that its server has not reported
+ // closed (CloseNotification), buttons and links with them; how many it asked for,
+ // those whose Notify has not been answered yet included (they are closed when
+ // their ids arrive). Where the server leaves a closed notification on screen
+ // it is dismissed there as well (notifications::dismissCommand).
+ // A scroll capture clears the screen of put.gd's own notices this way (#1376).
+ // `gone` is called once, when the server has reported all of them closed and
+ // every dismissal has run, or closeConfirmMs after the call; never when
+ // there was nothing to close.
+ int closeNotifications(std::function<void()> gone = {});
+ static constexpr int closeConfirmMs = 1000;
  // expire_timeout for a notification on this server (GetServerInformation name):
  // 10 s, or 0 (until used or dismissed) for buttons the server would otherwise lose.
  static int notificationTimeoutMs(const QString& server, bool actions);
 signals:
  void menuAboutToShow();
  void notificationActivated(const QUrl& link);
- void notificationAction(const QString& key, const QString& value);
+ // `token`: the notification server's xdg-activation token for the click, when it sent one.
+ void notificationAction(const QString& key, const QString& value, const QString& token);
  // activationToken: the host's xdg-activation token for this click, or empty (#657).
  void actionActivated(const QString& action, const QString& activationToken);
  void availabilityChanged(bool available);

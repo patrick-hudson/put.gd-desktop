@@ -339,7 +339,70 @@
               }
             }
           ],
-          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no hotkey."
+        },
+        "scroll": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ]
         },
         "record": {
           "type": "object",
@@ -405,7 +468,95 @@
               }
             }
           ],
-          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no hotkey."
+        },
+        "monitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Capture monitor: the monitor under the pointer, at its native size. Optional; when absent it copies the desktop output route with no hotkey."
+        },
+        "repeat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shortcut"],
+          "properties": {
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "description": "Repeat last region: a hotkey only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no hotkey."
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shortcut"],
+          "properties": {
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "description": "Copy text from region: a hotkey only. It copies the text and QR codes in a selected region and stores nothing, so it has no destination, archive or naming. Optional; when absent it has no hotkey."
         }
       }
     },
@@ -545,6 +696,54 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "cloudflare-r2"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/r2Settings"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "custom-http"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/customHttpSettings"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "sftp"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/sftpSettings"
+                }
+              }
+            }
           }
         ]
       }
@@ -655,6 +854,31 @@
             "skip",
             "overwrite"
           ]
+        },
+        "randomStyle": {
+          "enum": [
+            "uuid",
+            "string"
+          ],
+          "description": "Random names: a UUID, or a random string of randomLength characters.",
+          "default": "uuid"
+        },
+        "randomLength": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 64,
+          "description": "Characters in a random-string name, before the extension.",
+          "default": 12
+        },
+        "randomUppercase": {
+          "type": "boolean",
+          "description": "Random-string names may use capital letters as well as lowercase letters.",
+          "default": true
+        },
+        "randomDigits": {
+          "type": "boolean",
+          "description": "Random-string names may use the digits 0-9.",
+          "default": true
         },
         "fileTemplate": {
           "type": "string",
@@ -865,7 +1089,7 @@
           "minimum": 1,
           "maximum": 365,
           "default": 14,
-          "description": "Days to keep persistent log files (docs/diagnostics.md). Omitted means 14."
+          "description": "Days to keep persistent log files (docs/design/diagnostics.md). Omitted means 14."
         },
         "logBytes": {
           "type": "integer",
@@ -906,6 +1130,19 @@
           "default": "live",
           "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
         },
+        "captureDelaySeconds": {
+          "enum": [0, 3, 5, 10],
+          "default": 0,
+          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, a repeat of the last region, or Capture region & edit. A countdown shows meanwhile and can be cancelled. Hotkey captures are immediate unless captureDelayShortcuts is true, and session requests pass their own delaySeconds. Omitted means 0."
+        },
+        "captureDelayShortcuts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether captures started by a hotkey also wait captureDelaySeconds. Omitted means false: hotkey captures are immediate."
+        },
+        "scrollCaptureMaxHeight": {"type": "integer", "minimum": 2000, "maximum": 60000, "default": 30000},
+        "scrollCaptureFromTop": {"type": "boolean", "default": false, "description": "Auto-scroll goes to the top of the page first, when it begins before anything has moved. Omitted means false."},
+        "scrollCaptureAutoScroll": {"type": "boolean", "default": false, "description": "A scrolling capture starts with auto-scroll on (put.gd turns the page). Omitted means false: the capture waits for you to scroll."},
         "recordingFrameRate": {
           "enum": [
             30,
@@ -913,6 +1150,28 @@
           ],
           "default": 30,
           "description": "Frames per second for screen recordings that don't ask for a rate. 60 is smoother and takes about twice the conversion and encoding work; while a recording runs, put.gd lowers the rate (60 to 30, 30 to 15) when the computer can't keep up. Omitted means 30."
+        },
+        "recordingMicrophone": {
+          "type": "boolean",
+          "default": false,
+          "description": "The microphone toggle on the recording bar, remembered between recordings started from the tray, the dashboard or the hotkey. The microphone is opened only while the toggle is on and released when the recording stops. Omitted means off."
+        },
+        "recordingMicrophoneDevice": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$",
+          "default": "",
+          "description": "The input device recordings narrate from, by its sound-server source name as recording.microphones lists it. Empty or omitted means the system default input. The monitor of an output is never used as a microphone."
+        },
+        "recordingClickHighlights": {
+          "type": "boolean",
+          "default": false,
+          "description": "Draw a ring at the pointer on each click in recordings, where the desktop offers the clicks (recording.capabilities reports it). Omitted means off."
+        },
+        "unhingedMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Unhinged mode: text recognition, recording encode, video posters and History previews use every CPU core instead of a share of them, at normal priority, so heavy work finishes sooner and other apps may slow down meanwhile. Memory limits stay, scaled to the memory available. Omitted means off."
         },
         "fileManagerFolders": {
           "enum": [
@@ -940,6 +1199,93 @@
             "pattern": "^#[0-9a-f]{6}$"
           },
           "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
+        },
+        "textRecognitionLanguages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[a-z]{3,4}(_[a-z0-9]+){0,2}$",
+            "not": {"enum": ["osd", "equ"]}
+          },
+          "description": "Languages Copy text reads, as Tesseract language identifiers (eng, deu, chi_sim), in order. A language whose data is not installed is skipped when another loads. Omitted means the desktop locale's language when its data is installed, then English."
+        },
+        "quickRedactTerms": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "not": {"pattern": "[\\r\\n\u2028\u2029]"}
+          },
+          "description": "Words or phrases Quick redact's My redaction list suggests covering, matched case-insensitively against recognized text. Never uploaded, logged or written to diagnostics bundles. Omitted means no list. Each entry: a word is 1 to 100 code points after trimming, on one line (no line feed, carriage return, U+2028 or U+2029), and has a letter or digit. The editor applies these rules and its answer is authoritative; the schema only keeps the line-break rule."
+        },
+        "quickRedactPatterns": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "not": {"pattern": "[\\r\\n\u2028\u2029]"}
+          },
+          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering. A pattern is matched against each recognized line and against each pair of consecutive lines joined by a line feed, so ALPHA\\nBETA can match two lines. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns. Each entry: a pattern is 1 to 500 code points as written (never trimmed: its spaces can matter), on one line (no raw line feed, carriage return, U+2028 or U+2029; write \\n in the pattern to match a line break), compiles, and does not match empty text. The editor applies these rules and its answer is authoritative."
+        },
+        "sensitiveTextCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "anyOf": [{"required": ["kinds"]}, {"required": ["categories"]}],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "kinds": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "email": {"enum": ["off", "warn", "redact"]},
+                "phone": {"enum": ["off", "warn", "redact"]},
+                "ip": {"enum": ["off", "warn", "redact"]},
+                "card": {"enum": ["off", "warn", "redact"]},
+                "key": {"enum": ["off", "warn", "redact"]},
+                "name": {"enum": ["off", "warn", "redact"]},
+                "list": {"enum": ["off", "warn", "redact"]}
+              }
+            },
+            "categories": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 7,
+              "uniqueItems": true,
+              "items": {"enum": ["email", "phone", "ip", "card", "key", "name", "list"]}
+            }
+          },
+          "description": "Check captures for sensitive text before uploading (#1804, #1820). With enabled true, an image capture going to a destination has its text recognized first, with Quick redact's rules. Each kind in kinds is off (not looked for), warn (put.gd asks before uploading: Redact and upload, Upload anyway, Cancel) or redact (what is found is covered and the capture uploads without asking). Redact covers only text put.gd detected; recognition can miss text. A prompt opens only for warn matches left, or when the check can't finish, whatever the kinds say; Upload anyway keeps the automatic covers. A kind not in kinds follows categories, #1804's older list, where each named kind is warn; without categories, card, key and list are warn and the rest off. Omitted means off. Recognized text is never stored, logged or written to diagnostics."
+        },
+        "captureStyle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "backdrop": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "kind": {"enum": ["color", "gradient", "picture", "none"]},
+                "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+                "colorEnd": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+                "picture": {"type": "string", "minLength": 1, "maxLength": 4096}
+              }
+            },
+            "padding": {"enum": ["small", "medium", "large"], "default": "medium"},
+            "corners": {"type": "boolean", "default": true},
+            "shadow": {"type": "boolean", "default": true}
+          },
+          "description": "Capture style (#1893): with enabled true, still captures (region, window, monitor, desktop, Repeat last region and scrolling captures) are placed on a canvas with padding, a backdrop, rounded corners and a soft shadow before they upload or are saved locally. The captured pixels are not changed. backdrop.kind is color (color), gradient (color to colorEnd at 135 degrees), picture (an absolute path to a PNG or JPEG, scaled to cover) or none (transparent). padding is proportional to the capture's shorter edge. Omitted or enabled false means off: every output stays exactly as without this option."
         },
         "appearance": {
           "type": "object",
@@ -977,7 +1323,7 @@
             "check": {
               "type": "boolean",
               "default": true,
-              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development, source and Flatpak builds never check."
+              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development and source builds never check."
             },
             "channel": {
               "enum": ["build", "stable", "nightly"],
@@ -1064,6 +1410,8 @@
         "lowSpeedTimeSeconds"
       ],
       "properties": {
+        "linkMode": {"enum": ["public", "presigned"], "default": "public"},
+        "linkValidityDays": {"type": "integer", "minimum": 1, "maximum": 7, "default": 7},
         "bucket": {
           "type": "string",
           "maxLength": 63,
@@ -1205,6 +1553,339 @@
         }
       }
     },
+    "r2Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cloudflare R2 destination (#1678). Requests go to https://ACCOUNT[.eu|.fedramp].r2.cloudflarestorage.com with region auto and path addressing. The provider validator is authoritative.",
+      "required": [
+        "accountId",
+        "jurisdiction",
+        "bucket",
+        "objectPrefix",
+        "linkMode",
+        "linkValidityDays",
+        "publicUrlBase",
+        "connectTimeoutMs",
+        "requestTimeoutMs",
+        "lowSpeedBytesPerSecond",
+        "lowSpeedTimeSeconds"
+      ],
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}(?![\\s\\S])",
+          "description": "The account ID from R2 overview, Account details."
+        },
+        "jurisdiction": {
+          "enum": [
+            "default",
+            "eu",
+            "fedramp"
+          ],
+          "default": "default"
+        },
+        "bucket": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9](?![\\s\\S])"
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 1022
+        },
+        "linkMode": {
+          "enum": [
+            "public",
+            "presigned"
+          ],
+          "default": "presigned",
+          "description": "public needs the bucket's r2.dev address or a custom domain in publicUrlBase."
+        },
+        "linkValidityDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "default": 7
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lowSpeedBytesPerSecond": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lowSpeedTimeSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "customHttpRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "secret"
+      ],
+      "description": "A header, URL parameter or form field. A secret row carries its name only: its value is in the credential store.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "secret": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 8192
+        }
+      },
+      "if": {
+        "properties": {
+          "secret": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "value"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "customHttpSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Custom HTTP uploader destination (#1361): one request, described by hand or imported from a ShareX .sxcu file. The provider validator is authoritative.",
+      "required": [
+        "accepts",
+        "allowInsecureHttp",
+        "arguments",
+        "body",
+        "connectTimeoutMs",
+        "data",
+        "dataSecret",
+        "deletionUrl",
+        "errorMessage",
+        "fileFormName",
+        "headers",
+        "parameters",
+        "requestMethod",
+        "requestTimeoutMs",
+        "requestUrl",
+        "responseUrl",
+        "secrets",
+        "thumbnailUrl"
+      ],
+      "properties": {
+        "requestMethod": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH"
+          ],
+          "default": "POST"
+        },
+        "requestUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Where uploads are sent: HTTPS, or HTTP to a literal loopback host, without a query (use parameters). {filename} may fill part of the path. Empty until the destination is set up."
+        },
+        "allowInsecureHttp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow plain HTTP to a host other than loopback. Files and credentials then travel unencrypted."
+        },
+        "accepts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "image",
+              "text",
+              "file"
+            ]
+          },
+          "description": "What the destination takes; file covers everything."
+        },
+        "body": {
+          "enum": [
+            "none",
+            "multipart",
+            "form",
+            "json",
+            "xml",
+            "binary"
+          ],
+          "default": "multipart"
+        },
+        "fileFormName": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The multipart field that carries the file; empty sends form fields only."
+        },
+        "headers": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "parameters": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "arguments": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "maxItems": 32,
+          "description": "Named stored values with no row of their own, used as {secret:secrets/name} in the request URL or the deletion URL. Names only.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "secret"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]{1,64}$"
+              },
+              "secret": {
+                "const": true
+              }
+            }
+          }
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 65536,
+          "description": "The JSON or XML body text; empty when dataSecret is true."
+        },
+        "dataSecret": {
+          "type": "boolean",
+          "default": false,
+          "description": "The body text is a secret kept in the credential store."
+        },
+        "responseUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Where the reply holds the link, such as {json:files[0].url}; empty when the whole reply is the link."
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional thumbnail link."
+        },
+        "deletionUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional deletion URL; without one an upload cannot be deleted from History."
+        },
+        "errorMessage": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional text shown when the server refuses an upload."
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 10000
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 600000
+        }
+      }
+    },
+    "sftpSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "SFTP destination (#1871): the user's own OpenSSH client carries put.gd's SFTP client. The provider validator is authoritative.",
+      "required": [
+        "folder",
+        "hostKeyFingerprint",
+        "publicUrlBase",
+        "server",
+        "user"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "host, host:port, [v6]:port or a Host alias from ~/.ssh/config; empty while it is being set up"
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Empty: the user ssh would pick"
+        },
+        "folder": {
+          "type": "string",
+          "description": "The folder on the server; a relative path starts in the login folder"
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The HTTPS address the folder is served at, or null for uploads without links"
+        },
+        "hostKeyFingerprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z0-9-]{1,32} SHA256:[A-Za-z0-9+/]{43}$",
+          "description": "The host key trusted in put.gd's own known_hosts, as TYPE SHA256:…"
+        },
+        "keyFile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 4096,
+          "description": "Optional (#1892): the private SSH key file passed to ssh with -i and IdentitiesOnly=yes, as an absolute path; absent or null uses the agent and ~/.ssh/config"
+        }
+      }
+    },
     "protonSettings": {
       "type": "object",
       "additionalProperties": false,
@@ -1261,7 +1942,7 @@
       }
     }
   },
-  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation.",
+  "description": "SettingsService is authoritative for profile references, uniqueness, hotkeys and registered provider validation.",
   "allOf": [
     {
       "if": {
@@ -1366,6 +2047,31 @@
             },
             "required": [
               "edit"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "monitor": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            },
+            "required": [
+              "monitor"
             ]
           }
         }

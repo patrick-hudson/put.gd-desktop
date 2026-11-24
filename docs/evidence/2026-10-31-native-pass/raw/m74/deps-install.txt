@@ -1,29 +1,0 @@
-Reading package lists...
-Building dependency tree...
-Reading state information...
-The following additional packages will be installed:
-  python3-pyqt6.sip
-The following NEW packages will be installed:
-  python3-pyqt6 python3-pyqt6.sip
-0 upgraded, 2 newly installed, 0 to remove and 43 not upgraded.
-Need to get 2853 kB of archives.
-After this operation, 16.9 MB of additional disk space will be used.
-Get:1 http://archive.ubuntu.com/ubuntu noble/universe amd64 python3-pyqt6.sip amd64 13.6.0-1build2 [55.4 kB]
-Get:2 http://archive.ubuntu.com/ubuntu noble/universe amd64 python3-pyqt6 amd64 6.6.1-2build4 [2797 kB]
-debconf: unable to initialize frontend: Dialog
-debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
-debconf: falling back to frontend: Readline
-debconf: unable to initialize frontend: Readline
-debconf: (This frontend requires a controlling tty.)
-debconf: falling back to frontend: Teletype
-dpkg-preconfigure: unable to re-open stdin: 
-Fetched 2853 kB in 1s (3583 kB/s)
-Selecting previously unselected package python3-pyqt6.sip.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 509913 files and directories currently installed.)
-Preparing to unpack .../python3-pyqt6.sip_13.6.0-1build2_amd64.deb ...
-Unpacking python3-pyqt6.sip (13.6.0-1build2) ...
-Selecting previously unselected package python3-pyqt6.
-Preparing to unpack .../python3-pyqt6_6.6.1-2build4_amd64.deb ...
-Unpacking python3-pyqt6 (6.6.1-2build4) ...
-Setting up python3-pyqt6.sip (13.6.0-1build2) ...
-Setting up python3-pyqt6 (6.6.1-2build4) ...

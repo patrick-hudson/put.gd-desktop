@@ -71,8 +71,8 @@ void UpdateService::start() {
    // The saved result compared the feed with the version that ran then. After
    // an update (put.gd's own install or another updater's), compare it with
    // this one, so Settings doesn't offer the version that is running (#293).
-   if(result_["latest"].isString()){
-    const auto order=update::compareVersions(result_["latest"].toString(),build_.version);
+   if(result_.value("latest").isString()){
+    const auto order=update::compareVersions(result_.value("latest").toString(),build_.version);
     result_["current"]=build_.version;result_["updateAvailable"]=order&&*order>0;
    }
   }
@@ -231,7 +231,8 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
 void UpdateService::installLine(const QByteArray& line) {
  const auto event=QJsonDocument::fromJson(line).object();
  if(event["event"]!="progress")return;
- for(const auto& key:{"phase","method","bytes","total"})install_[key]=event[key];
+ // step (reading or fetching) and reused only come with zsync's progress (#1766).
+ for(const auto& key:{"phase","method","bytes","total","step","reused"}){if(event.contains(key))install_[key]=event[key];else install_.remove(key);}
  emit changed();
 }
 void UpdateService::installFinished(const QByteArray& last,const Error& failure) {
@@ -239,6 +240,16 @@ void UpdateService::installFinished(const QByteArray& last,const Error& failure)
  Error error=failure;QJsonObject result;
  if(reply["schemaVersion"]==1&&reply["ok"]==true){error={};result=reply["result"].toObject();}
  else if(reply["schemaVersion"]==1&&reply["ok"]==false){const auto e=reply["error"].toObject();error={e["code"].toString(),e["message"].toString(),e["details"].toObject()};}
+ // A child that was killed or died without a result left its staging folder,
+ // perhaps with a partly assembled image: it goes now, not at the next start,
+ // and the record only once it has, so a retry can't orphan it.
+ if(reply["schemaVersion"]!=1) {
+  auto state=appimage::readState(stateRoot_);
+  if(const auto staging=state.value("staging").toString();!staging.isEmpty()) {
+   if(appimage::removeStaging(staging)){state["staging"]=QJsonValue();appimage::writeState(stateRoot_,state);}
+   else logging::warning(logApp(),"Cannot remove the stopped update install's staging folder",{{"staging",staging}});
+  }
+ }
  installState_=appimage::readState(stateRoot_);
  install_["finishedAt"]=isoTime(now());
  if(error) {
@@ -316,7 +327,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
  refreshSystemAction();
  // The first result after the channel was changed shows in Settings, where it
  // was changed: it counts as seen, like a manual check (#344).
- const auto shown=result_["channel"].toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
+ const auto shown=result_.value("channel").toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
  manualRunning_=false;attemptedAt_=now();attemptedChannel_=channel();jitter_=random(-jitterMs,jitterMs);
  const auto reply=QJsonDocument::fromJson(output.trimmed()).object();
  Error error=failure;QJsonObject result;

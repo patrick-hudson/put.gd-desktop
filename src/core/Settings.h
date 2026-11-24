@@ -1,4 +1,5 @@
 #pragma once
+#include "CaptureStyle.h"
 #include "Error.h"
 #include <QHash>
 #include <QJsonArray>
@@ -41,6 +42,14 @@ struct ResourceLimits {
     qint64 recordingAnimationSeconds = 60;
     int recordingAnimationEdge = 1280;
 };
+// naming.random* (Random names): a UUID, or a string of lowercase letters plus,
+// when chosen, capitals and digits.
+struct RandomNameSettings {
+    QString style = "uuid"; // "uuid" or "string"
+    int length = 12;
+    bool uppercase = true;
+    bool digits = true;
+};
 // Value type: an accepted operation receives its own immutable copy.
 struct Settings {
     QJsonObject document;
@@ -50,6 +59,7 @@ struct Settings {
     ResourceLimits limits;
     QString namingMode;
     QString collisionPolicy;
+    RandomNameSettings randomName;
     QString fileTemplate = "{name}.{ext}";
     QString captureTemplate = "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     QString imageTemplate = "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
@@ -67,11 +77,28 @@ struct Settings {
     QString uploadClipboardBehavior = "each_link";
     // preferences.regionSelectionMode (#629): live (default) keeps the desktop
     // updating under the selector; screenshot_first freezes every monitor first.
+    int scrollCaptureMaxHeight = 30000;
+    // #1515: auto-scroll goes to the top first (auto-scroll only); a capture starts with auto-scroll on.
+    bool scrollCaptureFromTop = false;
+    bool scrollCaptureAutoScroll = false;
     QString regionSelectionMode = "live";
     // preferences.recordingFrameRate (#984): 30 (default) or 60 frames per
     // second for recordings that don't ask for a rate; the recorder may still
     // lower it while a recording runs when the machine can't keep up.
     int recordingFrameRate = 30;
+    // preferences.captureDelaySeconds (#1363): 0 (default), 3, 5 or 10. The tray
+    // and the dashboard start region, window, monitor and desktop captures, a
+    // repeat and Capture region & edit after this delay; session requests name
+    // their own. Shortcuts stay immediate unless captureDelayShortcuts is on.
+    int captureDelaySeconds = 0;
+    bool captureDelayShortcuts = false;
+    // #1364: preferences.recordingMicrophone remembers the bar's microphone
+    // toggle (off until the user turns it on); recordingMicrophoneDevice names
+    // the input to open, empty for the system default; recordingClickHighlights
+    // draws a ring at the pointer on each click, off by default.
+    bool recordingMicrophone = false;
+    QString recordingMicrophoneDevice;
+    bool recordingClickHighlights = false;
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;
@@ -89,6 +116,33 @@ struct Settings {
     // preferences.fileManagerMenu (#1105): the AppImage's per-user menu entries;
     // DEB and RPM entries are system files and always on.
     bool fileManagerMenu = true;
+    // preferences.unhingedMode (#1937): heavy work (text recognition, recording
+    // encode, video posters, History previews) uses every CPU instead of a share,
+    // at normal priority. Memory guards stay, scaled to the RAM available. Off by default.
+    bool unhingedMode = false;
+    // preferences.textRecognitionLanguages (#1428): up to three Tesseract language
+    // identifiers for Copy text, in order. Empty: the desktop locale's language
+    // when its data is installed, then English.
+    QStringList textRecognitionLanguages;
+    // preferences.quickRedactTerms and quickRedactPatterns (#1618): the words,
+    // phrases and regular expressions Quick redact's "My redaction list" suggests
+    // covering. Terms are trimmed and unique; both are empty by
+    // default. Plain config like folder names, never logged or put in a diagnostics bundle.
+    QStringList quickRedactTerms, quickRedactPatterns;
+    // preferences.sensitiveTextCheck (#1804): before an image capture uploads,
+    // recognize its text and ask first when it shows text of these Quick redact
+    // categories. Off by default; the categories default to card, key and list.
+    // #1820: each kind is off, warn (the prompt) or redact (covered automatically).
+    // sensitiveTextCategories holds every kind not off, sensitiveTextCover the redact ones.
+    bool sensitiveTextCheck = false;
+    QStringList sensitiveTextCategories, sensitiveTextCover;
+    // One kind's choice in a validated sensitiveTextCheck object: off, warn or redact.
+    static QString sensitiveTextKind(const QJsonObject& check, const QString& category);
+    static QStringList sensitiveTextCategoryNames(); // email, phone, ip, card, key, name, list
+    static QStringList defaultSensitiveTextCategories(); // card, key, list
+    // preferences.captureStyle (#1893): padding, a backdrop, rounded corners and a shadow
+    // around still captures when they are exported. Off (and absent) by default.
+    CaptureStyle captureStyle;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
@@ -108,17 +162,59 @@ struct Settings {
     // Every output-routed sharing action, including the later optional "edit" action.
     static QStringList actionNames();
     // Everything the tray, the dashboard rail and a global shortcut can start:
-    // the sharing actions plus the screen-recording action.
+    // the sharing actions plus the screen-recording, repeat and Copy text actions.
     static QStringList invocableActionNames();
+    // Routed actions in the command order: actionTable() without repeat and text.
     static QStringList presentationOrder();
-    // Actions a schema-1 document must define; "edit" may be absent.
-    static QStringList requiredActionNames();
     // The optional recording route; absent documents inherit the region route.
     static QString recordingActionName();
-    // Adds absent edit and record actions inheriting the region route without a shortcut.
+    // Repeat last region (#1363): a shortcut only, always on the region route.
+    static QString repeatActionName();
+    // Copy text (#1428): route-free. It has a hotkey and no destination, archive,
+    // naming or publication, so it is in no output list and never output_required.
+    static QString textActionName();
+    // Shortcut rows and tray entries: every actionTable() entry, in its order.
+    static QStringList shortcutOrder();
+    // One row per command the tray, the window's action bar, Settings → Hotkeys
+    // and the output lists show: its action ID, full name, the bar's label
+    // (empty when the bar has no button for it) and its group. The order is the
+    // order every surface uses: the screenshots (region, repeat, window, monitor,
+    // desktop, scroll), then editing and recording (edit, record), then the
+    // two that capture no picture to keep (text, clipboard). Each surface filters
+    // and places from this table; none keeps its own list.
+    struct Command { QString action, label, barLabel; int group = 0; bool routed = true; };
+    static const QList<Command>& actionTable();
+    // The full name of an action ID ("Capture region"), empty for an unknown one.
+    static QString actionLabel(const QString& action);
+    // The group an action belongs to (0, 1 or 2); -1 for an unknown one.
+    static int actionGroup(const QString& action);
+    // Delays a capture can start after, in seconds; 0 is immediate.
+    static QList<int> captureDelayChoices();
+    // Captures that take delaySeconds: region, window, monitor, desktop, repeat,
+    // edit and text. An edit is delayed only when it captures the screen
+    // (delayableEditSource): the clipboard and a file have nothing to wait for.
+    static bool delayableAction(const QString& action);
+    static bool delayableEditSource(const QString& source);
+    // Adds absent edit and record actions inheriting the region route without a shortcut,
+    // an absent monitor action copying the desktop route, and absent repeat and text keys.
     static QJsonObject normalized(const QJsonObject&);
+    // The document with Quick redact's saved lists in their stored form (#1618): words
+    // trimmed, patterns as written, each exact repeat kept once. Every save path writes
+    // this form, whoever supplied the document (the Settings window, settings.patch,
+    // the CLI or an agent); entries that are not strings are left for validation.
+    static QJsonObject withCleanRedactLists(const QJsonObject&);
+    // textjob::redactPatternError, plus the length counted on the pattern as it runs: a pattern is never trimmed
+    // when it is matched (its spaces can matter), so its 500 code points are the whole expression. Settings and
+    // redactText both use this. Empty when valid.
+    static QString quickRedactPatternError(const QString& pattern);
     // The document with its profiles in the given ID order. The order must name
     // every profile exactly once; nothing else in the document changes.
     static Error reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered);
+    // The current destination that serves an upload's recorded destination (#1759): the same
+    // destination while it exists with the same service, else, for S3, Cloudflare R2 and Backblaze
+    // B2 only, one of the same service that points at the same place (S3: endpoint and bucket; R2:
+    // account, jurisdiction and bucket; B2: API address and bucket). Empty when the destination was
+    // removed from Settings. `destination` is a receipt's Destination::toJson.
+    static QJsonObject profileForDestination(const QJsonObject& destination, const QJsonArray& profiles);
 };
 }

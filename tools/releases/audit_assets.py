@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit downloaded installers-v1 release bytes, sources and stable CVE policy.
+"""Audit downloaded installers-v1/v2 release bytes, sources and stable CVE policy.
 
 Run on a builder: python3 tools/releases/audit_assets.py --tag TAG --download
 --directory /short/private/assets --output /short/private/audit. Downloads use gh,
@@ -255,6 +255,32 @@ def bun_advisories(versions):
     return findings
 
 
+def upstream_blocking(findings, policy, helper_sha256, today):
+    """Mark each official advisory's status; return those that block the stable cut.
+
+    An advisory at the policy's severities blocks unless policy.json's
+    upstreamAdvisories accepts that exact id, component and version for the
+    reviewed helper (helper_sha256, the one every package was verified to carry)
+    and the acceptance has not expired.
+    """
+    blocking = []
+    for item in findings:
+        if not (item['severity'].capitalize() in policy['severities']
+                and (item['fixedIn'] or not policy.get('requireFix', True))):
+            item['status'] = 'reported'
+            continue
+        rule = next((entry for entry in policy.get('upstreamAdvisories', [])
+                     if (entry['id'], entry['component'], entry['version'], entry['helperSha256'])
+                     == (item['ghsa_id'], item['component'], item['version'], helper_sha256)), None)
+        if rule and datetime.date.fromisoformat(rule['expires']) >= today:
+            item['status'] = 'accepted until ' + rule['expires']
+            item['acceptance'] = {key: rule[key] for key in ('reason', 'expires', 'issue', 'evidence', 'helperSha256')}
+        else:
+            item['status'] = 'blocking' + (' (acceptance expired ' + rule['expires'] + ')' if rule else '')
+            blocking.append(item)
+    return blocking
+
+
 def audit(args):
     directory, output = args.directory.resolve(), args.output.resolve()
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -272,10 +298,11 @@ def audit(args):
             run('gh', 'release', 'download', args.tag, '--repo', args.repository, '--dir', directory)
         print('Verifying installer inventory and identity', flush=True)
         builds = json.loads((directory / 'release-builds.json').read_text())
-        if builds.get('assetLayout') != support_assets.LAYOUT:
-            raise ValueError('Expected installers-v1 release layout')
+        layout = builds.get('assetLayout')
+        if layout not in support_assets.LAYOUTS:
+            raise ValueError('Expected an installers-v1 or installers-v2 release layout')
         release, receipts = builds['release'], builds['receipts']
-        checks['assets'] = checksums(directory, support_assets.inventory(release['version']))
+        checks['assets'] = checksums(directory, support_assets.inventory(release['version'], layout))
         checks['remoteAssets'] = remote_snapshot(args.repository, args.tag, directory, checks['assets'])
         stamp = release_identity(args.source_root, args.tag, release)
         checks['identity'] = release
@@ -345,13 +372,13 @@ def audit(args):
         checks['dependencies'] = {}
         bun_versions = {}
         generated = {}
-        for label in sbom.LABELS:
+        for label in (label for label in sbom.LABELS if label == 'appimage' or label in support_assets.packages(layout)):
             print('Auditing package and regenerating SBOM: ' + label, flush=True)
             receipt = receipts[label]
             appimage = label == 'appimage'
             artifact = receipt['artifact'] if appimage else receipt['package']
             filename = (artifact['file'] if appimage else
-                        f'putgd-{release["version"]}-{label}-x86_64' + ('.rpm' if label == 'fedora44' else '.deb'))
+                        f'putgd-{release["version"]}-{label}-x86_64' + ('.pkg.tar.zst' if label == 'archlinux' else '.rpm' if label.startswith('fedora') else '.deb'))
             package = directory / filename
             if sha256(package) != artifact['sha256']:
                 raise ValueError('Package differs from CI audit: ' + label)
@@ -369,7 +396,9 @@ def audit(args):
                 raise ValueError('Direct OpenPGP web-stream-tools dependency missing from notices')
             bun_versions.setdefault(proton['manifest']['bunVersion'], []).append(label)
             if appimage:
+                from portable_appimage import audit_ocr_runtime
                 observed = appimage_notices.audit(root)
+                observed["ocr"] = audit_ocr_runtime(root)
                 actual_files = {p.relative_to(root).as_posix(): sha256(p) for p in root.rglob('*') if p.is_file()}
                 if actual_files != {i['path']: i['sha256'] for i in receipt['inventory']}:
                     raise ValueError('AppImage file hashes differ from deployed CI audit')
@@ -378,7 +407,7 @@ def audit(args):
                 environment = {**os.environ, 'LD_LIBRARY_PATH': str(root / 'usr/lib') + ':' + str(root / 'usr/lib/putgd')}
                 observed['compiledIdentities'] = {}
                 for program in receipt['postDeploymentAudit']['identityMatchedPrograms']:
-                    identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env=environment, timeout=30))
+                    identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env={} if program == 'putgd-ocr' else environment, timeout=30))
                     if identity != expected:
                         raise ValueError('AppImage compiled identity differs from release: ' + program)
                     observed['compiledIdentities'][program] = identity
@@ -386,11 +415,11 @@ def audit(args):
                     raise ValueError('Missing combined-work GPL notice')
             else:
                 observed = validate_inventory(root, expected, require_proton=True)
-                observed['metadata'] = package_metadata(package, 'DEB' if package.suffix == '.deb' else 'RPM')
+                observed['metadata'] = package_metadata(package, 'PACMAN' if label == 'archlinux' else 'DEB' if package.suffix == '.deb' else 'RPM')
                 found_license = ET.parse(root / appimage_notices.METAINFO).getroot().findtext('project_license')
                 if set(re.findall(r'[A-Za-z0-9.+-]+', found_license or '')) != {'MIT', 'AND', 'Apache-2.0', 'GPL-3.0-or-later'}:
                     raise ValueError('Native AppStream license differs from bundled components')
-                if label == 'fedora44':
+                if label.startswith('fedora'):
                     observed['metadata']['license'] = run('rpm', '-qp', '--qf', '%{LICENSE}', package)
                     if observed['metadata']['license'] != 'MIT AND Apache-2.0 AND GPL-3.0-or-later':
                         raise ValueError('RPM license metadata differs from bundled components')
@@ -415,8 +444,8 @@ def audit(args):
         policy = sbom.load_policy()
         upstream = bun_advisories(bun_versions)
         checks['upstreamAdvisories'] = upstream
-        if any(item['severity'].capitalize() in policy['severities']
-               and (item['fixedIn'] or not policy.get('requireFix', True)) for item in upstream):
+        # Every package's helper was checked above to be exactly the catalog's helper.
+        if upstream_blocking(upstream, policy, catalog['helperSha256'], datetime.datetime.now(datetime.timezone.utc).date()):
             result['errors'].append('Official Bun advisories exceed the stable threshold; see upstreamAdvisories')
         write(regenerated / 'sbom-receipts.json', {'schemaVersion': 1, 'sboms': generated})
         print('Scanning with a fresh vulnerability database and stable policy', flush=True)
@@ -475,13 +504,15 @@ def audit_proton_ci(directory, output):
         catalog_path = ROOT / 'tools/proton/notices/SOURCES.json'
         catalog = json.loads(catalog_path.read_text())
         packages = sorted(p for p in directory.rglob('*') if p.is_file()
-                          and p.name.startswith(('putgd-', 'putgd_')) and p.suffix in ('.deb', '.rpm', '.AppImage'))
+                          and p.name.startswith(('putgd-', 'putgd_')) and (p.suffix in ('.deb', '.rpm', '.AppImage') or p.name.endswith('.pkg.tar.zst')))
         if not packages:
             raise ValueError('No CI installers supplied')
         versions = {}
         for index, package in enumerate(packages):
             label = 'appimage' if package.suffix == '.AppImage' else (
-                'fedora44' if package.suffix == '.rpm' else 'debian13')
+                'archlinux' if package.name.endswith('.pkg.tar.zst') else
+                (re.search(r'-(fedora[0-9]+)-x86_64[.]rpm$', package.name) or [None, 'fedora44'])[1] if package.suffix == '.rpm'
+                else 'debian13')
             work = output / str(index)
             work.mkdir()
             root = sbom.extract(package, label, work)

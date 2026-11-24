@@ -1,0 +1,16 @@
+# Lab sshd with no SFTP subsystem (#1871): shell and command execution only, so an SFTP client
+# gets "subsystem request failed". The same two users as the SFTP server.
+Port 2222
+HostKey /server/hostkeys/ssh_host_ed25519_key
+HostKey /server/hostkeys/ssh_host_rsa_key
+AuthorizedKeysFile /server/authorized_keys.%u
+PidFile /tmp/sshd.pid
+LogLevel VERBOSE
+PermitRootLogin no
+# Every client reaches the pod through one gateway address, so a failed sign-in by one test must not
+# delay the next one (OpenSSH penalises a source address that fails authentication).
+PerSourcePenalties no
+AllowUsers putgd-key putgd-pw
+PubkeyAuthentication yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no

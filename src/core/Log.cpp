@@ -49,6 +49,9 @@ const QList<Rule>& rules() {
   // Presigned queries and share-link fragments (Proton keeps the share
   // password in the fragment). The scheme, host and path stay.
   {QRegularExpression("(?i)\\b((?:https?|wss?|s3)://[^\\s?#\"'<>]+)[?#][^\\s\"'<>]*"),"\\1?<redacted>"},
+  // A Nextcloud share link's token is the link's only secret, in its path (#1872).
+  // A lookbehind, so overlapping segments ("/s/s/TOKEN") are each replaced.
+  {QRegularExpression("(?<=/s/)(?!<redacted>)[^\\s/?#\"'<>]+"),"<redacted>"},
   {QRegularExpression("(?i)\\b(aws_secret_access_key|aws_session_token|secret_?access_?key|secret_?key|session_?token|security_?token|access_?token|refresh_?token|id_?token|share_?password|password|passphrase|passwd|api_?key|client_?secret|private_?key|cookie|token|secret)(\"?\\s*[:=]\\s*\"?)[^\\s\",;&}\\]]+"),"\\1\\2<redacted>"},
   {QRegularExpression("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}"),"\\1 <redacted>"},
   {QRegularExpression("\\b(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ABIA|ACCA)[A-Z0-9]{16}\\b"),"<access-key-id>"},
@@ -71,7 +74,7 @@ QString redactSecretShapes(QString text) {
 }
 bool sensitiveKey(const QString& key) {
  static const QStringList keys{"password","passphrase","passwd","secret","secretkey","secretaccesskey","awssecretaccesskey","accesskey","accesskeyid",
-  "awsaccesskeyid","sessiontoken","awssessiontoken","securitytoken","token","accesstoken","refreshtoken","authorization","credentials","cookie",
+  "awsaccesskeyid","sessiontoken","awssessiontoken","securitytoken","token","accesstoken","refreshtoken","authorization","credentials","cookie","xamzsignature","xamzcredential","xamzsecuritytoken",
   "sharepassword","privatekey","clipboard","clipboardtext","text","content","contents","payload"};
  auto normalized=key.toLower();normalized.remove('_');normalized.remove('-');
  return keys.contains(normalized);
@@ -81,7 +84,7 @@ QByteArray encode(const Record& record) {
  QJsonObject object{{"v",1},{"time",QDateTime::fromMSecsSinceEpoch(record.time).toUTC().toString(Qt::ISODateWithMs)},{"level",levelName(record.type)},
   {"category",record.category.left(64)},{"process",record.process.left(64)},{"pid",record.pid},{"message",redact(record.message).left(4096)}};
  auto fields=redact(QJsonValue(record.fields)).toObject();
- for(const auto* key:{"operationId","itemId"})if(fields[key].isString()){object[key]=fields[key].toString().left(128);fields.remove(key);}
+ for(const auto* key:{"operationId","itemId"})if(fields.value(key).isString()){object[key]=fields.value(key).toString().left(128);fields.remove(key);}
  if(!fields.isEmpty())object["fields"]=fields;
  auto line=QJsonDocument(object).toJson(QJsonDocument::Compact);
  if(line.size()>16384) {object["fields"]=QJsonObject{{"truncated",true}};line=QJsonDocument(object).toJson(QJsonDocument::Compact);}
@@ -119,14 +122,16 @@ public:
   std::lock_guard lock(mutex_);
   return {{"available",true},{"directory",directory_},{"files",files_},{"bytes",total_},{"oldestRecord",oldest_.isEmpty()?QJsonValue():QJsonValue(oldest_)},
    {"degraded",degraded_},{"degradedReason",degraded_?QJsonValue(reason_):QJsonValue()},{"droppedRecords",qint64(dropped_)},
-   {"retention",QJsonObject{{"days",retention_.days},{"bytes",retention_.bytes}}},{"rotationBytes",rotationLimit()}};
+   {"retention",QJsonObject{{"days",retention_.days},{"bytes",retention_.bytes}}},{"rotationBytes",rotationLimitFor(retention_.bytes)}};
  }
  void setRetention(Retention retention) {{std::lock_guard lock(mutex_);retention_=retention;}push({Command::Cleanup,{},{}});}
  QStringList files() {std::lock_guard lock(mutex_);return names_;}
  QString current() {std::lock_guard lock(mutex_);return current_.isEmpty()?QString():directory_+"/"+current_;}
  QString directory() const {return directory_;}
 private:
- qint64 rotationLimit() const {return qBound(qint64(64*1024),retention_.bytes/4,rotationBytes);}
+ static qint64 rotationLimitFor(qint64 retentionBytes) {return qBound(qint64(64*1024),retentionBytes/4,rotationBytes);}
+ // retention_ is replaced by setRetention on another thread: read it under the lock.
+ qint64 rotationLimit() {std::lock_guard lock(mutex_);return rotationLimitFor(retention_.bytes);}
  void run() {
   prepare();
   for(;;) {
@@ -238,7 +243,7 @@ private:
    if(kept[index].first!=current&&QFile::remove(dir.filePath(kept[index].first))){total-=kept[index].second;kept.removeAt(index);}
    else ++index;
   }
-  QStringList names;for(const auto& entry:kept)names.append(entry.first);
+  QStringList names;for(const auto& entry:std::as_const(kept))names.append(entry.first);
   const auto oldest=names.isEmpty()?QString():timeOf(dir.filePath(names.first()));
   std::lock_guard lock(mutex_);names_=names;files_=int(names.size());total_=total;oldest_=oldest;
  }
@@ -294,13 +299,9 @@ void handle(QtMsgType type,const QMessageLogContext& context,const QString& mess
 }
 }
 QString stateRoot() {
-#ifdef Q_OS_WIN
- return QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA"))+"/putgd";
-#else
  auto base=qEnvironmentVariable("XDG_STATE_HOME");
  if(base.isEmpty()||!QDir::isAbsolutePath(base))base=QDir::homePath()+"/.local/state";
  return QDir::cleanPath(base)+"/putgd";
-#endif
 }
 void open(const QString& directory,Retention retention,const QString& process) {
  if(current())return;

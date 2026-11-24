@@ -1,0 +1,258 @@
+// Replay tool for the scroll tracker (#1515): feeds a recorded sequence of
+// frames through ScrollTracker and writes the image and every frame's result
+// as JSON. (The stitcher it was once compared with is gone; its numbers are in
+// PR #1527.) Lab
+// input, never desktop proof; tools/lab/scroll_tracker_score.py compares the
+// output with the browser's own full-page picture and the true scroll position.
+//
+//   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker]
+//       [--repeat N] [--max-height N] [--exclude X,Y,W,H [--paint]]
+//
+// --exclude tells the tracker a rectangle of the frame is not the application;
+// --paint also draws into it, in every frame, a bar whose pixels change from
+// frame to frame (as put.gd's own bar with a height counter would).
+//
+// FILE has one frame per line: a PNG path, optionally followed by a hint
+// (expected offset since the line before, and its uncertainty).
+#include "core/ScrollTracker.h"
+
+#include <QCommandLineParser>
+#include <QCoreApplication>
+#include <QFile>
+#include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QRegularExpression>
+#include <QTextStream>
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <vector>
+
+using namespace putgd::scroll;
+
+namespace {
+
+struct Line {
+  QString path;
+  TrackerHint hint;
+};
+
+QImage load(const QString& path) {
+  QImage image(path);
+  if (image.isNull()) return image;
+  return image.convertToFormat(QImage::Format_RGB32);
+}
+
+FrameView viewOf(const QImage& image) {
+  return {image.constBits(), image.width(), image.height(), std::ptrdiff_t(image.bytesPerLine())};
+}
+
+bool save(const std::vector<uint8_t>& pixels, int width, long long rows, const QString& path) {
+  if (rows <= 0) return false;
+  QImage out(reinterpret_cast<const uchar*>(pixels.data()), width, int(rows), width * 4, QImage::Format_RGB32);
+  return out.copy().save(path, "PNG");
+}
+
+// The memory canvas, timed: what the engine itself costs is a frame's time
+// less the time its writes and reads take here (the helper's spool file has
+// costs of its own).
+class TimedCanvas final : public TrackerCanvas {
+ public:
+  explicit TimedCanvas(int width) : inner(width) {}
+  void writeSpan(long long row, int x0, int x1, const uint8_t* bgrx) override {
+    const auto t0 = std::chrono::steady_clock::now();
+    inner.writeSpan(row, x0, x1, bgrx);
+    ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+  }
+  bool readRow(long long row, uint8_t* bgrx) const override {
+    const auto t0 = std::chrono::steady_clock::now();
+    const bool ok = inner.readRow(row, bgrx);
+    ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    return ok;
+  }
+  long long top() const override { return inner.top(); }
+  long long bottom() const override { return inner.bottom(); }
+  MemoryCanvas inner;
+  mutable double ms = 0;
+};
+
+double percentile(std::vector<double> v, double q) {
+  if (v.empty()) return 0;
+  std::sort(v.begin(), v.end());
+  return v[std::min(v.size() - 1, size_t(q * double(v.size() - 1) + 0.5))];
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  QCoreApplication app(argc, argv);
+  QCommandLineParser parser;
+  parser.addOptions({{"list", "frames, one per line: {\"path\": PNG, \"hint\": N, \"uncertainty\": N} (hint optional), or PATH [HINT UNCERTAINTY]", "file"},
+                     {"out", "an existing directory for image.png and results.json", "dir"},
+                     {"engine", "tracker (the only engine)", "name", "tracker"},
+                     {"repeat", "run the sequence this many times for timing (the image is the first run's)", "n", "1"},
+                     {"max-height", "height cap", "rows", "32000"},
+                     {"exclude", "a rectangle of the frame that is not the application (tracker only)", "x,y,w,h"},
+                     {"paint", "draw a bar that changes every frame into the excluded rectangle"}});
+  parser.process(app);
+  if (!parser.isSet("list") || !parser.isSet("out")) {
+    std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker]\n");
+    return 2;
+  }
+  QFile listFile(parser.value("list"));
+  if (!listFile.open(QIODevice::ReadOnly | QIODevice::Text)) return 2;
+  std::vector<Line> lines;
+  QTextStream in(&listFile);
+  while (!in.atEnd()) {
+    // A JSON object per line (the scorer's): the path is one field, spaces and
+    // all (CodeRabbit on #1536). An older list's line is the path, then the
+    // hint and its uncertainty where the last two words are numbers.
+    const QString text = in.readLine();
+    if (text.trimmed().isEmpty()) continue;
+    Line l;
+    if (text.trimmed().startsWith('{')) {
+      const QJsonObject o = QJsonDocument::fromJson(text.toUtf8()).object();
+      l.path = o["path"].toString();
+      if (o.contains("hint")) l.hint = {true, o["hint"].toInt(), o["uncertainty"].toInt()};
+    } else {
+      l.path = text;
+      static const QRegularExpression hinted(QStringLiteral("^(.*\\S)\\s+(-?\\d+)\\s+(\\d+)\\s*$"));
+      if (const auto m = hinted.match(text); m.hasMatch()) {
+        l.path = m.captured(1);
+        l.hint = {true, m.captured(2).toInt(), m.captured(3).toInt()};
+      }
+    }
+    if (l.path.isEmpty()) continue;
+    lines.push_back(l);
+  }
+  // Frames are read as they are fed: a live run has thousands.
+  const QStringList ex = parser.value("exclude").split(',');
+  const bool paint = parser.isSet("paint") && ex.size() == 4;
+  const auto frameAt = [&](size_t i) {
+    QImage f = load(lines[i].path);
+    if (f.isNull()) {
+      std::fprintf(stderr, "cannot read %s\n", qPrintable(lines[i].path));
+      return f;
+    }
+    if (!paint) return f;
+    // A dark bar with a counter-like pattern of the frame's number.
+    const int n = int(i) + 1;
+    const int x0 = std::max(0, ex[0].toInt()), y0 = std::max(0, ex[1].toInt());
+    const int x1 = std::min(f.width(), x0 + ex[2].toInt()), y1 = std::min(f.height(), y0 + ex[3].toInt());
+    for (int y = y0; y < y1; ++y) {
+      QRgb* row = reinterpret_cast<QRgb*>(f.scanLine(y));
+      for (int x = x0; x < x1; ++x) {
+        const int digit = ((x - x0) / 12 + n * 7 + (x - x0) / 60 * n) % 10;
+        const bool ink = (y - y0) > 6 && (y1 - y) > 6 && ((x - x0) % 12) < 2 + digit / 2 && ((y - y0 + digit) % 5) < 3;
+        row[x] = ink ? qRgb(240, 192, 96) : qRgb(30, 34, 48);
+      }
+    }
+    return f;
+  };
+  if (lines.empty()) return 2;
+  const QImage first = frameAt(0);
+  if (first.isNull()) return 3;
+  const QString out = parser.value("out");
+  if (parser.value("engine") != "tracker") {
+    std::fprintf(stderr, "the only engine is tracker\n");
+    return 2;
+  }
+  const int repeat = std::max(1, parser.value("repeat").toInt());
+  QJsonArray results;
+  QJsonObject summary;
+  std::vector<double> ms, engineMs;
+  using Clock = std::chrono::steady_clock;
+
+  {
+    for (int run = 0; run < repeat; ++run) {
+      TimedCanvas canvas(first.width());
+      TrackerOptions opts;
+      opts.maxOutputRows = parser.value("max-height").toLongLong();
+      ScrollTracker tracker(canvas, opts);
+      if (ex.size() == 4) tracker.setExcluded({ex[0].toInt(), ex[1].toInt(), ex[2].toInt(), ex[3].toInt()});
+      for (size_t i = 0; i < lines.size(); ++i) {
+        const QImage frame = frameAt(i);
+        if (frame.isNull()) return 3;
+        const double canvasBefore = canvas.ms;
+        const auto t0 = Clock::now();
+        const TrackResult r = tracker.addFrame(viewOf(frame), lines[i].hint);
+        const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+        ms.push_back(t);
+        engineMs.push_back(t - (canvas.ms - canvasBefore));
+        if (run > 0) continue;
+        results.append(QJsonObject{{"file", lines[i].path},
+                                   {"status", toString(r.status)},
+                                   {"reason", toString(r.reason)},
+                                   {"offset", r.offset},
+                                   {"position", double(r.position)},
+                                   {"addedTop", r.addedTop},
+                                   {"addedBottom", r.addedBottom},
+                                   {"confidence", r.confidence},
+                                   {"byExpectation", r.byExpectation},
+                                   {"onHint", r.onHint},
+                                   {"recovered", r.recovered},
+                                   {"state", toString(r.state)},
+                                   {"ms", t}});
+      }
+      const auto t0 = Clock::now();
+      const TrackTotals tot = tracker.finish();
+      const double finishMs = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+      if (run > 0) continue;
+      int cols = 0, rowsOut = 0;
+      const std::vector<uint8_t> mask = tracker.pinnedMask(cols, rowsOut);
+      QJsonArray maskRows;
+      for (int r = 0; r < rowsOut; ++r) {
+        QString s;
+        for (int c = 0; c < cols; ++c) s += mask[size_t(r) * cols + c] ? '#' : '.';
+        maskRows.append(s);
+      }
+      summary = QJsonObject{{"engine", "tracker"},
+                            {"frames", tot.frames},
+                            {"placed", tot.placed},
+                            {"noMovement", tot.noMovement},
+                            {"skipped", tot.skipped},
+                            {"invalid", tot.invalid},
+                            {"longestSkipRun", tot.longestSkipRun},
+                            {"recovered", tot.recovered},
+                            {"byExpectation", tot.byExpectation},
+                            {"onHint", tot.onHint},
+                            {"pinnedRegions", tot.pinnedRegions},
+                            {"capReached", tot.capReached},
+                            {"top", double(tot.top)},
+                            {"bottom", double(tot.bottom)},
+                            {"hiddenCells", double(tot.hiddenCells)},
+                            {"hiddenRows", double(tot.hiddenRows)},
+                            {"finishMs", finishMs},
+                            {"cellPx", tracker.options().cellPx},
+                            {"blockRows", tracker.options().blockRows},
+                            {"pinnedMask", maskRows}};
+      if (!save(canvas.inner.image(tot.top, tot.bottom), canvas.inner.width(), tot.bottom - tot.top, out + "/image.png")) {
+        std::fprintf(stderr, "cannot write the image\n");
+        return 4;
+      }
+    }
+  }
+  double sum = 0;
+  for (double v : ms) sum += v;
+  summary["msMean"] = ms.empty() ? 0 : sum / double(ms.size());
+  summary["msP50"] = percentile(ms, 0.5);
+  summary["msP95"] = percentile(ms, 0.95);
+  summary["msMax"] = ms.empty() ? 0 : *std::max_element(ms.begin(), ms.end());
+  if (!engineMs.empty()) {
+    double e = 0;
+    for (double v : engineMs) e += v;
+    summary["engineMsMean"] = e / double(engineMs.size());
+    summary["engineMsP50"] = percentile(engineMs, 0.5);
+    summary["engineMsP95"] = percentile(engineMs, 0.95);
+    summary["engineMsMax"] = *std::max_element(engineMs.begin(), engineMs.end());
+  }
+  summary["width"] = first.width();
+  summary["height"] = first.height();
+  QFile f(out + "/results.json");
+  if (!f.open(QIODevice::WriteOnly)) return 4;
+  f.write(QJsonDocument(QJsonObject{{"summary", summary}, {"frames", results}}).toJson(QJsonDocument::Indented));
+  std::printf("%s\n", QJsonDocument(summary).toJson(QJsonDocument::Compact).constData());
+  return 0;
+}

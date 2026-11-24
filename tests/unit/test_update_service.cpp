@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/SystemUpdates.h"
 #include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -23,13 +24,13 @@ class UpdateServiceTest:public QObject {
  QTemporaryDir dir;
  QByteArray oldSystemRoot;
  bool hadSystemRoot=false;
- QString repositoryFile(const QString& target) const {return dir.path()+(target=="fedora44"?"/system/etc/yum.repos.d/putgd.repo":"/system/etc/apt/sources.list.d/putgd.sources");}
+ QString repositoryFile(const QString& target) const {return dir.path()+(target.startsWith("fedora")?"/system/etc/yum.repos.d/putgd.repo":"/system/etc/apt/sources.list.d/putgd.sources");}
  void repository(const QString& target,const QString& channel="stable",const QString& state="managed") {
   const auto path=repositoryFile(target);QVERIFY(QDir().mkpath(QFileInfo(path).path()));
   QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));
   const auto base=state=="foreign"?QString("https://example.invalid"):update::packageRepository();
-  const auto text=state=="invalid"?QString("not a repository\n"):target=="fedora44"?
-   "[putgd]\nbaseurl="+base+"/rpm/fedora/44/x86_64/"+channel+"\nenabled="+(state=="disabled"?"0":"1")+"\n":
+  const auto text=state=="invalid"?QString("not a repository\n"):target.startsWith("fedora")?
+   "[putgd]\nbaseurl="+base+"/rpm/fedora/$releasever/x86_64/"+channel+"\nenabled="+(state=="disabled"?"0":"1")+"\n":
    "Types: deb\nURIs: "+base+"/apt/"+target+"\nSuites: "+channel+"\nComponents: main\nEnabled: "+(state=="disabled"?"no":"yes")+"\n";
   file.write(text.toUtf8());
  }
@@ -104,7 +105,7 @@ private slots:
  }
  void startupUsesLocalRepositoryWithoutAFeed_data(){
   QTest::addColumn<QString>("target");QTest::addColumn<QString>("state");QTest::addColumn<QString>("chosen");QTest::addColumn<bool>("checks");
-  for(const auto& target:{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage"})
+  for(const auto& target:{"ubuntu24.04","ubuntu26.04","debian13","fedora44","fedora45","appimage"})
    for(const auto& state:{"managed","absent","disabled","foreign","invalid"})
     for(const auto& chosen:{"build","nightly"})
      for(const bool checks:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3-%4").arg(target,state,chosen).arg(checks)))<<QString(target)<<QString(state)<<QString(chosen)<<checks;
@@ -380,9 +381,14 @@ private slots:
   const auto install=updates->status()["install"].toObject();
   QCOMPARE(install["error"].toObject()["code"].toString(),QString("update_verification_failed"));QCOMPARE(install["restartRequired"].toBool(),false);
   Error error;updates->restart({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_restart_unavailable"));
-  // A child that dies without a result is a failure too.
+  // A child that dies without a result is a failure too, and its staging
+  // folder (a partly assembled image) goes with it.
+  const auto staging=dir.filePath(".putgd-update-Ab12Cd");QVERIFY(QDir().mkpath(staging));
+  {QFile part(staging+"/putgd.AppImage");QVERIFY(part.open(QIODevice::WriteOnly));part.write("partial");}
+  QVERIFY(appimage::writeState(dir.path(),{{"staging",staging}}));
   answerLines({},9);updates->install({{"confirm",true}},[](Error,QJsonObject){});
   PUTGD_TRY_COMPARE(updates->status()["install"].toObject()["error"].toObject()["code"].toString(),QString("update_install_failed"));
+  QVERIFY(!QFileInfo::exists(staging));QVERIFY(appimage::readState(dir.path())["staging"].isNull());
  }
  void onlyAnAppImageOnItsOwnChannelInstalls(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);

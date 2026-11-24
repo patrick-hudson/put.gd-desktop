@@ -6,7 +6,6 @@ namespace putgd {
 class AboutWindow final : public QDialog {
 public:
  explicit AboutWindow(const QJsonObject& residentBuild, QWidget* parent = nullptr);
- QString detailedText()const{return details_;}
  int maximumFitHeight()const;
 protected:
  void showEvent(QShowEvent*)override;

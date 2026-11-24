@@ -18,7 +18,7 @@ namespace putgd {
 // runs in its XDG portal backend (org.freedesktop.portal.FileChooser over
 // D-Bus), so the native GNOME, KDE or Cinnamon dialog appears without a Qt
 // platform theme in this process: the resident's and helpers' generic theme
-// stays as it is (docs/memory-strategy.md). Without a portal, a FileChooser
+// stays as it is (docs/design/memory-strategy.md). Without a portal, a FileChooser
 // interface or a folder-capable version, or when it errors, does not answer or
 // fails before its chooser could be seen, Qt's widget dialog opens instead,
 // themed from the Theme tokens. Closing the desktop's chooser is a cancel.

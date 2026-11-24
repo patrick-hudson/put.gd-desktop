@@ -1,13 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "Self-hosted Renovate (.github/workflows/renovate.yml; docs/ci.md, 'Dependency updates').",
+    "Self-hosted Renovate (.github/workflows/renovate.yml; docs/release/ci.md, 'Dependency updates').",
     "Renovate changes versions only. Its post-upgrade task, tools/maintenance/refresh_pins.py, re-derives the URLs, SHA-256s and commits that go with them."
   ],
   "extends": ["config:recommended"],
   "baseBranchPatterns": ["nightly"],
   "enabledManagers": ["custom.regex", "npm", "pep621"],
-  "ignorePaths": ["docs/**", "tests/**", "**/node_modules/**", "packaging/flatpak/**"],
+  "ignorePaths": ["tests/**", "**/node_modules/**"],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "deps:",
   "commitMessageTopic": "{{depName}}",
@@ -21,7 +21,7 @@
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Dependency updates (Renovate)",
   "dependencyDashboardLabels": ["dependencies", "tracker"],
-  "dependencyDashboardHeader": "Self-hosted Renovate runs weekly from `.github/workflows/renovate.yml` and opens pull requests against `nightly`. Nothing merges automatically. Updates marked for approval are listed below until you tick them. See docs/ci.md, \"Dependency updates\".",
+  "dependencyDashboardHeader": "Self-hosted Renovate runs weekly from `.github/workflows/renovate.yml` and opens pull requests against `nightly`. Nothing merges automatically. Updates marked for approval are listed below until you tick them. See docs/release/ci.md, \"Dependency updates\".",
   "customManagers": [
     {
       "description": "Release-asset tools: linuxdeploy, its Qt plugin, appimagetool, the AppImage runtime, Syft and Grype.",
@@ -61,6 +61,14 @@
       "datasourceTemplate": "github-tags"
     },
     {
+      "description": "The SDK source link in the S3 guide follows the locked release.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^docs/user/s3\\.md$/"],
+      "matchStrings": ["github\\.com/aws/aws-sdk-cpp/blob/(?<currentValue>[0-9.]+)/"],
+      "depNameTemplate": "aws/aws-sdk-cpp",
+      "datasourceTemplate": "github-tags"
+    },
+    {
       "description": "The Proton helper's Bun runtime and SDK as its runtime lock records them.",
       "customType": "regex",
       "managerFilePatterns": ["/^tools/proton/runtime-lock\\.json$/"],
@@ -74,6 +82,16 @@
       "matchStrings": ["\"bunVersion\": \"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "bun",
       "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^packaging/appimage/tools\\.lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"repository\": \"(?<depName>https://github\\.com/tesseract-ocr/tessdata_fast)\\.git\",\\s*\"ref\": \"(?<currentValue>[^\"]+)\",\\s*\"commit\": \"(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "datasourceTemplate": "git-refs"
     }
   ],
   "packageRules": [
@@ -128,7 +146,7 @@
       "labels": ["dependencies", "area: packaging"]
     },
     {
-      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh checks libavcodec.so.61).",
+      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh reads them from the pinned build).",
       "matchPackageNames": ["FFmpeg/FFmpeg"],
       "extractVersion": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$",
       "labels": ["dependencies", "area: packaging", "area: recording"]
@@ -167,12 +185,65 @@
       "groupName": "Proton helper",
       "labels": ["dependencies", "area: proton"],
       "dependencyDashboardApproval": true,
-      "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/proton-drive.md)."]
+      "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/user/proton-drive.md)."]
+    },
+    {
+      "description": "ky and TypeScript build the pinned ProtonDriveApps/sdk source (cli, incubating/account/js), which requires ky ^1.14 and TypeScript ^5.9. Stay on those majors until a new sourceReference moves them.",
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["ky"],
+      "allowedVersions": "<2"
+    },
+    {
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6"
     },
     {
       "matchManagers": ["pep621"],
       "groupName": "MCP helper (Python)",
       "labels": ["dependencies", "area: lab"]
+    },
+    {
+      "matchPackageNames": [
+        "tesseract-ocr/tesseract"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "DanBloomberg/leptonica"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "zxing-cpp/zxing-cpp"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "tesseract-ocr/tesseract",
+        "DanBloomberg/leptonica",
+        "zxing-cpp/zxing-cpp"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "dependencyDashboardApproval": true
     }
   ]
 }

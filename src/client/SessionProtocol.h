@@ -14,9 +14,14 @@ inline constexpr int diagnosticsBundleReplyMs = 600000, diagnosticsUploadTargetR
 // history.preview answers once a missing preview is made (#190), after at most
 // a short wait behind other previews and one bounded decode.
 inline constexpr int historyPreviewReplyMs = 45000;
+// desktop.setup.recheck runs gsettings and waits for the Shell, each bounded.
+inline constexpr int desktopSetupRecheckReplyMs = 90000;
 // upload.files stats every selected file, and every file in a selected folder,
 // before it answers (#1105): slow over GVfs or KIOFuse.
 inline constexpr int uploadFilesReplyMs = 120000;
+// settings.importUploader stores the file's secret values first; a locked keyring
+// shows its own unlock prompt, which a person has to answer (#1361).
+inline constexpr int uploaderImportReplyMs = 120000;
 namespace SessionProtocol {
 inline constexpr qsizetype maximumRequest = 1024 * 1024;
 inline constexpr qsizetype maximumResponse = 16 * 1024 * 1024;

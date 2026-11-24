@@ -11,7 +11,7 @@ def stage(build, output, kind, *, packages_only=False):
     if kind == 'native':
         packages = build / 'release-packages'
         selected += [packages / name for name in ('native-audit.json', 'build-info.json', 'cpack.log')]
-        selected += list(packages.glob('*.deb')) + list(packages.glob('*.rpm'))
+        selected += list(packages.glob('*.deb')) + list(packages.glob('*.rpm')) + list(packages.glob('*.pkg.tar.zst'))
         selected += [build / 'source-export/source-archive.json']
         selected += list((build / 'source-export').glob('*-source.tar.gz'))
     else:

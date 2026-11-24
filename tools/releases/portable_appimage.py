@@ -11,12 +11,12 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 
-from audit_native import sha256 as digest
+from audit_native import sha256 as digest, audit_ocr_dependencies, OCR_LIBRARIES
 from audit_proton import audit_proton
 import appimage_notices
 import appimage_update
+import http_retry
 from release_identity import parse_tag
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +27,11 @@ WINDOW_ICON = "usr/share/icons/hicolor/scalable/apps/putgd.svg"
 # The pinned FFmpeg build (media.json) installs these; their notices come from its source.
 FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
 SECRET_SERVICE_LIBRARIES = ("libsecret-", "libglib-", "libgio-", "libgobject-", "libgmodule-", "libgthread-")
+# One ownership policy for every helper, including empty-environment OCR probes.
+BUNDLED_DEPENDENCY_PREFIXES = ("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)
+OCR_NONMINIMAL_LIBRARIES = re.compile(r"^lib(?:curl|ssl|crypto|archive|gomp|omp|png|jpeg|tiff|webp|gif|openjp|zint)")
+# The scrolling capture's wheel steps on X11 (#1376). A host need not have it.
+SCROLL_INPUT_LIBRARY = "libxcb-xtest.so.0"
 
 
 def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
@@ -42,8 +47,7 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
             temporary = path.with_suffix(path.suffix + ".download")
             try:
                 # A socket timeout, so a stalled download fails instead of hanging the build (#467).
-                with urllib.request.urlopen(item["url"], timeout=120) as response, temporary.open("wb") as target:
-                    shutil.copyfileobj(response, target)
+                http_retry.download(item["url"], temporary, timeout=120)
                 if digest(temporary) != item["sha256"]:
                     raise ValueError("Official deployment tool digest mismatch: " + item["name"])
                 temporary.replace(path)
@@ -86,6 +90,7 @@ def system_library_licenses(appdir: Path, claimed: set[str],
             origins.setdefault(original.resolve().name, original)
     origins.update(extra_origins or {})
     packages: dict[str, list[str]] = {}
+    deployed: list[tuple[Path, Path]] = []
     for path in sorted(appdir.rglob("*")):
         if path.is_symlink() or not path.is_file() or str(path.relative_to(appdir)) in claimed:
             continue
@@ -103,12 +108,20 @@ def system_library_licenses(appdir: Path, claimed: set[str],
             if len(paths) != 1:
                 raise ValueError("Cannot identify deployed system library: " + name)
             source = Path(paths.pop())
-        owner = subprocess.run(["dpkg-query", "-S", str(source)], text=True, capture_output=True)
-        if owner.returncode:
-            owner = subprocess.run(["dpkg-query", "-S", str(source.resolve())], text=True, capture_output=True)
-        if owner.returncode:
+        deployed.append((path, source))
+    # One dpkg-query for every file: it reads the whole package database on each call.
+    queries = dict.fromkeys(str(item) for _, source in deployed for item in (source, source.resolve()))
+    listing = subprocess.run(["dpkg-query", "-S", *queries], text=True, capture_output=True).stdout
+    file_owners: dict[str, str] = {}
+    for line in listing.splitlines():
+        if ": " in line:
+            owner, listed = line.split(": ", 1)
+            file_owners.setdefault(listed.strip(), owner)
+    for path, source in deployed:
+        owner = file_owners.get(str(source)) or file_owners.get(str(source.resolve()))
+        if owner is None:
             raise ValueError("Cannot identify distro license for: " + str(source))
-        package = owner.stdout.split(": ", 1)[0].split(":", 1)[0]
+        package = owner.split(":", 1)[0]
         packages.setdefault(package, []).append(str(path.relative_to(appdir)))
         if len(packages[package]) > 1:
             continue
@@ -268,6 +281,15 @@ def pkg_config_variable(module: str, variable: str) -> Path:
     if not value:
         raise ValueError("pkg-config has no " + variable + " for " + module)
     return Path(value)
+
+
+def audit_scroll_input(appdir: Path) -> str:
+    """putgd-record links libxcb-xtest for the scrolling capture; the image must carry it."""
+    appdir = appdir.resolve()
+    library = appdir / "usr/lib" / SCROLL_INPUT_LIBRARY
+    if not library.is_file() or not library.resolve().is_relative_to(appdir):
+        raise ValueError("AppImage must bundle " + SCROLL_INPUT_LIBRARY + " for putgd-record's scrolling capture")
+    return SCROLL_INPUT_LIBRARY
 
 
 def audit_secret_service(appdir: Path) -> dict:
@@ -530,6 +552,61 @@ def audit_root_desktop_entry(appdir: Path) -> str:
     return ROOT_DESKTOP_ENTRY
 
 
+def ocr_library_paths(appdir: Path, path: Path) -> dict:
+    """Check resolution without loader variables, including transitive engines."""
+    output = subprocess.run(["ldd", str(path)], check=True, env={},
+                            capture_output=True, text=True).stdout
+    if "not found" in output:
+        raise ValueError("Unresolved empty-environment OCR dependency: " + path.name)
+    resolved = {}
+    for name, target in re.findall(r"^\s*(\S+)\s+=>\s+(\S+)", output, re.M):
+        location = Path(target).resolve()
+        bundled = appdir / "usr/lib" / name
+        # A host copy with the same SONAME must never mask a broken RUNPATH.
+        # Match the existing AppImage policy: ordinary system libraries that
+        # linuxdeploy excludes (including libz) remain host-provided.
+        if bundled.exists() or bundled.is_symlink() or name.startswith(BUNDLED_DEPENDENCY_PREFIXES):
+            if not location.is_relative_to(appdir.resolve()):
+                raise ValueError("OCR dependency resolves outside AppDir: " + name + " -> " + str(location))
+        if OCR_NONMINIMAL_LIBRARIES.match(name) and not location.is_relative_to(appdir.resolve()):
+            raise ValueError("Nonminimal OCR dependency resolves outside AppDir: " + name)
+        resolved[name] = str(location)
+    return resolved
+
+
+def audit_ocr_runtime(appdir: Path) -> dict:
+    """Check the minimal engine closure and exact English data in a packed tree."""
+    lock = json.loads(LOCK.read_text())["buildInputs"]
+    data = appdir / "usr/share/putgd/tessdata/eng.traineddata"
+    if not data.is_file() or digest(data) != lock["tessdata_fast"]["sha256"]:
+        raise ValueError("AppImage English tessdata_fast missing or changed")
+    # #1981: the script check's data, exactly as pinned, and nothing else.
+    expected = {"eng.traineddata", *lock["tessdata_fast"].get("scriptFiles", {})}
+    present = {p.name for p in (appdir / "usr/share/putgd/tessdata").iterdir()}
+    if present != expected:
+        raise ValueError("AppImage tessdata differs from the pinned files")
+    for name, sha256 in lock["tessdata_fast"].get("scriptFiles", {}).items():
+        if digest(appdir / "usr/share/putgd/tessdata" / name) != sha256:
+            raise ValueError("AppImage tessdata_fast " + name + " missing or changed")
+    libraries = {}
+    paths = {}
+    for prefix in OCR_LIBRARIES:
+        files = [p for p in (appdir / "usr/lib").glob(prefix + "*.so*") if not p.is_symlink()]
+        if len(files) != 1:
+            raise ValueError("Expected one bundled OCR engine: " + prefix)
+        path = files[0]
+        resolved = ocr_library_paths(appdir, path)
+        if any(OCR_NONMINIMAL_LIBRARIES.match(name) for name in resolved):
+            raise ValueError("Nonminimal OCR engine: " + path.name)
+        paths[path.name] = resolved
+        libraries[path.name] = digest(path)
+    paths["putgd-ocr"] = ocr_library_paths(appdir, appdir / "usr/bin/putgd-ocr")
+    for prefix in OCR_LIBRARIES:
+        if not any(name.startswith(prefix) for name in paths["putgd-ocr"]):
+            raise ValueError("AppImage helper does not map its OCR engine: " + prefix)
+    return {"libraries": libraries, "resolvedEmptyEnvironment": paths, "englishSha256": digest(data)}
+
+
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
     environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
@@ -540,7 +617,7 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             continue
         executable = appdir / "usr/bin" / name
         result = subprocess.run([str(executable), "--version-json"], check=True,
-                                env=environment, capture_output=True, text=True, timeout=30)
+                                env={} if name == "putgd-ocr" else environment, capture_output=True, text=True, timeout=30)
         if json.loads(result.stdout) != inventory["manifest"]:
             raise ValueError("Post-deployment executable identity mismatch: " + name)
         identities.append(name)
@@ -563,6 +640,12 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
         with path.open("rb") as stream:
             if stream.read(4) != b"\x7fELF":
                 continue
+        dynamic = subprocess.run(["readelf", "-d", str(path)], check=True,
+                                 capture_output=True, text=True).stdout
+        needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", dynamic)
+        # Engine libraries themselves may depend on Leptonica; product ELFs may not.
+        if not path.name.startswith(OCR_LIBRARIES):
+            audit_ocr_dependencies(path.name, needed)
         dependencies = subprocess.run(["ldd", str(path)], check=True, env=environment,
                                       capture_output=True, text=True).stdout
         if "not found" in dependencies:
@@ -571,17 +654,19 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
+            if library.strip().startswith(BUNDLED_DEPENDENCY_PREFIXES):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
     result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
               "bundledDependenciesResolvedInsideImage": True,
-              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
-              "secretService": audit_secret_service(appdir)}
+              "checkedDependencyPrefixes": list(BUNDLED_DEPENDENCY_PREFIXES),
+              "secretService": audit_secret_service(appdir),
+              "ocr": audit_ocr_runtime(appdir)}
     if media_audit:
         result["recording"] = media_audit
+        result["scrollInput"] = audit_scroll_input(appdir)
     return result
 
 
@@ -674,27 +759,25 @@ def main() -> int:
     argv += ["--executable", str(media_scanner)]
     subprocess.run(argv, check=True, env=environment)
     media_origins = relocate_media(appdir, media_plugins, media_scanner)
-    # Deploy the native theme explicitly, including its ordinary shared-library
-    # dependencies; do not replace GTK dialogs with Qt-only fallback dialogs.
+    # The native theme (do not replace GTK dialogs with Qt-only fallback dialogs),
+    # the layer-shell plugin and the Wayland client plugins are deployed explicitly,
+    # with their ordinary shared-library dependencies, in one pass: each pass
+    # rewalks the whole AppDir and takes about 40 seconds on a hosted runner.
     theme = appdir / "usr/plugins/platformthemes/libqgtk3.so"
     theme.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(gtk, theme)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(theme), *excludes], check=True, env=environment)
     layer = appdir / "usr/plugins/wayland-shell-integration/liblayer-shell.so"
     layer.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(layer_plugins[0], layer)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(layer), *excludes], check=True, env=environment)
-    # Its build RUNPATH names the CI's dependency prefix and Qt install (#421).
-    appimage_notices.set_origin_runpath(appdir, layer)
-    wayland = []
+    plugins = ["--library", str(theme), "--library", str(layer)]
     for name in WAYLAND_CLIENT_PLUGINS:
-        wayland += ["--library", str(appdir / "usr/plugins" / name)]
+        plugins += ["--library", str(appdir / "usr/plugins" / name)]
         (appdir / "usr/plugins" / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(qt / "plugins" / name, appdir / "usr/plugins" / name)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *wayland, *excludes],
+    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *plugins, *excludes],
                    check=True, env=environment)
+    # Its build RUNPATH names the CI's dependency prefix and Qt install (#421).
+    appimage_notices.set_origin_runpath(appdir, layer)
     fallbacks = stage_host_fallbacks(appdir, media)
     gpl = gpl_components(appdir, media)
     write_gpl_notice(appdir, gpl, lock["buildInputs"]["ffmpeg"], args.version)
@@ -713,6 +796,7 @@ def main() -> int:
     # generates its own complete notices and source inventory below.
     for native_doc in ("copyright", "changelog.gz"):
         (appdir / "usr/share/doc/putgd" / native_doc).unlink(missing_ok=True)
+    subprocess.run(["patchelf", "--set-rpath", "$ORIGIN/../lib", str(appdir / "usr/bin/putgd-ocr")], check=True)
     notices = appimage_notices.finish(appdir, qt=qt, lock=lock, license_sources=args.license_source,
                                       distro_packages=distro_packages, version=args.version,
                                       build=inventory["manifest"], gpl=gpl)

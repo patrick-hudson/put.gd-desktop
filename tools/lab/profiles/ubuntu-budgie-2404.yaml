@@ -1,0 +1,15 @@
+{
+  "name": "ubuntu-budgie-2404",
+  "desktop": "Budgie",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "session_process": "budgie-panel",
+  "image": "ubuntu-budgie-2404",
+  "install": "deb",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}

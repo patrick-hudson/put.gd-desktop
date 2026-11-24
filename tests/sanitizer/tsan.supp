@@ -3,5 +3,15 @@
 # mutex cannot be acquired by another thread at that construction edge. TSan
 # combines that edge with later disconnect and reports a hypothetical cycle.
 # Reproduced with QDBusConnection::sessionBus alone and instrumented libdbus.
-# See docs/thread-sanitizer.md. Do not suppress Qt/app races or the lock detector.
+# See docs/testing/thread-sanitizer.md. Do not suppress Qt/app races or the lock detector.
 deadlock:_dbus_connection_new_for_transport
+
+# GStreamer, FFmpeg (libav*), libcurl, OpenSSL and the AWS SDK are distribution builds without TSan. Their threads
+# synchronize with atomics TSan cannot see, so run with TSAN_OPTIONS=ignore_noninstrumented_modules=1 (the
+# interceptors, such as malloc and pthread_mutex_lock, then report only for calls from instrumented code).
+# That is an option, not a suppression, but it has a cost: a race in which one access is put.gd's and the other is made inside such a
+# library through an interceptor (memcpy, free, a mutex) is not reported. Without it, runs fail on those libraries' own reports.
+
+# The Qt-internal races the race hunt found are not suppressed here: a race: rule matches its symbol anywhere in either access stack
+# or a thread-creation stack, so it could hide put.gd racing with Qt. Reports are captured whole, and tools/lab/tsan_summary.py
+# excuses only a diagnosed Qt race whose two racing accesses are inside Qt in their top frames.

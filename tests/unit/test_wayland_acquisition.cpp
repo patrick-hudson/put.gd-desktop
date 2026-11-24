@@ -27,6 +27,9 @@ private slots:
         QCOMPARE(pipewireSocket(env), QString());
         QFile named(runtime.filePath("pipewire-1")); QVERIFY(named.open(QIODevice::WriteOnly)); named.close();
         QCOMPARE(pipewireSocket(env), runtime.filePath("pipewire-1"));
+        // An empty one is the default remote, as libpipewire reads it (#1994: the recorder connects to it itself).
+        env.insert("PIPEWIRE_REMOTE", "");
+        QCOMPARE(pipewireSocket(env), pipewireDir.filePath("pipewire-0"));
     }
     // #137: the source leaves the buffer count to the compositor. KWin offers
     // 2-4 buffers; the AppImage's PipeWire 1.0 plugin asked for 8 or more by
@@ -103,6 +106,26 @@ private slots:
         const auto late = pipewireFrameTime(mono - 20 * ms, mono + 1 * ms, running + 1 * ms, keepalive.running);
         QCOMPARE(late.running, keepalive.running + 1);
         QCOMPARE(late.ageNs, 21 * ms);
+    }
+    // #1278: Mutter draws a recorded window into a larger buffer and names its
+    // place in each frame's crop region; videocrop takes it as margins.
+    void cutsTheWindowOutOfItsBuffer() {
+        QCOMPARE(cropMargins(QSize(1920, 1080), QRect(0, 0, 640, 480)), (CropMargins{0, 0, 1280, 600}));
+        QCOMPARE(cropMargins(QSize(1920, 1080), QRect(10, 20, 960, 640)), (CropMargins{10, 20, 950, 420}));
+        QCOMPARE(cropMargins(QSize(640, 480), QRect(0, 0, 640, 480)), CropMargins{});
+        // Nothing sensible to cut: crop nothing rather than an invalid margin.
+        QCOMPARE(cropMargins(QSize(640, 480), QRect()), CropMargins{});
+        QCOMPARE(cropMargins(QSize(640, 480), QRect(600, 0, 100, 100)), CropMargins{});
+        QCOMPARE(cropMargins(QSize(), QRect(0, 0, 10, 10)), CropMargins{});
+    }
+    // The canvas a window recording keeps: its frame at the output scale, even.
+    void sizesTheWindowCanvas() {
+        QCOMPARE(windowCanvas(QSize(641, 481), 1.0), QSize(640, 480));
+        QCOMPARE(windowCanvas(QSize(640, 480), 2.0), QSize(1280, 960));
+        QCOMPARE(windowCanvas(QSize(333, 201), 1.5), QSize(500, 302));
+        QCOMPARE(windowCanvas(QSize(1, 1), 1.0), QSize(2, 2));
+        QCOMPARE(windowCanvas(QSize(640, 480), 0), QSize(640, 480));
+        QVERIFY(windowCanvas(QSize(), 1.0).isEmpty());
     }
 };
 QTEST_GUILESS_MAIN(WaylandAcquisition)

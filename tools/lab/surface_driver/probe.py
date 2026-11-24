@@ -524,7 +524,38 @@ def compositor_windows(compositor):
         return json.loads(str(gnome_witness('Windows')))
     if kind == 'kwin-script':
         return kwin_windows()
+    if kind == 'wayland-toplevels':
+        return wayland_toplevel_windows(compositor)
+    if kind == 'hyprctl':
+        return hyprland_windows()
+    if kind == 'toplevel-pixels':
+        return toplevel_pixel_windows(compositor)
     raise RuntimeError('no compositor window witness configured for this Wayland profile')
+
+
+def wayland_toplevel_windows(compositor=None):
+    """labwc and Mir have no scripting: the toplevel protocols are the witness.
+
+    They give identifiers, app IDs, titles and the activated window, but no PID
+    and no geometry, so frame and content are None and hit-tests are refused.
+    The probe runs from shipped source with no file of its own, so the context
+    sends the witness's source with the compositor settings (witness_source).
+    """
+    source = (compositor or {}).get('witness_source')
+    if source:
+        import types
+        wayland_toplevels = types.ModuleType('wayland_toplevels')
+        exec(compile(source, 'wayland_toplevels.py', 'exec'), wayland_toplevels.__dict__)
+    else:
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        import wayland_toplevels
+    seen = wayland_toplevels.snapshot(wayland_toplevels.socket_path())
+    active = (seen.get('active') or {}).get('identifier')
+    windows = [{'id': w.get('identifier'), 'title': w.get('title'), 'pid': None, 'wm_class': w.get('app_id'),
+                'frame': None, 'content': None, 'focus': w.get('identifier') == active, 'stack': i}
+               for i, w in enumerate(seen.get('ext', []))]
+    return {'windows': windows, 'protocols': seen.get('protocols', {})}
 
 
 def compositor_activate(compositor, window_id):
@@ -533,6 +564,10 @@ def compositor_activate(compositor, window_id):
     if kind == 'gnome-lab-witness':
         import dbus
         return bool(gnome_witness('Activate', dbus.UInt64(window_id)))
+    if kind == 'hyprctl':
+        return hyprland_activate(window_id)
+    if kind == 'toplevel-pixels':
+        return toplevel_pixels_activate(compositor, window_id)
     raise RuntimeError('this compositor witness cannot raise windows')
 
 
@@ -565,6 +600,8 @@ def compositor_pick(compositor, point):
         return json.loads(str(gnome_witness('Pick', int(point[0]), int(point[1]))))
     if kind == 'kwin-script':
         return kwin_pick(point)
+    if kind == 'hyprctl':
+        return hyprland_pick(point)
     raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
 
 
@@ -657,6 +694,682 @@ def kwin_pick(point):
     return {'window': None, 'chain': [{'name': 'desktop'}]}
 
 
+# Hyprland: the compositor's own IPC. j/clients gives every window's address,
+# pid, position, size, workspace and focus recency; j/layers the layer-shell
+# surfaces (panels, notifications, put.gd's selector and recording overlays)
+# per output and level; j/monitors the shown workspaces. Spoken on the request
+# socket directly, as put.gd does, so no hyprctl binary or library path is needed.
+HYPR_LEVELS = {'0': 'background', '1': 'bottom', '2': 'top', '3': 'overlay'}
+
+
+def hyprland_socket():
+    """The session's request socket under the real runtime directory, not the run's private one."""
+    import glob
+    runtime = os.environ.get('PIPEWIRE_RUNTIME_DIR') or '/run/user/%d' % os.getuid()
+    signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
+    paths = ([os.path.join(runtime, 'hypr', signature, '.socket.sock')] if signature
+             else sorted(glob.glob(os.path.join(runtime, 'hypr', '*', '.socket.sock'))))
+    paths = [path for path in paths if os.path.exists(path)]
+    if len(paths) != 1:
+        raise RuntimeError('Hyprland request socket is missing or ambiguous (%d found)' % len(paths))
+    return paths[0]
+
+
+def hyprland_request(command, timeout=3.0):
+    """One request, one reply; Hyprland refuses connections briefly after a reload."""
+    import socket as socket_
+    deadline = time.monotonic() + timeout
+    path = hyprland_socket()
+    while True:
+        connection = socket_.socket(socket_.AF_UNIX, socket_.SOCK_STREAM)
+        connection.settimeout(max(.1, deadline - time.monotonic()))
+        try:
+            connection.connect(path)
+            connection.sendall(command.encode())
+            chunks = []
+            while True:
+                chunk = connection.recv(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            return b''.join(chunks).decode('utf-8', 'replace')
+        except (ConnectionRefusedError, FileNotFoundError):
+            if time.monotonic() >= deadline:
+                raise RuntimeError('Hyprland did not accept a request within %g s' % timeout) from None
+            time.sleep(.1)
+        except OSError as error:
+            raise RuntimeError('Hyprland request %s failed: %s' % (command.split()[0], type(error).__name__)) from None
+        finally:
+            connection.close()
+
+
+def hyprland_json(command):
+    reply = hyprland_request('j/' + command)
+    try:
+        return json.loads(reply)
+    except ValueError:
+        raise RuntimeError('Hyprland answered %s without JSON' % command) from None
+
+
+def hyprland_parse(clients, monitors, layers, active):
+    """Windows and layer surfaces, in the witness's common shape, bottom to top.
+
+    Hyprland does not report a z-order. Its drawing order is fixed by kind:
+    background and bottom layers, tiled windows, floating windows (the one
+    focused last on top, as Hyprland raises a floating window it focuses),
+    fullscreen windows, the top layer, the overlay layer. A window on a
+    workspace no output shows is reported minimized, so it never answers a pick.
+    """
+    shown = set()
+    for monitor in monitors:
+        for key in ('activeWorkspace', 'specialWorkspace'):
+            workspace = (monitor.get(key) or {}).get('id')
+            if workspace:
+                shown.add(workspace)
+    focused = (active or {}).get('address')
+    rows = []
+    for client in clients:
+        if not client.get('mapped', True):
+            continue
+        rect = [int(v) for v in list(client['at']) + list(client['size'])]
+        fullscreen = int(client.get('fullscreen') or 0) >= 2
+        band = 3 if fullscreen else 2 if client.get('floating') else 1
+        recency = client.get('focusHistoryID')
+        rows.append(((band, -(recency if isinstance(recency, int) and recency >= 0 else 1 << 20)), {
+            'id': str(client['address']), 'title': client.get('title') or '', 'pid': _real_pid(client.get('pid')),
+            'wm_class': client.get('class') or '', 'frame': rect, 'content': rect,
+            'focus': client['address'] == focused,
+            'minimized': bool(client.get('hidden')) or (client.get('workspace') or {}).get('id') not in shown,
+            'floating': bool(client.get('floating')), 'fullscreen': fullscreen, 'layer': None,
+            'workspace': (client.get('workspace') or {}).get('id'), 'monitor': client.get('monitor'),
+            'stable_id': client.get('stableId'), 'type': 0, 'popup': False,
+            'transient_for': None, 'desktop': False, 'notification': False}))
+    for monitor, value in (layers or {}).items():
+        for level, surfaces in (value.get('levels') or {}).items():
+            name = HYPR_LEVELS.get(str(level))
+            if name is None:
+                continue
+            band = {'background': -2, 'bottom': -1, 'top': 4, 'overlay': 5}[name]
+            for index, surface in enumerate(surfaces):
+                rect = [int(surface[k]) for k in ('x', 'y', 'w', 'h')]
+                rows.append(((band, index), {
+                    'id': str(surface['address']), 'title': '', 'pid': _real_pid(surface.get('pid')),
+                    'wm_class': surface.get('namespace') or '', 'frame': rect, 'content': rect,
+                    'focus': False, 'minimized': False, 'floating': False, 'fullscreen': False,
+                    'layer': name, 'monitor': monitor, 'type': 0, 'popup': False, 'transient_for': None,
+                    'desktop': name in ('background', 'bottom'), 'notification': False}))
+    rows.sort(key=lambda row: row[0])
+    windows = []
+    for stack, (_, row) in enumerate(rows):
+        row['stack'] = stack
+        windows.append(row)
+    return {'windows': windows}
+
+
+def _real_pid(pid):
+    """Hyprland reports -1 for a client whose process it could not learn; that is no process."""
+    return pid if isinstance(pid, int) and not isinstance(pid, bool) and pid > 1 else None
+
+
+def hyprland_windows():
+    return hyprland_parse(hyprland_json('clients'), hyprland_json('monitors'),
+                          hyprland_json('layers'), hyprland_json('activewindow'))
+
+
+def hyprland_pick(point, document=None):
+    """Topmost window or layer surface at the point, by Hyprland's drawing order."""
+    x, y = point
+    document = document or hyprland_windows()
+    for window in reversed(document['windows']):
+        if window['minimized']:
+            continue
+        fx, fy, fw, fh = window['frame']
+        if fx <= x < fx + fw and fy <= y < fy + fh:
+            if window['desktop']:
+                break
+            return {'window': window, 'chain': []}
+    return {'window': None, 'chain': [{'name': 'desktop'}]}
+
+
+def hyprland_foreground(target, point, attempts=3):
+    """Pointer input on Hyprland: the topmost surface at the point must be the target.
+
+    Omarchy's bar and notification layer surfaces span the output and are mostly
+    transparent, so one of the shell's layer surfaces over the target is decided by
+    pixels: the target's own capture (ext identifier = Hyprland's stableId) must be
+    what the outputs show at the point.
+    """
+    wid = target.get('window_id')
+    document = hyprland_windows()
+    pick = hyprland_pick(point, document)
+    window = pick['window']
+    result = {'backend': 'hyprctl-pick', 'target': wid, 'obscuring_window_id': window['id'] if window else None}
+    if window and window['id'] == wid:
+        return dict(result, ok=True, obscuring_window=None)
+    mine = next((w for w in document['windows'] if w['id'] == wid), None)
+    shell = window and window.get('layer') in ('top', 'overlay') and not owned(window.get('pid'))
+    if not (shell and mine and not mine.get('layer') and mine.get('stable_id')):
+        name = (window['title'] or window['wm_class'] or 'untitled window') if window else 'the desktop'
+        return dict(result, ok=False, obscuring_window=name)
+    for attempt in range(attempts):
+        if attempt:
+            time.sleep(.2)
+        own, screen = grim(str(mine['stable_id'])), grim()
+        if pixels_at(own, screen, mine['content'], point, cursor=True):
+            return dict(result, ok=True, obscuring_window=None, backend='hyprctl-pick-pixels')
+    # A see-through window (Omarchy draws Nautilus over the wallpaper) never shows its own
+    # pixels anywhere; a cover changes them only where it lies. For such a window the shell
+    # layer covers the point only inside the output's reserved strip (Omarchy's bar) or
+    # while quickshell holds notification cards.
+    if window_share(own, screen, mine['content']) < .2:
+        reserved = hyprland_reserved(point)
+        cards = quickshell_cards()
+        if not reserved and cards == 0:
+            return dict(result, ok=True, obscuring_window=None, backend='hyprctl-pick-translucent')
+        return dict(result, ok=False, obscuring_window=window['wm_class'] + (
+            ' (the bar\'s reserved strip)' if reserved else ' (%s notification cards)' % cards))
+    cards = quickshell_cards()
+    return dict(result, ok=False, obscuring_window=window['wm_class'] + ' (shell layer, drawn over the window%s)' % (
+        '; %d notification cards' % cards if cards else ''))
+
+
+def window_share(window, screen, rect):
+    """Share of a window's sampled cells the outputs show exactly at its known place."""
+    ww, wh, wb = window
+    sw, sh, sb = screen
+    total = equal = 0
+    for r in range(0, wh, max(1, wh // 32)):
+        for c in range(0, ww, 64):
+            n, sx, sy = min(64, ww - c), rect[0] + c, rect[1] + r
+            if not (0 <= sy < sh and 0 <= sx and sx + n <= sw):
+                continue
+            total += 1
+            equal += sb[(sy * sw + sx) * 3:(sy * sw + sx + n) * 3] == wb[(r * ww + c) * 3:(r * ww + c + n) * 3]
+    return equal / total if total else 0.0
+
+
+def hyprland_reserved(point):
+    """True when the point lies in an output's reserved strip (panels' exclusive zones)."""
+    x, y = point
+    for monitor in hyprland_json('monitors'):
+        scale = float(monitor.get('scale') or 1)
+        mx, my = monitor['x'], monitor['y']
+        mw, mh = monitor['width'] / scale, monitor['height'] / scale
+        if not (mx <= x < mx + mw and my <= y < my + mh):
+            continue
+        left, top, right, bottom = (list(monitor.get('reserved') or []) + [0, 0, 0, 0])[:4]
+        return x < mx + left or y < my + top or x >= mx + mw - right or y >= my + mh - bottom
+    return True
+
+
+def quickshell_cards(limit=8):
+    """quickshell's own count of notification cards, or None when it cannot be asked within `limit` s."""
+    started = time.monotonic()
+    if limit <= 0:
+        return None
+    try:
+        owner = subprocess.check_output(
+            ['gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus',
+             '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', 'org.freedesktop.Notifications'],
+            text=True, stderr=subprocess.DEVNULL, timeout=min(5, limit))
+        pid = int(re.search(r'uint32 (\d+)', owner)[1])
+        left = min(3, limit - (time.monotonic() - started))
+        if process_name(pid) != 'quickshell' or left <= 0:
+            return None
+        runtime = os.environ.get('PIPEWIRE_RUNTIME_DIR') or os.environ.get('XDG_RUNTIME_DIR', '')
+        reply = subprocess.run(['qs', 'ipc', '--pid', str(pid), 'call', 'notifications', 'count'], capture_output=True,
+                               text=True, timeout=left, env=dict(os.environ, XDG_RUNTIME_DIR=runtime, LANG='C.UTF-8'))
+        return int(reply.stdout.strip()) if reply.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, TypeError, ValueError):
+        return None
+
+
+def hyprland_activate(window_id):
+    """Hyprland's own focus dispatcher for one window address."""
+    if not re.fullmatch(r'0x[0-9a-fA-F]+', str(window_id)):
+        raise RuntimeError('Hyprland window address is malformed')
+    # Hyprland 0.56 with a Lua configuration takes the dispatcher as Lua; older ones the legacy form.
+    reply = hyprland_request('dispatch hl.dsp.focus({ window = "address:%s" })' % window_id).strip()
+    if reply != 'ok':
+        reply = hyprland_request('dispatch focuswindow address:' + str(window_id)).strip()
+    return reply == 'ok'
+
+
+# labwc has no window geometry anywhere: no IPC, and neither toplevel list
+# carries a position. A window is placed only where its own pixels are: grim -T
+# reads the window's content through ext-foreign-toplevel-image-capture (what
+# put.gd's window capture uses), grim reads the composed outputs, and the
+# window must be found there exactly. An occluded, moving or repetitive window
+# is refused rather than guessed. A hit-test asks the same question at the
+# point: are the window's own pixels what the outputs show there?
+PIXEL_CHUNK = 32
+PIXEL_HITS = 32
+
+
+def parse_ppm(data):
+    match = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', data)
+    if not match:
+        raise RuntimeError('capture is not a binary PPM')
+    width, height = int(match[1]), int(match[2])
+    body = data[match.end():match.end() + width * height * 3]
+    if len(body) != width * height * 3:
+        raise RuntimeError('capture is truncated')
+    return width, height, body
+
+
+def grim(identifier=None):
+    """The composed outputs (no cursor), or one toplevel's own content by its ext identifier."""
+    args = ['grim', '-t', 'ppm'] + (['-T', identifier] if identifier else []) + ['-']
+    try:
+        reply = subprocess.run(args, capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError('grim capture unavailable: ' + type(error).__name__) from None
+    if reply.returncode:
+        raise RuntimeError('grim could not capture ' + ('the toplevel' if identifier else 'the outputs'))
+    return parse_ppm(reply.stdout)
+
+
+def _detail(data):
+    import zlib
+    return len(zlib.compress(data, 1))
+
+
+def locate_pixels(window, screen):
+    """Where the window's pixels are in the outputs: {'rect', 'visible'} or RuntimeError.
+
+    Detailed runs of the window's pixels vote for an offset; a run that occurs
+    more than PIXEL_HITS times on the outputs is no evidence and is skipped. The
+    winning offset must reproduce at least half of the window's pixel cells
+    exactly, and no other offset may.
+    """
+    ww, wh, wb = window
+    sw, sh, sb = screen
+    if not (0 < ww <= sw and 0 < wh <= sh):
+        raise RuntimeError('window capture %dx%d does not fit the %dx%d outputs' % (ww, wh, sw, sh))
+    wstride, sstride, chunk = ww * 3, sw * 3, min(PIXEL_CHUNK, max(8, ww // 8), ww)
+    step = max(1, wh // 40)
+    lines = sorted(range(0, wh, step), key=lambda r: -_detail(wb[r * wstride:(r + 1) * wstride]))[:16]
+    votes = {}
+    starts = list(range(0, ww - chunk + 1, chunk))
+    # The most detailed run in each quarter of a row, so a cover on one side still leaves evidence.
+    quarters = [starts[i * len(starts) // 4:(i + 1) * len(starts) // 4] or starts for i in range(4)]
+    needles = []
+    for r in lines:
+        line = wb[r * wstride:(r + 1) * wstride]
+        for quarter in quarters:
+            best = max(quarter, key=lambda c: _detail(line[c * 3:(c + chunk) * 3]))
+            if (r, best) not in [(n[0], n[1]) for n in needles]:
+                needles.append((r, best, line[best * 3:(best + chunk) * 3]))
+    for r, best, needle in needles:
+        if _detail(needle) < len(needle) // 4:
+            continue  # flat: would match anywhere
+        found = []
+        for y in range(sh):
+            start = y * sstride
+            at = sb.find(needle, start, start + sstride)
+            while at >= 0 and len(found) <= PIXEL_HITS:
+                if (at - start) % 3 == 0:
+                    found.append(((at - start) // 3 - best, y - r))
+                at = sb.find(needle, at + 1, start + sstride)
+            if len(found) > PIXEL_HITS:
+                break
+        if len(found) > PIXEL_HITS:
+            continue
+        for key in set(found):
+            votes[key] = votes.get(key, 0) + 1
+    if not votes:
+        raise RuntimeError('the window has no distinctive pixels on the outputs (occluded, moving or flat)')
+
+    # Only cells with detail count: a flat cell agrees at any nearby offset.
+    cells = [(r, c, min(64, ww - c)) for r in range(0, wh, max(1, wh // 64)) for c in range(0, ww, 64)]
+    cells = [(r, c, n) for r, c, n in cells
+             if _detail(wb[(r * ww + c) * 3:(r * ww + c + n) * 3]) >= n * 3 // 4] or cells
+
+    def coverage(x, y):
+        total = equal = 0
+        for r, c, n in cells:
+            sy, sx = y + r, x + c
+            if not 0 <= sy < sh or sx < 0 or sx + n > sw:
+                continue
+            total += 1
+            at = (r * ww + c) * 3
+            equal += sb[(sy * sw + sx) * 3:(sy * sw + sx + n) * 3] == wb[at:at + n * 3]
+        return equal / total if total else 0.0
+    ranked = sorted(votes.items(), key=lambda item: -item[1])[:6]
+    verified = [(offset, coverage(*offset)) for offset, count in ranked if count >= min(2, len(needles))]
+    # Flat areas also agree at a nearby wrong offset; only a second offset nearly as good is ambiguity.
+    best = max((share for _, share in verified), default=0.0)
+    accepted = [(offset, share) for offset, share in verified if share >= max(.5, best - .2)]
+    if len(accepted) != 1:
+        raise RuntimeError('the window\'s pixels are %s on the outputs (%s)' % (
+            'not found' if not accepted else 'ambiguous',
+            ', '.join('%s:%.2f' % (offset, share) for offset, share in verified) or 'no offset verified'))
+    (x, y), share = accepted[0]
+    return {'rect': [x, y, ww, wh], 'visible': round(share, 3)}
+
+
+def pixels_at(window, screen, rect, point, radius=6, cursor=False):
+    """True when the outputs show the window's own pixels at and around the point.
+
+    Without a cursor in the capture (grim's default), the point itself and the four
+    boxes that meet at it must all be the window's own pixels. With CURSOR (Hyprland
+    draws its software cursor into every output copy), the arrow whose hotspot is at
+    the point covers the point and the box below and right of it, so the other three
+    boxes must match; a cover reaching only that corner is then not seen.
+    """
+    ww, wh, wb = window
+    sw, sh, sb = screen
+    px, py = int(point[0]) - rect[0], int(point[1]) - rect[1]
+
+    def same(left, right, top, bottom):
+        left, right, top, bottom = max(0, left), min(ww, right), max(0, top), min(wh, bottom)
+        if left >= right or top >= bottom:
+            return False
+        for r in range(top, bottom):
+            sx, sy = rect[0] + left, rect[1] + r
+            if not (0 <= sy < sh and 0 <= sx and sx + right - left <= sw):
+                return False
+            if sb[(sy * sw + sx) * 3:(sy * sw + sx + right - left) * 3] != wb[(r * ww + left) * 3:(r * ww + right) * 3]:
+                return False
+        return True
+    if not (0 <= px < ww and 0 <= py < wh):
+        return False
+    gap = 2  # the arrow's outline reaches a pixel or so past its hotspot
+    boxes = ((px - gap - radius, px - gap, py - gap - radius, py - gap), (px + gap, px + gap + radius, py - gap - radius, py - gap),
+             (px - gap - radius, px - gap, py + gap, py + gap + radius), (px + gap, px + gap + radius, py + gap, py + gap + radius))
+    if cursor:
+        return all(same(*box) for box in boxes[:3])
+    return same(px, px + 1, py, py + 1) and all(same(*box) for box in boxes)
+
+
+def content_box(image, width, height):
+    """The width x height box of a capture outside of which every pixel is black, or None."""
+    w, h, data = image
+    stride = w * 3
+    rows = [r for r in range(h) if data[r * stride:(r + 1) * stride].strip(b'\0')]
+    if not rows:
+        return None
+    left = min((len(data[r * stride:(r + 1) * stride]) - len(data[r * stride:(r + 1) * stride].lstrip(b'\0'))) // 3
+               for r in rows)
+    right = max(w - (len(data[r * stride:(r + 1) * stride]) - len(data[r * stride:(r + 1) * stride].rstrip(b'\0'))) // 3
+                for r in rows)
+    top, bottom = rows[0], rows[-1] + 1
+    if (right - left, bottom - top) != (width, height):
+        return None  # a black content edge or a coloured shadow: no exact box, no guess
+    box = b''.join(data[(top + r) * stride + left * 3:(top + r) * stride + (left + width) * 3] for r in range(height))
+    return width, height, box
+
+
+def crop(image, x, y, width, height):
+    """The width x height box of a capture at (x, y)."""
+    iw, _, data = image
+    return width, height, b''.join(data[((y + r) * iw + x) * 3:((y + r) * iw + x + width) * 3] for r in range(height))
+
+
+# A window shown where the desktop is known to put it must match there almost everywhere.
+KNOWN_SHARE = .9
+
+
+def pixel_share(window, screen, x, y, detailed=False):
+    """The share of the window's cells the outputs show exactly, with the window at (x, y).
+
+    Every cell counts, flat ones too: at a position known in advance there is no
+    other offset for a flat cell to agree with. With DETAILED only cells of at least
+    four colours count (none: 0). Cells off the outputs don't count.
+    """
+    ww, wh, wb = window
+    sw, sh, sb = screen
+    total = equal = 0
+    for r in range(0, wh, max(1, wh // 64)):
+        for c in range(0, ww, 64):
+            n = min(64, ww - c)
+            sy, sx = y + r, x + c
+            if not 0 <= sy < sh or sx < 0 or sx + n > sw:
+                continue
+            if detailed and len({wb[i:i + 3] for i in range((r * ww + c) * 3, (r * ww + c + n) * 3, 3)}) < 4:
+                continue  # a cell with fewer than four colours is no detail, however short
+            total += 1
+            at = (r * ww + c) * 3
+            equal += sb[(sy * sw + sx) * 3:(sy * sw + sx + n) * 3] == wb[at:at + n * 3]
+    return equal / total if total else 0.0
+
+
+def rule_rect(compositor, title, app_id, size):
+    """The rectangle the lab guest's window rule puts this window at (labwc), or None.
+
+    The nightly guest writes these rules into labwc's rc.xml from the same profile entries
+    (nightly_desktop_guest.prepare_labwc_rules): no server-side decoration, so the rule's
+    position is the content's.
+    """
+    rules = [r for r in (compositor or {}).get('window_rules', ())
+             if r.get('title') == title and r.get('app_id') == app_id and r.get('position')]
+    if len(rules) > 1:
+        raise RuntimeError('more than one window rule places %r' % title)
+    return [int(rules[0]['position'][0]), int(rules[0]['position'][1])] + list(size) if rules else None
+
+
+def place_pixels(compositor, title, app_id, window, screen, rule_only=False, fullscreen=False):
+    """Where a toplevel's pixels are on the outputs: {'rect', 'visible', 'by'} or RuntimeError.
+
+    A window a lab window rule places must show at the rule's position. Any other is found by its
+    own pixels. When it has none to find (a blank fullscreen kiosk), only a toplevel the compositor
+    reports active and fullscreen (`fullscreen`), on the guest's single enabled output and exactly
+    its size, is placed on that output: flat pixels alone prove no position.
+    """
+    size = list(window[:2])
+    known = rule_rect(compositor, title, app_id, size)
+    if known:
+        share = pixel_share(window, screen, known[0], known[1])
+        if share < KNOWN_SHARE:
+            raise RuntimeError('%r is not at its window-rule position %s (%.2f of its pixels there)'
+                               % (title, known[:2], share))
+        return {'rect': known, 'visible': round(share, 3), 'by': 'window rule'}
+    if rule_only:
+        raise RuntimeError('no lab window rule places %r (%s)' % (title, app_id))
+    try:
+        return dict(locate_pixels(window, screen), by='pixels')
+    except RuntimeError as error:
+        if 'no distinctive pixels' not in str(error) or not fullscreen:
+            raise
+        outputs = wlr_outputs()
+        shown = [o for o in outputs if o[2:] == size and pixel_share(window, screen, o[0], o[1]) >= KNOWN_SHARE]
+        if len(outputs) != 1 or len(shown) != 1:
+            raise RuntimeError(str(error) + ('; nor does it fill the one output (%d enabled, %d its size showing it)'
+                                             % (len(outputs), len(shown)))) from None
+        return {'rect': shown[0], 'visible': round(pixel_share(window, screen, *shown[0][:2]), 3), 'by': 'output'}
+
+
+def dialog_place(compositor, pid, title, window, size, screen):
+    """(parent id, the dialog's own pixels, its rect) for a dialog labwc captures as 1x1.
+
+    labwc draws a toplevel's dialogs into that toplevel's own capture at its origin, so the
+    dialog's pixels are the top-left corner of one other toplevel of the same process. Only a
+    dialog a lab window rule places is accepted: its pixels must show at the rule's position,
+    from exactly one such corner.
+    """
+    placed, refused = [], []
+    for other in toplevel_pixel_windows(compositor)['windows']:
+        if other['id'] == window['id'] or other.get('minimized') or not app_id_names(other['wm_class'], pid):
+            continue
+        image = grim(other['id'])
+        if image[:2] == (1, 1) or image[0] < size[0] or image[1] < size[1]:
+            continue
+        corner = crop(image, 0, 0, *size)
+        try:
+            rect = place_pixels(compositor, title, window['wm_class'], corner, screen, rule_only=True)['rect']
+        except RuntimeError as error:
+            refused.append(str(error))
+            continue
+        # The corner's own detail must show there too, not only its flat parts.
+        if pixel_share(corner, screen, rect[0], rect[1], detailed=True) < KNOWN_SHARE:
+            refused.append('the detail in the corner of %s does not show at the rule position' % other['id'])
+            continue
+        placed.append((other['id'], corner, rect))
+    if len(placed) != 1:
+        raise RuntimeError('labwc captured dialog %r as 1x1 and %d of its process\'s toplevels show it at its '
+                           'window-rule position%s' % (title, len(placed), (': ' + '; '.join(refused[:2])) if refused else ''))
+    return placed[0]
+
+
+def app_id_names(app_id, pid):
+    """Wayland gives a toplevel no PID: its app ID must name the accessible's process."""
+    if not app_id:
+        return False
+    tail = app_id.rsplit('.', 1)[-1].lower()
+    if any(name == app_id or name.lower() == tail for name in executable(pid)):
+        return True
+    # Firefox takes its Wayland app ID from MOZ_APP_REMOTINGNAME in its own environment
+    # (the lab's private kiosk sets one per profile).
+    try:
+        with open('/proc/%d/environ' % pid, 'rb') as stream:
+            return ('MOZ_APP_REMOTINGNAME=' + app_id).encode() in stream.read().split(b'\0')
+    except (OSError, TypeError):
+        return False
+
+
+def toplevels_module(compositor):
+    source = (compositor or {}).get('witness_source')
+    if source:
+        import types
+        module = types.ModuleType('wayland_toplevels')
+        exec(compile(source, 'wayland_toplevels.py', 'exec'), module.__dict__)
+        return module
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    import wayland_toplevels
+    return wayland_toplevels
+
+
+def toplevel_pixel_windows(compositor):
+    """The toplevel lists' identities, titles, app IDs and active window; no geometry and no PID."""
+    module = toplevels_module(compositor)
+    seen = module.snapshot(module.socket_path())
+    active = (seen.get('active') or {}).get('identifier')
+    minimized = {(w.get('app_id'), w.get('title')) for w in seen.get('wlr', []) if w.get('minimized')}
+    # wlr-foreign-toplevel states, matched by app ID and title: only a pair it lists once counts.
+    wlr = [(w.get('app_id'), w.get('title')) for w in seen.get('wlr', [])]
+    fullscreen = {(w.get('app_id'), w.get('title')) for w in seen.get('wlr', [])
+                  if w.get('fullscreen') and wlr.count((w.get('app_id'), w.get('title'))) == 1}
+    windows = [{'id': w.get('identifier'), 'title': w.get('title') or '', 'pid': None, 'wm_class': w.get('app_id') or '',
+                'frame': None, 'content': None, 'focus': w.get('identifier') == active, 'stack': None,
+                'minimized': (w.get('app_id'), w.get('title')) in minimized,
+                'fullscreen': (w.get('app_id'), w.get('title')) in fullscreen, 'type': 0, 'popup': False}
+               for w in seen.get('ext', [])]
+    return {'windows': windows, 'protocols': seen.get('protocols', {})}
+
+
+def toplevel_pixels_activate(compositor, window_id):
+    module = toplevels_module(compositor)
+    return module.activate(module.socket_path(), window_id)
+
+
+def wlr_outputs():
+    """Each enabled output's logical rectangle from wlr-output-management (wlr-randr --json)."""
+    try:
+        reply = subprocess.run(['wlr-randr', '--json'], capture_output=True, text=True, timeout=5)
+        outputs = json.loads(reply.stdout) if reply.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        outputs = None
+    if not isinstance(outputs, list):
+        raise RuntimeError('wlr-randr could not list the outputs')
+    return wlr_output_rects(outputs)
+
+
+def wlr_output_rects(outputs):
+    rects = []
+    for output in outputs:
+        if not output.get('enabled'):
+            continue
+        mode = next((m for m in output.get('modes', []) if m.get('current')), None)
+        if not mode:
+            continue
+        scale = float(output.get('scale') or 1)
+        width, height = mode['width'], mode['height']
+        if str(output.get('transform', 'normal')) in ('90', '270', 'flipped-90', 'flipped-270'):
+            width, height = height, width
+        rects.append([int(output['position']['x']), int(output['position']['y']),
+                      round(width / scale), round(height / scale)])
+    return rects
+
+
+def shell_overlays_showing(applications):
+    """Showing top-level windows of the shell's own layer-shell clients (notification popups)."""
+    found = []
+    for application in applications or ():
+        for row in accessible({'application': application, 'showing': True, 'visible': True}, toplevel=True, detail=False):
+            if row['role'] in WINDOW_ROLES and row['states'].get('showing'):
+                found.append(application + (' ' + repr(row['name']) if row['name'] else ''))
+    return found
+
+
+def display_screen(display):
+    """The outputs as the driver read them from the guest's display over the target window (else black)."""
+    import base64
+    import zlib
+    width, height = display['size']
+    x, y, w, h = display['rect']
+    crop = zlib.decompress(base64.b64decode(display['rgb']))
+    if len(crop) != w * h * 3 or not (0 <= x and 0 <= y and x + w <= width and y + h <= height):
+        raise RuntimeError('display snapshot does not match its rectangle')
+    data = bytearray(width * height * 3)
+    for r in range(h):
+        data[((y + r) * width + x) * 3:((y + r) * width + x + w) * 3] = crop[r * w * 3:(r + 1) * w * 3]
+    return width, height, bytes(data)
+
+
+def toplevel_pixels_foreground(compositor, target, point, attempts=3, display=None):
+    """Pointer input on labwc: the target's own pixels must be what the outputs show at the point.
+
+    With DISPLAY (the driver's read of the guest display over the target), that is the outputs;
+    otherwise grim's capture of them.
+    """
+    wid = target['window_id']
+    if str(wid).startswith('layer:'):
+        # put.gd's own full-output overlay selector: nothing but another overlay can cover it.
+        rect = [target.get(k) for k in ('x', 'y', 'width', 'height')]
+        if point is not None and not (rect[0] <= point[0] < rect[0] + rect[2] and rect[1] <= point[1] < rect[1] + rect[3]):
+            return {'ok': False, 'backend': 'toplevel-pixels-layer', 'target': wid,
+                    'obscuring_window': 'point outside the selector', 'obscuring_window_id': None}
+        covers = shell_overlays_showing(compositor.get('overlay_shells'))
+        return {'ok': not covers, 'backend': 'toplevel-pixels-layer', 'target': wid,
+                'obscuring_window': '; '.join(covers) or None, 'obscuring_window_id': None}
+    reason = 'the outputs do not show the window\'s pixels at the point'
+    for attempt in range(attempts):
+        if attempt:
+            time.sleep(.2)
+        window, screen = grim(wid), display_screen(display) if display else grim()
+        size = (target.get('width'), target.get('height'))
+        try:
+            me = next(w for w in toplevel_pixel_windows(compositor)['windows'] if w['id'] == wid)
+        except StopIteration:
+            reason = 'the compositor no longer lists the window'
+            continue
+        try:
+            if window[:2] == (1, 1):
+                # A dialog labwc captures as 1x1: its own pixels come from its parent's capture.
+                _, window, where = dialog_place(compositor, target.get('pid'), target.get('name', ''), me, size, screen)
+            else:
+                if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
+                    window = content_box(window, *size) or window
+                where = place_pixels(compositor, target.get('name', ''), me['wm_class'], window, screen,
+                                     fullscreen=bool(me.get('focus') and me.get('fullscreen')))['rect']
+        except RuntimeError as error:
+            reason = str(error)
+            continue
+        if where[:2] != [target.get('x'), target.get('y')]:
+            reason = 'the window moved since it was placed'
+            continue
+        if not (where[0] <= point[0] < where[0] + where[2] and where[1] <= point[1] < where[1] + where[3]):
+            return {'ok': False, 'backend': 'toplevel-pixels-pick', 'target': wid,
+                    'obscuring_window': 'point outside the window', 'obscuring_window_id': None}
+        if pixels_at(window, screen, where, point):
+            return {'ok': True, 'backend': 'toplevel-pixels-pick', 'target': wid, 'obscuring_window': None}
+    # No window was found covering the point: the witness could not place or match the target's
+    # pixels. That is not evidence against the app, so the guard reports it as unverified.
+    return {'ok': False, 'unverified': True, 'backend': 'toplevel-pixels-pick', 'target': wid,
+            'obscuring_window': reason, 'obscuring_window_id': None}
+
+
 class WaylandPlacement:
     """Wayland clients report AT-SPI extents relative to their own window.
 
@@ -673,6 +1386,14 @@ class WaylandPlacement:
         self.compositor = compositor
         self.shell = compositor.get('shell_application', '')
         self._windows, self._cache, self._failed = None, {}, None
+        self.pixels, self._screen = compositor.get('kind') == 'toplevel-pixels', None
+        # Neither labwc nor Hyprland lists xdg popups as windows.
+        self.relative_popups = compositor.get('kind') in ('toplevel-pixels', 'hyprctl')
+
+    def screen(self):
+        if self._screen is None:
+            self._screen = grim()
+        return self._screen
 
     def windows(self):
         if self._failed:
@@ -695,6 +1416,8 @@ class WaylandPlacement:
         return self._cache[key]
 
     def _toplevel(self, pid, title, rect):
+        if self.pixels:
+            return self._pixel_toplevel(pid, title, rect)
         x, y, width, height = rect
         deadline = time.monotonic() + self.MAP_SETTLE
         while True:
@@ -738,6 +1461,93 @@ class WaylandPlacement:
             raise RuntimeError('implausible decoration split for %r: frame %s vs content %dx%d' % (title, frame, width, height))
         return {'dx': frame[0] + side - x, 'dy': frame[1] + top - y, 'window_id': found[0]['id'], 'frame': frame}
 
+    def _pixel_toplevel(self, pid, title, rect):
+        """labwc: the one toplevel with this title whose app ID names the process, found by its own pixels."""
+        x, y, width, height = rect
+        if title in ('Capture region', 'Recording region') and owned(pid) and selector_process(pid):
+            # put.gd's selector is a layer surface anchored to every edge of one output: it
+            # is that output's rectangle. A size no single output has is refused.
+            outputs = [o for o in wlr_outputs() if o[2:] == [width, height]]
+            if len(outputs) != 1:
+                raise RuntimeError('selector %dx%d matches %d outputs' % (width, height, len(outputs)))
+            return {'dx': outputs[0][0] - x, 'dy': outputs[0][1] - y, 'window_id': 'layer:%d:%s' % (pid, title),
+                    'frame': outputs[0]}
+        if (title == 'put.gd recording controls' and owned(pid) and 'putgd-record' in executable(pid)
+                and rect[:2] != [0, 0] and any(o[0] <= x and o[1] <= y and x + width <= o[0] + o[2]
+                                                and y + height <= o[1] + o[3] for o in wlr_outputs())):
+            # putgd-record anchors its bar to the output's top left with margins equal to the
+            # position Qt keeps for the window and no exclusive zone, so layer-shell puts it
+            # exactly there. A bar Qt reports at the origin is not trusted.
+            return {'dx': 0, 'dy': 0, 'window_id': 'layer:%d:%s' % (pid, title), 'frame': list(rect)}
+        found = [w for w in self.windows() if w['title'] == title and app_id_names(w['wm_class'], pid)]
+        if len(found) != 1:
+            shown = ', '.join('%r (%s)' % (w['title'], w['wm_class']) for w in self.windows()[:16]) or 'none'
+            raise RuntimeError('toplevel for %r (pid %s) is missing or ambiguous (%d matches); toplevels: %s'
+                               % (title, pid, len(found), shown))
+        # A dialog shows in AT-SPI before its first buffer: its capture is a 1x1 placeholder.
+        deadline = time.monotonic() + self.MAP_SETTLE
+        image = grim(found[0]['id'])
+        while image[:2] != (width, height) and time.monotonic() < deadline:
+            time.sleep(.2)
+            image = grim(found[0]['id'])
+            self._screen = None
+        if image[:2] == (1, 1):
+            # labwc 0.20 captures a transient (modal) dialog as a 1x1 placeholder.
+            return self._dialog(pid, title, rect, found[0])
+        if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
+            # A client-side shadow (Firefox) is captured with the window: transparent black around
+            # the window geometry. Keep the content box when it is exactly the accessible size.
+            image = content_box(image, width, height) or image
+        if image[:2] != (width, height):
+            raise RuntimeError('toplevel %r captures %dx%d but its accessible window is %dx%d'
+                               % (title, image[0], image[1], width, height))
+        deadline = time.monotonic() + self.MAP_SETTLE
+        while True:
+            # A window just shown may still be under one that is closing: look again, bounded.
+            try:
+                content = place_pixels(self.compositor, title, found[0]['wm_class'], image, self.screen(),
+                                       fullscreen=bool(found[0].get('focus') and found[0].get('fullscreen')))['rect']
+                break
+            except RuntimeError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.2)
+                self._screen = None
+                # It may have repainted as its cover closed: compare its current pixels, and
+                # only those (a capture of another size places nothing; look again).
+                image = grim(found[0]['id'])
+                if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
+                    image = content_box(image, width, height) or image
+                while image[:2] != (width, height):
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError('toplevel %r captures %dx%d but its accessible window is %dx%d'
+                                           % (title, image[0], image[1], width, height))
+                    time.sleep(.2)
+                    image = grim(found[0]['id'])
+                    if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
+                        image = content_box(image, width, height) or image
+                # Then its state as of those pixels: it may have become active meanwhile (the kiosk
+                # once a closing window is gone), or lost focus. One no longer listed has no state.
+                self._windows = None
+                found = ([w for w in self.windows() if w['id'] == found[0]['id']]
+                         or [dict(found[0], focus=False, fullscreen=False)])
+        return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
+
+    def _dialog(self, pid, title, rect, window):
+        """A dialog labwc captures as 1x1, at its window-rule position (see dialog_place)."""
+        x, y, width, height = rect
+        deadline = time.monotonic() + self.MAP_SETTLE
+        while True:
+            try:
+                parent, _, box = dialog_place(self.compositor, pid, title, window, (width, height), self.screen())
+                break
+            except RuntimeError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.2)
+                self._screen = None
+        return {'dx': box[0] - x, 'dy': box[1] - y, 'window_id': window['id'], 'frame': box, 'parent': parent}
+
     def recording_bar(self, pid, title, rect):
         """Narrow captionless KWin layer-shell association; never a title wildcard.
 
@@ -746,6 +1556,11 @@ class WaylandPlacement:
         PID and a compositor identity new since recording.prepare. Ambiguous
         surfaces still fail in _toplevel; foreground still picks the exact ID.
         """
+        if (self.compositor.get('kind') == 'hyprctl' and title == 'put.gd recording controls'
+                and owned(pid) and 'putgd-record' in executable(pid)):
+            # Hyprland lists the bar as one of putgd-record's overlay layer surfaces; its size is the bar's.
+            return [w for w in self.windows() if w['pid'] == pid and w.get('layer') == 'overlay'
+                    and w.get('wm_class') == 'putgd-record' and w['frame'][2:] == list(rect[2:])]
         before = self.compositor.get('recording_bar_before')
         if (self.compositor.get('kind') != 'kwin-script' or before is None
                 or title != 'put.gd recording controls' or not owned(pid)
@@ -835,7 +1650,16 @@ def accessible(query, toplevel=False, detail=True):
         if placement.absolute(row['application']):
             return 'desktop', None
         try:
-            if row['popup']:
+            if row['popup'] and placement.relative_popups:
+                # xdg_popup.configure tells the client where its popup is, relative to the
+                # parent; Qt keeps that in the parent's own coordinates. Place it by the
+                # one parent toplevel of that process.
+                parents = [(name, rect) for (pid, name), rect in tops.items() if pid == row['pid'] and rect]
+                if len(parents) != 1:
+                    return 'window-relative', 'popup parent of pid %s is missing or ambiguous (%d)' % (row['pid'], len(parents))
+                parent = placement.toplevel(row['pid'], parents[0][0], parents[0][1])
+                where = dict(parent, frame=shift(row['popup']['rect'], parent))
+            elif row['popup']:
                 where = placement.popup(row['pid'], row['popup']['rect'])
             else:
                 top = tops.get((row['pid'], row['window']))
@@ -852,6 +1676,11 @@ def accessible(query, toplevel=False, detail=True):
             return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
         row['rect'] = placed
         row['window_id'] = where['window_id']
+        if row['popup'] and placement.relative_popups:
+            # The popup's own rectangle goes to the input guard with the row's point, so it
+            # must be in the same desktop coordinates: on labwc and Hyprland the accessible
+            # one is in the parent's coordinates. A copy: the walk shares it between rows.
+            row['popup'] = dict(row['popup'], rect=list(where['frame']))
         for ancestor in row['ancestors']:
             if ancestor.get('rect') not in (None, UNREAD) and ancestor.get('role') != 'application':
                 ancestor['rect'] = shift(ancestor['rect'], where)
@@ -886,6 +1715,11 @@ def accessible(query, toplevel=False, detail=True):
                 # them: a busy or hung foreign application is never contacted.
                 pid = node.get_process_id()
                 if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not is_owned(pid)):
+                    continue
+                # Nor an owned one whose executable cannot be the queried application (the lab's
+                # private Firefox, which can stop answering while it shows a page).
+                pattern = query.get('application')
+                if pattern and not any(fnmatch.fnmatchcase(n, pattern) for n in executable(pid)):
                     continue
             bus = (getattr(node, 'bus', None) or getattr(getattr(node, 'app', None), 'bus_name', None)
                    if depth == 1 and names is not None else None)
@@ -1054,7 +1888,7 @@ def selector_matches(row, selector, candidates):
 
     The live objectName wins. Labels come from the selector itself (text:/
     text-glob:) and from every catalog candidate's aliases, accessibleName,
-    toolTip and text, so "List" also finds "Show history as a list".
+    toolTip and text, so "Gallery" also finds "Gallery view".
     Rectangle/layout equality is never a substitute for runtime state.
     """
     name, live = row.get('objectName'), label(row.get('name'))
@@ -1634,7 +2468,7 @@ def native_capture_process(pid):
 
 def selector_process(pid):
     """Bind anonymous selector covers to the controller-verified helper inventory."""
-    return verified_helper_process(pid, ('putgd-capture', 'putgd-kde-region', 'putgd-ui'))
+    return verified_helper_process(pid, ('putgd-capture', 'putgd-region', 'putgd-kde-region', 'putgd-ui'))
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')
@@ -1980,12 +2814,48 @@ def witness_foreground(query):
     wid = target.get('window_id')
     if wid is None:
         raise RuntimeError('Wayland target has no compositor window identity')
-    if query.get('raise'):
+    raise_window = query.get('raise')
+    if raise_window and compositor.get('kind') == 'toplevel-pixels':
+        # Only a toplevel that is not already active: activating again would close its open popup,
+        # and put.gd's own layer surfaces (selector, bar) have no handle to activate.
+        raise_window = not str(wid).startswith('layer:') and not query.get('popup') and not any(
+            w['id'] == wid and w.get('focus') for w in compositor_windows(compositor)['windows'])
+    if raise_window:
         if not compositor_activate(compositor, wid):
             raise RuntimeError('compositor no longer has the target window')
         deadline = time.monotonic() + 2.5
         while time.monotonic() < deadline and not any(w['id'] == wid and w.get('focus') for w in compositor_windows(compositor)['windows']):
             time.sleep(.1)
+        if point is not None and query.get('display'):
+            # The driver read the display before this activation: it says nothing about now.
+            return {'ok': False, 'unverified': True, 'backend': 'toplevel-pixels-pick', 'target': wid,
+                    'obscuring_window': 'activated after the display was read; read it again', 'obscuring_window_id': None}
+    if point is not None and query.get('popup') and compositor.get('kind') in ('toplevel-pixels', 'hyprctl'):
+        # A popup is drawn above its own parent; neither compositor lists or captures it alone.
+        popup = query['popup']
+        rect = popup.get('rect') or []
+        inside = (len(rect) == 4 and min(rect[2:]) > 0
+                  and rect[0] <= point[0] < rect[0] + rect[2] and rect[1] <= point[1] < rect[1] + rect[3])
+        if popup.get('pid') != target.get('pid'):
+            return {'ok': False, 'backend': compositor['kind'] + '-popup', 'target': wid,
+                    'obscuring_window': 'popup of another process', 'obscuring_window_id': None}
+        # The popup's rectangle was read from the screen just before; the click must fall inside it.
+        return {'ok': inside, 'unverified': not inside, 'backend': compositor['kind'] + '-popup', 'target': wid,
+                'obscuring_window': None if inside else 'the point %s is outside the observed popup %s' % (
+                    [round(v, 1) for v in point], rect), 'obscuring_window_id': None}
+    if point is not None and compositor.get('kind') == 'toplevel-pixels':
+        result = toplevel_pixels_foreground(compositor, target, point, display=query.get('display'))
+        if (not result['ok'] and query.get('raise') and not query.get('popup')
+                and not str(wid).startswith('layer:') and compositor_activate(compositor, wid)):
+            # labwc keeps a fullscreen window above an activated one until that one is activated again.
+            # A display read before this activation no longer says what is on top, and grim's capture
+            # of the outputs can be stale: the driver reads the display again and asks once more.
+            time.sleep(.3)
+            if not query.get('display'):
+                result = toplevel_pixels_foreground(compositor, target, point)
+        return result
+    if point is not None and compositor.get('kind') == 'hyprctl':
+        return hyprland_foreground(target, point)
     if point is not None:
         pick = compositor_pick(compositor, point)
         window = pick.get('window')
@@ -1999,6 +2869,8 @@ def witness_foreground(query):
             name = 'shell ' + ((chrome[0].get('name') or chrome[0].get('accessible')) if chrome else 'chrome')
         return {'ok': False, 'backend': compositor['kind'] + '-pick', 'target': wid, 'obscuring_window': name,
                 'obscuring_window_id': window['id'] if window else None}
+    if compositor.get('kind') == 'toplevel-pixels' and str(wid).startswith('layer:'):
+        return toplevel_pixels_foreground(compositor, target, None)
     windows = compositor_windows(compositor)['windows']
     focused = [w for w in windows if w.get('focus')]
     ok = bool(focused) and (focused[0]['id'] == wid or (focused[0]['pid'] == target.get('pid') and focused[0].get('transient_for') == wid))
@@ -2070,9 +2942,14 @@ def layout(query):
                          'stack': rank.get(top), 'minimized': w['states']['minimized']})
         return {'windows': rows, 'coordinate_space': 'framebuffer'}
     for w in compositor_windows(query.get('compositor'))['windows']:
-        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'), 'process': process_name(w.get('pid')),
-                     'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
-                     'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
+        if w.get('frame') is None:
+            # labwc/Mir witnesses report no geometry: refuse rather than invent a rectangle.
+            raise RuntimeError('this compositor witness reports no window geometry, so the desktop layout is unknown')
+        pid = w.get('pid') if isinstance(w.get('pid'), int) and w.get('pid') > 1 else None
+        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': pid, 'process': process_name(pid) if pid else None,
+                     'owned': bool(pid and owned(pid)), 'rect': list(w['frame']),
+                     'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden')),
+                     'layer': w.get('layer')})
     return {'windows': rows, 'coordinate_space': 'logical'}
 
 
@@ -2091,23 +2968,68 @@ def close_notifications(deadline):
                            stderr=subprocess.DEVNULL, timeout=left)
         except subprocess.TimeoutExpired:
             break
+    if quickshell_dismiss(deadline):
+        # quickshell takes its cards down with an animation; the next look at the screen must not
+        # find the one this clearing posted, or one still leaving.
+        while deadline - time.monotonic() > 0 and quickshell_cards(deadline - time.monotonic()) not in (0, None):
+            time.sleep(.1)
     return newest
 
 
-def signal_processes(pids, number):
-    for pid in pids:
-        with contextlib.suppress(ProcessLookupError):
-            os.kill(pid, number)
+def quickshell_dismiss(deadline):
+    """Omarchy's quickshell keeps a closed card on screen; its own IPC takes them all down."""
+    try:
+        owner = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus',
+                    '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', 'org.freedesktop.Notifications')
+        pid = int(re.search(r'uint32 (\d+)', owner)[1])
+    except (OSError, subprocess.SubprocessError, TypeError, ValueError):
+        return False
+    if process_name(pid) != 'quickshell' or deadline - time.monotonic() <= 0:
+        return False
+    runtime = os.environ.get('PIPEWIRE_RUNTIME_DIR') or os.environ.get('XDG_RUNTIME_DIR', '')
+    try:
+        reply = subprocess.run(['qs', 'ipc', '--pid', str(pid), 'call', 'notifications', 'dismissAll'],
+                               env=dict(os.environ, XDG_RUNTIME_DIR=runtime, LANG='C.UTF-8'),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               timeout=max(.1, deadline - time.monotonic()))
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return reply.returncode == 0
 
 
 def stop_windows(rows):
-    """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left."""
-    pids = {row['pid'] for row in rows}
-    signal_processes(pids, signal.SIGTERM)
-    deadline = time.monotonic() + (2 if pids else 0)
-    while time.monotonic() < deadline and any(process_start(pid) for pid in pids):
-        time.sleep(.1)
-    signal_processes([pid for pid in pids if process_start(pid)], signal.SIGKILL)
+    """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left.
+
+    A process is known by its pid and start time, read before TERM; KILL goes only to
+    that same process, never to a pid reused meanwhile.
+    """
+    handles = {}
+    for pid in {row['pid'] for row in rows}:
+        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 1:
+            continue
+        start = process_start(pid)
+        try:
+            handle = os.pidfd_open(pid)
+        except OSError:
+            continue
+        # The descriptor names one process for good; it must be the one whose start time was read.
+        if start and process_start(pid) == start:
+            handles[pid] = handle
+        else:
+            os.close(handle)
+    try:
+        for handle in handles.values():
+            with contextlib.suppress(ProcessLookupError):
+                signal.pidfd_send_signal(handle, signal.SIGTERM)
+        deadline = time.monotonic() + (2 if handles else 0)
+        while time.monotonic() < deadline and any(process_start(pid) for pid in handles):
+            time.sleep(.1)
+        for handle in handles.values():
+            with contextlib.suppress(ProcessLookupError):
+                signal.pidfd_send_signal(handle, signal.SIGKILL)  # A no-op for a process that has exited.
+    finally:
+        for handle in handles.values():
+            os.close(handle)
 
 
 def clear_screen(query):
@@ -2126,15 +3048,21 @@ def clear_screen(query):
             closed = close_notifications(deadline)
     rows = layout({'compositor': query.get('compositor')})['windows']
     above = next((row for row in rows if str(row['id']) == str(query.get('above'))), None)
-    targets = []
+    targets, unknown = [], 0
     for row in rows:
-        if row['owned'] or not row['pid'] or row['process'] in query.get('shell', []):
+        unknown += row['pid'] is None and not row['owned']
+        if (row['owned'] or not isinstance(row['pid'], int) or row['pid'] <= 1 or row.get('layer')
+                or row.get('minimized') or row['process'] is None or row['process'] in query.get('shell', [])):
+            # Nor a window that isn't showing (minimized, or on another Hyprland workspace).
+            # A layer-shell surface is the desktop's own (panel, wallpaper, notifications), and a
+            # surface whose client has no known process (Hyprland reports pid -1) is never signalled.
             continue
         over = above is not None and (row['stack'] is None or above['stack'] is None or row['stack'] > above['stack'])
         if over or str(row['id']) == str(query.get('obscuring')):
             targets.append(row)
     stop_windows(targets)
-    return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets]}
+    return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets],
+            'unknown_process': unknown}
 
 
 def windows(query):
@@ -2196,7 +3124,12 @@ def tray(query):
         pixmaps = []
         for width,height,data in properties.get('IconPixmap',[]):
             payload = bytes(data)
-            pixmaps.append({'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
+            pixmap = {'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}
+            if query.get('pixels'):
+                # The frames themselves, for matching the drawn icon (tray_pixels.py).
+                import base64
+                pixmap['argb'] = base64.b64encode(payload).decode()
+            pixmaps.append(pixmap)
         tooltip = properties.get('ToolTip',('',[],'',''))
         rows.append({'pid':pid,'start':start,'owner':owner,'service':service,'path':path,'id':str(properties.get('Id','')),
                      'title':str(properties.get('Title','')),'status':str(properties.get('Status','')),

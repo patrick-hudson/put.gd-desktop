@@ -1,15 +1,27 @@
 #include "core/ByteSize.h"
 #include "Settings.h"
+#include "RecordingModel.h"
+#include "TextJobProtocol.h"
 #include "UploadNaming.h"
 #include <QDir>
+#include <QUrl>
+#include <algorithm>
 #include <QJsonArray>
 #include <QKeySequence>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <algorithm>
 #include <cmath>
 
 namespace putgd {
 namespace {
+// A validator's message as a sentence: one full stop at the end.
+QString sentence(QString text) {
+    text = text.trimmed();
+    if (!text.isEmpty() && !text.endsWith('.') && !text.endsWith('!') && !text.endsWith('?')) text += '.';
+    return text;
+}
+
 Error invalid(const QString& path, const QString& message) {
     return {QStringLiteral("config_invalid"), message, {{QStringLiteral("path"), path}}};
 }
@@ -51,30 +63,86 @@ QJsonObject Settings::effectiveArtifactLimits() const {
             {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
-QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
-QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
+QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit", "monitor", "scroll"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
-QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
-QStringList Settings::presentationOrder() { return {"region", "window", "desktop", "edit", "record", "clipboard"}; }
+QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
+QString Settings::textActionName() { return QStringLiteral("text"); }
+QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName() << textActionName(); }
+const QList<Settings::Command>& Settings::actionTable() {
+    static const QList<Command> table{
+        {"region", "Capture region", "Capture region", 0, true},
+        {"repeat", "Repeat last region", {}, 0, false},
+        {"window", "Capture window", "Window", 0, true},
+        {"monitor", "Capture monitor", "Monitor", 0, true},
+        {"desktop", "Capture desktop", "Desktop", 0, true},
+        {"scroll", "Capture scrolling region", "Scrolling region", 0, true},
+        {"edit", "Capture region & edit", "Capture region & edit", 1, true},
+        {"record", "Record screen", "Record screen", 1, true},
+        {"text", "Copy text from region", "Copy text", 2, false},
+        {"clipboard", "Upload clipboard", "Upload clipboard", 2, true},
+    };
+    return table;
+}
+QString Settings::actionLabel(const QString& action) { for (const auto& c : actionTable()) if (c.action == action) return c.label; return {}; }
+int Settings::actionGroup(const QString& action) { for (const auto& c : actionTable()) if (c.action == action) return c.group; return -1; }
+QStringList Settings::presentationOrder() { QStringList order; for (const auto& c : actionTable()) if (c.routed) order << c.action; return order; }
+QStringList Settings::shortcutOrder() { QStringList order; for (const auto& c : actionTable()) order << c.action; return order; }
+QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
+bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit", "text"}.contains(action); }
+bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }
+
+QString Settings::quickRedactPatternError(const QString& pattern) {
+    const auto problem = textjob::redactPatternError(pattern);
+    if (!problem.isEmpty()) return problem;
+    if (QStringView(pattern).toUcs4().size() > textjob::maxRedactPatternLength) return QStringLiteral("A pattern is longer than %1 characters").arg(textjob::maxRedactPatternLength);
+    return {};
+}
+
+QJsonObject Settings::withCleanRedactLists(const QJsonObject& original) {
+    if (!original.value("preferences").isObject()) return original;
+    auto preferences = original.value("preferences").toObject();
+    bool changed = false;
+    const auto clean = [&](const char* key, bool words) {
+        if (!preferences.value(key).isArray()) return;
+        QJsonArray out;
+        QStringList seen;
+        for (const auto& entry : preferences.value(key).toArray()) {
+            if (!entry.isString()) { out.append(entry); continue; }
+            const auto text = words ? entry.toString().trimmed() : entry.toString();
+            // Exact repeats only: entries that differ in case can still be matched differently (ProjectAlpha also reads as Project Alpha).
+            if (seen.contains(text)) continue;
+            seen << text;
+            out.append(text);
+        }
+        if (out != preferences.value(key).toArray()) { preferences[key] = out; changed = true; }
+    };
+    clean("quickRedactTerms", true);
+    clean("quickRedactPatterns", false);
+    if (!changed) return original;
+    auto result = original;
+    result["preferences"] = preferences;
+    return result;
+}
 
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
     // Before "auto" existed every configuration saved the 2 GiB default
     // explicitly; that exact value now means "auto".
-    if (doc["limits"].isObject()) {
-        auto limits = doc["limits"].toObject();
+    if (doc.value("limits").isObject()) {
+        auto limits = doc.value("limits").toObject();
         bool migrated = false;
         for (const auto& key : artifactByteLimitKeys())
             if (limits.value(key).isDouble() && limits.value(key).toDouble() == double(formerArtifactDefault)) { limits[key] = QStringLiteral("auto"); migrated = true; }
         if (migrated) doc["limits"] = limits;
     }
-    auto actions = doc["actions"].toObject();
-    if (!doc["actions"].isObject() || !actions["region"].isObject()) return doc;
+    auto actions = doc.value("actions").toObject();
+    if (!doc.value("actions").isObject() || !actions.value("region").isObject()) return doc;
     // Edit & upload and screen recording were added after schema 1 shipped.
     // Older documents inherit the region output route with no shortcut; the
     // user assigns a key explicitly. Edit copies the route; record keeps
     // following it (a shortcut-only entry) until a document routes it itself.
     bool changed = false;
+    if (!actions.contains("scroll")) { auto a=actions["region"].toObject(); a["shortcut"]=QString{}; actions["scroll"]=a; changed=true; }
     if (!actions.contains("edit")) {
         auto inherited = actions["region"].toObject();
         inherited["shortcut"] = QString{};
@@ -83,6 +151,23 @@ QJsonObject Settings::normalized(const QJsonObject& original) {
     }
     if (!actions.contains(recordingActionName())) {
         actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
+    // Capture monitor and Repeat last region (#1363) came later still. Monitor
+    // copies the desktop route; repeat is a key only and always follows region.
+    if (!actions.contains("monitor") && actions["desktop"].isObject()) {
+        auto inherited = actions["desktop"].toObject();
+        inherited["shortcut"] = QString{};
+        actions["monitor"] = inherited;
+        changed = true;
+    }
+    if (!actions.contains(repeatActionName())) {
+        actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
+    // Copy text (#1428) has no route at all: a hotkey, unassigned until the user sets one.
+    if (!actions.contains(textActionName())) {
+        actions[textActionName()] = QJsonObject{{"shortcut", QString{}}};
         changed = true;
     }
     if (!changed) return doc;
@@ -97,11 +182,13 @@ QJsonObject Settings::defaults() {
     int shortcut = 1;
     for (const auto& action : actionNames()) {
         actions[action] = QJsonObject{{"destination", "upload"}, {"profileId", QJsonValue::Null},
-            {"shortcut", action == "clipboard" || action == "edit" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
+            {"shortcut", shortcut > 3 ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
         ++shortcut;
     }
     // Recording keeps following the region route; only its key is its own.
     actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
+    actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
+    actions[textActionName()] = QJsonObject{{"shortcut", QString{}}};
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (documents.isEmpty()) documents = QDir::homePath();
     return {{"schemaVersion", 1}, {"actions", actions}, {"profiles", QJsonArray{}},
@@ -122,7 +209,7 @@ QJsonObject Settings::defaults() {
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
-        {"preferences", QJsonObject{{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
+        {"preferences", QJsonObject{{"scrollCaptureMaxHeight",30000},{"scrollCaptureFromTop",false},{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
 }
 
 QJsonObject Settings::developmentTemplate() {
@@ -158,7 +245,12 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             (credentials["mode"] == "session" && !credentials["reference"].isNull()))
             return invalid("/profiles/credentials", "Use a keychain reference or explicitly selected session credentials.");
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
-        if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) return error;
+        // The refused destination, as the submitted document names it (#1675).
+        if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) {
+            error.details["profileId"] = profile["id"];
+            error.details["profileLabel"] = profile["label"];
+            return error;
+        }
         if (validateCredentials)
             if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }
@@ -172,16 +264,26 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     auto definedActions = doc["actions"].toObject();
     const bool hasRecord = definedActions.contains(recordingActionName());
     definedActions.remove(recordingActionName());
+    definedActions.remove(repeatActionName());
+    definedActions.remove(textActionName());
     if (!doc["actions"].isObject() || !keys(definedActions, actionNames()))
-        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit and record actions.");
+        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit, monitor, record, repeat and text actions.");
     auto validatedActions = actionNames();
     if (hasRecord) validatedActions.append(recordingActionName());
-    for (const auto& name : validatedActions) {
+    validatedActions.append(repeatActionName());
+    validatedActions.append(textActionName());
+    for (const auto& name : std::as_const(validatedActions)) {
         // A copy: operator[] on the temporary object would return a reference into it.
         const QJsonValue value = doc["actions"].toObject().value(name);
         const auto action = value.toObject();
+        // Repeat last region is a key only: it always uses the region route.
+        if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
+            return invalid("/actions/" + name, "Repeat last region holds only a hotkey; it uses the region capture's output.");
+        // Copy text has no route: nothing but its hotkey is accepted.
+        if (name == textActionName() && !(value.isObject() && keys(action, {"shortcut"})))
+            return invalid("/actions/" + name, "Copy text holds only a hotkey; it has no output.");
         // A shortcut-only record entry follows the region route.
-        const bool inheritedRecord = name == recordingActionName() && value.isObject() && keys(action, {"shortcut"});
+        const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName() || name == textActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
             if (!text(action["shortcut"], 0, 128)) return invalid("/actions/" + name, "Action fields or profile references are invalid.");
         } else if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
@@ -195,7 +297,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!action["shortcut"].toString().isEmpty()) {
             const auto sequence = QKeySequence::fromString(action["shortcut"].toString(), QKeySequence::PortableText);
             if (sequence.count() != 1 || sequence[0].key() == Qt::Key_unknown || sequence[0].key() == 0)
-                return invalid("/actions/" + name + "/shortcut", "Shortcuts must contain one valid key combination.");
+                return invalid("/actions/" + name + "/shortcut", "Hotkeys must contain one valid key combination.");
         }
     }
     const auto archive = doc["archive"].toObject();
@@ -209,12 +311,19 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     const auto naming = doc["naming"].toObject();
     const QStringList templateKeys{"fileTemplate", "captureTemplate", "imageTemplate", "textTemplate", "recordingTemplate"};
     auto namingKeys = templateKeys;
-    namingKeys.append({"mode", "collisionPolicy"});
+    namingKeys.append({"mode", "collisionPolicy", "randomStyle", "randomLength", "randomUppercase", "randomDigits"});
     if (!doc["naming"].isObject() || !naming.contains("mode") || !naming.contains("collisionPolicy") ||
         !choice(naming["mode"], {"generated", "original", "template"}) || !choice(naming["collisionPolicy"], {"rename", "skip", "overwrite"}))
         return invalid("/naming", "Upload naming or collision policy is invalid.");
     for (auto field = naming.begin(); field != naming.end(); ++field)
         if (!namingKeys.contains(field.key())) return invalid("/naming", "Upload naming contains an unsupported field.");
+    if (naming.contains("randomStyle") && !choice(naming["randomStyle"], {"uuid", "string"}))
+        return invalid("/naming/randomStyle", "Choose uuid or string random names.");
+    if (naming.contains("randomLength") && !integer(naming["randomLength"], 4, 64))
+        return invalid("/naming/randomLength", "Random names are 4 to 64 characters long.");
+    for (const auto& field : {QStringLiteral("randomUppercase"), QStringLiteral("randomDigits")})
+        if (naming.contains(field) && !naming[field].isBool())
+            return invalid("/naming/" + field, "Random name character choices are true or false.");
     for (const auto& field : templateKeys) {
         if (!naming.contains(field)) continue;
         if (!text(naming[field], 1, 4096)) return invalid("/naming/" + field, "Filename templates must be nonempty strings.");
@@ -262,7 +371,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "sensitiveTextCheck", "captureStyle", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu", "unhingedMode"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -272,8 +381,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("editorRecentColors")) {
         const auto colors = preferences["editorRecentColors"];
         bool valid = colors.isArray() && colors.toArray().size() <= Settings::maximumRecentColors;
+        static const QRegularExpression recentColor("^#[0-9a-f]{6}$");
         if (valid) for (const auto& color : colors.toArray())
-            valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
+            valid = valid && color.isString() && recentColor.match(color.toString()).hasMatch();
         if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
     if (preferences.contains("diagnostics")) {
@@ -309,22 +419,113 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
+    if (preferences.contains("scrollCaptureMaxHeight") && !integer(preferences["scrollCaptureMaxHeight"],2000,60000)) return invalid("/preferences/scrollCaptureMaxHeight", "Choose 2000 to 60000 pixels.");
+    if (preferences.contains("scrollCaptureFromTop") && !preferences["scrollCaptureFromTop"].isBool()) return invalid("/preferences/scrollCaptureFromTop", "Choose true or false.");
+    if (preferences.contains("scrollCaptureAutoScroll") && !preferences["scrollCaptureAutoScroll"].isBool()) return invalid("/preferences/scrollCaptureAutoScroll", "Choose true or false.");
     if (preferences.contains("regionSelectionMode") && !choice(preferences["regionSelectionMode"], {"live", "screenshot_first"}))
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
+    if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
+        return invalid("/preferences/captureDelaySeconds", "Choose 0, 3, 5 or 10 seconds for the capture delay.");
+    if (preferences.contains("captureDelayShortcuts") && !preferences["captureDelayShortcuts"].isBool())
+        return invalid("/preferences/captureDelayShortcuts", "Delaying hotkey captures is true or false.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
+    if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())
+        return invalid("/preferences/recordingMicrophone", "The recording microphone toggle is true or false.");
+    if (preferences.contains("recordingMicrophoneDevice") && !recording::validMicrophoneDevice(preferences["recordingMicrophoneDevice"]))
+        return invalid("/preferences/recordingMicrophoneDevice", "The recording microphone is the name of an input device, at most 256 characters; leave it empty for the system default.");
+    if (preferences.contains("recordingClickHighlights") && !preferences["recordingClickHighlights"].isBool())
+        return invalid("/preferences/recordingClickHighlights", "Click highlights in recordings are true or false.");
+    if (preferences.contains("unhingedMode") && !preferences["unhingedMode"].isBool())
+        return invalid("/preferences/unhingedMode", "Unhinged mode is true or false.");
     if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
         return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
     if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
         return invalid("/preferences/fileManagerMenu", "The file manager menu setting must be true or false.");
+    if (preferences.contains("textRecognitionLanguages")) {
+        // Identifiers only: whether a language's data is installed is checked when a job loads it.
+        const auto languages = preferences["textRecognitionLanguages"];
+        QStringList identifiers;
+        bool valid = languages.isArray();
+        if (valid) for (const auto& language : languages.toArray()) { valid = valid && language.isString(); identifiers.append(language.toString()); }
+        if (!valid || !textjob::validLanguages(identifiers))
+            return invalid("/preferences/textRecognitionLanguages", "Text recognition languages are one to three different Tesseract language identifiers, such as eng or chi_sim.");
+    }
+    // #1618: Quick redact's saved words and patterns. Errors name the entry's position, never its text.
+    if (preferences.contains("quickRedactTerms")) {
+        const auto terms = preferences["quickRedactTerms"];
+        const char* const wrong = "Quick redact words are an array of at most 200 entries, each one word or phrase of 1 to 100 characters on one line.";
+        if (!terms.isArray() || terms.toArray().size() > textjob::maxRedactTerms) return invalid("/preferences/quickRedactTerms", wrong);
+        int index = 0;
+        for (const auto& term : terms.toArray()) {
+            ++index;
+            if (!term.isString()) return invalid("/preferences/quickRedactTerms", wrong);
+            const auto problem = textjob::redactTermError(term.toString());
+            if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactTerms/%1").arg(index - 1), QStringLiteral("Word %1: %2").arg(index).arg(sentence(problem)));
+        }
+    }
+    if (preferences.contains("quickRedactPatterns")) {
+        const auto patterns = preferences["quickRedactPatterns"];
+        const char* const wrong = "Quick redact patterns are an array of at most 50 regular expressions of up to 500 characters each.";
+        if (!patterns.isArray() || patterns.toArray().size() > textjob::maxRedactPatterns) return invalid("/preferences/quickRedactPatterns", wrong);
+        int index = 0;
+        for (const auto& pattern : patterns.toArray()) {
+            ++index;
+            if (!pattern.isString()) return invalid("/preferences/quickRedactPatterns", wrong);
+            const auto problem = quickRedactPatternError(pattern.toString());
+            if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactPatterns/%1").arg(index - 1), QStringLiteral("Pattern %1: %2").arg(index).arg(sentence(problem)));
+        }
+    }
+    // #1893: capture style; absent means off.
+    if (preferences.contains("captureStyle"))
+        if (auto error = CaptureStyle::validate(preferences["captureStyle"])) return error;
+    // #1804: the check before uploading and the Quick redact categories it looks for.
+    // #1820: kinds gives each one off, warn or redact; categories is #1804's list, each one read as warn.
+    if (preferences.contains("sensitiveTextCheck")) {
+        const auto check = preferences["sensitiveTextCheck"].toObject();
+        const char* const wrong = "The sensitive text check is an object with enabled (true or false) and kinds: each of email, phone, ip, card, key, name and list set to off, warn or redact. An older categories list (one to seven of those names) may stay beside it.";
+        if (!preferences["sensitiveTextCheck"].isObject() || !check["enabled"].isBool() || !(check.contains("categories") || check.contains("kinds")))
+            return invalid("/preferences/sensitiveTextCheck", wrong);
+        for (auto it = check.begin(); it != check.end(); ++it)
+            if (!QStringList{"enabled", "categories", "kinds"}.contains(it.key())) return invalid("/preferences/sensitiveTextCheck", wrong);
+        if (check.contains("categories")) {
+            if (!check["categories"].isArray()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+            const auto categories = check["categories"].toArray();
+            if (categories.isEmpty() || categories.size() > sensitiveTextCategoryNames().size()) return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+            QStringList seen;
+            for (const auto& category : categories) {
+                if (!category.isString() || !sensitiveTextCategoryNames().contains(category.toString()) || seen.contains(category.toString()))
+                    return invalid("/preferences/sensitiveTextCheck/categories", wrong);
+                seen << category.toString();
+            }
+        }
+        if (check.contains("kinds")) {
+            if (!check["kinds"].isObject()) return invalid("/preferences/sensitiveTextCheck/kinds", wrong);
+            const auto kinds = check["kinds"].toObject();
+            for (auto it = kinds.begin(); it != kinds.end(); ++it)
+                if (!sensitiveTextCategoryNames().contains(it.key()) || !QStringList{"off", "warn", "redact"}.contains(it.value().toString()))
+                    return invalid(QStringLiteral("/preferences/sensitiveTextCheck/kinds/%1").arg(it.key()), wrong);
+        }
+    }
     return {};
+}
+QStringList Settings::sensitiveTextCategoryNames() { return {"email", "phone", "ip", "card", "key", "name", "list"}; }
+QStringList Settings::defaultSensitiveTextCategories() { return {"card", "key", "list"}; }
+QString Settings::sensitiveTextKind(const QJsonObject& check, const QString& category) {
+    // A kind named in kinds is that; else #1804's categories list (each one there is warn), else the default list.
+    const auto kinds = check["kinds"].toObject();
+    if (kinds.contains(category)) return kinds[category].toString();
+    QStringList listed;
+    for (const auto& value : check["categories"].toArray()) listed.append(value.toString());
+    if (!check.contains("categories")) listed = defaultSensitiveTextCategories();
+    return listed.contains(category) ? QStringLiteral("warn") : QStringLiteral("off");
 }
 
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
     auto action=doc["actions"].toObject()[name].toObject();
-    if(name==recordingActionName()&&!action.contains("destination")) {
-        // A shortcut-only record entry follows the region route with its own key.
+    if((name==recordingActionName()||name==repeatActionName())&&!action.contains("destination")) {
+        // A shortcut-only record or repeat entry follows the region route with its own key.
         auto inherited=effectiveAction(doc,"region");
         inherited["shortcut"]=action["shortcut"];
         return inherited;
@@ -347,6 +548,10 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     // Recording follows the region route unless the document routes it itself (effectiveAction).
     const auto record = effectiveAction(doc, recordingActionName());
     settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), record["shortcut"].toString(), record["publicationMode"].toString("default")});
+    const auto repeat = effectiveAction(doc, repeatActionName());
+    settings.actions.insert(repeatActionName(), {repeat["destination"].toString(), repeat["profileId"].toString(), repeat["shortcut"].toString(), repeat["publicationMode"].toString("default")});
+    // Route-free: no destination or profile, only the hotkey.
+    settings.actions.insert(textActionName(), {QString{}, QString{}, doc["actions"].toObject()[textActionName()].toObject()["shortcut"].toString(), QStringLiteral("default")});
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();
     settings.archive.keepUploads = archive["keepUploads"].toBool();
@@ -378,6 +583,10 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.imageTemplate = naming["imageTemplate"].toString(settings.imageTemplate);
     settings.textTemplate = naming["textTemplate"].toString(settings.textTemplate);
     settings.recordingTemplate = naming["recordingTemplate"].toString(settings.recordingTemplate);
+    settings.randomName.style = naming["randomStyle"].toString(settings.randomName.style);
+    settings.randomName.length = naming["randomLength"].toInt(settings.randomName.length);
+    settings.randomName.uppercase = naming["randomUppercase"].toBool(settings.randomName.uppercase);
+    settings.randomName.digits = naming["randomDigits"].toBool(settings.randomName.digits);
     const auto retention = doc["retention"].toObject();
     settings.failedArtifactDays = retention["failedArtifactDays"].toInt();
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();
@@ -387,8 +596,17 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.logBytes = retention["logBytes"].toInteger(52428800LL);
     settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
+    settings.scrollCaptureMaxHeight = doc["preferences"].toObject()["scrollCaptureMaxHeight"].toInt(30000);
+    settings.scrollCaptureFromTop = doc["preferences"].toObject()["scrollCaptureFromTop"].toBool(false);
+    settings.scrollCaptureAutoScroll = doc["preferences"].toObject()["scrollCaptureAutoScroll"].toBool(false);
     settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
     settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
+    settings.recordingMicrophone = doc["preferences"].toObject()["recordingMicrophone"].toBool(false);
+    settings.recordingMicrophoneDevice = doc["preferences"].toObject()["recordingMicrophoneDevice"].toString();
+    settings.recordingClickHighlights = doc["preferences"].toObject()["recordingClickHighlights"].toBool(false);
+    settings.unhingedMode = doc["preferences"].toObject()["unhingedMode"].toBool(false);
+    settings.captureDelaySeconds = doc["preferences"].toObject()["captureDelaySeconds"].toInt(0);
+    settings.captureDelayShortcuts = doc["preferences"].toObject()["captureDelayShortcuts"].toBool(false);
     settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
@@ -398,7 +616,69 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.fileManagerFolders = doc["preferences"].toObject()["fileManagerFolders"].toString("zip");
     settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
+    for (const auto& language : doc["preferences"].toObject()["textRecognitionLanguages"].toArray()) settings.textRecognitionLanguages.append(language.toString());
+    // #1618: terms are trimmed and each exact repeat is dropped, in the order written.
+    for (const auto& value : doc["preferences"].toObject()["quickRedactTerms"].toArray()) {
+        const auto term = value.toString().trimmed();
+        if (!term.isEmpty() && !settings.quickRedactTerms.contains(term)) settings.quickRedactTerms.append(term);
+    }
+    for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
+    if (doc["preferences"].toObject().contains("captureStyle")) settings.captureStyle = CaptureStyle::fromJson(doc["preferences"].toObject()["captureStyle"].toObject());
+    {
+        const auto check = doc["preferences"].toObject()["sensitiveTextCheck"].toObject();
+        settings.sensitiveTextCheck = check["enabled"].toBool(false);
+        // In the editor's own order, whatever order they were saved in.
+        for (const auto& category : sensitiveTextCategoryNames()) {
+            const auto choice = sensitiveTextKind(check, category);
+            if (choice != "off") settings.sensitiveTextCategories.append(category);
+            if (choice == "redact") settings.sensitiveTextCover.append(category);
+        }
+    }
     return settings;
+}
+QJsonObject Settings::profileForDestination(const QJsonObject& destination, const QJsonArray& profiles) {
+    const auto provider = destination["providerId"].toString(), id = destination["profileId"].toString();
+    const auto recorded = destination["settings"].toObject();
+    // Only services whose deletion addresses the object by bucket and key with the destination's
+    // own credentials: a custom uploader's deletion URL or a Proton share is tied to an account
+    // put.gd can't check, so those never move to another destination.
+    // S3's addressing (path or virtual-hosted) decides the host a request goes to, so it is part of the place (#1778).
+    static const QHash<QString, QStringList> place{{"s3", {"endpoint", "addressing", "bucket"}}, {"cloudflare-r2", {"accountId", "jurisdiction", "bucket"}},
+                                                    {"backblaze-b2", {"apiUrl", "bucket"}}, {"sftp", {"server", "user", "folder"}}};
+    const auto value = [](const QJsonObject& settings, const QString& key) {
+        auto text = settings[key].toString().trimmed();
+        if (key == "addressing") {
+            // The addressing requests use, by the S3 driver's rule (s3VirtualAddressing in
+            // src/storage/s3/PublicUrl.cpp): auto is virtual-hosted only on an amazonaws.com host for a
+            // bucket without dots, so auto and path reach the same host elsewhere. Anything else never matches.
+            if (text == "auto")
+                return QUrl(settings["endpoint"].toString()).host().endsWith("amazonaws.com") && !settings["bucket"].toString().contains('.') ? QStringLiteral("virtual") : QStringLiteral("path");
+            return text == "path" || text == "virtual" ? text : QString();
+        }
+        if (key == "endpoint" || key == "apiUrl") {
+            // Scheme and host compare without case; port and path exactly as the provider uses them.
+            QUrl url(text);
+            if (!url.isValid() || url.host().isEmpty()) return text;
+            // Encoded as sent: an escaped slash is not a path separator.
+            auto path = url.path(QUrl::FullyEncoded);
+            while (path.endsWith('/')) path.chop(1);
+            // An IPv6 literal keeps its brackets, or [::1]:443 and [::1:443] would compare equal (#1778).
+            auto host = url.host().toLower();
+            if (host.contains(':')) host = "[" + host + "]";
+            return url.scheme().toLower() + "://" + host + (url.port() < 0 ? QString() : ":" + QString::number(url.port())) + path;
+        }
+        return text;
+    };
+    for (const auto& entry : profiles) if (entry.toObject()["id"].toString() == id && entry.toObject()["provider"].toString() == provider) return entry.toObject();
+    const auto keys = place.value(provider);
+    if (keys.isEmpty()) return {};
+    for (const auto& entry : profiles) {
+        const auto profile = entry.toObject();
+        if (profile["provider"].toString() != provider) continue;
+        const auto settings = profile["settings"].toObject();
+        if (std::all_of(keys.begin(), keys.end(), [&](const QString& key) { return !value(recorded, key).isEmpty() && value(recorded, key) == value(settings, key); })) return profile;
+    }
+    return {};
 }
 Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {
     const auto profiles = document["profiles"].toArray();

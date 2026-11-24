@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 namespace putgd::crash {
-// A small async-signal-safe crash handler (#124, docs/diagnostics.md). Every
+// A small async-signal-safe crash handler (#124, docs/design/diagnostics.md). Every
 // product executable links it as an object library, and it installs itself
 // before main: SIGSEGV, SIGBUS, SIGILL, SIGFPE and SIGABRT run on an alternate
 // signal stack, walk the stack with a warmed-up _Unwind_Backtrace and write the

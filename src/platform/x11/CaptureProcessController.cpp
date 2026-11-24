@@ -1,4 +1,6 @@
+#include "platform/ProcessStat.h"
 #include "CaptureProcessController.h"
+#include <cmath>
 #include "CaptureCursorPolicy.h"
 #include "X11NativeSnapshot.h"
 #include "core/BuildInfo.h"
@@ -10,23 +12,17 @@
 #include <QImageReader>
 #include <QCryptographicHash>
 #include <QFile>
+#include <QThread>
 #include <QUuid>
 #include <fcntl.h>
+#include <csignal>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 namespace putgd {
 namespace {
 QJsonObject build(){return QJsonDocument::fromJson(buildManifestJson()).object();}
-QString processStartTicks(qint64 pid){
- QFile file(QString("/proc/%1/stat").arg(pid));
- if(pid<=0||!file.open(QIODevice::ReadOnly))return {};
- const auto bytes=file.read(4097);if(bytes.size()>4096)return {};
- const auto end=bytes.lastIndexOf(')');if(end<0)return {};
- const auto fields=bytes.mid(end+2).simplified().split(' ');
- if(fields.size()<20)return {};
- bool ok=false;const auto ticks=fields[19].toULongLong(&ok);
- return ok&&ticks>0?QString::number(ticks):QString{};
-}
+
 const QString genericReason=QStringLiteral("The capture helper could not complete source acquisition");
 // Resident-side failures name their check; helper failures arrive with theirs.
 Error unavailable(const QString& code,const QString& check={},QJsonObject details={}){
@@ -51,7 +47,15 @@ CaptureProcessController::CaptureProcessController(QString helperPath,QObject* p
  deadline_.setSingleShot(true);stopDeadline_.setSingleShot(true);holdDeadline_.setSingleShot(true);
  connect(&holdDeadline_,&QTimer::timeout,this,&CaptureProcessController::releaseCrosshair);
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout","deadline",{{"ready",ready_},{"begun",begun_},{"result",resultReceived_}}));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{
+  if(!process_||process_->state()==QProcess::NotRunning)return;
+  // Claim the kill only for a helper still alive now (peek, not reap; __WALL as
+  // Qt may clone it without SIGCHLD): one that
+  // already exited or was killed from outside keeps its own exit status (#398).
+  siginfo_t info{};const auto pid=pid_t(process_->processId());
+  const bool alive=pid>0&&::waitid(P_PID,id_t(pid),&info,WEXITED|WNOHANG|WNOWAIT|__WALL)==0&&info.si_pid==0;
+  stoppedAfterAccept_=alive&&accepted_&&!failure_;process_->kill();
+ });
 }
 CaptureProcessController::~CaptureProcessController(){closing_=true;releaseCrosshair();deadline_.stop();stopDeadline_.stop();if(control_)control_->stop();if(process_){process_->disconnect(this);process_->kill();process_->waitForFinished(1000);}if(decoder_){decoder_->disconnect(this);decoder_->wait();delete decoder_;}artifact_.cleanup();if(callback_){auto callback=std::move(callback_);callback_={};callback({{},{"cancelled","Capture adapter closed",{}}});}}
 bool CaptureProcessController::busy()const{return prepared_||bool(callback_)||process_;}
@@ -67,8 +71,8 @@ void CaptureProcessController::releaseUnclaimedCrosshair(){if(!busy()){releaseCr
 bool CaptureProcessController::preparedReady()const{return prepared_&&ready_&&!begun_&&!failure_;}
 qint64 CaptureProcessController::processId()const{return process_?process_->processId():0;}
 QJsonObject CaptureProcessController::diagnostics()const{return {{"processId",processId()},{"active",busy()},{"lastExit",lastExit_},{"build",build()}};}
-void CaptureProcessController::start(const QJsonObject& frozen,const ResourceLimits& limits,std::function<void(PayloadResult)> callback,QString outcome,bool screenshotFirst,QJsonObject appearance){auto ticket=prepare(frozen,limits,{},{},std::move(outcome),screenshotFirst,std::move(appearance));begin(ticket,std::move(callback));}
-CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonObject& frozen,const ResourceLimits& limits,std::function<void(Error)> earlyTerminal,std::function<void()> earlyReleased,QString outcome,bool screenshotFirst,QJsonObject appearance){
+void CaptureProcessController::start(const QJsonObject& frozen,const ResourceLimits& limits,std::function<void(PayloadResult)> callback,QString outcome,bool screenshotFirst,QJsonObject appearance,int delaySeconds){auto ticket=prepare(frozen,limits,{},{},std::move(outcome),screenshotFirst,std::move(appearance),delaySeconds);begin(ticket,std::move(callback));}
+CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonObject& frozen,const ResourceLimits& limits,std::function<void(Error)> earlyTerminal,std::function<void()> earlyReleased,QString outcome,bool screenshotFirst,QJsonObject appearance,int delaySeconds){
  auto ticket=std::make_shared<Preparation>();ticket->controller_=this;
  if(busy()){ticket->failure_=unavailable("busy_selecting");if(earlyReleased)earlyReleased();return ticket;}
  if(auto error=X11NativeSnapshot::validate(frozen);error){ticket->failure_=error;if(earlyReleased)earlyReleased();return ticket;}
@@ -85,8 +89,8 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  requestedCursor_=cursorCompatible_?residentCursor:0;
  if(!holdable||!residentCursor){releaseCrosshair();forgetHeldButtons();}
  else if(!cursorCache_.holding()&&cursorCache_.holdPointer())holdDeadline_.start(crosshairHoldMs);
- earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;
- launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=false;
+ earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;selection_.reset();selectionLayout_={};delayMs_=delaySeconds>0?delaySeconds*1000:0;
+ launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=stoppedAfterAccept_=false;
  directory_=std::make_unique<QTemporaryDir>("/tmp/putgd-capture-XXXXXX");
  // Recursive QTemporaryDir removal could erase a replacement inode.
  directory_->setAutoRemove(false);
@@ -99,7 +103,10 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  connect(child,&QProcess::readyReadStandardError,this,[this,child,epoch]{const auto bytes=child->readAllStandardError();if(process_==child&&generation_==epoch)output_.append(bytes);});
  connect(control_,&CaptureControl::frame,this,[this,child,epoch](const QString& type,const QJsonObject& payload){if(process_==child&&generation_==epoch)receive(type,payload);});
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){if(process_==child&&generation_==epoch)fail(std::move(error));});
- connect(child,&QProcess::started,this,[this,child,epoch,frozen,outcome,screenshotFirst,appearance]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);output_.started(launchPid_,{{"generation",QString::number(generation_)}});QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"outcome",outcome},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",cursorCompatible_&&!cursorFingerprint_.isEmpty()},{"observe",!cursorCompatible_&&!cursorFingerprint_.isEmpty()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}};if(screenshotFirst&&region_)bootstrap["regionMode"]="screenshot_first";control_->send("bootstrap",bootstrap);});
+ connect(child,&QProcess::started,this,[this,child,epoch,frozen,outcome,screenshotFirst,appearance,delaySeconds]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);output_.started(launchPid_,{{"generation",QString::number(generation_)}});QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"outcome",outcome},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",cursorCompatible_&&!cursorFingerprint_.isEmpty()},{"observe",!cursorCompatible_&&!cursorFingerprint_.isEmpty()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}};if(screenshotFirst&&region_)bootstrap["regionMode"]="screenshot_first";
+  // A live region counts down in the helper, between selection and pixels (#1363).
+  if(delaySeconds>0&&region_&&!screenshotFirst)bootstrap["delay"]=delaySeconds;
+  control_->send("bootstrap",bootstrap);});
  connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){if(process_!=child||generation_!=epoch)return;if(error==QProcess::FailedToStart){output_.failedToStart(child->errorString());if(!failure_)failure_=unavailable("capture_start_failed");exited(-1,QProcess::CrashExit);}});
  connect(child,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,child,epoch](int code,QProcess::ExitStatus status){if(process_==child&&generation_==epoch)exited(code,status);});deadline_.start(10000);child->start(helperPath_,{});return ticket;
 }
@@ -121,7 +128,7 @@ void CaptureProcessController::sendPreview(){
  if(!guard)return;
  if(!sent){fail(unavailable("capture_protocol","preview_send"));return;}
  // Interactive selection is bounded separately from invisible startup.
- deadline_.start(120000);
+ deadline_.start(120000+delayMs_);
 }
 void CaptureProcessController::notifyEarlyTerminal(){
  if(auto ticket=preparation_.lock();ticket&&failure_)ticket->failure_=failure_;
@@ -137,7 +144,7 @@ void CaptureProcessController::sendBegin(){
  const bool sent=control_&&control_->send("begin",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"cursor",QString::number(region_?previewCursor_:0)}});
  if(!guard)return;
  if(!sent){fail(unavailable("capture_protocol","begin_send"));return;}
- if(!previewed_)deadline_.start(120000);
+ if(!previewed_)deadline_.start(120000+delayMs_);
 }
 void CaptureProcessController::cancel(){
  if(!busy()||cancelling_)return;
@@ -179,7 +186,7 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   ready_=true;QPointer<CaptureProcessController> guard(this);sendPreview();if(guard&&beginRequested_)sendBegin();return;
  }
  if(type=="error"||type=="cancelled"){
-  const auto code=payload["code"].toString();const QStringList allowed{"cancelled","display_changed","capture_target","capture_unavailable","capture_geometry","capture_failed","capture_timeout","input_excessive","image_limit","encoding_failed","capture_io"};
+  const auto code=payload["code"].toString();const QStringList allowed{"cancelled","display_changed","capture_target","capture_unavailable","capture_geometry","capture_failed","capture_timeout","input_excessive","image_limit","encoding_failed","capture_io","session_locked","delay_unavailable"};
   const auto reason=payload["reason"].toString();const auto details=payload["details"].toObject();
   if(!ready_||payload.size()!=5||!allowed.contains(code)||!payload["reason"].isString()||!payload["details"].isObject()||reason.size()>CaptureControl::reasonChars||QJsonDocument(details).toJson(QJsonDocument::Compact).size()>CaptureControl::detailBytes){fail(unavailable("capture_protocol","error_frame"));return;}
   // Keep the helper's own reason and details: they name the failed check and
@@ -204,7 +211,11 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   observedCursor(payload);return;
  }
  if(type=="result"){
-  if(!ready_||!begun_||resultReceived_||payload.size()!=6||!payload["bytes"].isString()||!payload["sha256"].isString()||!payload["width"].isDouble()||!payload["height"].isDouble()){fail(unavailable("capture_protocol","result_frame"));return;}
+  // A region result also names the logical rectangle that was selected (#1363).
+  const auto selection=payload["selection"].toArray();bool selectionOk=region_==payload.contains("selection")&&region_==payload.contains("layout")&&(!region_||(selection.size()==4&&X11NativeSnapshot::describes(payload["layout"].toArray())));
+  for(const auto& value:selection)selectionOk=selectionOk&&value.isDouble()&&std::isfinite(value.toDouble());
+  if(!ready_||!begun_||resultReceived_||payload.size()!=6+2*int(region_)||!selectionOk||!payload["bytes"].isString()||!payload["sha256"].isString()||!payload["width"].isDouble()||!payload["height"].isDouble()){fail(unavailable("capture_protocol","result_frame"));return;}
+  if(region_){selection_=QRectF(selection[0].toDouble(),selection[1].toDouble(),selection[2].toDouble(),selection[3].toDouble());selectionLayout_=payload["layout"].toArray();}
   resultReceived_=true;deadline_.start(10000);decode(payload);return;
  }
  fail(unavailable("capture_protocol","frame_type"));
@@ -241,10 +252,16 @@ void CaptureProcessController::decode(QJsonObject descriptor){
 void CaptureProcessController::exited(int code,QProcess::ExitStatus status){
  if(!busy()||exited_)return;
  exited_=true;deadline_.stop();stopDeadline_.stop();lastExit_={{"generation",QString::number(generation_)},{"processId",launchPid_},{"startTicks",launchStartTicks_},{"code",code},{"status",status==QProcess::NormalExit?"normal":"crash"}};
- if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_);}
+ // Only the resident's own SIGKILL after accept counts: a helper that exited or
+ // crashed by itself before Qt reported it still fails (#398).
+ const bool residentStop=stoppedAfterAccept_&&status==QProcess::CrashExit&&code==SIGKILL;
+ if(residentStop){lastExit_["stoppedAfterAccept"]=true;logging::write(logCapture(),QtWarningMsg,"Capture helper stopped after its result was accepted",{{"generation",QString::number(generation_)}});}
+ if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_||residentStop);}
  if(control_)control_->stop();
  control_=nullptr;
- if(!failure_&&(!accepted_||code!=0||status!=QProcess::NormalExit)){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
+ // A helper that exits by itself must exit normally. A slow exit that the
+ // resident ended after accepting the result does not discard the result (#398).
+ if(!failure_&&(!accepted_||(!residentStop&&(code!=0||status!=QProcess::NormalExit)))){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
  complete();
 }
 void CaptureProcessController::observedCursor(const QJsonObject& image){

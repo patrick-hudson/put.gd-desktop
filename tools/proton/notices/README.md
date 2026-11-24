@@ -23,9 +23,9 @@ The manifest hashes each required redistribution file. CMake rejects changed sou
 locks, notices or runtime copies and installs them together. This verifies
 install rules; actual shipping packages and source publication remain P4/P6.
 
-The [materials receipt](../../../docs/evidence/2026-10-15-proton-p3-materials.md)
+The [materials receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p3-materials.md)
 records the approved source choice and original prepared assets. The later
-[rebuild receipt](../../../docs/evidence/2026-10-15-proton-p3-rebuild.md) records
+[rebuild receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p3-rebuild.md) records
 native Bun 1.4.2/JavaScriptCore/TinyCC modification/relink and Argon2 WASM compiler
 proof using disposable pinned toolchains. P3's notice/source/rebuild work was
 completed for that earlier runtime. This proof does not establish Bun 1.4.4

@@ -4,7 +4,7 @@
 Headless, with nothing captured: the relocated helper writes its synthetic A/V
 marker clip (MJPEG and PCM in Matroska), exports it the way the review does
 (MP4 with H.264, WebM with VP9, GIF), and `--motion`, `--preview` and, for the
-formats with sound, `--av-sync` must read each copy (docs/recording.md, "Lab
+formats with sound, `--av-sync` must read each copy (docs/design/recording.md, "Lab
 diagnostics"). Not read: H.265 MP4 (FFmpeg's HEVC decoder would add 0.34 MiB
 to the image) and WebP (FFmpeg 7.1 has no animated WebP decoder).
 """

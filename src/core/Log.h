@@ -16,7 +16,7 @@ Q_DECLARE_LOGGING_CATEGORY(logSettings)
 Q_DECLARE_LOGGING_CATEGORY(logHistory)
 Q_DECLARE_LOGGING_CATEGORY(logRecording)
 Q_DECLARE_LOGGING_CATEGORY(logClipboard)
-// Persistent JSON Lines log (#74, docs/diagnostics.md). Only the resident opens
+// Persistent JSON Lines log (#74, docs/design/diagnostics.md). Only the resident opens
 // the files; helpers write stderr, which the resident collects (HelperOutput).
 // Records are queued for one writer thread: a full queue or a failed write
 // drops the record and reports loggingDegraded, never failing or delaying the

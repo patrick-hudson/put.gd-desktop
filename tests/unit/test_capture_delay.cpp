@@ -1,0 +1,115 @@
+// Delayed capture in the operation service (#1363), against a fake desktop
+// adapter: a countdown that ends on a locked screen, or is cancelled while the
+// lock is being asked about, prepares no target and reads no pixel. A capture
+// the compositor is known to refuse (capture_permission) fails at once, before
+// any selector or countdown.
+#include "fixtures/U2Fixtures.h"
+#include "fixtures/Waits.h"
+#include <QSignalSpy>
+using namespace putgd;using namespace putgd::test;
+namespace {
+// Records the order of countdown, lock query, preparation and acquisition.
+class DelaySource final:public SourceAdapter {
+public:
+ QStringList events;bool locked=false,deferLock=false;
+ std::function<void(bool)> pendingLock;QJsonObject capture;
+ quint64 clipboardRevision() const override {return 0;}
+ QJsonObject capabilities() const override {return capture.isEmpty()?QJsonObject{}:QJsonObject{{"capture",capture}};}
+ void countdown(int seconds,std::function<void(Error)> reply) override {events<<QStringLiteral("countdown:%1").arg(seconds);reply({});}
+ void sessionLocked(std::function<void(bool)> reply) override {events<<"locked?";if(deferLock)pendingLock=std::move(reply);else reply(locked);}
+ // Stands for the selector: the live region overload is what shows it.
+ PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,std::function<void(Error)> terminal,std::function<void()> released) override {
+  events<<"select:"+action;return SourceAdapter::prepareAcquisition(action,limits,std::move(terminal),std::move(released));
+ }
+ using SourceAdapter::prepareAcquisition;
+ PreparedAcquisition prepareAcquisition(const QString& action) override {
+  events<<"prepare:"+action;
+  return [this,action](const ResourceLimits&,std::function<void(PayloadResult)> reply){
+   events<<"acquire:"+action;
+   ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=QImage(8,6,QImage::Format_ARGB32_Premultiplied);payload.image.fill(Qt::red);
+   reply({payload,{}});
+  };
+ }
+ void acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply) override {prepareAcquisition(action)(limits,std::move(reply));}
+ void cancelAcquisition() override {}
+ void copy(const CopyPayload&,std::function<void(Error)> reply) override {reply({});}
+};
+struct Fixture {
+ QTemporaryDir directory;ProviderRegistry registry;SettingsService settings{directory.filePath("config.json")};DelaySource source;
+ std::unique_ptr<OperationService> operations;
+ Fixture() {
+  auto document=configuration(directory.path(),true);
+  QVERIFY(settings.save(document,{}));
+  operations=std::make_unique<OperationService>(directory.filePath("data"),settings,registry,source);
+  PUTGD_TRY_VERIFY(operations->ready());
+ }
+ ~Fixture(){operations->shutdown();}
+ // Invokes and waits for the operation to reach a terminal state.
+ QJsonObject run(const QString& action,const QJsonObject& options={},Error* refused=nullptr) {
+  QString id;Error error;int replies=0;
+  operations->invoke(action,[&](Error e,QJsonObject accepted){error=e;id=accepted["operationId"].toString();++replies;},options);
+  if(!waitFor([&]{return replies==1;})){if(refused)*refused={"timeout","no reply",{}};return {};}
+  if(refused)*refused=error;
+  if(error)return {};
+  return finished(id);
+ }
+ QJsonObject finished(const QString& id) {
+  QJsonObject operation;
+  const bool done=waitFor([&]{
+   bool answered=false;operations->inspect(id,[&](Error,QJsonObject value){operation=value["operation"].toObject().isEmpty()?value:value["operation"].toObject();answered=true;});
+   if(!waitFor([&]{return answered;}))return false;
+   return !Operation::activeState(operation["state"].toString());
+  });
+  return done?operation:QJsonObject{};
+ }
+};
+}
+class CaptureDelayTest final:public QObject {
+ Q_OBJECT
+private slots:
+ void lockedScreenAtExpiryCapturesNothing() {
+  Fixture f;f.source.locked=true;const auto operation=f.run("desktop",{{"delaySeconds",3}});
+  QCOMPARE(operation["state"].toString(),QString("failed"));
+  QCOMPARE(operation["error"].toObject()["code"].toString(),QString("session_locked"));
+  QCOMPARE(f.source.events,QStringList({"countdown:3","locked?"}));
+  QVERIFY(operation["items"].toArray().isEmpty());
+ }
+ // The countdown is over and the lock is being asked about: nothing is left for a
+ // cancel to stop, and still no target may be frozen and no pixel read.
+ void cancellingDuringTheLockQueryReadsNothing() {
+  Fixture f;f.source.deferLock=true;
+  QString id;int replies=0,cancelled=0;
+  f.operations->invoke("monitor",[&](Error,QJsonObject accepted){id=accepted["operationId"].toString();++replies;},{{"delaySeconds",3}});
+  PUTGD_TRY_COMPARE(replies,1);PUTGD_TRY_VERIFY(bool(f.source.pendingLock));
+  f.operations->cancel(id,[&](Error,QJsonObject){++cancelled;});PUTGD_TRY_COMPARE(cancelled,1);
+  std::exchange(f.source.pendingLock,{})(false);
+  const auto operation=f.finished(id);
+  QCOMPARE(operation["state"].toString(),QString("cancelled"));
+  QCOMPARE(f.source.events,QStringList({"countdown:3","locked?"}));
+  QVERIFY(operation["items"].toArray().isEmpty());
+ }
+ // Plasma without the restricted entry (gui_fuzz on Aurora): the region and every
+ // screen source refuse straight away with the adapter's own error, delayed or
+ // not, and the next capture is not left busy_selecting.
+ void knownPermissionRefusalShowsNoSelector() {
+  Fixture f;const QJsonObject refused{{"available",false},{"code","capture_permission"},{"error","Install the restricted desktop entry against this resident executable"}};
+  f.source.capture={{"region",refused},{"window",refused},{"desktop",refused},{"monitor",refused},{"repeat",refused}};
+  for(const auto& [action,options]:QList<std::pair<QString,QJsonObject>>{{"region",{}},{"region",{{"delaySeconds",3}}},{"window",{}},{"desktop",{{"delaySeconds",3}}},{"monitor",{}},{"edit",{}}}){
+   const auto operation=f.run(action,options);
+   QCOMPARE(operation["state"].toString(),QString("failed"));
+   QCOMPARE(operation["error"].toObject()["code"].toString(),QString("capture_permission"));
+   QCOMPARE(operation["error"].toObject()["message"].toString(),refused["error"].toString());
+   QVERIFY(operation["items"].toArray().isEmpty());
+  }
+  QVERIFY2(f.source.events.isEmpty(),qPrintable(f.source.events.join(',')));
+ }
+ // Unavailable for another reason, or no code: the request goes to the adapter as before.
+ void unknownPermissionStateCapturesAsBefore() {
+  Fixture f;f.source.capture={{"region",QJsonObject{{"available",false},{"error","ScreenShot2 has not been probed"}}},{"desktop",QJsonObject{{"available",true},{"code","capture_permission"}}}};
+  QCOMPARE(f.run("region")["state"].toString(),QString("completed"));
+  QCOMPARE(f.run("desktop")["state"].toString(),QString("completed"));
+  QCOMPARE(f.source.events,QStringList({"select:region","prepare:region","acquire:region","select:desktop","prepare:desktop","acquire:desktop"}));
+ }
+};
+QTEST_GUILESS_MAIN(CaptureDelayTest)
+#include "test_capture_delay.moc"

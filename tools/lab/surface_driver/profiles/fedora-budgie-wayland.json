@@ -1,0 +1,195 @@
+{
+  "desktop": "fedora-budgie-wayland",
+  "input_backend": {
+    "guest": "qmp",
+    "native": "vnc-or-host-input"
+  },
+  "catalog_tolerance": 0.025,
+  "notification_server": "budgie-daemon",
+  "default_browser_kind": "firefox",
+  "at_spi": {
+    "available": true,
+    "reason": ""
+  },
+  "session": "wayland",
+  "known_gaps": [
+    "Catalogs are synthetic content; desktop drawn surfaces require human review",
+    "labwc reports no window geometry: toplevels are placed only by their own pixels (grim -T against the composed outputs); layer-shell surfaces of the shell are never placed"
+  ],
+  "window_titles": {
+    "history": "^put\\.gd$",
+    "settings": "^put\\.gd$",
+    "main": "^put\\.gd$",
+    "editor": "^Edit (image|& upload)",
+    "review": "Review",
+    "diagnostics": "Diagnostics",
+    "about": "About",
+    "destinations": "^put\\.gd$",
+    "updates": "^put\\.gd$",
+    "bar": "^put\\.gd recording controls$",
+    "fileDialog": ".*",
+    "putgdFileDialog": ".*",
+    "region": ".*",
+    "recsel": ".*"
+  },
+  "catalog_windows": {},
+  "focus": {
+    "backend": "compositor-witness",
+    "raise_before_input": true,
+    "reason": "labwc has no IPC or geometry protocol: the toplevel lists give the active window, and each toplevel is placed and hit-tested by finding its own ext-foreign-toplevel capture in the composed outputs (probe toplevel-pixels); labwc does not raise a window put.gd shows while another client is active, so each guarded input first activates the target through its wlr handle"
+  },
+  "notifications": {
+    "accessible": {
+      "application": "budgie-daemon"
+    },
+    "placement": "unplaced",
+    "reason": "Budgie's notification popups are budgie-daemon layer-shell surfaces: AT-SPI shows the showing summary label, and labwc reports no position for a layer surface"
+  },
+  "windows": {
+    "history": {
+      "accessible": {
+        "application": "putgd*"
+      }
+    },
+    "editor.canvas": {
+      "owner": "editor",
+      "accessible": {
+        "name": "Image being edited"
+      }
+    },
+    "fileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "putgdFileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "region": {
+      "title": ".*",
+      "accessible": {
+        "name": "Capture region",
+        "application": "putgd*"
+      }
+    },
+    "recsel": {
+      "title": ".*",
+      "accessible": {
+        "name": "Recording region",
+        "application": "putgd*"
+      }
+    },
+    "historyContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyRowMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "maskOptionsMenu": {
+      "owner": "review",
+      "popup": true
+    },
+    "confirmAction": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirm": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  },
+  "compositor": {
+    "kind": "toplevel-pixels",
+    "shell_application": "",
+    "stage": "none: grim (in the golden) and the shipped tools/lab/wayland_toplevels.py witness, read-only per observation",
+    "overlay_shells": [
+      "budgie-daemon"
+    ],
+    "window_rules_reason": "labwc captures a modal dialog alone as 1x1 and draws it into its parent's capture at the origin: the nightly guest's labwc rules (nightly_desktop_guest.prepare_labwc_rules) put each dialog a cell clicks at a known position with no decoration, and the witness checks the dialog's pixels from that corner there",
+    "window_rules": [
+      {
+        "app_id": "putgd-ui",
+        "title": "Delete from destination",
+        "position": [120, 100]
+      },
+      {
+        "app_id": "putgd-ui",
+        "title": "Revoke share link",
+        "position": [120, 100]
+      }
+    ]
+  },
+  "evidence": {
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
+      {
+        "anchor": "top-right",
+        "width": 420,
+        "height": 0.4
+      }
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "bottom",
+        "height": 36
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    },
+    "shell_processes": [
+      "budgie-panel",
+      "budgie-daemon",
+      "labwc",
+      "budgie-desktop-view"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "bottom",
+        "height": 36
+      }
+    ]
+  },
+  "recording": {
+    "consent": {
+      "kind": "none",
+      "reason": "Budgie on labwc records through ext-image-copy-capture on put.gd's own connection; the ScreenCast portal is never used, so no consent dialog shows"
+    }
+  }
+}

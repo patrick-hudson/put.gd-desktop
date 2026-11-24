@@ -600,8 +600,12 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
             # Rows this run published earlier (e.g. a previous pass) become failed.
             result['invalidated_coverage_rows'] = fail_coverage(coverage, [row.to_json() for row in rows], redactor=evidence.redactor)
     write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
-    final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
-                     hosts=evidence.redactor.link_hosts, quarantine=True)
+    try:
+        final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
+                         hosts=evidence.redactor.link_hosts, quarantine=True)
+    except Exception:  # e.g. no quarantine directory outside the run: the stubs below still replace both files
+        # Some files may have been moved before the failure; say so rather than claim none were.
+        final = {'passed': False, 'quarantine': [{'action': 'quarantine-incomplete'}]}
     if not final['passed']:
         # The rewritten receipt itself carried a value. Replace both with
         # constant failure stubs (no run data) and scan those final bytes.
@@ -813,6 +817,16 @@ def main(argv=None):
             clipboard_report = getattr(target, 'clipboard_report', None)
             if isinstance(clipboard_report, dict) and clipboard_report:
                 environment['clipboard_preservation'] = clipboard_report
+            # Structured recovery facts. Recovery trusts these, never the wording of an error or a note.
+            guest_local = getattr(target, 'guest_local_cleanup', None)
+            if cleanup:
+                environment['guest_local_cleanup'] = list(guest_local) if isinstance(guest_local, list) else []
+            live_pending = getattr(target, 'live_cleanup_pending', None)
+            run_directory = getattr(target, 'run', None)
+            # The marker file itself, so a fixture that refused to start over an earlier marker still reports it.
+            marker_left = isinstance(run_directory, (str, os.PathLike)) and (Path(run_directory)/lab.LIVE_CLEANUP_MARKER).exists()
+            if marker_left or (isinstance(live_pending, dict) and live_pending.get('remote')):
+                environment['unresolved_live_cleanup'] = True
             if cleanup:
                 environment['cleanup_errors']=cleanup
                 write_receipts(args.out,environment,rows,args.campaign,args.out/'coverage.json',evidence=evidence)

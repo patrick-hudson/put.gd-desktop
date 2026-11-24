@@ -9,7 +9,7 @@ status: design approved 2026-10-17; slices 1-7 implemented, each with the open i
 
 # Screen recording
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [recording](../../recording.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../design/overview.md); see [recording](../../design/recording.md). Do not use it as a work list.
 
 ## Goal
 

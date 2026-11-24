@@ -1,5 +1,5 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include <QObject>
 #include <QSocketNotifier>
 #include <QTimer>

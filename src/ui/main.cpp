@@ -1,11 +1,13 @@
 #include "UiApplicationController.h"
 #include "ImageJob.h"
 #include "ImageEditor.h"
-#include "StdioDevice.h"
+#include "QuickRedactRunner.h"
+#include "ipc/StdioDevice.h"
 #include "ViewState.h"
 #include "Ui.h"
 #include "Fonts.h"
 #include "QuickBackend.h"
+#include "DialogAttachment.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -22,7 +24,12 @@ int main(int argc,char** argv){
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){
   std::printf("putgd-ui %s\n",putgd::buildVersion());return 0;
  }
+ // Quick redact's pattern matcher (#1618): a child the editor kills at its
+ // deadline. Before anything else starts: it needs QtCore alone.
+ if(argc==2&&std::strcmp(argv[1],"--match-patterns")==0)return putgd::ui::runQuickRedactMatcher();
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
+ // Before the editor clears the desktop identity below: dialogs move on their own on GNOME.
+ putgd::keepModalDialogsDetached();
  // The editor draws its own theme. Qt's built-in generic platform theme avoids
  // loading the desktop's GTK/KDE integration stack into this short-lived image
  // process (about 22 MiB RSS on GNOME 50; about 85 MiB on Plasma, whose theme
@@ -74,7 +81,7 @@ int main(int argc,char** argv){
   auto state=payload["state"].toObject();if(state.isEmpty())state={{"schemaVersion",1}};
   if(putgd::validateUiState(state)){control.send("incompatible");app.exit(4);return;}
   client=std::make_unique<putgd::SessionClient>(payload["socketPath"].toString());
-  session=std::make_unique<putgd::UiSession>(*client);
+  session=std::make_unique<putgd::UiSession>(*client);session->setPersonToken(payload["personToken"].toString());
   session->refreshSnapshot([&,state](putgd::Error error){
    if(error||session->build()!=build||session->residentEpoch()!=epoch){control.send("incompatible");app.exit(4);return;}
    windows=std::make_unique<putgd::UiApplicationController>(*session,control,state);

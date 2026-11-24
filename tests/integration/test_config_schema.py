@@ -17,9 +17,9 @@ from jsonschema import Draft202012Validator, ValidationError
 class ConfigurationSchema(unittest.TestCase):
     def test_capture_defaults_and_explicit_exceptions(self):
         root = Path(__file__).resolve().parents[2]
-        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        schema = json.loads((root / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema)
-        document = json.loads((root / 'config/development.example.json').read_text())
+        document = json.loads((root / 'config/development.example.json').read_text(encoding='utf-8'))
         document['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
         for action in document['actions'].values():
             action.update(destination='default', profileId=None, publicationMode='default')
@@ -37,7 +37,7 @@ class ConfigurationSchema(unittest.TestCase):
         self.assertFalse(validator.is_valid(invalid))
 
     def test_upload_clipboard_modes_and_legacy_preferences(self):
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['properties']['preferences'])
         legacy = {'notifications': True, 'launchAtLogin': False}
         self.assertTrue(validator.is_valid(legacy))
@@ -48,7 +48,7 @@ class ConfigurationSchema(unittest.TestCase):
 
     def test_region_selection_modes(self):
         # #629: live by default (omitted), or screenshot_first.
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['properties']['preferences'])
         legacy = {'notifications': True, 'launchAtLogin': False}
         for mode in ('live', 'screenshot_first'):
@@ -58,7 +58,7 @@ class ConfigurationSchema(unittest.TestCase):
 
     def test_recording_frame_rate(self):
         # #984: 30 by default (omitted), or 60.
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['properties']['preferences'])
         legacy = {'notifications': True, 'launchAtLogin': False}
         for rate in (30, 60):
@@ -66,9 +66,46 @@ class ConfigurationSchema(unittest.TestCase):
         for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
             self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
 
+    def test_quick_redact_list(self):
+        # #1618: optional word and pattern lists, with the editor's limits; omitted means none.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        self.assertTrue(validator.is_valid(legacy))
+        for terms in ([], ['Project Aurora'], ['a' * 100], ['x'] * 200, ['one', 'two words', 'path/like-this']):
+            self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
+        for terms in ([''], ['x'] * 201, ['two\nlines'], ['carriage\rreturn'], [3], 'word', None, {'0': 'x'}):
+            self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
+        for patterns in ([], [r'\bJIRA-\d+\b'], [r'(?i)\b[a-z0-9-]+\.corp\.example\b'], ['a' * 500], ['x'] * 50):
+            self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
+        for patterns in ([''], ['a' * 501], ['x'] * 51, [3], 'pattern', None):
+            self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
+        # Terms are limited after trimming, so the schema leaves their length to the editor (a word with padding is valid);
+        # a pattern is never trimmed, so its 500 code points are exact, also outside the BMP.
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': ['x' + ' ' * 200]}))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 500]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 501]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': [' ' * 500 + 'x']}))
+        # One line: no line feed, carriage return, U+2028 or U+2029, even at the end of an entry.
+        for breaker in ('\n', '\r', '\u2028', '\u2029'):
+            for entry in (f'a{breaker}b', f'a{breaker}', f'{breaker}a'):
+                self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': [entry]}), repr(entry))
+                self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': [entry]}), repr(entry))
+        # The schemas keep only loose bounds (raw line breaks, 200 and 1000 characters); the editor applies the
+        # full rules, which tests/fixtures/text/redact-validation.json states for both sides.
+        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text(encoding='utf-8'))
+        for kind, key in (('terms', 'quickRedactTerms'), ('patterns', 'quickRedactPatterns')):
+            for row in table[kind]:
+                accepted = validator.is_valid(legacy | {key: [row['value']]})
+                if row['rule'] == 'lineBreak':
+                    self.assertFalse(accepted, (kind, repr(row['value'][:40])))
+                elif row['rule'] == 'ok':
+                    self.assertTrue(accepted, (kind, row['value'][:40]))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+', '(a+)+', '\\C']}))  # the editor decides what a pattern may do, not the schema
+
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['properties']['preferences'])
         legacy = {'notifications': True, 'launchAtLogin': False}
         for updates in ({}, {'check': False}, {'channel': 'build'}, {'check': True, 'channel': 'nightly'}, {'channel': 'stable'}):
@@ -78,7 +115,7 @@ class ConfigurationSchema(unittest.TestCase):
 
     def test_appearance_theme_and_reserved_custom_colours(self):
         # #60: theme now; accent and overrides keep their shape for phase 2.
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['properties']['preferences'])
         legacy = {'notifications': True, 'launchAtLogin': False}
         for theme in ('system', 'dark', 'light'):
@@ -91,7 +128,7 @@ class ConfigurationSchema(unittest.TestCase):
             self.assertFalse(validator.is_valid(legacy | {'appearance': appearance}), appearance)
 
     def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['$defs']['protonSettings'])
         settings = {'accountRootUid': 'a' * 22 + '~' + 'b' * 22,
             'folderUid': 'a' * 22 + '~' + 'c' * 22, 'shareByDefault': True,
@@ -105,9 +142,9 @@ class ConfigurationSchema(unittest.TestCase):
 
     def test_optional_recording_route_template_and_limits(self):
         root = Path(__file__).resolve().parents[2]
-        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        schema = json.loads((root / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema)
-        document = json.loads((root / 'config/development.example.json').read_text())
+        document = json.loads((root / 'config/development.example.json').read_text(encoding='utf-8'))
         validator.validate(document)
         # Absent record action, template and limits stay valid (older documents).
         recorded = copy.deepcopy(document)
@@ -145,10 +182,10 @@ class ConfigurationSchema(unittest.TestCase):
         app = os.environ.get('PUTGD_APP')
         cli = os.environ.get('PUTGD_CLI')
         self.assertTrue(app and cli, 'Set PUTGD_APP and PUTGD_CLI to built production binaries')
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         Draft202012Validator.check_schema(schema)
         validator = Draft202012Validator(schema)
-        validator.validate(json.loads((Path(__file__).resolve().parents[2] / 'config/development.example.json').read_text()))
+        validator.validate(json.loads((Path(__file__).resolve().parents[2] / 'config/development.example.json').read_text(encoding='utf-8')))
         with tempfile.TemporaryDirectory(prefix='putgd-schema-') as temporary:
             root = Path(temporary)
             runtime = root / 'runtime'
@@ -176,8 +213,9 @@ class ConfigurationSchema(unittest.TestCase):
                     self.assertEqual([error.message for error in errors], [])
                     inherited = copy.deepcopy(document)
                     inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
-                    for action in inherited['actions'].values():
-                        action.update(destination='default', profileId=None, publicationMode='default')
+                    for name, action in inherited['actions'].items():
+                        if name != 'repeat':  # Repeat is always a shortcut-only entry.
+                            action.update(destination='default', profileId=None, publicationMode='default')
                     validator.validate(inherited)
                     checked = subprocess.run([cli, '--socket', str(socket), 'settings.validate', json.dumps({'document': inherited})], env=environment,
                         check=True, capture_output=True, text=True, timeout=20)

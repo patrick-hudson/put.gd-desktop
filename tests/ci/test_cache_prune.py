@@ -58,9 +58,16 @@ class Plan(unittest.TestCase):
 
     def test_package_and_source_caches_keep_one_entry_per_environment(self):
         for prefix in ('ccache-package-appimage-' + SDK + '-',
+                       'ccache-package-archlinux-', 'ccache-source-export-' + SDK + '-',
                        'appimage-distro-sources-v1-' + 'ab' * 32 + '-'):
             self.assertEqual(deleted([cache(prefix + '1-1', hour=1), cache(prefix + '2-1', hour=2)]),
                              {(prefix + '1-1', NIGHTLY): 'superseded by ' + prefix + '2-1'})
+
+    def test_every_ubuntu_package_set_is_one_distro_source_family(self):
+        old, new = ('appimage-distro-sources-v1-' + digest * 32 + '-' for digest in ('ab', 'cd'))
+        self.assertEqual(cache_prune.family(old + '42572654148-1'), 'appimage-distro-sources-v1-')
+        self.assertEqual(deleted([cache(old + '1-1', hour=1), cache(new + '2-1', hour=2)]),
+                         {(old + '1-1', NIGHTLY): 'superseded by ' + new + '2-1'})
 
     def test_refs_keep_their_own_newest_entry(self):
         pull = 'refs/pull/7/merge'
