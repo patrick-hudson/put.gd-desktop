@@ -637,8 +637,9 @@ published runs in a row, on different UTC dates, is a host problem: on
 11-22 and 11-23 the k72 and f44 rows ran nothing because `/tmp` scratch took their memory, and
 nothing said so (#1978). A row counts when every cell that isn't ➖ is ⚪ with no attempt. The
 controller compares each row with the last published results: when that row was also blocked,
-the count (`hostBlockedNights` in the row's receipt) goes up by one if the earlier run's UTC
-date differs, and stays the same for a rerun on the same date. From a count of two it puts a warning naming the row and the reason at the top of #1003 and of the row's
+the count (`hostBlockedNights` in the row's receipt) goes up by one if the UTC date that row
+was last counted on (`hostBlockedDate`, carried over by a filtered recheck of other rows)
+differs, and stays the same for a rerun on the same date. From a count of two it puts a warning naming the row and the reason at the top of #1003 and of the row's
 receipt comment, and the table's Not run cell starts with ⚠️ and the count. Fix the builder
 before the next run. Like any ⚪, it opens no issue.
 
