@@ -16,8 +16,9 @@ namespace {
 // connection is tried. When pipewiresrc cannot connect, its plugin destroys the
 // PipeWire context while the context's loop thread still runs, then joins that
 // thread; now and then the thread never wakes and the join waits forever (#1113:
-// a 300 s timeout in CI, 4 of 200,000 failed opens on pipewire 1.6.2). put.gd
-// itself always connects with the portal's fd, which never takes that path.
+// a 300 s timeout in CI, 4 of 200,000 failed opens on pipewire 1.6.2). This test
+// needs no daemon, so it avoids that path; the product can still reach it when
+// PipeWire goes away while a source starts or reopens (#1994).
 GstElementClass* refusingParent = nullptr;
 GstStaticPadTemplate refusingSink = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
 GstStaticPadTemplate refusingSource = GST_STATIC_PAD_TEMPLATE("src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS("video/x-h264"));
