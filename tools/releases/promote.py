@@ -142,6 +142,9 @@ def plan(root, remote='origin', repository=None, lookup=changelog.lookup_pulls, 
     source = nightly_version(root, nightly)
     repository = repository or repository_of(git(root, 'remote', 'get-url', remote))
     published = released(repository) if released else None
+    if released and published is None:
+        # main also carries stable tags whose acceptance failed; only the published ones may start the section.
+        raise ValueError('Cannot read the published releases; retry, or pass --offline to count every stable tag')
     # A stable tag sits on main's promotion merge, which nightly reaches only through a hotfix merged back.
     found = [changelog.previous_stable(root, nightly, published),
              changelog.previous_stable(root, f'{remote}/main', published, include_ref=True)]

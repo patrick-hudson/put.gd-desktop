@@ -137,6 +137,9 @@ class Promotion(unittest.TestCase):
         self.assertNotIn('[#5]', promotion['section'])
         self.assertIn('[#8]', promotion['section'])
         self.assertTrue(promotion['changelog'].endswith(f'[Unreleased]: {URL}/compare/{tag}...nightly\n'))
+        # A failed lookup can't tell a published stable from a draft whose acceptance failed.
+        with self.assertRaises(ValueError):
+            self.plan(released=lambda repository: None)
 
     def test_new_sections_and_links_go_first_below_unreleased(self):
         existing = (promote.HEADER + '\n## [Unreleased]\n\n- Draft\n\n## [26.1001.1] - 2026-10-01\n\n### Fixed\n\n'
