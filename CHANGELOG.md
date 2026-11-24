@@ -60,7 +60,7 @@ New places to upload, an optional check that looks for passwords, keys and card 
 
 ### Security
 
-- The AppImage updates its bundled FFmpeg from 7.1.5 to 9.0.2, which clears the scanner's fixed critical and high FFmpeg findings reported against 26.1105.3906 ([#1309](https://github.com/patrick-hudson/put.gd-desktop/issues/1309)). The build still includes only the decoders, encoders and file handling put.gd uses.
+- The AppImage updates its bundled FFmpeg from 7.1.5 to 9.0.2, which clears the scanner's fixed critical and high FFmpeg findings reported against 26.1105.3906 ([#1309](https://github.com/patrick-hudson/put.gd-desktop/issues/1309)). It is built without network protocols, reading and writing local files only.
 - A token from a `.sxcu` address stays out of thumbnail URLs and error messages, and Test upload and link no longer keeps its signed link.
 - The Proton Drive helper is still built with Bun 1.4.4. Bun's HTTP/3 advisory GHSA-p268-p2w7-qr8x is accepted for this release because HTTP/3 is off in put.gd's launch of the helper. A move to Bun 1.4.5 is planned ([#2005](https://github.com/patrick-hudson/put.gd-desktop/issues/2005)).
 
