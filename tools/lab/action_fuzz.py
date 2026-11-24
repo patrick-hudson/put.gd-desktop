@@ -2768,7 +2768,7 @@ def main():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--steps', type=int, default=300)
     parser.add_argument('--check-every', type=int, default=10)
-    parser.add_argument('--run-dir', help='a new short private folder (default /tmp/at/<mode>-<seed>)')
+    parser.add_argument('--run-dir', help='a new short private folder (default ~/work/apptest-runs/<mode>-<seed>)')
     parser.add_argument('--fixture-server', help='tests/fixtures/http_uploader_server.py when not run from the repository')
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
     parser.add_argument('--tsan-prefix', help='the folder holding deps-tsan and qtbase-tsan-build (docs/testing/thread-sanitizer.md): run a ThreadSanitizer build')

@@ -10,7 +10,6 @@ import base64
 import functools
 import collections
 import stat
-import tempfile
 import dataclasses
 import hashlib
 import hmac
@@ -551,7 +550,8 @@ def scan_run(directory, *, frames=None, literals=(), quarantine=False, hosts=(),
 
 def quarantine_files(root, files):
     """Outside the export root; names never preserve attacker-controlled text."""
-    directory = Path(tempfile.mkdtemp(prefix='putgd-surface-quarantine-'))
+    from tools.lab import scratch  # on disk: /tmp is RAM on the builders (#1978)
+    directory = Path(scratch.mkdtemp(prefix='putgd-surface-quarantine-'))
     directory.chmod(0o700)
     actions = []
     moved = []

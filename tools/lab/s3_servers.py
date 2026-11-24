@@ -22,7 +22,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -234,7 +233,9 @@ def start(name):
     elif name == 'versitygw':
         podman(*base[:-1], '127.0.0.1:%d:7070' % port, '-v', vol + ':/data:U', spec['image'], '--access', ACCESS, '--secret', SECRET, '--port', ':7070', 'posix', '/data')
     elif name == 'garage':
-        directory = tempfile.mkdtemp(prefix='s3diff-garage-')
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import scratch  # on disk: /tmp is RAM on the builders (#1978)
+        directory = str(scratch.mkdtemp(prefix='s3diff-garage-'))
         config = garage_config(directory)
         podman(*base[:-1], '127.0.0.1:%d:3900' % port, '-v', '%s:/etc/garage.toml:ro,Z' % config, '-v', vol + ':/var/lib/garage:U', spec['image'], '/garage', 'server')
     elif name == 'seaweedfs':

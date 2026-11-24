@@ -3,6 +3,7 @@
 Every value here is fake;
 everything else runs anywhere in seconds.
 """
+import os
 import json
 from types import SimpleNamespace
 from pathlib import Path
@@ -77,11 +78,13 @@ class Base(unittest.TestCase):
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='g', package='deb',
                         destination=self.destination, build=BUILD)
         self.quarantines = []
-        original = redact.tempfile.mkdtemp
+        from tools.lab import scratch
+        original = scratch.mkdtemp
         def mkdtemp(*args, **kwargs):
             directory = original(*args, **kwargs); self.quarantines.append(directory); return directory
-        patcher = patch.object(redact.tempfile, 'mkdtemp', side_effect=mkdtemp)
-        patcher.start(); self.addCleanup(patcher.stop)
+        for patcher in (patch.object(scratch, 'mkdtemp', side_effect=mkdtemp),
+                        patch.dict(os.environ, PUTGD_LAB_SCRATCH=str(self.path/'scratch'))):
+            patcher.start(); self.addCleanup(patcher.stop)
         self.addCleanup(lambda: [shutil.rmtree(d, ignore_errors=True) for d in self.quarantines])
 
     def context(self, target=None, evidence=None):

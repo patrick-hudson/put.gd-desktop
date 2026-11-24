@@ -1798,8 +1798,9 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
 def verify_installed_binaries(run, deb):
     # Development rebuilds retain their version. Confirm actual guest bytes rather
     # than recording only the requested archive's hash.
-    import tempfile
-    with tempfile.TemporaryDirectory(prefix='putgd-package-') as directory:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import scratch  # on disk: /tmp is RAM on the builders (#1978)
+    with scratch.TemporaryDirectory(prefix='putgd-package-') as directory:
         if str(deb).endswith('.rpm'):
             archive = subprocess.Popen(['rpm2cpio', str(Path(deb).resolve())], stdout=subprocess.PIPE)
             unpacked = subprocess.run(['cpio', '-idm', '--quiet'], stdin=archive.stdout, cwd=directory)

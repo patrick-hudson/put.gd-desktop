@@ -56,13 +56,18 @@ def main():
     if action == 'install':
         deb = Path(sys.argv[3]).resolve()
         (run / 'package.json').unlink(missing_ok=True)
+        # The copy goes to disk and is removed after the install: the host's /tmp is RAM (#1978).
+        # scp resolves the relative path against the host's home.
+        staged = 'work/tmp/putgd-lab' + deb.suffix
+        host_ssh(run, 'mkdir -p -m 700 ~/work/tmp\n', timeout=60)
+        host_put(run, deb, staged)
         if deb.suffix == '.rpm':
             # Remove first: dnf will not reinstall or downgrade a same-version dev build.
-            host_put(run, deb, '/tmp/putgd-lab.rpm')
-            host_ssh(run, 'sudo -n dnf -y -q remove putgd >/dev/null 2>&1 || true\nsudo -n dnf -y -q install /tmp/putgd-lab.rpm >/dev/null\n', timeout=300)
+            install = ('sudo -n dnf -y -q remove putgd >/dev/null 2>&1 || true\n'
+                       'sudo -n dnf -y -q install ~/' + staged + ' >/dev/null\n')
         else:
-            host_put(run, deb, '/tmp/putgd-lab.deb')
-            host_ssh(run, 'sudo -n apt-get update -qq\nsudo -n apt-get install --reinstall -y -qq /tmp/putgd-lab.deb >/dev/null\n', timeout=300)
+            install = 'sudo -n apt-get update -qq\nsudo -n apt-get install --reinstall -y -qq ~/' + staged + ' >/dev/null\n'
+        host_ssh(run, 'status=0\n{\n' + install + '} || status=$?\nrm -f ~/' + staged + '\nexit "$status"\n', timeout=300)
         installed = lab.verify_installed_binaries(run, deb)
         lab.write_json(run / 'package.json', {'sha256': lab.hash_file(deb), 'filename': deb.name, 'installedBinarySha256': installed})
         print(json.dumps({'status': 'installed', 'host': cfg['host']}))

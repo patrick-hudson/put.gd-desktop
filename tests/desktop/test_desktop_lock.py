@@ -17,6 +17,11 @@ import desktop_lock as lock
 START = datetime.datetime(2026, 10, 19, 3, 0, tzinfo=datetime.timezone.utc)
 
 
+def inventory(*args, **kwargs):
+    """collect_inventory without this machine's own /tmp."""
+    return lock.collect_inventory(*args, **dict({'tmp': lambda: None}, **kwargs))
+
+
 def deb(version):
     return {'kind': 'package', 'id': 'putgd', 'key': 'package:deb:' + version, 'detail': 'deb putgd ' + version}
 
@@ -177,7 +182,7 @@ class ReleaseCleanupCheck(LockTest):
         run = lambda argv: pgrep[0] if argv[0] == 'pgrep' else (1, '')
         home = self.directory.parent
         desktop = lock.Desktop(self.directory, 'k72', self.clock,
-                               lambda: lock.collect_inventory(home, run, own=set(), environment=lambda pid: {'HOME'}))
+                               lambda: inventory(home, run, own=set(), environment=lambda pid: {'HOME'}))
         self.acquire(desktop=desktop)
         pgrep[0] = (0, '900 /usr/bin/python3 /tmp/pgd.BANaL2/cover_player.py play --title Synthetic test\n')
         with self.assertRaises(lock.LockError) as refused:
@@ -363,7 +368,7 @@ class HostInventory(unittest.TestCase):
                 'rpm': (1, 'package putgd is not installed\n'),
                 'dpkg-query': (0, 'ii  0.1.1-dev.369'),
             }
-            items, notes = lock.collect_inventory(home, self.fake(outputs), own={100},
+            items, notes = inventory(home, self.fake(outputs), own={100},
                                                     environment=environments.get, parent={}.get)
         self.assertEqual([(item['kind'], item['id']) for item in items], [
             ('process', '200'), ('process', '400'), ('process', '500'), ('flatpak', '2563577312'),
@@ -385,7 +390,7 @@ class HostInventory(unittest.TestCase):
                         '610': None, '600': {'HOME'}}  # adopted by a subreaper: no sign of SSH
         parents = {'210': '200', '310': '300', '300': '301', '410': '1', '510': '500', '610': '600'}
         with tempfile.TemporaryDirectory() as folder:
-            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs), own=set(),
+            items, notes = inventory(Path(folder), self.fake(outputs), own=set(),
                                                     environment=environments.get, parent=parents.get)
         self.assertEqual([item['id'] for item in items], ['210', '410', '510', '610'])
         self.assertTrue(notes[0].endswith('shared SSH work): 310'))
@@ -406,7 +411,7 @@ class HostInventory(unittest.TestCase):
                    'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
         environments = {'200': {'HOME'}, '300': {'HOME'}, '400': {'HOME'}, '500': {'HOME'}}
         with tempfile.TemporaryDirectory() as folder:
-            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs), own=set(),
+            items, notes = inventory(Path(folder), self.fake(outputs), own=set(),
                                                     environment=environments.get, orphaned={'300'}.__contains__)
         self.assertEqual([(item['kind'], item['id']) for item in items], [('process', '200'), ('process', '300')])
         self.assertTrue(notes[0].endswith('shared SSH work): 400 500'))
@@ -432,8 +437,8 @@ class HostInventory(unittest.TestCase):
     def test_missing_pgrep_fails_closed_and_missing_flatpak_is_reported(self):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaises(lock.LockError):
-                lock.collect_inventory(Path(folder), self.fake({}))
-            items, notes = lock.collect_inventory(Path(folder), self.fake({'pgrep': (1, '')}))
+                inventory(Path(folder), self.fake({}))
+            items, notes = inventory(Path(folder), self.fake({'pgrep': (1, '')}))
         self.assertEqual(items, [])
         self.assertEqual(notes, ['flatpak is not installed', 'no putgd package installed'])
 
@@ -441,12 +446,98 @@ class HostInventory(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             outputs = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''),
                        'dpkg-query': (0, 'rc  26.1122.6374~dev+gffeead0fc1f3')}
-            items, notes = lock.collect_inventory(Path(folder), self.fake(outputs))
+            items, notes = inventory(Path(folder), self.fake(outputs))
             self.assertEqual((items, notes), ([], ['no putgd package installed '
                                                    '(config files of deb 26.1122.6374~dev+gffeead0fc1f3 only)']))
             outputs['dpkg-query'] = (1, '')
-            self.assertEqual(lock.collect_inventory(Path(folder), self.fake(outputs))[1],
+            self.assertEqual(inventory(Path(folder), self.fake(outputs))[1],
                              ['no putgd package installed'])
+
+
+class RamBackedTmp(LockTest):
+    """#1978: campaign scratch in the builders' tmpfs /tmp starved the k72 and f44 nightly guests."""
+    GIB = 2**30
+
+    def tmp(self, *entries, total=None):
+        listed = [(path, size, inode) for inode, (path, size) in enumerate(entries, 1)]
+        return lambda: {'total': sum(size for _, size, _ in listed) if total is None else total,
+                        'entries': listed, 'complete': True}
+
+    def test_large_entries_of_ours_are_items_and_a_large_total_gets_a_note(self):
+        quiet = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
+        tmp = self.tmp(('/tmp/s18.oqU1yV', 3 * self.GIB), ('/tmp/i1675', 200 * 2**20), ('/tmp/pgr.jHs4d5', 2**28))
+        items, notes = lock.collect_inventory(Path('/nonexistent'), lambda argv: quiet.get(argv[0], (None, '')),
+                                              own=set(), tmp=tmp, memory=lambda: 9 * self.GIB)
+        self.assertEqual([(item['kind'], item['id'], item['detail']) for item in items],
+                         [('tmp', '/tmp/s18.oqU1yV', '3.0 GB in RAM-backed /tmp'),
+                          ('tmp', '/tmp/pgr.jHs4d5', '256.0 MB in RAM-backed /tmp')])
+        self.assertEqual(items[0]['key'], 'tmp:/tmp/s18.oqU1yV:1')
+        self.assertIn('/tmp is a tmpfs (RAM): your files there take 3.4 GB, with 9.0 GB of memory available', notes[-1])
+        self.assertIn('~/work/tmp', notes[-1])
+        small = self.tmp(('/tmp/a', 2**28), ('/tmp/b', 2**28), total=900 * 2**20)
+        self.assertFalse(any('tmpfs' in note for note in lock.collect_inventory(
+            Path('/nonexistent'), lambda argv: quiet.get(argv[0], (None, '')), own=set(), tmp=small)[1]))
+
+    def test_new_large_tmp_scratch_holds_the_lock_but_not_the_nightlys(self):
+        self.acquire()
+        self.items.append({'kind': 'tmp', 'id': '/tmp/e48.9IxJxV', 'key': 'tmp:/tmp/e48.9IxJxV:7',
+                           'detail': '4.5 GB in RAM-backed /tmp'})
+        with self.assertRaises(lock.LockError) as refused:
+            self.desktop.release('local_a', verified_clean=True)
+        self.assertIn('~/work/tmp', str(refused.exception))
+        reply = self.desktop.release('local_a', verified_clean=True, tmp_blocks=False)
+        self.assertEqual([item['id'] for item in reply['check']['left']], ['/tmp/e48.9IxJxV'])
+        self.assertFalse((self.directory / 'desktop.lock').exists())
+
+    def test_tmp_there_at_acquire_does_not_block_and_not_mine_excuses_it(self):
+        entry = {'kind': 'tmp', 'id': '/tmp/ta2k', 'key': 'tmp:/tmp/ta2k:3', 'detail': '1.0 GB in RAM-backed /tmp'}
+        self.items.append(entry)
+        self.acquire()
+        self.desktop.release('local_a', verified_clean=True)
+        self.items[:] = []
+        self.acquire(session='local_b')
+        self.items.append(dict(entry, key='tmp:/tmp/ta2k:4'))  # made again since: a new inode
+        reply = self.desktop.release('local_b', verified_clean=True, not_mine=['/tmp/ta2k'])
+        self.assertEqual([item['id'] for item in reply['check']['notMine']], ['/tmp/ta2k'])
+
+    def test_usage_counts_only_our_files_on_a_tmpfs_root(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'tmp'
+            (root / 'run/deep').mkdir(parents=True)
+            (root / 'run/deep/blob').write_bytes(b'x' * 300000)
+            (root / 'loose.ppm').write_bytes(b'y' * 100000)
+            (root / 'link').symlink_to(root / 'run/deep/blob')
+            (root / 'dir-link').symlink_to(root / 'run')
+            mounts = Path(folder) / 'mounts'
+            mounts.write_text(f'/dev/sda1 {folder} ext4 rw 0 0\ntmpfs {root} tmpfs rw 0 0\n')
+            usage = lock.tmp_usage(str(root), mounts=str(mounts))
+            self.assertTrue(usage['complete'])
+            sizes = {Path(path).name: size for path, size, _ in usage['entries']}
+            self.assertEqual(set(sizes), {'run', 'loose.ppm', 'link', 'dir-link'})
+            self.assertGreaterEqual(sizes['run'], 300000)
+            self.assertGreaterEqual(sizes['loose.ppm'], 100000)
+            self.assertEqual((sizes['link'], sizes['dir-link']), (0, 0))
+            self.assertEqual(usage['total'], sum(sizes.values()))
+            self.assertEqual(lock.tmp_usage(str(root), uid=os.getuid() + 1, mounts=str(mounts))['total'], 0)
+            # Not a tmpfs (or mounted over by a disk) means nothing to report.
+            mounts.write_text(f'tmpfs {root} tmpfs rw 0 0\n/dev/sda2 {root} ext4 rw 0 0\n')
+            self.assertIsNone(lock.tmp_usage(str(root), mounts=str(mounts)))
+            self.assertIsNone(lock.tmp_usage(str(root), mounts=str(Path(folder) / 'missing')))
+
+    def test_a_slow_walk_stops_and_says_its_sizes_are_lower_bounds(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'a').mkdir()
+            (root / 'b').mkdir()
+            mounts = root / 'mounts'
+            mounts.write_text(f'tmpfs {root} tmpfs rw 0 0\n')
+            ticks = iter(range(100))
+            usage = lock.tmp_usage(str(root), mounts=str(mounts), seconds=0.5, clock=lambda: next(ticks))
+        self.assertFalse(usage['complete'])
+        quiet = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
+        notes = lock.collect_inventory(Path('/nonexistent'), lambda argv: quiet.get(argv[0], (None, '')), own=set(),
+                                       tmp=lambda: usage)[1]
+        self.assertIn('the /tmp size check stopped after 10 s; its sizes are lower bounds', notes)
 
 
 class ProtonSessionLock(LockTest):

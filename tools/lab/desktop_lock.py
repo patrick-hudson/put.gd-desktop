@@ -101,6 +101,13 @@ COVER_PLAYER = re.compile(r'(?:^|[ /])cover_player\.py(?: |$)')
 # A test X server whose xvfb-run auth file sits in a lab tool's private /tmp/pg* TMPDIR (stress_suite's
 # /tmp/pgst.*, for one). A user's own xvfb-run keeps it in /tmp/xvfb-run.*, which doesn't match.
 LAB_XVFB = re.compile(r'(?:\S*/)?Xvfb .*-auth /tmp/pg[^/ ]*/xvfb-run\.[^/ ]+/Xauthority(?: |$)')
+# /tmp on the builders is a tmpfs, so what is left there takes RAM until a reboot: scratch left by
+# campaigns starved the nightly guests on k72 and f44 for two nights (#1978). Each top-level /tmp
+# entry of ours this large is an item; all of ours together this large gets a note.
+TMP_ROOT = '/tmp'
+TMP_ITEM_BYTES = 256 * 2**20
+TMP_NOTE_BYTES = 2**30
+TMP_SCAN_SECONDS = 10
 LEFTOVER_PATHS = ('.local/share/applications/*putgd*.desktop',
                   '.local/share/gnome-shell/extensions/putgd@put.gd',
                   '.local/share/putgd', '.cache/putgd', '.config/putgd')
@@ -250,14 +257,91 @@ def started_environment(pid, environment=process_environment, parent=process_par
     return None
 
 
+def size_text(count):
+    """A byte count as KB, MB or GB (1024 based)."""
+    for unit, scale in (('GB', 2**30), ('MB', 2**20), ('KB', 2**10)):
+        if count >= scale:
+            return f'{count / scale:.1f} {unit}'
+    return f'{count} bytes'
+
+
+def tmpfs_mounted(root, mounts='/proc/self/mounts'):
+    """True when ROOT is a mount point whose (topmost) file system is a tmpfs."""
+    kind = None
+    try:
+        for fields in (line.split() for line in Path(mounts).read_text().splitlines()):
+            if len(fields) >= 3 and fields[1] == root:
+                kind = fields[2]
+    except OSError:
+        return False
+    return kind == 'tmpfs'
+
+
+def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_SCAN_SECONDS, clock=time.monotonic):
+    """None when ROOT is not a tmpfs. Otherwise the bytes our files take there ('total'), our
+    top-level entries as (path, bytes of our files in it, inode) ('entries'), and whether the walk
+    finished inside SECONDS ('complete'). Symbolic links and other file systems are not followed;
+    what can't be read is skipped."""
+    if not tmpfs_mounted(root, mounts):
+        return None
+    uid = os.getuid() if uid is None else uid
+    deadline, total, entries, complete = clock() + seconds, 0, [], True
+    try:
+        top = sorted(os.scandir(root), key=lambda entry: entry.name)
+    except OSError:
+        return {'total': 0, 'entries': [], 'complete': False}
+    device = os.stat(root).st_dev
+    for entry in top:
+        try:
+            info = entry.stat(follow_symlinks=False)
+        except OSError:
+            continue
+        size, pending = 0, [entry.path] if entry.is_dir(follow_symlinks=False) and info.st_dev == device else []
+        if not pending and info.st_uid == uid and not entry.is_symlink():
+            size = info.st_blocks * 512
+        while pending:
+            if clock() > deadline:
+                complete = False
+                break
+            try:
+                children = list(os.scandir(pending.pop()))
+            except OSError:
+                continue
+            for child in children:
+                try:
+                    status = child.stat(follow_symlinks=False)
+                except OSError:
+                    continue
+                if child.is_dir(follow_symlinks=False):
+                    if status.st_dev == device:
+                        pending.append(child.path)
+                elif status.st_uid == uid and not child.is_symlink():
+                    size += status.st_blocks * 512
+        total += size
+        if info.st_uid == uid:
+            entries.append((entry.path, size, info.st_ino))
+        if not complete:
+            break
+    return {'total': total, 'entries': entries, 'complete': complete}
+
+
+def mem_available():
+    """MemAvailable in bytes, or None when /proc/meminfo can't be read."""
+    try:
+        return next(int(line.split()[1]) * 1024 for line in Path('/proc/meminfo').read_text().splitlines()
+                    if line.startswith('MemAvailable:'))
+    except (OSError, StopIteration, ValueError, IndexError):
+        return None
+
+
 def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned,
-                      parent=process_parent):
+                      parent=process_parent, tmp=tmp_usage, memory=mem_available):
     """List what a desktop session can leave on this host: matching processes in the desktop
     session (or that can't be told apart, unless the nearest readable parent shows an SSH
     login), input agents, test patterns and cover players, orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
-    data, and a putgd package. Other matching processes without DISPLAY or WAYLAND_DISPLAY are
-    shared SSH work (builds, syncs, collectors), and so is a lab test X server whose test still
-    runs."""
+    data, a putgd package, and our large entries in a RAM-backed /tmp. Other matching processes
+    without DISPLAY or WAYLAND_DISPLAY are shared SSH work (builds, syncs, collectors), and so is a
+    lab test X server whose test still runs."""
     own = {os.getpid(), os.getppid()} if own is None else own
     items, notes = [], []
 
@@ -316,6 +400,18 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     if len(items) == packages:
         notes.append('no putgd package installed' + (f' (config files of deb {version.strip()} only)'
                                                       if code == 0 and status[1:2] == 'c' else ''))
+    usage = tmp()
+    if usage:
+        for path, size, inode in usage['entries']:
+            if size >= TMP_ITEM_BYTES:
+                add('tmp', path, f'tmp:{path}:{inode}', size_text(size) + ' in RAM-backed /tmp')
+        if usage['total'] >= TMP_NOTE_BYTES:
+            available = memory()
+            notes.append(f'/tmp is a tmpfs (RAM): your files there take {size_text(usage["total"])}'
+                         + (f', with {size_text(available)} of memory available' if available is not None else '')
+                         + '. Keep scratch in ~/work/tmp (tools/lab/scratch.py) and remove what your runs are done with')
+        if not usage['complete']:
+            notes.append(f'the /tmp size check stopped after {TMP_SCAN_SECONDS} s; its sizes are lower bounds')
     return items, notes
 
 
@@ -534,7 +630,9 @@ class Desktop:
             self.replace(self.lock, render_lock(record))
         return dict(assess(record, now), lock=record, wasExpired=was_expired)
 
-    def release(self, session, verified_clean=False, not_mine=(), removed_ok=None):
+    def release(self, session, verified_clean=False, not_mine=(), removed_ok=None, tmp_blocks=True):
+        """With tmp_blocks false (the nightly's own lease), a new large /tmp entry is reported but
+        doesn't hold the lock: it can be another session's, and the nightly can't move it."""
         items, notes = self.inventory()
         with self.mutex():
             now = self.clock()
@@ -543,10 +641,14 @@ class Desktop:
             # the inventory cannot fall between the proof and cleanup snapshots.
             claimed = not_mine() if callable(not_mine) else not_mine
             check = compare(self.read_baseline(), items, claimed)
-            if check['left']:
-                raise LockError(f'Not released: {len(check["left"])} item(s) appeared on {self.host} since you '
+            blocking = [item for item in check['left'] if tmp_blocks or item['kind'] != 'tmp']
+            if blocking:
+                raise LockError(f'Not released: {len(blocking)} item(s) appeared on {self.host} since you '
                                 'acquired it. Stop or remove yours (exact PIDs only) and check again; name '
-                                "another session's item with --not-mine ID", check=check, notes=notes)
+                                "another session's item with --not-mine ID" +
+                                ('. Move /tmp scratch you still need to ~/work/tmp (tools/lab/scratch.py): '
+                                 '/tmp here is RAM' if any(item['kind'] == 'tmp' for item in blocking) else ''),
+                                check=check, notes=notes)
             if check['removed'] and not removed_ok:
                 raise LockError(f'Not released: {len(check["removed"])} putgd package(s) installed when you acquired '
                                 f'the lock are gone from {self.host}. Reinstall the version listed, or say why it '

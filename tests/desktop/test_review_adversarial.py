@@ -228,14 +228,16 @@ class Adv(unittest.TestCase):
         def plant(ctx):
             ctx.sensitive(PUTGD)
             (ctx.out/'leak.log').write_text(TOKEN)
-        import tools.lab.surface_driver.redact as redact
-        original=redact.tempfile.mkdtemp
+        from tools.lab import scratch
+        original=scratch.mkdtemp
         directories=[]
         def quarantine(**kw):
             directory=Path(original(**kw));directories.append(directory)
             self.addCleanup(__import__('shutil').rmtree,directory)
-            return str(directory)
-        with patch.object(redact.tempfile,'mkdtemp',side_effect=quarantine):
+            return directory
+        base=tempfile.TemporaryDirectory();self.addCleanup(base.cleanup)
+        with patch.object(scratch,'mkdtemp',side_effect=quarantine), \
+                patch.dict(__import__('os').environ,PUTGD_LAB_SCRATCH=base.name):
             rows=run_recipes(self.ctx,[Recipe(('editor.undo',),plant)],self.env,self.out,'safe',external)
         self.assertEqual(rows[0].functional, 'failed')
         self.assertFalse((self.out/'leak.log').exists())
@@ -270,7 +272,8 @@ class Adv(unittest.TestCase):
         planted.write_text(TOKEN)
         quarantine=self.out.parent/'private-quarantine'
         quarantine.mkdir(mode=0o700)
-        with patch.object(redact.tempfile,'mkdtemp',return_value=str(quarantine)), \
+        from tools.lab import scratch
+        with patch.object(scratch,'mkdtemp',return_value=str(quarantine)), \
                 patch.object(redact.os,'rename',side_effect=OSError(errno.EXDEV,'cross-device link')):
             result=scan_run(self.out,literals=(TOKEN,),quarantine=True)
         self.assertFalse(result['passed'])
