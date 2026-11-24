@@ -378,7 +378,10 @@ def host_has_library(soname: str) -> bool:
     for tool in (shutil.which("ldconfig"), "/sbin/ldconfig", "/usr/sbin/ldconfig"):
         if tool and os.access(tool, os.X_OK):
             # Like AppRun's `"$tool" -p 2>/dev/null | awk ...`: its exit status is ignored.
-            cache = subprocess.run([tool, "-p"], text=True, capture_output=True).stdout
+            try:
+                cache = subprocess.run([tool, "-p"], text=True, capture_output=True).stdout
+            except OSError:
+                return False
             return any(line.split()[:1] == [soname] and "x86-64" in line for line in cache.splitlines())
     return False
 
