@@ -180,18 +180,22 @@ void LanguageData::release(){
  const std::lock_guard<std::mutex> guard(resolver->lock);
  for(auto& f:resolver->files)std::vector<char>().swap(f.data);
 }
+// Under the lock: the script check's engines (#1981) may be loading data meanwhile.
 qint64 LanguageData::bytesBeyondEnglish()const{
  qint64 total=0;if(!resolver)return 0;
+ const std::lock_guard<std::mutex> guard(resolver->lock);
  for(const auto& f:std::as_const(resolver->files))if(f.language!=QLatin1String("eng"))total+=f.kept;
  return total;
 }
 qint64 LanguageData::bytesHanded()const{
  qint64 total=0;if(!resolver)return 0;
+ const std::lock_guard<std::mutex> guard(resolver->lock);
  for(const auto& f:std::as_const(resolver->files))total+=f.kept;
  return total;
 }
 QStringList LanguageData::files()const{
  QStringList out;if(!resolver)return out;
+ const std::lock_guard<std::mutex> guard(resolver->lock);
  for(const auto& f:std::as_const(resolver->files))out.append(f.language+QLatin1String(".traineddata ")+QString::number(f.bytes)+QLatin1Char(' ')+QString::fromLatin1(f.sha256));
  return out;
 }

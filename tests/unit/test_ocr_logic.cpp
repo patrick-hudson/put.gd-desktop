@@ -95,7 +95,16 @@ private slots:
   QCOMPARE(languageForScript("Han"),QStringLiteral("chi_sim"));QCOMPARE(languageForScript("Cyrillic"),QStringLiteral("rus"));
   QCOMPARE(languageForScript("Hangul"),QStringLiteral("kor"));QCOMPARE(languageForScript("Katakana"),QStringLiteral("jpn"));
   QVERIFY(languageForScript("Latin").isEmpty());QVERIFY(languageForScript("").isEmpty());QVERIFY(languageForScript("Fraktur").isEmpty());
-  for(const auto& script:{"Han","Japanese","Hangul","Cyrillic","Arabic","Hebrew","Devanagari","Thai","Greek"})QVERIFY2(detectionLanguages().contains(languageForScript(script)),script);
+  const QList<std::pair<const char*,const char*>> mapped{{"Han","chi_sim"},{"Japanese","jpn"},{"Hiragana","jpn"},{"Hangul","kor"},{"Cyrillic","rus"},{"Arabic","ara"},{"Hebrew","heb"},{"Devanagari","hin"},{"Thai","tha"},{"Greek","ell"}};
+  for(const auto& [script,language]:mapped)QCOMPARE(languageForScript(script),QString::fromLatin1(language));
+  // The verdict counts only segments that gave words in both readings, and
+  // replaces only those: one that read nothing keeps its first words (Sol S2 on #1986).
+  const QList<SegmentReading> readings{{true,30*4,80*3,4,3},{true,40*4,0,4,0},{false,20*3,0,3,0},{true,90*4,92*4,4,4}};
+  auto d=decideGarbled(readings,{0,1,2});
+  QVERIFY(d.keep);QCOMPARE(d.before,30.0);QCOMPARE(d.after,80.0);QCOMPARE(d.take,(QList<bool>{true,false,false}));
+  QVERIFY(!decideGarbled({{true,40*4,50*4,4,4},{true,30*4,0,4,0}},{0,1}).keep);
+  QVERIFY(decideGarbled({{true,0,0,0,0}},{0}).take==QList<bool>{false});
+  QVERIFY(takeOther(readings[3]));QVERIFY(!takeOther(readings[1]));QVERIFY(!takeOther({true,90*4,80*4,4,4}));QVERIFY(!takeOther({false,10,90,1,1}));
  }
  // #1981: a composite's pieces map back to their own source pixels, at any
  // scale and polarity, and a box in a gap belongs to no piece.
@@ -113,6 +122,11 @@ private slots:
   QCOMPARE(pieceAt(c,QRect(20,18,10,4)),0);QCOMPARE(pieceAt(c,QRect(20,44,10,4)),-1);QCOMPARE(pieceAt(c,QRect(2,58,4,4)),1);
   QCOMPARE(pieceToSource(c,0,pieces[0],QRect(20,10,120,20)),QRect(60,40,60,10));
   QCOMPARE(pieceToSource(c,1,pieces[1],QRect(4,58,8,4)),QRect(14,12,8,4));
+  // A code's area is the background, as in a band copy (Sol S6 on #1986).
+  const Quad code{QPoint(80,38),QPoint(100,38),QPoint(100,52),QPoint(80,52)};
+  const QList<PieceSource> masked{{view,QRect(50,35,80,20),255,false,1.0,{code}}};
+  QCOMPARE(uint8_t(composite(masked,0).image.pixels.at(qsizetype(45-35)*80+(90-50))),uint8_t(255));
+  QCOMPARE(compositePixels(pieces,16),qint64(160)*66);
   QCOMPARE(paddedPiece(QRect(10,10,100,30),QRect(0,0,200,100)),QRect(0,0,120,50));
   QCOMPARE(paddedPiece(QRect(10,10,100,6),QRect(0,0,200,100)),QRect(6,6,108,14));
  }
@@ -123,8 +137,11 @@ private slots:
   const auto add=[&](const QString& text,int line){Word w;w.text=text;w.line=line;w.rect=QRect(int(job.words.size())*20,line*30,18,18);job.words.append(w);};
   add(QStringLiteral("新浪"),0);add(QStringLiteral("网，"),0);add(QStringLiteral("NBA"),0);add(QStringLiteral("体育"),0);
   add(QStringLiteral("한국"),1);add(QStringLiteral("뉴스"),1);add(QStringLiteral("ข่าว"),1);add(QStringLiteral("วันนี้"),1);
+  // Across a real gap, a character's height or more, the space stays.
+  job.lines.append({QRect(0,60,400,20),0,0,false});
+  {Word w;w.text=QStringLiteral("中文");w.line=2;w.rect=QRect(0,60,18,18);job.words.append(w);w.text=QStringLiteral("汉字");w.rect=QRect(60,60,18,18);job.words.append(w);}
   joinUnspaced(job);
-  QCOMPARE(copiedText(job),QStringLiteral("新浪网， NBA 体育\n한국 뉴스 ข่าววันนี้"));
+  QCOMPARE(copiedText(job),QStringLiteral("新浪网， NBA 体育\n한국 뉴스 ข่าววันนี้\n中文 汉字"));
  }
  // A code's area is filled with the background in every band copy, so no word
  // can come from its modules. Here the "code" is a checkerboard on white.

@@ -58,7 +58,7 @@ bool insideCode(const Quad& q,QPoint p){
 // counts as late and leaves it, as the first pass does its engines.
 namespace {
 // The garbled lines' panel: where its pixels are and how they are copied.
-struct ScriptPanel { QRect rect;GreyView view;int background=255;bool invert=false;double scale=1; };
+struct ScriptPanel { QRect rect;GreyView view;int background=255;bool invert=false;double scale=1;QList<Quad> codes; };
 struct ScriptRun {
  std::mutex lock;std::condition_variable idle;
  ScriptDetector detector;
@@ -82,6 +82,10 @@ constexpr int scriptMarginMs=1000;
 constexpr qint64 scriptGroupPixels=1500000;
 // All groups together, at most: a page of more garbled lines keeps the rest as first read.
 constexpr qint64 scriptPixels=16000000;
+// OSD's composite, at most: the widest segments that fit.
+constexpr qint64 osdPixels=4000000;
+// What OSD's legacy engine is counted at before it starts.
+constexpr qint64 osdCost=48*1024*1024;
 struct ScriptInputs {
  const QList<ScriptPanel>* panels=nullptr;
  LanguageData* data=nullptr;
@@ -92,10 +96,13 @@ struct ScriptInputs {
  std::chrono::steady_clock::time_point end;
  qint64 engineCost=0;        // what one engine with a task is counted at
  std::function<bool(qint64)> roomFor;
+ bool candidates=false;      // Quick redact's: replaced lines keep their token-like first words as second reads
 };
 // Runs the check on the job's words; returns true when a thread it started is
 // still running (the caller then never frees what the engines read).
-bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint64& osdMs,QList<std::pair<int,int>>& changes){
+bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint64& osdMs,QList<std::pair<int,int>>& changes,QList<Word>& firstReadings){
+ // A job whose languages fill the result's three already has no room for one more.
+ if(in.used.size()>=maximumLanguages)return false;
  const auto garbled=garbledSegments(job);
  if(garbled.isEmpty())return false;
  check.segments=int(garbled.size());
@@ -103,11 +110,12 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  in.data->allowDetection();
  if(!in.data->available(QStringLiteral("osd"))){check.outcome=QStringLiteral("detector_missing");return false;}
  if(left()<scriptStartMs){check.outcome=QStringLiteral("no_time");return false;}
+ if(!in.roomFor(osdCost)){check.outcome=QStringLiteral("no_memory");return false;}
  const auto& panels=*in.panels;
  const auto panelOf=[&](const QRect& r){for(int i=0;i<panels.size();++i)if(panels[i].rect.contains(r.center()))return i;return 0;};
  const auto piece=[&](const Segment& s,bool scaled){
   const auto& p=panels[panelOf(s.rect)];
-  return PieceSource{p.view,paddedPiece(s.rect,p.rect).translated(-p.rect.topLeft()),p.background,p.invert,scaled?p.scale:1.0};
+  return PieceSource{p.view,paddedPiece(s.rect,p.rect).translated(-p.rect.topLeft()),p.background,p.invert,scaled?p.scale:1.0,p.codes};
  };
  auto* run=new ScriptRun;
  const qint64 budgetLeft=std::min<qint64>(left(),std::numeric_limits<int>::max()/2);
@@ -117,7 +125,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   QList<Segment> widest=garbled;
   std::stable_sort(widest.begin(),widest.end(),[](const Segment& a,const Segment& b){return a.rect.width()>b.rect.width();});
   if(widest.size()>detectionPieces)widest.resize(detectionPieces);
-  QList<PieceSource> pieces;for(const auto& s:std::as_const(widest))pieces.append(piece(s,false));
+  QList<PieceSource> pieces;
+  for(const auto& s:std::as_const(widest)){pieces.append(piece(s,false));if(pieces.size()>1&&compositePixels(pieces,8)>osdPixels){pieces.removeLast();break;}}
   run->osdImage=composite(pieces,8).image;
   QElapsedTimer clock;clock.start();
   std::thread osd;
@@ -150,14 +159,24 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  struct Batch { QList<int> segments;QList<QList<int>> members;QList<QList<PieceSource>> pieces;std::vector<double> scales;qint64 largest=0; };
  qint64 budgetPixels=scriptPixels;
  const auto batchOf=[&](const QList<Segment>& segs,const QList<int>& which){
+  // Counted as composite() allocates them: the widest piece times every
+  // piece and gap, so one wide line among narrow ones is not undercounted.
   Batch b;qint64 groupPixels=0;
+  const auto gapOf=[](double scale){return int(std::lround(8*scale));};
   for(const int i:which){
    const auto p=piece(segs[i],true);
-   const qint64 pixels=qint64(std::ceil(p.rect.width()*p.scale))*qint64(std::ceil(p.rect.height()*p.scale));
-   if(pixels>budgetPixels)break;
-   if(b.members.isEmpty()||groupPixels>=scriptGroupPixels){b.members.append(QList<int>{});b.pieces.append(QList<PieceSource>{});b.scales.push_back(1);groupPixels=0;}
-   b.members.last().append(i);b.pieces.last().append(p);b.scales.back()=std::max(b.scales.back(),p.scale);
-   groupPixels+=pixels;budgetPixels-=pixels;b.largest=std::max(b.largest,groupPixels);b.segments.append(i);
+   if(b.members.isEmpty()||groupPixels>=scriptGroupPixels){
+    const qint64 alone=compositePixels({p},gapOf(p.scale));
+    if(alone>budgetPixels)break;
+    b.members.append(QList<int>{});b.pieces.append(QList<PieceSource>{});b.scales.push_back(1);groupPixels=0;
+   }
+   auto grown=b.pieces.last();grown.append(p);
+   const double scale=std::max(b.scales.back(),p.scale);
+   const qint64 pixels=compositePixels(grown,gapOf(scale));
+   if(pixels-groupPixels>budgetPixels)break;
+   budgetPixels-=pixels-groupPixels;groupPixels=pixels;
+   b.members.last().append(i);b.pieces.last()=std::move(grown);b.scales.back()=scale;
+   b.largest=std::max(b.largest,groupPixels);b.segments.append(i);
   }
   return b;
  };
@@ -195,7 +214,8 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
   if(first){
    int engines=std::min<int>(in.threads,int(run->groups.size()));
    const qint64 each=std::max<qint64>(16*1024*1024,in.engineCost)+20*b.largest;
-   for(int k=1;k<engines;++k)if(!in.roomFor(each*(k+1))){engines=k;break;}
+   for(int k=0;k<engines;++k)if(!in.roomFor(each*(k+1))){engines=k;break;}
+   if(engines==0)return true;
    for(int k=0;k<engines;++k){
     run->engines.push_back(std::make_unique<TextEngine>());
     if(!launch(run->engines.back().get(),true)){run->engines.pop_back();break;}
@@ -242,15 +262,21 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  QList<int> garbledIndexes,others;for(int i=0;i<all.size();++i)(all[i].garbled?garbledIndexes:others).append(i);
  QList<Reading> readings(all.size());
  const auto firstBatch=batchOf(all,garbledIndexes);check.pieces=int(firstBatch.segments.size());
+ if(firstBatch.segments.isEmpty()){delete run;check.outcome=QStringLiteral("no_memory");return false;}
  bool late=!readBatch(firstBatch,true);check.engines=int(run->engines.size());
+ if(check.engines==0){if(!late)delete run;check.outcome=QStringLiteral("no_memory");return late;}
  collect(all,firstBatch,readings);
- double before=0,after=0;int beforeCount=0,afterCount=0;
- for(const int i:garbledIndexes){before+=readings[i].before;beforeCount+=readings[i].beforeCount;after+=readings[i].after;afterCount+=readings[i].afterCount;}
- if(beforeCount==0||afterCount==0){if(!late)delete run;check.outcome=late?QStringLiteral("no_time"):QStringLiteral("discarded");return late;}
- check.before=before/beforeCount;check.after=after/afterCount;
- if(!keepReread(check.before,check.after)){if(!late)delete run;check.outcome=QStringLiteral("discarded");return late;}
+ QList<SegmentReading> verdicts;for(const auto& r:std::as_const(readings))verdicts.append({r.read,r.before,r.after,r.beforeCount,r.afterCount});
+ const auto decision=decideGarbled(verdicts,garbledIndexes);
+ check.before=decision.before;check.after=decision.after;
+ if(!decision.keep){
+  if(!late)delete run;
+  const bool nothing=std::none_of(garbledIndexes.cbegin(),garbledIndexes.cend(),[&](int i){return readings[i].read;});
+  check.outcome=late&&nothing?QStringLiteral("no_time"):QStringLiteral("discarded");
+  return late;
+ }
  check.outcome=QStringLiteral("kept");
- QList<bool> take(all.size(),false);for(const int i:garbledIndexes)take[i]=readings[i].read;
+ QList<bool> take(all.size(),false);for(int k=0;k<garbledIndexes.size();++k)take[garbledIndexes[k]]=decision.take[k];
  // The language is right: the page's other lines are read in it too, as
  // time allows, and each keeps whichever reading is surer (a line the trigger
  // passed over, a word or two of the script beside English, is garbled too).
@@ -261,7 +287,7 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
    collect(all,rest,readings);
    for(const int i:rest.segments){
     const auto& r=readings[i];
-    take[i]=r.read&&r.afterCount>0&&r.beforeCount>0&&r.after/r.afterCount>r.before/r.beforeCount;
+    take[i]=takeOther({r.read,r.before,r.after,r.beforeCount,r.afterCount});
    }
   }
  }
@@ -270,6 +296,14 @@ bool checkScript(Recognition& job,const ScriptInputs& in,ScriptCheck& check,qint
  for(int i=int(all.size())-1;i>=0;--i){
   if(!take[i])continue;
   const auto& seg=all[i];
+  // A line the first pass read with some confidence may hold a key or token
+  // it read right: for Quick redact its first words stay, as second reads,
+  // when one of them looks like a token. (A garbled line's English reading is
+  // what this check exists to drop.)
+  if(in.candidates&&!seg.garbled){
+   bool token=false;for(int w=seg.first;w<seg.last;++w)token|=uncertainToken(job.words[w].text,0);
+   if(token)for(int w=seg.first;w<seg.last;++w){auto word=job.words[w];word.kept=false;word.second=true;word.reread=true;firstReadings.append(word);}
+  }
   job.words.remove(seg.first,seg.last-seg.first);
   for(int k=0;k<readings[i].words.size();++k)job.words.insert(seg.first+k,readings[i].words[k]);
   changes.append({seg.first,int(readings[i].words.size())-(seg.last-seg.first)});
@@ -750,15 +784,16 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  // The first pass's time, before the script check: the second reads' share.
  const qint64 firstPassMs=stage.elapsed();
+ QList<Word> scriptFirstReadings;  // #1981: kept for Quick redact, joined with the second reads
  // #1981: garbled lines read again in their script's language. Before the
  // second reads, which then work on the words kept; on a job with no
  // garbled lines this costs a walk over the words.
  if(options.detectScript&&!result.truncated){
   QElapsedTimer clock;clock.start();
   QList<ScriptPanel> scriptPanels;
-  for(const auto& p:std::as_const(panelList))scriptPanels.append({p.rect,p.view,p.profile.background,p.invert,p.plan.scale});
+  for(const auto& p:std::as_const(panelList))scriptPanels.append({p.rect,p.view,p.profile.background,p.invert,p.plan.scale,p.codes});
   ScriptInputs in;in.panels=&scriptPanels;in.data=&shared->data;in.used=result.used;in.engine=options.engine;in.threads=threads;
-  in.budgetMs=options.budgetMs;in.end=shared->end;in.engineCost=extraEngineCost;
+  in.budgetMs=options.budgetMs;in.end=shared->end;in.engineCost=extraEngineCost;in.candidates=options.candidates;
   const qint64 ceiling=options.memoryCeiling,budget=options.memoryBudget;
   // The budget grows by the data the check read too (decision 3), as for the job's own languages.
   in.roomFor=[shared,ceiling,budget](qint64 bytes){
@@ -767,11 +802,16 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    return residentBytes()+bytes<=grown;
   };
   QList<std::pair<int,int>> changes;
-  if(checkScript(result.recognition,in,result.script,result.timings.osdMs,changes))late=true;
+  const bool scriptLate=checkScript(result.recognition,in,result.script,result.timings.osdMs,changes,scriptFirstReadings);
   for(const auto& [first,delta]:std::as_const(changes))for(auto& end:panelWords)if(end>first)end+=delta;
   if(result.script.outcome==QLatin1String("kept"))result.used.append(result.script.language);
-  result.dataFiles=shared->data.files();
-  if(budget>0)shared->gateBudget=std::min(std::max(ceiling,budget),budget+shared->data.bytesBeyondEnglish())-8*1024*1024;
+  // A script thread still running may still be reading data: the data stays
+  // as the first pass left it, and so does the gate.
+  if(scriptLate)late=true;
+  else{
+   result.dataFiles=shared->data.files();
+   if(budget>0)shared->gateBudget=std::min(std::max(ceiling,budget),budget+shared->data.bytesBeyondEnglish())-8*1024*1024;
+  }
   result.timings.scriptMs=clock.elapsed();
  }
  // Second reads, for Quick redact's candidates only (a job that asks for
@@ -987,6 +1027,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    result.recognition.words.append(std::move(word));
   }
  }
+ // #1981: a replaced line's token-like first reading, for Quick redact only,
+ // matched apart from the rest like the tokens' second read.
+ for(auto& word:scriptFirstReadings)result.recognition.words.append(std::move(word));
  result.timings.totalMs=total.elapsed();
  return result;
 }

@@ -183,7 +183,8 @@ inline constexpr char busyNotification[]="Text recognition is still running";
 // detected language and that reading was kept; discarded: read again, kept
 // the first reading; language_missing: that language's data is not installed;
 // detector_missing: no osd data; unknown_script: no script, Latin, or one
-// without a language; no_time: the time budget left no room for it.
+// without a language; no_time: the time budget left no room for it;
+// no_memory: the memory budget left no room for it.
 QStringList detectionOutcomes();
 // An OSD script name: 1 to 32 ASCII letters or underscores.
 bool validScriptName(const QString& name);

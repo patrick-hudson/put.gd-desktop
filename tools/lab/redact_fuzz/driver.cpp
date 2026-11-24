@@ -35,6 +35,7 @@
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <sys/resource.h>
 #include <QJsonObject>
 #include <cstdio>
 #include <iostream>
@@ -128,6 +129,8 @@ int main(int argc,char** argv){
     out["truncated"]=result.truncated;out["banded"]=result.banded;
     if(!result.detectionOutcome.isEmpty())out["detection"]=textjob::detectionJson(result);
     if(withText)out["text"]=result.text;
+    // The largest helper this process has reaped so far (RUSAGE_CHILDREN): one image per run for a per-job figure.
+    {struct rusage usage{};::getrusage(RUSAGE_CHILDREN,&usage);out["peakRssKiB"]=qint64(usage.ru_maxrss);}
     if(error){out["error"]=error.code;++failures;}
     else{
      QList<editor::RecognizedWord> words;for(const auto& c:result.candidates)words.append({c.text,c.rect,c.confidence,0,c.second});

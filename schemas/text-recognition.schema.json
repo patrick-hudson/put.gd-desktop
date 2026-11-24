@@ -19,8 +19,8 @@
     "script": {"type": "string", "pattern": "^([A-Za-z_]{1,32})?$", "description": "Tesseract OSD's name for the garbled lines' script (Han, Cyrillic, ...); empty when none was found."},
     "language": {"oneOf": [{"$ref": "#/$defs/language"}, {"const": ""}], "description": "The language that script is read again in; empty when it maps to none."},
     "outcome": {
-     "enum": ["kept", "discarded", "language_missing", "detector_missing", "unknown_script", "no_time"],
-     "description": "kept: the lines were read again in that language and the new reading was kept. discarded: read again, the first reading stayed. language_missing: that language's data is not installed. detector_missing: no osd data. unknown_script: no script, Latin or one without a language. no_time: the time budget left no room."
+     "enum": ["kept", "discarded", "language_missing", "detector_missing", "unknown_script", "no_time", "no_memory"],
+     "description": "kept: the lines were read again in that language and the new reading was kept. discarded: read again, the first reading stayed. language_missing: that language's data is not installed. detector_missing: no osd data. unknown_script: no script, Latin or one without a language. no_time: the time budget left no room. no_memory: the memory budget left no room."
     }
    },
    "description": "#1981: the script check of a job whose languages nobody chose, present only when lines read badly enough to run it."

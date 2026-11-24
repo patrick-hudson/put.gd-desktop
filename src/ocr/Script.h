@@ -41,17 +41,31 @@ QList<Segment> garbledSegments(const Recognition& job);
 // The language data for a script OSD names, or empty: one language a script,
 // the ones the AppImage carries and the packages recommend.
 QString languageForScript(const QString& script);
-QStringList detectionLanguages();
 bool keepReread(double before,double after);
+// One segment's two readings: their words' confidence sums and counts.
+// read: its group was read in time; a read with no words reads nothing.
+struct SegmentReading { bool read=false;double before=0,after=0;int beforeCount=0,afterCount=0; };
+// The garbled segments' verdict: over those that gave words in both readings
+// only (one that read nothing keeps its first reading and does not count),
+// the second reading is kept when keepReread holds; take marks which of
+// `garbled` are replaced.
+struct ScriptDecision { bool keep=false;double before=0,after=0;QList<bool> take; };
+ScriptDecision decideGarbled(const QList<SegmentReading>& readings,const QList<int>& garbled);
+// Another segment of a page whose language was kept: replaced when its
+// second reading has words and a higher mean confidence.
+bool takeOther(const SegmentReading& reading);
 
 // A segment's box, grown by a third of its height (at least 4 px) on every
 // side, within bounds: room for accents and descenders.
 QRect paddedPiece(const QRect& rect,const QRect& bounds);
 // Segments stacked one under another on white, each scaled and its polarity
 // set like a band copy, with gap pixels between them.
-struct PieceSource { GreyView view;QRect rect;int background=255;bool invert=false;double scale=1; };
+// codes: the panel's code areas, in view pixels; they are filled with the background as in a band copy.
+struct PieceSource { GreyView view;QRect rect;int background=255;bool invert=false;double scale=1;QList<Quad> codes={}; };
 struct Composite { GreyImage image;QList<int> tops;QList<int> heights;QList<double> scales; };
 Composite composite(const QList<PieceSource>& pieces,int gap);
+// The pixels that composite allocates: its widest piece times all pieces and gaps.
+qint64 compositePixels(const QList<PieceSource>& pieces,int gap);
 // Which piece of a composite a box (composite pixels) belongs to: the one its
 // centre falls in, or -1 in a gap.
 int pieceAt(const Composite& composite,const QRect& box);

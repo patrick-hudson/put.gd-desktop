@@ -1,6 +1,7 @@
 #include "Script.h"
 #include "Layout.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace putgd::ocr {
@@ -74,8 +75,21 @@ QString languageForScript(const QString& script){
  for(const auto& e:table)if(name==e.script)return QString::fromLatin1(e.language);
  return {};
 }
-QStringList detectionLanguages(){return {"chi_sim","jpn","kor","rus","ara","heb","hin","tha","ell"};}
 bool keepReread(double before,double after){return after-before>=double(keepRise);}
+ScriptDecision decideGarbled(const QList<SegmentReading>& readings,const QList<int>& garbled){
+ ScriptDecision d;d.take=QList<bool>(garbled.size(),false);
+ double before=0,after=0;int beforeCount=0,afterCount=0;
+ for(int k=0;k<garbled.size();++k){
+  const auto& r=readings.at(garbled.at(k));
+  if(!r.read||r.afterCount==0||r.beforeCount==0)continue;
+  d.take[k]=true;before+=r.before;beforeCount+=r.beforeCount;after+=r.after;afterCount+=r.afterCount;
+ }
+ if(beforeCount==0||afterCount==0){d.take.fill(false);return d;}
+ d.before=before/beforeCount;d.after=after/afterCount;d.keep=keepReread(d.before,d.after);
+ if(!d.keep)d.take.fill(false);
+ return d;
+}
+bool takeOther(const SegmentReading& r){return r.read&&r.afterCount>0&&r.beforeCount>0&&r.after/r.afterCount>r.before/r.beforeCount;}
 QRect paddedPiece(const QRect& rect,const QRect& bounds){
  const int pad=std::max(4,rect.height()/3);
  return rect.adjusted(-pad,-pad,pad,pad).intersected(bounds);
@@ -87,7 +101,8 @@ Composite composite(const QList<PieceSource>& pieces,int gap){
   GreyImage copy;
   if(!r.isEmpty()){
    const GreyView columns{p.view.row(0)+r.left(),r.width(),p.view.height,p.view.stride};
-   copy=bandImage(columns,Band{r.top(),r.bottom()+1,false},p.scale,0,{},p.background,p.invert);
+   QList<Quad> codes;for(const auto& q:p.codes){Quad m=q;for(auto& c:m)c.rx()-=r.left();codes.append(m);}
+   copy=bandImage(columns,Band{r.top(),r.bottom()+1,false},p.scale,0,codes,p.background,p.invert);
   }
   if(!out.tops.isEmpty())height+=gap;
   out.tops.append(height);out.heights.append(copy.height);out.scales.append(p.scale);
@@ -102,6 +117,16 @@ Composite composite(const QList<PieceSource>& pieces,int gap){
   for(int y=0;y<c.height;++y)std::memcpy(out.image.row(out.tops.at(i)+y),c.pixels.constData()+qsizetype(y)*c.width,size_t(c.width));
  }
  return out;
+}
+qint64 compositePixels(const QList<PieceSource>& pieces,int gap){
+ qint64 width=1,height=0;
+ for(int i=0;i<pieces.size();++i){
+  const auto& p=pieces.at(i);const QRect r=p.rect.intersected(QRect(0,0,p.view.width,p.view.height));
+  if(i>0)height+=gap;
+  if(r.isEmpty())continue;
+  width=std::max<qint64>(width,qint64(std::ceil(r.width()*p.scale)));height+=qint64(std::ceil(r.height()*p.scale));
+ }
+ return width*std::max<qint64>(1,height);
 }
 int pieceAt(const Composite& composite,const QRect& box){
  const int y=box.center().y();
@@ -121,6 +146,9 @@ void joinUnspaced(Recognition& job){
  for(int i=1;i<job.words.size();++i){
   auto& w=job.words[i];const auto& before=job.words.at(i-1);
   if(w.line!=before.line||w.attach)continue;
+  // Only words that touch, or nearly: a gap of a character's height or more is a real space.
+  const int gap=std::max(w.rect.left()-before.rect.right(),before.rect.left()-w.rect.right());
+  if(gap>=std::max(w.rect.height(),before.rect.height()))continue;
   if(unspaced(lastCharacter(before.text))&&unspaced(firstCharacter(w.text)))w.attach=true;
  }
 }

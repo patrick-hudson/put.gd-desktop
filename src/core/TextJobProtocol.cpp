@@ -114,7 +114,7 @@ struct Tongue {const char* locale;const char* language;};
 // ISO 639-1 to the Tesseract data file of that language.
 constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},{"bg","bul"},{"bn","ben"},{"ca","cat"},{"cs","ces"},{"cy","cym"},{"da","dan"},{"de","deu"},{"el","ell"},{"en","eng"},{"es","spa"},{"et","est"},{"eu","eus"},{"fa","fas"},{"fi","fin"},{"fr","fra"},{"ga","gle"},{"gl","glg"},{"he","heb"},{"hi","hin"},{"hr","hrv"},{"hu","hun"},{"hy","hye"},{"id","ind"},{"is","isl"},{"it","ita"},{"ja","jpn"},{"ka","kat"},{"kk","kaz"},{"ko","kor"},{"lt","lit"},{"lv","lav"},{"mk","mkd"},{"ms","msa"},{"mt","mlt"},{"nb","nor"},{"nl","nld"},{"nn","nor"},{"no","nor"},{"pl","pol"},{"pt","por"},{"ro","ron"},{"ru","rus"},{"sk","slk"},{"sl","slv"},{"sq","sqi"},{"sr","srp"},{"sv","swe"},{"sw","swa"},{"ta","tam"},{"te","tel"},{"th","tha"},{"tr","tur"},{"uk","ukr"},{"ur","urd"},{"uz","uzb"},{"vi","vie"}};
 }
-QStringList detectionOutcomes(){return {"kept","discarded","language_missing","detector_missing","unknown_script","no_time"};}
+QStringList detectionOutcomes(){return {"kept","discarded","language_missing","detector_missing","unknown_script","no_time","no_memory"};}
 bool validScriptName(const QString& name){
  static const QRegularExpression pattern(QStringLiteral("^[A-Za-z_]{1,32}$"));
  return pattern.match(name).hasMatch();
