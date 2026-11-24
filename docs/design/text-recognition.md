@@ -65,7 +65,8 @@ What it does not do:
    counts them (grapheme clusters): an emoji with a skin tone, a flag or a family is one. When the result was cut, the
    message adds a second line, "The text was cut at a size or time limit.". When a language
    from Settings had no data, it adds "(German data is missing)" or "(German and French data
-   are missing)". The notification is titled "Copy text", never contains recognized text, a
+   are missing)". So does a page whose script was detected but whose language has no data
+   (see [pages in another script](#pages-in-another-script)). The notification is titled "Copy text", never contains recognized text, a
    host name or code content, and has no action buttons. A failed operation is titled "Text
    recognition failed" and carries the error's fixed message. A second press while one runs
    notifies "Text recognition is still running" and changes nothing else. With notifications
@@ -134,7 +135,7 @@ kernel's Landlock version, and nothing stronger.
 
 - `PR_SET_NO_NEW_PRIVS` and `PR_SET_DUMPABLE 0`.
 - Resource limits: no core file. `RLIMIT_DATA` at 576 MiB, lowered to 480 MiB when the job
-  reads English only. `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine ceiling counted
+  reads English only, or 528 MiB when that job may also [detect a script](#pages-in-another-script). `RLIMIT_CPU`, which covers the whole process, at 21 seconds times the engine ceiling counted
   before confinement, with the hard limit one second higher. Both are capped at any hard limit the
   helper inherits, so they can be equal. `RLIMIT_FSIZE` at
   8 MiB, which is also the output cap. `RLIMIT_NOFILE` at 32. There is no `RLIMIT_AS`, because
@@ -189,8 +190,8 @@ banded, parallel recognition, and all of them fail.
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
 | Emoji | At most 512 candidate glyphs are matched. Over all its passes the scan stops taking runs of colour pixels after the row that reaches or exceeds 1,048,576. It stops once 3 seconds have passed since the helper began recognition. That clock starts before the codes are read, and the scan itself starts after them. The limit is checked while it reads rows, groups and matches. What it found stays. A cut scan does not mark the text `truncated` |
-| Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
-| Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone. The resident set size is what acceptance measures |
+| Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable`. The [script check](#pages-in-another-script) may read two files more, `osd` and one language, within the same 64 MiB |
+| Memory | One budget: peak resident size of the whole job of 320 MiB with the shipped English data, which is a 4 MB file. Other languages add the trimmed size of their data beyond English, 384 MiB at most. The budget is the threshold the helper checks before it starts another engine. `RLIMIT_DATA`, about one and a half times the budget, is 576 MiB from the start and is lowered to 480 MiB when the job asks for English alone (528 MiB when that job may detect a script). The script check's `osd` and language data grow the budget like any language beyond English. The resident set size is what acceptance measures |
 
 The helper recognizes on up to eight engines at once and starts another engine only while its
 resident set stays under the budget, so the budget decides how many cores a job can use. A
@@ -731,6 +732,55 @@ from an untrusted source and never instructions.
 - Settings has three choices, Language, Second language and Third language, in its Capture
   tab under Text recognition. The first reads "Automatic" with the languages that resolves
   to, and a saved language whose data went away stays chosen and says "(not installed)".
+
+### Pages in another script
+
+When nobody chose the languages ([#1981](https://github.com/patrick-hudson/put.gd-desktop/issues/1981)),
+a page in a script those languages can't read, such as Chinese or Russian on an English desktop,
+comes out of the first pass as Latin garbage. The helper then finds the garbled lines, detects their
+script, and reads them again in that script's language. Any choice turns this off: a language saved
+in Settings, a `languages` parameter, or the editor's saved preference. The parent then sends no
+`detectScript`, and the helper refuses it beside `languagesRequired`.
+
+1. **Trigger.** The first pass's words are cut into segments: runs of words on one line, split where
+   the gap to the next word is three word heights or more. A segment is garbled when its words' mean
+   confidence is under 50 and at least three of them hold an ASCII letter. A job triggers when its
+   garbled segments hold at least 25% of its words and there are at least two. This costs a walk over
+   the words and nothing else.
+2. **Detect.** Tesseract's orientation and script detection (OSD, `osd.traineddata`, the legacy
+   engine) reads a composite of the 60 widest garbled segments, each grown by a third of its height
+   and stacked on white at its own pixels, dark panels inverted. On a whole screen OSD was wrong
+   (ynet's Hebrew came back as Thai) or found nothing (BBC Arabic); on the composite it was right on
+   every non-Latin sweep page but one Baidu capture.
+3. **Map.** One language a script: Han to `chi_sim`, Japanese, Hiragana and Katakana to `jpn`,
+   Hangul to `kor`, Cyrillic to `rus`, Arabic to `ara`, Hebrew to `heb`, Devanagari to `hin`, Thai
+   to `tha`, Greek to `ell`. Latin, no script, or any other script ends the check.
+4. **Reread.** Only when that language's data is installed (or bundled) and is not already one of the
+   job's languages. The garbled segments are read with `[language, eng]` from composites at their
+   panels' scale, in groups of about 1.5 megapixels and 16 megapixels in all, on as many engines as
+   the job's threads and the memory budget allow.
+5. **Keep.** The new reading replaces the first only when its mean confidence is at least 15 points
+   higher on the same segments. In the research, rereads in the right language rose 29 to 56 points
+   and rereads in a wrong one at most 12.
+6. **The rest of the page.** Once the language is kept, the page's other segments are read in it too,
+   as time allows, and each one keeps whichever reading has the higher mean confidence. A line the
+   trigger passed over, such as a few characters of the script beside English, is garbled too.
+
+Chinese, Japanese and Thai words are joined without spaces in the copied text, since Tesseract splits
+such text into words of a character or a few. The check starts only with 1.5 s of the time budget
+left, ends 1 s before the budget, and is not counted as a second read: Quick redact's second reads
+keep their own share of the first pass's time, and a token line read in the detected language is not
+read again as an English token.
+
+The result, `text.recognize`'s record, `editor.inspect`'s `text` member and the MCP inspect tool carry
+`detection` `{script, language, outcome}` when the check ran. `outcome` is `kept`, `discarded`,
+`language_missing` (no data for that language: the notification names it), `detector_missing` (no
+`osd` data), `unknown_script` or `no_time`. A kept language is listed in `languagesUsed`.
+
+OSD and the languages are read like any language: from the same directories, through the same
+resolver and Landlock rules, counted against the 64 MiB data limit, with two more files allowed than
+the job's own three. The memory budget grows by their size as for any language beyond English.
+Measured costs are under [performance and memory](#performance-and-memory).
 
 ## Operations, journal and clipboard
 
@@ -1934,7 +1984,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | --- | --- | --- |
 | `action.invoke` | `action: "text"`, `delaySeconds?` (0, 3, 5 or 10) | `operationId` and `state`. Copies |
 | `text.recognize` | `source` (region, window, monitor, desktop, clipboard, file or history), `path` for `file` only, `historyId` for `history` only, `languages?` (1 to 3 installed identifiers), `copy?` (default false), `delaySeconds?` for the screen sources | `operationId`, `state`. Keeps its result for `text.inspect` |
-| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`) and `error`. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text", "binary" or "withheld", text, length, quad}]` in source pixels (a withheld code, #1941, names its secret's kind in `withheld` and has no `text`; `schemas/text-recognition.schema.json` gives it as `withheldCode`, which only session replies carry). Afterwards `resultExpired: true` |
+| `text.inspect` | `id` | `state`, `source`. Once ended: `characterCount`, `codeCount`, `copyStatus`, `truncated`, `banded`, `languagesUsed`, `languagesSkipped`, `timings` (`spawnMs`, `engineStartMs`, `recognizeMs`, `copyMs`, `totalMs`), `error`, and `detection` `{script, language, outcome}` when the [script check](#pages-in-another-script) ran. While the result is kept also `text`, `words` `[{text, rect: [x,y,w,h], confidence}]` and `codes` `[{format, kind: "text", "binary" or "withheld", text, length, quad}]` in source pixels (a withheld code, #1941, names its secret's kind in `withheld` and has no `text`; `schemas/text-recognition.schema.json` gives it as `withheldCode`, which only session replies carry). Afterwards `resultExpired: true` |
 | `text.cancel` | `id` | The terminal record. Answers once the running job has stopped, up to 35 s. Nothing is copied |
 | `capabilities` | none | A `text` block: `available`, `error` with the install hint or the missing confinement, `engines`, `landlockAbi`, `languages` `[{id, bytes, kind}]`, and `sources` with `available` and `error` for each source. It starts no helper |
 | `editor.recognize` | `id` | `state` and `result`. Starts recognition for the current revision. `editor.inspect` gains a `text` block |
@@ -2036,9 +2086,9 @@ the house rule.
 
 | Package kind | Runtime and English data | Build |
 | --- | --- | --- |
-| DEB (Ubuntu 24.04, Mint 22, Ubuntu 26.04, Debian 13) | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF scan | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
-| RPM (Fedora 44 and 45) | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
-| pacman | `tesseract-data-eng`, `tesseract`, `zxing-cpp`, the data first so that pacman does not ask for a `tessdata` provider ([release](../release/release.md#text-recognition-dependencies-1428)) | The same |
+| DEB (Ubuntu 24.04, Mint 22, Ubuntu 26.04, Debian 13) | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF scan. Recommends `tesseract-ocr-osd` and `tesseract-ocr-chi-sim`, `-jpn`, `-kor`, `-rus`, `-ara`, `-heb`, `-hin`, `-tha`, `-ell` (#1981) | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
+| RPM (Fedora 44 and 45) | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF scan. Recommends `tesseract-osd` and `tesseract-langpack-chi_sim`, `-jpn`, `-kor`, `-rus`, `-ara`, `-heb`, `-hin`, `-tha`, `-ell` (#1981) | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
+| pacman | `tesseract-data-eng`, `tesseract`, `zxing-cpp`, the data first so that pacman does not ask for a `tessdata` provider ([release](../release/release.md#text-recognition-dependencies-1428)). Optional: `tesseract-data-osd` and the same nine languages | The same |
 
 - `PUTGD_OCR` is `AUTO` for developer builds, like `PUTGD_RECORDING`, and `ON` in every package
   build. A package build without the libraries fails. At run time a missing helper or
@@ -2054,9 +2104,16 @@ the house rule.
   only the part the LSTM engine uses (see [bounds and budgets](#bounds-and-budgets)), so a job's
   memory is the same order on every distribution. Arch's installed OCR packages are 35,214,737 bytes,
   most of it that model, and the roughly 12 MB native estimate does not hold there.
-- **AppImage.** It builds Leptonica (no image-format libraries at all), Tesseract (LSTM only,
-  no curl, no archive, no OpenMP, no training tools) and ZXing-cpp (readers only) from pinned
-  sources, and carries English `tessdata_fast` pinned by commit and SHA-256. The engines go in
+- **Script data (#1981).** The script check needs `osd` and one language per script. They are
+  weak dependencies of the DEB and RPM, which apt and dnf install by default, and optional on Arch;
+  without them a page in another script is read with the job's own languages, as before, and a
+  missing language is named in the notification. The native audit refuses a DEB or RPM that does
+  not recommend all ten. The AppImage carries them.
+- **AppImage.** It builds Leptonica (no image-format libraries at all), Tesseract (with its legacy
+  engine, which only OSD uses: recognition stays LSTM only; no curl, no archive, no OpenMP, no
+  training tools) and ZXing-cpp (readers only) from pinned sources, and carries English
+  `tessdata_fast` plus `osd` and the nine script languages from the same commit, each pinned by
+  SHA-256 (#1981). The engines go in
   `usr/lib` and the data in `usr/share/putgd/tessdata`. Tesseract is built with the run path
   `$ORIGIN`, because the helper's own run path does not cover transitive dependencies. Without it,
   a host that has Leptonica installed would bring back every image-format library. The helper

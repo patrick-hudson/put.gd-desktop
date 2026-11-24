@@ -373,9 +373,9 @@ These are hard dependencies of every package, because one complete package is th
   `THIRD_PARTY_NOTICES.md` name them, and the AppImage's notices list them as parts of put.gd. The RPM
   carries them in its `%license` metadata.
 
-**The AppImage** builds Leptonica (with no image-format libraries at all), Tesseract (LSTM only, no curl,
-no archive, no OpenMP, no training tools) and ZXing-cpp (readers only) from pinned sources, and carries
-English `tessdata_fast`. Everything starts at the newest upstream release on the day it is pinned. The pins
+**The AppImage** builds Leptonica (with no image-format libraries at all), Tesseract (with the legacy engine
+for script detection only, no curl, no archive, no OpenMP, no training tools) and ZXing-cpp (readers only)
+from pinned sources, and carries English `tessdata_fast` with `osd` and nine script languages (#1981). Everything starts at the newest upstream release on the day it is pinned. The pins
 are in `packaging/appimage/tools.lock.json` beside FFmpeg and QtKeychain, and their commits are derived by
 `tools/maintenance/refresh_pins.py`:
 
@@ -385,6 +385,7 @@ are in `packaging/appimage/tools.lock.json` beside FFmpeg and QtKeychain, and th
 | Leptonica | 1.87.0 | `13275a278eb55b5746e33f95fbf5a2c8f604b3ab` |
 | ZXing-cpp | 3.1.1 | `287c85df6f961c8efbfb5ffd736cd9457b8b890e` |
 | English `tessdata_fast` | the repository head | `87416418657359cb625c412a48b6e1d6d41c29bd`, `eng.traineddata` SHA-256 `7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2` |
+| Script data, `tessdata_fast` (#1981) | the same commit | `osd`, `chi_sim`, `jpn`, `kor`, `rus`, `ara`, `heb`, `hin`, `tha`, `ell`: each file's SHA-256 is in the lock's `scriptFiles`, refreshed with the commit by `refresh_pins.py` and checked by the provisioning and the AppImage audit |
 
 Each is built with upstream's CMake as shared libraries in Release, `libdir=lib`, `CMAKE_INSTALL_RPATH=$ORIGIN`
 and the pinned prefix first in the CMake and pkg-config paths. The recipes are in the lock and in the
@@ -392,7 +393,7 @@ complete-source asset:
 
 - Leptonica: `-DBUILD_PROG=OFF -DSW_BUILD=OFF -DENABLE_ZLIB=OFF -DENABLE_PNG=OFF -DENABLE_GIF=OFF
   -DENABLE_JPEG=OFF -DENABLE_TIFF=OFF -DENABLE_WEBP=OFF -DENABLE_OPENJPEG=OFF`
-- Tesseract: `-DDISABLED_LEGACY_ENGINE=ON -DDISABLE_CURL=ON -DDISABLE_ARCHIVE=ON -DDISABLE_TIFF=ON
+- Tesseract: `-DDISABLED_LEGACY_ENGINE=OFF -DDISABLE_CURL=ON -DDISABLE_ARCHIVE=ON -DDISABLE_TIFF=ON
   -DOPENMP_BUILD=OFF -DBUILD_TRAINING_TOOLS=OFF -DBUILD_TESTS=OFF -DGRAPHICS_DISABLED=ON
   -DINSTALL_CONFIGS=OFF -DENABLE_NATIVE=OFF`
 - ZXing-cpp: `-DZXING_READERS=ON -DZXING_WRITERS=OFF -DZXING_EXAMPLES=OFF -DZXING_C_API=OFF

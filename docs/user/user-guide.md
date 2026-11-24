@@ -180,7 +180,7 @@ Codes that put.gd reads are QR, Micro QR, Data Matrix and Aztec codes. A code th
 
 ### Languages
 
-English comes with put.gd. By default put.gd reads the language of your desktop when its data is installed, then English. To read others, add the language data and choose up to three languages in **Settings → Capture → Text recognition**: **Language**, **Second language** and **Third language**. **Automatic** names what it will use. A language whose data was removed stays chosen and says "(not installed)", and put.gd skips it when another loads, which the notification mentions, for example "(German data is missing)".
+English comes with put.gd. By default put.gd reads the language of your desktop when its data is installed, then English. When a page turns out to be in another script, such as Chinese, Japanese, Korean, Russian, Arabic, Hebrew, Hindi, Thai or Greek, put.gd notices, works out the script and reads it again in that language. The AppImage carries those languages. The DEB and RPM recommend their packages, so apt and dnf install them unless recommended packages are turned off. If one is missing, the notification names it, for example "(Chinese data is missing)". Choosing a language in Settings turns this off. To read others, add the language data and choose up to three languages in **Settings → Capture → Text recognition**: **Language**, **Second language** and **Third language**. **Automatic** names what it will use. A language whose data was removed stays chosen and says "(not installed)", and put.gd skips it when another loads, which the notification mentions, for example "(German data is missing)".
 
 You can add data in two ways:
 
