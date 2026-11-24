@@ -4611,15 +4611,17 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // rows back, at 0.88 of its cells, while the page went down, left a
     // GitHub pull request 952 rows short on Cinnamon).
     const bool known = at >= top_ && at + height_ <= bottom_;
-    // A place off the driver's hint must agree as one found again does. The
-    // hint is no proof of a place, but a place away from it has only its own
-    // agreement as proof, and a look-alike's is partial: on the ruler page a
-    // frame of the first step that came late, at 95 where the hint said 13,
-    // was placed 452 rows up at 0.75 of its cells (1.00 at 95), and the image
-    // kept 425 rows of it on top in 11 of 30 starved runs (#1999). A place off
-    // the hint that agrees in nearly every cell is taken: on a starved X
-    // server the frames come late and the page is often well past the hint.
-    const bool offHint = hinted && !hintSays(c.d);
+    // A place off the driver's hint that overlaps less than half the frame
+    // must agree as one found again does. Such a place has only its own
+    // agreement over a small overlap as proof, and a look-alike's is partial:
+    // on the ruler page a frame of the first step that came late, at 95 where
+    // the hint said 13, was placed 452 rows up at 0.75 of its cells (1.00 at
+    // 95), and the image kept 425 rows of it on top in 11 of 30 starved runs
+    // (#1999). Nearer places keep the lenient check: a sticky header that
+    // appears while the page moves shares tiles with it and keeps a true move
+    // under recoverCells (Sol on #2002), and on a starved X server the frames
+    // come late, so the page is often some way past the hint.
+    const bool offHint = hinted && !hintSays(c.d) && 2 * std::abs(c.d) > height_;
     return (strict && ((found ? c.cells : c.cellsKept) < opts_.recoverCells || 3 * inside < height_)) ||
            (known && !hintSays(c.d) && c.cells < opts_.recoverCells) ||
            (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) ||
@@ -4762,9 +4764,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // pair agreed in every cell, and a part of the image written by a layer
     // of its own (a side bar at its own pace) made the check refuse it.
     const bool elsewhere = fp >= 0 && (pairD == INT_MIN || std::abs(found[size_t(fp)].d - pairD) >= kSamePlaceRows);
-    // Off the hint too: the image lookup's place away from the hint has only
-    // its own agreement as proof, as the pair's has (#1999).
-    if (fp >= 0 && (elsewhere || skipRun_ > 0 || hinted) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
+    if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
       bool retried = false;
       const long long fpos = lastPos_ + found[size_t(fp)].d;
       if (prevHasPos_ && prevSig() && !prevViewMoved_ && skipRun_ < opts_.lostAfterSkips &&
