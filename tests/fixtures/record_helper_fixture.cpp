@@ -121,7 +121,8 @@ int main(int argc, char** argv) {
             reviewOptions = params["reviewOptions"].toObject();
             result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}});
             // Record pressed on the helper's own bar, whose source then fails and stalls its teardown (#1994).
-            if (mode == "bar-start-hangs") QTimer::singleShot(800, &app, [&] { event("starting", {}); event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); hangOnAJoin(); });
+            // The daemon kept the connection open: the stream failed, nothing says PipeWire stopped.
+            if (mode == "bar-start-hangs") QTimer::singleShot(800, &app, [&] { event("starting", {}); event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}, {"daemonGone", false}}); hangOnAJoin(); });
             return;
         }
         if (command == "review") { result(requestId, {{"reviewOptions", reviewOptions}}); return; }
@@ -129,7 +130,7 @@ int main(int argc, char** argv) {
             started = true;
             if (mode == "hang-on-start") hangOnAJoin();
             // The source failed and its teardown stalls (#1994): the event is the last frame out.
-            if (mode == "hang-after-source-error") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); hangOnAJoin(); }
+            if (mode == "hang-after-source-error") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: connection error"}, {"daemonGone", true}}); hangOnAJoin(); }
             // That attempt's teardown returned; a later stall is not PipeWire's.
             if (mode == "source-error-then-hang") { event("sourceTrouble", {{"message", "putgdpipewiresrc: stream error: target not found"}}); event("sourceTrouble", {{"message", ""}}); hangOnAJoin(); }
             if (mode == "unknown-result") { result("not-outstanding", {}); return; }

@@ -119,7 +119,8 @@ private:
         bool clickWatchTried = false;
         // #1994: the helper's PipeWire source failed while this start ran; a start that then
         // misses its deadline is PipeWire going away, not a slow helper.
-        QString startTrouble;  // the desktop was asked to report clicks for this recording, whatever it answered
+        QString startTrouble;
+        bool startDaemonGone = false;  // the desktop was asked to report clicks for this recording, whatever it answered
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -182,7 +183,8 @@ private:
     // session fails and ends it (#1994). Stopped in every other state.
     void heard(const Session&);
     static bool watched(RecordingState);
-    // A start the helper stalled in after its PipeWire source failed: pipewire_stopped, else `error`.
+    // A start the helper stalled in after its PipeWire source failed: pipewire_stopped when
+    // the daemon hung up, source_failed otherwise; `error` when nothing failed first.
     static Error stalledStart(const Session&, Error error);
     QTimer silence_;
     QString stagingRoot_;

@@ -81,7 +81,7 @@ private slots:
   // The session ends with the error that says what happened, and nothing is kept or uploaded.
   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("failed"),10000);
   QCOMPARE(journal.operation(id).error.code,code);QVERIFY(journal.operation(id).items.isEmpty());
-  if(mode=="bar-start-hangs")QCOMPARE(journal.operation(id).error.details["reason"].toString(),QString("pipewire_stopped"));QCOMPARE(h.provider->uploads.load(),0);
+  if(mode=="bar-start-hangs")QCOMPARE(journal.operation(id).error.details["reason"].toString(),QString("source_failed"));QCOMPARE(h.provider->uploads.load(),0);
   // That exact helper is gone: killed after it ignored shutdown, not left hanging.
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
   QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));

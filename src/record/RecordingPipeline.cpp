@@ -16,6 +16,7 @@
 #include <gst/base/gstbasesrc.h>
 #include <gst/video/video.h>
 #include <ctime>
+#include <poll.h>
 #include <cstring>
 
 namespace putgd::record {
@@ -643,12 +644,17 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     };
     // pipewiresrc's teardown after a vanished stream can stall this thread: the
     // resident hears of the failure first, and that it passed once teardown returns.
+    // A daemon that hung up on the recorder's connection is the evidence that PipeWire stopped.
     auto abandon = [&] {
         debugLog("start failed: " + failure);
-        if (sourceGone) emit sourceFailedAtStart(failure);
+        if (sourceGone) {
+            pollfd hangup{session.fd(), POLLRDHUP, 0};
+            const bool daemonGone = ::poll(&hangup, 1, 0) > 0 && (hangup.revents & (POLLHUP | POLLRDHUP | POLLERR));
+            emit sourceFailedAtStart(failure, daemonGone);
+        }
         gst_element_set_state(pipeline, GST_STATE_NULL);
         gst_object_unref(pipeline);
-        if (sourceGone) emit sourceFailedAtStart(QString());
+        if (sourceGone) emit sourceFailedAtStart(QString(), false);
     };
     const auto change = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (change == GST_STATE_CHANGE_FAILURE) {
@@ -892,8 +898,8 @@ void RecordingPipeline::poll() {
             gst_message_unref(message);
             gst_object_unref(bus);
             if (relaunchThrottled()) return;
-            if (pipewireUnreachable_) { emit failed(pipewireUnreachable({})); return; }
-            emit failed({"recording_failed", "Capture failed: the compositor refused the stream twice", {}});
+            if (pipewireUnreachable_) { emit failed(pipewireUnreachable(relaunchFailures_)); return; }
+            emit failed({"recording_failed", "Capture failed: the stream ended before its first frame and could not be started again", {{"attempts", QJsonArray::fromStringList(relaunchFailures_)}}});
             return;
         }
         // #1364: a microphone that goes away must not end or damage the recording.
@@ -1063,10 +1069,12 @@ bool RecordingPipeline::relaunchThrottled() {
     tearDown();
     const auto options = options_;
     const QString audioEncoder = (options.audio || options.microphone) && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
+    relaunchFailures_.clear();
     for (const auto& encoder : options.encoders) {
         QString failure, element;
         if (launch(options, encoder, audioEncoder, false, failure, &element)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
         debugLog("relaunch failed: " + failure);
+        relaunchFailures_.append(failure);
         if (element == "pipewire") { pipewireUnreachable_ = true; return false; }
     }
     return false;

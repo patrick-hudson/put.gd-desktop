@@ -84,9 +84,10 @@ Error RecordingService::stalledStart(const Session& s, Error error) {
     // deadline ended it, and what the helper said first is the honest reason.
     if (s.state != RecordingState::Starting || s.startTrouble.isEmpty()) return error;
     auto details = error.details;
-    details["reason"] = "pipewire_stopped";
+    details["reason"] = s.startDaemonGone ? "pipewire_stopped" : "source_failed";
     details["sourceError"] = s.startTrouble;
-    return {"recording_start_failed", "PipeWire stopped while the recording was starting; try again", details};
+    return {"recording_start_failed", s.startDaemonGone ? QStringLiteral("PipeWire stopped while the recording was starting; try again")
+                                                        : QStringLiteral("The screen stream ended while the recording was starting; try again"), details};
 }
 bool RecordingService::watched(RecordingState state) {
     return state == RecordingState::Starting || state == RecordingState::Recording || state == RecordingState::Paused || state == RecordingState::Stopping;
@@ -409,14 +410,16 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         noteCaptured(s, event, true);
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
         transition(s, RecordingState::Recording);
-    } else if (kind == "starting" && s.state == RecordingState::Ready) {
+    } else if (kind == "starting" && (s.state == RecordingState::Ready || (s.state == RecordingState::Preparing && s.shellFrame))) {
         // Record on the helper's bar: no start command times this one, the silence watch does.
+        // On GNOME the bar can take it while the Shell is still placing that bar.
         s.startTrouble.clear();
+        s.startDaemonGone = false;
         transition(s, RecordingState::Starting);
     } else if (kind == "stopping" && (s.state == RecordingState::Recording || s.state == RecordingState::Paused)) {
         // The helper stops on its own (its bar, the budget, a lost source); `stopped` or `failed` follows.
         transition(s, RecordingState::Stopping);
-    } else if (kind == "sourceTrouble" && s.state == RecordingState::Starting) s.startTrouble = event["message"].toString().left(512);
+    } else if (kind == "sourceTrouble" && s.state == RecordingState::Starting) { s.startTrouble = event["message"].toString().left(512); s.startDaemonGone = event["daemonGone"].toBool(); }
     else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
     else if (kind == "lateResult" && event["command"] == "export") {
@@ -926,7 +929,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (s.pending == command) { reply({}, publicJson(s)); return; }
         if (!s.pending.isEmpty()) { reply({"recording_busy", "Another recording command is still being acknowledged", {{"pending", s.pending}}}, {}); return; }
         s.pending = command;
-        if (command == "start") transition(s, RecordingState::Starting), s.pending = command, s.startTrouble.clear();
+        if (command == "start") transition(s, RecordingState::Starting), s.pending = command, s.startTrouble.clear(), s.startDaemonGone = false;
         if (command == "stop") transition(s, RecordingState::Stopping), s.pending = command;
         // Where starting the click watch shows on screen (labwc reads its configuration again),
         // it is started first and the capture only once the desktop has answered.
