@@ -13,7 +13,9 @@ namespace putgd {
 struct CaptureSequence {
  // After a live selection: the delay's lock check (#1363), then the frozen
  // layout, then the pixels of the outputs the selection touches. The helper
- // reports geometry only after compositor unmap confirmation and normal exit,
+ // reports geometry only after compositor unmap confirmation and its exit
+ // (a normal exit with status zero, or the resident's deadline SIGKILL after
+ // accept),
  // and the selection may have finished before this continuation runs. Pixel
  // transfer remains in the resident's own connection.
  template<class Adapter>

@@ -1,3 +1,5 @@
+#include <csignal>
+#include <sys/wait.h>
 #include "platform/ProcessStat.h"
 #include "RegionProcess.h"
 #include "platform/SessionLock.h"
@@ -34,7 +36,15 @@ WaylandRegionProcess::WaylandRegionProcess(QString helperPath,QObject* parent)
  deadline_.setSingleShot(true); stopDeadline_.setSingleShot(true); moveFlush_.setSingleShot(true);
  connect(&moveFlush_,&QTimer::timeout,this,[this]{if(pendingMove_){flushMove();if(busy())moveFlush_.start(33);}});
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout"));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_) process_->kill();});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{
+  if(!process_)return;
+  // Claim the kill only for a helper still alive now (peek, not reap; __WALL as
+  // Qt may clone it without SIGCHLD): one that already exited or was killed
+  // from outside keeps its own exit status (#398).
+  siginfo_t info{};const auto pid=pid_t(process_->processId());
+  const bool alive=pid>0&&::waitid(P_PID,id_t(pid),&info,WEXITED|WNOHANG|WNOWAIT|__WALL)==0&&info.si_pid==0;
+  stoppedAfterAccept_=alive&&resultReceived_&&accepted_&&!failure_;process_->kill();
+ });
 }
 WaylandRegionProcess::~WaylandRegionProcess() { shutdown(); }
 void WaylandRegionProcess::shutdown() {
@@ -61,7 +71,7 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
  if(!pixels.isEmpty()) { frozen=waylandFrozenFrames(frames,pixels,error); if(error) { callback({},std::move(error)); return; } }
  closeFrozen(); frozenFd_=frozen.fd;
  frames_=frames; reply_=std::move(callback); result_={}; failure_={}; if(!pointerArmed_) pendingPointer_.clear(); pointerArmed_=false; pendingMove_.reset(); moveFlush_.stop();
- ready_=begun_=resultReceived_=accepted_=cancelling_=terminal_=teardownCertified_=false;
+ ready_=begun_=resultReceived_=accepted_=cancelling_=terminal_=teardownCertified_=stoppedAfterAccept_=false;
  nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces); ++generation_;
  launchPid_=0; launchStartTicks_.clear();
  auto* child=new QProcess(this); process_=child;
@@ -230,8 +240,13 @@ void WaylandRegionProcess::finish(int code,QProcess::ExitStatus status) {
  lastExit_={{"generation",QString::number(generation_)},{"code",code},
             {"status",status==QProcess::NormalExit?"normal":"crash"},
             {"processId",launchPid_},{"startTicks",launchStartTicks_},{"teardownCertified",teardownCertified_}};
- if(output_.pid()>0) { output_.append(process_->readAllStandardError()); output_.finished(code,status,cancelling_); }
- if(!failure_ && (status!=QProcess::NormalExit || code!=0 || !resultReceived_ || !accepted_))
+ // Only the resident's own SIGKILL after it accepted the validated selection
+ // keeps that selection. A helper that exits or crashes by itself must still
+ // exit normally (#398).
+ const bool residentStop=stoppedAfterAccept_ && status==QProcess::CrashExit && code==SIGKILL;
+ if(residentStop) lastExit_["stoppedAfterAccept"]=true;
+ if(output_.pid()>0) { output_.append(process_->readAllStandardError()); output_.finished(code,status,cancelling_||residentStop); }
+ if(!failure_ && (!resultReceived_ || !accepted_ || (!residentStop && (status!=QProcess::NormalExit || code!=0))))
   failure_=unavailable(status==QProcess::CrashExit?"capture_crashed":"capture_protocol");
  if(control_) control_->stop();
  auto* child=process_; child->disconnect(this); child->deleteLater();
