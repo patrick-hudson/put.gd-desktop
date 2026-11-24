@@ -26,11 +26,13 @@ child's pipes, mirroring the capture and editor helpers:
   `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`. A missed deadline
   answers the request with `recording_helper_timeout` and keeps the helper. What happens
-  to the session depends on the command: a late `pause`, `resume` or `export` leaves it
-  where it was, while a missed `prepare` or `start`, or a `stop` before any reviewable clip
-  arrived, fails it, and the discard below ends the helper. A `start` whose PipeWire
-  source failed first reports `pipewire_stopped` instead
-  ([Wayland](wayland.md#wayland-acquisition)). The session
+  to the session depends on the command. A late `pause` or `resume` leaves the state
+  as it was, and a late success still moves it (`lateResult`). A late `export` returns the
+  session to `reviewing` with the clip kept and the timeout in `lastExport.error`. A missed
+  `prepare` or `start`, or a `stop` before any reviewable clip arrived, fails the session,
+  and the discard below ends the helper. A `start` whose PipeWire source failure is still
+  marked at the deadline (`sourceTrouble`, [Wayland](wayland.md#wayland-acquisition))
+  fails as `recording_start_failed` with `details.reason: pipewire_stopped` instead. The session
   methods that wait on a command reply only after the helper answers, so
   `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`
   and `action.invoke`, which can toggle Stop, 30 s for the other recording
@@ -50,7 +52,8 @@ child's pipes, mirroring the capture and editor helpers:
   encoder and closes the PipeWire stream), the service takes the helper as
   stuck: the session fails with
   `recording_helper_unresponsive` (`details.step` names the state, `silentMs`
-  the limit), or with `pipewire_stopped` for a start whose source failed first.
+  the limit), or, while starting with a source failure still marked, as
+  `recording_start_failed` with `details.reason: pipewire_stopped`.
   Nothing is kept, and the discard below ends that helper (#1994). A stuck
   helper can't read `shutdown`, so it is killed when the 2 s deadline runs out.
 - `appearance {scheme: dark|light}` from the resident whenever the resolved

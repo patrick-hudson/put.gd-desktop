@@ -130,11 +130,14 @@ error on the helper's own connection, the helper sends `sourceTrouble
 {message}` before that teardown, and the same event with an empty message once
 the teardown has returned. A `start` request's deadline (15 s), or for
 Record on the helper's own bar the 30 s silence limit
-([process boundary](process-boundary.md#process-boundary)), ends the helper,
-and the start fails as `recording_start_failed` with `details.reason:
+([process boundary](process-boundary.md#process-boundary)), ends the helper.
+If the source failure is still marked then (its teardown never returned), the
+start fails as `recording_start_failed` with `details.reason:
 pipewire_stopped` ("PipeWire stopped while the recording was starting") and
-the source's error in `details.sourceError`, not as a bare timeout. A start
-whose failure comes back before then keeps its own error.
+the source's error in `details.sourceError`; otherwise it fails as
+`recording_helper_timeout` (a `start` request) or
+`recording_helper_unresponsive` (the bar). A start whose failure comes back
+before then keeps its own error.
 
 ### Window recordings
 
@@ -192,8 +195,8 @@ the window closes, KWin sends the stream's `closed` event and Mutter its
 session's `Closed` signal: a running capture stops into review with
 `stopReason: target_closed` and the clip so far (0.12–0.24 s after the window
 closed), and a ready session that never recorded fails
-`recording_target_closed`. A source that cannot be reopened stops the same way
-with `stopReason: source_lost`.
+`recording_target_closed`. A source that cannot be reopened stops with
+`stopReason: source_lost`, and goes to review if that stop finishes the clip.
 
 Acceptance on Kubuntu 26.04 (KWin 6.6.6), Debian 13 (KWin 6.3.6), Aurora
 (KWin 6.8.2), Fedora 44 (GNOME 50.6) and Ubuntu 26.04 (GNOME 50.1, VM) with
