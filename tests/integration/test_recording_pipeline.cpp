@@ -10,6 +10,44 @@
 #include <gst/gst.h>
 
 namespace putgd::record {
+namespace {
+// A stand-in encoder that refuses to start. A bin changes its sinks first, so the
+// pipeline fails on it at NULL->READY before pipewiresrc is opened: no PipeWire
+// connection is tried. When pipewiresrc cannot connect, its plugin destroys the
+// PipeWire context while the context's loop thread still runs, then joins that
+// thread; now and then the thread never wakes and the join waits forever (#1113:
+// a 300 s timeout in CI, 4 of 200,000 failed opens on pipewire 1.6.2). This test
+// needs no daemon, so it avoids that path; the product can still reach it when
+// PipeWire goes away while a source starts or reopens (#1994).
+GstElementClass* refusingParent = nullptr;
+GstStaticPadTemplate refusingSink = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
+GstStaticPadTemplate refusingSource = GST_STATIC_PAD_TEMPLATE("src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS("video/x-h264"));
+GstStateChangeReturn refuseToStart(GstElement* element, GstStateChange transition) {
+    if (transition == GST_STATE_CHANGE_NULL_TO_READY) return GST_STATE_CHANGE_FAILURE;
+    return refusingParent->change_state(element, transition);
+}
+void refusingClassInit(gpointer klass, gpointer) {
+    auto* element = GST_ELEMENT_CLASS(klass);
+    refusingParent = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
+    gst_element_class_add_static_pad_template(element, &refusingSink);
+    gst_element_class_add_static_pad_template(element, &refusingSource);
+    gst_element_class_set_static_metadata(element, "Refusing encoder", "Codec/Encoder/Video", "Fails to start (test stand-in)", "put.gd");
+    element->change_state = refuseToStart;
+}
+// Its pads link where an H.264 encoder's do: raw video in, H.264 out.
+void refusingInstanceInit(GTypeInstance* instance, gpointer) {
+    gst_element_add_pad(GST_ELEMENT(instance), gst_pad_new_from_static_template(&refusingSink, "sink"));
+    gst_element_add_pad(GST_ELEMENT(instance), gst_pad_new_from_static_template(&refusingSource, "src"));
+}
+bool registerRefusingEncoder() {
+    static const bool registered = [] {
+        const GTypeInfo info{guint16(sizeof(GstElementClass)), nullptr, nullptr, refusingClassInit, nullptr, nullptr, guint16(sizeof(GstElement)), 0, refusingInstanceInit, nullptr};
+        const GType type = g_type_register_static(GST_TYPE_ELEMENT, "PutgdRefusingEncoder", &info, GTypeFlags(0));
+        return type && gst_element_register(nullptr, "putgdrefusingenc", GST_RANK_NONE, type);
+    }();
+    return registered;
+}
+}
 class RecordingPipelineThroughput : public QObject {
     Q_OBJECT
     QProcess display_;
@@ -88,16 +126,15 @@ private slots:
         QVERIFY(frames(options.output) > 0);
     }
     // #1115: a compositor that refuses max_framerate 0/1 gets the plain request
-    // for the same encoder. No daemon answers here, so both attempts fail and the
-    // log keeps what each one asked for.
+    // for the same encoder. The stand-in encoder fails both attempts before any
+    // PipeWire connection, and the log keeps what each one asked for.
     void aRefusedPipeWireRequestIsRetriedWithThePlainOne() {
         GstElementFactory* source = gst_element_factory_find("pipewiresrc");
         if (!source) QSKIP("No pipewiresrc is installed");
         gst_object_unref(source);
-        QString encoder;
-        for (const char* name : {"x264enc", "openh264enc"}) if (GstElementFactory* factory = gst_element_factory_find(name)) { if (encoder.isEmpty()) encoder = name; gst_object_unref(factory); }
-        if (encoder.isEmpty()) QSKIP("No CPU H.264 encoder is installed");
+        QVERIFY(registerRefusingEncoder());
         QTemporaryDir dir;
+        // Should the bin ever reach pipewiresrc, it finds no daemon, not the desktop's.
         qputenv("PIPEWIRE_RUNTIME_DIR", dir.path().toUtf8());
         qputenv("PIPEWIRE_REMOTE", "no-daemon");
         const QString log = logs_.filePath("record.log");
@@ -108,8 +145,13 @@ private slots:
         options.pipewireNode = 42;
         options.fps = 15;
         options.output = dir.filePath("working.mkv");
-        options.encoders = {encoder};
-        QCOMPARE(pipeline.start(options).code, QStringLiteral("recording_start_failed"));
+        options.encoders = {QStringLiteral("putgdrefusingenc")};
+        const Error refused = pipeline.start(options);
+        QCOMPARE(refused.code, QStringLiteral("recording_start_failed"));
+        // Both attempts failed on the stand-in, not on the source.
+        const QStringList attempts = refused.details.value("attempts").toVariant().toStringList();
+        QCOMPARE(attempts.size(), 2);
+        for (const auto& attempt : attempts) QVERIFY2(attempt.startsWith("putgdrefusingenc refused to start"), qPrintable(attempt));
         QFile written(log);
         QVERIFY(written.open(QIODevice::ReadOnly | QIODevice::Text));
         QStringList requests;
