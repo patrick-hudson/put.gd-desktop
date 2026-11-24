@@ -1,4 +1,6 @@
 """Seed real operation/history state through the production editor pipeline."""
+import json
+
 from ..api import RecipeBlocked, RecipeFailed
 from .base import Fixture
 from .destinations import control
@@ -17,6 +19,41 @@ def cancel(scope, identity):
         raise RecipeFailed('fixture operation cleanup transport unavailable')
     return scope.ctx.wait(lambda:(s if (s:=scope.ctx.call('operation.inspect',{'id':identity})).get('state') in TERMINAL else None),
                           'owned operation settles before fixture cleanup',timeout=SETTLE_TIMEOUT)
+
+
+EDITOR='putgd-ui --edit-image'
+# How the editor helper ended, read before cleanup removes the private log (#2011: an editor_exit
+# left no trace). Only fixed event names and typed exit fields leave the target: helper stderr is
+# counted and crash text dropped, never copied. A crash's signal is in its own exit record.
+TRACE=r'''import glob,json,os
+events={'Helper started','Helper exited','Helper stopped by put.gd','Helper killed by put.gd','Killing helper',
+        'Helper crashed','Helper killed from outside put.gd','Helper crash record','Helper failed to start',
+        'Helper output truncated'}
+typed={'exitCode':int,'signal':int,'requested':bool,'supervisorKill':bool,'pid':int}
+rows,stderr=[],0
+for path in glob.glob(os.environ['XDG_STATE_HOME']+'/putgd/logs/*.jsonl'):
+ for line in open(path,errors='replace'):
+  try:r=json.loads(line)
+  except ValueError:continue
+  f=r.get('fields') if isinstance(r.get('fields'),dict) else {}
+  if r.get('process')==EDITOR and f.get('stream')=='stderr':stderr+=1;continue
+  if f.get('helper')!=EDITOR or r.get('message') not in events:continue
+  row={'t':str(r.get('time'))[:24],'event':r['message']}
+  row.update({k:f[k] for k,kind in typed.items() if type(f.get(k)) is kind})
+  rows.append(row)
+rows.sort(key=lambda r:r['t'])
+print(json.dumps({'editor':rows[-8:],'stderrLines':stderr}))
+'''.replace('EDITOR',repr(EDITOR))
+
+
+def record_editor_trace(ctx):
+    """Keep how the editor helper ended in the receipt's environment, not in the failure text. Never raises."""
+    try:
+        result=ctx.shell("python3 - <<'SD_TRACE'\n"+TRACE+'SD_TRACE\n',timeout=20)
+        trace=json.loads(result['stdout']) if not result['returncode'] else {'unavailable':'exit '+str(result['returncode'])}
+    except Exception as error:  # Diagnosis only: the failure being reported stays the failure.
+        trace={'unavailable':type(error).__name__}
+    ctx.environment.setdefault('editor_traces',[]).append(trace)
 
 
 def track(scope, method, identity):
@@ -67,6 +104,8 @@ def submit(scope, *, remote=False, local_failure=False, active=False, failure=Fa
             items=state.get('items')
             errors=[state.get('error'),*(i.get('error') for i in items if isinstance(i,dict))] if isinstance(items,list) else [state.get('error')]
             codes=sorted({e['code'] for e in errors if isinstance(e,dict) and e.get('code')})
+            if any(c.startswith('editor_') for c in codes):
+                record_editor_trace(ctx)
             raise RecipeFailed('synthetic fixture operation ended '+state['state']+''.join(': '+c for c in codes))
     rows=ctx.call('history.list',{'limit':100}).get('records',[])
     row=next((r for r in rows if r.get('operationId')==operation),None)
