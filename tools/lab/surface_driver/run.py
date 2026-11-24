@@ -604,7 +604,8 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
         final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
                          hosts=evidence.redactor.link_hosts, quarantine=True)
     except Exception:  # e.g. no quarantine directory outside the run: the stubs below still replace both files
-        final = {'passed': False, 'quarantine': []}
+        # Some files may have been moved before the failure; say so rather than claim none were.
+        final = {'passed': False, 'quarantine': [{'action': 'quarantine-incomplete'}]}
     if not final['passed']:
         # The rewritten receipt itself carried a value. Replace both with
         # constant failure stubs (no run data) and scan those final bytes.

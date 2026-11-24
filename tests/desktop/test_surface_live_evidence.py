@@ -513,8 +513,9 @@ class NaFinalBytes(Base):
                                       self.out, 'na', self.out/'coverage.json')
         self.assertEqual(rows[0].functional, 'failed')
         self.assertEqual(self.leaked(SHARE_TOKEN), [])
-        self.assertEqual(json.loads((self.out/'receipt.json').read_text())['secret_scan']['findings'][0]['kind'],
-                         'final-receipt-audit-failed')
+        scan = json.loads((self.out/'receipt.json').read_text())['secret_scan']
+        self.assertEqual(scan['findings'][0]['kind'], 'final-receipt-audit-failed')
+        self.assertEqual(scan['quarantine'], [{'action': 'quarantine-incomplete'}])
 
 class NbSharedCoverage(Base):
     OTHER = {'interaction': 'tray.open', 'desktop': 'ubuntu-gnome-wayland', 'package': 'deb', 'host': 'boat',
