@@ -534,6 +534,16 @@ class RamBackedTmp(LockTest):
             ticks = iter(range(100))
             usage = lock.tmp_usage(str(root), mounts=str(mounts), seconds=0.5, clock=lambda: next(ticks))
         self.assertFalse(usage['complete'])
+        with tempfile.TemporaryDirectory() as folder:  # one flat directory: the budget holds inside it too
+            root = Path(folder)
+            (root / 'flat').mkdir()
+            for index in range(50):
+                (root / 'flat' / str(index)).write_bytes(b'z')
+            mounts = root / 'mounts'
+            mounts.write_text(f'tmpfs {root} tmpfs rw 0 0\n')
+            ticks = iter(range(1000))
+            self.assertFalse(lock.tmp_usage(str(root), mounts=str(mounts), seconds=10,
+                                            clock=lambda: next(ticks))['complete'])
         quiet = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
         notes = lock.collect_inventory(Path('/nonexistent'), lambda argv: quiet.get(argv[0], (None, '')), own=set(),
                                        tmp=lambda: usage)[1]

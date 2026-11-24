@@ -58,7 +58,7 @@ def main():
         (run / 'package.json').unlink(missing_ok=True)
         # The copy goes to disk and is removed after the install: the host's /tmp is RAM (#1978).
         # scp resolves the relative path against the host's home.
-        staged = 'work/tmp/putgd-lab' + deb.suffix
+        staged = 'work/tmp/putgd-lab.rpm' if deb.suffix == '.rpm' else 'work/tmp/putgd-lab.deb'
         host_ssh(run, 'mkdir -p -m 700 ~/work/tmp\n', timeout=60)
         host_put(run, deb, staged)
         if deb.suffix == '.rpm':

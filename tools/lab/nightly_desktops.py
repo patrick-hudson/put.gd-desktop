@@ -73,7 +73,10 @@ ATTEMPT_TIMEOUT = 1800  # Recipes allow 300–720s, plus fixture/live setup/clea
 # running at all, and nothing said so (#1978).
 HOST_REASONS = ('RAM below guest requirement', 'load at or above core count', 'disk below sparse overlay budget',
                 'builder KVM unavailable', 'golden missing', 'golden copy awaiting', 'reserved nightly guest port',
-                'desktop lease held', 'proton lease held', 'nightly guest slot held', 'SSH unreachable')
+                'desktop lease held', 'proton lease held', 'nightly guest slot held', 'SSH unreachable',
+                # The same occupied slot or lease, met by stale-guest recovery before await_host.
+                'nightly guest slot belongs to a live or unverified worker',
+                'nightly guest recovery refused: desktop lease is live or belongs to another session')
 HOST_BLOCKED_ALERT = 2  # nights running
 
 

@@ -292,6 +292,9 @@ def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_S
         return {'total': 0, 'entries': [], 'complete': False}
     device = os.stat(root).st_dev
     for entry in top:
+        if clock() > deadline:
+            complete = False
+            break
         try:
             info = entry.stat(follow_symlinks=False)
         except OSError:
@@ -299,24 +302,25 @@ def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_S
         size, pending = 0, [entry.path] if entry.is_dir(follow_symlinks=False) and info.st_dev == device else []
         if not pending and info.st_uid == uid and not entry.is_symlink():
             size = info.st_blocks * 512
-        while pending:
-            if clock() > deadline:
-                complete = False
-                break
+        while pending and complete:
             try:
-                children = list(os.scandir(pending.pop()))
+                children = os.scandir(pending.pop())
             except OSError:
                 continue
-            for child in children:
-                try:
-                    status = child.stat(follow_symlinks=False)
-                except OSError:
-                    continue
-                if child.is_dir(follow_symlinks=False):
-                    if status.st_dev == device:
-                        pending.append(child.path)
-                elif status.st_uid == uid and not child.is_symlink():
-                    size += status.st_blocks * 512
+            with children:
+                for child in children:  # the deadline is checked per entry: one directory can be huge
+                    if clock() > deadline:
+                        complete = False
+                        break
+                    try:
+                        status = child.stat(follow_symlinks=False)
+                    except OSError:
+                        continue
+                    if child.is_dir(follow_symlinks=False):
+                        if status.st_dev == device:
+                            pending.append(child.path)
+                    elif status.st_uid == uid and not child.is_symlink():
+                        size += status.st_blocks * 512
         total += size
         if info.st_uid == uid:
             entries.append((entry.path, size, info.st_ino))

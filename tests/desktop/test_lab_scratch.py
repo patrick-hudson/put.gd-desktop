@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 from tools.lab import scratch  # noqa: E402
 
 DIRECTORY_CALL = re.compile(r'\b(?:mkdtemp|TemporaryDirectory)\(')
-SHELL_MKTEMP = re.compile(r'\bmktemp\s+-[a-zA-Z]*d[a-zA-Z]*\b(?P<rest>.*)')
+SHELL_MKTEMP = re.compile(r'\bmktemp\s+(?:-[a-zA-Z]*d[a-zA-Z]*|--directory)\b(?P<rest>.*)')
 MARKER = 'tmpfs-ok:'
 
 
@@ -91,10 +91,12 @@ class LabToolsKeepScratchOnDisk(unittest.TestCase):
                                        "tempfile.mkdtemp(dir=run)\n"
                                        "# tmpfs-ok: sockets\n"
                                        "tempfile.mkdtemp(dir='/tmp')\n")
-            (tree / 'b.sh').write_text('d=$(mktemp -d)\ne=$(mktemp -d /tmp/x.XXXX)\nf=$(mktemp -d ~/work/tmp/x.XXXX)\n')
+            (tree / 'b.sh').write_text('d=$(mktemp -d)\ne=$(mktemp -d /tmp/x.XXXX)\nf=$(mktemp -d ~/work/tmp/x.XXXX)\n'
+                                       'g=$(mktemp --directory)\n')
             with patch.object(sys.modules[__name__], 'ROOT', Path(folder)):
                 self.assertEqual(unmarked_tmp_directories(tree),
-                                 ['tools/lab/a.py:1', 'tools/lab/a.py:2', 'tools/lab/b.sh:1', 'tools/lab/b.sh:2'])
+                                 ['tools/lab/a.py:1', 'tools/lab/a.py:2', 'tools/lab/b.sh:1', 'tools/lab/b.sh:2',
+                                  'tools/lab/b.sh:4'])
 
 
 if __name__ == '__main__':
