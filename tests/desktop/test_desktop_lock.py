@@ -544,6 +544,14 @@ class RamBackedTmp(LockTest):
             ticks = iter(range(1000))
             self.assertFalse(lock.tmp_usage(str(root), mounts=str(mounts), seconds=10,
                                             clock=lambda: next(ticks))['complete'])
+        class Failing:
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+            def __iter__(self): raise OSError('readdir failed')
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(lock.os, 'scandir', return_value=Failing()):
+            (Path(folder) / 'mounts').write_text(f'tmpfs {folder} tmpfs rw 0 0\n')
+            self.assertEqual(lock.tmp_usage(folder, mounts=str(Path(folder) / 'mounts')),
+                             {'total': 0, 'entries': [], 'complete': False})
         quiet = {'pgrep': (1, ''), 'flatpak': (0, ''), 'rpm': (1, ''), 'dpkg-query': (1, '')}
         notes = lock.collect_inventory(Path('/nonexistent'), lambda argv: quiet.get(argv[0], (None, '')), own=set(),
                                        tmp=lambda: usage)[1]

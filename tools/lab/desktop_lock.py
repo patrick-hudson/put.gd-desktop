@@ -290,8 +290,11 @@ def tmp_usage(root=TMP_ROOT, uid=None, mounts='/proc/self/mounts', seconds=TMP_S
         device, top = os.stat(root).st_dev, os.scandir(root)
     except OSError:
         return {'total': 0, 'entries': [], 'complete': False}
-    with top:
-        total, entries, complete = _tmp_entries(top, uid, device, deadline, clock)
+    try:
+        with top:
+            total, entries, complete = _tmp_entries(top, uid, device, deadline, clock)
+    except OSError:  # listing /tmp itself failed part way: report nothing rather than stop the check
+        return {'total': 0, 'entries': [], 'complete': False}
     return {'total': total, 'entries': entries, 'complete': complete}
 
 
