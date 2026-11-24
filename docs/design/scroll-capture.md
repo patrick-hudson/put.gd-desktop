@@ -257,8 +257,10 @@ overlap well: the tracker places small steps where 600 px bursts sometimes do no
 
 The first step's rest is seen on the screen. The first distance per notch is measured only
 by a step that was sent after a frame that proved the page still, and that settles on another
-such frame: one the tracker found where the last placed frame was. A frame it let through as
-still without proving it does not count. While that step has already moved, has seen no frame
+such frame: one the tracker found where the last placed frame was (no movement with no kept
+hints, or placed at offset 0). A frame it let through as still without proving it does not
+count for the measurement, though it can still settle the step: the step then settles
+unmeasured, before its time limit, and the next step goes on as usual. While that step has already moved, has seen no frame
 for 100 ms, and neither a still frame nor its 3 s limit has settled it, the session asks for a
 fresh frame. It waits for it at most 1,500 ms (the wait for Done's fresh frame) and no longer
 than the step has left. If the frame shows more movement, the step keeps waiting; if it proves
