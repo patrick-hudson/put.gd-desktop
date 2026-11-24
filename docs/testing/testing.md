@@ -301,11 +301,7 @@ design is in [scrolling capture](../design/scroll-capture.md).
   `tests/fixtures/ScrollSynthetic.*`; no display): the matching engine. A frame placed at another
   offset than the page's own, a pinned part in the image more than once, a row lost or doubled at a
   seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)); a page's last lines above
-  a blank tail under a header and a footer placed where the page is, never unmatched; on the X11
-  test's ruler page, a first-step frame that moved further than auto-scroll's hint placed at row 95,
-  where the page is, with the image's top still at 0, and a 746-row jump off the hint left unplaced
-  with the image's bottom unchanged (#1535); a frame whose bottom rows repeat its reference's top
-  rows exactly placed where the page is, not at the short repeat.
+  a blank tail under a header and a footer placed where the page is, never unmatched.
 - `scroll_session_contract` (`tests/unit/test_scroll_session.cpp`, on the synthetic application in
   `tests/fixtures/ScrollSynthetic.*`, with the helper's spool file; no display): the session loop. A
   person's scrolling as a script (slow, fast, still, back up, to the end) gives the exact page and not
