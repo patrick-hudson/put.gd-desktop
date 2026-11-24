@@ -660,11 +660,14 @@ the current database and stable policy. Official Bun advisories supplement the
 scanner because a database can miss a newly published embedded-runtime advisory.
 A critical or high Bun advisory with a fix blocks the stable cut unless
 `packaging/sbom/policy.json`'s `upstreamAdvisories` accepts that exact advisory
-id, component and Bun version, with a reason, an expiry, its issue and evidence.
-A different advisory or Bun version, or an expired acceptance, still blocks.
+id, component and Bun version for the reviewed helper (`helperSha256`, which every
+package's helper must equal), with a reason, an expiry, its issue and evidence.
+A different advisory, Bun version or helper, or an expired acceptance, still blocks.
 The audit records each advisory's status in `audit.json`. A repository test
 requires every such acceptance to name the Bun version in
-`tools/proton/runtime-lock.json`, so a Bun upgrade removes or reassesses it.
+`tools/proton/runtime-lock.json` and the helper hash in
+`tools/proton/notices/SOURCES.json`, so a Bun or helper change removes or
+reassesses it.
 GHSA-p268-p2w7-qr8x (Bun 1.4.4's HTTP/3 code, which the helper never runs) is
 accepted until 2027-01-15; #2005 ships Bun 1.4.5.
 The retained `exact-asset-audit-TAG` artifact includes failures and raw findings.
