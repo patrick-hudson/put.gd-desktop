@@ -337,7 +337,7 @@ private:
     bool lostSincePlaced_ = false;  // the tracker was lost and has not found the page since (stats_.foundAgain)
     bool lastSkipped_ = false;   // the tracker's latest result was a skipped frame (dropOwed)
     bool lastStill_ = false;
-    bool lastShowedStill_ = false;
+    bool lastShowedStill_ = false, lastProvedStill_ = false;
     bool lastFrameBlank_ = false;   // the last frame (under auto-scroll) showed nothing  // the last frame showed the page where the last placed one had it
     int stillRun_ = 0;           // frames in a row that showed the page still
     int64_t lastFrameAt_ = -1;   // when the last frame went to the tracker

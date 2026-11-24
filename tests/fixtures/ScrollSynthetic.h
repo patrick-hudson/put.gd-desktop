@@ -172,6 +172,10 @@ struct FakeAppSpec {
   // starved X server): the first frame from this time on that shows the page
   // moving shows it glitchUp rows higher up than it is. -1: off.
   int glitchAtMs = -1, glitchUp = 0;
+  // A source that stalls as a starved X server's grabs do (#1535): after the
+  // first frame that shows the page moving, no frame for this long while the
+  // application scrolls on; a fresh frame waits for the stall to end. 0: off.
+  int stallAfterFirstMoveMs = 0;
   // This many rows at the top of the viewport change with every frame (a
   // video in a fixed player): the picture never comes to rest.
   int restlessRows = 0;
@@ -258,7 +262,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   int foreignQuietMs_ = -1;
   int64_t quietUntil_ = -1;
   bool forceNext_ = false;
-  bool stale_ = false, staleDone_ = false, glitchDone_ = false;
+  bool stale_ = false, staleDone_ = false, glitchDone_ = false, stallDone_ = false;
   int64_t firstFrameT_ = -1;
   int64_t busyUntil_ = 0;
   int pointerX_ = -1, pointerY_ = -1;

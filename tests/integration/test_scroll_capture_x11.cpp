@@ -152,14 +152,18 @@ class ScrollCaptureX11 : public QObject {
     QTemporaryDir logs_;
     QString log_;
     QString helperLog() const { return log_; }
-    // The result object and the helper's last "scroll: ended" line, for a failure message.
-    QByteArray endOf(const QJsonObject& result) const {
-        QByteArray ended;
+    // An event (the result, or the last progress of a capture that never
+    // ended), the helper's last "scroll: ended" line and every time auto-scroll
+    // let go of the wheel, for a failure message.
+    QByteArray endOf(const QJsonObject& event) const {
+        QByteArray ended, letGo;
         QFile log(helperLog());
         if (log.open(QIODevice::ReadOnly))
-            for (const QByteArray& line : log.readAll().split('\n'))
+            for (const QByteArray& line : log.readAll().split('\n')) {
                 if (line.contains("scroll: ended") || line.contains("scroll: way to the top")) ended = line;
-        return "result " + QJsonDocument(result).toJson(QJsonDocument::Compact) + "\nhelper " + ended;
+                else if (line.contains("handed the wheel back") || line.contains("auto-scroll paused by")) letGo += "\nhelper " + line;
+            }
+        return "event " + QJsonDocument(event).toJson(QJsonDocument::Compact) + "\nhelper " + ended + letGo;
     }
 private slots:
     void initTestCase() {
@@ -199,11 +203,20 @@ private slots:
         // Auto-scroll pauses, says why, hands the page to the user and sends
         // nothing until it is turned on again; the pointer stays where the
         // user put it.
+        // A warp gives no raw event, so the helper sees it only by asking the
+        // server where the pointer is, which it does before each motion of
+        // its own. A warp that the server takes between that question and the
+        // motion is overwritten unseen; a starved server takes all three in
+        // one go (#1535). A hand goes on moving, and so does this one until
+        // the capture says it has paused.
         QVERIFY(!capture.ended());
         {
             const QPoint user(1000, 300);
-            raw.warp(user);
-            QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["state"].toString() == "paused"; }, 3000));
+            QVERIFY(putgd::test::waitFor([&] {
+                if (capture.last("progress")["state"].toString() == "paused") return true;
+                raw.warp(user);
+                return false;
+            }, 3000));
             QCOMPARE(capture.last("progress")["pausedBy"].toString(), QString("pointer"));
             QCOMPARE(capture.last("progress")["driver"].toString(), QString("user"));
             const int atPause = raw.total();
@@ -282,18 +295,18 @@ private slots:
         raw.warp(QPoint(900, 700));
         Capture capture;
         capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"autoStart", true}, {"driver", "putgd"}});
-        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 90000));
+        QVERIFY2(putgd::test::waitFor([&] { return capture.ended(); }, 90000), endOf(capture.last("progress")).constData());
         const auto finished = capture.last("finished");
         QVERIFY2(!finished.isEmpty(), qPrintable(QJsonDocument(capture.last("failed")).toJson(QJsonDocument::Compact)));
         const QImage image(finished["path"].toString());
         const auto verdict = ruler::verify(image, 0, 0, 0, 59);
         QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem + "\n" + QString::fromUtf8(endOf(finished))));
-        // end_of_content promises that no frame was skipped. Xvfb has no
-        // compositor: on a starved runner a grab can catch the fixture half
-        // repainted. The tracker skips that one frame and finds the page in
-        // the next, so the helper ends `done` with reachedEnd and frames
-        // skipped. That is right too, and the image is exact (checked
-        // above). Seen 10 times in 40 runs on one shared core (#1535).
+        // end_of_content promises that no frame was skipped. On a starved
+        // runner the tracker may skip a frame it cannot place among the
+        // ruler's look-alike rows and find the page in the next, so the
+        // helper ends `done` with reachedEnd and frames skipped. That is
+        // right too, and the image is exact (checked above). Seen 10 times
+        // in 40 runs on one shared core (#1535).
         const QString reason = finished["endReason"].toString();
         QVERIFY2(reason == "end_of_content" || (reason == "done" && finished["reachedEnd"].toBool() && finished["framesSkipped"].toInt() > 0), endOf(finished).constData());
         QCOMPARE(finished["reachedEnd"].toBool(), true);

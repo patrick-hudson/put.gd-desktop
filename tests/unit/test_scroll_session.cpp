@@ -592,6 +592,47 @@ void testOneFrameOutOfPlace() {
          counts(u) + fmt(", %d hand-backs", u.stats.handBacks));
 }
 
+// The first step measures the distance per notch, and no frame for a while
+// does not prove that it rests (#1535): a starved X server's grabs stalled
+// for 80 ms in every 100, in the middle of the step's animation. The step was
+// taken as settled after its first frame, at 27 px a notch instead of 100;
+// the next step went 8 notches, 800 px, past what a frame can follow, the page
+// was lost, and auto-scroll handed the wheel back to nobody.
+void testStallInTheFirstStep() {
+  std::printf("A source that stalls in the first step\n");
+  const Document doc = page(96);
+  // 150 ms: a fresh frame comes and shows the page moving on. 1,700 ms: no
+  // fresh frame within its wait; the step waits on (Sol on #1995). 3,500 ms:
+  // longer than the step's 3 s, which settles unmeasured; the next notch's
+  // movement must not be measured together with what the stall hid of the
+  // first (29 px seen, then 171: Sol's round 2).
+  for (const int stall : {150, 1700, 3500}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 100;
+    as.stallAfterFirstMoveMs = stall;
+    h.run(doc.img, as, options(true));
+    const std::string wrong = h.exact(doc.img, 0);
+    report(fmt("a %d ms stall after the first step's first frame: the distance per notch measured whole, the image exact to the end", stall),
+           h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  }
+  // Frames keep coming while the page is still on its way at the step's
+  // time limit (Sol's round 2): the distance it has gone by then, a third
+  // of its animation, is no distance per notch.
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 100;
+  as.animMinMs = as.animMaxMs = 600;
+  SessionOptions so = options(true);
+  so.stepTimeoutMs = 200;
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a first step still moving at its time limit measures nothing: no distance per notch from a page on its way",
+         h.end == SessionEnd::PageEnd && wrong.empty() && (h.stats.pxPerNotch <= 0 || std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch),
+         wrong.empty() ? counts(h) : wrong);
+}
+
 // "Scroll to the top first" with a strip under the first wheel point that
 // takes no wheel (#1536's review): two still steps there say nothing of the
 // top. The top is proved only where the wheel moves the page, or once every
@@ -1097,6 +1138,7 @@ int main() {
   testStaleStreamUnderAuto();
   testTopUnderADeadPoint();
   testOneFrameOutOfPlace();
+  testStallInTheFirstStep();
   testHintsCountedOnce();
   testBlankUnderPinnedParts();
   testEndAboveABlankTail();
