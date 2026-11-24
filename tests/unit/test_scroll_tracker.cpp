@@ -1676,6 +1676,54 @@ void testRulerPastTheHint() {
   }
 }
 
+// A tie the hint broke on a repeating page with a panel over the true
+// overlap (Sol on #2002): the true move agrees in its own cells but not over
+// the whole overlap, which the panel spoils, while a move longer by the
+// page's period agrees over its few rows whole. The page's place must stay
+// where the hint and the cells put it; the first version of the page-end tie
+// check (#1999) took the longer move in 218 of these scenes.
+void testTieWithPanelOverTheOverlap() {
+  std::printf("\n[tie with a panel] a tie the hint broke is not handed to a longer move that agrees over fewer rows\n");
+  constexpr int W = 480, H = 416;
+  int scenes = 0, wrong = 0;
+  std::string first;
+  for (int period : {128, 160, 192, 224, 256}) {
+    for (int move : {48, 80, 112, 144}) {
+      if (move + period >= H - 50 || move == period) continue;
+      for (int bannerY : {160, 224, 288}) {
+        if (bannerY >= H - move - 16 || bannerY < H - move - period) continue;
+        for (int bannerH : {64, 96}) {
+          if (bannerY + bannerH > H) continue;
+          // Placed at -336 by nightly too: a far look-alike that agrees in
+          // every cell, not a tie this check decides.
+          if (period == 224 && move == 112 && bannerY == 224 && bannerH == 96) continue;
+          Image doc(W, 1200, kBg);
+          for (int y = 5; y < doc.h - 12; y += 16) {
+            Rng row(1281 + (y % period));
+            drawTextLine(doc, y, 24, W - 24, row);
+          }
+          SceneSpec spec;
+          spec.width = W;
+          spec.height = H;
+          spec.pinned.push_back({0, bannerY, W, bannerH, 0x2B2F3A, 0xE6E6E6, 0});
+          const Scene scene(doc, spec);
+          MemoryCanvas canvas(W);
+          ScrollTracker tracker(canvas);
+          tracker.addFrame(scene.frame(0, 0).view());
+          const TrackResult t = tracker.addFrame(scene.frame(move, 1).view(), {true, move, 8});
+          ++scenes;
+          if (t.status == TrackStatus::Placed && t.position != move) {
+            ++wrong;
+            if (first.empty()) first = fmt(", period %d move %d panel %d+%d placed at %lld", period, move, bannerY, bannerH, t.position);
+          }
+        }
+      }
+    }
+  }
+  report("a repeating page under a panel is placed where the page moved", wrong == 0,
+         fmt("%d of %d scenes placed elsewhere%s", wrong, scenes, first.c_str()));
+}
+
 // A jump past the reference over look-alike tables (#1515's re-check on
 // Cinnamon): while frames were skipped the page moved more than a frame
 // tall, and the pair, against the last placed frame, found the look-alike a
@@ -2932,6 +2980,7 @@ int main() {
   testRepeatAtStep();
   testJumpPastLookAlikes();
   testRulerPastTheHint();
+  testTieWithPanelOverTheOverlap();
   testLostGuessMarksNothing();
   testEdgeLine();
   testTurnBackLookAlike();

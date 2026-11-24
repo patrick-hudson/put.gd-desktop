@@ -4628,17 +4628,23 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
            contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
   };
   // A tie the expected offset broke is checked against the whole overlap:
-  // where the pick does not agree over it and exactly one tied place does,
-  // that place is the page's. At the page's end the page moves less than
-  // auto-scroll's step: on the ruler page the true +2 and a look-alike at +28
-  // both agreed in every cell of their own moving tiles, the hint (53) chose
-  // +28, which agrees in 0.47 of the whole overlap against 1.00 for +2, and
-  // the image got 26 rows too many (#1999).
+  // where the pick does not agree over it and exactly one tied place does
+  // over a larger overlap, a shorter move the same way, that place is the
+  // page's. At the page's end the page moves less than auto-scroll's step: on
+  // the ruler page the true +2 and a look-alike at +28 both agreed in every
+  // cell of their own moving tiles, the hint (53) chose +28, which agrees in
+  // 0.47 of the whole overlap against 1.00 for +2, and the image got 26 rows
+  // too many (#1999). Only a larger overlap: a share is easily whole over a
+  // few rows, and on a repeating page with a panel over the true overlap a
+  // longer move by the period agreed whole and took 256 rows too many (Sol
+  // on #2002).
   if (pick >= 0 && byExp && !wholeMove && wholeCells(cur, ref, cands[size_t(pick)].d) < kWholeShare) {
+    const int pd = cands[size_t(pick)].d;
     int other = -1, count = 0;
     for (size_t i = 0; i < cands.size(); ++i) {
       const Candidate& c = cands[i];
       if (int(i) == pick || !c.accepted || c.cells < cands[size_t(pick)].cells - opts_.tieCells) continue;
+      if (c.d == 0 || (c.d > 0) != (pd > 0) || std::abs(c.d) >= std::abs(pd)) continue;
       if (wholeCells(cur, ref, c.d) >= kWholeShare) {
         other = int(i);
         ++count;
