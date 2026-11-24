@@ -303,7 +303,8 @@ design is in [scrolling capture](../design/scroll-capture.md).
   seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)); a page's last lines above
   a blank tail under a header and a footer placed where the page is, never unmatched; a frame of the
   X11 test's ruler page that moved further than auto-scroll's hint placed where the page is, or not
-  at all (#1535).
+  at all (#1535); a frame whose bottom rows repeat its reference's top rows exactly placed where the
+  page is, not at the short repeat.
 - `scroll_session_contract` (`tests/unit/test_scroll_session.cpp`, on the synthetic application in
   `tests/fixtures/ScrollSynthetic.*`, with the helper's spool file; no display): the session loop. A
   person's scrolling as a script (slow, fast, still, back up, to the end) gives the exact page and not
@@ -319,8 +320,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
   up still is); the tracker's expected offset stays within what a step owes when its first frames
-  show the page still; a source that stalls in the first step still gives a pixel-exact capture to the
-  end, with the final distance per notch within 10% of the fixture's setting (#1535); a blank
+  show the page still; a source that stalls in the first step for 150 ms or for 1,700 ms (longer than a
+  fresh frame's wait) still gives a pixel-exact capture to the end, with the final distance per
+  notch within 10% of the fixture's setting (#1535); a blank
   stretch under a pinned header and footer is not called the end; the
   end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
   lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
