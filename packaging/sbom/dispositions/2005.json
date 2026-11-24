@@ -14,7 +14,7 @@
     "node:quic",
     "fetch(url, { protocol: \"http3\" }) or --experimental-http3-fetch"
   ],
-  "assessment": "Not reached by put.gd. putgd-proton-runtime is a stdio JSON client of put.gd: it starts no server, accepts no connections and talks to Proton over fetch with the default HTTP/1.1 and HTTP/2. No source file of the helper or of its bundled dependencies names http3, node:quic or Bun.serve; the only matches are type declarations (bun-types, @types/bun, @types/node), which bun build does not bundle. put.gd passes no Bun flags. The helper does inherit the resident's environment (ProtonProvider::helperEnvironment removes only PROTON_DRIVE_* and PUTGD_PROTON_*), and Bun 1.4.4 enables its experimental HTTP/3 fetch client when BUN_FEATURE_FLAG_EXPERIMENTAL_HTTP3_CLIENT is set or BUN_OPTIONS carries --experimental-http3-fetch. Neither is set by put.gd, its packages or any supported desktop. Setting one takes control of the user's session environment, which already means code running as the user, and the client half would then still need a malicious HTTP/3 peer at a TLS-authenticated Proton API origin; Bun has not confirmed that the client half is exploitable at all.",
+  "assessment": "Not reached in put.gd's default launch. putgd-proton-runtime is a stdio JSON client of put.gd: it starts no server, accepts no connections and talks to Proton's API and storage hosts over fetch. No source file of the helper or of its bundled dependencies names http3, node:quic or Bun.serve; the only matches are type declarations (bun-types, @types/bun, @types/node), which bun build does not bundle. put.gd passes no Bun flags, so its fetch uses HTTP/1.1 and HTTP/2 only. The helper does inherit the resident's environment (ProtonProvider::helperEnvironment removes only PROTON_DRIVE_* and PUTGD_PROTON_*), and Bun 1.4.4 enables its experimental HTTP/3 fetch client when BUN_FEATURE_FLAG_EXPERIMENTAL_HTTP3_CLIENT is set or BUN_OPTIONS carries --experimental-http3-fetch. put.gd, its packages and the supported desktops set neither. Only with one of them set (by the user or by code running as the user) can a request move to HTTP/3, and then only after an eligible Alt-Svc upgrade from a peer the helper accepts over TLS for a Proton API or storage origin; that peer would also have to be malicious. Bun has not confirmed that the client half is exploitable.",
   "method": {
     "host": "Debian 13 physical builder 192.168.68.69 (SSH only)",
     "input": "putgd-proton-helper-rebuild.tar.gz from the v26.1124.6905-nightly Proton corresponding source (putgd-proton-corresponding-source.tar.gz parts 1 and 2, downloaded and verified by audit_assets.py)",
@@ -52,6 +52,7 @@
       "BUN_FEATURE_FLAG_EXPERIMENTAL_HTTP3_CLIENT (src/bun_core/env_var.rs at 38afee6c84fcf48c0edb2466aa4b27d287a59c30)",
       "BUN_OPTIONS=--experimental-http3-fetch (read by standalone executables, src/runtime/cli/mod.rs)"
     ],
-    "followUp": "Clearing these in helperEnvironment changes application bytes; it ships with the Bun 1.4.5 rebuild (#2005)."
+    "followUp": "Clearing these in helperEnvironment changes application bytes; it ships with the Bun 1.4.5 rebuild (#2005).",
+    "optedIn": "HTTP/3 off by default. Opted in: an Alt-Svc upgrade (src/http/h3_client/AltSvc.rs) and a malicious TLS-accepted Proton API or storage peer are still required, and client exploitability is unconfirmed."
   }
 }
