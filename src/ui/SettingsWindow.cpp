@@ -107,6 +107,9 @@
 #include <QGuiApplication>
 #include <QScopedValueRollback>
 #include <QCoreApplication>
+
+// Update messages from the resident and the update helper may already end a sentence.
+static QString endSentence(QString text){text=text.trimmed();return text.isEmpty()||text.endsWith('.')?text:text+".";}
 namespace putgd {
 using Ui::Space;
 using Ui::space;
@@ -983,7 +986,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   installUpdate_->setEnabled(false);Ui::feedback(installStatus_,"Starting…");updatesForm_->setRowVisible(installRow_,true);
   settings_.request("update.install",params,this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
    if(!g)return;
-   if(error){g->installUpdate_->setEnabled(true);Ui::feedback(g->installStatus_,error.message+".",true);return;}
+   if(error){g->installUpdate_->setEnabled(true);Ui::feedback(g->installStatus_,endSentence(error.message),true);return;}
    g->settings_.refreshSnapshot([g](Error){if(g)g->refreshUpdateStatus();});
   });
  });
@@ -991,7 +994,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   restartUpdate_->setEnabled(false);
   settings_.request("update.restart",{{"confirm",true}},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
    if(!g)return;g->restartUpdate_->setEnabled(true);
-   if(error)Ui::feedback(g->installStatus_,error.message+".",true);else Ui::feedback(g->installStatus_,"Restarting…");
+   if(error)Ui::feedback(g->installStatus_,endSentence(error.message),true);else Ui::feedback(g->installStatus_,"Restarting…");
   });
  });
  auto* commandRow=new QWidget;auto* commandLayout=new QHBoxLayout(commandRow);commandLayout->setContentsMargins(0,0,0,0);commandLayout->setSpacing(space(Space::s));
@@ -2240,7 +2243,7 @@ void SettingsWindow::refreshUpdateStatus(){
  if(!update["checking"].toBool()){
   if(!update["checkedAt"].isNull())text+=" Checked "+localTime(update["checkedAt"].toString())+".";
   const auto error=update["error"].toObject();
-  if(!error.isEmpty())text+=" The last check failed: "+error["message"].toString()+".";
+  if(!error.isEmpty())text+=" The last check failed: "+endSentence(error["message"].toString());
   if(!update["nextCheckAt"].isNull())text+=" Next check "+localTime(update["nextCheckAt"].toString())+".";
   else if(!update["check"].toBool())text+=" Daily checks are off.";
  }
@@ -2298,7 +2301,7 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
    howText+" on "+localTime(installed["installedAt"].toString())+".");
   return;
  }
- Ui::feedback(installStatus_,"The update wasn't installed: "+error["message"].toString()+".",true);
+ Ui::feedback(installStatus_,"The update wasn't installed: "+endSentence(error["message"].toString()),true);
 }
 void SettingsWindow::checkForUpdates(std::function<void(Error,QJsonObject)> done){
  checkNow_->setEnabled(false);Ui::feedback(updateStatus_,"Checking…");
