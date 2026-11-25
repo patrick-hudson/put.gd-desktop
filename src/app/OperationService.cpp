@@ -383,7 +383,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An image edit is already open. Finish or cancel it first.",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is already running. Stop or cancel it before editing.",{{"operationId",recording_->activeId()}}},{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
- auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}},{});return;}
  const auto route=snapshot.actions.value(action);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
@@ -502,7 +502,7 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
  if(!ready_) {accepted(notReadyError(),{});return;}
  auto snapshot=settings_.snapshot();
  if(!snapshot.profiles.contains(profileId)){accepted({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
- if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  // This operation's own settings: the package keeps its file name in history,
  // is never archived a second time, and a name clash never overwrites.
  auto document=snapshot.document;
@@ -530,7 +530,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
  if(!ready_) {reply(notReadyError(),{});return;}
  if(uploadGate_)if(auto error=uploadGate_()){reply(error,{});return;}
  const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
- if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  const auto route=FileUploads::resolve(snapshot,profileId);
  Destination destination;
  if(!route.error){const auto profile=snapshot.profiles.value(route.profileId);destination={profile["provider"].toString(),route.profileId,revision,profile["settings"].toObject(),profile["credentials"].toObject()};}
@@ -549,7 +549,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
    if(e.code=="destination_required")emit destinationRequired();
    reply(e,{});return;
   }
-  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
   Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
   auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);beginUploadCopies(op,false);anticipate(op);
@@ -1071,7 +1071,7 @@ Error OperationService::acceptText(Operation& op,const TextService::Acceptance& 
  if(acceptance.interactive&&scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is already running. Stop or cancel it first.",{{"operationId",scroll_->activeId()}}};
  if(acceptance.interactive&&!selectingId_.isEmpty())return {"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}};
  // Every source counts against the pending-operation limit. No output is needed.
- const auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
+ const auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}};
  op.id=uuid();op.action=Settings::textActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
  // An explicit copy: it takes the ticket and the expected clipboard revision now,
  // which also moves the upload-copy epoch past any pending link copy. With
@@ -1279,7 +1279,7 @@ Error OperationService::acceptRecording(Operation& op) {
  if(!ready_)return notReadyError();
  if(editor_)return {"editor_active","An image edit is already open. Finish or cancel it before recording.",{{"operationId",editingId_}}};
  if(!selectingId_.isEmpty())return {"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}};
- auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
+ auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}};
  const auto acceptedAction=op.action.isEmpty()?Settings::recordingActionName():op.action;
  const auto route=snapshot.actions.value(acceptedAction);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
@@ -1886,7 +1886,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_) {reply(notReadyError(),{});return;}
- const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","The local file for this upload is gone, so it can't be retried. Start a new capture or upload.",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
@@ -1911,7 +1911,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_){reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;
- if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  active_.insert(id,std::make_shared<std::atomic_bool>(false));
  // A local retry keeps its durable result; only its live observation is active.
  observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});

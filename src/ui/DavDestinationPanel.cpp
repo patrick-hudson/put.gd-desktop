@@ -40,7 +40,7 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     const QString plainHint = QStringLiteral("Plain HTTP sends files and the password unencrypted. Use it only on a network you trust.");
 
     // Nextcloud: the server and the account.
-    nextcloudForm_ = PreferenceRows::card(page, "Nextcloud", "Each upload gets a public share link: anyone with the link can view the file.");
+    nextcloudForm_ = PreferenceRows::card(page, "Nextcloud", "Each upload gets a public share link. Anyone with the link can view the file.");
     nextcloudForm_->parentWidget()->setObjectName("nextcloudServerSection");
     server_ = line("nextcloudServer", "https://cloud.example.com");
     row(nextcloudForm_, "Server", server_, "The address you open Nextcloud at. A pasted Files or share link works too.");
@@ -118,7 +118,7 @@ void DavDestinationPanel::build(const RowBuilder& row) {
     });
     connect(address_, &QLineEdit::textChanged, this, [this] { sync(); });
     linkBase_ = line("webdavLinkBase", "https://files.example.com/uploads/");
-    row(webdavForm_, "Link address", linkBase_, "Optional. Where these files are served publicly; links are this address and the file name. Leave empty to hand out the folder address itself.");
+    row(webdavForm_, "Link address", linkBase_, "Optional. Public URL where uploaded files are served, with the file name appended. Leave empty to copy the folder address instead.");
     addProblem(webdavForm_, "linkBase");
     connect(linkBase_, &QLineEdit::textChanged, this, [this] { sync(); });
     connect(linkBase_, &QLineEdit::editingFinished, this, [this] {
@@ -242,7 +242,7 @@ void DavDestinationPanel::sync() {
     QString text;
     switch (signIn_) {
     case SignIn::Starting: text = QString::fromUtf8("Opening Nextcloud sign-in…"); break;
-    case SignIn::Waiting: text = QStringLiteral("Finish signing in to Nextcloud in your browser, then choose Grant access."); break;
+    case SignIn::Waiting: text = QStringLiteral("Finish signing in to Nextcloud in your browser, then select Grant access."); break;
     case SignIn::BrowserFailed: text = QStringLiteral("Couldn't open the default browser for Nextcloud sign-in."); break;
     case SignIn::Idle: text = signedIn ? "Signed in as " + accountName_ : QStringLiteral("Signed out"); break;
     }

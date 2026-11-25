@@ -150,7 +150,7 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
             const auto name = result["accountName"].toString(result["userId"].toString());
             applyAccount(name);
             setupFeedback("Signed in as " + name + ".", true);
-        } else setupFeedback("The folder is there.", true);
+        } else setupFeedback("Folder found.", true);
         return true;
     }
     if (kind == "signOut") {
