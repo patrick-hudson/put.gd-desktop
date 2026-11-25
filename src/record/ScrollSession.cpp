@@ -657,8 +657,13 @@ void ScrollSession::autoTick() {
             // the distance (settled); a step whose time runs out without one,
             // with frames or none, settles unmeasured and a later step
             // measures again. Later steps keep the distance within bounds of
-            // the first one.
-            const bool measuring = phase_ == Phase::Settle && stepFromRest_ && stepNotches_ > 0 && stats_.pxPerNotch <= 0;
+            // the first one. A step sent from a rest nothing proved measures
+            // nothing, but it asks for the frame too: that frame proves the
+            // rest the next step measures from. Without it, on a stream that
+            // sends only changes, every step after one that settled unmeasured
+            // began unproved, and the whole capture went one notch a step
+            // (#2000: 78 steps for 24 after a 3.5 s stall).
+            const bool measuring = phase_ == Phase::Settle && stepNotches_ > 0 && stats_.pxPerNotch <= 0;
             if (measuring && quiet && !rested && !timedOut) {
                 const int64_t movedAt = lastMoveAt_;
                 const int wait = int(std::min<int64_t>(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500, opts_.stepTimeoutMs - (now - stepSentAt_)));
