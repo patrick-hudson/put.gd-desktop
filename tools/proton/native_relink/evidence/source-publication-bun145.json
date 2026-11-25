@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "tag": "proton-sources-0.23.0-crypto2.2.0-bun1.4.5",
+  "releaseId": 457597616,
+  "prerelease": true,
+  "latestRequested": false,
+  "gitCommit": "617cb0c81bb8c1d908f1ed6ecf44c19684915685",
+  "published": true,
+  "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.5",
+  "publishedUtc": "2026-11-25T03:09:46Z",
+  "assets": [
+    {
+      "id": 789821642,
+      "name": "putgd-proton-corresponding-source.tar.gz.part1",
+      "size": 1300000000,
+      "state": "uploaded",
+      "digest": "sha256:8999f94a6ee24ba9fdf1fdb370d9161541fb7adaf73d58accf5608693c1a934c",
+      "browser_download_url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.5/putgd-proton-corresponding-source.tar.gz.part1"
+    },
+    {
+      "id": 789821641,
+      "name": "putgd-proton-corresponding-source.tar.gz.part2",
+      "size": 1113839138,
+      "state": "uploaded",
+      "digest": "sha256:8698615ea54b00e5e5ca0cfae695076f99ea98aa789cd6eb9b337e39cd49fe3d",
+      "browser_download_url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.5/putgd-proton-corresponding-source.tar.gz.part2"
+    },
+    {
+      "id": 789821639,
+      "name": "SHA256SUMS",
+      "size": 974,
+      "state": "uploaded",
+      "digest": "sha256:ab3dedf92ebc9c4762f51c29979f81c85f4da2b21182fea5a2eb5d95b7349b30",
+      "browser_download_url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.5/SHA256SUMS"
+    }
+  ],
+  "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+  "transportSha256": "ede8d88538b6b35cd55154cb670b5d34729fec87f7777b7ce1a15da36eef1032",
+  "transportBytes": 2413839138,
+  "publisher": "tools/releases/publish_proton_sources.py on d69 (gh 2.97.0; GODEBUG=http2client=0)",
+  "publicReadback": {
+    "tool": "tools/releases/proton_sources.py --catalog tools/proton/notices/SOURCES.json (downloads the catalog URLs)",
+    "partsVerified": true,
+    "combinedVerified": true,
+    "innerPacketsVerified": 6,
+    "bunPacketSha256": "96fd79001c1cf6f54738edac76ed8694053b750c113b56e0c3a89660e42104f1",
+    "bunPacketChecksumIndexVerified": true,
+    "offlineAssembly": "assemble_offline.py from the downloaded Bun 1.4.5 packet in a private network namespace; assembly.json equals the packet verified-assembly.json"
+  },
+  "unchangedPacketsFrom": "proton-sources-0.23.0-crypto2.2.0-bun1.4.4",
+  "earlierAttempt": {
+    "gh246LackedSlurp": true,
+    "tagOrReleaseCreated": false
+  }
+}

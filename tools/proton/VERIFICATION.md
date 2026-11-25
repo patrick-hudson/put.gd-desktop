@@ -34,6 +34,24 @@ assembly succeeds, and Bun 1.4.5's own `scripts/build/fetch-cli.ts` reports all
 supplement adds Bun 1.4.5's source and the three changed archives (3,649
 records, one new text).
 
+The transport is published as the prerelease
+[proton-sources-0.23.0-crypto2.2.0-bun1.4.5](https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.5),
+never Latest, by `tools/releases/publish_proton_sources.py`. Downloaded again
+through its public URLs, both parts, the combined archive (SHA-256
+`ede8d885…1032`) and all six packets verify, and the Bun packet assembles offline
+from those bytes. The receipt is
+[native_relink/evidence/source-publication-bun145.json](native_relink/evidence/source-publication-bun145.json).
+
+Under d69's Proton lock, the helper inspected the account, created the isolated
+folder `putgd-lab-d69-2005-20261125T030531Z`, uploaded one synthetic PNG, and
+created, inspected, revoked and re-inspected its link (shared, then private).
+The lab profile's existing check passed before and after. No session material or
+link was read or kept; the folder and its file stay, as Proton removal is not
+supported. On d69, `audit_assets.py --proton-ci` passes for the seven CI
+installers of `617cb0c8` (Ubuntu 24.04/26.04, Debian 13, Fedora 44/45, Arch and
+AppImage): each helper is `7fc568ce…` and reports Bun 1.4.5, and official Bun
+advisories for 1.4.5 are empty.
+
 The native modification/relink and compiled-helper source-selection proofs and
 the desktop/resource acceptance (P6) describe the Bun 1.4.4 helper `34dda9fa8550`;
 they are open gates in notices/SOURCES.json for this helper.
