@@ -2003,7 +2003,7 @@ void ReviewWindow::selectEdit(const QString& kind, const QString& id) {
 QList<QPair<QString, QString>> ReviewWindow::editsInOrder() const {
     struct Item { qint64 start; QString kind, id; };
     QList<Item> items;
-    if (edit_.trimStart > 0 || (edit_.trimEnd && *edit_.trimEnd < options_.durationUs)) items.append({edit_.trimStart, QStringLiteral("trim"), {}});
+    if (edit_.trimStart > 0 || (edit_.trimEnd && *edit_.trimEnd < options_.durationUs)) items.append(Item{edit_.trimStart, QStringLiteral("trim"), {}});
     for (const auto& cut : edit_.cuts) items.append({cut.start, QStringLiteral("cut"), cut.id});
     for (const auto& mask : edit_.masks) items.append({mask.start, QStringLiteral("cover"), mask.id});
     std::stable_sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.start < b.start; });
