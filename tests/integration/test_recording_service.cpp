@@ -360,7 +360,7 @@ private slots:
   auto mp4=h.rec("inspect",{{"id",id}}).result["config"].toObject();mp4["format"]="mp4";mp4["codec"]="h264";
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",mp4}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
-  QVERIFY(h.backend->lastControlParams["error"].toString().contains("format or sound changed"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("ormat or audio changed"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
   QCOMPARE(h.backend->exports,0);
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",h.rec("inspect",{{"id",id}}).result["config"]}});
   PUTGD_TRY_COMPARE(h.backend->exports,1);

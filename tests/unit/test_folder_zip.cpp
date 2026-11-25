@@ -265,7 +265,7 @@ private slots:
   QCOMPARE(r.error.code,QString("disk_space_insufficient"));QCOMPARE(r.error.details["requiredBytes"].toInteger(),plan.peakBytes+mib);
   // The archive's real size counts toward the waiting-uploads limit like any artifact.
   limits=ResourceLimits{};limits.pendingArtifactBytes=mib+1024;r=store.acquire(id(),p,limits);
-  QCOMPARE(r.error.code,QString("input_excessive"));QVERIFY(r.error.message.contains("Waiting uploads"));QCOMPARE(r.error.details["itemIndex"].toInt(),1);
+  QCOMPARE(r.error.code,QString("input_excessive"));QVERIFY(r.error.message.contains("Space for queued files"));QCOMPARE(r.error.details["itemIndex"].toInt(),1);
   limits.pendingArtifactBytes=2*mib;r=store.acquire(id(),p,limits);QVERIFY2(!r.error,qPrintable(r.error.message));
   QCOMPARE(entriesOf(d.filePath("spool")).size(),1);
  }
