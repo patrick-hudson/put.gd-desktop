@@ -398,7 +398,7 @@ QString incompleteReply(int status, const QByteArray& verb, const QList<QPair<QB
         }
     }
     if (declared < 0 || received >= declared) return {};
-    return QStringLiteral("it ended after %1 of %2").arg(ByteSize::fileSummary(received), ByteSize::fileSummary(declared));
+    return QStringLiteral("it ended after %1 KB of %2 KB").arg(ByteSize::exact(received, 1024), ByteSize::exact(declared, 1024));
 }
 QUrl requestOrigin(const QJsonObject& settings) {
     const auto text = settings["requestUrl"].toString();

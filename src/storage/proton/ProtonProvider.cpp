@@ -380,19 +380,25 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
  // a share change may have changed the link, and the other requests change nothing in Proton Drive.
  const bool sharing=method=="share"&&params["options"].toObject()["action"].toString()!="inspect";
  const QString deadlineAdvice=method=="connect"?QString():QStringLiteral(", or raise Request deadline in Advanced link settings");
+ // What may have changed already, said after the event that left the result unconfirmed.
+ const QString effect=method=="upload"?QStringLiteral(", so the file may already be in Proton Drive. Check there before retrying")
+  :sharing?QStringLiteral(", so the share link may already have changed in Proton Drive. Check there before retrying")
+  :method=="createFolder"?QStringLiteral(", so the folder may already exist in Proton Drive. Select Refresh folders before trying again")
+  :method=="storeSharePassword"?QStringLiteral(", so the link password may not be saved in your keychain. Enter it again")
+  :QStringLiteral(". Try again");
  while(process.running()){
   process.waitForReadable(100);consume();if(error){process.kill();break;}
   // A helper that answers in turn has answered, and waits for its next request.
   if(helper.lines&&gotResult)break;
-  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown",method=="upload"?QStringLiteral("Upload was cancelled after it was sent, so the file may already be in Proton Drive. Check there before retrying."):sharing?QStringLiteral("Share link change was cancelled after it was sent, so the link may already have changed in Proton Drive. Check there before retrying."):QStringLiteral("Request was cancelled after it was sent."),{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
-  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",(method=="upload"?QString("Proton Drive didn't finish within the %1-second Request deadline, so the file may already be in Proton Drive. Check there before retrying"):sharing?QString("Proton Drive didn't finish within the %1-second Request deadline, so the share link may already have changed. Check Proton Drive before retrying"):QString("Proton Drive didn't answer within %1 seconds. Try again")).arg(timeout/1000.0)+deadlineAdvice+".",{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
+  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown",(method=="upload"?QStringLiteral("Upload was cancelled after it was sent"):sharing?QStringLiteral("Share link change was cancelled after it was sent"):QStringLiteral("Request was cancelled after it was sent"))+(method=="upload"||sharing||method=="createFolder"||method=="storeSharePassword"?effect:QString())+".",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
+  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",(method=="upload"||sharing||method=="createFolder"?QString("Proton Drive didn't finish within the %1-second Request deadline"):method=="storeSharePassword"?QString("Saving the link password didn't finish within %1 seconds"):QString("Proton Drive didn't answer within %1 seconds")).arg(timeout/1000.0)+effect+(method=="storeSharePassword"?QString():deadlineAdvice)+".",{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
  const bool waiting=helper.lines&&!error&&gotResult&&process.running();
  if(!waiting){process.waitForFinished(5000);consume();}
  if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","The Proton helper returned an incomplete reply. Check Proton Drive before retrying.",{}};
  pending.fill('\0');pending.clear();
  if(error){if(process.running()){process.kill();process.waitForFinished(5000);}end();return {};}
- if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown",method=="upload"?QStringLiteral("The Proton helper exited without confirming the result, so the file may already be in Proton Drive. Check there before retrying."):sharing?QStringLiteral("The Proton helper exited without confirming the result, so the share link may already have changed in Proton Drive. Check there before retrying."):QStringLiteral("The Proton helper exited without confirming the result. Try again."),{}};return {};}
+ if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown",QStringLiteral("The Proton helper exited without confirming the result")+effect+".",{}};return {};}
  if(!final["ok"].toBool()||!final["result"].toObject()["error"].toObject().isEmpty())end();
  if(!final["ok"].toBool()){
   error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton Drive request failed.",{}};
