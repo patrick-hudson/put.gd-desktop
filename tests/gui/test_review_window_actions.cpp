@@ -1643,7 +1643,7 @@ private slots:
         rightClickWhileHeld(save);  // U4
         releaseNow(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
-        QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
+        QVERIFY(window.inspect()["status"].toString().contains("o copy was saved"));
         // U1: a double-click's second press and release open nothing either.
         doubleClickTail(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());

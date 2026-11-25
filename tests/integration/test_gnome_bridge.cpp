@@ -376,11 +376,11 @@ private slots:
   const auto before=state()["acquires"].toInt();
   source.setRegionScreenshotFirst(true);PayloadResult frozen;bool frozenDone=false;
   source.acquire("region",{},[&](PayloadResult value){frozen=std::move(value);frozenDone=true;});PUTGD_TRY_VERIFY(frozenDone);
-  QCOMPARE(frozen.error.code,QString("helper_outdated"));QVERIFY2(frozen.error.message.contains("log out and back in"),qPrintable(frozen.error.message));
+  QCOMPARE(frozen.error.code,QString("helper_outdated"));QVERIFY2(frozen.error.message.contains("Log out and back in"),qPrintable(frozen.error.message));
   QCOMPARE(state()["acquires"].toInt(),before);
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
-  QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
+  QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("Log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
   // Copy text (#1428) selects a region too. An extension loaded before it must give
   // the same step; capturing with selector code that predates the action is not an answer.
   PayloadResult text;bool textDone=false;source.acquire("text",{},[&](PayloadResult value){text=std::move(value);textDone=true;});PUTGD_TRY_VERIFY(textDone);
