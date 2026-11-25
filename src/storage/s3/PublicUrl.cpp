@@ -60,7 +60,7 @@ QString s3RegionProblem(const QString& region) {
     const auto alnum = [](QChar c) { return c.unicode() < 128 && c.isLetterOrNumber(); };
     bool valid = region.size() <= 63 && alnum(region.front()) && alnum(region.back());
     for (const auto c : region) valid = valid && (alnum(c) || c == '-');
-    if (!valid) return QStringLiteral("Region takes a region code such as us-east-1: letters, digits and hyphens, without spaces. For Cloudflare R2, enter auto, not the location the Cloudflare dashboard shows.");
+    if (!valid) return QStringLiteral("Region must be a region code such as us-east-1 (letters, digits, and hyphens, with no spaces). For Cloudflare R2, enter auto, not the location shown in the Cloudflare dashboard.");
     // The SDK reads "fips-" and "-fips" as a request for AWS FIPS endpoints, which it refuses
     // next to the endpoint put.gd always sets.
     // Case-sensitive, as the SDK checks it: "FIPS-lab" is an ordinary label to it.
@@ -90,13 +90,13 @@ QString s3EndpointProblem(const QString& endpoint, bool quoteTyped) {
     const auto path = url.path(QUrl::FullyEncoded);
     if (path.isEmpty() || path == QLatin1String("/")) return {};
     if (!quoteTyped)
-        return QStringLiteral("Endpoint takes only the service address. Remove the path after the host from Endpoint and put the bucket name in Bucket; a folder goes in Folder in bucket.");
+        return QStringLiteral("Endpoint takes only the service address. Remove the path after the hostname, put the bucket name in Bucket, and put any subfolder in Folder in bucket.");
     // The text after the host, exactly as the field shows it.
     const auto authority = endpoint.indexOf(QLatin1String("://"));
     const auto start = authority < 0 ? -1 : endpoint.indexOf('/', authority + 3);
     auto typed = start < 0 ? path : endpoint.mid(start);
     // Only the path: a pasted presigned URL's query or a fragment isn't repeated on screen.
     if (const auto end = typed.indexOf(QRegularExpression(QStringLiteral("[?#]"))); end >= 0) typed.truncate(end);
-    return QStringLiteral("Endpoint takes only the service address. Remove \"%1\" from the end of Endpoint and put the bucket name in Bucket; a folder goes in Folder in bucket.").arg(typed);
+    return QStringLiteral("Endpoint takes only the service address. Remove \"%1\" from the end of Endpoint, put the bucket name in Bucket, and put any subfolder in Folder in bucket.").arg(typed);
 }
 }

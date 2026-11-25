@@ -323,7 +323,7 @@ struct Renderer {
         }
         if (name == "input") {
             if (!request || !request->hasInput) {
-                if (problem && problem->isEmpty()) *problem = "This uploader sends text ({input}); the file being uploaded is not text.";
+                if (problem && problem->isEmpty()) *problem = "This uploader sends text ({input}), so it can't upload a non-text file.";
                 return {};
             }
             return encodeValue(request->input, request->encode);
@@ -384,7 +384,7 @@ QString checkNodes(const Template& nodes, TemplateUse use, bool nested = false) 
     for (const auto& node : nodes) {
         if (!node.call) continue;
         const auto& name = node.text;
-        if (interactive.contains(name)) return QString("The placeholder {%1} asks the user a question while uploading; put.gd does not support it.").arg(name);
+        if (interactive.contains(name)) return QString("The placeholder {%1} requires interactive input while uploading, which put.gd doesn't support.").arg(name);
         if (!(use == TemplateUse::Request ? requestFunctions : responseFunctions).contains(name)) {
             if (use == TemplateUse::Request && responseFunctions.contains(name))
                 return QString("The placeholder {%1} reads the reply and cannot be used in the request.").arg(name);
@@ -400,7 +400,7 @@ QString checkNodes(const Template& nodes, TemplateUse use, bool nested = false) 
             if (!plain || count != 1 || key.trimmed().isEmpty()) return QStringLiteral("{secret} takes the name of one stored value, such as {secret:arguments/token}.");
             // A value read from the reply is recorded with its stored values still named, not
             // filled in; a name inside another placeholder would have nothing to stand for.
-            if (nested && use == TemplateUse::Response) return QStringLiteral("{secret:…} stands on its own here; it cannot be used inside another placeholder.");
+            if (nested && use == TemplateUse::Response) return QStringLiteral("{secret:…} must stand on its own here and can't be nested inside another placeholder.");
             continue;
         }
         if (const int most = maximumParameters(name); count > most)

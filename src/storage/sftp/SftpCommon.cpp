@@ -50,12 +50,12 @@ bool hostPort(const QString& text, Address& address, QString* error, bool allowP
         static const auto digits = whole("[0-9]+");
         if (digits.match(rest).hasMatch()) {
             address.port = rest.size() > 5 ? 0 : rest.toInt();
-            if (address.port < 1 || address.port > 65535) return fail(QStringLiteral("The port is a number from 1 to 65535."));
+            if (address.port < 1 || address.port > 65535) return fail(QStringLiteral("Port must be a number from 1 to 65535."));
         } else if (allowPath) {
             // user@host:path, as scp and sftp take it: the path follows the colon.
             address.folder = rest;
             address.hasFolder = true;
-        } else return fail(QStringLiteral("The port is a number from 1 to 65535."));
+        } else return fail(QStringLiteral("Port must be a number from 1 to 65535."));
     }
     if (address.host.isEmpty()) return fail(QStringLiteral("Enter the server's host name or address."));
     if (!hostValid(address.host))
@@ -64,8 +64,8 @@ bool hostPort(const QString& text, Address& address, QString* error, bool allowP
     return true;
 }
 bool userValid(const QString& user, QString* error) {
-    if (user.contains(':')) { if (error) *error = QStringLiteral("put.gd doesn't take a password in the address. Enter it in Password, which keeps it in the keychain."); return false; }
-    if (!userPattern().match(user).hasMatch()) { if (error) *error = QStringLiteral("Enter the user name on the server: letters, digits, dots, hyphens or underscores."); return false; }
+    if (user.contains(':')) { if (error) *error = QStringLiteral("Don't include a password in Server. Enter it in Password instead."); return false; }
+    if (!userPattern().match(user).hasMatch()) { if (error) *error = QStringLiteral("User may only contain letters, digits, dots, hyphens, $, or underscores."); return false; }
     return true;
 }
 QString urlProblem(const QJsonValue& value) {
@@ -87,8 +87,8 @@ QJsonObject defaults() {
 std::optional<Address> parseServer(const QString& raw, QString* error) {
     const auto fail = [error](const QString& why) -> std::optional<Address> { if (error) *error = why; return std::nullopt; };
     const auto text = raw.trimmed();
-    if (text.isEmpty()) return fail(QStringLiteral("Enter the server: a host name, host:port, or a Host alias from ~/.ssh/config."));
-    if (!controlFree(text) || text.contains(' ') || text.contains('\t')) return fail(QStringLiteral("The server has a space or control character in it."));
+    if (text.isEmpty()) return fail(QStringLiteral("Enter a Server hostname, host:port, or Host alias from ~/.ssh/config."));
+    if (!controlFree(text) || text.contains(' ') || text.contains('\t')) return fail(QStringLiteral("Server can't contain spaces or control characters."));
     if (text.size() > 2048) return fail(QStringLiteral("The server address is too long."));
     Address address;
     QString rest = text;
@@ -99,7 +99,7 @@ std::optional<Address> parseServer(const QString& raw, QString* error) {
     if (url) {
         const auto slash = rest.indexOf('/');
         if (slash >= 0) { path = rest.mid(slash); rest = rest.left(slash); }
-        if (rest.contains('?') || rest.contains('#') || path.contains('?') || path.contains('#')) return fail(QStringLiteral("Paste the address without a query or fragment."));
+        if (rest.contains('?') || rest.contains('#') || path.contains('?') || path.contains('#')) return fail(QStringLiteral("Enter the address without a query or fragment."));
     }
     const auto at = rest.lastIndexOf('@');
     if (at >= 0) {
@@ -164,9 +164,9 @@ QString serverText(const QString& host, int port) {
 QString problem(const QJsonObject& settings, const QString& field, bool forUse) {
     const auto value = settings[field];
     if (field == QLatin1String("server")) {
-        if (!value.isString()) return QStringLiteral("Enter the server: a host name, host:port, or a Host alias from ~/.ssh/config.");
+        if (!value.isString()) return QStringLiteral("Enter a Server hostname, host:port, or Host alias from ~/.ssh/config.");
         if (value.toString().isEmpty())
-            return forUse ? QStringLiteral("Enter the server to finish setting up this destination: a host name, host:port, or a Host alias from ~/.ssh/config.") : QString();
+            return forUse ? QStringLiteral("Enter a Server hostname, host:port, or Host alias from ~/.ssh/config to finish setting up this destination.") : QString();
         QString why;
         const auto address = parseServer(value.toString(), &why);
         if (!address) return why;
@@ -178,8 +178,8 @@ QString problem(const QJsonObject& settings, const QString& field, bool forUse) 
         if (!value.toString().isEmpty() && !userValid(value.toString(), &why)) return why;
     } else if (field == QLatin1String("folder")) {
         const auto folder = value.toString();
-        if (!value.isString() || !controlFree(folder)) return QStringLiteral("The folder has a control character in it.");
-        if (folder.toUtf8().size() > 4096) return QStringLiteral("The folder path is at most 4096 bytes.");
+        if (!value.isString() || !controlFree(folder)) return QStringLiteral("Folder on server can't contain control characters.");
+        if (folder.toUtf8().size() > 4096) return QStringLiteral("Folder on server must be at most 4 KB.");
         if (folder.startsWith('~') && folder != QLatin1String("~") && !folder.startsWith(QLatin1String("~/")))
             return QStringLiteral("Write another user's folder as its full path, such as /home/alice/shots.");
     } else if (field == QLatin1String("publicUrlBase")) {
@@ -189,8 +189,8 @@ QString problem(const QJsonObject& settings, const QString& field, bool forUse) 
         if (value.isUndefined() || value.isNull()) return {};
         const auto path = value.toString();
         if (!value.isString() || path.isEmpty() || !QFileInfo(path).isAbsolute() || !controlFree(path))
-            return QStringLiteral("Choose the private key file, such as /home/alice/keys/id_ed25519, or leave SSH key empty.");
-        if (path.toUtf8().size() > 4096) return QStringLiteral("The key file path is at most 4096 bytes.");
+            return QStringLiteral("Select a private key file (such as /home/alice/keys/id_ed25519), or leave SSH key empty.");
+        if (path.toUtf8().size() > 4096) return QStringLiteral("The SSH key path must be at most 4 KB.");
         // ssh expands % tokens and ${VARIABLES} in a key path, so it would open another file.
         if (path.contains('%') || path.contains(QLatin1String("${")))
             return QStringLiteral("ssh reads % and ${ in a key path as its own placeholders. Rename the key or its folder, or name the key in ~/.ssh/config.");
@@ -235,9 +235,9 @@ Error keyFileProblem(const QString& path, QString* privateKey) {
     const auto encoded = QFile::encodeName(path);
     struct stat info {};
     if (::stat(encoded.constData(), &info) != 0)
-        return {"ssh_key_missing", "The SSH key file " + name + " isn't there. Choose the private key file again, or leave SSH key empty.", {{"field", "keyFile"}}};
+        return {"ssh_key_missing", "The SSH key file " + name + " doesn't exist. Select the private key file again, or leave SSH key empty.", {{"field", "keyFile"}}};
     if (!S_ISREG(info.st_mode) || ::access(encoded.constData(), R_OK) != 0)
-        return {"ssh_key_unreadable", "put.gd can't read the SSH key file " + name + ". Choose a private key file of yours.", {{"field", "keyFile"}}};
+        return {"ssh_key_unreadable", "Can't read the SSH key file " + name + ". Select a readable private key file.", {{"field", "keyFile"}}};
     QFile file(path);
     const auto head = file.open(QIODevice::ReadOnly) ? file.read(64) : QByteArray();
     // A public key: a .pub file, or one line such as "ssh-ed25519 AAAA…" whatever its name.
@@ -247,12 +247,12 @@ Error keyFileProblem(const QString& path, QString* privateKey) {
             const auto candidate = path.chopped(4);
             if (privateKey && QFileInfo(candidate).isFile()) *privateKey = candidate;
             if (QFileInfo(candidate).isFile())
-                return {"ssh_key_public", name + " is the public half of the key. Choose " + QFileInfo(candidate).fileName() + ", the private key next to it.", {{"field", "keyFile"}}};
+                return {"ssh_key_public", name + " is a public key. Select " + QFileInfo(candidate).fileName() + ", the private key next to it.", {{"field", "keyFile"}}};
         }
-        return {"ssh_key_public", name + " is a public key. Choose the private key file, usually the same name without .pub.", {{"field", "keyFile"}}};
+        return {"ssh_key_public", name + " is a public key. Select the private key file instead (usually the same name without .pub).", {{"field", "keyFile"}}};
     }
     if (head.startsWith("PuTTY-User-Key-File"))
-        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it to OpenSSH's format with PuTTYgen (Conversions → Export OpenSSH key, or puttygen with -O private-openssh), then choose the converted file.", {{"field", "keyFile"}}};
+        return {"ssh_key_putty", name + " is a PuTTY key, which OpenSSH can't read. Convert it to OpenSSH format with PuTTYgen (Conversions → Export OpenSSH key, or puttygen -O private-openssh), then select the converted file.", {{"field", "keyFile"}}};
     // ssh refuses a private key of yours that anyone else may read (sshkey_perm_ok).
     if (info.st_uid == ::getuid() && (info.st_mode & 077) != 0)
         return {"ssh_key_permissions", "ssh refuses " + name + " because other users can read it. Make it private (chmod 600 on the file), then test again.",

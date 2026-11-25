@@ -43,7 +43,7 @@ constexpr qint64 maximumLine = 256 * 1024;
 worker::Stdio stdio{maximumLine, "b2", "upload"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
-Error stoppedError() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
+Error stoppedError() { return {"cancelled", "Cancelled. Requests already sent to Backblaze B2 may still have taken effect.", {}}; }
 // A part lane's own thread (#1792): Qt Network objects belong to one thread, so each lane
 // sends through its own manager (one connection, as each B2 upload part URL expects), and
 // another lane's error cuts its request in flight. Unset on the main thread.
@@ -215,7 +215,7 @@ public:
         session.capabilities.clear();
         for (const auto& c : session.allowed["capabilities"].toArray()) session.capabilities << c.toString();
         if (session.apiUrl.isEmpty() || session.downloadUrl.isEmpty() || session.token.isEmpty())
-            return {"b2_protocol", "Backblaze B2 returned an incomplete authorization", {{"requestStage", "authorize"}}};
+            return {"b2_protocol", "Backblaze B2 returned an incomplete authorization reply. Try again.", {{"requestStage", "authorize"}}};
         return {};
     }
     // The bucket's ID, from the key's own restriction when it names this bucket.
@@ -237,7 +237,7 @@ public:
             }
         } else if (session.bucketId.isEmpty()) return failure(r, "bucket");
         if (session.bucketId.isEmpty())
-            return {"b2_bucket_not_found", "Backblaze B2 could not find bucket " + name + ". Check the bucket name; it must already exist.", {{"requestStage", "bucket"}}};
+            return {"b2_bucket_not_found", "Backblaze B2 couldn't find bucket " + name + ". Check the Bucket name and make sure the bucket exists.", {{"requestStage", "bucket"}}};
         return {};
     }
     // Definite B2 refusals carry the stage, HTTP status and an allowlisted B2 code.
@@ -247,20 +247,20 @@ public:
                                        "no_such_file", "file_not_present", "not_found", "too_many_requests", "service_unavailable",
                                        "request_timeout", "access_denied", "no_payment_history", "file_state_none", "file_state_unknown"};
         QJsonObject details{{"requestStage", stage}, {"httpStatus", r.status}, {"serviceCode", known.contains(r.code()) ? r.code() : QString("unclassified")}};
-        if (r.aborted && cancelled.load()) return {"cancelled", "Cancellation requested; sent requests may still have taken effect", details};
+        if (r.aborted && cancelled.load()) return {"cancelled", "Cancelled. Requests already sent to Backblaze B2 may still have taken effect.", details};
         if (r.transport) {
             details["transport"] = r.detail;
-            return {"b2_transport_unknown", "Backblaze B2 could not be reached reliably (" + r.detail + "). Check the network; any uncertain upload or cleanup stays recorded.", details};
+            return {"b2_transport_unknown", "Couldn't reach Backblaze B2 (" + r.detail + "). Check your network and try again. Any unconfirmed upload or deletion stays in History.", details};
         }
         const auto code = r.code();
         if (stage == "authorize" && r.status == 401)
-            return {"b2_authentication_failed", "Backblaze B2 did not accept the application key ID and key. Check both, and that the key is still active; then choose Save to keychain or Use for this session.", details};
+            return {"b2_authentication_failed", "Backblaze B2 rejected the Application key ID or Application key. Check that both are right and active, then select Save to keychain or Use for this session.", details};
         if (r.status == 401 && code == "unauthorized")
             return {"b2_permission_denied", "The application key lacks a capability this step needs (" + stage + "). Give the key listBuckets, listFiles, readFiles, writeFiles and deleteFiles, plus shareFiles for authorized links.", details};
         if (r.status == 403 || code.endsWith("cap_exceeded"))
-            return {"b2_cap_exceeded", "Backblaze B2 refused the request because an account cap or billing limit was reached. Raise the cap in the B2 account, then retry.", details};
+            return {"b2_cap_exceeded", "Backblaze B2 refused the request because an account cap or billing limit was reached. Raise the cap in your Backblaze B2 account, then try again.", details};
         if (r.status == 429) return {"b2_rate_limited", "Backblaze B2 is limiting requests. Wait before retrying.", details};
-        if (r.status >= 500) return {"b2_service_unavailable", "Backblaze B2 returned a server error. Retry after it recovers; any uncertain upload stays recorded.", details};
+        if (r.status >= 500) return {"b2_service_unavailable", "Backblaze B2 returned a server error. Try again later. Any unconfirmed upload stays in History.", details};
         if (code == "bad_bucket_id") return {"b2_bucket_not_found", "Backblaze B2 no longer has this bucket.", details};
         return {"b2_request_failed", QString("Backblaze B2 refused the request (HTTP %1, %2).").arg(r.status).arg(known.contains(code) ? code : QString("unclassified")), details};
     }
@@ -273,7 +273,7 @@ public:
         for (const auto& value : r.json["files"].toArray())
             if (value.toObject()["fileName"].toString() == name) out.append(value);
         if (out.size() >= 100 && r.json["nextFileName"].toString() == name) {
-            error = {"b2_versions_unbounded", "This file name has more than 100 versions in B2; choose another folder or name.", {{"requestStage", "list_versions"}}};
+            error = {"b2_versions_unbounded", "This file name has more than 100 versions in Backblaze B2. Use a different Folder in bucket or file name.", {{"requestStage", "list_versions"}}};
             return std::nullopt;
         }
         return out;
@@ -358,7 +358,7 @@ private:
     void progress(const QString& phase, qint64 sent, qint64 total) { stdio.progress(phase, sent, total); }
     QJsonObject checkName(Error& error) {
         const auto name = fileName(settings(), request_["candidate"].toString());
-        if (name.toUtf8().size() > maximumNameBytes) { error = {"b2_name_invalid", "The file name is too long for Backblaze B2", {}}; return {}; }
+        if (name.toUtf8().size() > maximumNameBytes) { error = {"b2_name_invalid", "The file name is too long for Backblaze B2. Use a shorter name or Folder in bucket.", {}}; return {}; }
         const auto listed = client_.versions(name, error);
         if (!listed) return {{"status", "inconclusive"}};
         QJsonArray baseline;
@@ -418,16 +418,16 @@ private:
             if (file["fileId"].toString() == fileId) ours = true;
             else if (!baseline.contains(file["fileId"])) other = true;
         }
-        if (!ours) { error = {"b2_upload_unconfirmed", "Backblaze B2 does not list the uploaded file version", {{"requestStage", "verify"}}}; return "unknown"; }
+        if (!ours) { error = {"b2_upload_unconfirmed", "Backblaze B2 doesn't list the uploaded file version yet. Check the bucket or select Retry upload.", {{"requestStage", "verify"}}}; return "unknown"; }
         if (!other) return "uploaded";
         const auto r = client_.call("b2_delete_file_version", {{"fileName", name}, {"fileId", fileId}}, false);
         if (!r.ok()) {
             error = Client::failure(r, "collision_rollback");
-            error.message = "Another file with this name appeared in B2 during the upload, and put.gd could not remove its own copy. Check the bucket before retrying.";
+            error.message = "Another file with this name appeared in Backblaze B2 during the upload, and put.gd couldn't remove its own copy. Check the bucket before retrying.";
             error.details["fileId"] = fileId;
             return "unknown";
         }
-        error = {"precondition_changed", "Another file with this name appeared in Backblaze B2 during the upload; put.gd removed its own copy and will choose another name",
+        error = {"precondition_changed", "Another file with this name appeared in Backblaze B2 during the upload. put.gd removed its copy and will try another name.",
                  {{"requestStage", "verify"}, {"exposedMs", double(exposed.elapsed())}}};
         return "collision";
     }
@@ -438,13 +438,13 @@ private:
         const auto publication = request_["publicationId"].toString();
         const auto reference = request_["objectReference"].toObject();
         const auto name = fileName(settings(), request_["candidate"].toString());
-        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", "Backblaze B2 cannot replace a file conditionally; choose rename or skip for name collisions", {}}; return {}; }
+        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", "Backblaze B2 can't safely replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}; return {}; }
         if (reference["key"].toString() != name || !reference["baseline"].isArray()) { error = {"b2_name_check_required", "The name check for this upload is missing", {}}; return {}; }
         const auto baseline = reference["baseline"].toArray();
         progress("preparing", 0, artifact.bytes);
         const auto whole = hashFile(artifact.path);
-        if (!whole) { error = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "Retained artifact is unavailable", {}}; return {}; }
-        if (whole->bytes != artifact.bytes || QString::fromLatin1(whole->sha256) != artifact.sha256) { error = {"artifact_changed", "The retained artifact changed since it was saved", {}}; return {}; }
+        if (!whole) { error = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
+        if (whole->bytes != artifact.bytes || QString::fromLatin1(whole->sha256) != artifact.sha256) { error = {"artifact_changed", "The temporary file changed before it could be uploaded, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
         // A visible file under this name is never covered: the collision policy applies
         // before any bytes go up. Only a concurrent upload can still race us (verified below).
         {
@@ -454,7 +454,7 @@ private:
                 const auto file = value.toObject();
                 if (file["action"].toString() == "start") continue;
                 if (file["action"].toString() == "upload" && info(file, "putgd-publication") != publication) {
-                    error = {"precondition_changed", "A file with this name already exists in Backblaze B2; put.gd uploaded nothing and will choose another name", {{"requestStage", "before_upload"}}};
+                    error = {"precondition_changed", "A file with this name already exists in Backblaze B2. The upload didn't start, and put.gd will try another name.", {{"requestStage", "before_upload"}}};
                     return {{"status", "collision"}};
                 }
                 break;
@@ -490,7 +490,7 @@ private:
             const auto url = client_.call("b2_get_upload_url", {{"bucketId", client_.session.bucketId}}, true);
             if (!url.ok()) { error = Client::failure(url, "upload_url"); return {}; }
             OneShot body(artifact.path, 0, artifact.bytes);
-            if (!body.open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Retained artifact is unavailable", {}}; return {}; }
+            if (!body.open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
             auto headers = infoHeaders(publication, artifact.sha256);
             headers += {{"Authorization", url.json["authorizationToken"].toString().toUtf8()}, {"X-Bz-File-Name", encodeName(name).toUtf8()},
                         {"Content-Type", artifact.mime.isEmpty() ? QByteArray("b2/x-auto") : artifact.mime.toUtf8()},
@@ -502,7 +502,7 @@ private:
             // A success without a usable file ID (a cut-off reply, or an empty ID) stored a file this
             // reply doesn't name: unknown, never failed, so Retry reconciles before it sends (#1690, #1782).
             if (r.ok()) {
-                error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
+                error = {"b2_upload_unconfirmed", "Backblaze B2 accepted the upload without returning a file ID, so the file may already be stored. Select Retry upload to check before sending again.", {{"requestStage", "upload_file"}}};
                 uncertain = true;
                 return {};
             }
@@ -512,7 +512,7 @@ private:
                 // keeps nothing shorter than the length and SHA-1 it was sent (#1782). Cancel then
                 // ends the upload as failed, and a stall sends it again, with nothing to look up.
                 if (!synthetic_ && body.consumed() < artifact.bytes) {
-                    if (r.aborted && cancelled.load()) { error = {"cancelled", "Cancelled before Backblaze B2 received the whole file; nothing was uploaded", {}}; return {}; }
+                    if (r.aborted && cancelled.load()) { error = {"cancelled", "Cancelled before Backblaze B2 received the whole file. Nothing was stored.", {}}; return {}; }
                     error = Client::failure(r, "upload_file");
                     continue;
                 }
@@ -542,7 +542,7 @@ private:
     }
     // Large files: start (journaled before any part), parts with SHA-1, finish.
     QString uploadLarge(const Artifact& artifact, const QString& name, const QString& publication, qint64 part, Error& error, bool& uncertain) {
-        if (!validPlan(artifact.bytes, part)) { error = {"b2_plan_invalid", "The large-file part plan is outside Backblaze B2's limits", {}}; return {}; }
+        if (!validPlan(artifact.bytes, part)) { error = {"b2_plan_invalid", "This file exceeds Backblaze B2's large-file part limits, so the upload didn't start.", {}}; return {}; }
         auto journal = request_["resume"].toObject();
         QString fileId;
         QHash<int, QPair<qint64, QString>> stored;
@@ -608,7 +608,7 @@ private:
         const auto sendPart = [&](qint64 n, int lane, QString& uploadUrl, QString& uploadToken, Error& failed) -> bool {
             const qint64 offset = (n - 1) * part, length = qMin(part, artifact.bytes - offset);
             const auto hash = hashFile(artifact.path, offset, length, false);
-            if (!hash || hash->bytes != length) { failed = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "Retained artifact is unavailable", {}}; return false; }
+            if (!hash || hash->bytes != length) { failed = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "The temporary file for this upload is missing or unreadable. Capture or select the file again.", {}}; return false; }
             const auto sha1 = QString::fromLatin1(hash->sha1);
             lanes.sha1s[size_t(n - 1)] = sha1;
             if (stored.value(int(n)).first == length && stored.value(int(n)).second == sha1) { lanes.done += length; return true; }
@@ -637,7 +637,7 @@ private:
                     if (lanes.ended.load()) return false;
                 }
                 OneShot body(artifact.path, offset, length);
-                if (!body.open(QIODevice::ReadOnly)) { failed = {"artifact_invalid", "Retained artifact is unavailable", {}}; return false; }
+                if (!body.open(QIODevice::ReadOnly)) { failed = {"artifact_invalid", "The temporary file for this upload is missing or unreadable. Capture or select the file again.", {}}; return false; }
                 const auto r = client_.send("POST", QUrl(uploadUrl), {{"Authorization", uploadToken.toUtf8()}, {"X-Bz-Part-Number", QByteArray::number(n)},
                                                                       {"Content-Length", QByteArray::number(length)}, {"X-Bz-Content-Sha1", sha1.toUtf8()}}, {}, &body,
                                             [&](qint64 bytes) { lanes.sending[size_t(lane)] = bytes; });
@@ -675,7 +675,7 @@ private:
                 const bool sent = sendPart(n, lane, uploadUrl, uploadToken, failed);
                 lock.lock();
                 if (!sent && !lanes.ended.load()) {
-                    lanes.error = failed ? failed : Error{"b2_protocol", "A large-file part ended without a result", {{"partNumber", int(n)}}};
+                    lanes.error = failed ? failed : Error{"b2_protocol", "A large-file upload part failed without a server reply. Select Retry upload to try again.", {{"partNumber", int(n)}}};
                     lanes.ended = true;
                 }
             }
@@ -714,7 +714,7 @@ private:
                         lanes.busy[size_t(lane)] = false;
                         threads[size_t(lane)].reset();
                         if (lane == 0 && !lanes.error) {
-                            lanes.error = {"b2_protocol", "The large-file upload could not start sending parts", {}};
+                            lanes.error = {"b2_protocol", "Couldn't start uploading parts for this large file. Select Retry upload to try again.", {}};
                             lanes.ended = true;
                         }
                     }
@@ -730,7 +730,7 @@ private:
             if (thread) thread->wait();
         if (cancelled.load()) return abortLarge(fileId, stoppedError(), error);
         if (lanes.error) return abortLarge(fileId, lanes.error, error);
-        if (lanes.done.load() != artifact.bytes) return abortLarge(fileId, {"b2_protocol", "A large-file part ended without a result", {}}, error);
+        if (lanes.done.load() != artifact.bytes) return abortLarge(fileId, {"b2_protocol", "A large-file upload part failed without a server reply. Select Retry upload to try again.", {}}, error);
         progress("uploading", artifact.bytes, artifact.bytes);
         QJsonArray sha1s;
         for (const auto& sha1 : lanes.sha1s) sha1s.append(sha1);
@@ -839,10 +839,10 @@ private:
         QStringList needed{"listFiles", "readFiles", "writeFiles", "deleteFiles"};
         if (settings()["linkMode"].toString() == "authorized") needed << "shareFiles";
         for (const auto& capability : std::as_const(needed)) if (!client_.session.capabilities.contains(capability)) missing << capability;
-        if (!missing.isEmpty()) { error = {"b2_permission_denied", "The application key lacks: " + missing.join(", ") + ". Create a key with those capabilities for this bucket.", {{"requestStage", "capabilities"}}}; return {}; }
+        if (!missing.isEmpty()) { error = {"b2_permission_denied", "The application key is missing these capabilities: " + missing.join(", ") + ". Create a key with them for this bucket.", {{"requestStage", "capabilities"}}}; return {}; }
         QJsonObject out{{"bucketType", client_.session.bucketType}, {"linkMode", settings()["linkMode"]}};
         if (settings()["linkMode"].toString() == "public" && client_.session.bucketType == "allPrivate") {
-            error = {"b2_bucket_private", "The bucket is private, so public links would not open. Make the bucket public in B2 (it needs payment history on the account), or choose authorized links.", {{"requestStage", "bucket"}}};
+            error = {"b2_bucket_private", "This bucket is private, so public links won't open. Make the bucket public in Backblaze B2 (requires payment history), or select Private bucket: links that expire.", {{"requestStage", "bucket"}}};
             return out;
         }
         const auto synthetic = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -850,7 +850,7 @@ private:
         QTemporaryDir dir;
         const auto path = dir.filePath("synthetic.txt");
         QFile file(path);
-        if (!dir.isValid() || !file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Could not create the private synthetic file", {}}; return out; }
+        if (!dir.isValid() || !file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Couldn't create a temporary test file. Check free disk space and permissions in your temp folder.", {}}; return out; }
         file.close();
         Artifact artifact;
         artifact.id = "synthetic-" + synthetic;
@@ -861,7 +861,7 @@ private:
         artifact.sha256 = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
         request_["candidate"] = artifact.name;
         const auto checked = checkName(error);
-        if (error || checked["status"] != "absent") { if (!error) error = {"synthetic_collision", "Synthetic test file name is unavailable", {}}; return out; }
+        if (error || checked["status"] != "absent") { if (!error) error = {"synthetic_collision", "Couldn't reserve a temporary test file name. Try running Test upload and link again.", {}}; return out; }
         request_["artifact"] = artifact.toJson();
         request_["publicationId"] = synthetic;
         request_["condition"] = "absent";
@@ -914,7 +914,7 @@ private:
             const bool unclear = start.ok() ? fileId.isEmpty() : (start.transport || start.status >= 500 || start.status == 408 || start.status == 429);
             large["start"] = start.ok() && !unclear ? "ok" : unclear ? "unknown" : "failed";
             if (!start.ok()) largeError = Client::failure(start, "large_start");
-            else if (unclear) largeError = {"b2_large_unconfirmed", "Backblaze B2 started the large file without returning its file ID; it may remain unfinished", {{"requestStage", "large_start"}}};
+            else if (unclear) largeError = {"b2_large_unconfirmed", "Backblaze B2 started the test large file without returning a file ID, so an unfinished upload may remain in the bucket. Check the bucket for unfinished large files.", {{"requestStage", "large_start"}}};
             else {
                 large["fileId"] = fileId;
                 // The cancel is sent only once the file ID is on record (#1690): without it the result
@@ -928,9 +928,9 @@ private:
                     const bool confirmed = cancel.ok() && cancel.json["fileId"].toString() == fileId;
                     large["cancel"] = confirmed ? "cancelled" : "not_confirmed";
                     if (!confirmed && !largeError) {
-                        largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered the cancel without naming the test's large file.", {{"requestStage", "large_cancel"}}}
+                        largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered without naming the file.", {{"requestStage", "large_cancel"}}}
                                                  : Client::failure(cancel, "large_cancel");
-                        largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
+                        largeError.message = "Backblaze B2 didn't confirm cancelling the test large file " + largeName + ". Check the bucket for it. " + largeError.message;
                     }
                     if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
                 }
@@ -941,8 +941,8 @@ private:
         else if (error) {}
         else if (!out["publicReachable"].toBool()) {
             error = {"public_url_unreachable", settings()["linkMode"].toString() == "authorized"
-                ? "Uploads work, but the authorized link did not open. Check that the key has shareFiles and the link domain."
-                : "Uploads work, but the public link did not open. Make the bucket public in B2, or check the link domain.", {{"httpStatus", fetched.status}}};
+                ? "Uploads work, but the expiring link didn't open. Check that the key has shareFiles and check Link domain."
+                : "Uploads work, but the public link didn't open. Make the bucket public in Backblaze B2, or check Link domain.", {{"httpStatus", fetched.status}}};
         } else if (largeError) error = largeError;
         return out;
     }

@@ -11,9 +11,9 @@ constexpr bool s3SafeDeleteTransport = PUTGD_SDK_CURL_TRANSPORT;
 QString objectKey(const Destination& destination, const QString& candidate) {
     return s3ObjectKey(destination.settings, candidate);
 }
-Error accessError() { return {"credential_setup_required", "Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only.", {}}; }
-Error cancelled() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
-Error busy() { return {"provider_busy", "S3 work queue is full", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials for this destination are locked or missing. Unlock saved credentials, or enter them again in Destinations if they were for this session only.", {}}; }
+Error cancelled() { return {"cancelled", "Cancelled. Requests already sent to S3 may still have taken effect.", {}}; }
+Error busy() { return {"provider_busy", "Too many S3 requests are already waiting. Wait for current uploads to finish and try again.", {}}; }
 bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && token->load(); }
 // Callback exceptions must neither redeliver a reply nor strand queue admission.
 template<class... Args> std::function<void(Args...)> once(std::function<void(Args...)> callback) {
@@ -23,7 +23,7 @@ template<class... Args> std::function<void(Args...)> once(std::function<void(Arg
     };
 }
 Error unexpected() {
-    return {"s3_transport_unknown", "S3 work ended unexpectedly; reconcile its recorded target before retrying", {}};
+    return {"s3_transport_unknown", "The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.", {}};
 }
 
 }
@@ -106,7 +106,7 @@ struct S3Provider::State {
             try { lane = &select(); }
             catch (...) {
                 lock.unlock();
-                fail({"s3_module_unavailable", "S3 support could not start; retry or reinstall this build of put.gd", {}});
+                fail({"s3_module_unavailable", "Couldn't start S3 support. Try again, or reinstall put.gd if it keeps failing.", {}});
                 return;
             }
             ++lane->queued;
@@ -142,7 +142,7 @@ struct S3Provider::State {
             // Rare allocation failures may retain an idle driver until the next
             // accepted job or provider destruction, without losing admission.
             complete(*lane, false);
-            fail({"s3_module_unavailable", "S3 support could not start; retry or reinstall this build of put.gd", {}});
+            fail({"s3_module_unavailable", "Couldn't start S3 support. Try again, or reinstall put.gd if it keeps failing.", {}});
         }
     }
 };
@@ -177,7 +177,7 @@ QJsonObject S3Provider::diagnostics() const {
 ProviderCapabilities S3Provider::capabilities(const Destination& destination) const {
     const auto prefix = s3StoredKey(destination.settings["objectPrefix"].toString()).toUtf8().size();
     ProviderCapabilities result{true, true, s3SafeDeleteTransport, true, true, s3SafeDeleteTransport, true, int(qMax(1, 1024 - prefix - (prefix ? 1 : 0))),
-            "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes"};
+            "Deletes only the uploaded object or version if it hasn't changed. Browser or CDN caches may keep serving it."};
     // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
     result.maximumObjectBytes = s3MaximumObjectBytes;
     result.settlesUploads = true;
@@ -193,7 +193,7 @@ namespace {
 // before then still runs.
 Error settingsError(const QJsonObject& settings, bool current) {
     const QStringList fields{"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase", "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"};
-    auto bad = [] { return Error{"s3_settings_invalid", "Invalid S3 settings; use a supported endpoint, addressing, ACL, storage class and positive timeouts", {}}; };
+    auto bad = [] { return Error{"s3_settings_invalid", "Invalid S3 settings. Check Bucket, Endpoint, Addressing, Upload access request, Storage class, and Advanced connection settings.", {}}; };
     auto base = settings; base.remove("linkMode"); base.remove("linkValidityDays");
     if (base.keys().size() != fields.size()) return bad();
     if (settings.contains("linkMode") && !QStringList{"public", "presigned"}.contains(settings["linkMode"].toString())) return bad();

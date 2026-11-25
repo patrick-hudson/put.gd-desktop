@@ -367,7 +367,7 @@ private slots:
         unnamed.remove("Name");
         unnamed["RequestURL"] = "https://" + lower.toUpper() + ".example.test/upload";
         result = importSxcu(sxcu(unnamed));
-        QCOMPARE(result.error.message, QString("This file cannot be used: the import would keep a credential in RequestURL."));
+        QCOMPARE(result.error.message, QString("Can't import this file because it would store a credential in RequestURL."));
         QVERIFY(result.name.isEmpty());
     }
     // Sol round 3 of #1614: the Name is looked at whole and in any letter case.
@@ -433,7 +433,7 @@ private slots:
         QFETCH(QJsonObject, file);
         QFETCH(QString, field);
         const auto refused = importSxcu(sxcu(file));
-        QCOMPARE(refused.error.message, "This file cannot be used: the import would keep a credential in " + field + ".");
+        QCOMPARE(refused.error.message, "Can't import this file because it would store a credential in " + field + ".");
         QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty() && refused.name.isEmpty());
     }
     // A key the deletion URL shares with the request URL is stored for each, and a

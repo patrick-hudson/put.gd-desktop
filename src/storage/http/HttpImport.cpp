@@ -47,7 +47,7 @@ Error namedCredentials(const QJsonObject& profile, const QMap<QString, QString>&
         // The Data body is JSON or XML with braces of its own; every other value may hold placeholders.
         if (!data)
             if (const auto problem = templateProblem(it.value(), TemplateUse::Request); !problem.isEmpty())
-                return {"credential_invalid", "The " + secretLabel(it.key()) + " cannot be used: " + problem, {}};
+                return {"credential_invalid", "Can't use the " + secretLabel(it.key()) + ": " + problem, {}};
     }
     return {};
 }
@@ -71,13 +71,13 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     }
     const auto metadata = settings.metadata();
     if (params["expectedRevision"].toString() != settings.revision() || params["expectedRevision"].toString() != metadata["observedRevision"].toString()) {
-        reply({"config_conflict", "Configuration changed; read it again before importing", {{"observedRevision", metadata["observedRevision"]}}}, {});
+        reply({"config_conflict", "Settings changed elsewhere. Reload settings and try importing again.", {{"observedRevision", metadata["observedRevision"]}}}, {});
         return;
     }
     const QFileInfo info(path);
     QFile file(path);
     if (!info.isFile() || info.size() > maximumSxcuBytes || !file.open(QIODevice::ReadOnly)) {
-        reply({"sxcu_unreadable", "The .sxcu file could not be read, or is too large to be one", {}}, {});
+        reply({"sxcu_unreadable", "Couldn't read the .sxcu file, or it's too large to be a ShareX custom uploader.", {}}, {});
         return;
     }
     auto bytes = file.read(maximumSxcuBytes + 1);
@@ -95,7 +95,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
 
     auto document = settings.document();
     auto profiles = document["profiles"].toArray();
-    if (profiles.size() >= 32) { reply({"config_invalid", "There are already 32 destinations; remove one first", {}}, {}); return; }
+    if (profiles.size() >= 32) { reply({"config_invalid", "You already have 32 destinations (the maximum). Remove one before importing another.", {}}, {}); return; }
     QStringList ids;
     for (const auto& value : std::as_const(profiles)) ids.append(value.toObject()["id"].toString());
     // Nothing to store means nothing to unlock later: no keychain entry is named.
@@ -133,7 +133,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     }
     auto label = params.contains("label") ? params["label"].toString().trimmed() : imported.name.isEmpty() ? QStringLiteral("Custom uploader") : imported.name;
     if (unsafe(label)) { label = QStringLiteral("Imported uploader"); replaced = true; }
-    if (replaced) imported.notes.append("The destination's ID or name would have repeated a credential; a fixed one is used instead.");
+    if (replaced) imported.notes.append("The destination's ID or name would have repeated a credential, so a default name was used instead.");
     const QJsonObject reference = keychain ? QJsonObject{{"mode", "keychain"}, {"reference", entry(id)}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
     profiles.append(QJsonObject{{"id", id}, {"label", label}, {"provider", providerId}, {"settings", imported.settings}, {"credentials", reference}});
     QJsonArray stored;
@@ -166,13 +166,13 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         }
         wait->storing = false;
         if (stored) { finish(stored, {}); return; }
-        if (!guarded) { finish({"operation_cancelled", "The application is stopping", {}}, {}); return; }
+        if (!guarded) { finish({"operation_cancelled", "put.gd is closing, so the import stopped.", {}}, {}); return; }
         guarded->patchAsync({{"profiles", profiles}}, expected, [guarded, store, result, finish, id, reference, storesValues, storeDeadline](Result saved) mutable {
             if (saved.error && saved.written) {
                 // The write went through and only reading the configuration back failed:
                 // the destination is in the file, and it needs what was stored for it.
                 auto failed = saved.error;
-                failed.message = "The destination was saved, but the configuration could not be read back: " + failed.message;
+                failed.message = "The destination was saved, but settings couldn't be read back: " + failed.message;
                 failed.details["destinationWritten"] = true;
                 finish(failed, {});
                 return;
@@ -189,7 +189,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
                     if (cleanup) failed.details["credentialsStored"] = true;
                     finish(failed, {});
                 };
-                QTimer::singleShot(storeDeadline, guarded.data(), [cleaned]() mutable { cleaned({"credential_store_timeout", "The secret store did not answer in time", {}}); });
+                QTimer::singleShot(storeDeadline, guarded.data(), [cleaned]() mutable { cleaned({"credential_store_timeout", "The system keychain didn't answer in time.", {}}); });
                 store->erase(id, reference, cleaned);
                 return;
             }
@@ -206,7 +206,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
             if (!wait->storing) return;
             wait->abandoned = true;
             unsettled().insert(name);
-            finish({"credential_store_timeout", "The system keychain did not answer in time, so nothing was imported. Unlock the keychain, or import with credentials for this session only, and try again.", {}}, {});
+            finish({"credential_store_timeout", "The system keychain didn't answer in time, so nothing was imported. Unlock the keychain, or select Use for this session, and try again.", {}}, {});
         });
     credentials.save(id, reference, std::move(value), addProfile);
 }

@@ -318,7 +318,7 @@ private slots:
     // included, contains $ & , : = or @. The rest of the message is exactly what the same
     // failure gives for a plain key.
     static QString nameCharactersHint() {
-        return QStringLiteral(" Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.");
+        return QStringLiteral(" Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @. If the file name or Folder in bucket has any of these characters, try renaming it.");
     }
     // Like Garage, the oracle checks the signature against the path as it arrives, and the SDK
     // sends these characters unencoded but signs them encoded: the name check is denied.

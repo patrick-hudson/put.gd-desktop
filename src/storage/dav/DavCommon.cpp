@@ -40,9 +40,9 @@ QString addressProblem(const QJsonValue& value, bool allowInsecure, bool require
     const QUrl url(text, QUrl::StrictMode);
     if (text.size() > 2048 || !url.isValid() || url.host().isEmpty() || !QStringList{"http", "https"}.contains(url.scheme()) || !url.userInfo().isEmpty() ||
         url.hasQuery() || url.hasFragment() || !controlFree(text))
-        return QStringLiteral("the address must be an https:// URL without a user name, query or fragment");
+        return QStringLiteral("enter an https:// URL without a username, query, or fragment.");
     if (!http::transportAllowed(url, allowInsecure))
-        return QStringLiteral("plain http:// addresses need Allow plain HTTP for this destination");
+        return QStringLiteral("plain http:// requires Allow plain HTTP for this destination.");
     return {};
 }
 }
@@ -99,11 +99,11 @@ Error validateSettings(const QString& provider, const QJsonObject& s) {
         if (const auto problem = addressProblem(s["server"], insecure, false); !problem.isEmpty()) return bad(problem);
         const auto server = s["server"].toString();
         if (!server.isEmpty() && (server.endsWith('/') || nextcloudServer(server) != server))
-            return bad("the server address is the Nextcloud install's base address, such as https://cloud.example.com");
+            return bad("Server must be the base address of your Nextcloud install, such as https://cloud.example.com.");
         field = "folder";
         const auto folder = s["folder"].toString();
         if (!s["folder"].isString() || folder.size() > maximumFolderChars || cleanFolder(folder) != folder || !controlFree(folder) || folder.contains('\\'))
-            return bad("the folder is a path in your files such as put.gd or Screenshots/put.gd, without a leading or trailing /");
+            return bad("Folder must be a relative path such as put.gd or Screenshots/put.gd, without a leading or trailing /.");
         field = "accountName";
         if (!s["accountName"].isString() || s["accountName"].toString().size() > 256 || !controlFree(s["accountName"].toString()))
             return bad("the account name is text of up to 256 characters");
@@ -111,9 +111,9 @@ Error validateSettings(const QString& provider, const QJsonObject& s) {
     }
     field = "address";
     if (const auto problem = addressProblem(s["address"], insecure, false); !problem.isEmpty()) return bad(problem);
-    if (!s["address"].toString().isEmpty() && !s["address"].toString().endsWith('/')) return bad("the folder address ends with /");
+    if (!s["address"].toString().isEmpty() && !s["address"].toString().endsWith('/')) return bad("Folder address must end with /.");
     field = "linkBase";
-    if (const auto problem = addressProblem(s["linkBase"], insecure, false); !problem.isEmpty()) return bad("link address: " + problem);
+    if (const auto problem = addressProblem(s["linkBase"], insecure, false); !problem.isEmpty()) { auto e = bad(problem); e.message = "Invalid " + label + " settings (Link address): " + problem; return e; }
     if (s["linkBase"].isString() && s["linkBase"].toString().isEmpty()) return bad("leave the link address out (null) instead of empty");
     return {};
 }

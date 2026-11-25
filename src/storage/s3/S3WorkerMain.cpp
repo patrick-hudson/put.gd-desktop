@@ -17,7 +17,7 @@
 #include <mutex>
 namespace putgd {
 namespace {
-Error uncertain(){return {"s3_transport_unknown","S3 work ended unexpectedly; reconcile its recorded target before retrying",{}};}
+Error uncertain(){return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.",{}};}
 struct Exchange {std::mutex mutex;std::condition_variable changed;bool complete=false;QJsonObject reply;};
 class Worker final {
 public:

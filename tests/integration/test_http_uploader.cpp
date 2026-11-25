@@ -194,7 +194,7 @@ private slots:
         for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
             QCOMPARE(worker::classifyStartFailure(helper, "pipe: " + strerror(code)), StartFailure::Temporary);
         const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "reinstall");
-        QVERIFY2(temporary.contains("just now; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        QVERIFY2(temporary.contains("right now. Try again.") && !temporary.contains("reinstall"), qPrintable(temporary));
         // Everything else: an executable whose interpreter is missing, and Qt's misleading
         // "No such file or directory" for a helper that exists.
         const auto missing = reason(noLoader);
@@ -202,11 +202,11 @@ private slots:
         QCOMPARE(worker::classifyStartFailure(noLoader, missing), StartFailure::Unclear);
         QCOMPARE(worker::classifyStartFailure(helper, "execve: " + strerror(ENOENT)), StartFailure::Unclear);
         const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "reinstall");
-        QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd."));
+        QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again, or reinstall put.gd if it keeps failing."));
         for (const auto& message : {temporary, unclear}) QVERIFY2(!message.contains(strerror(ENOENT)), qPrintable(message));
         // The S3 worker gives the same advice under its own name.
-        QCOMPARE(worker::startFailureMessage(StartFailure::Temporary, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start just now; try again."));
-        QCOMPARE(worker::startFailureMessage(StartFailure::Unclear, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start. Try again; if it keeps failing, reinstall put.gd."));
+        QCOMPARE(worker::startFailureMessage(StartFailure::Temporary, "reinstall", "Couldn't start S3 support"), QString("Couldn't start S3 support right now. Try again."));
+        QCOMPARE(worker::startFailureMessage(StartFailure::Unclear, "reinstall", "Couldn't start S3 support"), QString("Couldn't start S3 support. Try again, or reinstall put.gd if it keeps failing."));
     }
     // A diagnostics package says which fields a destination sets and where its request
     // goes: never a row value, a path someone typed a key into, or a reply template's text.

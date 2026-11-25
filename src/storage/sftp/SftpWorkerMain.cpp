@@ -94,14 +94,14 @@ public:
         std::unique_lock lock(mutex);
         const auto mine = [&] { return std::find_if(acks.begin(), acks.end(), [&](const QJsonObject& ack) { return qint64(ack["id"].toDouble()) == id; }); };
         if (!changed.wait_for(lock, std::chrono::minutes(5), [&] { return mine() != acks.end() || gone; }))
-            return {"sftp_checkpoint_timeout", "The resident did not save the journal in time", {}};
+            return {"sftp_checkpoint_timeout", "Couldn't save upload progress to History in time. Try again.", {}};
         const auto found = mine();
-        if (found == acks.end()) return {"cancelled", "The resident stopped this request", {}};
+        if (found == acks.end()) return {"cancelled", "Request was cancelled.", {}};
         const auto ack = *found;
         acks.erase(found);
         if (ack["ack"].toBool()) return {};
         const auto e = ack["error"].toObject();
-        return {e["code"].toString("checkpoint_failed"), e["message"].toString("The journal could not be saved"), {}};
+        return {e["code"].toString("checkpoint_failed"), e["message"].toString("Couldn't save progress to History."), {}};
     }
 };
 Stdio io;
@@ -236,7 +236,7 @@ private:
         }
         connection_.close();
         // A request cancelled while it waited starts nothing.
-        if (cancel_->load()) { error = {"cancelled", "Cancelled before it started", {}}; return false; }
+        if (cancel_->load()) { error = {"cancelled", "Cancelled before the upload started.", {}}; return false; }
         auto env = sshEnvironment();
         const auto program = sshProgram(env);
         if (program.isEmpty()) { error = sshMissing(); return false; }
@@ -310,9 +310,9 @@ private:
                     error.details["host"] = hostOfLine(line);
                     if (settings_["hostKeyFingerprint"].isString()) error.details["previousFingerprint"] = settings_["hostKeyFingerprint"];
                     error.message = error.code == QLatin1String("ssh_host_unknown_key")
-                                        ? "The server's host key is " + fingerprintOfLine(line) + ". Trust it only if it matches the key your server's admin gave you."
-                                        : "The server's host key changed since you trusted it in put.gd: it was " + settings_["hostKeyFingerprint"].toString("not recorded") + " and is now " +
-                                              fingerprintOfLine(line) + ". Trust the new key only if your server's admin confirms it was replaced.";
+                                        ? "The server's host key is " + fingerprintOfLine(line) + ". Select Trust key only if it matches the key your server's admin gave you."
+                                        : "The server's host key changed since you trusted it in put.gd (was " + settings_["hostKeyFingerprint"].toString("not recorded") + ", now " +
+                                              fingerprintOfLine(line) + "). Select Trust new key only if your server's admin confirms it was replaced.";
                 }
             }
             return false;
@@ -325,7 +325,7 @@ private:
             // What ssh accepted this server by: every line for it in the files it checked.
             const auto lookup = lookupHost(checked, resolved.token(), env);
             connection_.knownLines = lookup.lines;
-            connection_.knownError = lookup.error ? lookup.error : lookup.lines.isEmpty() ? Error{"sftp_failed", "put.gd couldn't find the known_hosts entry that verified this server, so it can't record the upload", {}} : Error{};
+            connection_.knownError = lookup.error ? lookup.error : lookup.lines.isEmpty() ? Error{"sftp_failed", "Couldn't find the known_hosts entry that verified this server, so the upload didn't start.", {}} : Error{};
         }
         connection_.ssh = std::move(ssh);
         connection_.client = std::move(client);
@@ -364,7 +364,7 @@ private:
     Error refusal(const Client::Status& status, const QString& path, const QString& action, qint64 needed = 0) {
         if (status.code == wire::NoSuchFile) return {"sftp_folder_missing", "The folder " + path + " doesn't exist on the server.", {{"path", path}}};
         if (status.code == wire::PermissionDenied)
-            return {"sftp_permission_denied", "The server refused to " + action + " " + path + ": permission denied. Check that " + user() + " can write there.", {{"path", path}}};
+            return {"sftp_permission_denied", "The server denied permission to " + action + " " + path + ". Check that " + user() + " has write access there.", {{"path", path}}};
         // SFTP version 3 reports a full disk as a plain failure; the free space says which it was.
         if (status.code == wire::Failure && connection_.client && !connection_.client->broken())
             if (const auto fs = client().statvfs(bytesOf(namedFolder()))) {
@@ -382,23 +382,23 @@ private:
         Client::Status status;
         if (auto e = client().realpath(bytesOf(folder), resolved, status)) { error = e; return false; }
         if (status.code == wire::NoSuchFile) {
-            error = {"sftp_folder_missing", "The folder " + folder + " doesn't exist on the server. Create it there, or choose Create folder in Settings.", {{"path", folder}}};
+            error = {"sftp_folder_missing", "The folder " + folder + " doesn't exist on the server. Create it on the server, or select Create folder in Destinations.", {{"path", folder}}};
             return false;
         }
         if (status.code != wire::Ok) { error = refusal(status, folder, QStringLiteral("open")); return false; }
         if (!utf8RoundTrip(resolved)) {
-            error = {"sftp_path_unsupported", "The server names the folder " + folder + " with bytes that aren't UTF-8, which put.gd can't record. Choose a folder with a plain name.", {{"path", folder}}};
+            error = {"sftp_path_unsupported", "The server's path for " + folder + " isn't valid UTF-8, so put.gd can't use it. Enter a Folder on server with a UTF-8 name.", {{"path", folder}}};
             return false;
         }
         wire::Attributes attributes;
         if (auto e = client().lstat(resolved, attributes, status, true)) { error = e; return false; }
         if (status.code == wire::NoSuchFile) {
-            error = {"sftp_folder_missing", "The folder " + folder + " doesn't exist on the server. Create it there, or choose Create folder in Settings.", {{"path", folder}}};
+            error = {"sftp_folder_missing", "The folder " + folder + " doesn't exist on the server. Create it on the server, or select Create folder in Destinations.", {{"path", folder}}};
             return false;
         }
         if (status.code != wire::Ok) { error = refusal(status, folder, QStringLiteral("open")); return false; }
         if (!attributes.directory()) {
-            error = {"sftp_not_folder", folder + " on the server is not a folder. Choose another Folder on server.", {{"path", folder}}};
+            error = {"sftp_not_folder", folder + " on the server isn't a folder. Enter a different Folder on server.", {{"path", folder}}};
             return false;
         }
         canonical = textOf(resolved);
@@ -451,11 +451,11 @@ private:
         if (error) return {};
         const auto fingerprint = fingerprintOfLine(line);
         if (hostOfLine(line) != token) {
-            error = {"ssh_host_alias_pattern", "ssh recorded the key under another name than " + token + "; put.gd trusts a key only for that exact name.", {}};
+            error = {"ssh_host_alias_pattern", "ssh recorded the host key under a different name than " + token + ". put.gd only trusts a key for that exact name.", {}};
             return {};
         }
         if (fingerprint != expected) {
-            error = {"ssh_host_key_mismatch", "The server now shows the host key " + fingerprint + ", not " + expected + ". Nothing was trusted; test again and compare the new key.",
+            error = {"ssh_host_key_mismatch", "The server now shows the host key " + fingerprint + " instead of " + expected + ", so nothing was trusted. Test again and compare the new key.",
                      {{"fingerprint", fingerprint}}};
             return {};
         }
@@ -533,11 +533,11 @@ private:
         const auto artifact = Artifact::fromJson(request_["artifact"].toObject());
         const auto candidate = request_["candidate"].toString();
         if (request_["condition"].toString() != QLatin1String("absent")) {
-            error = {"unsupported_capability", "SFTP uploads never replace a file on the server; choose rename or skip for name collisions", {}};
+            error = {"unsupported_capability", "SFTP uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}};
             return {};
         }
         QFile source(artifact.path);
-        if (!source.open(QIODevice::ReadOnly) || source.size() != artifact.bytes) { error = {"artifact_invalid", "The file to upload is no longer available", {}}; return {}; }
+        if (!source.open(QIODevice::ReadOnly) || source.size() != artifact.bytes) { error = {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
         io.emitLine({{"id", double(id_)}, {"event", "progress"}, {"phase", "preparing"}, {"bytesTransferred", 0}, {"bytesTotal", double(artifact.bytes)}});
         QString folder;
         if (!connect(error, false) || !folderReady(error, folder)) return {};
@@ -555,7 +555,7 @@ private:
             // which several servers would let replace another file. Once OPEN is sent its reply is
             // awaited whatever a cancel says, so a handle is never lost: for up to 20 seconds, then the
             // cleanup (discard), inside the 45 the resident gives a cancelled request.
-            if (io.cancelled) { error = {"cancelled", "Cancelled before anything was sent", {}}; return {}; }
+            if (io.cancelled) { error = {"cancelled", "Cancelled before the upload started.", {}}; return {}; }
             const std::atomic_bool never{false};
             client().setCancellation(&never);
             const auto failed = client().openExclusive(bytesOf(path), handle, status, 20000);
@@ -572,7 +572,7 @@ private:
             client().setCancellation(&io.cancelled);
             if (failed) { error = failed; error.details["path"] = path; uncertain = true; return {}; }
             if (unanswered) {
-                error = {unanswered.code, "put.gd created " + path + " but the server stopped answering; check it on the server.", {{"path", path}}};
+                error = {unanswered.code, "put.gd created " + path + ", but the server stopped responding. Check the file on the server.", {{"path", path}}};
                 uncertain = true;
                 return {};
             }
@@ -594,14 +594,14 @@ private:
             uncertain = !removed && e.code != QLatin1String("artifact_changed");
             if (removed) {
                 // The server's own words: removed now, or already gone when REMOVE came.
-                const auto what = gone == Gone::Removed ? QStringLiteral("the partial file was removed from the server") : QStringLiteral("the partial file was already gone from the server");
-                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled; " + what;
-                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while it was uploading; " + what;
+                const auto what = gone == Gone::Removed ? QStringLiteral("The partial file was removed from the server.") : QStringLiteral("The partial file was already gone from the server.");
+                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled. " + what;
+                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while uploading. " + what;
             } else {
                 e.details["path"] = path;
-                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled; put.gd couldn't confirm the partial file " + path + " was removed. Check it on the server.";
-                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while it was uploading; put.gd couldn't confirm the partial file " + path + " was removed. Check it on the server.";
-                else e.message += " put.gd couldn't confirm the partial file " + path + " was removed.";
+                if (e.code == QLatin1String("cancelled")) e.message = "Cancelled, and put.gd couldn't confirm whether the partial file " + path + " was removed. Check the server.";
+                else if (e.code == QLatin1String("artifact_changed")) e.message = "The file changed while uploading, and put.gd couldn't confirm whether the partial file " + path + " was removed. Check the server.";
+                else e.message += " Couldn't confirm whether the partial file " + path + " was removed. Check the server.";
             }
             error = e;
             return QJsonObject{};
@@ -633,7 +633,7 @@ private:
         wire::Attributes written;
         if (auto e = client().fstat(handle, written, status)) { error = e; error.details["path"] = path; uncertain = true; return {}; }
         if (status.code != wire::Ok || !complete(written) || qint64(written.size) != artifact.bytes)
-            return abandon({"sftp_failed", "The server didn't report the size, time and owner of " + path + ", which put.gd needs to delete it safely later", {{"path", path}}});
+            return abandon({"sftp_failed", "The server didn't report the size, timestamp, and owner of " + path + ", which put.gd needs to verify it before deleting later.", {{"path", path}}});
         const QJsonObject evidence{{"size", double(written.size)}, {"mtime", double(written.mtime)}, {"uid", double(written.uid)}, {"sha256", sha}};
         if (auto e = io.checkpoint(id_, {{"schemaVersion", 1}, {"phase", "written"}, {"path", path}, {"server", connection_.server()}, {"written", evidence}}))
             return abandon(e);
@@ -644,7 +644,7 @@ private:
         if (auto e = client().lstat(bytesOf(path), stored, status)) { error = e; error.details["path"] = path; uncertain = true; return {}; }
         // The file under the name is the one this handle wrote, or nothing is recorded.
         if (status.code != wire::Ok || !sameFile(written, stored)) {
-            error = {"sftp_failed", "The file at " + path + " changed as it was saved, so put.gd didn't record the upload", {{"path", path}}};
+            error = {"sftp_failed", "The file at " + path + " changed while it was being saved, so put.gd couldn't confirm the upload. Check the file on the server.", {{"path", path}}};
             uncertain = true;
             return {};
         }
@@ -686,8 +686,8 @@ private:
         const auto now = connection_.server();
         if (recorded["host"] != now["host"] || recorded["port"] != now["port"] || recorded["user"] != now["user"]) {
             error = {"sftp_server_changed",
-                     "This file went to " + recorded["host"].toString() + " port " + QString::number(recorded["port"].toInt()) + " as " + recorded["user"].toString() +
-                         ". The destination now reaches another server or user, so put.gd won't check or delete it there.",
+                     "This file was uploaded to " + recorded["host"].toString() + " (port " + QString::number(recorded["port"].toInt()) + ") as " + recorded["user"].toString() +
+                         ", but this destination now connects to a different server or user. put.gd won't check or delete it there.",
                      {}};
             return false;
         }
@@ -703,7 +703,7 @@ private:
     // change time and owner, and, up to 32 MB, the same bytes. `seen` is what lstat found.
     QJsonObject identity(const StorageReceipt& receipt, Error& error, wire::Attributes* seen = nullptr) {
         const auto object = receipt.objectReference;
-        if (!recordable(object)) { error = {"sftp_delete_unavailable", "This upload's record lacks what put.gd needs to check the file on the server", {}}; return {}; }
+        if (!recordable(object)) { error = {"sftp_delete_unavailable", "This upload's record is missing the details put.gd needs to verify the file on the server.", {}}; return {}; }
         if (!connectAs(object, error)) return {};
         const auto path = object["path"].toString();
         wire::Attributes a;
@@ -717,7 +717,7 @@ private:
         if (!same) return {{"status", "foreign"}, {"receipt", receipt.toJson()}};
         if (qint64(a.size) <= readBackBytes) {
             QString sha;
-            if (!readBack(path, readBackBytes, sha, error)) { if (!error) error = {"sftp_failed", "The server didn't let put.gd read " + path + " back to check it", {{"path", path}}}; return {}; }
+            if (!readBack(path, readBackBytes, sha, error)) { if (!error) error = {"sftp_failed", "The server didn't allow reading " + path + " back to verify it.", {{"path", path}}}; return {}; }
             if (sha != object["sha256"].toString()) return {{"status", "foreign"}, {"receipt", receipt.toJson()}};
         }
         return {{"status", "own"}, {"receipt", receipt.toJson()}};
@@ -731,7 +731,7 @@ private:
         if (path.isEmpty()) {
             // Nothing was journaled before the open: no name of this attempt can be on the server.
             if (journal.isEmpty()) return {{"status", "missing"}};
-            error = {"sftp_reconcile_unknown", "put.gd can't tell where this upload went", {}};
+            error = {"sftp_reconcile_unknown", "Couldn't determine the server path for this upload. Check the server before retrying.", {}};
             return {{"status", "unknown"}};
         }
         if (!connectAs(journal["server"].toObject(), error)) return {};
@@ -742,7 +742,7 @@ private:
         if (status.code != wire::Ok) { error = refusal(status, path, QStringLiteral("check")); return {}; }
         const auto written = journal["written"].toObject();
         const auto unknown = [&] {
-            error = {"sftp_reconcile_unknown", "put.gd can't tell whether " + path + " is this upload; check it on the server", {{"path", path}}};
+            error = {"sftp_reconcile_unknown", "Couldn't confirm whether " + path + " is this upload. Check the file on the server.", {{"path", path}}};
             return QJsonObject{{"status", "unknown"}};
         };
         if (written.isEmpty() || qint64(written["size"].toDouble()) != artifact.bytes || written["sha256"].toString() != artifact.sha256) return unknown();
@@ -792,13 +792,13 @@ private:
         if (!connect(error, false)) return {};
         // A folder named relative to the login folder needs that folder's path: no "." stands in.
         if (!remoteFolder(settings_["folder"].toString()).startsWith('/') && !connection_.homeValid) {
-            error = {"sftp_path_unsupported", "The server names your login folder with bytes that aren't UTF-8, or not at all, so put.gd can't tell where to create the folder. Give Folder on server as a full path.", {}};
+            error = {"sftp_path_unsupported", "The server's login folder path isn't valid UTF-8, so put.gd can't resolve a relative path. Enter a full path in Folder on server.", {}};
             return {};
         }
         const auto folder = namedFolder();
         // Only the folder a test found missing: the path it reported must be the one made now.
         if (request_["path"].toString() != folder) {
-            error = {"sftp_settings_invalid", "The folder to create isn't the one the test found missing. Test the destination again.", {{"field", "folder"}}};
+            error = {"sftp_settings_invalid", "The folder to create doesn't match what the last test checked. Run Test upload again.", {{"field", "folder"}}};
             return {};
         }
         // Each missing level, from the top: mkdir -p, with the server's umask deciding modes.
@@ -810,7 +810,7 @@ private:
             Client::Status status;
             if (auto e = client().lstat(bytesOf(path), a, status, true)) { error = e; return {}; }
             if (status.code == wire::Ok) {
-                if (!a.directory()) { error = {"sftp_not_folder", path + " on the server is not a folder", {{"path", path}}}; return {}; }
+                if (!a.directory()) { error = {"sftp_not_folder", path + " on the server isn't a folder. Enter a different Folder on server.", {{"path", path}}}; return {}; }
                 continue;
             }
             if (status.code != wire::NoSuchFile) { error = refusal(status, path, QStringLiteral("open")); return {}; }
@@ -920,14 +920,14 @@ private:
         wire::Attributes written;
         if (auto e = client().fstat(handle, written, status)) return fail(e);
         if (status.code != wire::Ok || !complete(written))
-            return fail({"sftp_failed", "The server didn't report the size, time and owner of the test file, which put.gd needs to delete uploads safely", {}});
+            return fail({"sftp_failed", "The server didn't report the size, timestamp, and owner of the test file, which put.gd needs to verify uploads before deleting them.", {}});
         if (auto e = client().close(handle, status)) { handle.clear(); return fail(e); }
         handle.clear();
         if (status.code != wire::Ok) return fail(refusal(status, path, QStringLiteral("save")));
         wire::Attributes stored;
         if (auto e = client().lstat(bytesOf(path), stored, status)) return fail(e);
         if (status.code != wire::Ok || !sameFile(written, stored))
-            return replaced({"sftp_failed", "The test file at " + path + " changed as it was saved, so put.gd left it alone. Check it on the server.", {}});
+            return replaced({"sftp_failed", "The test file at " + path + " changed while it was being saved, so put.gd left it alone. Check the file on the server.", {}});
         StorageReceipt receipt;
         receipt.destination = destination_;
         receipt.objectReference = reference(path);
@@ -952,8 +952,8 @@ private:
             if (same) step("link", "passed", receipt.directUrl + " returned the same bytes");
             else {
                 linkError = fetched.status >= 200 && fetched.status < 300
-                                ? Error{"sftp_link_mismatch", "The upload worked, but " + receipt.directUrl + " returned other content. Check that Link address serves Folder on server.", {{"httpStatus", fetched.status}}}
-                                : Error{"public_url_unreachable", "The upload worked, but its link " + receipt.directUrl + " did not open (" +
+                                ? Error{"sftp_link_mismatch", "The upload worked, but " + receipt.directUrl + " returned different content. Check that Link address serves Folder on server.", {{"httpStatus", fetched.status}}}
+                                : Error{"public_url_unreachable", "The upload worked, but " + receipt.directUrl + " didn't open (" +
                                             (fetched.status ? "HTTP " + QString::number(fetched.status) : fetched.problem) + "). Check Link address.", {{"httpStatus", fetched.status}}};
                 step("link", "failed", linkError.message);
             }
@@ -972,8 +972,8 @@ private:
         step("cleanup", cleaned ? "passed" : "failed",
              out["cleanupStatus"] == "removed" ? QStringLiteral("Deleted the test file")
              : out["cleanupStatus"] == "missing" ? QStringLiteral("The test file was already gone when put.gd went to delete it")
-                                                 : "Couldn't confirm the test file " + path + " was deleted; check it on the server");
-        if (!error && !cleaned) error = {"destination_test_incomplete", "The test file " + path + " may still be on the server; delete it there", {{"path", path}}};
+                                                 : "Couldn't confirm that the test file " + path + " was deleted. Check it on the server.");
+        if (!error && !cleaned) error = {"destination_test_incomplete", "The test file " + path + " may still be on the server. Delete it there.", {{"path", path}}};
         if (!error && linkError) error = linkError;
         // The summary speaks for a test that passed every step only.
         if (!error)

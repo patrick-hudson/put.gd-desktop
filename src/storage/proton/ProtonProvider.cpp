@@ -164,22 +164,22 @@ std::shared_ptr<ProtonProvider::Session> ProtonProvider::session(const QString& 
  return current&&current->reference==reference?current:nullptr;
 }
 std::unique_ptr<ProtonProvider::Helper> ProtonProvider::start(const QString& reference,bool lines,int lockWaitMs,bool mayHash,const std::shared_ptr<std::atomic_bool>& cancelled,Error& error) {
- if(!runtimeVerified(mayHash)){error={"proton_runtime_unavailable","Install a matching put.gd package with the bundled Proton runtime",{}};return {};}
+ if(!runtimeVerified(mayHash)){error={"proton_runtime_unavailable","The bundled Proton runtime is missing or doesn't match this build. Reinstall put.gd.",{}};return {};}
  // Separate helper processes share a rotating auth session. Serialize each
  // helper's whole life by keychain reference, including setup and token refresh.
  const auto lockRoot=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());
  // mkdir is atomic and does not follow a pre-existing /tmp symlink.
- if(::mkdir(QFile::encodeName(lockRoot).constData(),0700)!=0&&errno!=EEXIST){error={"proton_lock_unavailable","Private account coordination is unavailable",{}};return {};}
+ if(::mkdir(QFile::encodeName(lockRoot).constData(),0700)!=0&&errno!=EEXIST){error={"proton_lock_unavailable","Couldn't create the private folder for Proton account locking. Check permissions in /tmp.",{}};return {};}
  const QFileInfo lockInfo(lockRoot);
- if(lockInfo.ownerId()!=getuid()||lockInfo.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)){error={"proton_lock_unavailable","Account coordination directory is not private",{}};return {};}
- if(!lockInfo.isDir()||lockInfo.isSymLink()||lockInfo.canonicalFilePath()!=lockInfo.absoluteFilePath()){error={"proton_lock_unavailable","Account coordination directory is invalid",{}};return {};}
+ if(lockInfo.ownerId()!=getuid()||lockInfo.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)){error={"proton_lock_unavailable","The Proton account lock folder in /tmp isn't private. Fix its owner and permissions (mode 0700), then try again.",{}};return {};}
+ if(!lockInfo.isDir()||lockInfo.isSymLink()||lockInfo.canonicalFilePath()!=lockInfo.absoluteFilePath()){error={"proton_lock_unavailable","The Proton account lock path in /tmp isn't a valid folder. Remove it and try again.",{}};return {};}
  const auto accountKey=QString::fromLatin1(QCryptographicHash::hash(reference.toUtf8(),QCryptographicHash::Sha256).toHex());
  auto started=std::make_unique<Helper>(QDir(lockRoot).filePath(accountKey+".lock"));started->lock.setStaleLockTime(0);started->lines=lines;
- if(!started->lock.tryLock(lockWaitMs)){error={"proton_account_busy","Another request is using this Proton account; wait and retry",{}};return {};}
- if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Request cancelled before the helper started",{}};return {};}
- if(!started->root.isValid()){error={"proton_private_storage","Private helper storage is unavailable",{}};return {};}
+ if(!started->lock.tryLock(lockWaitMs)){error={"proton_account_busy","Another upload or check is already using this Proton account. Wait a moment and try again.",{}};return {};}
+ if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Cancelled before the upload started.",{}};return {};}
+ if(!started->root.isValid()){error={"proton_private_storage","Couldn't create a temporary folder for the Proton helper. Check free disk space and permissions in your temp folder.",{}};return {};}
  QFile::setPermissions(started->root.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
- if(!started->process.start(runtimePath(),{lines?"--session":"--stdio"},helperEnvironment(host::environment(),started->root.path()))){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
+ if(!started->process.start(runtimePath(),{lines?"--session":"--stdio"},helperEnvironment(host::environment(),started->root.path()))){error={"proton_runtime_start","Couldn't start the bundled Proton runtime. Try again, or reinstall put.gd if it keeps failing.",{}};return {};}
  return started;
 }
 // Ends a helper nobody will ask again, without making the caller wait for it.
@@ -263,7 +263,7 @@ ProviderCapabilities ProtonProvider::capabilities(const Destination&) const {
  // MAX_FILE_SIZE_FOR_FREE_USER, reported as destination_file_too_large_for_plan),
  // so none is declared.
  caps.maximumObjectBytes=0;
- caps.deletionEffect="Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.";return caps;
+ caps.deletionEffect="Remote file deletion isn't available for Proton Drive because Proton doesn't support atomic revision-guarded deletes. Revoke share links separately.";return caps;
 }
 QString ProtonProvider::defaultPublicationMode(const Destination& destination) const {return destination.settings["shareByDefault"].toBool(true)?"share":"private";}
 QString ProtonProvider::serializationKey(const Destination& d,const QJsonObject& ref,const QString& candidate) const {
@@ -281,7 +281,7 @@ Error ProtonProvider::validateSettings(const QJsonObject& s) const {
  static const QRegularExpression controlCharacter("[\\x00-\\x1f\\x7f]");
  if(!name.isUndefined()&&(!name.isString()||name.toString().isEmpty()||name.toString().toUtf8().size()>255||name.toString().contains(controlCharacter)||folder.isEmpty()))return {"config_invalid","Proton folder display name is invalid",{}};
  const auto days=s["linkExpirationDays"].toDouble(-1),timeout=s["requestTimeoutMs"].toDouble(-1);
- if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>MaximumRequestTimeoutMs||timeout!=int(timeout))return {"config_invalid","Proton sharing or timeout settings are invalid",{}};
+ if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>MaximumRequestTimeoutMs||timeout!=int(timeout))return {"config_invalid","Invalid Proton Drive sharing or timeout settings. Check Link expiration and Request deadline.",{}};
  const auto password=s["sharePasswordReference"];
  if(!password.isNull()&&(!password.isString()||password.toString().isEmpty()||password.toString().size()>256))return {"config_invalid","Use a secret-store reference for the share password",{}};
  return {};
@@ -305,9 +305,9 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
 }
 QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain,std::function<void(const UploadProgress&)> progress) {
  if(outcomeUncertain)*outcomeUncertain=false;
- if(stopping_.load()){error={"operation_cancelled","The application is stopping",{}};return {};}
+ if(stopping_.load()){error={"operation_cancelled","put.gd is closing, so the request didn't start.",{}};return {};}
  const auto reference=destination.credentialReference;
- if(reference["mode"]!="keychain"||reference["reference"].toString().isEmpty()){error={"proton_credentials_invalid","Proton requires an explicit account keychain reference",{}};return {};}
+ if(reference["mode"]!="keychain"||reference["reference"].toString().isEmpty()){error={"proton_credentials_invalid","Proton Drive requires a keychain account reference. Reconnect your account in Destinations.",{}};return {};}
  // An open session's helper answers this request too, if it is still running. A helper
  // started ahead (see anticipate) is used next. Any other request starts its own.
  const bool carried=QStringList{"checkName","upload","stat","reconcile","share"}.contains(method);
@@ -340,7 +340,7 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
   if(!ready)return {};
   (kept?kept->helper:single)=std::move(ready);
  }
- if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Request cancelled before it was sent",{}};return {};}
+ if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Cancelled before the request was sent.",{}};return {};}
  auto& helper=*(kept?kept->helper:single);auto& process=helper.process;
  // A helper is asked again only after a clean answer; anything else ends it.
  const auto end=[&]{if(kept)kept->helper.reset();};
@@ -348,11 +348,11 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
  ++active_;struct Release{std::atomic_int& count;~Release(){--count;}} release{active_};
  auto bytes=QJsonDocument(params).toJson(QJsonDocument::Compact);bytes.append('\n');
  elapsed.restart(); // The request's deadline runs from its dispatch.
- if(bytes.size()>128*1024){process.kill();process.waitForFinished(5000);end();error={"proton_protocol","Helper request exceeded its bound",{}};return {};}
+ if(bytes.size()>128*1024){process.kill();process.waitForFinished(5000);end();error={"proton_protocol","The request to the Proton helper was too large.",{}};return {};}
  // Once any request bytes are handed to the helper, a lost or malformed
  // completion cannot establish whether a remote mutation ran.
  const auto delivered=process.write(bytes);if(outcomeUncertain)*outcomeUncertain=delivered>0;
- if(delivered!=bytes.size()){process.kill();process.waitForFinished(5000);end();error={"proton_result_unknown","Helper request could not be delivered",{}};return {};}
+ if(delivered!=bytes.size()){process.kill();process.waitForFinished(5000);end();error={"proton_result_unknown","Couldn't send the request to the Proton helper. Check Proton Drive before retrying.",{}};return {};}
  if(!helper.lines)process.closeInput();
  bytes.fill('\0');bytes.clear();
  QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
@@ -360,19 +360,19 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
   // The first violation decides the outcome; output left after a kill is not parsed.
   if(error)return;
   auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
-  if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
+  if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","The Proton helper sent too much output, so put.gd stopped it. Check Proton Drive before retrying.",{}};return;}
   while(pending.contains('\n')){
    const auto line=pending.left(pending.indexOf('\n'));pending.remove(0,line.size()+1);QJsonParseError parse;const auto doc=QJsonDocument::fromJson(line,&parse);
-   if(parse.error!=QJsonParseError::NoError||!doc.isObject()){error={"proton_protocol","Malformed helper response",{}};return;}
+   if(parse.error!=QJsonParseError::NoError||!doc.isObject()){error={"proton_protocol","The Proton helper returned an unreadable reply. Check Proton Drive before retrying.",{}};return;}
    const auto value=doc.object();
    if(value["event"]=="auth"){
-    if(method!="connect"||!event||gotAuth||gotResult||value.size()!=2||!value["url"].isString()){error={"proton_protocol","Unexpected authentication event",{}};return;}
+    if(method!="connect"||!event||gotAuth||gotResult||value.size()!=2||!value["url"].isString()){error={"proton_protocol","The Proton helper sent an unexpected sign-in event. Select Reconnect account… to try again.",{}};return;}
     gotAuth=true;event(value);
    }else if(value["event"]=="progress"){
     auto fields=value;fields.remove("event");const auto report=UploadProgress::fromJson(fields);
-    if(method!="upload"||gotResult||!report){error={"proton_protocol","Unexpected or invalid upload progress",{}};return;}
+    if(method!="upload"||gotResult||!report){error={"proton_protocol","The Proton helper sent invalid upload progress. Check Proton Drive before retrying.",{}};return;}
     if(progress)progress(*report);
-   }else if(gotResult||!value["ok"].isBool()||value.size()!=2||(value["ok"].toBool()?!value["result"].isObject():!value["error"].isObject())){error={"proton_protocol","Invalid helper completion",{}};return;}
+   }else if(gotResult||!value["ok"].isBool()||value.size()!=2||(value["ok"].toBool()?!value["result"].isObject():!value["error"].isObject())){error={"proton_protocol","The Proton helper returned an invalid final reply. Check Proton Drive before retrying.",{}};return;}
    else{final=value;gotResult=true;}
   }
  };
@@ -380,18 +380,18 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
   process.waitForReadable(100);consume();if(error){process.kill();break;}
   // A helper that answers in turn has answered, and waits for its next request.
   if(helper.lines&&gotResult)break;
-  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown","The request was cancelled after dispatch; reconcile its saved identity before retrying",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
-  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",QString("Proton exceeded the configured %1-second request deadline; the outcome is unknown. Reconcile its saved identity before retrying.").arg(timeout/1000.0),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
+  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown","Upload was cancelled after it was sent, so the file may already be in Proton Drive. Check there before retrying.",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
+  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",QString("Proton Drive didn't finish within the %1-second Request deadline, so the file may already be in Proton Drive. Check there before retrying, or raise Request deadline in Advanced link settings.").arg(timeout/1000.0),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
  const bool waiting=helper.lines&&!error&&gotResult&&process.running();
  if(!waiting){process.waitForFinished(5000);consume();}
- if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","Incomplete helper response",{}};
+ if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","The Proton helper returned an incomplete reply. Check Proton Drive before retrying.",{}};
  pending.fill('\0');pending.clear();
  if(error){if(process.running()){process.kill();process.waitForFinished(5000);}end();return {};}
- if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown","The helper ended without a confirmed result",{}};return {};}
+ if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown","The Proton helper exited without confirming the result, so the file may already be in Proton Drive. Check there before retrying.",{}};return {};}
  if(!final["ok"].toBool()||!final["result"].toObject()["error"].toObject().isEmpty())end();
  if(!final["ok"].toBool()){
-  error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton operation failed",{}};
+  error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton Drive request failed.",{}};
   // Only protocol-defined pre-mutation failures prove no remote side effect.
   if(outcomeUncertain&&QStringList{"invalid_request","authentication_required","session_unread","account_changed","artifact_changed","keychain_unavailable","invalid_destination","invalid_receipt","keychain_required","unsupported_request","unsupported_condition","unsupported_safe_removal","unsafe_data_directory","destination_unavailable"}.contains(error.code))*outcomeUncertain=false;
   return {};
@@ -400,7 +400,7 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
 }
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
- if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
+ if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton Drive can't safely replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.",{}}});return;}
  QJsonObject params{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}};
  if(req.linkFollows)params["linkFollows"]=true;
  const auto account=req.destination.credentialReference["reference"].toString();
@@ -411,14 +411,14 @@ void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadRe
  auto error=e?e:parseError(r["error"].toObject());
  // The plan's per-file limit is Proton's own (#147): name the file's size beside it.
  if(error.code=="destination_file_too_large_for_plan"){
-  error.message=QStringLiteral("Proton refused this %1 file: it is larger than your Proton plan allows for a single file. Upload a smaller file, or upgrade the Proton plan, then Retry.").arg(ByteSize::localized(req.artifact.bytes,1,QLocale::c()));
+  error.message=QStringLiteral("Proton Drive refused this %1 file because it exceeds your Proton plan's single-file limit. Upload a smaller file or upgrade your plan, then select Retry upload.").arg(ByteSize::localized(req.artifact.bytes,1,QLocale::c()));
   error.details["bytes"]=double(req.artifact.bytes);
  }
  reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),error});
 }
 void ProtonProvider::stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply){Error e;auto r=call("stat",receipt.destination,{{"receipt",receipt.toJson()}},e);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::reconcile(const UploadRequest& req,std::function<void(StatResult)> reply){Error e;auto r=call("reconcile",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"objectReference",req.objectReference}},e,req.cancellation);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
-void ProtonProvider::remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> reply){reply({"unsupported_safe_removal",{}, {"unsupported_capability","Proton does not expose atomic revision-guarded file deletion; revoke the share link instead",{}}});}
+void ProtonProvider::remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> reply){reply({"unsupported_safe_removal",{}, {"unsupported_capability","Proton Drive doesn't support atomic revision-guarded file deletion. Revoke the share link instead, or delete the file in Proton Drive.",{}}});}
 void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,std::function<void(ShareResult)> reply){
  const QJsonObject progress{{"schemaVersion",1},{"phase",req.action=="inspect"?"inspect":"intent"},{"operationId",req.id},{"action",req.action}};
  if(req.action!="inspect"){
@@ -437,14 +437,14 @@ QJsonObject ProtonProvider::setup(const QString& method,const Destination& d,con
  if(method!="testDestination")return call(method,d,{{"options",input}},e,{},std::move(event));
  const auto root=d.settings["accountRootUid"].toString(),folder=d.settings["folderUid"].toString();
  if(root.isEmpty()||folder.isEmpty()){
-  e={"proton_setup_required","Connect your Proton account and choose an upload folder before testing",{}};return {};
+  e={"proton_setup_required","Connect your Proton account and select an Upload folder before running Check account and folder.",{}};return {};
  }
  const auto account=call("inspectAccount",d,{{"options",input}},e,{},std::move(event));
  if(e)return {};
- if(account["accountRootUid"]!=root){e={"proton_account_changed","Reconnect the saved Proton account before testing",{}};return {};}
+ if(account["accountRootUid"]!=root){e={"proton_account_changed","The signed-in Proton account no longer matches this destination. Select Reconnect account… before testing.",{}};return {};}
  bool found=folder==root;
  for(const auto& value:account["folders"].toArray())if(value.toObject()["uid"]==folder)found=true;
- if(!found){e={"proton_folder_unavailable","The selected Proton folder is unavailable. Refresh folders and choose an upload folder",{}};return {};}
+ if(!found){e={"proton_folder_unavailable","The selected Upload folder is no longer available. Select Refresh folders and pick a folder.",{}};return {};}
  return {{"testScope","account-folder"}};
 }
 }

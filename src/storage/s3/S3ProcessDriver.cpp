@@ -16,7 +16,7 @@
 namespace putgd {
 namespace {
 QJsonObject build(){return QJsonDocument::fromJson(buildManifestJson()).object();}
-Error unavailable(){return {"s3_module_unavailable","S3 support is missing or incompatible; restart put.gd after an update. If it remains unavailable, reinstall this build of put.gd",{}};}
+Error unavailable(){return {"s3_module_unavailable","S3 support is missing or doesn't match this build. Restart put.gd after an update, or reinstall put.gd if it stays unavailable.",{}};}
 bool noEffects(const Error& error){return error && error.code != "s3_transport_unknown";}
 Error invalidRequest(const QString& method,const QJsonObject& request){
  if(method=="stat"||method=="remove")return {"receipt_invalid","Recorded storage receipt is invalid",{}};
@@ -26,19 +26,19 @@ Error invalidRequest(const QString& method,const QJsonObject& request){
    auto prefix=destination.settings["objectPrefix"].toString();
    if(!prefix.isEmpty()&&!prefix.endsWith('/'))prefix+='/';
    const auto key=prefix+request["candidate"].toString();
-   if(key.toUtf8().size()>1024||key.contains(QChar(0)))return {"s3_key_invalid","S3 key exceeds its byte limit",{}};
+   if(key.toUtf8().size()>1024||key.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB (1,024-byte) limit. Use a shorter file name or Folder in bucket.",{}};
   }
  }
  if(method=="upload"){
   Artifact artifact;
   if(!request["artifact"].isObject()||!s3wire::decode(request["artifact"].toObject(),artifact))return {"artifact_invalid","Retained artifact metadata is invalid",{}};
   const auto candidate=request["candidate"].toString();
-  if(candidate.toUtf8().size()>1024||candidate.contains(QChar(0)))return {"s3_key_invalid","S3 key exceeds its byte limit",{}};
+  if(candidate.toUtf8().size()>1024||candidate.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB (1,024-byte) limit. Use a shorter file name or Folder in bucket.",{}};
   return {"s3_precondition_invalid","Persist an exact object key and write precondition before upload",{}};
  }
  return {"s3_request_invalid","Storage request does not match its supported schema",{}};
 }
-Error uncertain(){return {"s3_transport_unknown","S3 work ended unexpectedly; reconcile its recorded target before retrying",{}};}
+Error uncertain(){return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.",{}};}
 QString helperPath(){
  if(QDir::cleanPath(QCoreApplication::applicationDirPath())==QString::fromUtf8(PUTGD_S3_BUILD_APP_DIR))return QString::fromUtf8(PUTGD_S3_WORKER_PATH);
  return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("putgd-s3-worker");
@@ -75,7 +75,7 @@ public:
    // missing or incompatible one: the message says whether trying again helps, as for the custom
    // uploader's helper (#1598). Qt's text can name the wrong cause, so it stays in the details.
    const auto reason=process_->errorString();output_.failedToStart(reason);
-   startError_={"s3_module_unavailable",worker::startFailureMessage(worker::classifyStartFailure(helperPath(),reason),unavailable().message,QStringLiteral("S3 support couldn't start")),{{"reason",reason}}};
+   startError_={"s3_module_unavailable",worker::startFailureMessage(worker::classifyStartFailure(helperPath(),reason),unavailable().message,QStringLiteral("Couldn't start S3 support")),{{"reason",reason}}};
    failed_=true;resetProcess();return false;
   }
   output_.started(process_->processId(),{{"generation",qint64(generation_)}});
@@ -84,7 +84,7 @@ public:
   QElapsedTimer clock;clock.start();
   const auto stop=[&]{return (kill&&kill->load())||(cancellation&&cancellation->load());};
   while(!ready_&&!failed_&&process_->state()!=QProcess::NotRunning&&clock.elapsed()<10000){
-   if(stop()){process_->kill();process_->waitForFinished(5000);startError_={"cancelled","Stopped before S3 support started; nothing was sent",{}};failed_=true;break;}
+   if(stop()){process_->kill();process_->waitForFinished(5000);startError_={"cancelled","Cancelled before S3 support started, so nothing was sent.",{}};failed_=true;break;}
    process_->waitForReadyRead(20);
   }
   if(!ready_||failed_){failed_=true;resetProcess();return false;}

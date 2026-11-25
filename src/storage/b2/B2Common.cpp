@@ -39,19 +39,19 @@ Error validateSettings(const QJsonObject& s) {
     static const QRegularExpression bucket("^[A-Za-z0-9-]{6,63}$");
     const auto name = s["bucket"].toString();
     if (!s["bucket"].isString() || !bucket.match(name).hasMatch() || name.startsWith("b2-", Qt::CaseInsensitive))
-        return bad("enter the bucket name (6 to 63 letters, digits or hyphens)");
+        return bad("enter a bucket name (6–63 letters, digits, or hyphens, not starting with b2-).");
     const auto prefix = s["objectPrefix"].toString();
     static const QRegularExpression control("[\\x00-\\x1f\\x7f\\\\]");
     if (!s["objectPrefix"].isString() || prefix.toUtf8().size() > 900 || prefix.startsWith('/') || prefix.contains(control) || prefix.contains("//"))
-        return bad("the folder in the bucket is too long or has unsupported characters");
+        return bad("Folder in bucket is too long or has unsupported characters.");
     if (!serviceUrl(s["apiUrl"])) return bad("the API address must be an HTTPS URL");
     const auto mode = s["linkMode"].toString();
     if (!QStringList{"public", "authorized"}.contains(mode)) return bad("links are public or authorized");
-    if (!integer(s["linkValidityDays"], 1, maximumLinkDays)) return bad("authorized links last 1 to 7 days");
+    if (!integer(s["linkValidityDays"], 1, maximumLinkDays)) return bad("Links last must be 1 to 7 days.");
     if (!s["publicUrlBase"].isNull() && (!serviceUrl(s["publicUrlBase"]) || mode != "public"))
-        return bad("a link domain must be an HTTPS URL and applies to public buckets only");
+        return bad("Link domain must be an HTTPS URL and applies to public buckets only.");
     if (!integer(s["connectTimeoutMs"], 1000, 120000) || !integer(s["requestTimeoutMs"], 1000, 3600000))
-        return bad("timeouts must be whole milliseconds within their limits");
+        return bad("timeouts must be whole numbers within their limits.");
     return {};
 }
 QString fileName(const QJsonObject& settings, const QString& candidate) {
