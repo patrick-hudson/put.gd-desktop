@@ -157,8 +157,9 @@ void notify(const QString& title,const QString& body,bool failure){
  loop.exec();
 }
 void refuse(const QString& body){notify(QStringLiteral("Upload didn't start"),body,true);}
-// After the resident accepted the files: it may have got further than reading them.
-void stopped(const QString& body){notify(QStringLiteral("Upload stopped"),body,true);}
+// After the resident accepted the files it may have got further than reading them,
+// so these never say the upload didn't start.
+void unconfirmed(const QString& body){notify(QStringLiteral("Upload status unknown"),body,true);}
 
 // Leaving the file manager's .service: re-exec under a scope of our own. The
 // re-executed client reports that it started through an inherited pipe, so a
@@ -577,14 +578,14 @@ int run(int argc,char** argv){
   Error inspectError;const auto operation=request("operation.inspect",{{"id",id}},inspectError);
   if(inspectError){
    if(inspectError.code=="client_unavailable"||inspectError.code=="client_timeout"||inspectError.code=="operation_not_found")
-    stopped(QStringLiteral("put.gd stopped while reading the files. Check History, then try again."));
-   else refuse(inspectError.message.isEmpty()?inspectError.code:inspectError.message);
+    unconfirmed(QStringLiteral("put.gd stopped responding before it confirmed the upload. Check History before trying again."));
+   else unconfirmed(inspectError.message.isEmpty()?inspectError.code:inspectError.message);
    return 1;
   }
   const auto state=operation["state"].toString();
   if(state=="accepted"||state=="acquiring"){sleepMs(pollIntervalMs);continue;}
   // The resident announces a failed operation itself; an interrupted one it doesn't.
-  if(state=="interrupted"){stopped(QStringLiteral("put.gd stopped while reading the files. Check History, then try again."));return 1;}
+  if(state=="interrupted"){notify(QStringLiteral("Upload interrupted"),QStringLiteral("put.gd stopped before the upload finished. Check History, then try again."),true);return 1;}
   return state=="failed"||state=="cancelled"?1:0;
  }
 }
