@@ -1017,7 +1017,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(channelDocs,&QPushButton::clicked,this,[this,channelBrowser]{const QUrl url(settings_.diagnostics()["update"].toObject()["action"].toObject()["otherChannel"].toObject()["docs"].toString());if(url.scheme()=="https")host::openLink(url,channelBrowser->opening(url));});
  connect(openUpdates_,&QPushButton::clicked,this,[this]{
   openUpdates_->setEnabled(false);
-  settings_.request("update.openSoftwareUpdates",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(!g)return;g->openUpdates_->setEnabled(true);if(error)Ui::feedback(g->updateStatus_,error.message+".");});
+  settings_.request("update.openSoftwareUpdates",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(!g)return;g->openUpdates_->setEnabled(true);if(error)Ui::feedback(g->updateStatus_,endSentence(error.message));});
  });
  connect(copyCommand,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(updateCommand_->text());});
  connect(checkNow_,&QPushButton::clicked,this,[this]{checkForUpdates({});});
