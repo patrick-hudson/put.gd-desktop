@@ -1235,14 +1235,18 @@ then start again from step 1.
    `disk.qcow2` is already gone) and then stopped or had its lease release
    refused, a retry finishes or
    re-checks that cleanup against the row's existing `completion-manifest.json`
-   instead of retiring twice. It writes no new evidence. If a later attempt
-   already replaced the manifest or `completion.json`, the retry puts back the
-   exact copies the receipt hashed from their `.before-recovery-*` files. A
-   manifest that matches none of them, or a member file changed since, keeps
-   the slot. When the disk is gone, that check needs an
+   instead of retiring twice. It writes no new evidence archive or completion
+   manifest. If a later attempt already replaced the manifest or
+   `completion.json`, the retry puts back the exact copies the receipt hashed
+   from their `.before-recovery-*` files and keeps the replaced ones. If either
+   exact copy can't be found, either file is unsafe to replace (a symlink or a
+   file with more than one link), or another file the manifest lists has changed,
+   the slot stays kept. When the disk is gone, that check needs an
    `overlay-cleanup.json` that matches the manifest; without one the slot stays
    kept, so ask your coordinator. A retry stopped before guarded cleanup reuses
-   the earlier archive when it still holds exactly the row's attempts. Its evidence goes to
+   an earlier archive only when it is complete and readable and holds exactly
+   the files of the row's audited attempts. Otherwise it writes a fresh archive
+   and keeps the old one. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
    directory. A refusal prints its reason. An unexpected failure after that
    directory exists leaves `stale-recovery-error.json` in
