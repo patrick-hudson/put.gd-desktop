@@ -49,7 +49,7 @@ void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
         refreshProblems();
     });
     user_ = line("sftpUser", "From your SSH settings");
-    row(server, "User", user_, "Leave empty to use the user ssh would: the one ~/.ssh/config names for this server, else your own.");
+    row(server, "User", user_, "Leave empty to use the user from ~/.ssh/config, or your local username.");
     connect(user_, &QLineEdit::textEdited, this, [this] { refreshProblems(); });
     folder_ = line("sftpFolder", "~/shots or /srv/www/shots");
     Ui::setMono(folder_);
@@ -91,7 +91,7 @@ void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
     links->parentWidget()->setObjectName("sftpLinksSection");
     link_ = line("sftpPublicUrlBase", "https://files.example.com/shots/");
     Ui::setMono(link_);
-    row(links, "Link address", link_, "Optional: the public HTTPS address Folder on server is served at. Without one, uploads still work, the clipboard stays as it is, and History offers Copy path.");
+    row(links, "Link address", link_, "Optional public HTTPS address for Folder on server. Without one, uploads still work without copying a link, and History offers Copy path.");
     // A user name or password in the address is left out as it arrives, typed or pasted.
     connect(link_, &QLineEdit::textEdited, this, [this](const QString& text) {
         bool hadUser = false;
@@ -147,7 +147,7 @@ void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
         clear = new QPushButton("Clear", box);
         clear->setObjectName(QString::fromLatin1(name) + "Clear");
         clear->setAccessibleName("Clear the stored " + label.toLower());
-        clear->setToolTip("Forget the stored " + label.toLower() + "; the other one stays.");
+        clear->setToolTip("Remove the stored " + label.toLower() + ", keeping the other secret");
         clear->hide();
         layout->addWidget(clear);
         connect(clear, &QPushButton::clicked, this, [this, key] { emit clearRequested(key); });
@@ -157,7 +157,7 @@ void SftpPanel::build(const RowBuilder& row, const RowBuilder& signInRow) {
     password_ = secret("sftpPassword", QStringLiteral("Password"), sftp::passwordKey(), clearPassword_);
     passphrase_ = secret("sftpPassphrase", QStringLiteral("Key passphrase"), sftp::passphraseKey(), clearPassphrase_);
     // The passphrase only ever answers a key's own passphrase prompt, never a password prompt.
-    passphrase_->setToolTip(QStringLiteral("Answers only a key's passphrase prompt, never a password prompt."));
+    passphrase_->setToolTip(QStringLiteral("Used only for a key's passphrase prompt, never a password prompt"));
     for (auto* field : {password_, passphrase_}) connect(field, &QLineEdit::textChanged, this, [this] { if (!loading_) emit secretsEdited(); });
 }
 bool SftpPanel::chooseKey() {

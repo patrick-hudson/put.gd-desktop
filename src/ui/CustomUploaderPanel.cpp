@@ -255,13 +255,13 @@ void CustomUploaderPanel::build(const RowBuilder& row) {
     Ui::setMono(fileForm_);
     fileFormRow_ = row(requestForm_, "File form name", fileForm_, "The form field that carries the file. Leave empty to send form fields only.");
     headers_ = new UploaderRows("headers", "header", this);
-    row(requestForm_, "Headers", headers_, "Values are secret unless you clear Secret: they are kept in the credential store, never in the configuration file.");
+    row(requestForm_, "Headers", headers_, "Values are kept in your keyring instead of the configuration file unless you turn off Secret.");
     parameters_ = new UploaderRows("parameters", "parameter", this);
     row(requestForm_, "URL parameters", parameters_, {});
     arguments_ = new UploaderRows("arguments", "field", this);
-    argumentsRow_ = row(requestForm_, "Form fields", arguments_, "{filename} is the file name; {input} is the text being uploaded.");
+    argumentsRow_ = row(requestForm_, "Form fields", arguments_, "Use {filename} for the file name and {input} for uploaded text.");
     secrets_ = new UploaderRows("secrets", "secret value", this, true);
-    row(requestForm_, "Other secret values", secrets_, "A stored value used inside an address: write {secret:secrets/name} in the request URL or the deletion URL.");
+    row(requestForm_, "Other secret values", secrets_, "Stored values you can insert in the request or deletion URL as {secret:secrets/name}.");
     auto* dataBox = new QWidget(this);
     dataBox->setObjectName("uploaderDataBox");
     auto* dataColumn = new QVBoxLayout(dataBox);
@@ -307,7 +307,7 @@ void CustomUploaderPanel::build(const RowBuilder& row) {
     connectTimeout_ = seconds("uploaderConnectTimeout", 120);
     requestTimeout_ = seconds("uploaderRequestTimeout", 3600);
     row(requestForm_, "Connect timeout", connectTimeout_, {});
-    row(requestForm_, "Request timeout", requestTimeout_, "How long one upload may take, the server's reply included.");
+    row(requestForm_, "Request timeout", requestTimeout_, "How long one upload can take, including the server's reply (default: 600 seconds).");
 
     responseForm_ = PreferenceRows::card(page, "Response",
         "Where the server's reply holds the link. Placeholders: {json:path}, {xml:xpath}, {regex:pattern|group}, {header:name}, {response} and {responseurl}. "
