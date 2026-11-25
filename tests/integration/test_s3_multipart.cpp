@@ -372,7 +372,9 @@ private slots:
         // Every part's body is sent first: the fixture holds each until all three have arrived,
         // since a lane slowed by a busy machine could send its part after part 1's refusal had
         // already stopped the lanes (#1318). Part 1 is then denied, and parts 2 and 3 find the
-        // upload gone just after, while the other lanes' error is already recorded.
+        // upload gone 20 ms later, usually after the other lanes' error is recorded. A worker
+        // held off the CPU across both replies may read the 404s first; that order must settle
+        // by the key too, so the outcome is checked, not the order.
         f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}},
                                                     QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"together", 3}, {"status", 403}, {"code", "AccessDenied"}},
                                                     QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"together", 3}, {"delay", 0.02}},
