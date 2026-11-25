@@ -811,7 +811,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"mode","How uploaded and saved files are named (default: Keep original names). Random names uses a UUID or random characters. Custom template renames copied files too, while captures use templates unless Random names is chosen."},
   {"randomStyle","Format for random file names (default: UUID, 36 characters). Random characters makes shorter names using lowercase letters plus any options below. Shorter names collide sooner."},
   {"randomLength","Characters before the extension, from 4 to 64 (default: 12). Twelve mixed letters and numbers give over 10^21 combinations."},
-  {"collisionPolicy","Handles remote name conflicts (default: Add a unique suffix). Skip duplicate names keeps the existing file, and Replace the checked object overwrites it where supported, changing what links serve. Local copies add a suffix only for taken names."},
+  {"collisionPolicy","Handles remote name conflicts (default: Add a unique suffix). Skip duplicate names keeps the file, Replace the checked object overwrites it and changes existing links, and unsupported choices fail with unsupported_capability. Local copies add a suffix only for taken names."},
   {"label","Local label shown in menus and History."},
   {"aclMode","Use bucket policy sends no ACL (default). Request public read sets a public-read object ACL, which needs bucket ACLs enabled and s3:PutObjectAcl. Bucket policy or Block Public Access can still block access."},
   {"addressing","How the bucket appears in S3 request URLs (default: Automatic). Bucket in hostname uses virtual-host style, and Bucket in URL path uses path style. Some S3-compatible services require path style."},
@@ -1082,7 +1082,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   auto* styleForm=section(capture,"Capture style","Add a backdrop, padding, rounded corners, and a shadow around screenshots.");
   const auto stylePath=QStringLiteral("/preferences/captureStyle");
   styleEnabled_=new PreferenceCheck("Style screenshots");styleEnabled_->setObjectName("captureStyleEnabled");
-  setting(styleForm,"Screenshots",styleEnabled_,stylePath,"Styles region, window, monitor, desktop, and scrolling captures before saving or uploading (default: off). Capture region & edit starts with Style on, and local copies also save an -original file.");
+  setting(styleForm,"Screenshots",styleEnabled_,stylePath,"Styles region, window, monitor, desktop and scrolling captures before saving or uploading (default: off). When on, Capture region & edit starts with Style this image selected and local copies include an -original file.");
   styleLook_=choices(this,"captureStyleLook",{});for(const auto& preset:CaptureStyle::presets())styleLook_->addItem(preset.label,preset.id);styleLook_->addItem("Custom","custom");
   styleRows_.append(setting(styleForm,"Look",styleLook_,stylePath));
   styleBackdrop_=choices(this,"captureStyleBackdrop",{});for(const auto& [kind,label]:QList<QPair<QString,QString>>{{"color","Color"},{"gradient","Gradient"},{"picture","Picture"},{"none","None (transparent)"}})styleBackdrop_->addItem(label,kind);
