@@ -497,12 +497,24 @@ def lost_guest_session(out):
 
 
 def failed_recipe_note(out, fallback):
-    """A failed recipe's own note; a recipe that passed only has its cleanup to report."""
+    """A failed recipe's own note; a recipe that passed only has its cleanup to report.
+
+    A recipe that names its failed pass and step (a failed_step=… note, #2051) gives that note alone,
+    and the fixture cleanup failures after it: the counters of the passes before it are not the cause.
+    """
     try:
         rows = json.loads((Path(out)/'receipt.json').read_text()).get('interactions', [])
-        return next((r['note'] for r in rows if r.get('functional') != 'passed' and r.get('note')), fallback)
+        note = next((r['note'] for r in rows if r.get('functional') != 'passed' and r.get('note')), fallback)
     except (OSError, ValueError, AttributeError, TypeError):
         return fallback
+    if not isinstance(note, str):
+        return fallback
+    parts = note.split('; ')
+    step = next((i for i, part in enumerate(parts) if part.startswith('failed_step=')), None)
+    if step is None:
+        return note
+    cleanup = next((i for i in range(step+1, len(parts)) if parts[i].startswith('fixture cleanup failed')), len(parts))
+    return '; '.join([parts[step].removeprefix('failed_step=')]+parts[cleanup:])
 
 
 def worker_identity():

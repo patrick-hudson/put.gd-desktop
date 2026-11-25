@@ -520,6 +520,26 @@ class NightlyTests(unittest.TestCase):
         self.assertTrue(slot and record['cleanupBlocked'])
         self.assertIn('live remote cleanup unresolved', record['notRunReason'])
 
+    def test_failed_recipe_note_names_the_failed_pass_and_step_not_the_earlier_counters(self):
+        # #2051: the expiring-link pass failed; the public pass's cloudfront_after_delete_status=200 is not the cause.
+        with tempfile.TemporaryDirectory() as out:
+            def receipt(note):
+                Path(out, 'receipt.json').write_text(json.dumps({'interactions': [
+                    {'interaction': 'region.to-upload', 'functional': 'failed', 'note': note}]}))
+            receipt('s3_missing_head_404_count=1; cloudfront_after_delete_status=200; presigned_status=200; unsigned_status=403; '
+                    'deletion_settled=status=unknown, error=s3_transport_unknown, stage=delete_object, curl=35, http=-1; '
+                    'failed_step=expiring-link pass, History delete: History confirms object removal (status=unknown, '
+                    'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, removal not confirmed); '
+                    'History confirms object removal (status=unknown); fixture cleanup failed: owned history and cache: RecipeBlocked; '
+                    'accepted settings: RecipeBlocked')
+            self.assertEqual(nightly.failed_recipe_note(out, 'fallback'),
+                             'expiring-link pass, History delete: History confirms object removal (status=unknown, '
+                             'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, removal not confirmed); '
+                             'fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked')
+            # A recipe that names no step keeps its whole note.
+            receipt('one; two')
+            self.assertEqual(nightly.failed_recipe_note(out, 'fallback'), 'one; two')
+
     def test_an_unresolved_live_cleanup_stops_the_row_before_any_retry_or_later_flow(self):
         record, cells, retire, slot = self.lost_session_row([], marker=True)
         self.assertEqual(cells, ['idle_memory-1'])

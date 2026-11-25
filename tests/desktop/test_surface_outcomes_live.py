@@ -458,6 +458,71 @@ class LiveOutcomes(unittest.TestCase):
             outcomes_live._cleanup(ctx,{'id':'owned'})
         self.assertEqual(details,[])
 
+    def test_settled_delete_that_did_not_remove_names_its_status_and_error_code(self):
+        # #2051: every settled status other than removed/already_missing reaches the receipt, with the
+        # deletion's error code and stage and never its message, link or key ID.
+        error={'code':'s3_transport_unknown','message':'The secure connection to S3 failed at https://example.invalid/key?X-Amz-Credential=AKIA',
+               'details':{'requestStage':'delete_object','curlCode':35,'httpStatus':-1,'elapsedMs':90}}
+        for status in [s for s in outcomes_live.DELETION_SETTLED if s not in ('removed','already_missing')]:
+            with self.subTest(status=status):
+                details=[{'id':'owned','remoteStatus':'not_requested'},
+                         {'id':'owned','remoteStatus':status,'remoteError':error,'linkAvailable':True}]
+                notes=[]
+                def call(method,params=None):
+                    if method=='history.detail':return details.pop(0)
+                    return {}
+                def expect(ok,note):
+                    if not ok:raise RecipeFailed(note)
+                # The runner's redactor: here it drops a scheme-less host, which the step note must not bypass.
+                redactor=SimpleNamespace(exception=lambda e:str(e).replace('cdn.example.invalid/key','[link]'))
+                ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=notes.append,
+                                    evidence=SimpleNamespace(redactor=redactor),
+                                    geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
+                                    wait=lambda fn,*a,**kw:fn(),call=Mock(side_effect=call),expect=expect,
+                                    clipboard_text=lambda:json.dumps({'targets':[{'historyId':'owned'}],'acknowledgement':'synthetic'}))
+                with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+                     patch.object(outcomes_live.history,'_confirm_button'):
+                    with self.assertRaises(RecipeFailed) as failed:
+                        with outcomes_live._step(ctx,'expiring-link pass, History delete'):
+                            outcomes_live._cleanup(ctx,{'id':'owned'})
+                expected='status='+status+', error=s3_transport_unknown, stage=delete_object, curl=35, http=-1'
+                self.assertEqual(notes[0],'deletion_settled='+expected)
+                self.assertIn('('+expected+', removal not confirmed)',str(failed.exception))
+                # The failed step names the pass and step in one note, with no "; " inside it.
+                self.assertTrue(notes[1].startswith('failed_step=expiring-link pass, History delete: History confirms object removal (status='+status))
+                self.assertNotIn('; ',notes[1])
+                for note in notes:
+                    self.assertNotIn('AKIA',note);self.assertNotIn('example.invalid',note);self.assertNotIn('secure connection',note)
+                self.assertNotIn('deletion_count=1',notes)
+
+    def test_removed_delete_adds_no_settled_note_and_one_step_note_per_failure(self):
+        details=[{'id':'owned','remoteStatus':'not_requested'},{'id':'owned','remoteStatus':'removed','linkAvailable':False}]
+        notes=[]
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=notes.append,
+                            evidence=SimpleNamespace(redactor=SimpleNamespace(exception=str)),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
+                            wait=lambda fn,*a,**kw:fn(),call=Mock(side_effect=lambda m,p=None:details.pop(0) if m=='history.detail' else {}),
+                            expect=lambda ok,note:None,
+                            clipboard_text=lambda:json.dumps({'targets':[{'historyId':'owned'}],'acknowledgement':'synthetic'}))
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live.history,'_confirm_button'):
+            outcomes_live._cleanup(ctx,{'id':'owned'})
+        self.assertEqual(notes,['deletion_count=1'])
+        # Nested steps: only the innermost names the failure.
+        notes.clear()
+        with self.assertRaises(RecipeFailed):
+            with outcomes_live._step(ctx,'outer pass'):
+                with outcomes_live._step(ctx,'outer pass, inner step'):
+                    raise RecipeFailed('check; failed')
+        self.assertEqual(notes,['failed_step=outer pass, inner step: check, failed'])
+        # The note goes through the runner's redactor, as the failure itself does.
+        notes.clear()
+        ctx.evidence=SimpleNamespace(redactor=SimpleNamespace(exception=lambda e:'[redacted failure]'))
+        with self.assertRaises(RecipeFailed):
+            with outcomes_live._step(ctx,'a pass, a step'):
+                raise RecipeFailed('link cdn.example.invalid/key refused')
+        self.assertEqual(notes,['failed_step=a pass, a step: [redacted failure]'])
+
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
