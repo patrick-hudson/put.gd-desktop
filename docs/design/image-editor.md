@@ -229,19 +229,28 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
    failure checkpoint carries `edit_cancelled`, `source_unsupported`,
    `input_excessive`, `edit_export_failed` or `image_job_io`. Every checkpoint
    returns `recentColors`; the resident saves a changed list to settings.
-5. `checkpointAccepted`; the helper exits 0.
+5. `checkpointAccepted`; the helper exits 0 within 5 s.
 
 Startup is limited to 20 s and finalization to 120 s; editing itself has no
 deadline. Each agent command must answer within 8 s, and at most 16 may wait;
 a command past its deadline answers `editor_timeout`, and the helper's late
 answer to it (a large Save a copy or Copy image still finishing) is dropped
 rather than ending the edit.
-The resident accepts the handoff only after a normal zero exit, unchanged pinned
+The resident accepts the handoff only after the helper ends cleanly (a normal zero exit, or
+the stop described below for a helper that doesn't close after handing off), unchanged pinned
 input/output identities, the authenticated digest, and a structural check that
 the PNG contains only IHDR, PLTE, tRNS, gAMA, cHRM, sRGB, pHYs, IDAT and a final
 IEND with valid CRCs and no trailing bytes. Text, EXIF, ICC, time and private
 chunks are refused. Those exact bytes become the operation's single immutable
 artifact (`image/png`); they are not re-encoded, and retry reuses them.
+The one exception is a helper whose checkpoint handed off an image (`ok` true) and is still
+running 5 s after `checkpointAccepted` (#2011). The image is already in the resident's pinned
+staging, so the resident logs why (`not_closed_after_handoff`) and stops the helper with
+SIGTERM, then SIGKILL. It then runs the same checks on the handed-off image. Only exit 0 or
+termination by that SIGTERM or SIGKILL counts. A helper that crashes another way, exits with
+an error after the handoff, or is still running after the stop fails the edit with
+`editor_exit`: "The image editor closed with an error after handing off the image. The
+upload didn't start."
 
 ## Copy image
 
@@ -307,7 +316,7 @@ guarantee forensic erasure from disks, swap or backups.
 `edit` operations move through `accepted → acquiring → editing → acquiring`
 (handoff) `→ stored → running → completed`. `editing` is persisted and is an
 active state; the operation has no items until the finalized PNG is committed.
-After the helper exits successfully, the resident persists `state=acquiring`,
+After the resident accepts the image handoff, it persists `state=acquiring`,
 `phase=queued` before putting the sanitized PNG in the worker queue. The editor
 is closed; History says **Waiting to upload…**. `stored` begins only after the
 worker commits an immutable artifact. Cancellation while queued still cancels
