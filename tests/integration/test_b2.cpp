@@ -249,10 +249,12 @@ private slots:
     }
     // #1792. Lent upload slots carry extra parts of one large file at once, each on its own
     // connection and part URL; the finish still lists the SHA-1s in part order, so the stored
-    // file is the artifact. Without a loan, parts go one at a time as before.
+    // file is the artifact. Without a loan, parts go one at a time as before. The fixture holds
+    // each part until all four are in flight: at a fixed byte pace the short last part could
+    // finish before a lane slowed by a busy machine had started (#1318).
     void largeFileSendsPartsOnLentSlots() {
         B2Fixture f;
-        f.reset({{"uploadPace", 5 * mib}});
+        f.reset({{"partsTogether", b2::maximumPartLanes}});
         const auto bytes = synthetic(16 * mib, 1792);
         auto request = f.request("lanes.bin", bytes);
         std::atomic_int asked{-1};
