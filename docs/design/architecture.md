@@ -85,6 +85,8 @@ private until explicit submission; only the sanitized PNG enters the shared
 pipeline. `putgd-ui --image-job` performs generic codec discovery, decoding and
 preview work offscreen without providers, credentials or application windows.
 The parent validates private file identity, limits, hashes and normal exit.
+The image editor has one exception: a helper still running 5 s after a handed-off image is
+stopped and the image is still checked and used (see [image editor](image-editor.md#process-and-privacy-boundaries)).
 Known PNG readers verify the signature and disable automatic format discovery.
 See [image editor](image-editor.md) and [image worker](image-worker.md).
 
