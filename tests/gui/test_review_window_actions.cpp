@@ -790,7 +790,7 @@ private slots:
             QCOMPARE(uploads.size(), 0);
             QCOMPARE(saves.size(), 0);
             QCOMPARE(retries.size(), 0);
-            QVERIFY2(status().contains("Upload cancelled"), qPrintable(status()));
+            QVERIFY2(status().contains("The upload didn't start"), qPrintable(status()));
             if (trigger == "timeout") QVERIFY2(status().contains("wasn't confirmed in time"), qPrintable(status()));
             if (trigger == "refusal" || trigger == "local refusal" || trigger == "agent refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
         } else {
@@ -814,7 +814,7 @@ private slots:
         ctrlEnter(window);
         window.setEdit(edit, answer(1, "invalid_request"));
         QVERIFY(window.drive({{"action", "dismissStatus"}}).code.isEmpty());
-        QVERIFY(window.inspect()["status"].toString().contains("Upload cancelled"));
+        QVERIFY(window.inspect()["status"].toString().contains("The upload didn't start"));
         QVERIFY(!window.inspect()["status"].toString().contains("That change wasn't applied"));
     }
     // U44 on a real clip: the decoded frame's own time decides, so the cover set

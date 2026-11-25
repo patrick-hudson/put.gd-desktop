@@ -3546,7 +3546,7 @@ void ReviewWindow::showFrameError(qint64 at, const QString& message) {
     if (!clip.exists()) reason = QStringLiteral("Couldn't show the frame at %1. The recording file is missing.");
     else if (!clip.isReadable()) reason = QStringLiteral("Couldn't read the recording at %1. Check file permissions.");
     else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("Couldn't read the recording at %1. The file may be damaged.");
-    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("Couldn't show the frame at %1. The recording has no video track.");
+    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("Couldn't show the frame at %1. The recording has no readable video track.");
     else if (message.startsWith("No frame")) reason = QStringLiteral("No frame at %1. Try a nearby frame.");
     else reason = QStringLiteral("Couldn't decode the frame at %1. Select Retry preview.");
     // A retry asks again even for the same time.
