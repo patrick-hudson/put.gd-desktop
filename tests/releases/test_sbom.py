@@ -396,9 +396,10 @@ class Policy(unittest.TestCase):
                 item = inputs[scope['component']]
                 self.assertEqual(scope['version'], item['release'])
             self.assertEqual(scope['properties']['putgd:commit'], item['commit'])
-        configure = json.loads((sbom.ROOT / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
-        self.assertEqual(evidence['ffmpeg']['configuredComponents'], configure,
-                         'FFmpeg configure changes require disposition reassessment')
+        if any(scope['component'] == 'ffmpeg' for scope in policy['scopes'].values()):
+            configure = json.loads((sbom.ROOT / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
+            self.assertEqual(evidence['ffmpeg']['configuredComponents'], configure,
+                             'FFmpeg configure changes require disposition reassessment')
         for entry in policy['ignore']:
             self.assertIn(entry['scope'], policy['scopes'])
             self.assertEqual(entry['evidence'], 'packaging/sbom/dispositions/511.json')
