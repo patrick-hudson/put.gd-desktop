@@ -1348,6 +1348,16 @@ class NightlyTests(unittest.TestCase):
                 (out/'attachments.tgz').write_bytes(complete[:-8])
                 self.assertEqual(nightly.archived_files(out/'attachments.tgz'), nightly.attempt_files(out, [out/'idle_memory-1']))
                 self.assertIsNone(nightly.earlier_archive(out, [out/'idle_memory-1']))
+                # Nor one with a second gzip member appended after the tar.
+                import gzip, io, tarfile as tar
+                extra = io.BytesIO()
+                with tar.open(fileobj=extra, mode='w') as stream:
+                    info = tar.TarInfo('idle_memory-1/extra.txt')
+                    info.size = 5
+                    stream.addfile(info, io.BytesIO(b'extra'))
+                (out/'attachments.tgz').write_bytes(complete+gzip.compress(extra.getvalue()))
+                self.assertEqual(nightly.archived_files(out/'attachments.tgz'), nightly.attempt_files(out, [out/'idle_memory-1']))
+                self.assertIsNone(nightly.earlier_archive(out, [out/'idle_memory-1']))
                 (out/'attachments.tgz').write_bytes(complete)
                 self.assertEqual(nightly.earlier_archive(out, [out/'idle_memory-1']), out/'attachments.tgz')
 

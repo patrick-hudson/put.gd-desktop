@@ -1338,6 +1338,23 @@ def archived_files(archive):
                 for member in stream.getmembers() if member.isfile()}
 
 
+def exact_archive_files(archive):
+    """archived_files, only for an archive that is one whole tar and nothing else.
+
+    tarfile stops at the end-of-archive marker and never checks the gzip footer. Read the gzip stream
+    to its end (a truncated footer raises) and refuse any data after the tar but zero padding (a
+    concatenated gzip member or appended bytes).
+    """
+    with gzip.open(archive) as compressed, tarfile.open(fileobj=compressed, mode='r:') as stream:
+        files = {member.name: hashlib.sha256(stream.extractfile(member).read()).hexdigest()
+                 for member in stream.getmembers() if member.isfile()}
+        compressed.seek(stream.offset)
+        while chunk := compressed.read(1 << 20):
+            if chunk.strip(b'\0'):
+                raise ValueError('data after the evidence archive')
+    return files
+
+
 def attempt_files(out, attempts):
     """{relative name: sha256} of every regular file under the attempt directories."""
     files = {}
@@ -1360,12 +1377,7 @@ def earlier_archive(out, attempts):
             continue
         current = attempt_files(out, attempts) if current is None else current
         try:
-            # tarfile stops at the last member and never checks the gzip footer: read the stream to its
-            # end so a truncated archive (CRC and size missing) is never reused.
-            with gzip.open(archive) as stream:
-                while stream.read(1 << 20):
-                    pass
-            if archived_files(archive) == current:
+            if exact_archive_files(archive) == current:
                 return archive
         except Exception:
             # A partial or unreadable archive is never reused; a fresh one is written.
