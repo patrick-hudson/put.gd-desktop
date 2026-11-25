@@ -669,8 +669,9 @@ requires every such acceptance to name the Bun version in
 `tools/proton/runtime-lock.json` and the helper hash in
 `tools/proton/notices/SOURCES.json`, so a Bun or helper change removes or
 reassesses it.
-GHSA-p268-p2w7-qr8x (Bun 1.4.4's HTTP/3 code, unreachable in put.gd's default
-launch of the helper) is accepted until 2027-01-15; #2005 ships Bun 1.4.5.
+No upstream advisory is accepted at present. The 26.1124 stable accepted
+GHSA-p268-p2w7-qr8x for Bun 1.4.4; the helper moved to Bun 1.4.5, which fixes it,
+and the acceptance was removed (#2005).
 The retained `exact-asset-audit-TAG` artifact includes failures and raw findings.
 See [the runbook](release-runbook.md#4-run-acceptance-on-the-stable-draft) for the
 builder command and the separate manual review/acceptance boundary.

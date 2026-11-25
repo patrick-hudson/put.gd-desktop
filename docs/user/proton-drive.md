@@ -4,6 +4,8 @@ Proton Drive is a provider in the shared upload, retry and history pipeline. The
 Qt app in a Proton-enabled build uses a privately packaged executable built
 from the official Drive SDK and pinned official account/CLI sources. Users of
 that build do not install a CLI, Bun or Node.js. This is a third-party integration, not officially supported by Proton.
+The helper starts with the app's environment minus every `BUN_*` variable, so a
+Bun setting in your shell (such as `BUN_OPTIONS`) never changes how it connects.
 put.gd ships and maintains it as an experimental production integration.
 The 2026-10-15 product decision accepts upstream's readiness position; ongoing
 compatibility, packaging and user recovery are put.gd responsibilities.
