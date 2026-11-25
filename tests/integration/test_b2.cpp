@@ -271,12 +271,14 @@ private slots:
     }
     // The first part error stops every lane, cutting parts still in flight, and only then is
     // the large file cancelled: nothing unfinished is left, and the error names that part.
+    // The fixture holds part 4 until all four parts are in flight, then refuses it, and holds
+    // parts 1 to 3 until the large file is cancelled: a fixed byte pace let the short part 4
+    // finish before a lane slowed by a busy machine had started (#1318).
     void partErrorStopsEveryLaneBeforeTheCancel() {
         B2Fixture f;
-        f.reset({{"uploadPace", 1 * mib}});
+        f.reset({{"partsTogether", b2::maximumPartLanes}, {"holdParts", QJsonArray{1, 2, 3}}});
         auto request = f.request("lane-error.bin", synthetic(16 * mib + 512 * 1024, 1793));
         request.extraLanes = [](int wanted) { return wanted; };
-        // Part 4 is the short last part: refused after half a second, while 5 MiB parts still need seconds.
         f.rules({QJsonObject{{"call", "upload_part"}, {"partNumber", 4}, {"status", 401}, {"code", "unauthorized"}}});
         QElapsedTimer clock;
         clock.start();
@@ -284,25 +286,34 @@ private slots:
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("b2_permission_denied"));
         QCOMPARE(result.error.details["partNumber"].toInt(), 4);
+        // Parts 1 to 3 end only when cut: waiting for them would last the fixture's 10 s hold.
         QVERIFY2(clock.elapsed() < 4000 * test::timeScale(), qPrintable(QString::number(clock.elapsed())));
-        QVERIFY(f.state()["maxPartsInFlight"].toInt() > 1);
+        QCOMPARE(f.state()["maxPartsInFlight"].toInt(), b2::maximumPartLanes);
+        QCOMPARE(f.events("upload_part").size(), 1);
         QCOMPARE(f.events("b2_cancel_large_file").size(), 1);
         QCOMPARE(f.events("b2_finish_large_file").size(), 0);
         QVERIFY(f.versions("prefix é/lane-error.bin").isEmpty());
     }
-    // Cancel cuts every lane's part in flight and cancels the large file.
+    // Cancel cuts every lane's part in flight and cancels the large file. The fixture holds
+    // every part until the large file is cancelled, and the cancel comes once all four are in
+    // flight: a cancel at a fixed time, with parts read at a fixed byte pace, could come before
+    // a lane slowed by a busy machine had started, or after the short last part had ended (#1318).
     void cancelStopsEveryLaneAndCancelsTheLargeFile() {
         B2Fixture f;
-        f.reset({{"uploadPace", 1 * mib}});
+        f.reset({{"holdParts", QJsonArray{1, 2, 3, 4}}});
         auto request = f.request("lane-cancel.bin", synthetic(16 * mib, 1794));
         request.extraLanes = [](int wanted) { return wanted; };
-        auto cancel = request.cancellation;
-        std::thread stopper([cancel] { std::this_thread::sleep_for(std::chrono::milliseconds(1500)); cancel->store(true); });
-        const auto result = f.upload(request);
-        stopper.join();
+        UploadResult result;
+        std::thread uploader([&] { result = f.upload(request); });
+        const bool together = test::waitFor([&] { return f.state()["partsInFlight"].toInt() == b2::maximumPartLanes; });
+        request.cancellation->store(true);
+        uploader.join();
+        QVERIFY(together);
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("cancelled"));
-        QVERIFY(f.state()["maxPartsInFlight"].toInt() > 1);
+        QCOMPARE(f.state()["maxPartsInFlight"].toInt(), b2::maximumPartLanes);
+        // No part ran to its end: every lane was cut.
+        QVERIFY(f.events("upload_part").isEmpty());
         QCOMPARE(f.events("b2_cancel_large_file").size(), 1);
         QCOMPARE(f.events("b2_finish_large_file").size(), 0);
         QVERIFY(f.versions("prefix é/lane-cancel.bin").isEmpty());

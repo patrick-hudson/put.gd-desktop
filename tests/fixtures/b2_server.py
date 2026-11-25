@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Offline Backblaze B2 native-API (b2api v3) oracle for #282. Synthetic keys only; loopback only.
 
-Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace, partsTogether}, /__rules {rules}, GET /__state
-(state includes maxPartsInFlight, the most part bodies read at once).
+Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace, partsTogether, holdParts}, /__rules {rules}, GET /__state
+(state includes partsInFlight and maxPartsInFlight, the part bodies being read now and the most read at once).
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "noFileId": true (act, then answer 2xx without a fileId), "competitor": true (another upload of the same name lands first),
 "partNumber": n, "after": n (let n matching requests through first), "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
@@ -110,16 +110,28 @@ class Handler(BaseHTTPRequestHandler):
         # 'maxPartsInFlight' (state): the most part bodies read at the same time (#1792).
         # 'partsTogether' (reset option): hold each part's body until that many parts have been
         # in flight at once, so a count of parallel lanes doesn't hang on how fast bytes move (#1318).
+        # 'holdParts' (reset option): part numbers whose bodies stay unread until their large file is
+        # no longer unfinished, then the connection drops; such a part ends only when the client cuts
+        # it, whatever the pace of either side (#1318).
         part = self.path.startswith('/upload_part/')
         with lock:
             pace = state.get('uploadPace') if self.path.startswith('/upload') else None
             if part:
                 state['partsInFlight'] += 1
                 state['maxPartsInFlight'] = max(state['maxPartsInFlight'], state['partsInFlight'])
-                together = state.get('partsTogether')
-                if together:
-                    self.wait_for(lambda: state['maxPartsInFlight'] >= together, timeout=5)
         try:
+            if part:
+                with lock:
+                    together = state.get('partsTogether')
+                    if together:
+                        self.wait_for(lambda: state['maxPartsInFlight'] >= together, timeout=5)
+                    if int(self.headers.get('X-Bz-Part-Number', 0)) in (state.get('holdParts') or []):
+                        fid = urllib.parse.urlsplit(self.path).path.split('/')[2]
+                        unfinished = lambda: (self.find(fid) or {}).get('action') == 'start'
+                        self.wait_for(lambda: not unfinished())
+                        if not unfinished():
+                            self.drop()
+                            return None
             return self.read_body(length, pace)
         finally:
             if part:
@@ -189,6 +201,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = self.body()
+        if data is None:
+            return
         with lock:
             path = urllib.parse.urlsplit(self.path).path
             if path == '/__reset':
@@ -196,7 +210,7 @@ class Handler(BaseHTTPRequestHandler):
                 state.clear()
                 state.update(fresh())
                 options = json.loads(data or b'{}')
-                for k in ('capabilities', 'restricted', 'buckets', 'uploadPace', 'partsTogether'):
+                for k in ('capabilities', 'restricted', 'buckets', 'uploadPace', 'partsTogether', 'holdParts'):
                     if k in options:
                         state[k] = options[k]
                 for v in options.get('versions', []):

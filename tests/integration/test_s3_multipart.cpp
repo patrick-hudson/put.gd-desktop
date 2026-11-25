@@ -369,12 +369,14 @@ private slots:
         saved["phase"] = "parts";
         request.resume = saved;
         request.extraLanes = [](int wanted) { return wanted; };
-        // Every part's body is sent first. Part 1 is then denied, and parts 2 and 3 find the
+        // Every part's body is sent first: the fixture holds each until all three have arrived,
+        // since a lane slowed by a busy machine could send its part after part 1's refusal had
+        // already stopped the lanes (#1318). Part 1 is then denied, and parts 2 and 3 find the
         // upload gone just after, while the other lanes' error is already recorded.
         f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}},
-                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"delay", 0.2}, {"status", 403}, {"code", "AccessDenied"}},
-                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 0.22}},
-                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=3&"}, {"delay", 0.22}}}}}, true);
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"together", 3}, {"status", 403}, {"code", "AccessDenied"}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"together", 3}, {"delay", 0.02}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=3&"}, {"together", 3}, {"delay", 0.02}}}}}, true);
         const auto result = f.upload(request);
         QCOMPARE(result.status, QString("uploaded"));
         QVERIFY(journal.last().isEmpty());
