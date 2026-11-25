@@ -15,7 +15,7 @@ dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `ci-images.yml` | called first by `ci.yml`; 00:17 UTC daily and manual | check the prebuilt images the container jobs run in and build any whose inputs changed; daily, build the new week's images ([CI images](#ci-images)) |
 | `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
-| `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag the commit and publish the packages push CI built for it (testing and packaging here when it can't), then notify put.gd-site; re-scan the latest stable release's SBOMs |
+| `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag the commit and publish the packages push CI built for it (testing and packaging here when it can't), then notify put.gd-site; run every test under clang ASan/UBSan; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
 
@@ -27,6 +27,9 @@ job skipped because the change cannot affect it is.
 
 `tools/ci/changes.py` classifies a pull request's changed paths. Pushes, the
 schedule, manual runs and stable release callers select everything by default.
+A manual run with the test-only `full_sanitizers` input selects only contracts and
+`sanitizers`, which then runs every test as the nightly does
+([below](#every-test-under-the-sanitizers-nightly)).
 The nightly caller sets `reuse_source_ci: true`: `tools/ci/reuse_ci.py` looks for
 a successful `ci.yml` push run on `nightly` at the exact commit. It requires
 contracts, both Linux test jobs, sanitizers and `CI` to
@@ -158,7 +161,43 @@ platform-model tests. The test preset makes every UBSan report fatal; any ASan
 report already is. Waits and test timeouts scale by 5 there, and the same
 [retry policy](#flaky-tests) applies. The job is not in the required `CI` summary yet (issue
 [#90](https://github.com/patrick-hudson/put.gd-desktop/issues/90)); add it there once
-it has run green on `nightly` for a while.
+it has run green on `nightly` for a while. Its steps live in the composite action
+`.github/actions/sanitizers`, which the nightly run of every test shares.
+
+### Every test under the sanitizers, nightly
+
+The subset leaves most tests unchecked: the first run of the whole set (#2065) found a
+heap-use-after-free in the image editor (#2067), in a test the per-PR job doesn't run. So
+`nightly.yml`'s `sanitizers (every test, clang ASan/UBSan)` job builds the same
+`clang-asan` tree and runs the `clang-asan-all` test preset: every test, the `nightly`
+label included, with the linux job's CPU pool and the same retry policy. It runs once
+per new nightly source and skips when `plan` skips.
+
+- **A failure shows.** The job fails, which fails the nightly workflow run, and its
+  summary and a workflow error list each failure with its first report lines.
+- **It is filed.** `tools/ci/flake_ledger.py failures` adds one comment per failed run to
+  the open issue *Tests fail under ASan/UBSan in the nightly run of every test*
+  (label `area: tests`), or opens it. A failed test counts, and so do CTest failing
+  without a failed test, a run that stopped before its tests finished, and a test whose
+  sanitizer report only its retry hid. Close the issue once a run passes; the next
+  failure opens a new one.
+- **It never gates publication.** `publish` doesn't wait for it. The run holds the
+  `nightly-publication` concurrency group while it runs, so a manual nightly started
+  meanwhile waits for it.
+
+Two tests stay out of the full set: `ocr_confinement_integration` and
+`desktop_icon_assets`. Their binaries aren't instrumented, so they can't load the
+instrumented QtCore (confinement forbids what the sanitizers need; the icon renderer
+is a build tool).
+
+Leaks from inside third-party libraries are suppressed in `tests/sanitizer/lsan.supp`,
+with the reason beside each: Ubuntu 26.04's fontconfig keeps its parsed configuration
+when Qt adds an application font, and libdbus keeps a connection read buffer at exit.
+Neither shows on Fedora 45. Suppress nothing from put.gd's own frames; fix it.
+
+To check a fix on a branch, start `ci.yml` by hand with `full_sanitizers` (Actions >
+CI > Run workflow): contracts and the full sanitizer run, about 10 minutes. Locally,
+build the `clang-asan` preset and run `ctest --preset clang-asan-all`.
 
 Distro Qt is not instrumented, so ASan can't check loads made inside it. The bug
 [#76](https://github.com/patrick-hudson/put.gd-desktop/pull/76) fixed kept a
@@ -406,6 +445,10 @@ new distro Qt or clang package, or an edit to the recipe, rebuilds it once (abou
 container.
 
 Measured run times from 2026-10-19 are in [the CI records](../history/ci-records.md#sanitizers-job-runtime-2026-10-19).
+
+The nightly run of every test restores these same caches and saves none of them
+except a missing SDK prefix or QtCore, so it adds no cache entries. On 2026-11-25 its
+job took 520 s with warm caches, 347 s of it testing 170 tests at `--parallel 4`.
 
 ## Speed measures
 
@@ -851,7 +894,9 @@ which ranks the Ubuntu mirrors, installs the profile's packages through
 package caches:
 
 - **linux and sanitizers:** the build and test packages that `ci.yml` used to
-  install, plus the unprivileged `putgd-ci` user CTest runs as.
+  install, plus the unprivileged `putgd-ci` user CTest runs as. Both carry the
+  GStreamer plugins the recording and scroll-capture tests need, since the nightly
+  sanitizer job runs those too.
 - **native:** `git` and `ca-certificates`, then `tools/releases/install-native-deps.sh`;
   Arch also gets the `builder` user `makepkg` needs.
 - **appimage:** the base dependencies, `tools/ci/appimage-packages.txt`, `weston` and
@@ -991,6 +1036,7 @@ run time and above its worst bounded install path (four stopped attempts plus
 | `contracts` | 4 | 75 |
 | `linux` (2 releases) | 4–7 | 60 |
 | `sanitizers` | 3–6, more when QtCore is rebuilt | 90 |
+| nightly `sanitizers (every test)` | 9–11, about 8 more when QtCore is rebuilt | 60 |
 | `pipewire`, `packages / appimage-pipewire` | 1–2 | 30 |
 | nightly `publish`, release `draft` | 7–8 (including collection when it reuses push CI) / 6 | 60 |
 
