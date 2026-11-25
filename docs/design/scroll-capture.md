@@ -265,12 +265,12 @@ unmeasured, before its time limit, and the next step goes on as usual. While tha
 for 100 ms, and neither a still frame nor its 3 s limit has settled it, the session asks for a
 fresh frame. It waits for it at most 1,500 ms (the wait for Done's fresh frame) and no longer
 than the step has left. If the frame shows more movement, the step keeps waiting; if it proves
-the page still, the step settles and measures. With no frame, or one that proves nothing, the
+the page still, the step settles, and measures if it was sent from a proved rest. With no frame, or one that proves nothing, the
 step waits on. A step that reaches its 3 s limit without that proof, whether frames kept
 coming or not, settles unmeasured, and a later step from a proved rest measures again. Until a
 distance per notch is known, every forward step asks for that fresh frame, also one sent from
-a rest nothing proved: it measures nothing, but its frame proves the rest the next step
-measures from. Without it, on a stream that sends only changes, every step after one that
+a rest nothing proved: that step measures nothing, but the frame that settles it proves the
+rest the next step measures from. Without it, on a stream that sends only changes, every step after one that
 settled unmeasured began unproved, and the whole capture went one notch a step: 78 steps
 for 24 after a 3.5 s stall ([#2000](https://github.com/patrick-hudson/put.gd-desktop/issues/2000)). Before
 this rule (#1995), a starved X server's grabs stalled 80 ms in every 100 in the middle of the
