@@ -1,0 +1,138 @@
+{
+  "host": "aurora-amd",
+  "environment": "putgd-build Toolbx",
+  "startedUtc": "2026-11-25T04:30:06.534665+00:00",
+  "sourceBuiltRuntimeReused": false,
+  "sourceBuildCompleted": true,
+  "sourceBuildCommit": "a7733435cf40429e3b35c36072769df2052b80f1",
+  "scope": "Fresh Bun 1.4.5 native source build and current overlay helper relink; no Proton account or external-service calls. Synthetic local transport fixtures only.",
+  "temporaryDirectory": "/tmp/pg2024p",
+  "socketPreflight": {
+    "exampleSessionPath": "/tmp/pg2024p/putgd/session.sock",
+    "utf8Bytes": 31,
+    "sessionSocketCreated": false
+  },
+  "finishedUtc": "2026-11-25T04:30:19.661227+00:00",
+  "exitCode": 0,
+  "passed": true,
+  "nativeBuild": {
+    "buildJobs": 4,
+    "rustJobs": 2,
+    "resumed": false,
+    "markerPatchSha256": "0b6cf36da33db74b4cb16d7c3f7025b88806c700b77facef3a1a776b4022596c",
+    "markerPatchMatchesBun144Proof": true,
+    "compilers": {
+      "clang": {
+        "sha256": "b6f5b486a13ae32eed1f62c6ae8c37296695e3b77ccffc928a045bfc703574c1",
+        "version": "clang version 23.1.5 (Fedora 23.1.5-2.fc45)"
+      },
+      "clang++": {
+        "sha256": "b6f5b486a13ae32eed1f62c6ae8c37296695e3b77ccffc928a045bfc703574c1",
+        "version": "clang version 23.1.5 (Fedora 23.1.5-2.fc45)"
+      },
+      "ld.lld": {
+        "sha256": "c4bde8f05f7d7c338202210330a35ac4d30953263ec350b9cf9302736f969342",
+        "version": "LLD 23.1.5 (compatible with GNU linkers)"
+      },
+      "rustc": {
+        "sha256": "4a049908903487fd0544422fdb8e95d0f4b5e50aca423b2da1a4c7e2773de604",
+        "version": "rustc 1.100.0-nightly (574ff7d98 2026-09-14)"
+      },
+      "cargo": {
+        "sha256": "f2fd1f22fcc012977c5d27e72a590c7133cfd9bf7881d6f40da99882290465cb",
+        "version": "cargo 1.100.0-nightly (7941be6fb 2026-09-11)"
+      }
+    },
+    "sourcePackets": [
+      {
+        "file": "putgd-proton-build-controls.tar.gz",
+        "sha256": "9836f279d2e90fc3bdabf8a9c98494c82eb79172ba5c77d77e33a865eeadb4ac",
+        "bytes": 22309512
+      },
+      {
+        "file": "putgd-proton-helper-rebuild.tar.gz",
+        "sha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+        "bytes": 15994986
+      },
+      {
+        "file": "putgd-proton-crypto-source-and-provenance.tar.gz",
+        "sha256": "c6bcd11530ad175b42745e7bde8b820a44afa2a9ff049524a3e823adf7e83b5d",
+        "bytes": 1630506
+      },
+      {
+        "file": "putgd-proton-openpgp-preferred-source.tar.gz",
+        "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
+        "bytes": 86740453
+      },
+      {
+        "file": "putgd-proton-bun-sources-1.4.5.tar",
+        "sha256": "96fd79001c1cf6f54738edac76ed8694053b750c113b56e0c3a89660e42104f1",
+        "bytes": 2260224000
+      },
+      {
+        "file": "putgd-proton-native-rebuild-supplement.tar.gz",
+        "sha256": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc",
+        "bytes": 47345002
+      }
+    ],
+    "bootstrapRevision": "1.4.5+a7733435c",
+    "nativeRevision": "1.4.5-canary.1+a7733435c"
+  },
+  "result": {
+    "nativeBunSha256": "dbf1faf448652063ef714b9f51e45e9a9bd00f6a4e00de8256ddd887c7d5f70e",
+    "proofHelperSha256": "a63adee8483d61321eb95664d706e6e081b4f113ce8a671916f33750d18e8cdb",
+    "nativeCryptoProofSha256": "dcb96d169a7fdf16c8e8bc4b27870f28217d5b41ef23425d63842739ebd19ecf",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.5-canary.1+a7733435c"
+    ],
+    "nativeVersion": "1.4.5",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 77,
+    "compiledStdioCases": 12,
+    "compiledSessionCases": 3,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "productionHelperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "a7733435cf40429e3b35c36072769df2052b80f1",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "applicationSourceOverlayVerified": true,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "controlsSha256": {
+    "run_helper_proof.py": "3122bba9423cf05d7c49f493a2251202bd77ef2b1b088abd83f3c79386cb1c33",
+    "proof_command.py": "c3cb37fcd4136212ee2e1990c2b2870fb4d684110ea78911e181a429e2dc85d5",
+    "SOURCES.json": "fd57ea660a55dc373e3cfa7abb51f4873d918865de091d85ac42c95837163296"
+  },
+  "testAssertionsObserved": 595,
+  "retention": {
+    "archive": "/var/home/patrick/archives/proton-native-relink-2024/native-proof-7fc568ce-complete.tar.gz",
+    "sha256": "8e3d7b4b6dfa812b416599c81a6ea08be609bf5cc01ac4add2049295b52adece",
+    "bytes": 3764119749,
+    "restoreIndex": "/var/home/patrick/archives/proton-native-relink-2024/restore-index.json",
+    "restoreIndexSha256": "28af5cc935459ecb7b818f5882f949869c0ff5cf93afefaec19939c59b953a5a",
+    "memberCount": 80,
+    "verifiedReadback": true,
+    "executablesRetained": true,
+    "sourcePacketsRetained": true,
+    "recordedUtc": "2026-11-25T04:31:45.566433+00:00"
+  }
+}
