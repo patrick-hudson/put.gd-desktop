@@ -419,7 +419,7 @@ def add(ctx):
         ctx.focus('destinations')
         # A new destination stays provisional until its required bucket is valid.
         _edit(ctx, 's3Bucket', 'surface-added-bucket')
-        if ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == 'Couldn’t save changes — retry saving.':
+        if ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == "Couldn't save changes. Select Retry saving.":
             # B2's blank initial bucket can refuse the first save while the
             # name-dialog witness is captured. Follow the visible retry flow.
             _click(ctx, 'text:Retry saving')

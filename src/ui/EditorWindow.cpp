@@ -391,7 +391,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  saveFeedback_->setDismissible(true,"Dismiss save feedback");auto* dismiss=saveFeedback_->dismissButton();dismiss->setFocusPolicy(Qt::StrongFocus);dismiss->setObjectName("dismissEditorSavedCopy");connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);setTabOrder(showFolder_,copyPath_);setTabOrder(copyPath_,dismiss);setTabOrder(chooseAnother_,dismiss);
  setTabOrder(savedMore_,dismiss);
  for(auto* button:saveFeedback_->findChildren<QAbstractButton*>()){button->setProperty("uiDensity","compact");button->style()->unpolish(button);button->style()->polish(button);}
- folderError_=new Ui::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Use Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);Ui::role(folderError_,"body");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
+ folderError_=new Ui::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Select Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);Ui::role(folderError_,"body");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
 
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
  // Copy image: the same sanitized PNG as Upload and Save a copy, on the
@@ -932,10 +932,10 @@ void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
  saveTarget_->setText(file.fileName());
  saveTarget_->hide();
  const auto where=path.isEmpty()?QStringLiteral("the copy"):file.absoluteFilePath();
- saveError_->setText(QString("Couldn't save: %1").arg(reason.trimmed()));saveError_->setRevealText(where+"\n\n"+saveError_->text()+"\nYour edits are kept.");
+ saveError_->setText(QString("Couldn't save: %1").arg(reason.trimmed()));saveError_->setRevealText(where+"\n\n"+saveError_->text());
  saveTarget_->setToolTip(where);saveTarget_->setAccessibleDescription(where);
- saveError_->setToolTip(path.isEmpty()?QStringLiteral("Your edits are kept."):QString("%1\nYour edits are kept.").arg(where));saveError_->setAccessibleName("Save a copy failed");
- saveError_->setAccessibleDescription(QString("Couldn't save %1: %2. Your edits are kept.").arg(where,why));
+ saveError_->setToolTip(path.isEmpty()?QString():QString("%1").arg(where));saveError_->setAccessibleName("Save a copy failed");
+ saveError_->setAccessibleDescription(QString("Couldn't save %1: %2.").arg(where,why));
  saveError_->show();savedLabel_->hide();showFolder_->hide();copyPath_->hide();chooseAnother_->show();
  header_->setDocument("Edit image","Not uploaded");saveFeedbackVisible_=true;placeDestination();saveFeedback_->announce(saveError_->accessibleDescription());
 }
@@ -955,7 +955,7 @@ bool EditorWindow::showSavedCopy(){
  folderError_->hide();
  host::showInFolder(path,[self,request](const QJsonObject& result){
   if(!self||self->folderRequest_!=request)return;
-  self->lastShowInFolder_=result;self->saveError_->setText("Couldn't open folder");self->saveError_->setRevealText(self->lastSave_["path"].toString()+"\n\nCouldn't open the folder. Use Copy path instead.");
+  self->lastShowInFolder_=result;self->saveError_->setText("Couldn't open folder");self->saveError_->setRevealText(self->lastSave_["path"].toString()+"\n\nCouldn't open the folder. Select Copy path instead.");
   if(!result["opened"].toBool()){self->saveFeedbackTimer_->stop();self->saveFeedbackVisible_=true;}else if(self->saveFeedbackVisible_)self->saveFeedbackTimer_->start(6000);
   self->syncSaved();self->placeDestination();if(!result["opened"].toBool())self->saveFeedback_->announce(self->folderError_->text());
  });
@@ -1024,7 +1024,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  if(busy_)return fail("editor_finalizing","The edit was already submitted or discarded");
  // A drag in progress owns the document's current undo step: a change made now would join it, and abandoning the drag
  // would roll it back after the agent was told it worked. Every action that edits the document or changes what is selected waits for the drag.
- if(QStringList{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber","select","selectNext","selectPrevious","selectAffectedText"}.contains(action)&&doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
+ if(QStringList{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber","select","selectNext","selectPrevious","selectAffectedText"}.contains(action)&&doc_.inGesture())return fail("editor_busy","A mark is being dragged. Try again when the drag ends.");
  // Keep editing answers the discard question, else dismisses a preparation
  // failure: both buttons carry that label.
  if(action=="keepEditing"||action=="confirmDiscard"){
@@ -1190,7 +1190,7 @@ void EditorWindow::rebuildCodes(){
 }
 void EditorWindow::textOutcome(const QString& what,Error error,int characters,TextDone done){
  const auto status=!error?QStringLiteral("copied"):error.code=="copy_suppressed"?QStringLiteral("suppressed"):QStringLiteral("failed");
- textFeedback_->setText(status=="copied"?QString("Copied %1").arg(what):status=="suppressed"?QStringLiteral("Text not copied: the clipboard changed"):"Text could not be copied: "+error.message);
+ textFeedback_->setText(status=="copied"?QString("Copied %1").arg(what):status=="suppressed"?QStringLiteral("Text not copied because your clipboard changed"):"Couldn't copy the text: "+error.message);
  Ui::role(textFeedback_,status=="copied"?"secondary":"danger");textFeedback_->show();
  if(done){if(status=="failed")done(error,{});else done({},{{"copyStatus",status},{"characters",characters}});}
 }
@@ -1219,8 +1219,8 @@ void EditorWindow::openCode(int index,TextDone done){
  if(!link.isValid()){if(done)done({"link_unsupported","Only an http or https link opens",{}},{});return;}
  // At once, with no dialog: the whole link is already in the code's row.
  host::openLink(link,[g=QPointer<EditorWindow>(this),done](const QJsonObject& result){
-  if(g&&!result["opened"].toBool()){g->textFeedback_->setText("The link could not be opened");Ui::role(g->textFeedback_,"danger");g->textFeedback_->show();}
-  if(done){if(result["opened"].toBool())done({},result);else done({"link_not_opened","The link could not be opened on this desktop",result},{});}
+  if(g&&!result["opened"].toBool()){g->textFeedback_->setText("Couldn't open the link.");Ui::role(g->textFeedback_,"danger");g->textFeedback_->show();}
+  if(done){if(result["opened"].toBool())done({},result);else done({"link_not_opened","Couldn't open the link on this desktop.",result},{});}
  });
 }
 bool EditorWindow::parseRedactText(const QJsonObject& entry,QStringList& categories,QStringList& terms,QStringList& patterns,QString& code,QString& message){
@@ -1250,7 +1250,7 @@ bool EditorWindow::parseRedactText(const QJsonObject& entry,QStringList& categor
  return true;
 }
 QJsonObject EditorWindow::applyCommands(const QJsonArray& commands,QString& code,QString& message){
- if(doc_.inGesture()){code="editor_busy";message="A mark is being dragged; try again when the drag ends";return {};}
+ if(doc_.inGesture()){code="editor_busy";message="A mark is being dragged. Try again when the drag ends.";return {};}
  QJsonArray created;
  if(!editor::Commands::apply(doc_,commands,created,code,message))return {};
  documentEdited();
@@ -1270,7 +1270,7 @@ int EditorWindow::removeSuggestions(){
 }
 void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns,QStringList first){
  if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
- if(doc_.inGesture()){if(done)done({"editor_busy","A mark is being dragged; try again when the drag ends",{}},{});return;}
+ if(doc_.inGesture()){if(done)done({"editor_busy","A mark is being dragged. Try again when the drag ends.",{}},{});return;}
  // The list alone, with nothing saved and nothing given: there is nothing to find, so no recognition starts (and none can fail).
  if(categories==QStringList{"list"}&&redactTerms_.isEmpty()&&redactPatterns_.isEmpty()&&terms.isEmpty()&&patterns.isEmpty()){
   if(busy_){if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
@@ -1283,7 +1283,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
  text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns),first=std::move(first)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
-  if(g->busy_){stopWith("Quick redact added nothing: the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+  if(g->busy_){stopWith("Quick redact didn't run because the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
   if(error){stopWith(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message,"danger",error);return;}
   // The saved list and an agent's own terms, for this run (#1618). Never stored or logged. The account is
   // looked up by the runner, on its worker thread, only when name is chosen.
@@ -1308,7 +1308,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     g->quickRedacting_=false;
     const auto fail=[&](const QString& text,Error failure){g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(failure,{});};
     if(g->doc_.inGesture()){fail("A mark was still being dragged, so nothing was added. Try again.",{"editor_busy","A mark was still being dragged while Quick redact waited",{}});return;}
-    if(g->busy_){fail("Quick redact added nothing: the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+    if(g->busy_){fail("Quick redact didn't run because the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
     if(g->text_->revision()!=revision){fail("A redaction or the crop changed, so nothing was added. Try again.",{"edit_stale","A Redact mark or the crop changed while Quick redact was matching",{}});return;}
     // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
     QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
@@ -1341,7 +1341,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
     QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 didn't finish and was skipped.").arg(index+1);}
     // The account lookup did not answer in time: the other categories ran without it (#1618).
-    if(found.nameUnchecked)lines<<QStringLiteral("My username and name was not checked: the account lookup did not answer in time.");
+    if(found.nameUnchecked)lines<<QStringLiteral("Couldn't check My username and name because the account lookup timed out.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
     g->documentEdited();
     QJsonObject result{{"created",created},{"counts",counts}};if(!codeKinds.isEmpty())result["codes"]=codeKinds;if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;if(found.unfinished)result["unfinished"]=true;

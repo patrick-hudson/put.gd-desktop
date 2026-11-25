@@ -786,7 +786,7 @@ private slots:
   // A package removed before the click says so instead of doing nothing.
   controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});PUTGD_TRY_COMPARE(notifications.values.size(),7);QVERIFY(QFile::remove(custom));
   emit notifications.ActionInvoked(7,"show-in-folder");PUTGD_TRY_COMPARE(notifications.values.size(),8);
-  QCOMPARE(notifications.values[7]["summary"].toString(),QString("Show in folder failed"));QCOMPARE(notifications.values[7]["body"].toString(),QString("The diagnostics package is no longer there"));
+  QCOMPARE(notifications.values[7]["summary"].toString(),QString("Show in folder failed"));QCOMPARE(notifications.values[7]["body"].toString(),QString("Couldn't find the diagnostics package."));
   putgd::test::settle(50);PUTGD_TRY_COMPARE(files.shown.size(),3);PUTGD_TRY_COMPARE(opened().size(),1);
  }
  void selfStoppedRecordingAndKeptUploadsAreAnnounced() {
@@ -794,9 +794,9 @@ private slots:
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
-  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Recording stopped at 0:03: the disk ran out of room."}});
+  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Recording stopped at 0:03 because the disk ran out of space."}});
   PUTGD_TRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("Recording stopped"));
-  QCOMPARE(notifications.values.last()["body"].toString(),QString("Recording stopped at 0:03: the disk ran out of room."));
+  QCOMPARE(notifications.values.last()["body"].toString(),QString("Recording stopped at 0:03 because the disk ran out of space."));
   emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
   PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("Incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));

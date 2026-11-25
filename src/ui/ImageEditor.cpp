@@ -159,9 +159,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    int width=0,height=0;QByteArray png;
    // #1893: the exported size, which a capture style makes larger than the crop.
    {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
-   if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
+   if(png.isEmpty()){recover("edit_export_failed","Couldn't encode the edited image as PNG. Try again, or save a copy.");return;}
    if(png.size()>outputBytes){
-    recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
+    recover("input_excessive",QString("Edited image is %1, over the %2 limit for this destination. Crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
     return;
    }
    // Staging that can't be written is not recoverable here: the session ends.
@@ -182,7 +182,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  if(const auto test=qEnvironmentVariableIntValue("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS");test>=100&&test<30000)copyDeadline.setInterval(test);
  const auto copyFailed=[&](const QString& code,const QString& reason){
   copyPending=false;copyDeadline.stop();copyId.clear();files.discardCopy();window->showCopyFailed(reason);
-  if(auto reply=std::exchange(copyReply,{}))reply({},code,"The image was not copied: "+reason);
+  if(auto reply=std::exchange(copyReply,{}))reply({},code,"Couldn't copy the image: "+reason);
  };
  const std::function<bool(std::function<void(QJsonObject,QString,QString)>)> startCopy=[&](std::function<void(QJsonObject,QString,QString)> reply)->bool{
   if(terminal||finalizing||!window||copyPending)return false;
@@ -332,7 +332,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(target.exists()&&(!params["overwrite"].toBool()||!target.isFile()))return denied("file_exists","The file exists; pass overwrite to replace it");
    // The window's own Save a copy… path: pending edits, export, outcome shown.
    deferred=window->writeCopy(path,[path,done](const QByteArray& png,const QString& reason){
-    if(png.isEmpty()){done({},"save_failed","The copy could not be saved: "+reason);return;}
+    if(png.isEmpty()){done({},"save_failed","Couldn't save the copy: "+reason);return;}
     done({{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}},{},{});
    });
    if(!deferred)return denied("editor_busy","A copy is still being saved");
@@ -522,7 +522,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    window->setTextCopier([&](const QString& text,std::function<void(Error)> copied){
     if(terminal||finalizing){copied({"editor_finalizing","The edit was already submitted or discarded",{}});return;}
     const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);auto frame=envelope(nonce);frame["copyId"]=id;frame["text"]=text;
-    if(control.send("copyText",frame).isEmpty()){copied({"editor_io","The text could not be handed to the clipboard",{}});fail();return;}
+    if(control.send("copyText",frame).isEmpty()){copied({"editor_io","The clipboard request couldn't be sent.",{}});fail();return;}
     textCopies.insert(id,std::move(copied));
    });
    deadline.stop();

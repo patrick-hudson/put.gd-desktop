@@ -196,18 +196,18 @@ bool appearanceState(const QJsonValue& value){
  return true;
 }
 Error validateUiState(const QJsonObject& state){
- if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
+ if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","Unsaved changes exceed the 8 MB limit. Keep this window open and reduce them before closing.",{}};
  for(const auto& key:QStringList{"settings","history","activity"})if(state[key].isObject()&&state[key].toObject().contains("stateError")){
   const auto reason=state[key].toObject()["stateError"].toString();
-  if(reason=="ui_state_too_large")return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
-  if(reason=="request_awaiting_acceptance")return {"ui_request_pending","A request is awaiting resident acceptance. Wait for its result before closing this window.",{}};
-  return {"ui_state_unclassified","The draft contains unclassified provider settings. Keep this window open and correct these fields before closing.",{}};
+  if(reason=="ui_state_too_large")return {"ui_state_too_large","Unsaved changes exceed the 8 MB limit. Keep this window open and reduce them before closing.",{}};
+  if(reason=="request_awaiting_acceptance")return {"ui_request_pending","A request is still being processed. Wait for it to finish before closing this window.",{}};
+  return {"ui_state_unclassified","Your draft contains unsupported destination settings. Keep this window open and fix them before closing.",{}};
  }
  bool valid=fields(state,{"schemaVersion","settings","history","activity","main","appearance"})&&state["schemaVersion"]==1&&(!state.contains("appearance")||appearanceState(state["appearance"]));
  if(state.contains("main")){const auto main=state["main"].toObject();valid=valid&&fields(state["main"],{"page","geometry"})&&geometry(main["geometry"])&&main["page"].isDouble()&&main["page"].toDouble()==main["page"].toInt()&&main["page"].toInt()>=0&&main["page"].toInt()<=2;}
  if(state.contains("settings"))valid=valid&&state["settings"].isObject()&&settingsState(state["settings"].toObject());
  if(state.contains("history"))valid=valid&&state["history"].isObject()&&historyState(state["history"].toObject());
  if(state.contains("activity")){const auto s=state["activity"].toObject();valid=valid&&fields(state["activity"],{"selectedId","selectedItemId","collapsedIds","geometry"})&&s["selectedId"].isString()&&s["selectedItemId"].isString()&&stringArray(s["collapsedIds"],10000)&&geometry(s["geometry"]);}
- return valid?Error{}:Error{"ui_state_invalid","UI state contains unsupported fields, credential entry data, or unclassified provider settings. Keep the draft open and correct these fields before closing.",{}};
+ return valid?Error{}:Error{"ui_state_invalid","This window has unsupported settings or unsaved credential fields. Keep it open and fix or clear them before closing.",{}};
 }
 }

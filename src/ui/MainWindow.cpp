@@ -116,7 +116,7 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
  if(route["destination"]!="upload"||route["profileId"].toString().isEmpty())return local?QString{}:QString("New captures have no output. Choose a destination or turn on Keep a local copy.");
  QJsonObject profile;for(const auto& value:document["profiles"].toArray())if(value.toObject()["id"]==route["profileId"])profile=value.toObject();
  if(profile.isEmpty())return "The upload destination is unavailable. Choose an output in Settings → Capture.";
- if(route["publicationMode"]=="private"&&profile["provider"]!="proton-drive")return "This destination doesn't support private uploads. Choose sharing in Settings → Capture.";
+ if(route["publicationMode"]=="private"&&profile["provider"]!="proton-drive")return "This destination doesn't support private uploads. Change Sharing or Destination in Settings → Capture.";
  return {};
 }
 // Why the desktop can't run this action's capture, from the adapter's capabilities (#1295); empty when it can or nothing is reported.
@@ -450,7 +450,7 @@ bool MainWindow::chooseImageToEdit(){
 }
 void MainWindow::imageChooserFinished(const FileDialog::Result& result){
  chooserFailure_->setVisible(result.failed());
- if(result.failed())Ui::feedback(chooserError_,"Edit an image file: the file chooser couldn't open"+(result.error.isEmpty()?QString("."):": "+result.error.left(1).toLower()+result.error.mid(1)+(result.error.endsWith('.')?"":"."))+" Nothing was opened.",true);
+ if(result.failed())Ui::feedback(chooserError_,"Couldn't open the file chooser"+(result.error.isEmpty()?QString("."):": "+result.error.left(1).toLower()+result.error.mid(1)+(result.error.endsWith('.')?"":".")),true);
  if(result.chosen())emit editRequested("file",result.path);
 }
 QString MainWindow::droppedImage(const QMimeData* data){

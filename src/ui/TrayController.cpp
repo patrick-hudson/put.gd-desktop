@@ -876,7 +876,7 @@ void TrayController::closeTrayNotification(uint id,int attempt) {
   if(reply.isError()&&!trayKnownClosed_.contains(id)&&operations_.scroll().active()){
    if(attempt>=2){
     --trayClosesInFlight_;trayClosingIds_.removeAll(id);trayOpen_.append(id);
-    operations_.scroll().failPreparation({"notification_close_failed","A put.gd notification could not be closed. Dismiss it and try capture again.",{}});
+    operations_.scroll().failPreparation({"notification_close_failed","Couldn't close a put.gd notification. Dismiss it and try capturing again.",{}});
     return;
    }
    QTimer::singleShot(500,this,[this,id,attempt]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id,attempt+1);else {trayClosingIds_.removeAll(id);if(!trayKnownClosed_.contains(id))trayOpen_.append(id);}});
@@ -1088,7 +1088,7 @@ Error TrayController::revealPackage(const QString& path,bool savedHere) {
  static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");
  const QFileInfo file(path);
  if(!QDir::isAbsolutePath(path)||(!savedHere&&!name.match(file.fileName()).hasMatch()))return {"invalid_request","Show in folder takes the absolute path of a saved put.gd diagnostics package",{}};
- if(!file.isFile()||file.isSymLink())return {"diagnostics_package_missing","The diagnostics package is no longer there",{{"path",path}}};
+ if(!file.isFile()||file.isSymLink())return {"diagnostics_package_missing","Couldn't find the diagnostics package.",{{"path",path}}};
 #ifdef Q_OS_LINUX
  // The file manager selects the package; without one, the portal or gio opens its folder.
  host::showInFolder(file.absoluteFilePath(),[](const QJsonObject& result){logOpened("diagnostics-folder",result);});

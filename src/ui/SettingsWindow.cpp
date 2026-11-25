@@ -511,7 +511,7 @@ private:
  QRect textArea()const{QStyleOptionFrame option;initStyleOption(&option);return style()->subElementRect(QStyle::SE_LineEditContents,&option,this).marginsRemoved(textMargins()).adjusted(2,1,-2,-1);}
 };
 // What a chooser that could not open says, before what stays as it was.
-QString chooserFailureText(const QString& error){return "The folder chooser couldn't open"+(error.isEmpty()?QString("."):": "+error.left(1).toLower()+error.mid(1)+(error.endsWith('.')?"":"."));}
+QString chooserFailureText(const QString& error){return "Couldn't open the folder chooser"+(error.isEmpty()?QString("."):": "+error.left(1).toLower()+error.mid(1)+(error.endsWith('.')?"":"."));}
 QString capitalized(const QString& text){return text.isEmpty()?text:text.left(1).toUpper()+text.mid(1);}
 QString localTime(const QString& iso){const auto time=QDateTime::fromString(iso,Qt::ISODateWithMs);return time.isValid()?QLocale().toString(time.toLocalTime(),QLocale::ShortFormat):iso;}
 QString operationLine(const QJsonObject& op){
@@ -585,7 +585,7 @@ public:
  bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to",folder_->text(),{},{}},[this](const FileDialog::Result& result){chooserFinished(result);});}
  // A cancel changes nothing and says nothing; a failure keeps the folder and offers Try again.
  void chooserFinished(const FileDialog::Result& result){
-  chooserFailure_->setVisible(result.failed());if(result.failed())chooserError_->setText(chooserFailureText(result.error)+" The package still saves to the folder shown.");
+  chooserFailure_->setVisible(result.failed());if(result.failed())chooserError_->setText(chooserFailureText(result.error));
   if(result.chosen())setFolder(result.path,true);fit();
  }
  FileDialog& folderDialog(){return *chooser_;}
@@ -642,7 +642,7 @@ public:
     const auto uploadError=saved["uploadError"].toObject();
     if(uploadError["code"]=="diagnostics_link_unavailable")text+="\nUploaded to "+saved["upload"].toObject()["label"].toString()+", but this destination gives it no link.";
     // The diagnostics_* messages already say the package wasn't uploaded; a provider's doesn't.
-    else if(!uploadError.isEmpty())text+="\n"+(uploadError["code"].toString().startsWith("diagnostics_")?QString{}:QString("Not uploaded: "))+uploadError["message"].toString()+(uploadError["message"].toString().endsWith('.')?"":".")+" The saved package is kept.";
+    else if(!uploadError.isEmpty())text+="\n"+(uploadError["code"].toString().startsWith("diagnostics_")?QString{}:QString("Not uploaded: "))+uploadError["message"].toString()+(uploadError["message"].toString().endsWith('.')?"":".");
     else if(saved.contains("link"))text+="\nUploaded to "+saved["upload"].toObject()["label"].toString()+(saved["linkCopied"].toBool()?". Link copied: ":". Link (not copied): ")+saved["link"].toString();
     if(uploadError.isEmpty()||uploadError["code"]=="diagnostics_link_unavailable")Ui::success(result_,text);else Ui::feedback(result_,text,true);
     result_->setTextInteractionFlags(Qt::TextSelectableByMouse);result_->show();
@@ -703,7 +703,7 @@ private:
   auto sentence=[](QString text){text=text.trimmed();return text.isEmpty()||text.endsWith('.')?text:text+".";};
   if(reason=="diagnostics_no_destination")return "no upload destination is set up.";
   if(reason=="diagnostics_destination_failing")return "the last upload to "+label+" failed with a credential or configuration error. Fix the destination in Settings, then try again.";
-  if(reason=="diagnostics_destination_unavailable"){const auto detail=target_["details"].toObject()["error"].toObject()["message"].toString();return "Test connection to "+label+" failed"+(detail.isEmpty()?QString("."):": "+sentence(detail));}
+  if(reason=="diagnostics_destination_unavailable"){const auto detail=target_["details"].toObject()["error"].toObject()["message"].toString();return "the connection test for "+label+" failed"+(detail.isEmpty()?QString("."):[&]{auto shown=detail.trimmed();while(shown.endsWith('.'))shown.chop(1);return " ("+shown+").";}());}
   return sentence(target_["message"].toString("no working upload destination"));
  }
  QString saveLabel()const{return uploading()?"Save and upload":"Save package";}
@@ -1269,7 +1269,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(revealConfig,&QPushButton::clicked,this,[this]{diagnosticsCommand({{"action","showConfigFolder"}},[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(g&&error)g->status(error);});});
  for(const auto& entry:QList<QPair<QString,QString>>{{"accepted","Accepted revision"},{"observed","Observed revision"}}){auto* label=Ui::label(entry.second,"secondary");label->setObjectName(entry.first+"RevisionLabel");label->setWordWrap(true);label->setProperty("desktopSupportKey",true);auto* value=new MetadataLabel;value->setObjectName(entry.first+"Revision");value->setWordWrap(true);value->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);Ui::role(value,"path");value->setProperty("feedbackTone","warning");Ui::role(value,"path");supportEntry(label,value);}
  metadata_=new MetadataLabel(capabilities_);metadata_->setObjectName("settingsMetadata");metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);metadata_->hide();
- auto* editorFailure=new QLabel("Couldn't open the config file in an editor. Copy its path and open it manually.");editorFailure->setObjectName("configEditorFailure");editorFailure->setWordWrap(true);Ui::role(editorFailure,"error");supportGrid->addWidget(editorFailure,supportRow++,1);editorFailure->hide();connect(copyPath,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(settings_.path());});connect(editor,&QPushButton::clicked,this,[this,editorFailure,copyPath]{host::openFile(settings_.path(),[failure=QPointer<QLabel>(editorFailure),copy=QPointer<QPushButton>(copyPath)](const QJsonObject& result){if(failure)failure->setVisible(!result["opened"].toBool());if(copy)copy->setVisible(!result["opened"].toBool());});});connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);
+ auto* editorFailure=new QLabel("Couldn't open the config file in an editor. Select Copy path and open it manually.");editorFailure->setObjectName("configEditorFailure");editorFailure->setWordWrap(true);Ui::role(editorFailure,"error");supportGrid->addWidget(editorFailure,supportRow++,1);editorFailure->hide();connect(copyPath,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(settings_.path());});connect(editor,&QPushButton::clicked,this,[this,editorFailure,copyPath]{host::openFile(settings_.path(),[failure=QPointer<QLabel>(editorFailure),copy=QPointer<QPushButton>(copyPath)](const QJsonObject& result){if(failure)failure->setVisible(!result["opened"].toBool());if(copy)copy->setVisible(!result["opened"].toBool());});});connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);
  auto* closing=new QWidget;auto* closingBox=new QVBoxLayout(closing);closingBox->setContentsMargins(0,space(Space::xs),0,0);closingBox->setSpacing(space(Space::m));auto* rule=new Ui::Surface("surface",Qt::TopEdge);rule->setFixedHeight(1);closingBox->addWidget(rule);supportGrid->addWidget(closing,supportRow++,0,1,2);
  auto* diagnose=new QPushButton("Refresh desktop support");diagnose->setObjectName("refreshDesktopSupport");auto* copyDiagnostics=new QPushButton("Copy details");copyDiagnostics->setObjectName("copyDesktopDetails");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->setContentsMargins(0,0,0,0);diagnosticActions->setSpacing(space(Space::s));diagnosticActions->addWidget(diagnose);diagnosticActions->addStretch();diagnosticActions->addWidget(copyDiagnostics);for(auto* button:{revealConfig,editor,reload,copyPath,diagnose,copyDiagnostics}){Ui::role(button,"textAction");button->setProperty("uiFlush",true);button->setProperty("uiDensity","compact");}closingBox->addLayout(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(QString::fromUtf8(QJsonDocument(settings_.diagnostics()).toJson(QJsonDocument::Indented))+"\n"+metadataText_);});
  class SupportKeysSizer final:public QObject{public:SupportKeysSizer(QWidget* panel,QGridLayout* grid):QObject(panel),panel_(panel),grid_(grid){panel->installEventFilter(this);for(auto* label:panel->findChildren<QLabel*>())if(label->property("desktopSupportWraps").toBool())label->installEventFilter(this);}protected:bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::LayoutRequest||event->type()==QEvent::FontChange){QList<QLabel*> keys;int widest=0;for(auto* label:panel_->findChildren<QLabel*>())if(label->property("desktopSupportKey").toBool()){keys.append(label);widest=qMax(widest,qCeil(QFontMetricsF(label->font()).horizontalAdvance(label->text()))+1);}const int width=qMin(widest+space(Space::l),qMax(160,int(panel_->width()*0.32)));if(grid_->columnMinimumWidth(0)!=width)grid_->setColumnMinimumWidth(0,width);for(auto* label:keys){if(label->width()!=width-space(Space::l))label->setFixedWidth(width-space(Space::l));label->setMinimumHeight(qMax(Ui::lineHeight(Ui::Type::body),label->heightForWidth(label->width())));}
@@ -1491,7 +1491,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
-  if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Type a value into a row marked Secret first; those are the values stored here.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
+  if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Enter a value in a row marked Secret first. Only Secret rows are saved here.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
   // #1871: an SFTP destination stores its password and key passphrase by name; an empty one is not used.
   if(providerType_->currentData()==SftpPanel::provider()){if(!sftpPanel_->hasTypedSecrets()){status({"credential_invalid","Type a password or a key passphrase first. Leave both empty to sign in with your SSH agent or key files.",{}});return;}QJsonObject values;const auto typed=sftpPanel_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();beginSetup("storeCredentials",{{"values",values}});return;}
   QJsonObject value{{"accessKey",access_->text()},{"secretKey",secret_->text()},{"sessionToken",token_->text()}};beginSetup("storeCredentials",value);});connect(unlock,&QPushButton::clicked,this,[this]{beginSetup("unlockCredentials");});connect(test,&QPushButton::clicked,this,[this]{beginSetup("testDestination");});
@@ -1650,7 +1650,7 @@ bool SettingsWindow::updateRegionFeedback(bool clearOnly){
 // #1675: the refused-file line follows the configuration's validation state alone.
 void SettingsWindow::showFileError(){
  const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
- for(auto* line:{fileError_,destinationFileError_})if(line){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}
+ for(auto* line:{fileError_,destinationFileError_})if(line){line->setText(refused?"Couldn't load the configuration file: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}
 }
 bool SettingsWindow::formOwnsFeedback(QWidget* control)const{
  // Cloudflare R2's fields are the form's too (#1699): updateR2Feedback() alone writes their messages.
@@ -1806,12 +1806,12 @@ void SettingsWindow::chooseStylePicture(){
  pictureChooser_->open({FileDialog::Mode::Open,"Choose a backdrop picture",{},{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){
   if(!result.chosen()){if(result.failed())stylePictureName_->setText(result.error);return;}
   const auto picture=style::loadPicture(result.path,QSize(style::maximumPictureEdge,style::maximumPictureEdge));
-  if(picture.isNull()){stylePictureName_->setText("That picture can't be used: choose a PNG or JPEG of at most 64 MB.");return;}
+  if(picture.isNull()){stylePictureName_->setText("Couldn't use that picture. Choose a PNG or JPEG up to 64 MB.");return;}
   QByteArray png;{QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);QImageWriter writer(&buffer,"png");if(!writer.write(picture))png.clear();}
   const auto folder=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/putgd/backdrops";
   const auto path=folder+"/"+QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())+".png";
   QSaveFile file(path);
-  if(png.isEmpty()||!QDir().mkpath(folder)||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){stylePictureName_->setText("The picture couldn't be saved in put.gd's data folder; check free disk space.");return;}
+  if(png.isEmpty()||!QDir().mkpath(folder)||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){stylePictureName_->setText("Couldn't save the picture to put.gd's data folder. Check your free disk space.");return;}
   QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);
   styleCustom_=true;editCaptureStyle([path](CaptureStyle& style){style.backdrop="picture";style.picture=path;});
  });
@@ -2376,7 +2376,7 @@ bool SettingsWindow::chooseOutputFolder(QLineEdit* field){
 // A cancel says nothing; a failure is not a cancel: it is shown under the row
 // whose Browse… opened it, the folder unchanged, with Try again.
 void SettingsWindow::outputFolderChosen(QLineEdit* field,const FileDialog::Result& result){
- if(auto* failure=chooserFailures_.value(field)){failure->setVisible(result.failed());if(result.failed())failure->findChild<QLabel*>()->setText(chooserFailureText(result.error)+" The folder is unchanged.");}
+ if(auto* failure=chooserFailures_.value(field)){failure->setVisible(result.failed());if(result.failed())failure->findChild<QLabel*>()->setText(chooserFailureText(result.error));}
  if(result.chosen()){field->setText(result.path);queueEdit(field);}
 }
 void SettingsWindow::folderChooserFinished(const QString& dialog,const QString& field,const FileDialog::Result& result){
@@ -2721,7 +2721,7 @@ void SettingsWindow::dropRoutesTo(const QString& id,const QString& reason){
  // Actions set to inherit a default output the file doesn't have, and that is no longer queued,
  // have nothing to inherit: the resident would refuse them.
  if(!acceptedDocument().value("captureDefaults").isObject()&&!queued("/captureDefaults"))saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.key.startsWith("routing:/actions/")&&setsInheritance(op);}),saveQueue_.end());
- if(saveQueue_.size()!=before){const auto message=reason.isEmpty()?QStringLiteral("A route to a destination removed elsewhere wasn't saved."):reason;if(!removedElsewhere_.contains(message))removedElsewhere_.append(message);answered_=true;}
+ if(saveQueue_.size()!=before){const auto message=reason.isEmpty()?QStringLiteral("Capture settings for a destination removed elsewhere weren't saved."):reason;if(!removedElsewhere_.contains(message))removedElsewhere_.append(message);answered_=true;}
 }
 void SettingsWindow::queueOrder(){
  SaveOperation op;op.kind=SaveOperation::Kind::Order;op.key="order";op.order=profileOrder();op.controls[QString()]=destinationList_;
@@ -2751,7 +2751,7 @@ void SettingsWindow::queueRouting(QWidget* control,const QString& onlyFor){
   if(!onlyFor.isEmpty()&&shown!=onlyFor&&!(inherits&&inherited==onlyFor))continue;
   if(removing.contains(named)&&shown.isEmpty()&&!queued(path))continue;
   // A route to an add refused outright waits for nothing: it goes once that add is saved.
-  if(refusedAdd(shown)||(inherits&&refusedAdd(inherited))){const auto message=QStringLiteral("A route to a destination that wasn't saved isn't saved yet.");if(!removedElsewhere_.contains(message)){removedElsewhere_.append(message);answered_=true;}continue;}
+  if(refusedAdd(shown)||(inherits&&refusedAdd(inherited))){const auto message=QStringLiteral("Capture settings for an unsaved destination haven't been saved yet.");if(!removedElsewhere_.contains(message)){removedElsewhere_.append(message);answered_=true;}continue;}
   // A route set back to the accepted one still goes when a queued or sent operation is changing it.
   // With no default output in the file, the sharing mode shown is the Region action's: it goes
   // only if the user changed it.
@@ -2951,7 +2951,7 @@ void SettingsWindow::queueCaptureEdit(QWidget* control){
 }
 QString SettingsWindow::autosaveText()const{
  if(conflict_)return "Settings changed elsewhere — reload to continue.";
- if(autosaveBlocked_)return "Couldn’t save changes — retry saving.";
+ if(autosaveBlocked_)return "Couldn't save changes. Select Retry saving.";
  if(!protonPassword_->text().isEmpty())return "Choose "+findControl<QPushButton*>("storeProtonPassword")->text()+" to apply the link password";
  if(!access_->text().isEmpty()||(!savedSecretShown_&&!secret_->text().isEmpty())||!token_->text().isEmpty())return "Choose "+credentialStoreButton_->text()+" to apply credentials";
  return {};
@@ -3051,7 +3051,7 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base,bool withOrde
 bool SettingsWindow::replayRestoredDraft(){
  // An older checkpoint saved no base, and the file has changed since: what the user changed can't
  // be told from what changed elsewhere, so nothing is guessed.
- if(restoredBase_.isEmpty()){status({"config_conflict",QStringLiteral("Changes made before an update can't be merged automatically; Reload discards them."),{}});return false;}
+ if(restoredBase_.isEmpty()){status({"config_conflict",QStringLiteral("Changes made before an update can't be merged automatically. Reload from file… discards them."),{}});return false;}
  auto later=std::exchange(saveQueue_,{});
  // A kept destination order is never replayed; a move made since restoring is queued already (#1716).
  queueDraftDifferences(restoredBase_,false);
@@ -3201,7 +3201,7 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
   // A destination that isn't shown is named in the footer.
   QString label=error.details["profileLabel"].toString();for(const auto& value:draft_["profiles"].toArray())if(label.isEmpty()&&value.toObject()["id"]==id)label=value.toObject()["label"].toString();if(label.isEmpty())label=id;
   // An add refused outright takes the routes waiting on it, so none waits for it indefinitely.
-  if(refusedAdd(id))dropRoutesTo(id,"A route to "+label+" wasn't saved: "+label+" wasn't saved.");
+  if(refusedAdd(id))dropRoutesTo(id,"Capture settings for "+label+" weren't saved because "+label+" couldn't be saved.");
   if(id!=profileId_->text()){
    for(auto* line:{status_,destinationStatus_}){plain(line);line->setProperty("errorCode",error.code);Ui::feedback(line,label+" wasn't saved: "+error.message,true);}
    return;
@@ -3264,7 +3264,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
  endAppearancePreview();
  // A conflicting reorder is not kept: the list goes back to the saved order.
  const bool reordered=conflict_&&reorderPending_;if(reordered)restoreReorderBaseline();
- auto message=error;if(conflict_)message.message=conflictMessage()+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Your edits remain in this window. Retry saving when ready; the request won't repeat automatically.";status(message);
+ auto message=error;if(conflict_)message.message=conflictMessage()+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Select Retry saving when ready. Saving won't retry automatically.";status(message);
  for(auto* button:std::as_const(retryAutosave_))button->setVisible(true);showConflictActions();
  settleDirty();emit viewStateChanged();
 }
@@ -3550,7 +3550,7 @@ void SettingsWindow::toggleCredentialSecret(bool shown){
  // Amazon S3 and Cloudflare R2 (#1699) keep a secret key the resident can show.
  const auto reveals=[this]{return providerType_->currentData()=="s3"||providerType_->currentData()==r2::providerId;};
  if(!reveals()||selectedDestinationChanged()||saving_||conflict_||initialProfile_){
-  resetCredentialSecretDisplay();status({"save_first","Save valid destination settings before showing credentials",{}});return;
+  resetCredentialSecretDisplay();status({"save_first","Save valid destination settings before showing credentials.",{}});return;
  }
  const auto serial=++secretRevealSerial_;const auto id=profileId_->text(),revision=settings_.revision();
  secret_->setReadOnly(true);
@@ -3726,11 +3726,11 @@ void SettingsWindow::setupFeedback(const QString& message,bool success){
  }
 }
 QString SettingsWindow::setupBlockedReason()const{
- if(conflict_)return "Resolve the settings conflict before saving credentials";
- if(autosaveBlocked_)return "Retry saving your changes before storing. Typed values are kept here.";
- if(savePending())return "Wait for settings to finish saving. Typed values are kept here.";
- if(initialProfile_||profile_->currentIndex()<0||selectedDestinationChanged())return "Finish valid destination edits to continue. Typed values are kept here.";
- if(setupAccepting_||!setupJobs_.isEmpty())return "Wait for destination setup to finish. Typed values are kept here.";
+ if(conflict_)return "Resolve the settings conflict before saving credentials.";
+ if(autosaveBlocked_)return "Select Retry saving before saving credentials.";
+ if(savePending())return "Wait for settings to finish saving.";
+ if(initialProfile_||profile_->currentIndex()<0||selectedDestinationChanged())return "Finish valid destination edits to continue.";
+ if(setupAccepting_||!setupJobs_.isEmpty())return "Wait for destination setup to finish.";
  return {};
 }
 bool SettingsWindow::admitSetup(){
@@ -3987,7 +3987,7 @@ void SettingsWindow::pollSetup(){
    if(pendingProtonSetup_==id){pendingProtonUrl_.clear();pendingProtonSetup_.clear();protonBrowserOpening_=false;protonBrowserRetry_->hide();sizeProtonAccountButtons();}
    const bool sftpClearDone=job["sftpClear"].toString()=="true";
    setupJobs_.removeAt(index);updateSetupButton();if(setupJobs_.isEmpty())setupTimer_->stop();
-   if(e)e.message="This setup result is no longer available; the action was not repeated.";
+   if(e)e.message="This setup result is no longer available. The action wasn't repeated.";
    else{const auto error=data["error"].toObject();e={error["code"].toString(),error["message"].toString(),error["details"].toObject()};}
    // A test is for the shown destination while its connection is the one tested, the rule
    // its row follows: a rename or a reorder during the test keeps it current (#1692).
@@ -4047,7 +4047,7 @@ void SettingsWindow::pollSetup(){
  });
 }
 void SettingsWindow::showConflictActions(){placeConflictBanners();if(captureOutputBlock_)updateCaptureInheritance();}
-QString SettingsWindow::conflictMessage(){return QStringLiteral("Settings changed elsewhere. Your edits are kept here: Retry saving applies them to the file as it is now, and Reload discards them.");}
+QString SettingsWindow::conflictMessage(){return QStringLiteral("Settings changed elsewhere. Select Retry saving to apply your edits to the current file, or Reload from file… to discard them.");}
 // The banner says what the status line would; the line keeps its words for agents and other errors.
 void SettingsWindow::placeConflictBanners(){
  for(int i=0;i<conflictBanners_.size();++i){auto* label=i?destinationStatus_:status_;if(!label)continue;const bool reported=label->property("errorCode").toString()=="config_conflict"&&!label->text().isEmpty();

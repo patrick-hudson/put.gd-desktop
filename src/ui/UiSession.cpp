@@ -39,7 +39,7 @@ void UiSession::reloadAsync(std::function<void(Result)> callback){
 void UiSession::setShortcutRecording(bool active,QObject* receiver,std::function<void(Error)> reply){
  QPointer<QObject> guard(receiver);
  auto complete=[guard,reply=std::move(reply)](Error error){if(guard&&reply)reply(error);};
- if(!shortcutRecording_){complete({"shortcut_recording_unavailable","Hotkey recording requires the resident interface connection.",{}});return;}
+ if(!shortcutRecording_){complete({"shortcut_recording_unavailable","put.gd isn't connected. Reopen Settings from the running app.",{}});return;}
  shortcutRecording_(active,std::move(complete));
 }
 void UiSession::background(std::function<QJsonObject(Error&)> work,QObject* receiver,SessionClient::Reply reply){

@@ -66,7 +66,7 @@ void QrCodeWindow::copyImage() {
  actions_.copy([g=QPointer<QrCodeWindow>(this)](Error e,QJsonObject result){
   if(!g)return;g->copy_->setEnabled(true);g->last_={{"action","copy"},{"copyStatus",result["copyStatus"].toString(e?"failed":"copied")}};if(e)g->last_["error"]=e.code;
   const auto status=g->last_["copyStatus"].toString();
-  Ui::feedback(g->status_,e?e.message:status=="suppressed"?"Not copied: the clipboard changed.":"QR code copied.",bool(e)||status!="copied");
+  Ui::feedback(g->status_,e?e.message:status=="suppressed"?"Not copied because your clipboard changed.":"QR code copied.",bool(e)||status!="copied");
  });
 }
 void QrCodeWindow::saveImage() {

@@ -501,7 +501,7 @@ Error CustomUploaderPanel::importFile(const QString& path) {
     const QFileInfo info(path);
     QFile file(path);
     if (!info.isFile() || info.size() > http::maximumSxcuBytes || !file.open(QIODevice::ReadOnly))
-        return {"sxcu_unreadable", "The .sxcu file could not be read, or is too large to be one.", {}};
+        return {"sxcu_unreadable", "Couldn't read the .sxcu file, or it's too large.", {}};
     auto bytes = file.read(http::maximumSxcuBytes + 1);
     const auto error = importBytes(bytes);
     bytes.fill('\0');
