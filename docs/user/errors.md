@@ -15,7 +15,7 @@ filenames, history URLs, authorization values or credential references.
 | `repeat_layout_changed` | The monitors changed (added, removed, moved, resized, rescaled or rotated) since the last region capture. Capture a region again |
 | `session_locked` | The screen was locked or blanked when a capture delay ended (the countdown was no longer on screen), so nothing was captured. Unlock and capture again |
 | `delay_unavailable` | put.gd couldn't show the capture countdown here (`details.check` says why), so a delayed capture is refused. Capture without a delay, or restart put.gd if it continues |
-| `queue_full`, `input_excessive` | Wait for queued work to finish, or raise the limit the message names in **Settings → Advanced → Resource limits** (**Largest file**, **Largest batch**, **Space for queued files**, **Files in a batch** or **Queued operations**) |
+| `queue_full`, `input_excessive` | Wait for queued work to finish, or raise the limit the message names in **Settings → Advanced → Resource limits** (**Largest file**, **Largest batch**, **Space for queued files**, **Files in a batch** or **Queued actions**) |
 | `disk_space_insufficient` | Free up space in put.gd's data folder and try again (the details give `freeBytes`, `reserveBytes` and what was needed; a recording also gives `shortfallBytes`): an import needs its size, and a recording three 64 MB budgets, above the system reserve. Nothing was accepted |
 | `source_unavailable` | Fix the reported item index; invoke again; nothing was published |
 | `archive_failed` | Check the local folder, then select **Retry local save** in History. Uploading is independent |
