@@ -51,10 +51,12 @@ C++20 was a choice I regret. I'd like to move to C++23 eventually.
 
 ## Install
 
-put.gd runs on x86_64 Linux. The installer verifies checksums and installs the native
-package for your distribution (DEB, RPM or Arch pacman) with its signed update repository
-([see where it runs](#where-it-runs)). On other distributions, OSTree/Atomic systems, or
-Arch derivatives whose OpenSSL differs, it installs the self-updating AppImage instead:
+put.gd runs on x86_64 Linux. The installer picks the package for your distribution
+([see where it runs](#where-it-runs)). A DEB or RPM is checked against the release
+checksums, then installed, and it adds the signed update repository. On Arch, pacman
+installs it from the signed put.gd repository. On other distributions, Atomic systems, or
+Arch derivatives with a different OpenSSL, it installs the self-updating AppImage after
+checking its checksum:
 
 ```sh
 curl -fsSL https://app.put.gd/install | sh
@@ -93,9 +95,9 @@ A few desktops need one more thing:
    (import a ShareX `.sxcu` file or fill in the request), then enter its details.
 2. Save credentials with **Save to keychain** (for Nextcloud select **Sign in…**, for
    Proton Drive select **Connect account…** and pick a folder, and for SFTP you can rely
-   on your SSH agent and `~/.ssh/config`). Select **Test upload and link** (for Proton
-   Drive, **Check account and folder**, which checks access without uploading or making a
-   share link), then **Make default** if it isn't already.
+   on your SSH agent and `~/.ssh/config`). Run the destination's test (**Test upload and
+   link** for most; for Proton Drive, **Check account and folder**, which checks access
+   without uploading), then **Make default** if it isn't already.
 3. Press a hotkey:
 
    | Hotkey | Captures |
@@ -104,8 +106,7 @@ A few desktops need one more thing:
    | `Ctrl+Shift+2` | The active window |
    | `Ctrl+Shift+3` | The whole desktop |
 
-The capture uploads and its link is on your clipboard (for SFTP without a Link address,
-History offers **Copy path**). Every capture is also in the main window and the tray menu.
+The capture uploads and its link is on your clipboard. Every capture is also in the main window and the tray menu.
 **Settings → Hotkeys** lets you change any key and says why one couldn't be set, for
 example when another app already uses it. Closing the window leaves put.gd running in the
 tray. The [quick start](https://app.put.gd/userguide/quickstart.html) walks through it
@@ -117,20 +118,22 @@ with pictures.
 desktop. Repeat the last region, or set a 3, 5 or 10 second delay so a menu can stay open.
 **Capture scrolling region** stitches a tall page, chat or document as you scroll or
 while **Auto-scroll** turns the wheel for you (moving the mouse pauses it).
-**Upload clipboard** sends whatever you copied, and **Upload with put.gd** in your file
+**Upload clipboard** sends a copied image, text or files, and **Upload with put.gd** in your file
 manager sends files and folders.
 [Capturing →](https://app.put.gd/userguide/capture.html) · [Scrolling capture →](https://app.put.gd/userguide/scrolling.html) · [File manager →](https://app.put.gd/userguide/file-manager.html)
 
 **Mark it up and check for secrets.** **Capture region & edit** opens an editor with
 crop, arrows, lines, shapes, pen, highlights that snap to text, text labels, numbered
 steps, blur, pixelate and a **Style** tool for backdrops, rounded corners and shadows
-(also available automatically via **Capture style**). **Redact** removes pixels for good.
+(also available automatically via **Capture style**). **Redact** removes the covered
+pixels from the image you save or upload.
 **Quick redact** suggests covers for email addresses, phone numbers, IP addresses, card
-numbers, keys, tokens, secret QR codes, your own username and name, and your own word or
-regex list. You can also turn on **Check captures for sensitive text before uploading**
-to warn or redact automatically before an image leaves your machine. Recognition can miss
-text, so check suggestions before sharing. Nothing uploads until you select **Upload**
-(or save locally with **Save a copy…** or **Copy image**).
+numbers, keys, tokens, secret QR codes, your own username and name, and words or
+patterns you list. The editor uploads only when you select **Upload**; you can also save
+or copy the image without uploading. **Check captures for sensitive text before
+uploading** can warn or cover text in screenshots before they upload. It doesn't check
+captures you edit, recordings, files or retries. Recognition can miss text, so look
+before you share.
 [The editor →](https://app.put.gd/userguide/edit.html) · [Sensitive text check →](https://app.put.gd/userguide/sensitive-text.html) · [Capture style →](https://app.put.gd/userguide/style.html)
 
 <p align="center">
@@ -154,10 +157,10 @@ middle, and redact or blur parts of the clip before you save or upload.
 </p>
 
 **Copy text off the screen.** Drag over text you can't select (an error dialog, a slide,
-a video frame, a screenshot of a terminal) to put it on your clipboard along with any QR,
-Micro QR, Data Matrix or Aztec code in the region. It runs on your computer in a
-sandboxed helper with no network access, detects common non-Latin scripts when their
-language data is installed, and saves or uploads none of it. You can also select and copy
+a video frame, a screenshot of a terminal) to put it on your clipboard, along with the text of any QR,
+Micro QR, Data Matrix or Aztec code it recognizes. Recognition runs on your computer in a
+sandboxed helper with no network access, and reads common non-Latin scripts when their
+language data is installed. put.gd never saves or uploads the text on its own. You can also select and copy
 text in the editor, or run **Copy text** on local images in History.
 [Copy text →](https://app.put.gd/userguide/copy-text.html)
 
@@ -175,7 +178,7 @@ gives AI agents the same controls.
 | | |
 | --- | --- |
 | **Desktops** | [Cinnamon](https://app.put.gd/userguide/desktops.html#cinnamon), [GNOME 50](https://app.put.gd/userguide/desktops.html#gnome), [KDE Plasma](https://app.put.gd/userguide/desktops.html#kde-plasma), [Budgie](https://app.put.gd/userguide/desktops.html#budgie), [Hyprland](https://app.put.gd/userguide/desktops.html#hyprland) (tested on Omarchy) |
-| **Packages** | Signed `apt` repos for Ubuntu 24.04 and 26.04, Linux Mint 22 and Debian 13 (DEB). Signed `dnf` repos for Fedora 44 and 45 (RPM). Signed `pacman` repo for Arch and Arch-based distributions. Self-updating AppImage for any other distribution with glibc 2.39 or newer. x86_64 only. |
+| **Packages** | Signed `apt` repos for Ubuntu 24.04 and 26.04, Linux Mint 22 and Debian 13 (DEB). Signed `dnf` repos for Fedora 44 and 45 (RPM). Signed `pacman` repo for Arch and Arch-based distributions. Self-updating AppImage for any other distribution with glibc 2.39 or newer and FUSE. x86_64 only. |
 | **Storage** | [Amazon S3 and S3-compatible servers](https://app.put.gd/userguide/destinations-s3.html#s3-compatible-services) (such as Garage), [Cloudflare R2](https://app.put.gd/userguide/destinations-r2.html), [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Nextcloud](https://app.put.gd/userguide/destinations-nextcloud.html#nextcloud), [WebDAV](https://app.put.gd/userguide/destinations-nextcloud.html#webdav), [SFTP](https://app.put.gd/userguide/destinations-sftp.html) (using your OpenSSH client), [Proton Drive](https://app.put.gd/userguide/destinations-proton.html) (experimental, links open a share page), and [custom HTTP uploaders](https://app.put.gd/userguide/destinations-custom.html) (ShareX `.sxcu`, tested with Zipline, Chibisafe and XBackBone) |
 
 [Your desktop](https://app.put.gd/userguide/desktops.html) says what put.gd can and can't do on each one.
@@ -184,11 +187,13 @@ gives AI agents the same controls.
 
 - Uploads go only to the destination you choose.
 - Edits and recordings stay on your computer until you upload them.
-- Text read by **Copy text** or the sensitive text check stays on your computer in a
-  sandboxed helper and is never saved, logged or uploaded as text. A clipboard manager may
-  still keep text you copy.
-- Passwords, tokens and keys live in your system keychain (or in memory for the current
-  session), never in config files. SFTP never modifies your `~/.ssh` files.
+- Text recognition runs in a sandboxed helper on your computer. put.gd never saves, logs
+  or uploads the text it reads on its own. Text you copy goes to your clipboard, where a
+  clipboard manager may keep it.
+- Passwords, tokens and keys you give put.gd live in your system keychain (or in memory
+  for the current session), never in its config files. A custom uploader value you don't
+  mark **Secret** is saved as ordinary settings. SFTP uses your own SSH keys and agent and
+  never changes your `~/.ssh` files.
 - put.gd checks app.put.gd for updates once a day. You can turn that off.
 
 ## More
