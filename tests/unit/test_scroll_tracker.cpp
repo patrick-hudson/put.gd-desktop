@@ -2968,6 +2968,98 @@ void testPlayingVideo() {
   }
 }
 
+// Subpixel / resampling phase switch between resting and scrolling (#1558):
+// Firefox APZ on X11 switches image/text downscaling sharpness and subpixel
+// vertical phase by ~0.5 px when scrolling starts or stops, breaking exact
+// row-to-row agreement on thin 1-px strokes while a symmetric ±1-row vertical
+// envelope still agrees cleanly.
+void testSubpixelResampling() {
+  std::printf("\n[subpixel] resampling phase switch at scroll start/stop (#1558)\n");
+  const int W = 480, V = 400;
+  // Build a crisp document with dense 1-px horizontal strokes and text blocks
+  // so a 0.5-px vertical linear resample changes nearly every textured row by
+  // far more than band/cell tolerance.
+  Document doc = plainPage(1558, W, V);
+  Rng rng(155801);
+  for (int y = 20; y + 10 < doc.img.h - 20; y += 11) {
+    const int x0 = 24 + rng.range(0, 60);
+    const int x1 = W - 24 - rng.range(0, 60);
+    for (int x = x0; x < x1; ++x) {
+      if ((x / 3 + y) % 5 != 0) doc.img.at(x, y) = 0x101418;
+    }
+  }
+  // Centered 3-tap vertical softening filter (models Firefox's resting high-
+  // quality image downscaler vs scrolling bilinear/nearest filter: zero net
+  // pixel shift, but thin 1-px strokes soften by ~50% luma across rows).
+  const auto softenVert = [](const Image& src) {
+    Image out(src.w, src.h, kBg);
+    for (int y = 0; y < src.h; ++y) {
+      const int yu = std::max(0, y - 1);
+      const int yd = std::min(src.h - 1, y + 1);
+      for (int x = 0; x < src.w; ++x) {
+        const uint32_t u = src.at(x, yu), m = src.at(x, y), d = src.at(x, yd);
+        const uint32_t r = (((u >> 16) & 0xFF) + 2 * ((m >> 16) & 0xFF) + ((d >> 16) & 0xFF)) / 4;
+        const uint32_t g = (((u >> 8) & 0xFF) + 2 * ((m >> 8) & 0xFF) + ((d >> 8) & 0xFF)) / 4;
+        const uint32_t bl = ((u & 0xFF) + 2 * (m & 0xFF) + (d & 0xFF)) / 4;
+        out.at(x, y) = (r << 16) | (g << 8) | bl;
+      }
+    }
+    return out;
+  };
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  const Scene scene(doc.img, ss);
+  const int end = doc.img.h - V;
+
+  // 1. Scroll with resampling switch on scroll start (frame 4 -> frame 5,
+  //    +41 px), continued scrolling in the shifted phase overlapping the prior
+  //    store rows, and resampling return at rest near the end.
+  {
+    std::vector<int> pos{0, 20, 40, 60, 101, 145, 190, 240, 300};
+    while (pos.back() < end) pos.push_back(std::min(end, pos.back() + 70));
+    pos.push_back(end);  // resting phase return at end
+    const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+      if (i < 4 || i == pos.size() - 1) f = softenVert(f);
+      return false;
+    });
+    report("scrolling across a vertical resampling switch: 0 skips, exact positions",
+           r.wrong == 0 && r.totals.skipped == 0 && r.totals.bottom == doc.img.h,
+           counts(r) + fmt(", %d wrong%s, bottom %lld/%d", r.wrong, r.firstWrong.c_str(), r.totals.bottom, doc.img.h));
+  }
+
+  // 2. Resting resampling switch (d == 0) reports NoMovement without
+  //    swallowing a genuine +1 px scroll.
+  {
+    MemoryCanvas canvas(W);
+    ScrollTracker tr(canvas);
+    Image f0 = scene.frame(120, 0);
+    Image f0Soft = softenVert(f0);
+    Image f1 = scene.frame(121, 1);
+    const TrackResult r0 = tr.addFrame(f0.view());
+    const TrackResult rStill = tr.addFrame(f0Soft.view());
+    const TrackResult rMove1 = tr.addFrame(f1.view());
+    report("resting resampling switch is NoMovement while genuine +1 px move places at +1",
+           r0.status == TrackStatus::Placed && rStill.status == TrackStatus::NoMovement &&
+               rMove1.status == TrackStatus::Placed && rMove1.offset == 1,
+           fmt("rStill=%d rMove1=%d off=%d", int(rStill.status), int(rMove1.status), rMove1.offset));
+  }
+
+  // 3. A jump past the viewport is still skipped, not falsely matched by the
+  //    subpixel fallback.
+  {
+    MemoryCanvas canvas(W);
+    ScrollTracker tr(canvas);
+    Image f0 = softenVert(scene.frame(0, 0));
+    Image fJump = scene.frame(std::min(end, V + 450), 1);
+    (void)tr.addFrame(f0.view());
+    const TrackResult rJump = tr.addFrame(fJump.view());
+    report("jump past viewport across resampling switch is still skipped",
+           rJump.status == TrackStatus::Skipped,
+           fmt("status=%d reason=%d off=%d", int(rJump.status), int(rJump.reason), rJump.offset));
+  }
+}
+
 int main() {
   testOffsets();
   testPinned();
@@ -2986,6 +3078,7 @@ int main() {
   testTurnBackLookAlike();
   testBorderedHeaderEdgeRow();
   testPlayingVideo();
+  testSubpixelResampling();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

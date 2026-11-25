@@ -243,6 +243,109 @@ unsigned accumulate(const uint16_t* a, const uint16_t* b, const uint16_t* ta, co
   return total;
 }
 
+// Per-row 3-row vertical [min, max] envelope for subpixel/resampling-tolerant
+// fallback matching when a browser switches rasterization phase (e.g. Firefox
+// APZ on X11 switching image/text resampling between resting and scrolling).
+struct RowEnvelope {
+  int h = 0, n = 0;
+  std::vector<uint16_t> lo, hi;
+  const uint16_t* loRow(int y) const { return &lo[size_t(y) * size_t(n)]; }
+  const uint16_t* hiRow(int y) const { return &hi[size_t(y) * size_t(n)]; }
+};
+
+void buildEnvelope(const uint16_t* src, int h, int n, RowEnvelope& env) {
+  env.h = h;
+  env.n = n;
+  env.lo.resize(size_t(h) * size_t(n));
+  env.hi.resize(size_t(h) * size_t(n));
+  for (int y = 0; y < h; ++y) {
+    const uint16_t* up = src + size_t(std::max(0, y - 1)) * size_t(n);
+    const uint16_t* mid = src + size_t(y) * size_t(n);
+    const uint16_t* dn = src + size_t(std::min(h - 1, y + 1)) * size_t(n);
+    uint16_t* outLo = &env.lo[size_t(y) * size_t(n)];
+    uint16_t* outHi = &env.hi[size_t(y) * size_t(n)];
+    int k = 0;
+#if defined(__SSE2__)
+    for (; k + 8 <= n; k += 8) {
+      const __m128i u = ld(up + k), m = ld(mid + k), d = ld(dn + k);
+      st(outLo + k, _mm_min_epi16(_mm_min_epi16(u, m), d));
+      st(outHi + k, _mm_max_epi16(_mm_max_epi16(u, m), d));
+    }
+#endif
+    for (; k < n; ++k) {
+      outLo[k] = std::min({up[k], mid[k], dn[k]});
+      outHi[k] = std::max({up[k], mid[k], dn[k]});
+    }
+  }
+}
+
+inline bool subpixelMatchScalar(uint16_t a, uint16_t loA, uint16_t hiA, uint16_t b, uint16_t loB, uint16_t hiB,
+                                unsigned tol) {
+  const bool aInB = unsigned(a) + tol >= unsigned(loB) && unsigned(a) <= unsigned(hiB) + tol;
+  const bool bInA = unsigned(b) + tol >= unsigned(loA) && unsigned(b) <= unsigned(hiA) + tol;
+  return aInB || bInA;
+}
+
+#if defined(__SSE2__)
+inline __m128i subpixelOk(__m128i a, __m128i loA, __m128i hiA, __m128i b, __m128i loB, __m128i hiB, __m128i vtol) {
+  const __m128i dAB = _mm_or_si128(_mm_subs_epu16(loB, a), _mm_subs_epu16(a, hiB));
+  const __m128i dBA = _mm_or_si128(_mm_subs_epu16(loA, b), _mm_subs_epu16(b, hiA));
+  return le(_mm_min_epi16(dAB, dBA), vtol);
+}
+#endif
+
+void subpixelLanes(const uint16_t* a, const uint16_t* loA, const uint16_t* hiA, const uint16_t* b, const uint16_t* loB,
+                   const uint16_t* hiB, const uint16_t* ta, const uint16_t* tb, const uint16_t* ia, const uint16_t* ib,
+                   int n, unsigned tol, unsigned& agree, unsigned& inf) {
+  int k = 0;
+#if defined(__SSE2__)
+  const __m128i vtol = _mm_set1_epi16(short(tol));
+  __m128i accA = _mm_setzero_si128(), accI = _mm_setzero_si128();
+  for (; k + 8 <= n; k += 8) {
+    const __m128i use = _mm_and_si128(_mm_and_si128(_mm_or_si128(ld(ta + k), ld(tb + k)), ld(ia + k)), ld(ib + k));
+    const __m128i ok = subpixelOk(ld(a + k), ld(loA + k), ld(hiA + k), ld(b + k), ld(loB + k), ld(hiB + k), vtol);
+    accI = _mm_add_epi16(accI, use);
+    accA = _mm_add_epi16(accA, _mm_and_si128(use, ok));
+  }
+  agree += hsum(accA);
+  inf += hsum(accI);
+#endif
+  for (; k < n; ++k) {
+    const unsigned use = unsigned(ta[k] | tb[k]) & ia[k] & ib[k];
+    inf += use;
+    agree += use & unsigned(subpixelMatchScalar(a[k], loA[k], hiA[k], b[k], loB[k], hiB[k], tol));
+  }
+}
+
+unsigned subpixelAccumulate(const uint16_t* a, const uint16_t* loA, const uint16_t* hiA, const uint16_t* b,
+                            const uint16_t* loB, const uint16_t* hiB, const uint16_t* ta, const uint16_t* tb,
+                            const uint16_t* ia, const uint16_t* ib, int n, unsigned tol, uint16_t* accA,
+                            uint16_t* accI) {
+  unsigned total = 0;
+  int k = 0;
+#if defined(__SSE2__)
+  const __m128i vtol = _mm_set1_epi16(short(tol));
+  __m128i sum = _mm_setzero_si128();
+  for (; k + 8 <= n; k += 8) {
+    const __m128i use = _mm_and_si128(_mm_and_si128(_mm_or_si128(ld(ta + k), ld(tb + k)), ld(ia + k)), ld(ib + k));
+    const __m128i ok = _mm_and_si128(
+        use, subpixelOk(ld(a + k), ld(loA + k), ld(hiA + k), ld(b + k), ld(loB + k), ld(hiB + k), vtol));
+    st(accA + k, _mm_add_epi16(ld(accA + k), ok));
+    st(accI + k, _mm_add_epi16(ld(accI + k), use));
+    sum = _mm_add_epi16(sum, ok);
+  }
+  total = hsum(sum);
+#endif
+  for (; k < n; ++k) {
+    const unsigned use = unsigned(ta[k] | tb[k]) & ia[k] & ib[k];
+    const unsigned ok = use & unsigned(subpixelMatchScalar(a[k], loA[k], hiA[k], b[k], loB[k], hiB[k], tol));
+    accA[k] = uint16_t(accA[k] + ok);
+    accI[k] = uint16_t(accI[k] + use);
+    total += ok;
+  }
+  return total;
+}
+
 // Lanes where x is set and y is not.
 unsigned countAndNot(const uint16_t* x, const uint16_t* y, int n) {
   unsigned total = 0;
@@ -1581,6 +1684,286 @@ bool ScrollTracker::contradicted(const Signature& cur, long long pos, double kee
   // wait to be written) under something that has just appeared there (a
   // header that sticks once the page moved) says nothing about the place.
   return shown >= 16 && 3 * tileRows * kTileRows >= cur.h && double(kept) / shown < keepShare;
+}
+
+bool ScrollTracker::contradictedSubpixel(const Signature& cur, long long pos, double keepShare) const {
+  const int H = cur.h, B = cur.bands;
+  RowEnvelope curEnv;
+  buildEnvelope(cur.band.data(), H, B, curEnv);
+  Tally t;
+  t.clear(B, H);
+  const unsigned tol = unsigned(bandTol_);
+  std::vector<uint16_t> sLo(static_cast<size_t>(B)), sHi(static_cast<size_t>(B));
+  for (int y = 0; y < H; ++y) {
+    const long long p = pos + y;
+    if (!store_->has(p)) continue;
+    const uint16_t* sb = store_->bandRow(p);
+    const uint16_t* sv = store_->validRow(p);
+    const uint16_t* st = store_->texRow(p);
+    const uint16_t* sbUp = store_->has(p - 1) ? store_->bandRow(p - 1) : nullptr;
+    const uint16_t* svUp = sbUp ? store_->validRow(p - 1) : nullptr;
+    const uint16_t* sbDn = store_->has(p + 1) ? store_->bandRow(p + 1) : nullptr;
+    const uint16_t* svDn = sbDn ? store_->validRow(p + 1) : nullptr;
+    for (int k = 0; k < B; ++k) {
+      uint16_t lo = sb[k], hi = sb[k];
+      if (sbUp && svUp[k]) {
+        lo = std::min(lo, sbUp[k]);
+        hi = std::max(hi, sbUp[k]);
+      }
+      if (sbDn && svDn[k]) {
+        lo = std::min(lo, sbDn[k]);
+        hi = std::max(hi, sbDn[k]);
+      }
+      sLo[size_t(k)] = lo;
+      sHi[size_t(k)] = hi;
+    }
+    const size_t tile = size_t(y / kTileRows) * B;
+    subpixelAccumulate(cur.bandRow(y), curEnv.loRow(y), curEnv.hiRow(y), sb, sLo.data(), sHi.data(), cur.bandTexRow(y),
+                       st, &bandIncl_[size_t(y) * B], sv, B, tol, &t.agree[tile], &t.inf[tile]);
+  }
+  t.total();
+  int kept = 0, shown = 0, tileRows = 0;
+  for (size_t i = 0; i < t.inf.size(); ++i) {
+    if (t.inf[i] < 2) continue;
+    ++shown;
+    kept += t.keptTile(i);
+  }
+  for (size_t r = 0; r * size_t(B) < t.inf.size(); ++r)
+    for (int k = 0; k < B; ++k)
+      if (t.inf[r * size_t(B) + size_t(k)] >= 2) {
+        ++tileRows;
+        break;
+      }
+  return shown >= 16 && 3 * tileRows * kTileRows >= cur.h && double(kept) / shown < keepShare;
+}
+
+bool ScrollTracker::subpixelStillRedrawn(const Signature& cur, const Signature& ref, double exactStillShare) const {
+  const int H = cur.h, C = cur.cells, B = cur.bands;
+  const int lo = cellLo_, hi = cellHi_;
+  RowEnvelope curEnv, refEnv;
+  buildEnvelope(cur.cell.data(), H, C, curEnv);
+  buildEnvelope(ref.cell.data(), H, C, refEnv);
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  unsigned agree = 0, inf = 0;
+  std::vector<uint16_t> pinRow;
+  for (int y = 0; y < H; ++y) {
+    const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
+    const uint16_t* pin = &closed16_[size_t(brow) * C + lo];
+    const long long p = lastPos_ + y;
+    if (store_->has(p)) {
+      const uint8_t* sd = store_->dynRow(p);
+      bool rowDyn = false;
+      for (int k = 0; k < B; ++k) rowDyn |= sd[k] != 0;
+      if (rowDyn) {
+        pinRow.assign(pin, pin + (hi - lo));
+        for (int k = 0; k < B; ++k)
+          if (sd[k])
+            for (int c = cur.bandLo[size_t(k)]; c < cur.bandLo[size_t(k) + 1]; ++c) pinRow[size_t(c - lo)] = 1;
+        pin = pinRow.data();
+      }
+    }
+    const uint16_t *a = cur.cellRow(y), *b = ref.cellRow(y);
+    const uint16_t *ta = cur.cellTexRow(y), *tb = ref.cellTexRow(y);
+    const uint16_t *loA = curEnv.loRow(y), *hiA = curEnv.hiRow(y);
+    const uint16_t *loB = refEnv.loRow(y), *hiB = refEnv.hiRow(y);
+    for (int c = lo; c < hi; ++c) {
+      if (pin[c - lo] || !(ta[c] | tb[c])) continue;
+      ++inf;
+      agree += subpixelMatchScalar(a[c], loA[c], hiA[c], b[c], loB[c], hiB[c], tol);
+    }
+  }
+  if (inf < 32 || double(agree) / double(inf) < opts_.stillShare) return false;
+  // A genuine 1-px move also satisfies the ±1 row envelope at d=0; accept d=0
+  // only when exact agreement at d=0 is at least as good as d=±1.
+  const double m1 = wholeCells(cur, ref, -1), p1 = wholeCells(cur, ref, 1);
+  return exactStillShare >= std::max(m1, p1);
+}
+
+int ScrollTracker::searchPairSubpixel(const Signature& cur, const Signature& ref, int expected, int uncertainty,
+                                      bool hinted, std::vector<Candidate>& out, bool* byExpectation) const {
+  out.clear();
+  *byExpectation = false;
+  const int H = cur.h, B = cur.bands, C = cur.cells;
+  const int dmax = H - sliverRows(opts_, H);
+  if (dmax < 1) return -1;
+  constexpr double kSubpixelCoarseFloor = 0.85;
+  constexpr double kSubpixelAccept = 0.95;
+  constexpr double kSubpixelRivalMargin = 0.05;
+
+  RowEnvelope curBEnv, refBEnv;
+  buildEnvelope(cur.band.data(), H, B, curBEnv);
+  buildEnvelope(ref.band.data(), H, B, refBEnv);
+
+  const unsigned btol = unsigned(bandTol_);
+  const int n = 2 * dmax + 1;
+  std::vector<float> coarse(size_t(n), 0.f);
+  for (int d = -dmax; d <= dmax; ++d) {
+    if (d == 0) continue;
+    unsigned agree = 0, inf = 0;
+    int used = 0;
+    for (int y : anchors_) {
+      if (y + d < 0 || y + d >= H) continue;
+      subpixelLanes(cur.bandRow(y), curBEnv.loRow(y), curBEnv.hiRow(y), ref.bandRow(y + d), refBEnv.loRow(y + d),
+                    refBEnv.hiRow(y + d), cur.bandTexRow(y), ref.bandTexRow(y + d), &bandIncl_[size_t(y) * B],
+                    &refBandIncl_[size_t(y + d) * B], B, btol, agree, inf);
+      ++used;
+      if ((used == 8 || used == 24) && inf >= 24 && double(agree) / inf < kSubpixelCoarseFloor) break;
+      if (used == 64) break;
+    }
+    coarse[size_t(d + dmax)] = inf >= 16 ? float(double(agree) / inf) : 0.f;
+  }
+
+  const std::vector<int> peaks = pickPeaks(coarse, kSubpixelCoarseFloor, std::clamp(expected, -dmax, dmax) + dmax);
+  if (peaks.empty()) return -1;
+
+  RowEnvelope curCEnv, refCEnv;
+  buildEnvelope(cur.cell.data(), H, C, curCEnv);
+  buildEnvelope(ref.cell.data(), H, C, refCEnv);
+
+  const auto subBandTally = [&](int d, Tally& t) {
+    const int y0 = std::max(0, -d), y1 = std::min(H, H - d);
+    t.clear(B, H);
+    for (int y = y0; y < y1; ++y) {
+      const size_t tile = size_t(y / kTileRows) * B;
+      const unsigned ag = subpixelAccumulate(
+          cur.bandRow(y), curBEnv.loRow(y), curBEnv.hiRow(y), ref.bandRow(y + d), refBEnv.loRow(y + d),
+          refBEnv.hiRow(y + d), cur.bandTexRow(y), ref.bandTexRow(y + d), &bandIncl_[size_t(y) * B],
+          &refBandIncl_[size_t(y + d) * B], B, btol, &t.agree[tile], &t.inf[tile]);
+      t.rows += ag >= 2;
+    }
+    if (y0 < y1) t.texturedRows = texturedRows_[size_t(y1)] - texturedRows_[size_t(y0)];
+    t.total();
+  };
+  const auto subCellTally = [&](int d, Tally& t) {
+    const int y0 = std::max(0, -d), y1 = std::min(H, H - d);
+    t.clear(B, H);
+    const unsigned ctol = unsigned(opts_.cellTolerance);
+    std::vector<uint16_t> ca(static_cast<size_t>(C)), ci(static_cast<size_t>(C));
+    const auto fold = [&](int tileRow) {
+      for (int k = 0; k < B; ++k) {
+        unsigned a = 0, i = 0;
+        for (int c = cur.bandLo[k]; c < cur.bandLo[k + 1]; ++c) {
+          a += ca[size_t(c)];
+          i += ci[size_t(c)];
+        }
+        t.agree[size_t(tileRow) * B + k] = uint16_t(t.agree[size_t(tileRow) * B + k] + a);
+        t.inf[size_t(tileRow) * B + k] = uint16_t(t.inf[size_t(tileRow) * B + k] + i);
+      }
+      std::fill(ca.begin(), ca.end(), 0);
+      std::fill(ci.begin(), ci.end(), 0);
+    };
+    int tileRow = y0 / kTileRows;
+    for (int y = y0; y < y1; y += 2) {
+      if (y / kTileRows != tileRow) {
+        fold(tileRow);
+        tileRow = y / kTileRows;
+      }
+      subpixelAccumulate(cur.cellRow(y), curCEnv.loRow(y), curCEnv.hiRow(y), ref.cellRow(y + d), refCEnv.loRow(y + d),
+                         refCEnv.hiRow(y + d), cur.cellTexRow(y), ref.cellTexRow(y + d), &cellIncl_[size_t(y) * C],
+                         &refCellIncl_[size_t(y + d) * C], C, ctol, ca.data(), ci.data());
+    }
+    if (y0 < y1) fold(tileRow);
+    t.total();
+  };
+
+  struct Fine {
+    int d = 0;
+    Tally bands;
+  };
+  std::vector<Fine> fine;
+  Tally tb, tc;
+  for (int p : peaks) {
+    const int at = p - dmax;
+    Fine best;
+    double bestShare = -1.0;
+    for (int d = std::max(-dmax, at - 1); d <= std::min(dmax, at + 1); ++d) {
+      if (d == 0) continue;
+      subBandTally(d, tb);
+      if (tb.share() > bestShare) {
+        bestShare = tb.share();
+        best.d = d;
+        best.bands = tb;
+      }
+    }
+    if (bestShare >= 0.0) fine.push_back(std::move(best));
+  }
+  const auto fineKey = [&](const Fine& f) {
+    return std::make_tuple(-std::llround(f.bands.share() * 100), std::abs(f.d - expected), f.d);
+  };
+  std::sort(fine.begin(), fine.end(), [&](const Fine& a, const Fine& b) { return fineKey(a) < fineKey(b); });
+  if (fine.size() > 5) {
+    const double top = fine[0].bands.share();
+    size_t keep = 5;
+    while (keep < fine.size() && keep < kSimilarMax && fine[keep].bands.share() >= top - kSimilarShare) ++keep;
+    fine.resize(keep);
+  }
+  for (const Fine& f : fine) {
+    subCellTally(f.d, tc);
+    Candidate c;
+    c.d = f.d;
+    judge(c, f.bands, tc, std::max(0, -f.d), std::min(H, H - f.d));
+    // Subpixel fallback never relies on fewRows sliver matching.
+    c.fewRows = false;
+    c.accepted = c.accepted && c.bandsKept >= kSubpixelAccept && c.cellsKept >= kSubpixelAccept;
+    out.push_back(std::move(c));
+  }
+  std::sort(out.begin(), out.end(), [](const Candidate& a, const Candidate& b) { return a.d < b.d; });
+  out.erase(std::unique(out.begin(), out.end(), [](const Candidate& a, const Candidate& b) { return a.d == b.d; }),
+            out.end());
+
+  SkipReason why = SkipReason::None;
+  const int sp = decide(out, expected, uncertainty, hinted, byExpectation, &why);
+  if (sp < 0) return -1;
+
+  // Reject if any non-adjacent rival in the same layer comes close under
+  // subpixel matching (repeating content stays ambiguous).
+  const Candidate& picked = out[size_t(sp)];
+  for (size_t i = 0; i < out.size(); ++i) {
+    if (int(i) == sp || std::abs(out[i].d - picked.d) < kSamePlaceRows) continue;
+    if (out[i].movingTiles <= 0 || out[i].bandsKept < opts_.acceptBands || out[i].cellsKept < opts_.acceptCells)
+      continue;
+    int both = 0;
+    for (size_t t = 0; t < out[i].moving.size() && t < picked.moving.size(); ++t)
+      both += out[i].moving[t] == 1 && picked.moving[t] == 1;
+    if (2 * both >= std::min(out[i].movingTiles, picked.movingTiles) &&
+        out[i].cells >= picked.cells - kSubpixelRivalMargin)
+      return -1;
+  }
+
+  // Refine d within ±2 rows: maximize subpixel agreement first (in 0.002 steps),
+  // breaking ties on flat subpixel plateaus by exact band+cell share so a
+  // subpixel resampling plateau snaps to the exact nearest integer row.
+  int bestD = picked.d;
+  Candidate bestCand = picked;
+  Tally exC, exB;
+  cellTally(cur, ref, bestD, exC);
+  bandTally(cur, ref, bestD, exB);
+  const auto refineKey = [&](const Candidate& c, double exactB, double exactC) {
+    return std::make_tuple(std::llround((c.bandsKept + c.cellsKept) * 250.0), exactB + exactC,
+                           -std::abs(c.d - expected));
+  };
+  auto bestKey = refineKey(bestCand, exB.share(), exC.share());
+  for (int delta : {-2, -1, 1, 2}) {
+    const int dt = picked.d + delta;
+    if (dt == 0 || std::abs(dt) > dmax) continue;
+    subBandTally(dt, tb);
+    subCellTally(dt, tc);
+    Candidate cand;
+    cand.d = dt;
+    judge(cand, tb, tc, std::max(0, -dt), std::min(H, H - dt));
+    cand.fewRows = false;
+    if (!cand.accepted || cand.bandsKept < kSubpixelAccept || cand.cellsKept < kSubpixelAccept) continue;
+    cellTally(cur, ref, dt, exC);
+    bandTally(cur, ref, dt, exB);
+    const auto key = refineKey(cand, exB.share(), exC.share());
+    if (key > bestKey) {
+      bestKey = key;
+      bestD = dt;
+      bestCand = std::move(cand);
+    }
+  }
+  out[size_t(sp)] = std::move(bestCand);
+  return sp;
 }
 
 // The share of textured cells outside what is pinned, excluded or dynamic,
@@ -4716,10 +5099,17 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // under recoverCells (Sol on #2002), and on a starved X server the frames
     // come late, so the page is often some way past the hint.
     const bool offHint = hinted && !hintSays(c.d) && 2 * std::abs(c.d) > height_;
+    const double keepThresh = strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare;
+    bool isContradicted = contradicted(cur, at, keepThresh);
+    // After a proven subpixel/resampling phase switch, the next few frames in
+    // the new phase agree tightly with each other by exact pair matching while
+    // still overlapping store rows written in the prior phase (#1558).
+    if (isContradicted && !found && skipRun_ == 0 && subpixelStoreLo_ < subpixelStoreHi_ && at < subpixelStoreHi_ &&
+        at + height_ > subpixelStoreLo_ && c.bandsKept >= 0.95 && c.cellsKept >= 0.95)
+      isContradicted = contradictedSubpixel(cur, at, keepThresh);
     return (strict && ((found ? c.cells : c.cellsKept) < opts_.recoverCells || 3 * inside < height_)) ||
            (known && !hintSays(c.d) && c.cells < opts_.recoverCells) ||
-           (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) ||
-           contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
+           (offHint && (found ? c.cells : c.cellsKept) < opts_.recoverCells) || isContradicted;
   };
   // A tie the expected offset broke is checked against the whole overlap:
   // where the pick does not agree over it and exactly one tied place does
@@ -4937,6 +5327,53 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       cands = found;
     } else if (why == SkipReason::None || fw == SkipReason::Ambiguous) {
       why = fw;
+    }
+  }
+  // Subpixel/resampling fallback (#1558): when a browser switches image/text
+  // resampling phase between resting and scrolling (e.g. Firefox APZ on X11),
+  // exact row-to-row comparisons collapse while a symmetric ±1-row vertical
+  // bracket still agrees at >= 0.95 with zero non-adjacent rivals. Only tried
+  // while still following (before lostAfterSkips) after exact pair and image
+  // lookups both found NoMatch.
+  if (pick < 0 && why == SkipReason::NoMatch && skipRun_ < opts_.lostAfterSkips) {
+    if (!still && subpixelStillRedrawn(cur, ref, share)) return noMovement(true);
+    if (!stillish) {
+      std::vector<Candidate> subCands;
+      bool subByExp = false;
+      int sp = searchPairSubpixel(cur, ref, expected, uncertainty, hinted, subCands, &subByExp);
+      if (sp >= 0) {
+        const Candidate& sc = subCands[size_t(sp)];
+        if (share >= opts_.stillFallback && boxed(sc) &&
+            sc.coverage < (share >= opts_.stillMostly ? opts_.stillCoverageMostly : opts_.stillCoverage))
+          return noMovement(true);
+        const int sd = sc.d;
+        const long long spos = lastPos_ + sd;
+        const bool strict = skipRun_ > 0 && !hintSays(sd);
+        const long long inside = std::min(bottom_, spos + height_) - std::max(top_, spos);
+        bool ok = !(strict && 3 * inside < height_);
+        if (ok && skipsSincePlaced_ > 0 && !hinted) {
+          const int y0 = std::max(0, -sd), y1 = std::min(height_, height_ - sd);
+          const double repeatLimit = sc.bands - kRepeatMargin;
+          if (selfRepeat(cur, y0, y1, spos, repeatLimit) >= repeatLimit ||
+              selfRepeat(ref, y0 + sd, y1 + sd, lastPos_, repeatLimit) >= repeatLimit)
+            ok = false;
+        }
+        if (ok && strict && lookAlike(cur, spos, {})) ok = false;
+        if (ok && contradictedSubpixel(cur, spos,
+                                       strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * sc.area)
+                                              : opts_.keepShare))
+          ok = false;
+        if (ok) {
+          subpixelStoreLo_ = std::min(subpixelStoreLo_, top_);
+          subpixelStoreHi_ = std::max(subpixelStoreHi_, bottom_);
+          pick = sp;
+          d = sd;
+          pos = spos;
+          byExp = subByExp;
+          cands = std::move(subCands);
+          why = SkipReason::None;
+        }
+      }
     }
   }
   // Nothing to compare (a blank stretch): the driver's hint bridges it, where

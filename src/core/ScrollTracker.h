@@ -418,6 +418,10 @@ class ScrollTracker {
   void snapshotDynamic(const FrameView& frame, long long pos, const Signature& cur, const Signature& ref, int d);
   const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
+  bool contradictedSubpixel(const Signature& cur, long long pos, double keepShare) const;
+  bool subpixelStillRedrawn(const Signature& cur, const Signature& ref, double exactStillShare) const;
+  int searchPairSubpixel(const Signature& cur, const Signature& ref, int expected, int uncertainty, bool hinted,
+                         std::vector<Candidate>& out, bool* byExpectation) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d) const;
   double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos, double stopAt = 1.1) const;
@@ -600,6 +604,10 @@ class ScrollTracker {
   std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
   void narrowPending(Pending& p, const std::vector<uint64_t>& blocked, const Signature& cur, long long pos) const;
   long long allowLo_ = 0, allowHi_ = 0;
+  // Store row range written before a subpixel/resampling phase switch (#1558),
+  // where subsequent frames in the new phase may disagree with stored rows at
+  // exact pixel alignment while agreeing within a ±1-row vertical bracket.
+  long long subpixelStoreLo_ = LLONG_MAX, subpixelStoreHi_ = LLONG_MIN;
   uint32_t frameSerial_ = 0;  // placed frames, counted from 1
   std::unique_ptr<Store> store_;
 };
