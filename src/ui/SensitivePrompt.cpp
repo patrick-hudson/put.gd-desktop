@@ -53,7 +53,7 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  auto* heading=new QHBoxLayout;heading->setSpacing(space(Space::s));
  auto* glyph=new QLabel(this);glyph->setObjectName("sensitiveGlyph");const int glyphSize=Ui::scaled(24);
  glyph->setPixmap(Ui::icon("alert",Theme::current().warning).pixmap(glyphSize,glyphSize));glyph->setFixedSize(glyphSize,glyphSize);heading->addWidget(glyph,0,Qt::AlignTop);
- auto* title=Ui::label(complete?QStringLiteral("Sensitive text found"):QStringLiteral("put.gd couldn't finish checking this capture"),"sectionTitle",this);
+ auto* title=Ui::label(complete?QStringLiteral("Sensitive text found"):QStringLiteral("Couldn't finish checking this capture"),"sectionTitle",this);
  title->setObjectName("sensitiveTitle");title->setWordWrap(true);heading->addWidget(title,1);box->addLayout(heading);
  QString body;
  const auto subject=model_.file.isEmpty()?QStringLiteral("This capture"):QStringLiteral("This image");
@@ -66,28 +66,28 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
  auto* text=Ui::label(body.trimmed(),"body",this);text->setTextFormat(Qt::PlainText);text->setObjectName("sensitiveSummary");text->setWordWrap(true);box->addWidget(text);
  // A file-manager selection is answered as a whole: the editor edits one image.
  // A name with no spaces doesn't wrap: it is shortened in the middle to the panel's width.
- if(!model_.file.isEmpty()){auto* file=Ui::label(QString(),"meta",this);file->ensurePolished();file->setText(file->fontMetrics().elidedText(model_.file,Qt::ElideMiddle,inner)+(model_.redactAllowed?QStringLiteral(" · Redact and upload or Upload anyway sends this file and checks the rest, Cancel sends none"):QStringLiteral(" · Upload anyway keeps this file and checks the rest, Cancel sends none")));file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
+ if(!model_.file.isEmpty()){auto* file=Ui::label(QString(),"meta",this);file->ensurePolished();file->setText(file->fontMetrics().elidedText(model_.file,Qt::ElideMiddle,inner)+(model_.redactAllowed?QStringLiteral(" · Redact and upload or Upload anyway accepts this file and checks the rest. Cancel uploads none of the selected files."):QStringLiteral(" · Upload anyway accepts this file and checks the rest. Cancel uploads none of the selected files.")));file->setTextFormat(Qt::PlainText);file->setObjectName("sensitiveFile");file->setWordWrap(true);box->addWidget(file);}
  if(!model_.preview.isNull()){
   // The capture as Redact and upload sends it (and Open in editor starts it), scaled down; no text is shown apart from the pixels.
   auto* preview=new QLabel(this);preview->setObjectName("sensitivePreview");preview->setAlignment(Qt::AlignCenter);
   const auto dpr=devicePixelRatioF();auto pixmap=QPixmap::fromImage(model_.preview.scaled(QSize(std::min(Ui::scaled(480),inner),Ui::scaled(300))*dpr,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(dpr);
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
- auto* caution=Ui::label(QStringLiteral("Suggestions only. Recognition can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
+ auto* caution=Ui::label(QStringLiteral("Check the image before uploading. Detection can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
  if(!model_.destination.isEmpty()){auto* where=Ui::label(QString(),"meta",this);where->ensurePolished();where->setText(where->fontMetrics().elidedText(model_.destination,Qt::ElideMiddle,inner));where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  // #1898: four choices. Cancel and Open in editor on the left, Upload anyway and the primary Redact and upload on
  // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair, else
  // one button a row.
- cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Upload nothing. With Keep a local copy on, the capture is saved locally."));
+ cancel_=new QPushButton(QStringLiteral("Cancel"),this);cancel_->setObjectName("sensitiveCancel");cancel_->setToolTip(QStringLiteral("Cancel upload. Saves locally if Keep a local copy is on."));
  if(model_.editAllowed){
   edit_=new QPushButton(Ui::icon("edit"),QStringLiteral("Open in editor"),this);edit_->setObjectName("sensitiveEdit");
-  edit_->setToolTip(QStringLiteral("Open the editor with the suggested redactions placed, to change them; Upload there sends it"));
+  edit_->setToolTip(QStringLiteral("Edit suggested redactions before uploading"));
   connect(edit_,&QPushButton::clicked,this,[this]{choose("edit");});
  }
- upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(covers.isEmpty()?QStringLiteral("Upload the capture as it is"):QStringLiteral("Upload the capture with what put.gd already covered, and nothing else covered"));
+ upload_=new QPushButton(Ui::icon("upload"),QStringLiteral("Upload anyway"),this);upload_->setObjectName("sensitiveUpload");upload_->setToolTip(covers.isEmpty()?QStringLiteral("Upload capture without new redactions"):QStringLiteral("Upload with only automatic redactions applied"));
  if(model_.redactAllowed){
   redact_=new QPushButton(Ui::icon("redact"),QStringLiteral("Redact and upload"),this);redact_->setObjectName("sensitiveRedact");
-  redact_->setToolTip(QStringLiteral("Cover everything the preview shows covered and upload, without opening the editor"));Ui::role(redact_,"primary");redact_->setDefault(true);
+  redact_->setToolTip(QStringLiteral("Apply suggested redactions and upload now"));Ui::role(redact_,"primary");redact_->setDefault(true);
   connect(redact_,&QPushButton::clicked,this,[this]{choose("redact_upload");});
  }
  connect(upload_,&QPushButton::clicked,this,[this]{choose("upload");});

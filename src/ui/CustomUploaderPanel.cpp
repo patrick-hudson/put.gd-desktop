@@ -512,7 +512,7 @@ void CustomUploaderPanel::openImport() {
     auto* dialog = new QDialog(this);
     dialog->setObjectName("importSxcuDialog");
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle("Import a ShareX custom uploader");
+    dialog->setWindowTitle("Import a ShareX custom uploader — put.gd");
     dialog->setModal(true);
     dialog->setMinimumWidth(Ui::scaled(520));
     auto* root = new QVBoxLayout(dialog);
@@ -564,7 +564,7 @@ void CustomUploaderPanel::openImport() {
     });
     auto* chooser = new FileDialog(dialog);
     connect(choose, &QPushButton::clicked, dialog, [this, dialog, chooser, fail] {
-        chooser->open({FileDialog::Mode::Open, "Choose a ShareX custom uploader file", {}, {}, {{"ShareX custom uploader", {"*.sxcu", "*.json"}}, {"All files", {"*"}}}},
+        chooser->open({FileDialog::Mode::Open, "Choose a ShareX custom uploader file — put.gd", {}, {}, {{"ShareX custom uploader", {"*.sxcu", "*.json"}}, {"All files", {"*"}}}},
                       [this, dialog, fail](const FileDialog::Result& result) {
                           if (result.failed()) { fail({"file_dialog_failed", result.error, {}}); return; }
                           if (!result.chosen()) return;

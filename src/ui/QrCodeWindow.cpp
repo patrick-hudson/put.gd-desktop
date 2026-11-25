@@ -38,7 +38,7 @@ private:
 };
 }
 QrCodeWindow::QrCodeWindow(const QString& historyId,const QString& name,const QString& url,Actions actions,QWidget* parent):QDialog(parent),historyId_(historyId),name_(name),actions_(std::move(actions)) {
- setObjectName("historyQrCode");setAttribute(Qt::WA_DeleteOnClose);setWindowTitle("QR code — "+name);Ui::styleWindow(*this);
+ setObjectName("historyQrCode");setAttribute(Qt::WA_DeleteOnClose);setWindowTitle("QR code: "+name+" — put.gd");Ui::styleWindow(*this);
  const auto error=qr::encode(url.toUtf8(),matrix_);
  auto* box=new QVBoxLayout(this);box->setContentsMargins(space(Space::l),space(Space::l),space(Space::l),space(Space::l));box->setSpacing(space(Space::m));
  auto* title=Ui::label(name,"sectionTitle",this);title->setObjectName("historyQrTitle");box->addWidget(title);
@@ -76,7 +76,7 @@ void QrCodeWindow::saveImage() {
 }
 void QrCodeWindow::chooseSave(const QString& path){
  const QFileInfo target(path);
- chooser_->open({FileDialog::Mode::Save,"Save QR code",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[g=QPointer<QrCodeWindow>(this)](const FileDialog::Result& chosen){
+ chooser_->open({FileDialog::Mode::Save,"Save QR code — put.gd",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[g=QPointer<QrCodeWindow>(this)](const FileDialog::Result& chosen){
   if(!g)return;
   if(chosen.failed()){Ui::feedback(g->status_,chosen.error,true);return;}
   if(!chosen.chosen())return;

@@ -821,7 +821,7 @@ def reset_limits(ctx):
     # Return must choose the safe default, and Escape must cancel too.
     for answer in ('Return', 'Esc', None):
         scroll_click(ctx, 'resetAdvancedDefaults', after_window='settingsConfirm')
-        ctx.wait(lambda: visible(ctx, '^Reset limits to defaults$'), 'reset confirmation opens')
+        ctx.wait(lambda: visible(ctx, '^Reset limits to defaults — put.gd$'), 'reset confirmation opens')
         ctx.use_catalog('settingsConfirm', 'confirm-reset-limits')
         ctx.focus('settingsConfirm')
         ctx.frame('reset-confirm-' + str(answer), window='settingsConfirm', reference='confirm-reset-limits')
@@ -829,7 +829,7 @@ def reset_limits(ctx):
             ctx.keys(answer)
         else:
             ctx.click('text:Reset limits', window='settingsConfirm')
-        ctx.wait(lambda: not visible(ctx, '^Reset limits to defaults$'), 'reset confirmation closes')
+        ctx.wait(lambda: not visible(ctx, '^Reset limits to defaults — put.gd$'), 'reset confirmation closes')
         result(ctx, ctx.view('ui.show', {'view': 'settings'}))
         if answer:
             ctx.expect(persisted(ctx) == baseline and get(ctx)['document'] == baseline,
@@ -858,17 +858,17 @@ def reload_confirmation(ctx):
     replace(ctx, 'recentActivityLimit', 'not-a-number')
     fixture['external_change']({'preferences': {'notifications': not original}})
     scroll_click(ctx, 'reloadSettings', after_window='settingsConfirm')
-    ctx.wait(lambda: visible(ctx, '^Reload settings from file$'), 'reload confirmation opens')
+    ctx.wait(lambda: visible(ctx, '^Reload settings from file — put.gd$'), 'reload confirmation opens')
     ctx.use_catalog('settingsConfirm', '53-reload-confirm')
     ctx.focus('settingsConfirm')
     ctx.frame('reload-before', window='settingsConfirm', reference='53-reload-confirm')
     ctx.keys('Esc')
-    ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload canceled')
+    ctx.wait(lambda: not visible(ctx, '^Reload settings from file — put.gd$'), 'reload canceled')
     result(ctx, ctx.view('ui.show', {'view': 'settings'}))
     scroll_click(ctx, 'reloadSettings', after_window='settingsConfirm')
     ctx.focus('settingsConfirm')
     ctx.click('text:Reload from file', window='settingsConfirm')
-    ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload accepted')
+    ctx.wait(lambda: not visible(ctx, '^Reload settings from file — put.gd$'), 'reload accepted')
     saved(ctx, 'preferences.notifications', not original, 3)
     ctx.wait(lambda: not state(ctx)['settings'].get('conflict'), 'reload clears conflict')
     frame(ctx, 'reload-after', 3)

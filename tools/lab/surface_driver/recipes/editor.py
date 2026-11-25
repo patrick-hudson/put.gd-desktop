@@ -275,7 +275,7 @@ def blur(ctx):
         _draw(ctx, op, 'blur')
         _frame(ctx, 'warning', '21-editor-blur-warning')
         # The warning is a visible control, not an inferred acknowledgement.
-        ctx.click('text:Choose Redact tool', window='editor')
+        ctx.click('text:Switch to Redact', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['tool'] == 'redact', 'blur warning switches to irreversible redaction')
         _tool(ctx, op, 'blur', 'B')
         _frame(ctx, 'after', '21-editor-blur-warning')

@@ -212,7 +212,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // The custom picker follows the palette, making two even rows of four rather
  // than six and an orphaned pair; recent custom colours get their own row.
  customColor_=new Swatch({},colorRow_,true);customColor_->setObjectName("customColor");
- customColor_->setToolTip("Custom color…");customColor_->setAccessibleName("Custom color");grid->addWidget(customColor_,cell/4,cell%4);
+ customColor_->setToolTip("Custom color");customColor_->setAccessibleName("Custom color");grid->addWidget(customColor_,cell/4,cell%4);
  grid->setColumnStretch(4,1);layout->addLayout(grid);
  connect(customColor_,&QToolButton::clicked,this,&EditorWindow::pickCustomColor);
  auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(Ui::space(Space::xs));recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
@@ -258,8 +258,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  {
   // One above the other: side by side they are wider than the panel.
   auto* buttons=new QVBoxLayout;buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(Ui::space(Space::xs));
-  copySelection_=new QPushButton("Copy selection",copyTextRow_);copySelection_->setObjectName("editorCopySelection");copySelection_->setToolTip("Copy the selected words (Ctrl+C)");Ui::role(copySelection_,"primary");
-  copyAllText_=new QPushButton("Copy all text",copyTextRow_);copyAllText_->setObjectName("editorCopyAllText");copyAllText_->setToolTip("Copy every word, and the content of each code on a line of its own");Ui::role(copyAllText_,"quiet");
+  copySelection_=new QPushButton("Copy selection",copyTextRow_);copySelection_->setObjectName("editorCopySelection");copySelection_->setToolTip("Copy selected text (Ctrl+C)");Ui::role(copySelection_,"primary");
+  copyAllText_=new QPushButton("Copy all text",copyTextRow_);copyAllText_->setObjectName("editorCopyAllText");copyAllText_->setToolTip("Copy all recognized text and QR code content");Ui::role(copyAllText_,"quiet");
   buttons->addWidget(copySelection_,0,Qt::AlignLeft);buttons->addWidget(copyAllText_,0,Qt::AlignLeft);layout->addLayout(buttons);
   connect(copySelection_,&QPushButton::clicked,this,[this]{copyRecognizedText(false);});connect(copyAllText_,&QPushButton::clicked,this,[this]{copyRecognizedText(true);});
  }
@@ -273,16 +273,16 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  quickRedactRow_=column(panel,layout);quickRedactRow_->setObjectName("editorQuickRedact");
  {
   quickRedact_=new QToolButton(quickRedactRow_);quickRedact_->setObjectName("quickRedact");quickRedact_->setText("Quick redact");quickRedact_->setIcon(Ui::icon("redact"));quickRedact_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  quickRedact_->setPopupMode(QToolButton::InstantPopup);quickRedact_->setAccessibleName("Quick redact");quickRedact_->setToolTip("Add Redact marks over recognized text of one kind");Ui::role(quickRedact_,"quiet");
+  quickRedact_->setPopupMode(QToolButton::InstantPopup);quickRedact_->setAccessibleName("Quick redact");quickRedact_->setToolTip("Add suggested Redact marks by type");Ui::role(quickRedact_,"quiet");
   auto* menu=new QMenu(quickRedact_);menu->setObjectName("quickRedactMenu");menu->setToolTipsVisible(true);
   for(const auto& category:editor::quickRedact::categories()){auto* action=menu->addAction(quickRedactLabel(category));action->setObjectName("quickRedact_"+category);if(category=="key")action->setToolTip(editor::quickRedact::keyShapes().join("\n"));if(category=="list")quickRedactList_=action;connect(action,&QAction::triggered,this,[this,category]{quickRedact({category});});}
   menu->addSeparator();auto* every=menu->addAction("All of these");every->setObjectName("quickRedact_all");connect(every,&QAction::triggered,this,[this]{quickRedact(editor::quickRedact::categories());});
   // Takes back every suggestion still there (one undo step); marks you drew stay.
-  menu->addSeparator();quickRedactRemove_=menu->addAction("Remove suggestions");quickRedactRemove_->setObjectName("quickRedact_remove");quickRedactRemove_->setToolTip("Remove every mark Quick redact suggested and you haven't deleted. Marks you drew stay.");connect(quickRedactRemove_,&QAction::triggered,this,[this]{removeSuggestions();});
+  menu->addSeparator();quickRedactRemove_=menu->addAction("Remove suggestions");quickRedactRemove_->setObjectName("quickRedact_remove");quickRedactRemove_->setToolTip("Clear Quick redact suggestions, keeping marks you drew");connect(quickRedactRemove_,&QAction::triggered,this,[this]{removeSuggestions();});
   setRedactList({},{});
   quickRedact_->setMenu(menu);
   auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_);row->addStretch(1);layout->addLayout(row);
-  auto* caution=Ui::label("Suggestions only. Recognition can miss text.","secondary",quickRedactRow_);caution->setObjectName("quickRedactCaution");caution->setWordWrap(true);layout->addWidget(caution);
+  auto* caution=Ui::label("Check the image before uploading. Detection can miss text.","secondary",quickRedactRow_);caution->setObjectName("quickRedactCaution");caution->setWordWrap(true);layout->addWidget(caution);
   quickRedactResult_=new QLabel(quickRedactRow_);quickRedactResult_->setObjectName("quickRedactResult");quickRedactResult_->setWordWrap(true);Ui::role(quickRedactResult_,"body");quickRedactResult_->hide();layout->addWidget(quickRedactResult_);
  }
  properties->addWidget(quickRedactRow_);
@@ -293,7 +293,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // shadow come from Settings → Capture → Capture style (Saved look) or a preset.
  styleRow_=column(panel,layout);styleRow_->setObjectName("editorStyle");
  {
-  styleEnabled_=new QCheckBox("Style this image",styleRow_);styleEnabled_->setObjectName("editorStyleEnabled");styleEnabled_->setAccessibleDescription("Puts the image on a backdrop with padding, rounded corners and a shadow when it is saved or uploaded");layout->addWidget(styleEnabled_);
+  styleEnabled_=new QCheckBox("Style this image",styleRow_);styleEnabled_->setObjectName("editorStyleEnabled");styleEnabled_->setAccessibleDescription("Add a backdrop, padding, rounded corners, and a shadow");layout->addWidget(styleEnabled_);
   layout->addWidget(fieldLabel("Look",styleRow_));
   styleLook_=Ui::choiceBox(styleRow_);styleLook_->setObjectName("editorStyleLook");styleLook_->setAccessibleName("Style look");
   for(const auto& preset:CaptureStyle::presets())styleLook_->addItem(preset.label,preset.id);
@@ -332,10 +332,10 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  }
  layout->addWidget(geometryFields_);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
  connect(geometryDisclosure_,&QToolButton::toggled,this,[this]{syncGeometry();});
- remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("uiDensity","compact");remove_->setIcon(Ui::icon("remove"));remove_->setProperty("uiIconBase",QSize(20,20));remove_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));remove_->setFixedSize(Ui::scaled(28),Ui::scaled(28));remove_->setToolTip("Remove the selected mark (Delete)");Ui::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
+ remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("uiDensity","compact");remove_->setIcon(Ui::icon("remove"));remove_->setProperty("uiIconBase",QSize(20,20));remove_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));remove_->setFixedSize(Ui::scaled(28),Ui::scaled(28));remove_->setToolTip("Remove selected mark (Delete)");Ui::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("uiFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Ui::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new KeyboardHelp(panel);keyboardText->setObjectName("editorKeyboardHelpText");
- const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Shift+drag","Square, circle, 45° line"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"},{"Ctrl+Shift+C","Copy image"}};
+ const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Alt+arrows","Pan canvas"},{"Alt+Shift+arrows","Pan canvas farther"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Shift+drag","Square, circle, 45° line"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"},{"Ctrl+Shift+C","Copy image"}};
  QStringList keyboardSummary;
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Ui::setMono(key);Ui::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);Ui::role(meaning,"secondary");keyboardText->addShortcut(key,meaning);keyboardSummary.append(keys+": "+description);}
  keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
@@ -354,7 +354,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* noticeLayout=new QGridLayout(noticeContent);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Ui::space(Space::s));
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);Ui::role(noticeText_,"secondary");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);
  keepEditing_=new QPushButton("Keep editing",notice_);keepEditing_->setObjectName("keepEditing");noticeLayout->addWidget(keepEditing_,1,0);
- saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save the edited image to a file instead (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
+ saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save edited image to a file (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
  notice_->hide();footerGrid_->addWidget(notice_,0,0,1,5);
  // Elision keeps the actions reachable; keyboard activation reveals the name.
  destination_=new Ui::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);Ui::role(destination_,"meta");
@@ -382,7 +382,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* details=Ui::toolButton("Details",{},"quiet",saveFeedback_);details->setObjectName("editorSaveDetails");recoveryRow->insertWidget(0,details);connect(details,&QToolButton::clicked,this,[this]{if(auto* popup=saveError_->fullTextPopup();popup&&popup->isVisible())popup->close();else saveError_->reveal();});
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
  showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();Ui::role(showFolder_,"quiet");recoveryRow->addWidget(showFolder_);
- copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();Ui::role(copyPath_,"quiet");recoveryRow->addWidget(copyPath_);
+ copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy full file path");copyPath_->hide();Ui::role(copyPath_,"quiet");recoveryRow->addWidget(copyPath_);
  savedMore_=Ui::toolButton({}, {},"quiet",saveFeedback_);savedMore_->setIcon(Ui::chromeIcon("more"));savedMore_->setObjectName("editorSavedMore");savedMore_->setAccessibleName("Saved copy actions");savedMore_->setToolTip("Saved copy actions");savedMore_->setPopupMode(QToolButton::InstantPopup);savedMore_->hide();recoveryRow->addWidget(savedMore_);
  auto* savedMenu=new QMenu(savedMore_);savedMore_->setMenu(savedMenu);
  auto* showSaved=savedMenu->addAction("Show in folder");showSaved->setObjectName("showSavedCopyMenu");connect(showSaved,&QAction::triggered,this,&EditorWindow::showSavedCopy);
@@ -396,10 +396,10 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
  // Copy image: the same sanitized PNG as Upload and Save a copy, on the
  // clipboard; nothing uploads and History gains nothing.
- copyImage_=new QPushButton("Copy image",footer);copyImage_->setObjectName("editorCopyImage");copyImage_->setIcon(Ui::icon("copy"));copyImage_->setProperty("uiIconBase",QSize(20,20));copyImage_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(copyImage_,"quiet");copyImage_->setToolTip("Copy the edited image to the clipboard (Ctrl+Shift+C). Nothing is uploaded.");copyImage_->setAccessibleDescription(copyImage_->toolTip());
- save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(Ui::icon("save"));save_->setProperty("uiIconBase",QSize(20,20));save_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(copyImage_,2,1);footerGrid_->addWidget(save_,2,2);
+ copyImage_=new QPushButton("Copy image",footer);copyImage_->setObjectName("editorCopyImage");copyImage_->setIcon(Ui::icon("copy"));copyImage_->setProperty("uiIconBase",QSize(20,20));copyImage_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(copyImage_,"quiet");copyImage_->setToolTip("Copy edited image to clipboard (Ctrl+Shift+C)");copyImage_->setAccessibleDescription(copyImage_->toolTip());
+ save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(Ui::icon("save"));save_->setProperty("uiIconBase",QSize(20,20));save_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));save_->setToolTip("Save edited image to a file (Ctrl+S)");footerGrid_->addWidget(copyImage_,2,1);footerGrid_->addWidget(save_,2,2);
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,3);
- upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
+ upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload edited image (Ctrl+Enter)");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
  root->addWidget(footer);
 
  connect(tools_,&QButtonGroup::idClicked,this,[this](int id){selectTool(Tool(id));});
@@ -523,7 +523,7 @@ void EditorWindow::pickCustomColor(){
  const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
  // The dialog's own custom-color grid shows the same recent picks.
  for(int i=0;i<QColorDialog::customCount();++i)QColorDialog::setCustomColor(i,i<recentColors_.size()?QColor(recentColors_[i]):QColor(Qt::white));
- const auto color=QColorDialog::getColor(highlight?highlightColor_:annotationColor_,this,"Custom color");
+ const auto color=QColorDialog::getColor(highlight?highlightColor_:annotationColor_,this,"Custom color — put.gd");
  if(!color.isValid())return;
  // Palette colors are already one click away; only custom colors are remembered.
  bool palette=false;for(auto* swatch:std::as_const(swatches_))palette=palette||swatch->property("swatchColor").value<QColor>()==color;
@@ -550,7 +550,8 @@ void EditorWindow::setDestination(const QString& destination,bool links){
  if(summary.startsWith("Private upload to ")){summary=summary.mid(18);mode="Private upload";}
  else if(summary.startsWith("Upload to ")){summary=summary.mid(10);if(!links)mode="Upload only";else{if(summary.endsWith(" · Shared link"))summary.chop(14);mode="Shared link";}}
  sharingMode_->setText(mode);sharingMode_->setAccessibleName(mode);
- destination_->setText(summary);destination_->setAccessibleName(summary);const auto description="Upload to "+summary+(mode.isEmpty()?QString{}:mode=="Private upload"?QString(" as a private upload"):mode=="Upload only"?QString(" without a link"):QString(" with a shared link"))+" (Ctrl+Enter)";upload_->setToolTip(description);upload_->setAccessibleDescription(description);placeDestination();}
+ destination_->setText(summary);destination_->setAccessibleName(summary);// No upload route (local archive, or no output): the summary already says what the button does.
+ const auto description=(mode.isEmpty()?summary:"Upload edited image to "+summary+(mode=="Private upload"?QString(" as a private upload"):mode=="Upload only"?QString(" without a link"):QString(" with a shared link")))+" (Ctrl+Enter)";upload_->setToolTip(description);upload_->setAccessibleDescription(description);placeDestination();}
 
 void EditorWindow::placeDestination(){
  if(!footerGrid_)return;
@@ -704,7 +705,7 @@ void EditorWindow::refresh(){
   auto* radius=static_cast<BlurRadius*>(blurRow_);const auto name=pixelate?QStringLiteral("Block size"):QStringLiteral("Blur radius");
   if(radius->label()->text()!=name){radius->label()->setText(name);strengthValue_->setAccessibleName(name);strength_->setAccessibleName(name);
    const auto description=QString("%1 in image pixels, %2 to %3").arg(name).arg(editor::EditDocument::minimumBlur).arg(editor::EditDocument::maximumBlur);strengthValue_->setAccessibleDescription(description);strengthValue_->setToolTip(description);strength_->setAccessibleDescription(description);}
-  blurWarning_->findChild<QLabel*>("editorToolWarning")->setText(pixelate?QStringLiteral("Pixelation may be reversible."):Ui::blurWarningText());
+  blurWarning_->findChild<QLabel*>("editorToolWarning")->setText(pixelate?QStringLiteral("Pixelated text can sometimes be recovered."):Ui::blurWarningText());
  }
  {
   const bool selectedStep=kind(Kind::Step)&&tool!=Tool::Crop;
@@ -745,7 +746,7 @@ void EditorWindow::refresh(){
    {int(Tool::Step),{"Place step","step"}},{int(Tool::Pen),{"Place pen stroke","pen"}},{int(Tool::Ellipse),{"Place ellipse","ellipse"}},{int(Tool::Line),{"Place line","line"}}};
   auto entry=placing.value(int(tool));placeRow_->setVisible(entry.first);
   if(entry.first&&tool==Tool::Blur&&pixelate)entry={"Place pixelation","blur"};
-  if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(Ui::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
+  if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(Ui::icon(entry.second));place_->setToolTip(QString("%1 in the center of the image (Insert)").arg(QString::fromUtf8(entry.first)));}
  }
  syncGeometry();syncSaved();remove_->setVisible(shape&&tool!=Tool::Crop);
  bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_,copyTextRow_,quickRedactRow_,styleRow_})options=options||!row->isHidden();
@@ -754,12 +755,12 @@ void EditorWindow::refresh(){
  // Cancel asks about discarding edits once there are any; it says so.
  const bool edited=doc_.modified();
  if(cancel_->text()!=(edited?"Discard…":"Cancel")){
-  cancel_->setText(edited?"Discard…":"Cancel");cancel_->setToolTip(edited?"Discard your edits and close without uploading (asks first)":"Close the editor without uploading");placeDestination();
+  cancel_->setText(edited?"Discard…":"Cancel");cancel_->setToolTip(edited?"Discard edits and close":"Close editor");placeDestination();
  }
  const int percent=int(std::lround(canvas_->zoom()*100));
  status_->setText(canvas_->fitted()?QString("Fit · %1%").arg(percent):QString("%1%").arg(percent));status_->setAccessibleName("Zoom");placeTools();
  for(auto* action:status_->menu()->actions())if(action->isCheckable())action->setChecked(action->data().toInt()==(canvas_->fitted()?0:percent));
- status_->setToolTip("Zoom: Ctrl+plus / Ctrl+minus. Fit: Ctrl+0. Actual size: Ctrl+1.\nCanvas pan: Alt+arrows; Alt+Shift+arrows pan farther.");status_->setAccessibleDescription(QString("%1% · %2").arg(percent).arg(canvas_->fitted()?"Fit to window":"Custom zoom")+". "+status_->toolTip());
+ status_->setToolTip("Zoom (Ctrl+plus, Ctrl+minus), fit (Ctrl+0), or 100% (Ctrl+1)");status_->setAccessibleDescription(QString("%1% · %2").arg(percent).arg(canvas_->fitted()?"Fit to window":"Custom zoom")+". "+status_->toolTip());
 }
 
 void EditorWindow::syncGeometry(){
@@ -814,7 +815,7 @@ bool EditorWindow::saveCopy(){
 }
 void EditorWindow::chooseCopy(const QString& path){
  const QFileInfo target(path);
- chooser_->open({FileDialog::Mode::Save,"Save a copy",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[this](const FileDialog::Result& result){
+ chooser_->open({FileDialog::Mode::Save,"Save a copy — put.gd",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[this](const FileDialog::Result& result){
   if(busy_||savingCopy_)return;
   if(result.failed()){showSaveFailed({},result.error);return;}
   if(!result.chosen())return;
@@ -1124,8 +1125,8 @@ void EditorWindow::requestCancel(){
  if(busy_||savingCopy_||copying_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop will be lost%1.").arg(lastSave_.value("status")=="saved"?"; copies you saved stay":"");
- auto* box=Ui::confirm(this,"Discard edits?",text,"Discard edits",QStringLiteral("Keep editing"),true);
+ const auto text=lastSave_.value("status")=="saved"?QStringLiteral("Discard edits and close?\nYour unsaved edits will be lost. Copies you saved stay."):QStringLiteral("Discard edits and close?\nYour unsaved edits will be lost.");
+ auto* box=Ui::confirm(this,"Discard edits — put.gd",text,"Discard edits",QStringLiteral("Keep editing"),true);
  auto* keep=box->button(QMessageBox::Cancel);keep->setObjectName("keepEditingConfirm");
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);
  connect(box,&QDialog::finished,this,[this,box](int result){
@@ -1260,7 +1261,7 @@ void EditorWindow::setRedactList(QStringList terms,QStringList patterns){
  redactTerms_=std::move(terms);redactPatterns_=std::move(patterns);
  // Nothing saved: the entry says where to add words and stays off (agents can still pass terms).
  const bool empty=redactTerms_.isEmpty()&&redactPatterns_.isEmpty();
- if(quickRedactList_){quickRedactList_->setEnabled(!empty);quickRedactList_->setToolTip(empty?QStringLiteral("Add words or patterns in Settings → Capture → Text recognition."):QStringLiteral("Words and patterns saved in Settings → Capture → Text recognition."));}
+ if(quickRedactList_){quickRedactList_->setEnabled(!empty);quickRedactList_->setToolTip(empty?QStringLiteral("Add words or patterns in Settings → Capture → Text recognition"):QStringLiteral("Use words and patterns from Settings → Capture → Text recognition"));}
 }
 int EditorWindow::removeSuggestions(){
  if(busy_)return 0;
@@ -1338,7 +1339,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     }
     g->doc_.commitGesture();
     const auto added=created.size();
-    QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
+    QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Check the image manually.")};
     QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 didn't finish and was skipped.").arg(index+1);}
     // The account lookup did not answer in time: the other categories ran without it (#1618).
     if(found.nameUnchecked)lines<<QStringLiteral("Skipped 'My username and name'. Account lookup timed out.");

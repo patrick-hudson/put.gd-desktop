@@ -172,11 +172,11 @@ private:
 };
 }
 QString formatHint(const QString& format, const QString& codec) {
-    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Use MP4 (H.264) for broader playback compatibility.");
+    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux can't play H.265 links (Safari and Edge can). Use MP4 (H.264) for wider browser support.");
     if (format == "mp4") return QStringLiteral("Recommended for browser sharing.");
-    if (format == "webm") return QStringLiteral("VP9 with Opus audio; plays in browsers except older Safari.");
-    if (format == "gif") return QStringLiteral("Silent animation, at most 60 s and 1280 px.");
-    return QStringLiteral("Silent animated WebP, at most 60 s and 1280 px.");
+    if (format == "webm") return QStringLiteral("VP9 with Opus audio. Plays in most browsers except older Safari.");
+    if (format == "gif") return QStringLiteral("Silent animation, up to 60 s and 1280 px");
+    return QStringLiteral("Silent animated WebP, up to 60 s and 1280 px");
 }
 QString formatLabel(const QString& format, const QString& codec) {
     if (format == "mp4") return codec == "h265" ? QStringLiteral("Smaller video — MP4 (H.265)") : QStringLiteral("Compatible video — MP4 (H.264) · Recommended");
@@ -445,7 +445,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     format_->setObjectName("format");
     format_->setProperty("purposeMinimum", true);
     format_->setAccessibleName("Recording format");
-    format_->setToolTip("The format the recording is reviewed and exported in");
+    format_->setToolTip("Recording and export format");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
         if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
@@ -478,7 +478,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     Ui::role(stop_, "primary");
     cancel_ = new QPushButton("Cancel", this);
     cancel_->setObjectName("cancel");
-    cancel_->setToolTip("Discard this recording");
+    cancel_->setToolTip("Cancel recording");
     Ui::role(cancel_, "quiet");
     // The discard question, in the bar so it stays where the bar may be (never over the clip).
     question_ = new QLabel("Discard this recording?", this);
@@ -561,8 +561,8 @@ void ControlBar::refresh() {
     audio_->blockSignals(true);
     audio_->setChecked(audioIntent_);
     audio_->blockSignals(false);
-    audio_->setText(config_.silent() ? QStringLiteral("System audio — used for video formats") : QStringLiteral("System audio"));
-    audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
+    audio_->setText(config_.silent() ? QStringLiteral("System audio (video only)") : QStringLiteral("System audio"));
+    audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP have no audio") : ready ? QStringLiteral("Record system audio") : withSound ? QStringLiteral("Recording system audio") : QStringLiteral("System audio off"));
     const bool narrated = config_.audio.microphone && !config_.silent();
     microphone_->setEnabled(ready && options_.microphoneAvailable && !config_.silent());
     // Without one the toggle says so itself; why is in its tooltip.
@@ -572,10 +572,10 @@ void ControlBar::refresh() {
     // Without a microphone the box is empty whatever was chosen last time; the choice is kept for when one is there.
     microphone_->setChecked(microphoneIntent_ && options_.microphoneAvailable);
     microphone_->blockSignals(false);
-    microphone_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent")
-        : !options_.microphoneAvailable ? (options_.microphoneUnavailable.isEmpty() ? QStringLiteral("No microphone is available") : options_.microphoneUnavailable)
-        : narrated ? QStringLiteral("Recording your voice from %1. The microphone is open while this is ticked.").arg(options_.microphoneLabel)
-        : QStringLiteral("Narrate the recording with %1").arg(options_.microphoneLabel));
+    microphone_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP have no audio")
+        : !options_.microphoneAvailable ? (options_.microphoneUnavailable.isEmpty() ? QStringLiteral("No microphone available") : options_.microphoneUnavailable)
+        : narrated ? QStringLiteral("Recording from %1. The microphone stays open while this is on.").arg(options_.microphoneLabel)
+        : QStringLiteral("Record audio from %1").arg(options_.microphoneLabel));
     microphone_->setAccessibleDescription(microphone_->toolTip());
     microphone_->setVisible(ready);
     // The meter stays beside the toggle before Record and beside the facts during it.
@@ -586,7 +586,6 @@ void ControlBar::refresh() {
     formatAudio_->setText(QStringLiteral("%1 has no audio").arg(config_.format == "gif" ? QStringLiteral("GIF") : QStringLiteral("WebP")));
     formatAudio_->setVisible(ready && config_.silent());
     target_->setVisible(ready && !options_.targetLabel.isEmpty());
-    choices_->setToolTip(options_.targetLabel);
     choices_->setAccessibleDescription(options_.targetLabel);
     lockedFacts_->setVisible(!ready);
     lockedAudio_->hide();
@@ -603,7 +602,7 @@ void ControlBar::refresh() {
     lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
     lockedFacts_->setAccessibleName(lockedFacts_->text());
     lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
-    lockedFormat_->setToolTip(format_->currentText() + QStringLiteral("\nRecording format; choose the export format in review"));
+    lockedFormat_->setToolTip(format_->currentText() + QStringLiteral("\nChange the export format in review"));
     cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));
     keep_->setText(paused ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
     state_label_->setVisible(!handle);
@@ -617,7 +616,7 @@ void ControlBar::refresh() {
     for (auto* w : std::initializer_list<QWidget*>{question_, keep_, discard_}) w->setVisible(asking);
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
-    cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
+    cancel_->setToolTip(ready ? QStringLiteral("Cancel recording") : QStringLiteral("Discard recording"));
     layout()->setContentsMargins(handle ? QMargins(Ui::space(Ui::Space::s), Ui::space(Ui::Space::xs), Ui::space(Ui::Space::s), Ui::space(Ui::Space::xs)) : QMargins(Ui::space(Ui::Space::m), Ui::space(Ui::Space::s), Ui::space(Ui::Space::m), Ui::space(Ui::Space::s)));
     // Measure the current full text before applying any wrapping from a prior state.
     for (auto* label : {target_, lockedFacts_}) {

@@ -351,7 +351,7 @@ FilmstripTimeline::FilmstripTimeline(std::shared_ptr<MaskNames> names, QWidget* 
     Q_UNUSED(installed);
     setObjectName("timeline");
     setAccessibleName("Recording timeline");
-    setAccessibleDescription("Click to move the playhead, drag across the filmstrip to select time, drag a bracket to trim, drag an edge or a cover to retime it");
+    setAccessibleDescription("Click to move the playhead, drag to select time, drag a bracket to trim, or drag an edge or a cover to retime it");
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
