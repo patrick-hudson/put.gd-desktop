@@ -225,7 +225,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     auto root=doc;root.remove("captureDefaults");
     if (!keys(root, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");
-    if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "This configuration file was created by a newer version of put.gd.");
+    if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "Unsupported configuration version.");
     if (!doc["profiles"].isArray() || doc["profiles"].toArray().size() > 32)
         return invalid("/profiles", "Profiles must be an array of at most 32 destinations.");
     QStringList profileIds;
@@ -364,7 +364,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         !integer(retention["failedArtifactDays"], 0, 36500) || !integer(retention["recentActivityLimit"], 1, 10000) ||
         !integer(retention["previewCacheBytes"], 0, 1099511627776LL) ||
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
-        return invalid("/retention", "Retention limits are invalid. Leave History retention empty for no automatic expiry.");
+        return invalid("/retention", "Retention limits are invalid. To turn off automatic expiry, change Keep history for to Forever (null in the configuration file).");
     if (retention.contains("logDays") && !integer(retention["logDays"], 1, 365))
         return invalid("/retention/logDays", "Log retention is 1 to 365 days.");
     if (retention.contains("logBytes") && !integer(retention["logBytes"], 1048576, 1073741824))

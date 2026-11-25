@@ -252,7 +252,7 @@ QList<Operation> HistoryStore::recover(Error* error) {
  auto q=forwardQuery(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
  while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
   const auto state=op.state();
-  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Capture was interrupted before it finished. Start a new capture.",{}};}
+  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Interrupted while preparing input. Start the action again.",{}};}
   // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
   else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted. The upload didn't start.",{}};}
   // A recording that never reached explicit Upload is discarded with its private clip.

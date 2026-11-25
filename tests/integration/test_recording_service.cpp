@@ -194,7 +194,7 @@ private slots:
  }
  void diskFinalizationFailureDoesNotClaimReviewOrUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
-  const Error failure{"recording_disk_full","Couldn't finish saving the recording.; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
+  const Error failure{"recording_disk_full","Couldn't finish saving the recording.",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
   h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,failure.code);

@@ -76,7 +76,7 @@ QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
     receipt=StorageReceipt::fromJson(data["receipt"].toObject());
     // Quit kills a renewal helper waiting on a stalled server; a link not renewed stays as recorded (#1602).
     auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLinkForCopy(receipt,quitting_,cb);});
-    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","Couldn't refresh the link because the uploaded file is no longer at the destination.",{}};return QJsonObject{};}
+    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","Couldn't confirm the original uploaded file, so its link wasn't refreshed.",{}};return QJsonObject{};}
     if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
     data=store.detail(id,&e);
    }
@@ -226,7 +226,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   // that failed or ended unknown; this preview offers Remove from History only, never a deletion.
   const auto current=Settings::profileForDestination(receipt.destination.toJson(),profiles);
   if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){const auto blocker=store.forgetBlocker(id,running);targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",blocker.isEmpty()},{"retainedBy",blocker},{"effect",QStringLiteral("This file's destination was removed. The file stays at the destination.")}});continue;}
-  if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","A deletion for this file is already in progress or needs attention. Select Retry deletion in History.",{{"historyId",id}}};return {};}
+  if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","A deletion of this file is already running or didn't finish. Check its status in History.",{{"historyId",id}}};return {};}
   // An earlier deletion that may have sent a request keeps its checkpoint for Retry (#1763): a new one would start without it.
   if(data["deleteProgress"].toObject().contains("phase")&&!QStringList{"removed","already_missing","changed"}.contains(remote)) {e={"delete_target_changed","An earlier deletion of this file saved its progress. Select Retry deletion in History instead.",{{"historyId",id},{"deleteOperationId",data["deleteOperationId"]}}};return {};}
   auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{{"historyId",id}}};return {};}

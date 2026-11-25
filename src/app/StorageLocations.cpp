@@ -109,7 +109,7 @@ StorageLocations StorageLocations::prepare(const QString& genericConfig,const QS
 }
 Error StorageLocations::journalLockBusy(const QString& code,const QString& lockPath,const QJsonObject& details) {
  const auto path=QDir::toNativeSeparators(lockPath);auto fields=details;fields["lockPath"]=path;
- return {code,"Couldn't lock put.gd's data folder. If no other put.gd is running, remove "+path+" and start put.gd again.",fields};
+ return {code,"Couldn't lock put.gd's data folder. If no other put.gd is running, quit put.gd, remove "+path+" and start put.gd again.",fields};
 }
 Error StorageLocations::journalLockFailure(const QLockFile& lock,const QString& code,const QString& lockPath,const QJsonObject& details) {
  if(lock.error()==QLockFile::LockFailedError)return journalLockBusy(code,lockPath,details);

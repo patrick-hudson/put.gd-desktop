@@ -345,7 +345,7 @@ private slots:
   error={};updates->install({{"confirm",false}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_confirm_required"));
   error={};updates->install({{"confirm",true},{"method","torrent"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
   error={};updates->install({{"confirm",true},{"image","/tmp/other"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
-  updates->setBusy([]{return QString("A recording is running. Install the update after it finishes.");});
+  updates->setBusy([]{return QString("A recording is running. Install the update after it finishes");});
   error={};updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_busy"));
   QVERIFY(calls().isEmpty());
   updates->setBusy({});

@@ -293,7 +293,7 @@ void OperationService::pumpCopies() {
   }
   const auto before=owner->source_.clipboardRevision();
   if(error){complete(error,before);return;}
-  if(request->eligible&&!request->eligible()){complete({"copy_suppressed","Link wasn't copied automatically because your clipboard changed or another copy started. Copy it from History.",{}},before);return;}
+  if(request->eligible&&!request->eligible()){complete({"copy_suppressed","Wasn't copied because your clipboard changed, another copy started or the action was cancelled.",{}},before);return;}
   const auto payload=request->payload();
   if(payload.kind=="text"&&payload.text.isEmpty()){complete({"copy_no_result","No successful links to copy",{}},before);return;}
   request->nativeStarted=true;

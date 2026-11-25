@@ -162,7 +162,7 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  if(existing.exists()) {
   if(!existing.open(QIODevice::ReadOnly)||existing.size()>1024*1024)return {"setup_journal_io","Couldn't read the destination test log.",{}};
   QJsonParseError parse;const auto previous=QJsonDocument::fromJson(existing.readAll(),&parse);
-  if(parse.error!=QJsonParseError::NoError||!previous.isObject())return {"setup_journal_io","The destination test log is invalid. The test stopped without changing anything.",{}};
+  if(parse.error!=QJsonParseError::NoError||!previous.isObject())return {"setup_journal_io","The destination test log is invalid. The existing log was kept.",{}};
   checkpoints=previous.object()["checkpoints"].toArray();
  }
  if(checkpoints.size()>=64)return {"setup_journal_io","The destination test recorded too many steps and stopped.",{}};
@@ -695,9 +695,9 @@ int main(int argc,char* argv[]) {
 #endif
  // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
  updates.setBusy([&]()->QString{
-  if(operations.scroll().active())return "A scrolling capture is running. Install the update after it finishes.";
-  if(operations.recording().active())return "A recording is running. Install the update after it finishes.";
-  if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running. Install the update after it finishes.";
+  if(operations.scroll().active())return "A scrolling capture is running. Install the update after it finishes";
+  if(operations.recording().active())return "A recording is running. Install the update after it finishes";
+  if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running. Install the update after it finishes";
   return {};
  });
  updates.setQuit(quitApplication);

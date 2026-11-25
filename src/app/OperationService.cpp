@@ -383,7 +383,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An image edit is already open. Finish or cancel it first.",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is already running. Stop or cancel it before editing.",{{"operationId",recording_->activeId()}}},{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
- auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}},{});return;}
  const auto route=snapshot.actions.value(action);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
@@ -502,7 +502,7 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
  if(!ready_) {accepted(notReadyError(),{});return;}
  auto snapshot=settings_.snapshot();
  if(!snapshot.profiles.contains(profileId)){accepted({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
- if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
  // This operation's own settings: the package keeps its file name in history,
  // is never archived a second time, and a name clash never overwrites.
  auto document=snapshot.document;
@@ -530,7 +530,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
  if(!ready_) {reply(notReadyError(),{});return;}
  if(uploadGate_)if(auto error=uploadGate_()){reply(error,{});return;}
  const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
- if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
  const auto route=FileUploads::resolve(snapshot,profileId);
  Destination destination;
  if(!route.error){const auto profile=snapshot.profiles.value(route.profileId);destination={profile["provider"].toString(),route.profileId,revision,profile["settings"].toObject(),profile["credentials"].toObject()};}
@@ -549,7 +549,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
    if(e.code=="destination_required")emit destinationRequired();
    reply(e,{});return;
   }
-  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
   Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
   auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);beginUploadCopies(op,false);anticipate(op);
@@ -801,7 +801,7 @@ void OperationService::checkFinished(const QString& id,std::shared_ptr<Job> shar
   if(op.settings.archive.keepUploads&&op.state()!=OperationState::Editing&&(!job.payload.image.isNull()||!job.payload.bytes.isEmpty()||!job.payload.files.isEmpty())){
    logging::warning(logOperation(),"Sensitive text check failed; saving the capture locally only",{{"operationId",id},{"error",logging::errorFields(outcome->error)}});
    // Added to a note the capture already has (a scrolling capture's), never in place of it.
-   const auto why=QStringLiteral("Saved locally only. Couldn't check for sensitive text, so the upload didn't start.");op.note=op.note.isEmpty()?why:op.note+" "+why;
+   const auto why=QStringLiteral("Couldn't check for sensitive text, so the upload didn't start.");op.note=op.note.isEmpty()?why:op.note+" "+why;
    job.localOnly=true;op.destination={};enqueue(std::move(job));next();return;
   }
   job.payload={};
@@ -1071,7 +1071,7 @@ Error OperationService::acceptText(Operation& op,const TextService::Acceptance& 
  if(acceptance.interactive&&scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is already running. Stop or cancel it first.",{{"operationId",scroll_->activeId()}}};
  if(acceptance.interactive&&!selectingId_.isEmpty())return {"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}};
  // Every source counts against the pending-operation limit. No output is needed.
- const auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
+ const auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
  op.id=uuid();op.action=Settings::textActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
  // An explicit copy: it takes the ticket and the expected clipboard revision now,
  // which also moves the upload-copy epoch past any pending link copy. With
@@ -1279,7 +1279,7 @@ Error OperationService::acceptRecording(Operation& op) {
  if(!ready_)return notReadyError();
  if(editor_)return {"editor_active","An image edit is already open. Finish or cancel it before recording.",{{"operationId",editingId_}}};
  if(!selectingId_.isEmpty())return {"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}};
- auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
+ auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}};
  const auto acceptedAction=op.action.isEmpty()?Settings::recordingActionName():op.action;
  const auto route=snapshot.actions.value(acceptedAction);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
@@ -1404,7 +1404,7 @@ Operation OperationService::run(Job job) {
  if(publicationMode=="default")publicationMode=provider->defaultPublicationMode(op.destination);
  if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This destination doesn't support private uploads. Change Sharing or Destination in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
  // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
- if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","This destination doesn't support the selected duplicate-name setting. Change it in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
+ if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","This destination doesn't support the selected When a name exists setting. Change it in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
  bool needsNames=job.acquire;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
  if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes,op.settings.randomName);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
@@ -1448,7 +1448,7 @@ Operation OperationService::run(Job job) {
    item.uploadStatus="stored";targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);checked=true;break;
   }
   if(job.cancelled->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started. Select Retry upload to try again.",{}};}
-  else if(!checked&&item.uploadStatus=="stored") {item.uploadStatus="failed";item.error={"collision_exhausted","Couldn't find an unused file name after 32 tries. Rename the file or change duplicate-name handling in Settings → Capture.",{}};}
+  else if(!checked&&item.uploadStatus=="stored") {item.uploadStatus="failed";item.error={"collision_exhausted","Couldn't find an unused file name after 32 tries. Rename the file or change When a name exists in Settings → Capture.",{}};}
   if(!saveItem(item))return op;
  }
  for(const auto& group:std::as_const(targets)) if(group.size()>1) {if(op.settings.collisionPolicy=="overwrite") {for(int i:group)op.items[i].uploadStatus="conflict";}else if(op.settings.collisionPolicy=="skip") {for(int n=1;n<group.size();++n)op.items[group[n]].uploadStatus="skipped";}else {for(int n=1;n<group.size();++n) {auto& item=op.items[group[n]];item.uploadStatus="failed";item.error={"name_alias_conflict","Multiple files in this batch map to the same name at the destination. Rename them and try again.",{}};}}}
@@ -1585,7 +1585,7 @@ Operation OperationService::run(Job job) {
    const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","A file with this name already exists, and put.gd couldn't confirm whether it's from this upload. Check the destination before retrying.",{}};if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
-   if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","The existing file at the destination changed before overwrite, so the upload didn't start. Check the destination and try again.",{}};if(!commit(item,index))return;break;}
+   if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","Couldn't replace the existing file because it changed at the destination. Check the destination and try again.",{}};if(!commit(item,index))return;break;}
    // The last attempt has no upload left, so no replacement name is looked for.
    if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Couldn't find an unused file name after 32 tries.",{}};commit(item,index);break;}
    NameCheck check;
@@ -1596,7 +1596,7 @@ Operation OperationService::run(Job job) {
     check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
     if(cancel->load()||check.error||check.status!="present")break;
    }
-   if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started. Select Retry upload to try again.",{}};commit(item,index);break;}
+   if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Cancelled while checking for an unused file name. Select Retry upload to try again.",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error=check.status=="present"&&!check.error?Error{"collision_exhausted","Every generated file name was already taken at the destination.",{}}:Error{"existence_unknown","Couldn't check whether the renamed file is available at the destination.",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::timed_mutex>(*lock);
   }
@@ -1886,7 +1886,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_) {reply(notReadyError(),{});return;}
- const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","The local file for this upload is gone, so it can't be retried. Start a new capture or upload.",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
@@ -1911,7 +1911,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_){reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;
- if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Too many uploads are queued. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
+ if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued operations in Settings → Advanced → Resource limits.",{}},{});return;}
  active_.insert(id,std::make_shared<std::atomic_bool>(false));
  // A local retry keeps its durable result; only its live observation is active.
  observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
@@ -2048,7 +2048,7 @@ void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","Link wasn't copied because another copy or action started.",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This item has no available link.",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
 void OperationService::copyHistoryQr(QByteArray png,JsonReply reply,quint64 ticket,quint64 revision) {
- if(ticket!=invocation_||revision!=source_.clipboardRevision()){reply({"copy_suppressed","Wasn't copied because your clipboard changed or another copy started.",{}},{});return;}
+ if(ticket!=invocation_||revision!=source_.clipboardRevision()){reply({"copy_suppressed","QR code wasn't copied because your clipboard changed or another copy started.",{}},{});return;}
  CopyPayload payload;payload.kind="image";payload.encodedImage=std::move(png);
  deliverCopy(payload,[reply](Error e){reply(e,{{"copied",!e}});},[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
 }

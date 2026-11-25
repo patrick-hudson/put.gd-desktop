@@ -150,7 +150,7 @@ void ArtifactStore::discardIncomplete() {
  }
 }
 
-Error ArtifactStore::verify(const Artifact& a) const {QFile f(a.path); if(!f.open(QIODevice::ReadOnly)) return {"artifact_missing","The queued copy of this file is missing. Start a new upload.",{}}; QCryptographicHash hash(QCryptographicHash::Sha256); if(!hash.addData(&f)||f.size()!=a.bytes||QString::fromLatin1(hash.result().toHex())!=a.sha256) return {"artifact_changed","The queued copy of this file changed before upload. Start a new upload.",{}}; return {};}
+Error ArtifactStore::verify(const Artifact& a) const {QFile f(a.path); if(!f.open(QIODevice::ReadOnly)) return {"artifact_missing","put.gd's saved copy of this file is missing.",{}}; QCryptographicHash hash(QCryptographicHash::Sha256); if(!hash.addData(&f)||f.size()!=a.bytes||QString::fromLatin1(hash.result().toHex())!=a.sha256) return {"artifact_changed","put.gd's saved copy of this file changed.",{}}; return {};}
 Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,const ResourceLimits& limits,
                                    const QString& action,const Settings& settings,const QDateTime& actionTime,qint64 maximumObjectBytes) {
  Acquisition result; const QString staging=root_+"/."+op+"-"+QUuid::createUuid().toString(QUuid::WithoutBraces), target=root_+"/"+op;

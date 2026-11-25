@@ -181,21 +181,21 @@ void RecordingService::stoppedOnBudget(Session& s, const QJsonObject& observed) 
         }
         details["hint"] = "Free up space in put.gd's data folder before the next recording";
         details["message"] = disk.freeBytes >= 0
-            ? QStringLiteral("Recording stopped at %1 because the disk ran out of space. %2 is free and put.gd reserves %3 for the system, so it stopped at %4 to leave room for export and upload. The clip so far is ready for review. Free up space before recording again.")
+            ? QStringLiteral("Recording stopped at %1 because the disk is nearly full. Free up disk space before recording again (%2 free, %3 reserved, %4 recording limit). The clip so far is ready for review.")
                   .arg(at, ArtifactStore::sizeText(disk.freeBytes), ArtifactStore::sizeText(disk.reserveBytes + disk.reservedBytes), budget)
-            : QStringLiteral("Recording stopped at %1 because the disk ran out of space at %2. The clip so far is ready for review. Free up space before recording again.").arg(at, budget);
+            : QStringLiteral("Recording stopped at %1 because the disk is nearly full. Free up disk space before recording again (%2 recording limit). The clip so far is ready for review.").arg(at, budget);
         if (liveDiskStop) {
             // Keep the triggering sample, even if another writer releases space
             // while EOS drains. It is the reason we stopped, not the byte cap.
             for (const auto* key : {"freeBytes", "reserveBytes", "availableBytes", "requiredBytes", "finalizationReserveBytes", "clipBytes"})
                 if (observed.value(key).isDouble()) details[key] = observed.value(key);
             details["hint"] = "Free up space in put.gd's data folder before exporting or recording again";
-            details["message"] = QStringLiteral("Recording stopped at %1 because free disk space ran low. %2 was free, with %3 reserved for the system and %4 needed to finish and copy the clip. The clip so far is kept for private review. Free up space before exporting or recording again.")
+            details["message"] = QStringLiteral("Recording stopped at %1 because free disk space ran low. Free up disk space before exporting or recording again (%2 free, %3 reserved, %4 needed to finish and copy the clip). The clip so far is kept for private review.")
                 .arg(at, ArtifactStore::sizeText(details.value("freeBytes").toInteger()), ArtifactStore::sizeText(details.value("reserveBytes").toInteger()), ArtifactStore::sizeText(details.value("requiredBytes").toInteger()));
         }
     } else {
         details["hint"] = "Raise Largest file in Settings → Advanced → Resource limits to record longer.";
-        details["message"] = QStringLiteral("Recording stopped at %1 because it reached the Largest file limit of %2 (stopping at %3 to leave room to finish). The clip so far is ready for review. Raise Largest file in Settings → Advanced → Resource limits to record longer.")
+        details["message"] = QStringLiteral("Recording stopped at %1 because it reached the Largest file limit (%2, stopping at %3 to leave room to finish). Raise Largest file in Settings → Advanced → Resource limits to record longer. The clip so far is ready for review.")
                                  .arg(at, ArtifactStore::sizeText(maxFile), budget);
     }
     s.stopDetails = details;
