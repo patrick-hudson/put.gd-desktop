@@ -409,7 +409,10 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
   if(outcomeUncertain&&QStringList{"invalid_request","authentication_required","session_unread","account_changed","artifact_changed","keychain_unavailable","invalid_destination","invalid_receipt","keychain_required","unsupported_request","unsupported_condition","unsupported_safe_removal","unsafe_data_directory","destination_unavailable"}.contains(error.code))*outcomeUncertain=false;
   return {};
  }
- return final["result"].toObject();
+ // An upload or share the helper stopped at its own deadline reports it inside the result.
+ auto result=final["result"].toObject();
+ if(auto nested=result["error"].toObject();nested["code"]=="request_timeout"){nested["message"]=deadlineMessage();result["error"]=nested;}
+ return result;
 }
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
