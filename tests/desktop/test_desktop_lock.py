@@ -18,8 +18,8 @@ START = datetime.datetime(2026, 10, 19, 3, 0, tzinfo=datetime.timezone.utc)
 
 
 def inventory(*args, **kwargs):
-    """collect_inventory without this machine's own /tmp."""
-    return lock.collect_inventory(*args, **dict({'tmp': lambda: None}, **kwargs))
+    """collect_inventory without this machine's own /tmp and process cgroups."""
+    return lock.collect_inventory(*args, **dict({'tmp': lambda: None, 'cgroup': lambda pid: None}, **kwargs))
 
 
 def deb(version):
@@ -236,6 +236,51 @@ class ReleaseCleanupCheck(LockTest):
         reply = self.desktop.release('local_a', True, not_mine=ownership)
         self.assertEqual(events, ['inventory', 'ownership'])
         self.assertEqual(reply['check']['notMine'], [process(31)])
+
+    def test_a_signer_run_between_acquire_and_release_is_host_activity(self):
+        # #2015: d69's putgd-signer.timer started a run during a Tier 1 row; it inherits the user
+        # manager's DISPLAY and names putgd, so the release check refused the row's lock.
+        uid = os.getuid()
+        manager = f'/user.slice/user-{uid}.slice/user@{uid}.service'
+        signer = ('/usr/bin/python3 -I /home/patrick/putgd-signer/src/tools/releases/pkgrepo.py '
+                  '--config /home/patrick/.config/putgd-signer/signer.json run')
+        running = {}
+        def run(argv):
+            if argv[0] == 'pgrep':
+                return (0, ''.join(f'{pid} {command}\n' for pid, (command, _) in running.items())) if running else (1, '')
+            return {'flatpak': (0, ''), 'rpm': (1, '')}.get(argv[0], (1, ''))
+        with tempfile.TemporaryDirectory() as home:
+            self.desktop.inventory = lambda: lock.collect_inventory(
+                Path(home), run, own=set(), environment=lambda pid: {'DISPLAY', 'WAYLAND_DISPLAY'},
+                tmp=lambda: None, cgroup=lambda pid: running[pid][1])
+            self.acquire()
+            running['500'] = (signer, manager + '/app.slice/putgd-signer.service')
+            running['501'] = ('gpg --homedir /home/patrick/.local/share/putgd-signer/gnupg --detach-sign',
+                              manager + '/app.slice/putgd-signer.service')
+            with mock.patch.object(lock, 'process_start', return_value='100'):
+                reply = self.desktop.release('local_a', verified_clean=True)
+            self.assertEqual(reply['check']['left'], [])
+            self.assertIn('2 process(es) of the host service putgd-signer.service (standing host activity): '
+                          '500 501', reply['notes'])
+            # The same command elsewhere is not the host's service: a session scope, another
+            # user's manager, a sub-cgroup of the unit, or another user unit.
+            for path in (f'/user.slice/user-{uid}.slice/session-4.scope',
+                         f'/user.slice/user-{uid + 1}.slice/user@{uid + 1}.service/app.slice/putgd-signer.service',
+                         manager + '/app.slice/putgd-signer.service/extra',
+                         manager + '/app.slice/putgd-other.service', None):
+                running.clear()
+                self.acquire()
+                running['600'] = (signer, path)
+                with mock.patch.object(lock, 'process_start', return_value='100'), \
+                        self.assertRaises(lock.LockError, msg=path) as refused:
+                    self.desktop.release('local_a', verified_clean=True)
+                self.assertEqual([item['id'] for item in refused.exception.details['check']['left']], ['600'])
+                running.clear()
+                self.desktop.release('local_a', verified_clean=True)
+
+    def test_reads_this_process_cgroup(self):
+        self.assertTrue(lock.process_cgroup(os.getpid()).startswith('/'))
+        self.assertIsNone(lock.process_cgroup(2**31))
 
     def test_a_package_restored_to_its_acquire_version_is_not_new(self):
         self.items = [deb('1.0')]
