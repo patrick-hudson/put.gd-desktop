@@ -8,8 +8,7 @@ namespace putgd::worker {
 // One request per process; the control thread lives until run() exits the process.
 class Stdio {
 public:
-    Stdio(qint64 lineLimit, QString prefix, QString journal)
-        : maximumLine(lineLimit), prefix_(std::move(prefix)), journal_(std::move(journal)) {}
+    Stdio(qint64 lineLimit, QString prefix) : maximumLine(lineLimit), prefix_(std::move(prefix)) {}
     std::atomic_bool cancelled{false};
     // Extra parallel requests the resident lends to this upload right now (a {"lanes":n}
     // control line, #1792); zero until it sends one. Values outside [0, maximumLanes) are ignored.
@@ -24,7 +23,7 @@ private:
     QByteArray readLine(bool& eof);
     void readControl();
     qint64 maximumLine;
-    QString prefix_, journal_;
+    QString prefix_;
     std::mutex controlMutex, outputMutex;
     std::condition_variable controlChanged;
     std::deque<QJsonObject> acks;

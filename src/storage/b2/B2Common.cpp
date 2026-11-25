@@ -51,7 +51,7 @@ Error validateSettings(const QJsonObject& s) {
     if (!s["publicUrlBase"].isNull() && (!serviceUrl(s["publicUrlBase"]) || mode != "public"))
         return bad("Link domain must be an HTTPS URL and applies to public buckets only.");
     if (!integer(s["connectTimeoutMs"], 1000, 120000) || !integer(s["requestTimeoutMs"], 1000, 3600000))
-        return bad("timeouts must be whole numbers within their limits.");
+        return bad("Timeouts must be within their limits, with millisecond precision.");
     return {};
 }
 QString fileName(const QJsonObject& settings, const QString& candidate) {

@@ -61,11 +61,13 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
     params["credentials"] = QJsonObject{{"keyId", credential->accessKey}, {"applicationKey", credential->secretKey}};
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const bool mutation = method != "checkName" && method != "stat";
+    const auto ending = worker::unconfirmedEnding(method, mutation, "the bucket", ", so the file may already be uploaded. Select Retry upload to check before sending again.");
     const worker::ExchangePolicy policy{"b2", "B2", "B2", "b2_transport_unknown",
         "Couldn't start the Backblaze B2 helper. Reinstall put.gd.",
-        "The Backblaze B2 helper stopped responding, so the file may already be uploaded. Select Retry upload to check before sending again.",
-        "The Backblaze B2 helper exited without confirming the result, so the file may already be uploaded. Select Retry upload to check before sending again.",
-        {"upload", "remove", "testDestination"}, method != "checkName" && method != "stat", true};
+        "The Backblaze B2 helper stopped responding" + ending,
+        "The Backblaze B2 helper exited without confirming the result" + ending,
+        {"upload", "remove", "testDestination"}, mutation, true};
     // File data has no request timeout (#1782), only the worker's stall limit: never cut a worker
     // while one of its requests may still be inside that limit.
     const auto perRequest = qMax(destination.settings["requestTimeoutMs"].toInt(600000), qMax(destination.settings["connectTimeoutMs"].toInt(10000), 30000));

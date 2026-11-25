@@ -146,10 +146,11 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
     secrets = {};
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const auto ending = worker::unconfirmedEnding(method, true, "the server", ", so the file may already be on the server. Check the server, or select Retry upload (this may create a duplicate).");
     const worker::ExchangePolicy policy{"http", "custom uploader", "Custom uploader", "http_outcome_unknown",
         "Couldn't start the custom uploader helper. Reinstall put.gd.",
-        "The custom uploader helper stopped responding, so the file may already be on the server. Check the server, or select Retry upload (this may create a duplicate).",
-        "The custom uploader helper exited without confirming the result, so the file may already be on the server. Check the server, or select Retry upload (this may create a duplicate).",
+        "The custom uploader helper stopped responding" + ending,
+        "The custom uploader helper exited without confirming the result" + ending,
         {"remove", "testDestination"}};
     const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
                                         policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);

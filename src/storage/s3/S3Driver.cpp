@@ -670,7 +670,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     const qint64 bytes = request.artifact.bytes;
     const qint64 partBytes = request.resume["partBytes"].toInteger();
     if (!s3ValidPlan(bytes, partBytes))
-        return {"failed", {}, {"s3_multipart_invalid", "This file exceeds S3's multipart upload limits, so the upload didn't start.", {}}};
+        return {"failed", {}, {"s3_multipart_invalid", "The multipart upload plan doesn't meet S3's part size or count limits. No new upload started.", {}}};
     const int parts = int(s3PartCount(bytes, partBytes));
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, bytes, {}, {});
     auto save = [&](const QJsonObject& journal) { return request.checkpoint ? checkpoint(request.checkpoint, journal) : Error{}; };
@@ -729,7 +729,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     bool completing = false;
     if (!previous.isEmpty()) {
         const auto phase = s3UploadPhase(request.resume["phase"]);
-        if (!phase) return {"failed", {}, {"s3_multipart_invalid", "This unfinished multipart upload was saved by a newer version of put.gd and can't be resumed here.", {}}};
+        if (!phase) return {"failed", {}, {"s3_multipart_invalid", "This build of put.gd can't read the saved multipart upload progress, so it didn't resume the upload.", {}}};
         completing = *phase == S3UploadPhase::Completing;
     }
     if (!previous.isEmpty() &&
@@ -864,7 +864,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         const qint64 offset = qint64(number - 1) * partBytes;
         const qint64 length = qMin(partBytes, bytes - offset);
         const auto digest = partDigest(request.artifact.path, offset, length);
-        if (digest.isEmpty()) return {false, {}, {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}};
+        if (digest.isEmpty()) return {false, {}, {"artifact_invalid", "Couldn't read the temporary upload file. Capture or select the file again.", {}}};
         Error last;
         for (int attempt = 1; attempt <= 3; ++attempt) {
             if (stopped(request.cancellation)) return {false, {}, cancelled()};
@@ -873,7 +873,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 if (lanes.error) return {};
             }
             auto body = Aws::MakeShared<PartStream>("putgd-part", request.artifact.path, offset, length);
-            if (!body->isOpen()) return {false, {}, {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}};
+            if (!body->isOpen()) return {false, {}, {"artifact_invalid", "Couldn't read the temporary upload file. Capture or select the file again.", {}}};
             Aws::S3::Model::UploadPartRequest put;
             put.SetBucket(bucket);
             put.SetKey(aws(key));
@@ -1187,7 +1187,7 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
     }
     const auto key = objectKey(destination, candidate);
     if (key.toUtf8().size() > 1024 || key.contains(QChar(0))) {
-        reply({"inconclusive", {}, {}, {"s3_key_invalid", "The object key exceeds S3's 1 KB (1,024-byte) limit. Use a shorter file name or Folder in bucket.", {}}});
+        reply({"inconclusive", {}, {}, {"s3_key_invalid", "The object key exceeds S3's 1 KB limit or contains a null character. Use a shorter file name or Folder in bucket.", {}}});
         return;
     }
     QElapsedTimer requestTimer;
@@ -1454,7 +1454,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     const auto saved = s3DeletePhase(progress.value("phase"));
     if ((!progress.isEmpty() && progress.value("schemaVersion") != QJsonValue(1)) || !saved ||
         (progress.contains("phase") && !progress["target"].isObject())) {
-        reply({"failed", progress, {"delete_progress_unsupported", "This deletion was saved by a newer version of put.gd and can't be resumed here.", {}}});
+        reply({"failed", progress, {"delete_progress_unsupported", "This build of put.gd can't read the saved deletion progress, so it didn't resume the deletion.", {}}});
         return;
     }
     progress["schemaVersion"] = 1;
@@ -1602,7 +1602,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     }
     const bool versioned = state == Aws::S3::Model::BucketVersioningStatus::Enabled || state == Aws::S3::Model::BucketVersioningStatus::Suspended;
     if (version.isEmpty() && versioned) {
-        finish("unsupported_safe_removal", {"unsupported_safe_removal", "Bucket versioning was turned on after this file was uploaded, so put.gd can't safely delete it without a recorded version ID. Delete it in the bucket, or select Remove from History only….", {}});
+        finish("unsupported_safe_removal", {"unsupported_safe_removal", "Bucket versioning was turned on after this file was uploaded, so put.gd can't safely delete it without a recorded version ID. Delete it in the bucket, or select Remove from History only… to stop tracking it.", {}});
         return;
     }
     auto erase = [&](const QString& exactVersion, const QString& etag) {
@@ -1637,7 +1637,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     const auto nullObject = head(*client, destination, key, "null");
                     if (nullObject.IsSuccess() || !absent(nullObject.GetError()) ||
                         nullObject.GetError().GetResponseHeaders().count("x-amz-delete-marker")) {
-                        finish("unsupported_safe_removal", {"unsupported_safe_removal", "This bucket has versioning suspended and another null version at the same key, so put.gd didn't delete the file. Check the bucket, or select Remove from History only….", {}});
+                        finish("unsupported_safe_removal", {"unsupported_safe_removal", "Bucket versioning is suspended, and put.gd couldn't confirm that no null version exists at this key. The file was not deleted. Check the bucket, or select Remove from History only… to stop tracking it.", {}});
                         return;
                     }
                 }

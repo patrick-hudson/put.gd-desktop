@@ -40,7 +40,7 @@
 namespace putgd::b2 {
 namespace {
 constexpr qint64 maximumLine = 256 * 1024;
-worker::Stdio stdio{maximumLine, "b2", "upload"};
+worker::Stdio stdio{maximumLine, "b2"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Cancelled. Requests already sent to Backblaze B2 may still have taken effect.", {}}; }
@@ -237,7 +237,7 @@ public:
             }
         } else if (session.bucketId.isEmpty()) return failure(r, "bucket");
         if (session.bucketId.isEmpty())
-            return {"b2_bucket_not_found", "Backblaze B2 couldn't find bucket " + name + ". Check the Bucket name and make sure the bucket exists.", {{"requestStage", "bucket"}}};
+            return {"b2_bucket_not_found", "Backblaze B2 couldn't find bucket " + name + ". Check Bucket in Destinations and make sure it exists.", {{"requestStage", "bucket"}}};
         return {};
     }
     // Definite B2 refusals carry the stage, HTTP status and an allowlisted B2 code.
@@ -490,7 +490,7 @@ private:
             const auto url = client_.call("b2_get_upload_url", {{"bucketId", client_.session.bucketId}}, true);
             if (!url.ok()) { error = Client::failure(url, "upload_url"); return {}; }
             OneShot body(artifact.path, 0, artifact.bytes);
-            if (!body.open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
+            if (!body.open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Couldn't read the temporary upload file. Capture or select the file again.", {}}; return {}; }
             auto headers = infoHeaders(publication, artifact.sha256);
             headers += {{"Authorization", url.json["authorizationToken"].toString().toUtf8()}, {"X-Bz-File-Name", encodeName(name).toUtf8()},
                         {"Content-Type", artifact.mime.isEmpty() ? QByteArray("b2/x-auto") : artifact.mime.toUtf8()},
@@ -542,7 +542,7 @@ private:
     }
     // Large files: start (journaled before any part), parts with SHA-1, finish.
     QString uploadLarge(const Artifact& artifact, const QString& name, const QString& publication, qint64 part, Error& error, bool& uncertain) {
-        if (!validPlan(artifact.bytes, part)) { error = {"b2_plan_invalid", "This file exceeds Backblaze B2's large-file part limits, so the upload didn't start.", {}}; return {}; }
+        if (!validPlan(artifact.bytes, part)) { error = {"b2_plan_invalid", "The large-file upload plan doesn't meet Backblaze B2's part size or count limits. No new upload started.", {}}; return {}; }
         auto journal = request_["resume"].toObject();
         QString fileId;
         QHash<int, QPair<qint64, QString>> stored;

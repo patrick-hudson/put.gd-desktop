@@ -1261,7 +1261,7 @@ private slots:
   // refused beside the form and the saved row stays as it was.
   auto* secret=window.findChild<QCheckBox*>("uploaderFieldSecret1");secret->click();
   auto* refused=window.findChild<QLabel*>("uploaderSecretsError");QVERIFY(refused);
-  PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("does not store"));
+  PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("isn't stored"));
   QCOMPARE(saved()["settings"].toObject()["arguments"].toArray()[1].toObject(),QJsonObject({{"name","token"},{"secret",true}}));
  }
  // #1787: every ⓘ in Settings opens its explanation directly under its own field and a second

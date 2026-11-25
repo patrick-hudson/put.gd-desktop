@@ -133,7 +133,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     }
     auto label = params.contains("label") ? params["label"].toString().trimmed() : imported.name.isEmpty() ? QStringLiteral("Custom uploader") : imported.name;
     if (unsafe(label)) { label = QStringLiteral("Imported uploader"); replaced = true; }
-    if (replaced) imported.notes.append("The destination's ID or name would have repeated a credential, so a default name was used instead.");
+    if (replaced) imported.notes.append("The destination's ID or name would have repeated a credential, so a replacement ID or name was used.");
     const QJsonObject reference = keychain ? QJsonObject{{"mode", "keychain"}, {"reference", entry(id)}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
     profiles.append(QJsonObject{{"id", id}, {"label", label}, {"provider", providerId}, {"settings", imported.settings}, {"credentials", reference}});
     QJsonArray stored;
@@ -206,7 +206,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
             if (!wait->storing) return;
             wait->abandoned = true;
             unsettled().insert(name);
-            finish({"credential_store_timeout", "The system keychain didn't answer in time, so nothing was imported. Unlock the keychain, or select Use for this session, and try again.", {}}, {});
+            finish({"credential_store_timeout", "The system keychain didn't answer in time, so nothing was imported. Unlock the keychain and try again, or import with credentials for this session only.", {}}, {});
         });
     credentials.save(id, reference, std::move(value), addProfile);
 }

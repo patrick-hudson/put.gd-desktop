@@ -45,7 +45,7 @@ namespace {
 constexpr qint64 maximumLine = 1024 * 1024;
 constexpr qsizetype maximumReplyBytes = 4 * 1024 * 1024;
 constexpr int maximumRedirects = 5;
-worker::Stdio stdio{maximumLine, "http", "request"};
+worker::Stdio stdio{maximumLine, "http"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Upload cancelled", {}}; }
@@ -659,7 +659,7 @@ private:
                 // before the reply, and a server that had stored the file stores it twice.
                 body = plan.body ? std::make_unique<Body>(plan.before, plan.file ? artifact.path : QString(), artifact.bytes, plan.after)
                                  : std::make_unique<Body>(QByteArray(), QString(), 0, QByteArray());
-                if (!body->open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
+                if (!body->open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Couldn't read the temporary upload file. Capture or select the file again.", {}}; return {}; }
             }
             const bool reports = configured && plan.file;
             const auto sent = [&](qint64 bytes) { progress("uploading", bytes - plan.before.size(), artifact.bytes); };

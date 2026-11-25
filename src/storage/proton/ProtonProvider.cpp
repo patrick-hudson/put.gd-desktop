@@ -176,7 +176,7 @@ std::unique_ptr<ProtonProvider::Helper> ProtonProvider::start(const QString& ref
  const auto accountKey=QString::fromLatin1(QCryptographicHash::hash(reference.toUtf8(),QCryptographicHash::Sha256).toHex());
  auto started=std::make_unique<Helper>(QDir(lockRoot).filePath(accountKey+".lock"));started->lock.setStaleLockTime(0);started->lines=lines;
  if(!started->lock.tryLock(lockWaitMs)){error={"proton_account_busy","Another upload or check is already using this Proton account. Wait a moment and try again.",{}};return {};}
- if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Cancelled before the upload started.",{}};return {};}
+ if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Cancelled before the request was sent.",{}};return {};}
  if(!started->root.isValid()){error={"proton_private_storage","Couldn't create a temporary folder for the Proton helper. Check free disk space and permissions in your temp folder.",{}};return {};}
  QFile::setPermissions(started->root.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  if(!started->process.start(runtimePath(),{lines?"--session":"--stdio"},helperEnvironment(host::environment(),started->root.path()))){error={"proton_runtime_start","Couldn't start the bundled Proton runtime. Try again, or reinstall put.gd if it keeps failing.",{}};return {};}
@@ -376,19 +376,23 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
    else{final=value;gotResult=true;}
   }
  };
+ // What an unconfirmed request may have changed (#2028): an upload may have stored the file,
+ // a share change may have changed the link, and the other requests change nothing in Proton Drive.
+ const bool sharing=method=="share"&&params["options"].toObject()["action"].toString()!="inspect";
+ const QString deadlineAdvice=method=="connect"?QString():QStringLiteral(", or raise Request deadline in Advanced link settings");
  while(process.running()){
   process.waitForReadable(100);consume();if(error){process.kill();break;}
   // A helper that answers in turn has answered, and waits for its next request.
   if(helper.lines&&gotResult)break;
-  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown","Upload was cancelled after it was sent, so the file may already be in Proton Drive. Check there before retrying.",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
-  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",QString("Proton Drive didn't finish within the %1-second Request deadline, so the file may already be in Proton Drive. Check there before retrying, or raise Request deadline in Advanced link settings.").arg(timeout/1000.0),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
+  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown",method=="upload"?QStringLiteral("Upload was cancelled after it was sent, so the file may already be in Proton Drive. Check there before retrying."):sharing?QStringLiteral("Share link change was cancelled after it was sent, so the link may already have changed in Proton Drive. Check there before retrying."):QStringLiteral("Request was cancelled after it was sent."),{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
+  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",(method=="upload"?QString("Proton Drive didn't finish within the %1-second Request deadline, so the file may already be in Proton Drive. Check there before retrying"):sharing?QString("Proton Drive didn't finish within the %1-second Request deadline, so the share link may already have changed. Check Proton Drive before retrying"):QString("Proton Drive didn't answer within %1 seconds. Try again")).arg(timeout/1000.0)+deadlineAdvice+".",{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
  const bool waiting=helper.lines&&!error&&gotResult&&process.running();
  if(!waiting){process.waitForFinished(5000);consume();}
  if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","The Proton helper returned an incomplete reply. Check Proton Drive before retrying.",{}};
  pending.fill('\0');pending.clear();
  if(error){if(process.running()){process.kill();process.waitForFinished(5000);}end();return {};}
- if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown","The Proton helper exited without confirming the result, so the file may already be in Proton Drive. Check there before retrying.",{}};return {};}
+ if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown",method=="upload"?QStringLiteral("The Proton helper exited without confirming the result, so the file may already be in Proton Drive. Check there before retrying."):sharing?QStringLiteral("The Proton helper exited without confirming the result, so the share link may already have changed in Proton Drive. Check there before retrying."):QStringLiteral("The Proton helper exited without confirming the result. Try again."),{}};return {};}
  if(!final["ok"].toBool()||!final["result"].toObject()["error"].toObject().isEmpty())end();
  if(!final["ok"].toBool()){
   error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton Drive request failed.",{}};
@@ -418,7 +422,7 @@ void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadRe
 }
 void ProtonProvider::stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply){Error e;auto r=call("stat",receipt.destination,{{"receipt",receipt.toJson()}},e);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::reconcile(const UploadRequest& req,std::function<void(StatResult)> reply){Error e;auto r=call("reconcile",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"objectReference",req.objectReference}},e,req.cancellation);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
-void ProtonProvider::remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> reply){reply({"unsupported_safe_removal",{}, {"unsupported_capability","Proton Drive doesn't support atomic revision-guarded file deletion. Revoke the share link instead, or delete the file in Proton Drive.",{}}});}
+void ProtonProvider::remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> reply){reply({"unsupported_safe_removal",{}, {"unsupported_capability","put.gd can't safely delete a specific file revision in Proton Drive. Revoke the share link instead, or delete the file in Proton Drive.",{}}});}
 void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,std::function<void(ShareResult)> reply){
  const QJsonObject progress{{"schemaVersion",1},{"phase",req.action=="inspect"?"inspect":"intent"},{"operationId",req.id},{"action",req.action}};
  if(req.action!="inspect"){

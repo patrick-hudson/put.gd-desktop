@@ -23,7 +23,7 @@ template<class... Args> std::function<void(Args...)> once(std::function<void(Arg
     };
 }
 Error unexpected() {
-    return {"s3_transport_unknown", "The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.", {}};
+    return {"s3_transport_unknown", "The S3 helper exited unexpectedly, so the request may already have taken effect in S3. Check the bucket before trying again.", {}};
 }
 
 }

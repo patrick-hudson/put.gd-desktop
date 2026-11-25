@@ -47,7 +47,7 @@ namespace putgd::dav {
 namespace {
 constexpr qint64 maximumLine = 256 * 1024;
 constexpr qsizetype maximumReplyBytes = 4 * 1024 * 1024;
-worker::Stdio stdio{maximumLine, "webdav", "upload"};
+worker::Stdio stdio{maximumLine, "webdav"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Cancelled. Requests already sent to the server may still have taken effect.", {}}; }
@@ -438,7 +438,7 @@ private:
                 e = {"webdav_plain_http_refused", "Plain http:// addresses on other computers require Allow plain HTTP for this destination.", {}};
             else e = {"webdav_unreachable", "Couldn't reach " + url.host() + ": " + r.detail + ".", {}};
         } else if (r.status == 401) {
-            e = nextcloud() ? Error{"webdav_auth_failed", "Nextcloud rejected the saved app password (it may have been revoked). Select Sign in again….", {}}
+            e = nextcloud() ? Error{"webdav_auth_failed", "Nextcloud rejected the saved app password (it may have been revoked). Select Sign in again… to reconnect.", {}}
                             : Error{"webdav_auth_failed", "The WebDAV server rejected the User or Password. Check both, then select Save to keychain or Use for this session.", {}};
         } else if (r.status == 403) e = {"webdav_forbidden", service() + " refused access (HTTP 403). Check that this account may write to the folder.", {}};
         else if (r.status == 507) e = quotaError();
@@ -474,7 +474,7 @@ private:
     }
     bool uncertainAfter(const Reply& r) const { return (r.status == 0 && r.reached) || (r.status >= 500 && r.reached); }
     Error signInAgain() const {
-        return {"credential_setup_required", nextcloud() ? "This app password belongs to a different Nextcloud account or address. Select Sign in again…."
+        return {"credential_setup_required", nextcloud() ? "This app password belongs to a different Nextcloud account or address. Select Sign in again… to reconnect."
                                                          : "These credentials were saved for a different address. Enter them again and select Save to keychain or Use for this session.", {}};
     }
 
@@ -677,7 +677,7 @@ private:
         uncertain = false;
         const auto artifact = Artifact::fromJson(request_["artifact"].toObject());
         const auto name = request_["candidate"].toString();
-        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", "%1 uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}; return {{"status", "failed"}}; }
+        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", (nextcloud() ? QStringLiteral("Nextcloud") : QStringLiteral("WebDAV")) + " uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}; return {{"status", "failed"}}; }
         if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long, or contains a /.", {}}; return {{"status", "failed"}}; }
         progress("preparing", 0, artifact.bytes);
         if ((error = resolveAccount())) return {{"status", "failed"}};
@@ -995,7 +995,7 @@ private:
                                 : !digest.isEmpty() ? (!listed.isEmpty() && QString::fromLatin1(QCryptographicHash::hash(listed.toUtf8(), QCryptographicHash::Sha256).toHex()) == digest)
                                                     : true;
             if (!sameFile || !sameLink) {
-                error = {"webdav_protocol", "The recorded share no longer points to this file, so put.gd won't use or revoke it.", {{"requestStage", "share_inspect"}}};
+                error = {"webdav_protocol", "The recorded share no longer matches this file or its saved link. put.gd won't use or revoke it.", {{"requestStage", "share_inspect"}}};
                 return std::nullopt;
             }
             return share;

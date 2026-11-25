@@ -94,14 +94,14 @@ public:
         std::unique_lock lock(mutex);
         const auto mine = [&] { return std::find_if(acks.begin(), acks.end(), [&](const QJsonObject& ack) { return qint64(ack["id"].toDouble()) == id; }); };
         if (!changed.wait_for(lock, std::chrono::minutes(5), [&] { return mine() != acks.end() || gone; }))
-            return {"sftp_checkpoint_timeout", "Couldn't save upload progress to History in time. Try again.", {}};
+            return {"sftp_checkpoint_timeout", "Couldn't save progress for this request in time. Try again.", {}};
         const auto found = mine();
         if (found == acks.end()) return {"cancelled", "Request was cancelled.", {}};
         const auto ack = *found;
         acks.erase(found);
         if (ack["ack"].toBool()) return {};
         const auto e = ack["error"].toObject();
-        return {e["code"].toString("checkpoint_failed"), e["message"].toString("Couldn't save progress to History."), {}};
+        return {e["code"].toString("checkpoint_failed"), e["message"].toString("Couldn't save progress for this request."), {}};
     }
 };
 Stdio io;
@@ -537,7 +537,7 @@ private:
             return {};
         }
         QFile source(artifact.path);
-        if (!source.open(QIODevice::ReadOnly) || source.size() != artifact.bytes) { error = {"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
+        if (!source.open(QIODevice::ReadOnly) || source.size() != artifact.bytes) { error = {"artifact_invalid", "The temporary upload file is unreadable or has changed, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
         io.emitLine({{"id", double(id_)}, {"event", "progress"}, {"phase", "preparing"}, {"bytesTransferred", 0}, {"bytesTotal", double(artifact.bytes)}});
         QString folder;
         if (!connect(error, false) || !folderReady(error, folder)) return {};
@@ -798,7 +798,7 @@ private:
         const auto folder = namedFolder();
         // Only the folder a test found missing: the path it reported must be the one made now.
         if (request_["path"].toString() != folder) {
-            error = {"sftp_settings_invalid", "The folder to create doesn't match what the last test checked. Run Test upload again.", {{"field", "folder"}}};
+            error = {"sftp_settings_invalid", "The folder to create doesn't match what the last test checked. Select Test upload or Test upload and link again.", {{"field", "folder"}}};
             return {};
         }
         // Each missing level, from the top: mkdir -p, with the server's umask deciding modes.

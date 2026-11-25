@@ -26,19 +26,26 @@ Error invalidRequest(const QString& method,const QJsonObject& request){
    auto prefix=destination.settings["objectPrefix"].toString();
    if(!prefix.isEmpty()&&!prefix.endsWith('/'))prefix+='/';
    const auto key=prefix+request["candidate"].toString();
-   if(key.toUtf8().size()>1024||key.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB (1,024-byte) limit. Use a shorter file name or Folder in bucket.",{}};
+   if(key.toUtf8().size()>1024||key.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB limit or contains a null character. Use a shorter file name or Folder in bucket.",{}};
   }
  }
  if(method=="upload"){
   Artifact artifact;
   if(!request["artifact"].isObject()||!s3wire::decode(request["artifact"].toObject(),artifact))return {"artifact_invalid","Retained artifact metadata is invalid",{}};
   const auto candidate=request["candidate"].toString();
-  if(candidate.toUtf8().size()>1024||candidate.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB (1,024-byte) limit. Use a shorter file name or Folder in bucket.",{}};
+  if(candidate.toUtf8().size()>1024||candidate.contains(QChar(0)))return {"s3_key_invalid","The object key exceeds S3's 1 KB limit or contains a null character. Use a shorter file name or Folder in bucket.",{}};
   return {"s3_precondition_invalid","Persist an exact object key and write precondition before upload",{}};
  }
  return {"s3_request_invalid","Storage request does not match its supported schema",{}};
 }
-Error uncertain(){return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.",{}};}
+// What the helper may have done before it ended (#2028): an upload may have stored the file,
+// a deletion may have deleted it, and requests that change nothing are simply tried again.
+Error uncertain(const QString& method={}){
+ if(method=="upload")return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the file may already be in S3. Select Retry upload to check before sending again.",{}};
+ if(method=="remove")return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the file may already be deleted. Check the bucket before you retry the deletion.",{}};
+ if(QStringList{"checkName","stat","refreshLink","reconcile"}.contains(method))return {"s3_transport_unknown","The S3 helper exited unexpectedly. Try again.",{}};
+ return {"s3_transport_unknown","The S3 helper exited unexpectedly, so the request may already have taken effect in S3. Check the bucket before trying again.",{}};
+}
 QString helperPath(){
  if(QDir::cleanPath(QCoreApplication::applicationDirPath())==QString::fromUtf8(PUTGD_S3_BUILD_APP_DIR))return QString::fromUtf8(PUTGD_S3_WORKER_PATH);
  return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("putgd-s3-worker");
@@ -92,7 +99,7 @@ public:
  }
  void checkName(const Destination& destination,const QString& candidate,std::function<void(NameCheck)> callback, std::shared_ptr<std::atomic_bool> cancellation = {})override{
   QJsonObject result;auto error=run("checkName",{{"destination",destination.toJson()},{"candidate",candidate}},destination,cancellation, {},result);
-  NameCheck value;if(error||!s3wire::decode(result,value))value={"inconclusive",{}, {},error?error:uncertain()};callback(std::move(value));
+  NameCheck value;if(error||!s3wire::decode(result,value))value={"inconclusive",{}, {},error?error:uncertain("checkName")};callback(std::move(value));
  }
  void upload(const UploadRequest& request,std::function<void(UploadResult)> callback)override{
   // A multipart journal is acknowledged by the caller's durable store. Callers
@@ -101,25 +108,25 @@ public:
   lanes_=request.extraLanes;trace_=request.trace;
   QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,std::move(journal),result,request.progress);
   lanes_={};trace_={};
-  UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
+  UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain("upload")};callback(std::move(value));
  }
  void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{refreshLinkForCopy(receipt,{},std::move(callback));}
  void refreshLinkForCopy(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> kill,std::function<void(StatResult)> callback)override{
   QJsonObject result;auto error=run("refreshLink",receipt.toJson(),receipt.destination,{}, {},result,{},kill);
-  StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
+  StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain("refreshLink")};callback(std::move(value));
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{statForRemoval(receipt,{},std::move(callback));}
  void statForRemoval(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> kill,std::function<void(StatResult)> callback)override{
   QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result,{},kill);
-  StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
+  StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain("stat")};callback(std::move(value));
  }
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> callback)override{
   QJsonObject result;auto error=run("reconcile",s3wire::encode(request),request.destination,request.cancellation,{},result);
-  StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
+  StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain("reconcile")};callback(std::move(value));
  }
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> callback)override{
   QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result,{},request.kill);
-  DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain()};callback(std::move(value));
+  DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain("remove")};callback(std::move(value));
  }
  void abandon(const Destination& destination,const QJsonObject& journal,std::function<void(Error)> callback)override{
   QJsonObject result;auto error=run("abandon",{{"destination",destination.toJson()},{"journal",journal}},destination,{},{},result);
@@ -249,7 +256,7 @@ private:
   if(!failed_&&process_->bytesAvailable())process_->waitForReadyRead(1);
   const bool success=!failed_&&!checkpointException_&&terminal_&&process_->state()==QProcess::NotRunning&&process_->exitStatus()==QProcess::NormalExit&&process_->exitCode()==0;
   if(success)result=reply_;
-  resetProcess();checkpoint_={};progress_={};destination_={};return success?Error{}:uncertain();
+  resetProcess();checkpoint_={};progress_={};destination_={};return success?Error{}:uncertain(method);
  }
  void closePrepared(){
   if(process_&&ready_&&!activated_&&!failed_){auto value=envelope();value["cancel"]=true;control_->send("shutdown",value);process_->waitForFinished(10000);}

@@ -100,14 +100,14 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
         const auto binding = dav::parseBinding(credential->sessionToken);
         if (binding.isEmpty() || binding["base"].toString() != dav::bindingBase(destination.settings, id_)) {
             error = {"credential_setup_required", id_ == dav::nextcloudId
-                ? QStringLiteral("The saved app password belongs to a different Nextcloud address. Select Sign in again….")
+                ? QStringLiteral("The saved app password belongs to a different Nextcloud address. Select Sign in again… to reconnect.")
                 : QStringLiteral("These credentials were saved for a different WebDAV address. Enter them again and select Save to keychain or Use for this session."), {{"reason", "binding"}}};
             return {};
         }
         // A Nextcloud app password stored by hand is checked (and bound to its account) before
         // any other operation uses it.
         if (id_ == dav::nextcloudId && binding["userId"].toString().isEmpty() && !QStringList{"inspectAccount", "signOut"}.contains(method)) {
-            error = {"credential_setup_required", QStringLiteral("put.gd hasn't verified which Nextcloud account this app password belongs to yet. Select Test upload and link, or select Sign in…."), {{"reason", "unbound"}}};
+            error = {"credential_setup_required", QStringLiteral("put.gd hasn't verified which Nextcloud account this app password belongs to yet. Select Test upload and link to check it, or select Sign in… to replace it."), {{"reason", "unbound"}}};
             return {};
         }
         params["binding"] = binding;
@@ -119,12 +119,13 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
     if (method == "upload") { params["chunkThresholdBytes"] = double(chunkThreshold_); params["chunkBytes"] = double(chunkBytes_); }
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const bool mutation = !QStringList{"checkName", "stat", "reconcile", "inspectAccount", "signIn"}.contains(method);
+    const auto ending = worker::unconfirmedEnding(method, mutation, "the server", ", so the file may already be on the server. Select Retry upload to check before sending again.");
     const worker::ExchangePolicy policy{"webdav", label(id_), label(id_), "webdav_transport_unknown",
         "Couldn't start the " + label(id_) + " helper. Reinstall put.gd.",
-        "The " + label(id_) + " helper stopped responding, so the file may already be on the server. Select Retry upload to check before sending again.",
-        "The " + label(id_) + " helper exited without confirming the result, so the file may already be on the server. Select Retry upload to check before sending again.",
-        {"upload", "remove", "share", "testDestination"},
-        !QStringList{"checkName", "stat", "reconcile", "inspectAccount", "signIn"}.contains(method), true};
+        "The " + label(id_) + " helper stopped responding" + ending,
+        "The " + label(id_) + " helper exited without confirming the result" + ending,
+        {"upload", "remove", "share", "testDestination"}, mutation, true};
     // Sign-in waits for the browser (up to 20 minutes) without output; assembling a large chunked
     // upload sends a heartbeat while the server works.
     const qint64 perRequest = method == "signIn" ? 7 * 60 * 1000 : 5 * 60 * 1000;

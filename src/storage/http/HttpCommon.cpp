@@ -1,6 +1,7 @@
 #include "HttpCommon.h"
 #include <functional>
 #include "HttpTemplate.h"
+#include "core/ByteSize.h"
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -397,7 +398,7 @@ QString incompleteReply(int status, const QByteArray& verb, const QList<QPair<QB
         }
     }
     if (declared < 0 || received >= declared) return {};
-    return QStringLiteral("it ended after %1 of %2").arg(received).arg(declared);
+    return QStringLiteral("it ended after %1 of %2").arg(ByteSize::fileSummary(received), ByteSize::fileSummary(declared));
 }
 QUrl requestOrigin(const QJsonObject& settings) {
     const auto text = settings["requestUrl"].toString();
@@ -519,8 +520,8 @@ Error validateSettings(const QJsonObject& s) {
     const auto method = s["requestMethod"].toString();
     if (!QStringList{"GET", "POST", "PUT", "PATCH"}.contains(method)) return bad("Method must be GET, POST, PUT, or PATCH.", "requestMethod");
     const auto body = s["body"].toString();
-    if (!QStringList{"none", "multipart", "form", "json", "xml", "binary"}.contains(body)) return bad("Body must be none, multipart, form, json, xml, or binary.", "body");
-    if (method == "GET" && body != "none") return bad("a GET request can't have a body. Change Method to POST, PUT, or PATCH, or change Body to None.", "body");
+    if (!QStringList{"none", "multipart", "form", "json", "xml", "binary"}.contains(body)) return bad("Body must be Form data (multipart), Binary (the file itself), Form URL encoded, JSON, XML, or No body.", "body");
+    if (method == "GET" && body != "none") return bad("a GET request can't have a body. Change Method to POST, PUT, or PATCH, or change Body to No body.", "body");
     if (!s["requestUrl"].isString()) return bad("the request URL must be text", "requestUrl");
     if (auto error = urlProblem(s["requestUrl"].toString(), s["allowInsecureHttp"].toBool())) return error;
     const auto accepts = s["accepts"].toArray();
@@ -542,7 +543,7 @@ Error validateSettings(const QJsonObject& s) {
             if (name.isEmpty() || name.size() > maximumNameChars || !controlFree(name)) return bad("a " + singular(list) + " name is empty, too long or has control characters", list);
             if (list == "headers" && (!headerName(name) || managedHeader(name))) return bad("the header name " + name.left(64) + " cannot be set", list);
             if (list == "headers" && name.compare("content-type", Qt::CaseInsensitive) == 0 && body != "binary")
-                return bad("Content-Type is set automatically from Body. You can only set it manually for a Binary file body.", list);
+                return bad("Content-Type is set automatically from Body. You can only set it manually when Body is Binary (the file itself).", list);
             const auto unique = list == "headers" ? name.toLower() : name;
             if (names.contains(unique)) return bad("the " + singular(list) + " " + name.left(64) + " appears twice", list);
             names.insert(unique);
@@ -588,7 +589,7 @@ Error validateSettings(const QJsonObject& s) {
             return badIn(QString(key), "{secret:…} can't be used here. This value is shown and saved in History, so it must not contain a stored secret.", key);
     }
     if (!integer(s["connectTimeoutMs"], 1000, 120000) || !integer(s["requestTimeoutMs"], 1000, 3600000))
-        return bad("timeouts must be whole numbers within their limits.", "requestTimeoutMs");
+        return bad("timeouts must be within their limits, with millisecond precision.", "requestTimeoutMs");
     return {};
 }
 

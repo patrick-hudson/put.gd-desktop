@@ -24,6 +24,12 @@ QString startFailureMessage(StartFailure failure, const QString& installationMes
     if (failure == StartFailure::Temporary) return subject + " right now. Try again.";
     return subject + ". Try again, or reinstall put.gd if it keeps failing.";
 }
+QString unconfirmedEnding(const QString& method, bool mutation, const QString& place, const QString& upload) {
+    if (method == "upload") return upload;
+    if (method == "remove") return ", so the file may already be deleted. Check " + place + " before you retry the deletion.";
+    if (mutation) return ", so the request may already have taken effect. Check " + place + " before trying again.";
+    return QStringLiteral(". Try again.");
+}
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill,
@@ -112,7 +118,8 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
         if (kill && kill->load()) {
             process.kill();
             process.waitForFinished(5000);
-            error = {policy.unknownCode, "put.gd quit while the " + policy.name + " helper was running, so the file may already be on the server. Check the server or select Retry upload.", {{"reason", "quit"}}};
+            error = {policy.unknownCode, "put.gd quit while the " + policy.name + " helper was running" +
+                     unconfirmedEnding(method, policy.mutation, "the server", ", so the file may already be on the server. Check the server or select Retry upload."), {{"reason", "quit"}}};
             return {};
         }
         if (lanes && !cancelSent && lanesPoll.elapsed() >= 100) {
