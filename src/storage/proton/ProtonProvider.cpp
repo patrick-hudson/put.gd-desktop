@@ -240,7 +240,9 @@ std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination)
  });
 }
 QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
- auto env=host;for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
+ // Bun reads its switches from BUN_* (BUN_OPTIONS, BUN_FEATURE_FLAG_*, BUN_BE_BUN, ...): one could turn on
+ // its experimental HTTP/3 client or make the helper run as the Bun CLI (#2005). The helper needs none.
+ auto env=host;for(const auto& key:env.keys())if(key.startsWith("BUN_")||key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
  env.insert("PUTGD_PROTON_DATA_DIR",dataDirectory);
  return env;
 }

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "bun": "1.4.4",
+    "bun": "1.4.5",
     "@protontech/drive-sdk": "0.23.0",
     "@protontech/crypto": "2.2.0",
     "ky": "1.14.3",
@@ -11,7 +11,7 @@
     "openpgp": "npm:@protontech/openpgp@6.3.1"
   },
   "devDependencies": {
-    "@types/bun": "1.4.4",
+    "@types/bun": "1.4.5",
     "typescript": "5.9.3"
   }
 }
