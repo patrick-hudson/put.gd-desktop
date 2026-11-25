@@ -99,8 +99,8 @@
     },
     "ffmpeg": {
       "repository": "https://github.com/FFmpeg/FFmpeg.git",
-      "release": "9.0.2",
-      "commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8"
+      "release": "9.1",
+      "commit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5"
     },
     "mimalloc": {
       "repository": "https://github.com/microsoft/mimalloc.git",
