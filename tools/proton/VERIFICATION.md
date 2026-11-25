@@ -60,8 +60,19 @@ cases, the full stdout regression and the modified Argon/OpenPGP fixture (#2024;
 receipt native_relink/evidence/native-proof-7fc568ce.json). The production helper
 is unchanged, and native byte identity is not claimed.
 
-The desktop/resource acceptance (P6) still describes the Bun 1.4.4 helper
-`34dda9fa8550`; it is an open gate in notices/SOURCES.json for this helper.
+Desktop/resource and package acceptance (P6, #2025) ran on the published
+scheduled nightly `v26.1125.7045-nightly` (commit `9d9f65eb`, which carries
+#2021), installed on the physical Cinnamon X11 (m74), GNOME Wayland (f44, with
+the AppIndicator tray active) and Plasma Wayland (k72) desktops. Each host
+checked the installed helper was `7fc568ce…` before it started, then passed
+every Proton upload, share, inspect and revoke case (26, 22 and 26), the
+region-helper lifetime, a normal UI exit, a 180-second settle and two quiet
+idle windows of at least 300 seconds (resident 11.5 to 12.6 MiB, CPU at most
+0.01% of one core, no swap, no helper). `audit_assets.py --proton-ci` at that
+commit passes for all seven published assets. The receipt is
+native_relink/evidence/desktop-resource-7fc568ce.json, with
+native_relink/evidence/installers-7fc568ce.json and the evidence record
+`2026-11-25-proton-helper-7fc568ce`; notices/SOURCES.json has no open gate.
 
 The records below are historical and do not establish current acceptance.
 
