@@ -411,7 +411,7 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
  }
  // An upload or share the helper stopped at its own deadline reports it inside the result.
  auto result=final["result"].toObject();
- if(auto nested=result["error"].toObject();nested["code"]=="request_timeout"){nested["message"]=deadlineMessage();result["error"]=nested;}
+ if(auto nested=result.value("error").toObject();nested.value("code")=="request_timeout"){nested["message"]=deadlineMessage();result["error"]=nested;}
  return result;
 }
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
