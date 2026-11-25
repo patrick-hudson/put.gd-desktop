@@ -722,7 +722,7 @@ as a new finding again:
 ```json
 "ignore": [
   {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
-   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-9.0.2"}
+   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-9.1"}
 ]
 ```
 
@@ -743,7 +743,8 @@ unchanged, and all accepted findings remain in the report with reasons and expir
 
 The [#511 evidence](../../packaging/sbom/dispositions/511.json) records the omitted
 RTSP demuxer and muxer behind FFmpeg 9.0.2's one Critical/High match,
-CVE-2026-107696 (#1249; 7.1.5 had 29).
+CVE-2026-107696 (#1249; 7.1.5 had 29). FFmpeg 9.1 matches no finding at all, so
+that acceptance was retired with the move (#2047), and no FFmpeg finding is accepted.
 It also resolves the reachability question for ICU 73.2 CVE-2025-5222: the
 [upstream fix](https://github.com/unicode-org/icu/commit/2c667e31cfd0b6bb1923627a932fd3453a5bac77)
 changes `tools/genrb/parse.cpp`, and that parser and `SRBRoot` belong to the
