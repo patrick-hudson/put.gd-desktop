@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/511",
   "reviewDate": "2026-10-23",
-  "scope": "Only the audited AppImage FFmpeg and ICU builds, and Qt's embedded HarfBuzz and SQLite in the exact official libQt6Gui.so.6 (#1055) and libqsqlite.so (#1210). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
+  "scope": "Only the audited AppImage ICU build, and Qt's embedded HarfBuzz and SQLite in the exact official libQt6Gui.so.6 (#1055) and libqsqlite.so (#1210). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
   "package": {
     "ciRun": 42393675852,
     "ciArtifact": 13582763892,
@@ -152,6 +152,16 @@
       "sourceCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
       "acceptances": 29,
       "result": "Retired with the move to 9.0.2. 28 of the 29 Critical/High matches on 7.1.5 (three fixed by backports, the rest in components the build omits) no longer match 9.0.2; CVE-2026-107696 still matches and is reassessed below."
+    },
+    "retired": {
+      "scope": "appimage-ffmpeg-9.0.2",
+      "date": "2026-11-25",
+      "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/2047",
+      "release": "9.1",
+      "sourceCommit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+      "scanRun": 45606650620,
+      "database": "Grype v6.1.10 built 2026-11-25T06:22:21Z",
+      "result": "Retired with the move to 9.1. The 9.1 build (CI run 45606650620, same configure list) matches no FFmpeg finding at any severity, so CVE-2026-107696 needs no acceptance and the 9.0.2 scope, bound to the old commit and library bytes, is removed. The 9.0.2 review below is kept as history."
     },
     "builtLibraries": {
       "sonames": [
