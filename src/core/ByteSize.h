@@ -80,14 +80,17 @@ inline QString summary(qint64 bytes) {
 }
 
 // Traditional display labels, with the same 1024-based arithmetic everywhere.
+// Sizes below 1 KB are KB too, never a raw byte count: 0 KB, <0.1 KB, 0.5 KB.
 inline QString fileSummary(qint64 bytes) {
-    if (bytes < 1024) return QString("%1 B").arg(bytes);
+    if (bytes <= 0) return QStringLiteral("0 KB");
+    if (bytes * 10 < 1024) return QStringLiteral("<0.1 KB");
     if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
     return summary(bytes);
 }
 
+// Qt's traditional format is 1024-based but spells kilobytes "kB"; put.gd shows KB.
 inline QString localized(qint64 bytes, int precision = 1, const QLocale& locale = QLocale()) {
-    return locale.formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat);
+    return locale.formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat).replace(QStringLiteral(" kB"), QStringLiteral(" KB"));
 }
 inline QString admissionLimit(qint64 bytes) {
     constexpr double mib = 1024.0 * 1024, gib = mib * 1024, tib = gib * 1024;
