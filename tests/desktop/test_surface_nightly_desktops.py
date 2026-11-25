@@ -1237,6 +1237,170 @@ class NightlyTests(unittest.TestCase):
             with self.assertRaisesRegex(nightly.NotRun, 'does not match'):
                 nightly.unaudited_attempt(evidence/'idle-1')
 
+    def retirement_fixture(self, root):
+        """A real guarded cleanup over one stopped overlay and one terminal attempt; only QEMU probes are faked."""
+        from contextlib import ExitStack, contextmanager
+        from tools.lab import lab
+        # The module lab.py itself calls (it may be imported under its plain name).
+        overlay_cleanup = lab.overlay_cleanup
+        golden = root/'work/lab-images/golden/disk.qcow2'
+        golden.parent.mkdir(parents=True)
+        golden.write_text('golden')
+        run = root/'work/lab-runs/n12345678'
+        run.mkdir(parents=True)
+        (run/'disk.qcow2').write_text('overlay')
+        nightly.save(run/'state.json', dict(schemaVersion=1, overlay=str(run/'disk.qcow2'), golden=str(golden), id='n12345678'))
+        out = root/'row'
+        attempt = out/'idle_memory-1'
+        attempt.mkdir(parents=True)
+        (attempt/'receipt.json').write_text(json.dumps(dict(secret_scan=dict(passed=True), environment=dict(
+            coverage_export=dict(published=True, scanned_before_copy=True, copy_scan_passed=True)))))
+        (attempt/'coverage.json').write_text('{}')
+        mark_terminal(attempt, 0)
+        @contextmanager
+        def image_lock(_disk):
+            yield None
+        stack = ExitStack()
+        stack.enter_context(patch.object(overlay_cleanup, 'ROOT', root))
+        stack.enter_context(patch.object(overlay_cleanup, '_image_lock', image_lock))
+        stack.enter_context(patch.object(overlay_cleanup, '_check_chains'))
+        stack.enter_context(patch.object(overlay_cleanup, '_lock_alive'))
+        stack.enter_context(patch.object(lab, 'reset'))
+        processes = stack.enter_context(patch.object(overlay_cleanup, '_check_processes'))
+        return stack, run, out, processes
+
+    def interrupt_after_prepared(self, run, out, processes):
+        # The recovery deadline fires between the prepared receipt and the unlink.
+        processes.side_effect = [None, nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')]
+        with self.assertRaisesRegex(nightly.NotRun, 'deadline'):
+            nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+        processes.side_effect = None
+        receipt = json.loads((run/'overlay-cleanup.json').read_text())
+        self.assertEqual(receipt['status'], 'prepared')
+        self.assertTrue((run/'disk.qcow2').exists())
+        return receipt
+
+    def test_a_retirement_retried_after_an_interrupted_cleanup_finishes_from_its_own_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                # Interrupted after the archive, before any manifest names it.
+                real_save = nightly.save
+                def stopped(path, value):
+                    if Path(path).name == 'completion.json':
+                        raise nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
+                    real_save(path, value)
+                with patch.object(nightly, 'save', side_effect=stopped), self.assertRaises(nightly.NotRun):
+                    nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+                self.assertFalse((out/'completion-manifest.json').exists())
+                # Interrupted before guarded cleanup prepared anything: the retry reuses the checked archive.
+                processes.side_effect = nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
+                with self.assertRaises(nightly.NotRun):
+                    nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+                self.assertFalse((run/'overlay-cleanup.json').exists())
+                receipt = self.interrupt_after_prepared(run, out, processes)
+                self.assertEqual(sorted(p.name for p in out.glob('attachments*.tgz')), ['attachments.tgz'])
+                manifest = nightly.digest(out/'completion-manifest.json')
+                self.assertEqual(receipt['evidence']['sha256'], manifest)
+                # The retry (recovery passes no cells, so its own outcome would differ) writes no new evidence.
+                nightly.retire(run, out, {})
+                self.assertFalse((run/'disk.qcow2').exists())
+                done = json.loads((run/'overlay-cleanup.json').read_text())
+                self.assertEqual((done['status'], done['evidence']), ('completed', receipt['evidence']))
+                self.assertEqual(nightly.digest(out/'completion-manifest.json'), manifest)
+                self.assertEqual(json.loads((out/'retirement.json').read_text())['status'], 'completed')
+                self.assertEqual(sorted(p.name for p in out.glob('attachments*.tgz')), ['attachments.tgz'])
+                # Retrying a finished retirement only re-checks it.
+                nightly.retire(run, out, {})
+                self.assertEqual(json.loads((run/'overlay-cleanup.json').read_text())['status'], 'completed')
+
+    def test_a_retry_puts_back_the_manifest_a_later_attempt_replaced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                receipt = self.interrupt_after_prepared(run, out, processes)
+                # An older controller (or the manual retire call) retried by writing new evidence over it.
+                for name in ('completion.json', 'completion-manifest.json'):
+                    nightly.keep_aside(out/name)
+                nightly.save(out/'completion.json', dict(json.loads((out/'completion.json').read_text()), outcome='failed'))
+                nightly.save(out/'completion-manifest.json', dict(json.loads((out/'completion.json').read_text()),
+                             files={'completion.json': nightly.digest(out/'completion.json')}))
+                nightly.retire(run, out, {})
+                self.assertFalse((run/'disk.qcow2').exists())
+                self.assertEqual(nightly.digest(out/'completion-manifest.json'), receipt['evidence']['sha256'])
+                self.assertEqual(json.loads((out/'completion.json').read_text())['outcome'], 'passed')
+                # The replaced files stay in the evidence.
+                outcomes = sorted(json.loads(p.read_text())['outcome'] for p in out.glob('completion.json.before-recovery-*'))
+                self.assertIn('failed', outcomes)
+
+    def test_a_retry_never_reuses_an_archive_missing_its_gzip_footer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                processes.side_effect = nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
+                with self.assertRaises(nightly.NotRun):
+                    nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+                (out/'completion-manifest.json').unlink()
+                complete = (out/'attachments.tgz').read_bytes()
+                (out/'attachments.tgz').write_bytes(complete[:-8])
+                self.assertEqual(nightly.archived_files(out/'attachments.tgz'), nightly.attempt_files(out, [out/'idle_memory-1']))
+                self.assertIsNone(nightly.earlier_archive(out, [out/'idle_memory-1']))
+                # Nor one with a second gzip member appended after the tar.
+                import gzip, io, tarfile as tar
+                extra = io.BytesIO()
+                with tar.open(fileobj=extra, mode='w') as stream:
+                    info = tar.TarInfo('idle_memory-1/extra.txt')
+                    info.size = 5
+                    stream.addfile(info, io.BytesIO(b'extra'))
+                (out/'attachments.tgz').write_bytes(complete+gzip.compress(extra.getvalue()))
+                self.assertEqual(nightly.archived_files(out/'attachments.tgz'), nightly.attempt_files(out, [out/'idle_memory-1']))
+                self.assertIsNone(nightly.earlier_archive(out, [out/'idle_memory-1']))
+                (out/'attachments.tgz').write_bytes(complete)
+                self.assertEqual(nightly.earlier_archive(out, [out/'idle_memory-1']), out/'attachments.tgz')
+
+    def test_a_retry_never_puts_evidence_back_over_a_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                self.interrupt_after_prepared(run, out, processes)
+                nightly.keep_aside(out/'completion-manifest.json')
+                (out/'completion-manifest.json').unlink()
+                (out/'completion-manifest.json').symlink_to(root/'elsewhere.json')
+                with self.assertRaisesRegex(nightly.NotRun, 'not an owned single-link regular file'):
+                    nightly.retire(run, out, {})
+                self.assertTrue((out/'completion-manifest.json').is_symlink())
+                self.assertTrue((run/'disk.qcow2').exists())
+
+    def test_a_retry_refuses_a_manifest_or_member_changed_by_anything_else(self):
+        from tools.lab import lab
+        for change in ('manifest', 'member'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp).resolve()
+                stack, run, out, processes = self.retirement_fixture(root)
+                with stack:
+                    receipt = self.interrupt_after_prepared(run, out, processes)
+                    if change == 'manifest':
+                        # Bytes no earlier attempt wrote: nothing in the evidence matches the receipt.
+                        value = json.loads((out/'completion-manifest.json').read_text())
+                        nightly.save(out/'completion-manifest.json', dict(value, outcome='passed', extra=True))
+                        expected = (nightly.NotRun, 'names a completion manifest that is not in the evidence')
+                    else:
+                        with (out/'attachments.tgz').open('ab') as stream:
+                            stream.write(b'tampered')
+                        expected = (lab.LabError, 'Evidence member checksum mismatch')
+                    before = sorted(p.name for p in out.iterdir())
+                    with self.assertRaisesRegex(*expected):
+                        nightly.retire(run, out, {})
+                    with self.assertRaisesRegex(*expected):
+                        nightly.finish_retirement(run, out)
+                    self.assertTrue((run/'disk.qcow2').exists())
+                    self.assertEqual(json.loads((run/'overlay-cleanup.json').read_text()), receipt)
+                    self.assertEqual(sorted(p.name for p in out.iterdir()), before)
+
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:
             clock = [0]
