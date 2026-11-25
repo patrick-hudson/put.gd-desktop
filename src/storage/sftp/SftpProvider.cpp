@@ -107,7 +107,7 @@ ProviderCapabilities SftpProvider::capabilities(const Destination& destination) 
     caps.urls = destination.settings["publicUrlBase"].isString();
     caps.maximumNameBytes = 255;
     caps.deletionEffect = QStringLiteral(
-        "Deletes the file after checking that it is unchanged (same size, timestamp, owner, and bytes up to 32 MB). "
+        "Deletes the file after checking that its size, modification time and owner are unchanged, and its contents for files up to 32 MB. "
         "SFTP has no atomic conditional delete, so a file replaced right after the check will still be deleted, and web caches may keep serving it.");
     return caps;
 }
