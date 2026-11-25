@@ -966,7 +966,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     audioIntent_ = config_.audio.any();
     applyAudio();
     setObjectName("putgd-review");
-    setWindowTitle("Review recording");
+    setWindowTitle("Review recording — put.gd");
     // The app's painted controls (#198: in the interface's scheme).
     Fonts::load();
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) Ui::apply(*app);
@@ -992,7 +992,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     name->setFont(Ui::font(Ui::Type::body, true));
     auto* draft = new QLabel(QStringLiteral("Not uploaded"), title);
     draft->setObjectName("draftState");
-    draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     Ui::role(draft, "meta");
     titleRow->addWidget(name);
     titleRow->addWidget(draft);
@@ -1027,19 +1026,19 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     select_ = tool({}, "select", "Select", "Select (V)", toolRow_);
     select_->setObjectName("toolSelect");
     select_->setCheckable(true);
-    cut_ = tool("Cut", "cut", "Cut", "Cut the selected time (C)", toolRow_);
+    cut_ = tool("Cut", "cut", "Cut", "Cut selected time (C)", toolRow_);
     cut_->setObjectName("toolCut");
-    redact_ = tool("Redact", "redact", "Redact", "Redact part of the picture for the selected time, or the whole recording (X)", toolRow_);
+    redact_ = tool("Redact", "redact", "Redact", "Redact an area for the selected time range, or the whole recording (X)", toolRow_);
     redact_->setObjectName("toolRedact");
     redact_->setCheckable(true);
-    blur_ = tool("Blur", "blur", "Blur", "Blur part of the picture for the selected time, or the whole recording (B). Blur may be reversible.", toolRow_);
+    blur_ = tool("Blur", "blur", "Blur", "Blur an area for the selected time range, or the whole recording (B). Blurred text can sometimes be recovered.", toolRow_);
     blur_->setObjectName("toolBlur");
     blur_->setCheckable(true);
     undo_ = tool({}, "undo", "Undo", "Undo (Ctrl+Z)", toolRow_);
     undo_->setObjectName("toolUndo");
     redo_ = tool({}, "redo", "Redo", "Redo (Ctrl+Shift+Z)", toolRow_);
     redo_->setObjectName("toolRedo");
-    pictureZoom_ = tool("Fit · 100%", nullptr, "Picture zoom", "Zoom the picture", toolRow_);
+    pictureZoom_ = tool("Fit · 100%", nullptr, "Picture zoom", "Zoom video", toolRow_);
     pictureZoom_->setObjectName("pictureZoom");
     pictureZoom_->setPopupMode(QToolButton::InstantPopup);
     auto* zoomMenu = new QMenu(pictureZoom_);
@@ -1047,7 +1046,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* fit = zoomMenu->addAction(Ui::icon("zoom-fit"), QStringLiteral("Fit"));
     auto* actual = zoomMenu->addAction(Ui::icon("zoom-actual"), QStringLiteral("100%"));
     pictureZoom_->setMenu(zoomMenu);
-    editsToggle_ = tool("Edits", "panel-right", "Edits", "Show the edits panel", toolRow_);
+    editsToggle_ = tool("Edits", "panel-right", "Edits", "Show edits panel", toolRow_);
     editsToggle_->setObjectName("editsToggle");
     editsToggle_->setCheckable(true);
     editsToggle_->hide();
@@ -1122,7 +1121,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     placeBanner_->setObjectName("placementBanner");
     auto* cancelPlace = placeBanner_->setAction(QStringLiteral("Cancel"), QStringLiteral("Esc"));
     cancelPlace->setObjectName("cancelPlacement");
-    cancelPlace->setToolTip(QStringLiteral("Cancel placing the cover (Esc)"));
+    cancelPlace->setToolTip(QStringLiteral("Cancel cover placement (Esc)"));
     connect(cancelPlace, &QPushButton::clicked, this, &ReviewWindow::cancelPlacement);
     messageRow->insertWidget(messageRow->count() - 1, placeBanner_);
     blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, toolMessages_);
@@ -1133,7 +1132,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frameError_->setObjectName("previewError");
     auto* retryPreview = frameError_->setAction(QStringLiteral("Retry preview"), {});
     retryPreview->setObjectName("retryPreview");
-    retryPreview->setToolTip(QStringLiteral("Decode the frame at the playhead again"));
+    retryPreview->setToolTip(QStringLiteral("Retry loading this frame"));
     connect(retryPreview, &QPushButton::clicked, this, [this] { drive({{"action", "retryPreview"}}); });
     messageRow->insertWidget(messageRow->count() - 1, frameError_);
     // Errors, results and format advice with their actions; shown only when there are any.
@@ -1159,7 +1158,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(reviewSpace(Ui::Space::m), 0, reviewSpace(Ui::Space::m), 0);
     transport->setSpacing(reviewSpace(Ui::Space::xs));
-    play_ = tool({}, "play", "Play", "Play the kept footage silently (Space)", transport_);
+    play_ = tool({}, "play", "Play", "Play silent preview (Space)", transport_);
     play_->setObjectName("play");
     // Play and its speeds are two buttons side by side, so each answers over
     // all of its visible half (W13: a split button gave its centre to the menu).
@@ -1289,12 +1288,12 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     format_->setMenu(formatMenu_);
     cancel_ = new QPushButton("Discard…", actions);
     cancel_->setObjectName("discard");
-    cancel_->setToolTip("Discard this recording and its edits (asks first)");
+    cancel_->setToolTip("Discard recording and edits");
     Ui::role(cancel_, "quiet");
     save_ = new QPushButton("Save a copy…", actions);
     save_->setObjectName("saveCopy");
     save_->setIcon(Ui::icon("save"));
-    save_->setToolTip("Export the reviewed clip to a file on this computer. Nothing is uploaded.");
+    save_->setToolTip("Save edited clip to a file");
     destinationMenu_ = new DestinationMenu(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
     destinationMenu_->setAutoRaise(true);
@@ -1320,7 +1319,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     upload_->setIcon(Ui::icon("upload"));
     upload_->setDefault(true);
     Ui::role(upload_, "primary");
-    upload_->setToolTip("Upload the reviewed clip with its edits (Ctrl+Enter). The preview is silent; video exports keep the recorded audio.");
+    upload_->setToolTip("Upload edited clip (Ctrl+Enter). Preview is silent, but video formats keep recorded audio.");
     actionRow->addWidget(format_);
     actionRow->addStretch(1);
     actionRow->addWidget(cancel_);
@@ -2562,7 +2561,7 @@ void ReviewWindow::refreshTools() {
     redact_->setChecked(placing_ && placing_->kind == "solid");
     blur_->setChecked(placing_ && placing_->kind == "blur");
     cut_->setEnabled(idle && timeSelection_.has_value() && !placing_);
-    cut_->setToolTip(timeSelection_ ? QStringLiteral("Cut the selected time (C)") : QStringLiteral("Select time on the filmstrip to cut it (C)"));
+    cut_->setToolTip(timeSelection_ ? QStringLiteral("Cut selected time (C)") : QStringLiteral("Select a time range on the timeline to cut (C)"));
     undo_->setEnabled(idle && (edit_.canUndo || placing_));
     redo_->setEnabled(idle && edit_.canRedo && !placing_);
     pictureZoom_->setText(view_->actualSize() ? QStringLiteral("100%") : QStringLiteral("Fit · %1%").arg(view_->zoomPercent()));
@@ -2577,11 +2576,11 @@ void ReviewWindow::refreshTransport() {
     const bool differs = edit_.trimStart > 0 || edit_.trimEnd || !edit_.cuts.isEmpty();
     if (excluded) clipTime_->setText(QStringLiteral("rec %1 · excluded").arg(durationText(playhead_)));
     else clipTime_->setText(differs ? QStringLiteral("clip · rec %1").arg(durationText(playhead_)) : QStringLiteral("clip time"));
-    time_->setToolTip(QStringLiteral("Clip time after trims and cuts / clip length. Recording time %1 of %2.").arg(durationText(playhead_), durationText(options_.durationUs)));
+    time_->setToolTip(QStringLiteral("Edited clip time / length. Original recording: %1 of %2.").arg(durationText(playhead_), durationText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text() + (excluded ? QStringLiteral(", excluded from output") : QString()));
     play_->setIcon(Ui::icon(playing_ ? "pause" : "play"));
     play_->setAccessibleName(playing_ ? QStringLiteral("Pause") : QStringLiteral("Play"));
-    play_->setToolTip(playing_ ? QStringLiteral("Pause the preview (Space)") : QStringLiteral("Play the kept footage silently (Space); speeds in its menu"));
+    play_->setToolTip(playing_ ? QStringLiteral("Pause preview (Space)") : QStringLiteral("Play silent preview (Space)"));
     const int zoom = timeline_->zoom();
     timelineZoom_->setText(zoom <= 1 ? QStringLiteral("Fit") : QStringLiteral("%1×").arg(zoom));
 }
@@ -2619,7 +2618,7 @@ void ReviewWindow::refreshFooter() {
     // Save and Upload wait while a cover is being placed.
     upload_->setEnabled(!exporting_ && !placing_);
     save_->setEnabled(!exporting_ && !placing_);
-    upload_->setToolTip(placing_ ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Upload the reviewed clip with its edits (Ctrl+Enter). The preview is silent; video exports keep the recorded audio."));
+    upload_->setToolTip(placing_ ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Upload edited clip (Ctrl+Enter). Preview is silent, but video formats keep recorded audio."));
 }
 void ReviewWindow::refreshPanel() {
     if (!panel_) return;
@@ -2849,7 +2848,7 @@ void ReviewWindow::showAdvice() {
     dialog->setObjectName("reviewAdvice");
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     const QString title = failed ? QStringLiteral("Export failed") : QStringLiteral("Recording error");
-    dialog->setWindowTitle(title);
+    dialog->setWindowTitle(title + QStringLiteral(" — put.gd"));
     dialog->setAccessibleName(title);
     auto* root = new QVBoxLayout(dialog);
     root->setContentsMargins(0, 0, 0, 0);
@@ -3682,7 +3681,7 @@ bool ReviewWindow::chooseCopy(std::optional<quint64> refusalsAtPress) {
     saveAwaits_ = proposalSeq_;
     saveRefusalMark_ = mark;
     const auto extension = config_.extension();
-    FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
+    FileDialog::Options options{FileDialog::Mode::Save, "Save a copy — put.gd", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
         if (result.failed()) { showError("Couldn't save a copy there: " + result.error, false); return; }
         if (!result.chosen() || exporting_) return;
@@ -3946,8 +3945,8 @@ void ReviewWindow::askDiscard() {
     if (discard_) { discard_->raise(); discard_->activateWindow(); return; }
     stopPlayback();
     view_->commitNudge();
-    auto* box = Ui::confirm(this, QStringLiteral("Discard recording"),
-        QStringLiteral("Discard this recording and its edits?\nThe recording, its trim, cuts and covers are deleted. Nothing has been uploaded; copies you saved stay."),
+    auto* box = Ui::confirm(this, QStringLiteral("Discard recording — put.gd"),
+        QStringLiteral("Discard this recording and its edits?\nDeletes the recording along with its trim, cuts, and covers. Copies you saved stay."),
         QStringLiteral("Discard recording"), QStringLiteral("Keep reviewing"), true);
     auto* keep = box->button(QMessageBox::Cancel);
     keep->setObjectName("keepReviewing");

@@ -6,7 +6,7 @@
   },
   "windows": {
     "editorColour": {
-      "title": "^Custom color$"
+      "title": "^Custom color \u2014 put\\.gd$"
     },
     "editorSavedMenu": {
       "title": ".*",
@@ -14,7 +14,7 @@
       "popup": true
     },
     "editorDiscard": {
-      "title": "^Discard edits\\?$"
+      "title": "^Discard edits \u2014 put\\.gd$"
     }
   },
   "control_names": {

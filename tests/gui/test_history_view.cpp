@@ -40,7 +40,7 @@ public:
 class HistoryGui:public QObject {
  Q_OBJECT
  // The remote-deletion confirmation, as an agent or test finds it.
- static QDialog* deletionDialog(){for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QDialog*>(widget);dialog&&dialog->isVisible()&&dialog->objectName()=="confirmAction"&&dialog->windowTitle()=="Delete from destination")return dialog;return nullptr;}
+ static QDialog* deletionDialog(){for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QDialog*>(widget);dialog&&dialog->isVisible()&&dialog->objectName()=="confirmAction"&&dialog->windowTitle()=="Delete from destination — put.gd")return dialog;return nullptr;}
  static void selectRow(QListView* view,int row){view->selectionModel()->select(view->model()->index(row,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);view->setCurrentIndex(view->model()->index(row,0));}
 private slots:
 

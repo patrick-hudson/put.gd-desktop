@@ -144,12 +144,12 @@
     "window_rules": [
       {
         "app_id": "putgd-ui",
-        "title": "Delete from destination",
+        "title": "Delete from destination — put.gd",
         "position": [120, 100]
       },
       {
         "app_id": "putgd-ui",
-        "title": "Revoke share link",
+        "title": "Revoke share link — put.gd",
         "position": [120, 100]
       }
     ]

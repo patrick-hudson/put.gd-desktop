@@ -530,27 +530,27 @@ public:
  using Reply=std::function<void(Error,QJsonObject)>;
  std::function<void(const QString&)> folderChosen; // an empty folder means the default
  DiagnosticsPackageDialog(UiSession& session,QWidget* parent):QDialog(parent),session_(session){
-  setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package");setAccessibleName("Create diagnostics package");setModal(true);const auto* display=parent?parent->screen():QGuiApplication::primaryScreen();setMinimumWidth(qMin(Ui::scaled(560),display?display->availableGeometry().width():Ui::scaled(560)));
+  setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package — put.gd");setAccessibleName("Create diagnostics package");setModal(true);const auto* display=parent?parent->screen():QGuiApplication::primaryScreen();setMinimumWidth(qMin(Ui::scaled(560),display?display->availableGeometry().width():Ui::scaled(560)));
   // The body scrolls inside the screen's height; Cancel and Save stay pinned below it.
   auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
   scroll_=new QScrollArea(this);scroll_->setObjectName("diagnosticsPackageScroll");scroll_->setWidgetResizable(true);scroll_->setFrameShape(QFrame::NoFrame);scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);root->addWidget(scroll_,1);
   auto* body=new QWidget;body->setObjectName("diagnosticsPackageBody");scroll_->setWidget(body);
   auto* layout=new QVBoxLayout(body);layout->setContentsMargins(space(Space::xl),space(Space::xl),space(Space::xl),space(Space::xl));layout->setSpacing(space(Space::m));
   auto* heading=new QLabel("Create diagnostics package",this);Ui::role(heading,"sectionTitle");layout->addWidget(heading);
-  auto* intro=new QLabel("A .zip a maintainer can use to work out what went wrong. It is always saved on this computer; nothing is uploaded unless you choose to below.",this);intro->setWordWrap(true);Ui::role(intro,"muted");layout->addWidget(intro);
+  auto* intro=new QLabel("Saves a .zip file to help troubleshoot a problem. Nothing is uploaded unless you turn on Also upload and copy a link.",this);intro->setWordWrap(true);Ui::role(intro,"muted");layout->addWidget(intro);
   auto* form=new QFormLayout;Ui::styleForm(form);form->setVerticalSpacing(space(Space::m));layout->addLayout(form);
   auto label=[this](const char* name){auto* l=new QLabel(this);l->setObjectName(name);l->setWordWrap(true);l->setTextFormat(Qt::PlainText);l->setTextInteractionFlags(Qt::TextSelectableByMouse);return l;};
   scope_=label("packageScope");form->addRow("Covers",scope_);
   contents_=label("packageContents");contents_->setTextFormat(Qt::RichText);
   operations_=label("packageOperations");
-  auto* never=new QLabel("Credentials, tokens, signed links, file contents, screenshots and clipboard text are never included.",this);never->setWordWrap(true);Ui::role(never,"muted");form->addRow("Never",never);
+  auto* never=new QLabel("Credentials, tokens, signed links, file contents, screenshots, and clipboard text are never included.",this);never->setWordWrap(true);Ui::role(never,"muted");form->addRow("Never",never);
   auto* names=new QWidget(this);auto* namesLayout=new QVBoxLayout(names);namesLayout->setContentsMargins(0,0,0,0);namesLayout->setSpacing(space(Space::xs));
   includeNames_=new QCheckBox("Include file names",this);includeNames_->setObjectName("includeFileNames");includeNames_->setAccessibleName("Include file names");namesLayout->addWidget(includeNames_);
   redaction_=label("packageRedaction");Ui::role(redaction_,"muted");namesLayout->addWidget(redaction_);form->addRow("Names",names);
   auto* where=new QWidget(this);auto* whereLayout=new QHBoxLayout(where);whereLayout->setContentsMargins(0,0,0,0);whereLayout->setSpacing(space(Space::s));
   folder_=label("packageFolder");Ui::role(folder_,"technical");whereLayout->addWidget(folder_,1);
   auto* choose=new QPushButton("Choose folder…",this);choose->setObjectName("choosePackageFolder");whereLayout->addWidget(choose);
-  useDefault_=new QPushButton("Use default",this);useDefault_->setObjectName("defaultPackageFolder");useDefault_->setToolTip("Save to <archive root>/diagnostics, where put.gd keeps the newest 10 packages for 30 days.");whereLayout->addWidget(useDefault_);
+  useDefault_=new QPushButton("Use default",this);useDefault_->setObjectName("defaultPackageFolder");useDefault_->setToolTip("Reset to the default diagnostics folder");whereLayout->addWidget(useDefault_);
   form->addRow("Save to",where);
   // A chooser that could not open says so beside Save to, with Try again; the folder stays.
   chooserFailure_=new QWidget(this);chooserFailure_->setObjectName("packageFolderChooserFailure");auto* failureLayout=new QHBoxLayout(chooserFailure_);failureLayout->setContentsMargins(0,0,0,0);failureLayout->setSpacing(space(Space::s));
@@ -585,7 +585,7 @@ public:
   custom_=folder;if(remember&&folderChosen)folderChosen(folder);refreshPreview();return {};
  }
  // Choose folder…: the desktop's folder chooser (#259); false while it is open.
- bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to",folder_->text(),{},{}},[this](const FileDialog::Result& result){chooserFinished(result);});}
+ bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to — put.gd",folder_->text(),{},{}},[this](const FileDialog::Result& result){chooserFinished(result);});}
  // A cancel changes nothing and says nothing; a failure keeps the folder and offers Try again.
  void chooserFinished(const FileDialog::Result& result){
   chooserFailure_->setVisible(result.failed());if(result.failed())chooserError_->setText(chooserFailureText(result.error));
@@ -625,7 +625,7 @@ public:
  }
  void refreshPreview(){
   const auto sequence=++previewSequence_;previewing_=true;save_->setEnabled(false);
-  redaction_->setText(includeNames_->isChecked()?"File names, object keys, links, buckets and labels are kept as they are.":"File names, object keys, links, buckets and labels are replaced by hashes; the same name gets the same hash throughout the package.");
+  redaction_->setText(includeNames_->isChecked()?"File names, object keys, links, buckets, and labels are included as-is.":"File names, object keys, links, buckets, and labels are hashed consistently across the package.");
   session_.request("diagnostics.bundle",params(true),this,[this,sequence](Error error,QJsonObject preview){
    if(sequence!=previewSequence_)return;
    previewing_=false;error_=error;preview_=error?QJsonObject{}:preview;showPreview();
@@ -976,10 +976,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
    if(offer["older"].toBool()){
     const auto image=QFileInfo(settings_.diagnostics()["update"].toObject()["install"].toObject()["image"].toString()).fileName();
     const auto target=offer["to"].toString()+" "+offer["version"].toString();
-    if(!Ui::confirm(this,"Switch to an older version","Switch to "+target+", which is older than this build ("+
-       settings_.diagnostics()["update"].toObject()["build"].toObject()["version"].toString()+")?\n\nput.gd replaces "+image+" with "+target+
-       ", checked against the "+offer["to"].toString()+" release's signature, at the same path. An older version may not open settings or history saved by a newer one. "
-       "This version is kept as a hidden backup until the new one has started.","Switch to "+target))return;
+    if(!Ui::confirm(this,"Switch to an older version — put.gd","Switch to "+target+" (older than "+
+       settings_.diagnostics()["update"].toObject()["build"].toObject()["version"].toString()+")?\n\nReplaces "+image+" with "+target+
+       " after verifying its "+offer["to"].toString()+" signature. An older version may not open settings or history saved by a newer one.","Switch to "+target))return;
     params["allowOlder"]=true;
    }
   }
@@ -1234,7 +1233,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* images=section(left,"Images and clipboard");number(images,"imageBytes","Largest image","MB");number(images,"imagePixels","Largest image size","megapixels");number(images,"clipboardTextBytes","Clipboard text limit","MB");
  auto* memory=section(left,"Memory and cache");number(memory,"pendingImageBytes","Memory for queued images","MB");number(memory,"previewCacheBytes","Thumbnail cache","MB");
  auto* retention=section(right,"History");number(retention,"historyRetentionDays","Keep history for","days");number(retention,"failedArtifactDays","Keep files for retry","days");auto* retryConsequence=PreferenceRows::caption("After this period, local retry files may be removed. Uploaded files aren't affected.");retryConsequence->setObjectName("failedArtifactConsequence");qobject_cast<QVBoxLayout*>(errors_[numbers_["failedArtifactDays"]]->parentWidget()->layout())->addWidget(retryConsequence);number(retention,"recentActivityLimit","Items in recent list",{});retention->addRow(resourceLimitsToggle_);retention->addRow(resourceLimits_);
- resources->addWidget(resetAll,0,Qt::AlignRight);connect(resetAll,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Reset limits to defaults","Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?\n\nDebug logging, diagnostics, the config file and every other setting stay as they are.","Reset limits"))return;// #1704: the reset limits save as one operation.
+ resources->addWidget(resetAll,0,Qt::AlignRight);connect(resetAll,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Reset limits to defaults — put.gd","Reset upload, image, clipboard, memory, cache, and history limits to their defaults?","Reset limits"))return;// #1704: the reset limits save as one operation.
   QStringList paths;{const QScopedValueRollback quiet(loading_,true);for(auto* field:std::as_const(numbers_)){field->setText(field->property("defaultText").toString());if(const auto path=field->property("configPath").toString();!path.isEmpty())paths.append(path);}}
   for(auto* field:std::as_const(numbers_))inlineError(field,{});queueGlobal("limits",paths,findControl<QPushButton*>("resetAdvancedDefaults"));});
  // #1937: one switch that lifts every CPU share put.gd keeps for heavy work.
@@ -1251,7 +1250,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  uncleanExit_=new QLabel;uncleanExit_->setObjectName("uncleanExit");uncleanExit_->setWordWrap(true);uncleanExit_->setAccessibleName("Last unclean exit");Ui::role(uncleanExit_,"secondary");auto* exitRow=PreferenceRows::action(diagnosticsForm,"Last unclean exit",{},uncleanExit_);auto* exitLine=qobject_cast<QBoxLayout*>(exitRow->layout()->itemAt(0)->layout());exitLine->setAlignment(uncleanExit_,Qt::AlignRight|Qt::AlignBaseline);exitLine->setAlignment(exitLine->itemAt(0)->layout(),Qt::AlignBaseline);uncleanExit_->setAlignment(Qt::AlignRight);
  for(auto* value:{logSummary_,uncleanExit_}){const auto help=settingHelp({},value->objectName());value->setToolTip(help);value->setAccessibleDescription(help);value->setProperty("settingDescription",help);}
  auto* createPackage=new QPushButton("Create…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setAccessibleName("Create diagnostics package");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings, and logs");Ui::role(createPackage,"secondary");PreferenceRows::action(diagnosticsForm,"Diagnostics package","A redacted .zip you can send to a maintainer.",createPackage);
- connect(clearLogs_,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.","Clear logs",true))return;clearLogs({});});
+ connect(clearLogs_,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Clear logs — put.gd","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.","Clear logs",true))return;clearLogs({});});
  connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
 
  auto* supportToggle=new QToolButton;supportToggle->setObjectName("desktopSupportDetailsToggle");supportToggle->setText("Desktop support details");Ui::disclosure(supportToggle);supportToggle->setProperty("uiFlush",true);diagnosticsForm->addRow(supportToggle);
@@ -1446,7 +1445,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // apart; the two actions move under the folder when the page is narrow.
  {auto* line=qobject_cast<QHBoxLayout*>(folderRow->layout()->itemAt(0)->layout());auto* folderPicker=new QWidget;auto* pickerLayout=new QHBoxLayout(folderPicker);pickerLayout->setContentsMargins(0,0,0,0);pickerLayout->setSpacing(space(Space::s));while(auto* item=line->takeAt(0)){if(auto* widget=item->widget()){const auto alignment=item->alignment();delete item;pickerLayout->addWidget(widget,0,alignment);}else if(item->spacerItem())delete item;else pickerLayout->addItem(item);}pickerLayout->setStretchFactor(protonFolder_,1);line->addWidget(folderPicker,1);auto* folderActions=new QWidget;folderActions->setObjectName("protonFolderActions");auto* actionsLayout=new QHBoxLayout(folderActions);actionsLayout->setContentsMargins(0,0,0,0);actionsLayout->setSpacing(space(Space::s));actionsLayout->addStretch();actionsLayout->addWidget(inspectProton);actionsLayout->addWidget(createProton);line->addWidget(folderActions);new FieldActionsSizer(folderRow,line,folderPicker,folderActions);}protonShare_=new QCheckBox("Create a share link");protonShare_->setObjectName("protonShareDefault");protonShare_->setParent(this);bind(protonShare_,"/profiles/{profile}/settings/shareByDefault");auto* privateMode=new PreferenceRadio(sharingLabel("private"));privateMode->setObjectName("protonKeepPrivate");auto* publicMode=new PreferenceRadio(sharingLabel("share"));publicMode->setObjectName("protonCreateShareLink");protonShare_->hide();auto* shareChoice=PreferenceRows::radio(publicMode,"Anyone with the link can view the file, but they also need the password if you set one. Link copying follows Settings → Capture → After uploading.",{});publicationForm->addRow(shareChoice);publicationForm->addRow(PreferenceRows::radio(privateMode,"No share link is created and the clipboard stays unchanged. Existing member or folder access still applies.",{}));connect(publicMode,&QRadioButton::clicked,this,[this]{protonShare_->setChecked(true);});connect(privateMode,&QRadioButton::clicked,this,[this]{protonShare_->setChecked(false);});connect(protonShare_,&QCheckBox::toggled,this,[=,this](bool share){publicMode->setChecked(share);privateMode->setChecked(!share);if(!loading_)updateCaptureInheritance();});
  protonExpiration_=new QSpinBox;protonExpiration_->setObjectName("protonExpiration");protonExpiration_->setRange(0,365);protonExpiration_->setSpecialValueText("No expiration");protonExpiration_->setSuffix(" days");setting(protonAdvancedForm,"Link expiration",protonExpiration_,"/profiles/{profile}/settings/linkExpirationDays");protonTimeout_=new ConnectionSpin(1000);protonTimeout_->setObjectName("protonRequestTimeout");protonTimeout_->setDecimals(3);protonTimeout_->setRange(1,ProtonProvider::MaximumRequestTimeoutMs/1000);protonTimeout_->setSuffix(" seconds");setting(protonAdvancedForm,"Request deadline",protonTimeout_,"/profiles/{profile}/settings/requestTimeoutMs");protonPassword_=input(this,"protonSharePassword");protonPassword_->setEchoMode(QLineEdit::Password);setting(protonAdvancedForm,"New link password",protonPassword_,{});auto* storePassword=new QPushButton("Store link password");storePassword->setObjectName("storeProtonPassword");protonAdvancedForm->addRow(storePassword);passwordStoreReason_=new QLabel;passwordStoreReason_->setObjectName("passwordStoreReason");passwordStoreReason_->setWordWrap(true);Ui::role(passwordStoreReason_,"muted");protonAdvancedForm->addRow(passwordStoreReason_);auto* clearPassword=new QPushButton("Use no link password");clearPassword->setObjectName("clearProtonPassword");protonAdvancedForm->addRow(clearPassword);
- connect(connectProton,&QPushButton::clicked,this,[this]{protonBrowserOpened_=false;pendingProtonUrl_.clear();pendingProtonSetup_.clear();protonBrowserOpening_=false;protonBrowserRetry_->hide();sizeProtonAccountButtons();beginSetup("connectAccount");});connect(inspectProton,&QPushButton::clicked,this,[this]{beginSetup("inspectAccount");});connect(createProton,&QPushButton::clicked,this,[this]{bool ok=false;const auto name=QInputDialog::getText(this,"New Proton folder","Folder name",QLineEdit::Normal,"put.gd",&ok);if(ok&&!name.trimmed().isEmpty())beginSetup("createFolder",{{"name",name.trimmed()}});});
+ connect(connectProton,&QPushButton::clicked,this,[this]{protonBrowserOpened_=false;pendingProtonUrl_.clear();pendingProtonSetup_.clear();protonBrowserOpening_=false;protonBrowserRetry_->hide();sizeProtonAccountButtons();beginSetup("connectAccount");});connect(inspectProton,&QPushButton::clicked,this,[this]{beginSetup("inspectAccount");});connect(createProton,&QPushButton::clicked,this,[this]{bool ok=false;const auto name=QInputDialog::getText(this,"New Proton folder — put.gd","Folder name",QLineEdit::Normal,"put.gd",&ok);if(ok&&!name.trimmed().isEmpty())beginSetup("createFolder",{{"name",name.trimmed()}});});
  connect(storePassword,&QPushButton::clicked,this,[this]{if(!admitSetup())return;const auto reference="putgd/proton/link/"+QUuid::createUuid().toString(QUuid::Id128);auto value=protonPassword_->text();beginSetup("storeSharePassword",{{"password",value},{"reference",reference}});value.fill(QChar{});});connect(clearPassword,&QPushButton::clicked,this,[this]{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;auto p=profiles[profileIndex_].toObject();auto s=p["settings"].toObject();s["sharePasswordReference"]=QJsonValue::Null;p["settings"]=s;profiles[profileIndex_]=p;draft_["profiles"]=profiles;queueEdit(protonShare_,"/profiles/{profile}/settings");});
  auto formRow=[this](QWidget* field)->QWidget*{return errors_.contains(field)?errors_[field]->parentWidget():field;};
  const auto relabel=[](QFormLayout* form,QWidget* row,const QString& text){auto* holder=PreferenceRows::labelFor(form,row);if(auto* label=holder?holder->findChild<QLabel*>():nullptr)label->setText(text);};
@@ -1459,14 +1458,14 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);refreshUploadedCount();});
  // Kept current while Destinations shows: a new upload or a History change counts at once.
  connect(&settings_,&UiSession::statusChanged,this,[this]{if(destinationPage_&&destinationPage_->isVisible())refreshUploadedCount();});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
- connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination","This connection has not passed a test with its current settings. Use \""+profileLabel_->text()+"\" as the capture default? Per-action exceptions will stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
+ connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination — put.gd","Use \""+profileLabel_->text()+"\" as the capture default?\nThis destination hasn't passed a connection test with its current settings.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
  connect(remove,&QPushButton::clicked,this,[this]{flushTyping();
  // #1759: the confirmation says how many History items went to it (counted when it was selected); their files stay there.
  const auto all=candidate()["profiles"].toArray();const int at=profile_->currentIndex();if(at<0||at>=all.size())return;const auto label=profileLabel_->text();
  const int uploaded=uploadedCounts_.value(all[at].toObject()["id"].toString(),-1);
- const auto files=uploaded<0?QStringLiteral("Files already uploaded to it stay there, and History keeps them."):uploaded==0?QStringLiteral("No History items were uploaded to it."):QStringLiteral("%1 History %2 uploaded to it; %3 there, and History keeps %4. put.gd can delete %4 there again only if you add a destination for the same place.").arg(uploaded).arg(uploaded==1?"item was":"items were",uploaded==1?"its file stays":"their files stay",uploaded==1?"it":"them");
+ const auto files=uploaded<0?QStringLiteral("Files already uploaded stay at the destination."):uploaded==0?QStringLiteral("No History items use this destination."):QStringLiteral("%1 History %2 uploaded here. %3 at the destination, and put.gd can delete %4 again only if you add a destination for the same place.").arg(uploaded).arg(uploaded==1?"item was":"items were",uploaded==1?"Its file stays":"Their files stay",uploaded==1?"it":"them");
  const auto removing=all[at].toObject()["id"].toString();
- if(davRemoving_!=removing&&!Ui::confirm(this,"Remove destination","Remove \""+label+"\" from settings?\n"+files,"Remove destination",true))return;
+ if(davRemoving_!=removing&&!Ui::confirm(this,"Remove destination — put.gd","Remove \""+label+"\" from Settings?\n"+files,"Remove destination",true))return;
  // #1872: a Nextcloud destination's app password is revoked on the server first (SettingsDav.cpp);
  // the removal follows once that has an answer, whatever it is.
  if(all[at].toObject()["provider"]==dav::nextcloudId&&davRemoving_!=removing&&!selectedDestinationChanged()){revokeBeforeRemoving(removing);return;}
@@ -1799,14 +1798,14 @@ void SettingsWindow::editCaptureStyle(const std::function<void(CaptureStyle&)>& 
  styleDraft_=style;syncCaptureStyle();queueEdit(styleEnabled_);
 }
 void SettingsWindow::pickStyleColor(bool end){
- const auto chosen=QColorDialog::getColor(QColor(end?styleDraft_.colorEnd:styleDraft_.color),this,end?"Gradient end color":"Backdrop color");
+ const auto chosen=QColorDialog::getColor(QColor(end?styleDraft_.colorEnd:styleDraft_.color),this,end?"Gradient end color — put.gd":"Backdrop color — put.gd");
  if(!chosen.isValid())return;
  editCaptureStyle([end,name=chosen.name()](CaptureStyle& style){(end?style.colorEnd:style.color)=name;});
 }
 // The chosen picture is decoded once, here, and kept as put.gd's own PNG in its data folder, named by
 // its digest: the backdrop never depends on the user's original file, and the resident never decodes it.
 void SettingsWindow::chooseStylePicture(){
- pictureChooser_->open({FileDialog::Mode::Open,"Choose a backdrop picture",{},{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){
+ pictureChooser_->open({FileDialog::Mode::Open,"Choose a backdrop picture — put.gd",{},{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){
   if(!result.chosen()){if(result.failed())stylePictureName_->setText(result.error);return;}
   const auto picture=style::loadPicture(result.path,QSize(style::maximumPictureEdge,style::maximumPictureEdge));
   if(picture.isNull()){stylePictureName_->setText("Couldn't use that picture. Choose a PNG or JPEG up to 64 MB.");return;}
@@ -1925,7 +1924,7 @@ void SettingsWindow::updateLimitHints(){
 void SettingsWindow::addS3Profile(const QString& defaultLabel,const QString& name,const QString& provider){
  flushTyping();storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();if(profiles.size()>=32){status({"profile_limit","At most 32 destinations are supported",{}});return;}
  bool accepted=false;// An agent names the destination itself (ui.r2Destination add); a person types it in the dialog.
- const auto destinationName=name.isEmpty()?QInputDialog::getText(this,"Add destination","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed():(accepted=true,name.trimmed());if(!accepted||destinationName.isEmpty())return;
+ const auto destinationName=name.isEmpty()?QInputDialog::getText(this,"Add destination — put.gd","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed():(accepted=true,name.trimmed());if(!accepted||destinationName.isEmpty())return;
  QJsonObject restored=provisionalProfile_.value("profile").toObject();
  QString id=restored.value("id").toString();int number=1;
  // #1704: a new ID is one neither this window nor the file has, so a destination being removed
@@ -2374,7 +2373,7 @@ QJsonObject SettingsWindow::diagnosticsState()const{
  return state;
 }
 bool SettingsWindow::chooseOutputFolder(QLineEdit* field){
- return folderChooser_->open({FileDialog::Mode::Folder,"Choose output folder",field->text(),{},{}},[this,field=QPointer<QLineEdit>(field)](const FileDialog::Result& result){if(field)outputFolderChosen(field,result);});
+ return folderChooser_->open({FileDialog::Mode::Folder,"Choose output folder — put.gd",field->text(),{},{}},[this,field=QPointer<QLineEdit>(field)](const FileDialog::Result& result){if(field)outputFolderChosen(field,result);});
 }
 // A cancel says nothing; a failure is not a cancel: it is shown under the row
 // whose Browse… opened it, the folder unchanged, with Try again.
@@ -4093,8 +4092,8 @@ QStringList SettingsWindow::draftEdits()const{
 }
 void SettingsWindow::reloadFromFile(){
  const auto edits=draftEdits();
- const QString text="Replace this window's settings with the configuration file as it is now?\n\n"+(edits.isEmpty()?QString("There are no unsaved edits to discard."):"These unsaved edits are discarded:\n• "+edits.join("\n• "));
- if(!Ui::confirm(this,"Reload settings from file",text,"Reload from file",!edits.isEmpty()))return;
+ const QString text="Reload settings from the configuration file?\n\n"+(edits.isEmpty()?QString("No unsaved changes will be lost."):"These unsaved changes will be discarded:\n• "+edits.join("\n• "));
+ if(!Ui::confirm(this,"Reload settings from file — put.gd",text,"Reload from file",!edits.isEmpty()))return;
  resetDraft(true);
 }
 void SettingsWindow::fitRails(){

@@ -2,8 +2,8 @@
   "window_titles": {
     "settings": "^put.gd$",
     "about": "^About put.gd$",
-    "diagnostics": "^Create diagnostics package$",
-    "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs)$"
+    "diagnostics": "^Create diagnostics package \u2014 put\\.gd$",
+    "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs) \u2014 put\\.gd$"
   },
   "windows": {
     "settings": {

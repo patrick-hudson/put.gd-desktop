@@ -48,11 +48,11 @@ ScrollBar::ScrollBar(QWidget* parent) : QWidget(parent, Qt::Tool | Qt::Frameless
     autoScroll_->setObjectName("autoScroll");
     autoScroll_->setCheckable(true);
     autoScroll_->setIcon(Ui::icon("scroll"));
-    autoScroll_->setToolTip("put.gd turns the page for you; moving the mouse pauses it");
+    autoScroll_->setToolTip("Scroll automatically. Move the mouse to pause.");
     Ui::role(autoScroll_, "secondary");
     done_ = new QPushButton("Done", this);
     done_->setObjectName("done");
-    done_->setToolTip("Finish and keep the image");
+    done_->setToolTip("Finish capture");
     Ui::role(done_, "primary");
     cancel_ = new QPushButton("Cancel", this);
     cancel_->setObjectName("cancel");
@@ -87,9 +87,9 @@ QStringList ScrollBar::words(const QString& state, const QString& pausedBy, cons
     // finishKey: the keys that finish the capture, one per line (X11: Esc,
     // then the bound `scroll` hotkey where there is one).
     const QStringList keys = finishKey.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    const QString finish = keys.isEmpty()      ? QStringLiteral("Done when you reach the end")
-                           : keys.size() == 1 ? QStringLiteral("Done or %1 when you reach the end").arg(keys[0])
-                                              : QStringLiteral("Done, %1 or %2 when you reach the end").arg(keys.mid(0, keys.size() - 1).join(QStringLiteral(", ")), keys.last());
+    const QString finish = keys.isEmpty()      ? QStringLiteral("Select Done to finish")
+                           : keys.size() == 1 ? QStringLiteral("Select Done, or press %1").arg(keys[0])
+                                              : QStringLiteral("Select Done, or press %1 or %2").arg(keys.mid(0, keys.size() - 1).join(QStringLiteral(", ")), keys.last());
     if (state == "waiting") return {QStringLiteral("Scroll the page"), finish};
     if (state == "following") return {QStringLiteral("Following"), finish};
     // Auto-scroll gave up: it went back five times and did not find the page
@@ -100,9 +100,9 @@ QStringList ScrollBar::words(const QString& state, const QString& pausedBy, cons
     if (state == "autoScrolling") return {QStringLiteral("Auto-scrolling"), QStringLiteral("Move the mouse to pause")};
     if (state == "paused") {
         if (pausedBy == "no_movement") return {QStringLiteral("Nothing scrolled here"), QStringLiteral("Scroll the page yourself")};
-        if (pausedBy == "lost") return {QStringLiteral("Found the page again"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
-        if (pausedBy == "scrolled") return {QStringLiteral("Paused: you scrolled"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
-        return {QStringLiteral("Paused: you moved the mouse"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
+        if (pausedBy == "lost") return {QStringLiteral("Found the page again"), QStringLiteral("Scroll, or select Auto-scroll")};
+        if (pausedBy == "scrolled") return {QStringLiteral("Paused (scrolled)"), QStringLiteral("Scroll, or select Auto-scroll")};
+        return {QStringLiteral("Paused (mouse moved)"), QStringLiteral("Scroll, or select Auto-scroll")};
     }
     if (state == "resuming") return {QStringLiteral("Auto-scroll in a moment…"), QStringLiteral("Let go of the mouse")};
     if (state == "finishing") return {QStringLiteral("Saving…"), QString()};
@@ -176,7 +176,7 @@ void ScrollBar::refresh() {
     const bool on = auto_ || state_ == "resuming";
     autoScroll_->setChecked(on);
     autoScroll_->setIcon(Ui::icon(on ? "pause" : "scroll"));
-    autoScroll_->setToolTip(on ? QStringLiteral("Hand the page back to you") : QStringLiteral("put.gd turns the page for you; moving the mouse pauses it"));
+    autoScroll_->setToolTip(on ? QStringLiteral("Pause auto-scroll") : QStringLiteral("Scroll automatically. Move the mouse to pause."));
     autoScroll_->setEnabled(!finishing && !ready && state_ != "resuming");
     done_->setEnabled(picture_ && !finishing && !ready);
     cancel_->setEnabled(!finishing);

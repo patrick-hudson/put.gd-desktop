@@ -86,7 +86,7 @@ ErrorLogPage::ErrorLogPage(UiSession& session,QWidget* parent):QWidget(parent),s
  kind_=Ui::choiceBox(body);kind_->setObjectName("errorLogKind");kind_->setAccessibleName("Kind of action");kind_->addItem("All actions",QString{});
  for(const auto& kind:QStringList{"upload","capture","recording","local_save","copy","deletion","share_link","destination_test","destination_setup","credentials","settings_save","text_recognition","diagnostics","history","desktop_setup","other"})kind_->addItem(kindLabel(kind),kind);
  kind_->setMinimumHeight(Ui::scaled(Ui::Metric::control));filters->addWidget(kind_);
- search_=new QLineEdit(body);search_->setObjectName("errorLogSearch");search_->setPlaceholderText("Search messages, files and destinations");search_->setAccessibleName("Search the error log");search_->setClearButtonEnabled(true);search_->setMinimumHeight(Ui::scaled(Ui::Metric::control));filters->addWidget(search_,1);
+ search_=new QLineEdit(body);search_->setObjectName("errorLogSearch");search_->setPlaceholderText("Search messages, files, and destinations");search_->setAccessibleName("Search the error log");search_->setClearButtonEnabled(true);search_->setMinimumHeight(Ui::scaled(Ui::Metric::control));filters->addWidget(search_,1);
  openOnly_=new QCheckBox("Open problems only",body);openOnly_->setObjectName("errorLogOpenOnly");filters->addWidget(openOnly_);
  box->addLayout(filters);
  searchDelay_=new QTimer(this);searchDelay_->setSingleShot(true);searchDelay_->setInterval(250);
@@ -105,7 +105,7 @@ ErrorLogPage::ErrorLogPage(UiSession& session,QWidget* parent):QWidget(parent),s
  for(const auto& [column,width]:QList<std::pair<int,int>>{{TimeColumn,128},{ActionColumn,136},{ItemColumn,200},{DestinationColumn,150},{StatusColumn,88}}){table_->header()->setSectionResizeMode(column,QHeaderView::Interactive);table_->setColumnWidth(column,Ui::scaled(width));}
  table_->header()->setSectionResizeMode(MessageColumn,QHeaderView::Stretch);table_->setMinimumHeight(Ui::scaled(160));
  listBox->addWidget(table_,1);
- empty_=new QLabel("No errors. When something goes wrong, it's listed here with what to do next.",listPane);empty_->setObjectName("errorLogEmpty");empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);Ui::role(empty_,"muted");empty_->hide();listBox->addWidget(empty_);
+ empty_=new QLabel("No errors.",listPane);empty_->setObjectName("errorLogEmpty");empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);Ui::role(empty_,"muted");empty_->hide();listBox->addWidget(empty_);
  auto* pager=new QHBoxLayout;pager->setSpacing(space(Space::s));pageText_=new QLabel(listPane);pageText_->setObjectName("errorLogPageText");Ui::role(pageText_,"meta");pager->addWidget(pageText_,1);
  newer_=new QPushButton("Newer",listPane);newer_->setObjectName("errorLogNewer");older_=new QPushButton("Older",listPane);older_->setObjectName("errorLogOlder");pager->addWidget(newer_);pager->addWidget(older_);listBox->addLayout(pager);
  connect(newer_,&QPushButton::clicked,this,[this]{offset_=qMax(0,offset_-pageSize);load();});
@@ -189,11 +189,11 @@ void ErrorLogPage::populate() {
   const int times=entry["occurrences"].toInt(1);
   item->setText(MessageColumn,entry["title"].toString()+(times>1?QStringLiteral(" (%1 times)").arg(times):QString{}));item->setToolTip(MessageColumn,entry["message"].toString());
   const bool resolved=entry["resolved"].toBool();item->setText(StatusColumn,resolved?QStringLiteral("Resolved"):QStringLiteral("Open"));
-  item->setToolTip(StatusColumn,resolved?entry["resolution"].toString():QStringLiteral("Not resolved yet"));
+  item->setToolTip(StatusColumn,resolved?entry["resolution"].toString():QStringLiteral("Not resolved"));
   item->setData(StatusColumn,Qt::AccessibleTextRole,resolved?QStringLiteral("Resolved: ")+entry["resolution"].toString():QStringLiteral("Open"));
   item->setSizeHint(0,QSize(0,Ui::scaled(44)));
  }
- empty_->setText(search_->text().isEmpty()&&kind_->currentIndex()==0&&!openOnly_->isChecked()?QStringLiteral("No errors. When something goes wrong, it's listed here with what to do next."):QStringLiteral("No entries match these filters."));
+ empty_->setText(search_->text().isEmpty()&&kind_->currentIndex()==0&&!openOnly_->isChecked()?QStringLiteral("No errors."):QStringLiteral("No entries match these filters."));
  empty_->setVisible(entries_.isEmpty());table_->setVisible(!entries_.isEmpty());
  pageText_->setText(total_==0?QString{}:QStringLiteral("%1–%2 of %3 · %4 open").arg(offset_+1).arg(offset_+entries_.size()).arg(total_).arg(session_.errorLog()["unresolved"].toInt()));
  newer_->setEnabled(offset_>0);older_->setEnabled(offset_+pageSize<total_);newer_->setVisible(total_>pageSize);older_->setVisible(total_>pageSize);
@@ -254,7 +254,7 @@ void ErrorLogPage::showDetails(const QJsonObject& entry) {
   const auto step=button->property("step").toString();
   button->setText(stepLabel(step,kind));button->setAccessibleName(stepLabel(step,kind));button->setVisible(offered(step));
   const bool absent=(step=="show_in_history"||step=="remove_from_history")&&entry.contains("itemPresent")&&!entry["itemPresent"].toBool();
-  button->setEnabled(!stepRunning_&&!absent);button->setToolTip(absent?QStringLiteral("This item is no longer in History."):QString{});
+  button->setEnabled(!stepRunning_&&!absent);button->setToolTip(absent?QStringLiteral("Item is no longer in History"):QString{});
   Ui::role(button,step==first?"primary":"secondary");
  }
  technical_->setPlainText(QString::fromUtf8(QJsonDocument(entry).toJson(QJsonDocument::Indented)));
@@ -335,9 +335,9 @@ void ErrorLogPage::openClear(bool resolvedOnly) {
  if(confirm_)return;
  clearResolvedOnly_=resolvedOnly;
  const int count=resolvedOnly?qMax(0,session_.errorLog()["total"].toInt()-session_.errorLog()["unresolved"].toInt()):session_.errorLog()["total"].toInt();
- const auto text=resolvedOnly?QStringLiteral("Remove the %1 resolved %2 from the error log? Open problems stay. History, uploads and log files are untouched.").arg(count).arg(count==1?"entry":"entries")
-                             :QStringLiteral("Remove all %1 %2 from the error log? History, uploads and log files are untouched.").arg(count).arg(count==1?"entry":"entries");
- confirm_=Ui::confirm(this,"Clear the error log",text,resolvedOnly?"Clear resolved":"Clear all","Cancel",true);confirm_->setObjectName("errorLogClearConfirm");
+ const auto text=resolvedOnly?QStringLiteral("Clear %1 resolved %2 from the error log?\nOpen errors stay.").arg(count).arg(count==1?"entry":"entries")
+                             :QStringLiteral("Clear all %1 %2 from the error log?").arg(count).arg(count==1?"entry":"entries");
+ confirm_=Ui::confirm(this,"Clear error log — put.gd",text,resolvedOnly?"Clear resolved":"Clear all","Cancel",true);confirm_->setObjectName("errorLogClearConfirm");
  connect(confirm_,&QMessageBox::finished,this,[this](int result){finishClear(result==QMessageBox::Yes);});
  confirm_->open();
 }

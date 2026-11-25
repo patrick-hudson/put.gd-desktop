@@ -2161,7 +2161,7 @@ void Banner::paintEvent(QPaintEvent*) {
     } else painter.drawImage(glyph, IconArt::symbol("alert", tone, std::max(1, (side + 23) / 24), tone));
 }
 QString blurWarningText() {
-    return QStringLiteral("Blur may be reversible.");
+    return QStringLiteral("Blurred text can sometimes be recovered.");
 }
 QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* warning = new QWidget(parent);
@@ -2172,10 +2172,10 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     text->setObjectName("blurWarningText");
     layout->addWidget(text);
     // It switches tools; unlike the review's Use Redact it converts nothing.
-    auto* action = toolButton("Choose Redact tool", {}, "textAction", warning);
+    auto* action = toolButton("Switch to Redact", {}, "textAction", warning);
     action->setObjectName("useRedact");
-    action->setToolTip(QStringLiteral("Existing blur marks are unchanged."));
-    action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Choose Redact tool for private information. Existing blur marks are unchanged."));
+    action->setToolTip(QStringLiteral("Existing blurs aren't converted"));
+    action->setAccessibleDescription(QStringLiteral("Blurred text can sometimes be recovered. Select Switch to Redact for secrets (existing blurs aren't converted)."));
     action->setProperty("uiFlush", true);
     auto* actions = new QHBoxLayout;
     actions->setContentsMargins(text->contentsMargins().left(), 0, 0, 0);
@@ -3125,7 +3125,7 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
  });return button;
 }
 void showHelp(const QString& title,const QString& description,QWidget* parent){
- auto* dialog=new QMessageBox(QMessageBox::NoIcon,QStringLiteral("Help"),title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
+ auto* dialog=new QMessageBox(QMessageBox::NoIcon,QStringLiteral("Help — put.gd"),title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  if(!qobject_cast<QLabel*>(control))control->setMinimumHeight(qMax(control->minimumHeight(),Ui::scaled(Ui::Metric::control)));

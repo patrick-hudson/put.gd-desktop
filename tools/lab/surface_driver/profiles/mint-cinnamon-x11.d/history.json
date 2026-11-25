@@ -5,9 +5,9 @@
     ]
   },
   "window_titles": {
-    "historyExpandedPreview": "Preview \u2014",
-    "historyCancelAllConfirmation": "Cancel all uploads",
-    "confirmAction": "^(Delete from destination|Clear history records|Clear temporary files)$"
+    "historyExpandedPreview": "^Preview: ",
+    "historyCancelAllConfirmation": "Cancel all uploads \u2014 put.gd",
+    "confirmAction": "^(Delete from destination|Clear history records|Clear temporary files) \u2014 put\\.gd$"
   },
   "windows": {
     "historyAddFilterMenu": {
@@ -35,17 +35,17 @@
       "popup": true
     },
     "captureHelp": {
-      "title": "^Help$",
+      "title": "^Help \u2014 put\\.gd$",
       "accessible": {
         "owned": true,
-        "name": "Help"
+        "name": "Help \u2014 put.gd"
       }
     },
     "historyConfirmAction": {
-      "title": "^(Delete from destination|Clear history records|Clear temporary files)$"
+      "title": "^(Delete from destination|Clear history records|Clear temporary files) \u2014 put\\.gd$"
     },
     "historySaveDialog": {
-      "title": "^Save original file as$"
+      "title": "^Save original file as \u2014 put\\.gd$"
     },
     "captureOutputMenu": {
       "owner": "history",

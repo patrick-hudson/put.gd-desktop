@@ -98,7 +98,7 @@ def _cleanup(ctx, detail):
         # Ui::confirm is a QMessageBox (native role "alert"), whereas the
         # S3 deletion preparation is a QDialog. Require this owned alert's
         # exact native title and alert role instead of the generic dialog role.
-        ctx.profile['windows'] = {**previous, 'confirmAction': {'title': '^Revoke share link$',
+        ctx.profile['windows'] = {**previous, 'confirmAction': {'title': '^Revoke share link — put.gd$',
             'accessible': {'role': 'alert'}}}
         try:
             history._wait_window(ctx, 'confirmAction')

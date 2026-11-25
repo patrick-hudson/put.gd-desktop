@@ -433,7 +433,7 @@ class LiveOutcomes(unittest.TestCase):
         def observed(*args):
             spec=ctx.profile['windows']['confirmAction']
             self.assertEqual(spec['accessible'],{'role':'alert'})
-            self.assertEqual(spec['title'],'^Revoke share link$')
+            self.assertEqual(spec['title'],'^Revoke share link — put.gd$')
         with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window',side_effect=observed),patch.object(outcomes_live.history,'_confirm_button'):
             outcomes_live._cleanup(ctx,{'id':'owned-history'})
         self.assertIs(ctx.profile['windows'],previous)

@@ -165,7 +165,7 @@ bool SftpPanel::chooseKey() {
     // Where the key is now, else ~/.ssh, else home.
     auto folder = keyFile_->text().isEmpty() ? QString() : QFileInfo(keyFile_->text()).absolutePath();
     if (folder.isEmpty() || !QFileInfo(folder).isDir()) folder = QFileInfo(QDir::home().filePath(".ssh")).isDir() ? QDir::home().filePath(".ssh") : QDir::homePath();
-    return keyChooser_->open({FileDialog::Mode::Open, "Choose the SSH key file", folder, {}, {}}, [this](const FileDialog::Result& result) {
+    return keyChooser_->open({FileDialog::Mode::Open, "Choose the SSH key file — put.gd", folder, {}, {}}, [this](const FileDialog::Result& result) {
         if (result.failed()) { keyFileProblem_ = result.error; showKeyProblem(); }
         if (!result.chosen()) return;
         keyFile_->setText(result.path);

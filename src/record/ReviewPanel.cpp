@@ -720,11 +720,11 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         auto* cut = makeButton(top_, QStringLiteral("Cut"), QStringLiteral("cut"), nullptr, QStringLiteral("Cut"), QStringLiteral("reviewPanelCut"));
         auto* redact = makeButton(top_, QStringLiteral("Redact"), QStringLiteral("redact"), nullptr, QStringLiteral("Redact"), QStringLiteral("reviewPanelRedact"));
         auto* blur = makeButton(top_, QStringLiteral("Blur"), QStringLiteral("blur"), nullptr, QStringLiteral("Blur"), QStringLiteral("reviewPanelBlur"));
-        cut->setToolTip(!state_.placingKind.isEmpty() ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Cut the selected time out of the clip (C)"));
+        cut->setToolTip(!state_.placingKind.isEmpty() ? QStringLiteral("Place or cancel the cover first") : QStringLiteral("Cut selected time (C)"));
         // While a cover is being placed, Cut waits (W21).
         cut->setEnabled(state_.placingKind.isEmpty());
-        redact->setToolTip(QStringLiteral("Cover part of the picture for this time, removing the pixels (X)"));
-        blur->setToolTip(QStringLiteral("Blur part of the picture for this time (B). Blur may be reversible."));
+        redact->setToolTip(QStringLiteral("Redact an area for the selected time range, removing those pixels (X)"));
+        blur->setToolTip(QStringLiteral("Blur an area for the selected time range (B). Blurred text can sometimes be recovered."));
         for (auto* b : {cut, redact, blur}) { b->setIconSize(QSize(Ui::scaled(16), Ui::scaled(16))); b->setProperty("uiTight", true); }
         // Three buttons side by side while they fit the 280 px panel; the third wraps below at larger text.
         const int fit = 280 - 2 * Ui::space(Space::l);
@@ -764,8 +764,8 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         auto* restore = makeButton(top_, QStringLiteral("Restore"), {}, "primary", QStringLiteral("Restore"), QStringLiteral("reviewPanelRestore"));
         auto* across = makeButton(top_, QStringLiteral("Play across"), QStringLiteral("play"), nullptr, QStringLiteral("Play across"), QStringLiteral("reviewPanelPlayAcross"));
         restore->setDefault(true);
-        restore->setToolTip(QStringLiteral("Put this footage back into the clip"));
-        across->setToolTip(QStringLiteral("Play from a second before the join"));
+        restore->setToolTip(QStringLiteral("Restore this cut to the clip"));
+        across->setToolTip(QStringLiteral("Play from 1 second before the cut"));
         buttons->addWidget(restore);
         buttons->addWidget(across);
         buttons->addStretch(1);
@@ -809,7 +809,7 @@ void ReviewPanel::buildTop(QVBoxLayout* v) {
         choice->setObjectName(isBlur ? "reviewPanelCoverBlur" : "reviewPanelCoverRedact");
         choice->setText(isBlur ? QStringLiteral("Blur") : QStringLiteral("Redact"));
         choice->setAccessibleName(choice->text());
-        choice->setToolTip(isBlur ? QStringLiteral("Blur the covered pixels. Blur may be reversible.") : QStringLiteral("Remove the covered pixels"));
+        choice->setToolTip(isBlur ? QStringLiteral("Blur the covered area. Blurred text can sometimes be recovered.") : QStringLiteral("Permanently cover the area"));
         choice->setFocusPolicy(Qt::TabFocus);
         choice->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         track->addButton(choice);
@@ -853,8 +853,8 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
     seekRow->setContentsMargins(0, 0, 0, 0);
     auto* seek = makeButton(top_, edge + QStringLiteral(" →"), {}, "link", edge, QStringLiteral("reviewPanel") + key);
     seek->setProperty("uiFlush", true);
-    seek->setAccessibleDescription(start ? QStringLiteral("Go to the first covered frame that stays in the clip (Home)")
-                                         : QStringLiteral("Go to the last covered frame that stays in the clip (End)"));
+    seek->setAccessibleDescription(start ? QStringLiteral("Go to first kept covered frame (Home)")
+                                         : QStringLiteral("Go to last kept covered frame (End)"));
     seek->setEnabled(kept.has_value());
     seek->setToolTip(kept ? seek->accessibleDescription() : QStringLiteral("Excluded from output"));
     connect(seek, &QPushButton::clicked, this, [this, id, start] { emit seekCoverEdge(id, start); });
@@ -869,7 +869,7 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
     field->setObjectName(QStringLiteral("reviewPanel") + key + QStringLiteral("Time"));
     Ui::setMono(field, Ui::Type::technical);
     field->setAccessibleName(edge + QStringLiteral(" time"));
-    field->setAccessibleDescription(QStringLiteral("Minutes:seconds.tenths in recording time; snaps to a whole frame"));
+    field->setAccessibleDescription(QStringLiteral("Time as m:ss.t in original recording time. Snaps to the nearest frame."));
     field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(time, state_.fps)));
     field->setFixedWidth(std::max(Ui::scaled(84), QFontMetrics(field->font()).horizontalAdvance(QStringLiteral("000:00.0")) + Ui::scaled(24)));
     field->setFixedHeight(std::max(Ui::scaled(32), QFontMetrics(field->font()).height() + Ui::scaled(14)));
@@ -910,7 +910,7 @@ void ReviewPanel::addCutEdge(QVBoxLayout* v, const RecordingCut& cut, bool start
     field->setObjectName(key + QStringLiteral("Time"));
     Ui::setMono(field, Ui::Type::technical);
     field->setAccessibleName(QStringLiteral("Cut %1 time").arg(edge.toLower()));
-    field->setAccessibleDescription(QStringLiteral("Minutes:seconds.tenths in recording time; snaps to a whole frame"));
+    field->setAccessibleDescription(QStringLiteral("Time as m:ss.t in original recording time. Snaps to the nearest frame."));
     field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(time, state_.fps)));
     field->setFixedWidth(std::max(Ui::scaled(84), QFontMetrics(field->font()).horizontalAdvance(QStringLiteral("000:00.0")) + Ui::scaled(24)));
     field->setFixedHeight(std::max(Ui::scaled(32), QFontMetrics(field->font()).height() + Ui::scaled(14)));
@@ -927,7 +927,7 @@ void ReviewPanel::addCutEdge(QVBoxLayout* v, const RecordingCut& cut, bool start
     });
     fieldRow->addWidget(field);
     auto* playhead = makeButton(top_, QStringLiteral("Set to playhead"), {}, nullptr, QStringLiteral("Set cut %1 to playhead").arg(edge.toLower()), key + QStringLiteral("Playhead"));
-    playhead->setToolTip(QStringLiteral("Set where the cut %1 to the frame at the playhead").arg(start ? QStringLiteral("starts") : QStringLiteral("ends")));
+    playhead->setToolTip(QStringLiteral("Set cut %1 to the playhead").arg(start ? QStringLiteral("start") : QStringLiteral("end")));
     connect(playhead, &QPushButton::clicked, this, [this, id, start] { emit cutEdgeToPlayhead(id, start); });
     playhead->setFixedHeight(field->height());
     fieldRow->addWidget(playhead);

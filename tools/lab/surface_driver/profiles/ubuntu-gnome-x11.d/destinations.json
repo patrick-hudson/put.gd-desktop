@@ -1,10 +1,10 @@
 {
   "window_titles": {
     "destinations": "put.gd",
-    "confirmDestinationRemove": "Remove destination",
-    "confirmDestinationDefault": "Use an untested destination",
-    "confirmDestinationReload": "Reload settings from file",
-    "confirmDestinationName": "Add destination"
+    "confirmDestinationRemove": "Remove destination \u2014 put.gd",
+    "confirmDestinationDefault": "Use an untested destination \u2014 put.gd",
+    "confirmDestinationReload": "Reload settings from file \u2014 put.gd",
+    "confirmDestinationName": "Add destination \u2014 put.gd"
   },
   "catalog_windows": {
     "destinations": [
@@ -25,35 +25,35 @@
   },
   "windows": {
     "confirmDestinationName": {
-      "title": "Add destination",
+      "title": "Add destination \u2014 put.gd",
       "accessible": {
         "role": "dialog",
         "application": "putgd*",
-        "name": "Add destination"
+        "name": "Add destination \u2014 put.gd"
       }
     },
     "confirmDestinationRemove": {
-      "title": "Remove destination",
+      "title": "Remove destination \u2014 put.gd",
       "accessible": {
         "role": "alert",
         "application": "putgd*",
-        "name": "Remove destination"
+        "name": "Remove destination \u2014 put.gd"
       }
     },
     "confirmDestinationDefault": {
-      "title": "Use an untested destination",
+      "title": "Use an untested destination \u2014 put.gd",
       "accessible": {
         "role": "alert",
         "application": "putgd*",
-        "name": "Use an untested destination"
+        "name": "Use an untested destination \u2014 put.gd"
       }
     },
     "confirmDestinationReload": {
-      "title": "Reload settings from file",
+      "title": "Reload settings from file \u2014 put.gd",
       "accessible": {
         "role": "alert",
         "application": "putgd*",
-        "name": "Reload settings from file"
+        "name": "Reload settings from file \u2014 put.gd"
       }
     },
     "destinationActionsMenu": {

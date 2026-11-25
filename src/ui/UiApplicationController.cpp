@@ -135,7 +135,7 @@ void UiApplicationController::checkpoint(){
 void UiApplicationController::notify(const Error& error){
  QWidget* parent=closing_?closing_.data():QApplication::activeWindow();
  if(!parent)parent=main_?static_cast<QWidget*>(main_.get()):about_.get();
- auto* notice=new QMessageBox(QMessageBox::Warning,"put.gd",error.message,QMessageBox::Ok,parent);
+ auto* notice=new QMessageBox(QMessageBox::Warning,"Error — put.gd",error.message,QMessageBox::Ok,parent);
  notice->setTextFormat(Qt::PlainText);notice->setWindowModality(Qt::NonModal);
  notice->setAttribute(Qt::WA_DeleteOnClose);notice->show();
 }
