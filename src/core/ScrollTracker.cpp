@@ -513,6 +513,50 @@ inline void lanes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, cons
   inf += I;
 }
 
+// Lanes where tex is set, pin is clear, and valid is set.
+unsigned countTexValid(const uint16_t* tex, const uint16_t* pin, const uint16_t* valid, int n) {
+  unsigned total = 0;
+  int k = 0;
+#if defined(__SSE2__)
+  __m128i sum = _mm_setzero_si128();
+  for (; k + 8 <= n; k += 8)
+    sum = _mm_add_epi16(sum, _mm_and_si128(_mm_andnot_si128(ld(pin + k), ld(tex + k)), ld(valid + k)));
+  total = hsum(sum);
+#endif
+  for (; k < n; ++k) total += unsigned(tex[k]) & unsigned(!pin[k]) & unsigned(valid[k]);
+  return total;
+}
+
+// One pair of cell rows for wholeCells: textured on either side, unpinned on both.
+inline void wholeRowLanes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint16_t* tb,
+                          const uint16_t* pa, const uint16_t* pb, int n, unsigned tol, unsigned& agree,
+                          unsigned& inf) {
+  unsigned A = 0, I = 0;
+  int k = 0;
+#if defined(__SSE2__)
+  const __m128i vtol = _mm_set1_epi16(short(std::min(tol, 0x7FFFu)));
+  const __m128i one = _mm_set1_epi16(1), zero = _mm_setzero_si128();
+  __m128i accA = zero, accI = zero;
+  for (; k + 8 <= n; k += 8) {
+    const __m128i ok = le(absd(ld(a + k), ld(b + k)), vtol);
+    const __m128i tex = _mm_or_si128(ld(ta + k), ld(tb + k));
+    const __m128i open = _mm_andnot_si128(_mm_or_si128(ld(pa + k), ld(pb + k)), one);
+    const __m128i use = _mm_and_si128(tex, open);
+    accI = _mm_add_epi16(accI, use);
+    accA = _mm_add_epi16(accA, _mm_and_si128(use, ok));
+  }
+  A = hsum(accA);
+  I = hsum(accI);
+#endif
+  for (; k < n; ++k) {
+    if (pa[k] || pb[k] || !(ta[k] | tb[k])) continue;
+    ++I;
+    A += absDiff(a[k], b[k]) <= tol;
+  }
+  agree += A;
+  inf += I;
+}
+
 }  // namespace
 
 // ------------------------------------------------------------------ the page store
@@ -1408,29 +1452,17 @@ void ScrollTracker::storeBandTally(const Signature& cur, long long pos, int rowS
     const long long p = pos + y;
     if (!store_->has(p)) continue;
     const uint16_t* sv = store_->validRow(p);
-    const uint16_t* sb = store_->bandRow(p);
-    const uint16_t* a = cur.bandRow(y);
     const uint16_t* ta = cur.bandTexRow(y);
-    const uint16_t* st = store_->texRow(p);
-    const uint16_t* inc = &bandIncl_[size_t(y) * B];
     const uint16_t* pa = &bandPinned16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * B];
-    uint16_t* tA = &t.agree[size_t(y / kTileRows) * B];
-    uint16_t* tI = &t.inf[size_t(y / kTileRows) * B];
-    unsigned rowAgree = 0, rowInf = 0, rowTex = 0;
-    for (int k = 0; k < B; ++k) {
-      const unsigned use = unsigned(ta[k] | st[k]) & sv[k] & inc[k];
-      const unsigned ok = use & unsigned(absDiff(a[k], sb[k]) <= tol);
-      tI[k] = uint16_t(tI[k] + use);
-      tA[k] = uint16_t(tA[k] + ok);
-      rowAgree += ok;
-      rowInf += use;
-      rowTex += unsigned(ta[k]) & unsigned(!pa[k]) & sv[k];
-    }
-    t.agreeSum += rowAgree;
-    t.infSum += rowInf;
+    const size_t tile = size_t(y / kTileRows) * B;
+    const unsigned rowAgree =
+        accumulate(cur.bandRow(y), store_->bandRow(p), ta, store_->texRow(p), &bandIncl_[size_t(y) * B], sv, B, tol,
+                   &t.agree[tile], &t.inf[tile]);
+    const unsigned rowTex = countTexValid(ta, pa, sv, B);
     t.rows += rowAgree >= 2;
     t.texturedRows += rowTex >= 2;
   }
+  t.total();
 }
 
 // The coarse look at a position in the image: bands against the store over
@@ -1459,6 +1491,7 @@ double ScrollTracker::storeCoarseShare(const Signature& cur, long long pos, doub
 // back and computed the same way as a frame's (have: 0 where not written).
 void ScrollTracker::storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const {
   const int C = cells_, P = opts_.cellPx;
+  const int fullHi = std::min(cellHi_, width_ / P);
   sigs.assign(size_t(n) * C, 0);
   have.assign(size_t(n), 0);
   std::vector<uint8_t> row(size_t(width_) * 4);
@@ -1467,7 +1500,14 @@ void ScrollTracker::storeCellSigs(long long from, int n, std::vector<uint16_t>& 
     if (!store_->has(p) || !canvas_.readRow(p, row.data())) continue;
     have[size_t(i)] = 1;
     uint16_t* sig = &sigs[size_t(i) * C];
-    for (int c = cellLo_; c < cellHi_; ++c) {
+    int c = cellLo_;
+#if defined(__SSE2__)
+    if (P == 8 && fullHi > c) {
+      cellSums8(row.data() + size_t(c) * 32, fullHi - c, sig + c);
+      c = fullHi;
+    }
+#endif
+    for (; c < cellHi_; ++c) {
       const int x0 = c * P, x1 = std::min(width_, x0 + P);
       unsigned sum = 0;
       for (int x = x0; x < x1; ++x) sum += unsigned(row[4 * x]) + 2u * row[4 * x + 1] + row[4 * x + 2];
@@ -1480,30 +1520,36 @@ void ScrollTracker::storeCellSigs(long long from, int n, std::vector<uint16_t>& 
 // signatures of the rows [from, from + n) computed once (storeCellSigs).
 void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs,
                                    const std::vector<uint8_t>& have, long long from, Tally& t) const {
-  const int H = cur.h, C = cur.cells, B = cur.bands;
+  const int H = cur.h, C = cur.cells, B = cur.bands, words = store_->words;
   t.clear(B, H);
   const unsigned tol = unsigned(opts_.cellTolerance);
   const long long n = (long long)have.size();
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
     if (p < from || p >= from + n || !have[size_t(p - from)]) continue;
+    const size_t at = size_t(p - store_->origin) * size_t(words);
+    const uint64_t* sp = &store_->prov[at];
+    const uint64_t* sv = &store_->ver[at];
     const uint16_t* sig = &sigs[size_t(p - from) * C];
     const uint16_t* a = cur.cellRow(y);
     const uint16_t* ta = cur.cellTexRow(y);
     const uint16_t* inc = &cellIncl_[size_t(y) * C];
     uint16_t* tA = &t.agree[size_t(y / kTileRows) * B];
     uint16_t* tI = &t.inf[size_t(y / kTileRows) * B];
-    const uint8_t* sd = store_->has(p) ? store_->dynRow(p) : nullptr;
+    const uint8_t* sd = hasDyn_ ? store_->dynRow(p) : nullptr;
     for (int k = 0; k < B; ++k) {
       if (sd && sd[k]) continue;
+      unsigned ka = 0, ki = 0;
       for (int c = cur.bandLo[k]; c < cur.bandLo[k + 1]; ++c) {
-        if (store_->level(p, c) == 0 || !inc[c] || !ta[c]) continue;
-        const unsigned ok = absDiff(a[c], sig[size_t(c)]) <= tol;
-        ++tI[k];
-        tA[k] = uint16_t(tA[k] + ok);
-        ++t.infSum;
-        t.agreeSum += ok;
+        if (!inc[c] || !ta[c]) continue;
+        if (!(((sp[c >> 6] | sv[c >> 6]) >> (c & 63)) & 1ull)) continue;
+        ++ki;
+        ka += absDiff(a[c], sig[size_t(c)]) <= tol;
       }
+      tI[k] = uint16_t(tI[k] + ki);
+      tA[k] = uint16_t(tA[k] + ka);
+      t.infSum += ki;
+      t.agreeSum += ka;
     }
   }
 }
@@ -1543,20 +1589,25 @@ bool ScrollTracker::contradicted(const Signature& cur, long long pos, double kee
 double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int d) const {
   const int H = cur.h, C = cur.cells, B = cur.bands;
   const unsigned tol = unsigned(opts_.cellTolerance);
+  const int lo = cellLo_, n = cellHi_ - cellLo_;
   unsigned agree = 0, inf = 0;
   for (int y = std::max(0, -d); y < std::min(H, H - d); ++y) {
     const uint16_t* pa = &closed16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * C];
     const uint16_t* pb = &closed16_[size_t(std::min((y + d) / opts_.blockRows, blockRowCount_ - 1)) * C];
     const uint16_t *a = cur.cellRow(y), *b = ref.cellRow(y + d), *ta = cur.cellTexRow(y), *tb = ref.cellTexRow(y + d);
     const long long p = lastPos_ + y + d;
-    const uint8_t* sd = store_->has(p) ? store_->dynRow(p) : nullptr;
+    const uint8_t* sd = hasDyn_ && store_->has(p) ? store_->dynRow(p) : nullptr;
+    bool rowDyn = false;
+    if (sd)
+      for (int k = 0; k < B; ++k) rowDyn |= sd[k] != 0;
+    if (!rowDyn) {
+      wholeRowLanes(a + lo, b + lo, ta + lo, tb + lo, pa + lo, pb + lo, n, tol, agree, inf);
+      continue;
+    }
     for (int k = 0; k < B; ++k) {
-      if (sd && sd[k]) continue;
-      for (int c = cur.bandLo[size_t(k)]; c < cur.bandLo[size_t(k) + 1]; ++c) {
-        if (pa[c] || pb[c] || !(ta[c] | tb[c])) continue;
-        ++inf;
-        agree += absDiff(a[c], b[c]) <= tol;
-      }
+      if (sd[k]) continue;
+      const int c0 = cur.bandLo[size_t(k)], cn = cur.bandLo[size_t(k) + 1] - c0;
+      wholeRowLanes(a + c0, b + c0, ta + c0, tb + c0, pa + c0, pb + c0, cn, tol, agree, inf);
     }
   }
   return inf ? double(agree) / inf : 0.0;
@@ -1565,31 +1616,69 @@ double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int
 // How well rows [y0, y1) of a frame repeat elsewhere in it: the best share
 // of agreeing bands between those rows and the rows s above or below them,
 // over shifts of a sliver or more (textured lanes, what is pinned left out,
-// every second row).
-double ScrollTracker::selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const {
+// every second row). Stops early once `stopAt` is reached.
+double ScrollTracker::selfRepeat(const Signature& sig, int y0, int y1, long long sigPos, double stopAt) const {
   const int H = sig.h, B = sig.bands, far = sliverRows(opts_, H);
   const unsigned tol = unsigned(bandTol_);
+  const unsigned minInf = unsigned(2 * opts_.minEvidenceRows);
   y0 = std::clamp(y0, 0, H);
   y1 = std::clamp(y1, y0, H);
+  if (y0 >= y1 || far >= H) return 0.0;
+  std::vector<uint16_t> open(size_t(H) * size_t(B));
+  for (int y = 0; y < H; ++y) {
+    const uint16_t* pa = &bandPinned16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * B];
+    const uint8_t* da = hasDyn_ && store_->has(sigPos + y) ? store_->dynRow(sigPos + y) : nullptr;
+    uint16_t* out = &open[size_t(y) * size_t(B)];
+    for (int k = 0; k < B; ++k) out[k] = uint16_t(!pa[k] && !(da && da[k]));
+  }
   double best = 0;
   for (int s = far; s < H; ++s)
     for (const int dir : {-1, 1}) {
+      int lo = std::max(y0, dir < 0 ? s : 0);
+      const int hi = std::min(y1, dir > 0 ? H - s : H);
+      if ((lo - y0) & 1) ++lo;
+      if (lo >= hi) continue;
       unsigned agree = 0, inf = 0;
-      for (int y = y0; y < y1; y += 2) {
-        const int z = y + dir * s;
-        if (z < 0 || z >= H) continue;
-        const uint16_t* pa = &bandPinned16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * B];
-        const uint16_t* pb = &bandPinned16_[size_t(std::min(z / opts_.blockRows, blockRowCount_ - 1)) * B];
-        const uint8_t* da = hasDyn_ && store_->has(sigPos + y) ? store_->dynRow(sigPos + y) : nullptr;
-        const uint8_t* db = hasDyn_ && store_->has(sigPos + z) ? store_->dynRow(sigPos + z) : nullptr;
-        const uint16_t *a = sig.bandRow(y), *b = sig.bandRow(z), *ta = sig.bandTexRow(y), *tb = sig.bandTexRow(z);
-        for (int k = 0; k < B; ++k) {
-          if (pa[k] || pb[k] || (da && da[k]) || (db && db[k]) || !(ta[k] | tb[k])) continue;
-          ++inf;
-          agree += absDiff(a[k], b[k]) <= tol;
+#if defined(__SSE2__)
+      const __m128i vtol = _mm_set1_epi16(short(std::min(tol, 0x7FFFu)));
+      const __m128i zero = _mm_setzero_si128();
+      const int vecEnd = B & ~7;
+      // Accumulate in 16-bit lanes in chunks of <= 1024 rows (at most 1024 * 8
+      // per lane when B <= 64, well below uint16_t max) to avoid per-row hsum.
+      for (int yChunk = lo; yChunk < hi; yChunk += 2048) {
+        const int yEnd = std::min(hi, yChunk + 2048);
+        __m128i accA = zero, accI = zero;
+        for (int y = yChunk; y < yEnd; y += 2) {
+          const int z = y + dir * s;
+          const uint16_t *a = sig.bandRow(y), *b = sig.bandRow(z);
+          const uint16_t *ta = sig.bandTexRow(y), *tb = sig.bandTexRow(z);
+          const uint16_t *ia = &open[size_t(y) * size_t(B)], *ib = &open[size_t(z) * size_t(B)];
+          for (int k = 0; k < vecEnd; k += 8) {
+            const __m128i ok = le(absd(ld(a + k), ld(b + k)), vtol);
+            const __m128i use = _mm_and_si128(_mm_and_si128(_mm_or_si128(ld(ta + k), ld(tb + k)), ld(ia + k)), ld(ib + k));
+            accI = _mm_add_epi16(accI, use);
+            accA = _mm_add_epi16(accA, _mm_and_si128(use, ok));
+          }
+          for (int k = vecEnd; k < B; ++k) {
+            const unsigned use = unsigned(ta[k] | tb[k]) & ia[k] & ib[k];
+            inf += use;
+            agree += use & unsigned(absDiff(a[k], b[k]) <= tol);
+          }
         }
+        agree += hsum(accA);
+        inf += hsum(accI);
       }
-      if (inf >= unsigned(2 * opts_.minEvidenceRows)) best = std::max(best, double(agree) / inf);
+#else
+      for (int y = lo; y < hi; y += 2) {
+        const int z = y + dir * s;
+        lanes(sig.bandRow(y), sig.bandRow(z), sig.bandTexRow(y), sig.bandTexRow(z), &open[size_t(y) * size_t(B)],
+              &open[size_t(z) * size_t(B)], B, tol, agree, inf);
+      }
+#endif
+      if (inf >= minInf) {
+        best = std::max(best, double(agree) / inf);
+        if (best >= stopAt) return best;
+      }
     }
   return best;
 }
@@ -1646,6 +1735,9 @@ double ScrollTracker::storeCells(const Signature& cur, long long pos, int y0, in
         if (!sd || !sd[k]) fo.cells += cur.bandLo[size_t(k) + 1] - cur.bandLo[size_t(k)];
       continue;
     }
+    const size_t at = size_t(p - store_->origin) * size_t(store_->words);
+    const uint64_t* sp = &store_->prov[at];
+    const uint64_t* sv = &store_->ver[at];
     const uint16_t* sig = &sigs[size_t(y - y0) * C];
     const uint16_t* a = cur.cellRow(y);
     const uint16_t* ta = cur.cellTexRow(y);
@@ -1655,7 +1747,7 @@ double ScrollTracker::storeCells(const Signature& cur, long long pos, int y0, in
       if (sd && sd[k]) continue;
       for (int c = cur.bandLo[size_t(k)]; c < cur.bandLo[size_t(k) + 1]; ++c) {
         ++fo.cells;
-        if (store_->level(p, c) == 0) continue;
+        if (!(((sp[c >> 6] | sv[c >> 6]) >> (c & 63)) & 1ull)) continue;
         ++fo.written;
         if (!inc[c] || !ta[c]) continue;
         ++inf;
@@ -3791,6 +3883,13 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   pend.pos = pos;
   pend.rows.clear();
   const int B = cur.bands, P = opts_.cellPx;
+  // Size once to H rows so reused Pending buffers from spare_ never shrink and
+  // zero-fill megabytes of pixel storage on every moving frame (#1558).
+  if (pend.pixels.size() < size_t(H) * size_t(width_) * 4) pend.pixels.resize(size_t(H) * size_t(width_) * 4);
+  if (pend.bands.size() < size_t(H) * size_t(B) * 2) pend.bands.resize(size_t(H) * size_t(B) * 2);
+  if (pend.open.size() < size_t(H) * size_t(words)) pend.open.resize(size_t(H) * size_t(words));
+  if (pend.plain.size() < size_t(H) * size_t(words)) pend.plain.resize(size_t(H) * size_t(words));
+  if (pend.cells.size() < size_t(H) * size_t(C)) pend.cells.resize(size_t(H) * size_t(C));
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
     if (p < allowLo_ || p >= allowHi_ || (viewMoved_ && !(d > 0 && p >= bot0))) continue;
@@ -3851,12 +3950,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
     }
     const size_t slot = pend.rows.size();
     pend.rows.push_back(y);
-    pend.pixels.resize((slot + 1) * size_t(width_) * 4);
-    pend.bands.resize((slot + 1) * size_t(B) * 2);
-    pend.open.resize((slot + 1) * size_t(words));
     std::memcpy(&pend.open[slot * size_t(words)], mask.data(), size_t(words) * 8);
-    pend.plain.resize((slot + 1) * size_t(words));
-    pend.cells.resize((slot + 1) * size_t(C));
     std::memcpy(&pend.cells[slot * size_t(C)], cur.cellRow(y), size_t(C) * 2);
     {
       uint64_t* pl = &pend.plain[slot * size_t(words)];
@@ -4734,7 +4828,9 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // min(H, H - d)), the reference's those plus d.
   if (pick >= 0 && skipsSincePlaced_ > 0 && !hinted) {
     const int dd = cands[size_t(pick)].d, y0 = std::max(0, -dd), y1 = std::min(height_, height_ - dd);
-    if (std::max(selfRepeat(cur, y0, y1, pos), selfRepeat(ref, y0 + dd, y1 + dd, lastPos_)) >= cands[size_t(pick)].bands - kRepeatMargin) {
+    const double repeatLimit = cands[size_t(pick)].bands - kRepeatMargin;
+    if (selfRepeat(cur, y0, y1, pos, repeatLimit) >= repeatLimit ||
+        selfRepeat(ref, y0 + dd, y1 + dd, lastPos_, repeatLimit) >= repeatLimit) {
       pick = -1;
       why = SkipReason::Ambiguous;
       pairD = INT_MIN;  // the image lookup does not confirm it either: there it is a place found again

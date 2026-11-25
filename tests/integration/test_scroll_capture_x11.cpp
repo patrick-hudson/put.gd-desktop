@@ -280,6 +280,13 @@ private slots:
         QCOMPARE(done.result["truncated"].toBool(true), false);
         QCOMPARE(done.result["scrolledBy"].toString(), QString("user"));
         QCOMPARE(done.result["framesSkipped"].toInt(), 0);
+        {
+            QFile log(helperLog());
+            QVERIFY(log.open(QIODevice::ReadOnly));
+            const QByteArray bytes = log.readAll();
+            QVERIFY2(bytes.contains("scroll tap: ximagesrc ") && bytes.contains("framerate=60/1"),
+                     "X11 scroll tap did not request 60 fps (#1558)");
+        }
         const QImage image(done.result["path"].toString());
         const auto verdict = ruler::verify(image, 0, 0, 0, 59);
         QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));

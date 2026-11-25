@@ -33,7 +33,7 @@ public:
         // A whole-output source: the region inside its frames, in stream pixels.
         QSize streamSize;
         QRect crop;
-        int fps = 30;  // ximagesrc's grab rate; the other sources send on damage
+        int fps = 60;  // ximagesrc's grab rate (#1558); the other sources send on damage
     };
     FrameTap() = default;
     ~FrameTap() override;

@@ -420,7 +420,7 @@ class ScrollTracker {
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d) const;
-  double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const;
+  double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos, double stopAt = 1.1) const;
   // Frames skipped since the last placed frame (a frame that only stood
   // still while nothing was proved does not end the count).
   int skipsSincePlaced_ = 0;
