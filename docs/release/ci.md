@@ -429,8 +429,9 @@ What the full set doesn't cover:
   Their binaries aren't instrumented, so they can't load the instrumented QtCore
   (confinement forbids what the sanitizers need; the icon renderer is a build tool).
 - `ui_catalog_render`, which the sanitizer build doesn't register
-  (`PUTGD_UI_CATALOG_RENDER` stays off), and cases that skip by design there: the
-  Nextcloud test without its server, `native_tray_integration` outside its own
+  (`PUTGD_UI_CATALOG_RENDER` stays off), and the cases that skip there by design, for
+  example the live WebDAV and Nextcloud cases without their servers, the bundled Proton
+  runtime case, the opt-in large ZIP64 cases, `native_tray_integration` outside its own
   invocation, and the allocator and crash-handler cases that sanitizers replace.
 
 Leaks from inside third-party libraries are suppressed in `tests/sanitizer/lsan.supp`,
@@ -903,9 +904,10 @@ which ranks the Ubuntu mirrors, installs the profile's packages through
 package caches:
 
 - **linux and sanitizers:** the build and test packages that `ci.yml` used to
-  install, plus the unprivileged `putgd-ci` user CTest runs as. Both carry the
-  GStreamer plugins the recording and scroll-capture tests need, and labwc for
-  `budgie_labwc_integration`, since the nightly sanitizer job runs those too.
+  install, plus the unprivileged `putgd-ci` user CTest runs as. `sanitizers` also has
+  the GStreamer plugins the recording and scroll-capture tests need, and, like
+  `linux-26.04`, labwc, wl-clipboard and wlr-randr for `budgie_labwc_integration`,
+  since the nightly sanitizer job runs those too.
 - **native:** `git` and `ca-certificates`, then `tools/releases/install-native-deps.sh`;
   Arch also gets the `builder` user `makepkg` needs.
 - **appimage:** the base dependencies, `tools/ci/appimage-packages.txt`, `weston` and
