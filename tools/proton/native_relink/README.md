@@ -1,11 +1,10 @@
-# Bun 1.4.4 native modification/relink replay
+# Bun 1.4.5 native modification/relink replay
 
-This recipe is historical. The helper now uses Bun 1.4.5 and the current
-catalog lists the Bun 1.4.5 source packet, so `prepare.py` at this commit can't
-stage the 1.4.4 replay. To repeat it, run these steps from a checkout of
-`fe463abedd8f3ab5e7d9b799ce71a00f7cdca199`, the last commit whose
+These steps stage the current Bun 1.4.5 source packet and relink the current
+helper. The Bun 1.4.4 replay is historical: to repeat it, run the same steps from
+a checkout of `fe463abedd8f3ab5e7d9b799ce71a00f7cdca199`, the last commit whose
 `../notices/SOURCES.json`, `../runtime-lock.json` and helper overlay describe
-Bun 1.4.4. The Bun 1.4.5 relink is tracked in #2024.
+Bun 1.4.4.
 
 Run on d69 or another authorized builder, using a new private directory. This
 adapts the published 1.4.2 supplement to the current source packet. The original
@@ -14,7 +13,7 @@ Proton session, user payload, host directory mount or Docker socket enters the
 build container. Marked executables are proof artifacts only.
 
 Download and verify the transport from
-[the Bun 1.4.4 source release](https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.4).
+[the Bun 1.4.5 source release](https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.5).
 Join the two parts in numeric order and verify the combined archive and all six
 packets against `../notices/SOURCES.json`. Obtain the official bootstrap Bun
 executable identified in `../runtime-lock.json`.
@@ -44,22 +43,22 @@ Linux's limit is 107 bytes. This proof creates no put.gd session socket.
 
 ```sh
 cd /absolute/new/private/replay
-docker build --tag putgd-bun144-proof:replay image > image-build.log 2>&1
-docker create --name putgd-bun144-proof --user ubuntu --init --network none \
+docker build --tag putgd-bun145-proof:replay image > image-build.log 2>&1
+docker create --name putgd-bun145-proof --user ubuntu --init --network none \
   --cpus 2 --memory 12g --memory-swap 12g --pids-limit 2048 \
-  --cap-drop ALL --security-opt no-new-privileges putgd-bun144-proof:replay
+  --cap-drop ALL --security-opt no-new-privileges putgd-bun145-proof:replay
 tar --owner=1000 --group=1000 --numeric-owner -cf - -C stage . |
-  docker cp -a - putgd-bun144-proof:/p3
-docker start putgd-bun144-proof
-docker exec putgd-bun144-proof nice -n 10 python3 /p3/run_build.py > native-driver.log 2>&1
-docker exec putgd-bun144-proof nice -n 10 python3 /p3/run_helper_proof.py > helper-proof.log 2>&1
+  docker cp -a - putgd-bun145-proof:/p3
+docker start putgd-bun145-proof
+docker exec putgd-bun145-proof nice -n 10 python3 /p3/run_build.py > native-driver.log 2>&1
+docker exec putgd-bun145-proof nice -n 10 python3 /p3/run_helper_proof.py > helper-proof.log 2>&1
 ```
 
 The named `ubuntu` user has UID/GID 1000. On d69, `docker cp -a` rejects a
 container configured with the numeric `1000:1000` user before staging; the named
 user avoids that Docker lookup failure without changing build privilege.
 
-The recorded run began with two C/C++ jobs. Once d69's other heavy jobs finished,
+The 2026-10-31 Bun 1.4.4 run on d69 began with two C/C++ jobs. Once d69's other heavy jobs finished,
 both Ninja processes were intentionally interrupted, their logs retained, and
 the same prepared tree resumed with `resume_build.py` and four CPUs/C/C++ jobs.
 Rust retained two jobs and the container retained its 12 GiB/no-swap limit.
@@ -100,6 +99,27 @@ source markers. Its exact source commit is the pinned Bun 1.4.4 commit; this
 proof does not substitute that marked native executable for the production Bun.
 
 
+## Bun 1.4.5 run for helper 7fc568ce (#2024)
+
+On 2026-11-25 the recipe ran on aurora-amd in the `putgd-build` Toolbx, the same
+environment as the #1399 run, instead of the Docker image. Fedora's clang/lld
+23.1.5 replace the image's LLVM 23.1.5 packages, the four checksum-pinned Rust
+nightly 2026-09-15 components install into a private prefix, and `/p3` is a
+Toolbx-local symlink to the stage. Proxy variables point at a closed local port
+to keep the build offline, so the optional `bun-ninja` probe fails as above. The
+build ran once with four C/C++ jobs and two Rust jobs; no resume was needed.
+The helper proof uses a canonical private `TMPDIR`, because the helper rejects a
+data directory reached through the `/p3` symlink.
+
+The source-built Bun reports `--version` 1.4.5 and `--revision` metadata
+`1.4.5-canary.1+a7733435c` alongside the three markers. The marker patch is
+byte-identical to the Bun 1.4.4 one. The helper compiled from the current overlay
+with `--compile-executable-path` calls both native markers and compiles and runs
+TinyCC code. The run passed 77 helper tests, 12 compiled stdio cases, 3 session
+cases, the 1,048,337-byte stdout drain and the modified Argon/OpenPGP fixture.
+See [the receipt](evidence/native-proof-7fc568ce.json). Its archive is kept on
+aurora and listed in [retention.json](evidence/retention.json).
+
 Helper proof commands default to a 300-second deadline each, configurable with
 `PUTGD_PROTON_PROOF_TIMEOUT_SECONDS`. A timeout fails with the command stage and
 writes `proof/command-timeout.json`; it cannot produce a successful receipt.
@@ -119,9 +139,13 @@ the intermediate runner and its configured deadline. Its file-backed stdout
 diagnostic is superseded by the [pipe-backed replay](evidence/pipe-backed-replay.json),
 which verifies the final runner and the complete large-output pipe regression.
 
-## Current helper desktop/resource acceptance
+## Historical desktop/resource acceptance (helper 9fd4d72f)
 
-The [current receipt](evidence/desktop-resource-current.json) records live Proton
+This section and its receipt describe an earlier helper, not the Bun 1.4.5 helper
+`7fc568ce`. Desktop/resource and package acceptance (P6) for `7fc568ce` is still an
+open gate in `../notices/SOURCES.json` (#2025).
+
+The [receipt](evidence/desktop-resource-current.json) records live Proton
 upload, share-link inspection and revocation on Cinnamon/X11 (m74),
 GNOME/Wayland (d69) and KDE/Wayland (k72), followed by two 301-second idle
 observations on each same used resident. All RSS, CPU, swap and helper gates

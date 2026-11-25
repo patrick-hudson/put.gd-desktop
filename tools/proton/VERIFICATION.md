@@ -52,9 +52,16 @@ installers of `617cb0c8` (Ubuntu 24.04/26.04, Debian 13, Fedora 44/45, Arch and
 AppImage): each helper is `7fc568ce…` and reports Bun 1.4.5, and official Bun
 advisories for 1.4.5 are empty.
 
-The native modification/relink and compiled-helper source-selection proofs and
-the desktop/resource acceptance (P6) describe the Bun 1.4.4 helper `34dda9fa8550`;
-they are open gates in notices/SOURCES.json for this helper.
+On aurora-amd's `putgd-build` Toolbx, Bun 1.4.5 built from the published
+packet with the JavaScriptCore, TinyCC and Bun Rust marker patches. The helper
+relinked from the current overlay with `--compile-executable-path` ran those
+markers and TinyCC code, and passed 77 tests, 12 compiled stdio cases, 3 session
+cases, the full stdout regression and the modified Argon/OpenPGP fixture (#2024;
+receipt native_relink/evidence/native-proof-7fc568ce.json). The production helper
+is unchanged, and native byte identity is not claimed.
+
+The desktop/resource acceptance (P6) still describes the Bun 1.4.4 helper
+`34dda9fa8550`; it is an open gate in notices/SOURCES.json for this helper.
 
 The records below are historical and do not establish current acceptance.
 

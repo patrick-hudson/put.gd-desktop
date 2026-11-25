@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage only checksum-verified public inputs for the offline Bun 1.4.4 proof.
+"""Stage only checksum-verified public inputs for the offline Bun 1.4.5 proof.
 
 Run on a builder. No Proton account, keychain, session or application profile is
 read. Compiler installation is confined to the disposable Docker image.
@@ -25,7 +25,7 @@ def digest(path):
 def prepare(assets, bootstrap, output):
     catalog = json.loads((PROTON / 'notices/SOURCES.json').read_text())
     runtime = json.loads((PROTON / 'runtime-lock.json').read_text())
-    names = ('putgd-proton-bun-sources-1.4.4.tar',
+    names = ('putgd-proton-bun-sources-1.4.5.tar',
              'putgd-proton-helper-rebuild.tar.gz',
              'putgd-proton-native-rebuild-supplement.tar.gz')
     expected = {item['filename']: item['sha256'] for item in catalog['artifacts']}
@@ -33,7 +33,7 @@ def prepare(assets, bootstrap, output):
         if digest(assets / name) != expected[name]:
             raise ValueError('Source packet checksum mismatch: ' + name)
     if digest(bootstrap) != runtime['bunSha256']:
-        raise ValueError('Bootstrap must be the checksum-pinned official Bun 1.4.4')
+        raise ValueError('Bootstrap must be the checksum-pinned official Bun 1.4.5')
     # Check every input before creating anything; never reuse an earlier attempt.
     output.mkdir(mode=0o700)
     stage = output / 'stage'

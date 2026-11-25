@@ -33,9 +33,8 @@ materials and imported-source attributions are preserved without inventing
 copyright holders. The exact ICU 78.3 notice remains LICENSE.icu4c-78.3.
 
 The Bun 1.4.5 packet verifies offline source assembly, native patch application
-and Bun's own native fetch identities. The Bun 1.4.4 native modification/relink
-proof is historical and does not establish a Bun 1.4.5 native rebuild; that
-check remains open in SOURCES.json. The production helper uses the verified
-official Bun executable, and its exact helper-source rebuild is checked
-separately. These materials are redistribution engineering evidence, without
+and Bun's own native fetch identities. A Bun 1.4.5 native modification/relink
+from that packet is recorded in SOURCES.json under nativeRelinkProof. The
+production helper uses the verified official Bun executable, and its exact
+helper-source rebuild is checked separately. These materials are redistribution engineering evidence, without
 legal certification or final desktop acceptance.

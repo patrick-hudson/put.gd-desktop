@@ -9,12 +9,12 @@ def run(args,name,cwd=None,env=None,capture_stdout=False):
  return run_command(args,name,logs=logs,proof=proof,timeout_seconds=command_timeout,cwd=cwd,env=env,capture_stdout=capture_stdout)
 revision=run([bun,'--revision'],'native-revision.log')
 for marker in ['putgd-bun-native-proof','putgd-jsc-source-proof','putgd-tinycc-source-proof']:assert marker in revision,marker
-assert run([bun,'--version'],'native-version.log').strip()=='1.4.4'
+assert run([bun,'--version'],'native-version.log').strip()=='1.4.5'
 run([bun,'/p3/helper-proof-inputs/ffi.mjs'],'native-tinycc-ffi.log')
 with tarfile.open(root/'helper-rebuild.tar.gz') as tar:tar.extractall(work,filter='data')
 build=work/'build-source'
 catalog=json.loads((root/'SOURCES.json').read_text())
-assert catalog['sourcePins']['bun']=='38afee6c84fcf48c0edb2466aa4b27d287a59c30'
+assert catalog['sourcePins']['bun']=='a7733435cf40429e3b35c36072769df2052b80f1'
 assert catalog['sourcePins']['webkit']=='d6375c72affe0f70222cdcb45012b10f0bf3a9d5'
 for item in catalog['applicationSourceOverlay']['files']:
  source=root/'application-source-overlay'/item['destination']
@@ -45,5 +45,5 @@ crypto=json.loads(run(['/p3/helper/native-openpgp-proof'],'native-openpgp-crypto
 assert all(crypto[x] for x in ['argon2Packet','rebuildRoundtrip','publishedDecryptsRebuilt','rebuiltDecryptsPublished','modifiedWasmMarker'])
 def digest(p):
  with p.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
-result={'nativeBunSha256':digest(bun),'proofHelperSha256':digest(helper),'nativeCryptoProofSha256':digest(Path('/p3/helper/native-openpgp-proof')),'markers':revision.splitlines(),'nativeVersion':'1.4.4','tinyccCompileAndExecute':True,'compiledHelperCallsNativeSourceMarkers':True,'compiledHelperTinyccCompileAndExecute':True,'helperTests':int(test_count[1]),'compiledStdioCases':int(smoke_counts[1]),'compiledSessionCases':int(smoke_counts[2]),'stdoutBytes':len(r.stdout),'crypto':crypto,'productionHelperChanged':False,'productionHelperSha256':catalog['helperSha256'],'sourcePins':catalog['sourcePins'],'applicationSourceOverlayVerified':True,'accountsOrServicesUsed':False,'nativeBitIdentityClaimed':False}
+result={'nativeBunSha256':digest(bun),'proofHelperSha256':digest(helper),'nativeCryptoProofSha256':digest(Path('/p3/helper/native-openpgp-proof')),'markers':revision.splitlines(),'nativeVersion':'1.4.5','tinyccCompileAndExecute':True,'compiledHelperCallsNativeSourceMarkers':True,'compiledHelperTinyccCompileAndExecute':True,'helperTests':int(test_count[1]),'compiledStdioCases':int(smoke_counts[1]),'compiledSessionCases':int(smoke_counts[2]),'stdoutBytes':len(r.stdout),'crypto':crypto,'productionHelperChanged':False,'productionHelperSha256':catalog['helperSha256'],'sourcePins':catalog['sourcePins'],'applicationSourceOverlayVerified':True,'accountsOrServicesUsed':False,'nativeBitIdentityClaimed':False}
 (proof/'native-proof-results.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))

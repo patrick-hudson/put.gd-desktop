@@ -19,14 +19,13 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": false,
+    "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
     "finalPackageAcceptanceVerified": false,
-    "nativeCompiledHelperSourceSelectionVerified": false,
+    "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Fresh Bun 1.4.5 native modification/relink and compiled-helper source-selection verification for helper 7fc568ce70ee; the retained receipt describes Bun 1.4.4 helper 34dda9fa8550",
     "Fresh final-helper desktop functional/resource and actual package acceptance (P6) for helper 7fc568ce70ee; the retained receipt describes Bun 1.4.4 helper 34dda9fa8550"
   ],
   "artifacts": [
@@ -178,21 +177,21 @@
     "preferredRustSourceClaimed": false
   },
   "nativeRelinkProof": {
-    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+    "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
       "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
       "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
-      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "bun": "a7733435cf40429e3b35c36072769df2052b80f1",
       "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receipt": "tools/proton/native_relink/evidence/native-proof-34dda9fa.json",
-    "receiptSha256": "c61f7a7843e15b827b2f83db3376ef69570494c254956d9bf882e723194cd18e",
-    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
-    "proofHelperSha256": "a12b9b2bd442c48e652482a5d97c9b34479d7ae62f591bef9640204ec6879f0c",
-    "scope": "Current overlay relink using verified retained source-built Bun; second archive verified by readback beside the original archive. No native byte identity claimed."
+    "receipt": "tools/proton/native_relink/evidence/native-proof-7fc568ce.json",
+    "receiptSha256": "01a65eb1c0abc23963014761c39038b82597429052445419fa487062ccf2492a",
+    "nativeBunSha256": "dbf1faf448652063ef714b9f51e45e9a9bd00f6a4e00de8256ddd887c7d5f70e",
+    "proofHelperSha256": "a63adee8483d61321eb95664d706e6e081b4f113ce8a671916f33750d18e8cdb",
+    "scope": "Fresh Aurora Toolbx source build of Bun 1.4.5 with Bun Rust, JavaScriptCore and TinyCC markers from the published packet, and current-overlay helper relink. Native byte identity is not claimed. Retained archive verified by full readback."
   },
   "desktopResourceAcceptance": {
     "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",

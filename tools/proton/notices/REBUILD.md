@@ -56,9 +56,9 @@ upstream build requirements for a native build with local JavaScriptCore.
 The native rebuild supplement and OpenPGP/Argon2 proofs retain their original
 bytes and historical scope. Its Bun 1.4.2 compiler selection and modifications
 must not be mistaken for current Bun 1.4.5 native verification. The native
-modification/relink recipe in tools/proton/native_relink/ was last run for Bun
-1.4.4; SOURCES.json lists the Bun 1.4.5 relink as an open gate and records
-desktop/resource/package acceptance separately.
+modification/relink recipe in tools/proton/native_relink/ was run for Bun 1.4.5
+and the current helper; SOURCES.json records that proof and, separately,
+desktop/resource/package acceptance.
 
 The unchanged OpenPGP preferred source uses commit
 36198c3369ab8d4a02d70372d62f1aa8bc247dcb. Restore its supplied offline npm cache,
