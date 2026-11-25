@@ -175,6 +175,8 @@ second source of truth.
 
 ## Words and actions
 
+How each kind of string is worded is in [interface wording](voice.md).
+
 Use the same action names in the tray, menus, help, accessible names and hotkey
 settings. One table, `Settings::actionTable()`, holds them with their order and
 group; every surface filters and places from it. The command band shows a
