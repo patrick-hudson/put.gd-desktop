@@ -216,7 +216,7 @@ def _icon_node(ctx, timeout=10):
         return None
 
 
-TRAY_TITLES = ('Capturing', 'Processing', 'Uploading', 'Upload complete', 'Saved', 'Needs attention')
+TRAY_TITLES = ('Capturing', 'Processing', 'Uploading', 'Upload complete', 'Saved', 'Last action failed')
 
 
 def _published_glyphs(ctx):
@@ -948,17 +948,17 @@ def local_failure_attention(ctx):
     else:
         ctx.note('failure badge had already timed out before the first frame')
     _menu(ctx)
-    _node(ctx, 'Local save needs attention', 'menu item')
+    _node(ctx, 'Local save failed', 'menu item')
     _frame(ctx, 'attention-row')
     fixture.retry()
     retried = _settled(ctx, fixture.state)
     ctx.expect(retried['id'] == original and all(i['local']['status'] == 'saved' for i in retried['items']), 'retry retains operation and saves each item')
-    _node(ctx, 'Local save needs attention', 'menu item')
-    _press(ctx, 'Local save needs attention', 'menu item')
+    _node(ctx, 'Local save failed', 'menu item')
+    _press(ctx, 'Local save failed', 'menu item')
     ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1, 'attention opens local-copy settings')
     _menu(ctx)
     try:
-        ctx.expect(not _nodes(ctx, 'Local save needs attention', 'menu item'), 'attention click clears latch')
+        ctx.expect(not _nodes(ctx, 'Local save failed', 'menu item'), 'attention click clears latch')
         _frame(ctx, 'after')
         ctx.review('Compare the panel danger glyph and badge with idle')
     finally:
@@ -1043,7 +1043,7 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
             ctx.expect(notice.get('timeout') == (0 if expected else 10000),
                        'action banner timeout agrees with desktop policy')
         _action(ctx, notice, 'save-diagnostics')
-        result = _notice(ctx, 'put.gd — diagnostics not saved' if denied else 'put.gd — diagnostics saved')
+        result = _notice(ctx, 'Diagnostics not saved' if denied else 'Diagnostics saved')
         if denied:
             _drawn_notice(ctx, result)
         else:
@@ -1091,7 +1091,7 @@ def diagnostics_not_saved(ctx):
 @recipe('notification.recording-stopped', desktop_drawn=True)
 def recording_stopped(ctx):
     fixture = ctx.fixture('recording-budget-stop')
-    notice = _notice(ctx, 'put.gd — recording stopped', body='Largest file')
+    notice = _notice(ctx, 'Recording stopped', body='Largest file')
     _drawn_notice(ctx, notice)
     state = ctx.call('recording.inspect', {'id': fixture.recording_id})
     ctx.expect(state['state'] == 'reviewing' and state.get('stopReason') == 'budget',
@@ -1102,7 +1102,7 @@ def recording_stopped(ctx):
 @recipe('notification.incomplete-uploads', desktop_drawn=True, timeout=300)
 def incomplete_uploads(ctx):
     fixture = ctx.fixture('upload-incomplete')
-    notice = _notice(ctx, 'put.gd — incomplete uploads left')
+    notice = _notice(ctx, 'Incomplete uploads left')
     _drawn_notice(ctx, notice)
     state = ctx.call('operation.inspect', {'id': fixture.operationId})
     ctx.expect(state['state'] in ('failed', 'partial'), 'multipart failure retained its exact operation')
@@ -1149,8 +1149,8 @@ def idle(ctx):
                     and min(rect[2:]) > 0):
                 names.add(node.get('name'))
         ctx.expect('Cancel upload' not in names, 'idle menu has no cancel-upload row')
-        ctx.expect(not names.intersection({'Local save needs attention', 'Destination needs attention',
-                   'Capture needs attention', 'Action needs attention'}), 'idle menu has no attention latch')
+        ctx.expect(not names.intersection({'Local save failed', 'Destination error',
+                   'Capture failed', 'Action failed'}), 'idle menu has no attention latch')
         _frame(ctx, 'after')
         ctx.review('Saved panel frame needs glyph/tint review; menu metadata cannot establish icon pixels')
     finally:
@@ -1484,7 +1484,7 @@ def action_rejected(ctx):
 def upload_failed_notice(ctx):
     failed = ctx.fixture('tray-failed')
     ctx.expect(failed.state['state'] in ('failed', 'partial'), 'loopback write fault fails the owned upload')
-    notice = _notice(ctx, 'Completed with a problem', body='Upload failed')
+    notice = _notice(ctx, 'Finished with errors', body='Upload failed')
     ctx.expect(bool(notice.get('body')), 'failure notice includes a reason')
     _drawn_notice(ctx, notice)
     _frame(ctx, 'failed-upload')

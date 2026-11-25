@@ -152,13 +152,13 @@ QString HistoryModel::remoteStateText(const QJsonObject& r){
  // #1759: its destination is gone from Settings; that, not a deletion needing attention, is its state.
  for(const auto& value:std::as_const(files))if(value.toObject()["destinationRemoved"].toBool())return QStringLiteral("Destination removed");
  static const QList<std::tuple<QString,QString,QString>> outcomes{
-  {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote outcome needs inspection"},{"remoteStatus","changed","Remote file changed"},
+  {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote status unknown"},{"remoteStatus","changed","Remote file changed"},
   {"remoteStatus","deleting","Deleting from destination"},{"remoteStatus","pending","Waiting for deletion"},
   {"remoteStatus","removed","Deleted from destination"},{"remoteStatus","already_missing","Deleted from destination"},
-  {"shareStatus","failed","Sharing failed"},{"shareStatus","unfinished","Share link not finished"},{"shareStatus","unknown","Sharing outcome needs inspection"},{"shareStatus","changed","Share link changed"},
+  {"shareStatus","failed","Sharing failed"},{"shareStatus","unfinished","Share link not finished"},{"shareStatus","unknown","Share link status unknown"},{"shareStatus","changed","Share link changed"},
   {"shareStatus","pending","Creating share link"},{"shareStatus","revoked","Link revoked"},
-  {"remoteStatus","hidden_version_retained","Hidden; original version remains"},{"remoteStatus","version_retained","Original version retained"},
-  {"remoteStatus","unsupported_safe_removal","Safe removal unavailable"},{"remoteStatus","superseded","Replaced by a newer upload"}};
+  {"remoteStatus","hidden_version_retained","Hidden (old version still stored)"},{"remoteStatus","version_retained","Old version still stored"},
+  {"remoteStatus","unsupported_safe_removal","Safe delete unavailable"},{"remoteStatus","superseded","Replaced by newer upload"}};
  QList<std::pair<QString,QString>> states;for(const auto& value:std::as_const(files)){const auto file=value.toObject();
   // A wanted link not confirmed or not yet made reads the same before and after Inspect link (#1496).
   states.append({file["remoteStatus"].toString(),file["linkFinishable"].toBool()?QStringLiteral("unfinished"):file["shareStatus"].toString()});}
@@ -175,52 +175,52 @@ QString HistoryModel::statusText(const QJsonObject& r){
  }const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
   if(op["action"]=="record"){
-   if(phase=="preparing")return "Setting up the recording…";
+   if(phase=="preparing")return "Setting up recording…";
    if(phase=="ready")return "Ready to record";
    if(phase=="recording")return "Recording";
    if(phase=="paused")return "Recording paused";
-   if(phase=="stopping")return "Stopping the recording…";
+   if(phase=="stopping")return "Stopping recording…";
    if(phase=="reviewing")return "Review recording";
-   if(phase=="exporting")return "Saving a recording copy…";
+   if(phase=="exporting")return "Saving recording copy…";
    if(phase=="encoding")return "Encoding recording…";
   }
   // A retry with every upload done only finishes links (#1496).
   {const auto items=op["items"].toArray();bool linksOnly=!items.isEmpty();for(const auto& v:items)linksOnly&=terminalUpload(v.toObject()["uploadStatus"].toString());
    if(linksOnly&&QStringList{"queued","preflight","sharing"}.contains(phase))return "Creating share link…";}
   if(phase=="queued")return "Waiting to upload…";
-  if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
+  if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
-  if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":op["action"]=="files"?"Copying the files…":"Selecting a capture…";
+  if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading clipboard…":op["action"]=="files"?"Copying files…":"Capturing…";
   if(phase=="uploading"){
    // Batch files upload side by side (#28): say how many run, wait, finished or stopped.
    QString files;const auto items=op["items"].toArray();
    if(items.size()>1){int running=0,waiting=0,done=0,failed=0,cancelled=0;
     for(const auto& value:items){const auto item=value.toObject();const auto status=item["uploadStatus"].toString(),itemPhase=item["phase"].toString();
      if(status=="cancelled")++cancelled;else if(status=="failed"||status=="unknown")++failed;else if(QStringList{"uploaded","skipped","conflict"}.contains(status))++done;else if(itemPhase=="queued")++waiting;else if(status=="uploading")++running;}
-    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 canceled").arg(cancelled);
+    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 cancelled").arg(cancelled);
     if(!parts.isEmpty())files=" · "+parts.join(", ");}
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
-  if(phase=="preflight")return "Checking the destination…";
+  if(phase=="preflight")return "Checking destination…";
   if(phase=="saving_local")return "Saving locally…";
   if(phase=="checking")return "Checking for sensitive text…";
-  if(phase=="sensitive_text_found")return "Sensitive text found · Waiting for your decision";
+  if(phase=="sensitive_text_found")return "Review before uploading";
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();
  const auto remote=remoteStateText(r);if(!remote.isEmpty())return remote;
  if(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)&&!localSaveFailed(r))return "Saved previously · Local file unavailable";
- if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
+ if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed)"):QString("Saved locally");
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial"){
   message.replace(" Try again.","").replace(" Try again","");message=message.trimmed();while(!message.isEmpty()&&QStringLiteral(".!?…").contains(message.back()))message.chop(1);
   auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=localCopyUnavailable(r)?" · Saved previously · Local file unavailable":" · Saved locally";return text;
  }
- if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Canceled";
- if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Couldn't copy link. Copy it again.";
+ if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Cancelled";
+ if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Couldn't copy link";
  // The automatic copy was refused because the clipboard moved on (#473); Copy link is the way back.
- if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="suppressed")return "Uploaded · Link not copied (clipboard changed). Copy it again.";
+ if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="suppressed")return "Uploaded · Link not copied (clipboard changed)";
  if(r["uploadStatus"]=="uploaded")return op["copyStatus"]=="copied"?"Uploaded · Shared link":"Uploaded";
- if(r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")return op["copyStatus"]=="copied"?"Saved locally · Copied to clipboard":op["copyStatus"]=="suppressed"?"Saved locally · Not copied (clipboard changed). Copy it again.":"Saved locally";
+ if(r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")return op["copyStatus"]=="copied"?"Saved locally · Copied to clipboard":op["copyStatus"]=="suppressed"?"Saved locally · Not copied (clipboard changed)":"Saved locally";
  return "Capture complete";
 }
 QVariant HistoryModel::data(const QModelIndex& i,int role)const{

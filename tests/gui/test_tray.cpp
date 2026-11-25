@@ -113,15 +113,15 @@ private slots:
   const auto item=[](const QString& upload,const QString& share,const QString& errorCode={},const QString& intent={}){
    return QJsonObject{{"uploadStatus",upload},{"shareStatus",share},{"shareIntent",intent},{"error",errorCode.isEmpty()?QJsonObject{}:QJsonObject{{"code",errorCode},{"message","Synthetic"}}}};};
   // A link still wanted names History's one-click Finish share link, or Retry upload while a file still needs its upload (#1496).
-  QTest::newRow("wanted link unconfirmed")<<QJsonArray{item("uploaded","unknown",{},"create")}<<"Uploaded, but the share link could not be confirmed. Use Finish share link in History.";
-  QTest::newRow("wanted link not made after inspection")<<QJsonArray{item("uploaded","private",{},"create")}<<"Uploaded, but the share link was not made. Use Finish share link in History.";
-  {auto deleted=item("uploaded","unknown",{},"create");deleted["remoteStatus"]="removed";QTest::newRow("wanted link of a deleted file")<<QJsonArray{deleted}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";}
-  QTest::newRow("wanted link with a failed upload")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","unknown",{},"create")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link could not be confirmed. Use Retry upload in History.";
-  QTest::newRow("link unknown")<<QJsonArray{item("uploaded","unknown")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
-  QTest::newRow("link changed")<<QJsonArray{item("uploaded","changed")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
-  QTest::newRow("link failed")<<QJsonArray{item("uploaded","failed","permission_denied")}<<"Uploaded, but the share link was not made: access denied by the destination. Use Create share link in History.";
-  QTest::newRow("batch, one link")<<QJsonArray{item("uploaded","shared"),item("uploaded","unknown")}<<"2 files uploaded, but 1 share link could not be confirmed. Use Inspect link in History.";
-  QTest::newRow("batch, upload and link")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","failed")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link was not made. Use Create share link in History.";
+  QTest::newRow("wanted link unconfirmed")<<QJsonArray{item("uploaded","unknown",{},"create")}<<"Uploaded, but the share link couldn't be confirmed. Select Finish share link in History.";
+  QTest::newRow("wanted link not made after inspection")<<QJsonArray{item("uploaded","private",{},"create")}<<"Uploaded, but the share link couldn't be created. Select Finish share link in History.";
+  {auto deleted=item("uploaded","unknown",{},"create");deleted["remoteStatus"]="removed";QTest::newRow("wanted link of a deleted file")<<QJsonArray{deleted}<<"Uploaded, but the share link couldn't be confirmed. Select Inspect link in History.";}
+  QTest::newRow("wanted link with a failed upload")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","unknown",{},"create")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link couldn't be confirmed. Select Retry upload in History.";
+  QTest::newRow("link unknown")<<QJsonArray{item("uploaded","unknown")}<<"Uploaded, but the share link couldn't be confirmed. Select Inspect link in History.";
+  QTest::newRow("link changed")<<QJsonArray{item("uploaded","changed")}<<"Uploaded, but the share link couldn't be confirmed. Select Inspect link in History.";
+  QTest::newRow("link failed")<<QJsonArray{item("uploaded","failed","permission_denied")}<<"Uploaded, but the share link couldn't be created: access denied by the destination. Select Create share link in History.";
+  QTest::newRow("batch, one link")<<QJsonArray{item("uploaded","shared"),item("uploaded","unknown")}<<"2 files uploaded, but 1 share link couldn't be confirmed. Select Inspect link in History.";
+  QTest::newRow("batch, upload and link")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","failed")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link couldn't be created. Select Create share link in History.";
   QTest::newRow("failed upload, unchanged")<<QJsonArray{item("failed","not_requested","permission_denied")}<<"Upload failed: access denied by the destination.";
  }
  void uploadedFilesWithoutTheirLinkAreNotFailedUploads() {
@@ -135,13 +135,13 @@ private slots:
   QJsonObject covered;covered["key"]=2;covered["card"]=1;
   QJsonObject sensitive;sensitive["found"]=QJsonObject();sensitive["complete"]=true;sensitive["covered"]=covered;
   QJsonObject operation;operation["state"]="completed";operation["copyStatus"]="copied";operation["items"]=QJsonArray{item};operation["sensitive"]=sensitive;
-  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Covered 1 card number and 2 keys or tokens. Link copied to the clipboard."));
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Covered 1 card number and 2 keys or tokens. Link copied to clipboard."));
   sensitive["complete"]=false;sensitive["reason"]="truncated";operation["sensitive"]=sensitive;
-  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Link copied to the clipboard."));
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Link copied to clipboard."));
   // A failed upload still says the original wasn't kept.
   QJsonObject original;original["status"]="failed";sensitive["original"]=original;operation["sensitive"]=sensitive;operation["state"]="failed";
   item["uploadStatus"]="failed";operation["items"]=QJsonArray{item};
-  QVERIFY(TrayController::completionMessage(operation,false).contains("The original before covering couldn't be saved locally."));
+  QVERIFY(TrayController::completionMessage(operation,false).contains("Couldn't save the unredacted original locally."));
  }
 };
 

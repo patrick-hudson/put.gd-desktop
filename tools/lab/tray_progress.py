@@ -37,12 +37,12 @@ PROCESSING = 'Processing'
 UPLOADING = 'Uploading'
 COMPLETE = 'Upload complete'
 SAVED = 'Saved'
-ATTENTION = 'Needs attention'
+ATTENTION = 'Last action failed'
 WORKING = (CAPTURING, PROCESSING, UPLOADING)
 DONE = (COMPLETE, SAVED)
-REVIEW = ' — open the tray menu to review'
+REVIEW = '. Open the tray menu to review.'
 # TrayController::latchFailure: the attention item each runner failure latches.
-ATTENTION_LABELS = {'local-save': ('Local save needs attention',), 'proton-busy': ('Failed uploads',)}
+ATTENTION_LABELS = {'local-save': ('Local save failed',), 'proton-busy': ('Failed uploads',)}
 # A latched failure must survive at least this long without being opened.
 LATCH_SECONDS = 3
 # The failure badge leaves the icon after this long (TrayController::failureMs); the menu row stays.
@@ -283,7 +283,7 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     and bounded independently against observed bytes and the acquired file size.
 
     attention lists the labels a runner-created failure may latch. The resident
-    shows "Needs attention" with the error glyph for eight seconds, or until new
+    shows "Last action failed" with the error glyph for eight seconds, or until new
     work starts or the tray menu's attention item is opened
     (TrayController::latchFailure); without a runner-created failure that state is fatal.
     The working stages are Capturing (capture tint), Processing (process tint) and
@@ -349,7 +349,7 @@ def check_activity(lines, records, provider, result):
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
     for row_index, line in enumerate(lines):
-        overflow = re.fullmatch(r'([0-9]+) more active operations', line)
+        overflow = re.fullmatch(r'([0-9]+) more in progress', line)
         if overflow:
             observed(any(record.get('activeCount') == int(overflow[1]) + 3 for record in records),
                     'Tray overflow count differs from observed active operations')

@@ -405,9 +405,9 @@ private slots:
   tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QVERIFY(pixels()!=failed);QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
   // The live block shows the recording's phase, the upload and the failure together;
   // Record screen keeps its label and Show recording raises the session.
-  traymenu::State state;state.upload="Uploading a file";state.uploads=1;state.attention=true;state.recording="Recording paused";state.attentionLabel="Local save needs attention";tray.setMenu(state);
+  traymenu::State state;state.upload="Uploading a file";state.uploads=1;state.attention=true;state.recording="Recording paused";state.attentionLabel="Local save failed";tray.setMenu(state);
   auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
-  QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QCOMPARE(property(16,"label").toString(),QString("Record screen"));QCOMPARE(property(42,"label").toString(),QString("Recording paused"));QVERIFY(!property(42,"enabled").toBool());
+  QCOMPARE(property(22,"label").toString(),QString("Local save failed"));QCOMPARE(property(16,"label").toString(),QString("Record screen"));QCOMPARE(property(42,"label").toString(),QString("Recording paused"));QVERIFY(!property(42,"enabled").toBool());
   for(const int id:{42,43,19,20,22,21})QVERIFY2(property(id,"visible").toBool(),qPrintable(QString::number(id)));
   QSignalSpy actions(&tray,&NativeTray::actionActivated);click(42);PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(43);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("show-recording"));
   tray.setMenu({});for(const int id:{42,43,19,20,22,21})QVERIFY(!property(id,"visible").toBool());click(43);PUTGD_COMPARE_STEADY(actions.size(),1,30);
@@ -665,7 +665,7 @@ private slots:
    QVERIFY(peer.unregisterService("org.freedesktop.Notifications")); QVERIFY(peer.registerService("org.freedesktop.Notifications"));
    PUTGD_TRY_VERIFY(notifications.serverQueries > queries); putgd::test::settle(50);
    const auto sent = notifications.values.size();
-   tray.notify("put.gd — diagnostics saved", "Synthetic package", false, {}, {{"show-in-folder", "Show in folder", "/synthetic.zip"}});
+   tray.notify("Diagnostics saved", "Synthetic package", false, {}, {{"show-in-folder", "Show in folder", "/synthetic.zip"}});
    PUTGD_TRY_COMPARE(notifications.values.size(), sent + 1); QCOMPARE(notifications.values.last()["timeout"].toInt(), timeout);
    QCOMPARE(notifications.values.last()["hints"].toMap().contains("resident"), timeout == 0);
    tray.notify("put.gd — failed", "Synthetic failure", true); PUTGD_TRY_COMPARE(notifications.values.size(), sent + 2);
@@ -726,7 +726,7 @@ private slots:
   TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());
   emit operations.sensitivePromptShown("synthetic-operation");
   PUTGD_TRY_COMPARE(notifications.values.size(),1);
-  QCOMPARE(notifications.values[0]["body"].toString(),QString("A capture is waiting for your decision"));
+  QCOMPARE(notifications.values[0]["body"].toString(),QString("A capture needs review before it uploads."));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"show-sensitive","Show"}));
  }
  void failedUploadOffersDiagnosticsAndShowInFolder() {
@@ -744,7 +744,7 @@ private slots:
   const auto package=directory.filePath("putgd-diagnostics-20261020-010203Z.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
   QStringList requested;controller.setDiagnosticsSaver([&](const QString& id,JsonReply reply){requested.append(id);reply({},{{"path",package},{"bytes",2048}});});
   QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
-  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(notifications.values[0]["summary"].toString()=="Completed with a problem",qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(notifications.values[0]["summary"].toString()=="Finished with errors",qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
   // #152: the body names the failure, not a clipboard code; #151: it stays until used.
   QVERIFY2(notifications.values[0]["body"].toString().startsWith("Upload failed: "),qPrintable(notifications.values[0]["body"].toString()));
@@ -752,7 +752,7 @@ private slots:
   // A click on the body uses the resident notification up too: put.gd closes it.
   notifications.closed.clear();emit notifications.ActionInvoked(1,"default");putgd::test::settle(50);PUTGD_TRY_VERIFY(requested.isEmpty());PUTGD_TRY_COMPARE(notifications.closed,QList<uint>{1});
   emit notifications.ActionInvoked(1,"save-diagnostics");PUTGD_TRY_COMPARE(requested,QStringList{id});QCOMPARE(notifications.closed,QList<uint>{1});
-  PUTGD_TRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("put.gd — diagnostics saved"));
+  PUTGD_TRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("Diagnostics saved"));
   QVERIFY(notifications.values[1]["body"].toString().contains("putgd-diagnostics-20261020-010203Z.zip"));QVERIFY(notifications.values[1]["body"].toString().contains("Nothing was uploaded"));
   QCOMPARE(notifications.values[1]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
   // The action is spent once used.
@@ -772,7 +772,7 @@ private slots:
   controller.saveDiagnostics(id);PUTGD_TRY_COMPARE(notifications.values.size(),3);QCOMPARE(notifications.values[2]["body"].toString(),QString("Synthetic folder failure"));QVERIFY(notifications.values[2]["actions"].toStringList().isEmpty());
   // A package the dialog also uploaded (#158) says where it went, or why it didn't.
   controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"link","https://example.invalid/p.zip"},{"linkCopied",true},{"upload",QJsonObject{{"label","Synthetic S3"}}}});
-  PUTGD_TRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3; link copied."),qPrintable(notifications.values[3]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3. Link copied."),qPrintable(notifications.values[3]["body"].toString()));
   controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"uploadError",QJsonObject{{"code","s3_permission_denied"},{"message","S3 denied the request (HTTP 403)."}}}});
   PUTGD_TRY_COMPARE(notifications.values.size(),5);QVERIFY2(notifications.values[4]["body"].toString().endsWith(". Not uploaded: access denied by the destination."),qPrintable(notifications.values[4]["body"].toString()));
   // #223: a package saved under a name the caller chose opens from its button too;
@@ -786,7 +786,7 @@ private slots:
   // A package removed before the click says so instead of doing nothing.
   controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});PUTGD_TRY_COMPARE(notifications.values.size(),7);QVERIFY(QFile::remove(custom));
   emit notifications.ActionInvoked(7,"show-in-folder");PUTGD_TRY_COMPARE(notifications.values.size(),8);
-  QCOMPARE(notifications.values[7]["summary"].toString(),QString("put.gd — Show in folder"));QCOMPARE(notifications.values[7]["body"].toString(),QString("The diagnostics package is no longer there"));
+  QCOMPARE(notifications.values[7]["summary"].toString(),QString("Show in folder failed"));QCOMPARE(notifications.values[7]["body"].toString(),QString("The diagnostics package is no longer there"));
   putgd::test::settle(50);PUTGD_TRY_COMPARE(files.shown.size(),3);PUTGD_TRY_COMPARE(opened().size(),1);
  }
  void selfStoppedRecordingAndKeptUploadsAreAnnounced() {
@@ -795,10 +795,10 @@ private slots:
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
   emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Recording stopped at 0:03: the disk ran out of room."}});
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — recording stopped"));
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("Recording stopped"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Recording stopped at 0:03: the disk ran out of room."));
   emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("Incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {

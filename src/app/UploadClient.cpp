@@ -156,7 +156,7 @@ void notify(const QString& title,const QString& body,bool failure){
  QTimer::singleShot(noticeHoldMs,&loop,&QEventLoop::quit);
  loop.exec();
 }
-void refuse(const QString& body){notify(QStringLiteral("put.gd — nothing uploaded"),body,true);}
+void refuse(const QString& body){notify(QStringLiteral("Upload didn't start"),body,true);}
 
 // Leaving the file manager's .service: re-exec under a scope of our own. The
 // re-executed client reports that it started through an inherited pipe, so a
@@ -535,17 +535,17 @@ int run(int argc,char** argv){
    return names.join(", ")+(items.size()>8?QStringLiteral(" and %1 more").arg(items.size()-8):QString());
   };
   auto others=resolution.unresolved;for(const auto& item:resolution.needingGio)others.removeOne(item);
-  const auto noPath=QStringLiteral("These items have no local path, so put.gd can't read them: %1").arg(listed(others));
+  const auto noPath=QStringLiteral("Couldn't read these items because they have no local path: %1").arg(listed(others));
   if(resolution.needingGio.isEmpty())refuse(noPath);
-  else refuse(QStringLiteral("put.gd couldn't resolve these locations because gio is unavailable on this system: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
+  else refuse(QStringLiteral("Couldn't resolve these locations because gio isn't installed: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};
  if(QJsonDocument(params).toJson(QJsonDocument::Compact).size()>requestBudget){
   refuse(QStringLiteral("Too many items were selected at once (%1). Select fewer, or upload their folder instead.").arg(resolution.paths.size()));return 1;
  }
- if(appImage&&(appImagePath.isEmpty()||!QFileInfo(appImagePath).isFile())){refuse(QStringLiteral("The put.gd AppImage could not be found. Start put.gd once, then try again."));return 1;}
- if(!ensureResident(appImage,appImagePath)){refuse(QStringLiteral("put.gd did not start. Start put.gd from your applications menu, then try again."));return 1;}
+ if(appImage&&(appImagePath.isEmpty()||!QFileInfo(appImagePath).isFile())){refuse(QStringLiteral("Couldn't find the put.gd AppImage. Start put.gd once, then try again."));return 1;}
+ if(!ensureResident(appImage,appImagePath)){refuse(QStringLiteral("put.gd didn't start. Open it from your applications menu, then try again."));return 1;}
  // initializing is a refusal before any operation exists, so it is safe to resend.
  const QDeadlineTimer ready(startDeadlineMs);
  Error error;QJsonObject accepted;
@@ -556,14 +556,14 @@ int run(int argc,char** argv){
  }
  if(error){
   const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
-  if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
+  if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Select Quit put.gd in the tray menu or the main window, or log out and back in, then try again."));
   else if(!fuseGone.isEmpty()){
    // The resident's own list still reports whatever else this selection had wrong.
    const bool others=error.details["files"].toArray().size()>fuseGone.size();
-   refuse(QStringLiteral("These network items can't be reached at their local path: the share was disconnected, or gvfsd-fuse stopped: %1. Reconnect it, or log out and in, then try again.%2").arg(fuseGone.mid(0,8).join(", "),others?"\n"+error.message:QString()));
+   refuse(QStringLiteral("Couldn't reach these network items (%1). The share may be disconnected, or gvfsd-fuse stopped. Reconnect it, or log out and back in, then try again.%2").arg(fuseGone.mid(0,8).join(", "),others?"\n"+error.message:QString()));
   }
-  else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("put.gd — upload uncertain"),QStringLiteral("put.gd didn't confirm the upload. Check put.gd's History before trying again."),true);
-  else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't answering. Try again in a moment."));
+  else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("Upload status unknown"),QStringLiteral("put.gd didn't confirm the upload. Check History before trying again."),true);
+  else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't responding. Try again in a moment."));
   else if(error.code=="initializing")refuse(QStringLiteral("put.gd is still starting. Try again in a moment."));
   else refuse(error.message.isEmpty()?error.code:error.message);
   return 1;
@@ -575,14 +575,14 @@ int run(int argc,char** argv){
   Error inspectError;const auto operation=request("operation.inspect",{{"id",id}},inspectError);
   if(inspectError){
    if(inspectError.code=="client_unavailable"||inspectError.code=="client_timeout"||inspectError.code=="operation_not_found")
-    refuse(QStringLiteral("put.gd stopped before it had a copy of the files. Check its History, then try again."));
+    refuse(QStringLiteral("put.gd stopped before copying the files. Check History, then try again."));
    else refuse(inspectError.message.isEmpty()?inspectError.code:inspectError.message);
    return 1;
   }
   const auto state=operation["state"].toString();
   if(state=="accepted"||state=="acquiring"){sleepMs(pollIntervalMs);continue;}
   // The resident announces a failed operation itself; an interrupted one it doesn't.
-  if(state=="interrupted"){refuse(QStringLiteral("put.gd stopped before it had a copy of the files. Check its History, then try again."));return 1;}
+  if(state=="interrupted"){refuse(QStringLiteral("put.gd stopped before copying the files. Check History, then try again."));return 1;}
   return state=="failed"||state=="cancelled"?1:0;
  }
 }

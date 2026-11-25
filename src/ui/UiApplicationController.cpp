@@ -47,7 +47,7 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
   // Keep editing disabled until the resident acknowledges cancellation.
   if(closeSequence_.isEmpty()){
    if(closing_){closing_->setEnabled(true);closing_->show();openViews_.insert(closing_);}
-   closing_.clear();notify({"ui_checkpoint_timeout","Window state is still being saved. Your draft is open; try closing it again.",{}});return;
+   closing_.clear();notify({"ui_checkpoint_timeout","Still saving window state. Your draft is open. Try closing the window again.",{}});return;
   }
   closeCancelSequence_=control_.send("closeCancel",{{"replyTo",closeSequence_}});
  });
@@ -67,7 +67,7 @@ QWidget* UiApplicationController::view(const QString& name){
    main_=std::make_unique<MainWindow>(session_);
    connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
     connect(settings,&SettingsWindow::appearancePreview,this,[this](const QString& theme){themePreview_=theme;followAppearance();});
-    if(saved_.contains("settings")&&!settings->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Saved settings draft could not be restored.",{}});
+    if(saved_.contains("settings")&&!settings->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Couldn't restore your saved settings draft.",{}});
    });
    // Pending drafts and destination setup keep their existing eager lifecycle.
    // Clean retained settings can wait until navigation or an agent command;
@@ -76,7 +76,7 @@ QWidget* UiApplicationController::view(const QString& name){
    bool active=settingsState["dirty"].toBool()||settingsState["conflict"].toBool()||settingsState["autosaveBlocked"].toBool()||!settingsState["setupJobs"].toArray().isEmpty()||!settingsState["provisionalProfile"].toObject().isEmpty();
    for(const auto& editor:settingsState["profileEditors"].toArray())active|=editor.toObject()["providers"].toObject().size()>1;
    if(active)main_->settings();
-   if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Saved history state could not be restored.",{}});
+   if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Couldn't restore your saved History state.",{}});
    if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject(),name=="editFile");
    main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
    // A Wayland window may never report a move: checkpoint once it exists, so
@@ -226,7 +226,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   if(closeCancelSequence_.isEmpty()||payload["replyTo"]!=closeCancelSequence_)return;
   closeSequence_.clear();closeCancelSequence_.clear();closeDeadline_.stop();
   if(closing_){closing_->setEnabled(true);closing_->show();openViews_.insert(closing_);}
-  closing_.clear();notify({"ui_close_cancelled","Closing took too long. Your draft is still open; try closing it again.",{}});return;
+  closing_.clear();notify({"ui_close_cancelled","Closing took too long. Your draft is still open. Try closing the window again.",{}});return;
  }
  if(type=="closeAccepted"||type=="closeRejected"){
   if(closeSequence_.isEmpty()||payload["replyTo"]!=closeSequence_)return;
@@ -238,7 +238,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   if(closing_){closing_->setEnabled(true);closing_->show();openViews_.insert(closing_);}
   closing_.clear();
   const auto error=payload["error"].toObject();
-  notify({error["code"].toString(),error["message"].toString("The draft could not be retained. Keep this window open."),{}});
+  notify({error["code"].toString(),error["message"].toString("Couldn't save your draft. Keep this window open."),{}});
  }
 }
 bool UiApplicationController::eventFilter(QObject* object,QEvent* event){
@@ -289,7 +289,7 @@ void UiApplicationController::prepareAction(){
  // Clipboard and file sources capture nothing, so windows stay in place.
  const bool screen=pendingAction_!="clipboard"&&!pendingOptions_.contains("source");
  if(screen&&main_&&main_->existingSettings()&&main_->existingSettings()->hasCredentialInputs()){
-  pendingAction_.clear();notify({"credentials_not_stored","Store or clear unfinished credentials in Destinations before taking a screen capture.",{}});return;
+  pendingAction_.clear();notify({"credentials_not_stored","Save or clear unfinished credentials in Destinations before taking a screen capture.",{}});return;
  }
  if(const auto error=validateUiState(snapshot());error){pendingAction_.clear();notify(error);return;}
  if(!screen){invokeAction();return;}

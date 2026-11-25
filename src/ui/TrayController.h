@@ -166,7 +166,7 @@ private:
  void latchFailure(const Error&,const QJsonObject& operation = {});
  // Sets shown_ and records the change for diagnostics.
  void showStage(Activity stage);
- QString attentionLabel_="Action needs attention",attentionView_="history",attentionOperation_;
+ QString attentionLabel_="Action failed",attentionView_="history",attentionOperation_;
  // errorPending_ keeps the menu's attention row until it is reviewed; the icon's
  // failure badge is failureShown_, which clears after failureMs or with new work.
  bool errorPending_=false,failureShown_=false,completeShown_=false,completeUploaded_=false;
