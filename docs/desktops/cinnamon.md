@@ -103,7 +103,8 @@ serves every X11 session, Plasma X11 included. The design is in
 ## Scrolling capture
 
 Since #1515 a capture waits for you to scroll and injects nothing; the XTest wheel below is
-what **Auto-scroll** uses. `ximagesrc` grabs the region at 30 frames a second. Escape is Done.
+what **Auto-scroll** uses. `ximagesrc` grabs the region at 60 frames a second, and drops to 30
+for the rest of the capture when the grab or the tracker cannot keep up (#2064). Escape is Done.
 
 Scrolling capture ([design](../design/scroll-capture.md)) uses `ximagesrc` on the region with
 `show-pointer=false` for its frames and XTest for the wheel, and serves every X11 session,
