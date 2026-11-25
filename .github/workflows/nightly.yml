@@ -308,8 +308,9 @@ jobs:
     needs: [plan, images]
     if: needs.plan.outputs.skip == 'false'
     runs-on: ubuntu-24.04
-    # Normally 25-40 minutes, more when the instrumented QtCore is rebuilt.
-    timeout-minutes: 120
+    # Normally 9-11 minutes (about 6 of them testing), about 8 more when the
+    # instrumented QtCore is rebuilt.
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: read  # the CI image
