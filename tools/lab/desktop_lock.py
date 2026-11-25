@@ -108,6 +108,10 @@ TMP_ROOT = '/tmp'
 TMP_ITEM_BYTES = 256 * 2**20
 TMP_NOTE_BYTES = 2**30
 TMP_SCAN_SECONDS = 10
+# The builder's own standing services, as systemd user units: what runs in their cgroups is host
+# activity, never something a session left. d69's package signer runs every 10 minutes from
+# putgd-signer.timer; its process inherits the user manager's DISPLAY and names putgd (#2015).
+HOST_SERVICES = ('putgd-signer.service',)
 LEFTOVER_PATHS = ('.local/share/applications/*putgd*.desktop',
                   '.local/share/gnome-shell/extensions/putgd@put.gd',
                   '.local/share/putgd', '.cache/putgd', '.config/putgd')
@@ -242,6 +246,24 @@ def process_orphaned(pid):
         return False
 
 
+def process_cgroup(pid):
+    """Return PID's cgroup v2 path, or None when it can't be read (or the process has exited)."""
+    try:
+        lines = Path(f'/proc/{pid}/cgroup').read_text().splitlines()
+    except OSError:
+        return None
+    return next((line[3:] for line in lines if line.startswith('0::')), None)
+
+
+def host_service(path, uid=None):
+    """The HOST_SERVICES unit whose cgroup PATH is, when it is one of this user's own systemd
+    user units (under user@UID.service, in any slice), else None. A unit of that name run in
+    a session scope or another user's manager is not the host's service."""
+    uid = os.getuid() if uid is None else uid
+    match = re.fullmatch(rf'/user\.slice/user-{uid}\.slice/user@{uid}\.service/(?:[^/]+\.slice/)*([^/]+)', path or '')
+    return match.group(1) if match and match.group(1) in HOST_SERVICES else None
+
+
 def started_environment(pid, environment=process_environment, parent=process_parent, depth=8):
     """The environment names of the nearest process up PID's parent chain whose environment can
     be read, None when none can (or that process has exited) before init. A confined helper such as
@@ -348,13 +370,14 @@ def mem_available():
 
 
 def collect_inventory(home, run=execute, own=None, environment=process_environment, orphaned=process_orphaned,
-                      parent=process_parent, tmp=tmp_usage, memory=mem_available):
+                      parent=process_parent, tmp=tmp_usage, memory=mem_available, cgroup=process_cgroup):
     """List what a desktop session can leave on this host: matching processes in the desktop
     session (or that can't be told apart, unless the nearest readable parent shows an SSH
     login), input agents, test patterns and cover players, orphaned lab test X servers, Flatpak instances, user desktop entries, extension copies and
     data, a putgd package, and our large entries in a RAM-backed /tmp. Other matching processes
     without DISPLAY or WAYLAND_DISPLAY are shared SSH work (builds, syncs, collectors), and so is a
-    lab test X server whose test still runs."""
+    lab test X server whose test still runs. Processes in a HOST_SERVICES unit's cgroup are the
+    host's standing activity and are only noted."""
     own = {os.getpid(), os.getppid()} if own is None else own
     items, notes = [], []
 
@@ -365,10 +388,14 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
     code, output = run(['pgrep', '-u', str(os.getuid()), '-af', PROCESS_PATTERN])
     if code is None or code > 1:
         raise LockError('Cleanup check could not run pgrep on this host')
-    shared = []
+    shared, services = [], {}
     for line in output.splitlines():
         pid, _, command = line.strip().partition(' ')
         if not pid.isdigit() or int(pid) in own:
+            continue
+        service = host_service(cgroup(pid))
+        if service:
+            services.setdefault(service, []).append(pid)
             continue
         if LAB_XVFB.match(command):
             if not orphaned(pid):
@@ -393,6 +420,9 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
         notes.append(f'{len(shared)} process(es) outside the desktop session (no DISPLAY or '
                      'WAYLAND_DISPLAY; shared SSH work): ' + ' '.join(shared[:8]) +
                      (' ...' if len(shared) > 8 else ''))
+    for service, pids in services.items():
+        notes.append(f'{len(pids)} process(es) of the host service {service} (standing host activity): ' +
+                     ' '.join(pids[:8]) + (' ...' if len(pids) > 8 else ''))
     code, output = run(['flatpak', 'ps', '--columns=instance,pid,application'])
     if code is None:
         notes.append('flatpak is not installed')
