@@ -1458,12 +1458,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);refreshUploadedCount();});
  // Kept current while Destinations shows: a new upload or a History change counts at once.
  connect(&settings_,&UiSession::statusChanged,this,[this]{if(destinationPage_&&destinationPage_->isVisible())refreshUploadedCount();});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
- connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination — put.gd","Use \""+profileLabel_->text()+"\" as the capture default?\nThis destination hasn't passed a connection test with its current settings.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
+ connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination — put.gd","Use \""+profileLabel_->text()+"\" as the capture default?\nThis destination hasn't passed a connection test with its current settings. Per-action destinations stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
  connect(remove,&QPushButton::clicked,this,[this]{flushTyping();
  // #1759: the confirmation says how many History items went to it (counted when it was selected); their files stay there.
  const auto all=candidate()["profiles"].toArray();const int at=profile_->currentIndex();if(at<0||at>=all.size())return;const auto label=profileLabel_->text();
  const int uploaded=uploadedCounts_.value(all[at].toObject()["id"].toString(),-1);
- const auto files=uploaded<0?QStringLiteral("Files already uploaded stay at the destination."):uploaded==0?QStringLiteral("No History items use this destination."):QStringLiteral("%1 History %2 uploaded here. %3 at the destination, and put.gd can delete %4 again only if you add a destination for the same place.").arg(uploaded).arg(uploaded==1?"item was":"items were",uploaded==1?"Its file stays":"Their files stay",uploaded==1?"it":"them");
+ const auto files=uploaded<0?QStringLiteral("Files already uploaded stay at the destination."):uploaded==0?QStringLiteral("No History items were uploaded to this destination."):QStringLiteral("%1 History %2 uploaded here. %3 at the destination, and put.gd can delete %4 again only if you add a destination for the same place.").arg(uploaded).arg(uploaded==1?"item was":"items were",uploaded==1?"Its file stays":"Their files stay",uploaded==1?"it":"them");
  const auto removing=all[at].toObject()["id"].toString();
  if(davRemoving_!=removing&&!Ui::confirm(this,"Remove destination — put.gd","Remove \""+label+"\" from Settings?\n"+files,"Remove destination",true))return;
  // #1872: a Nextcloud destination's app password is revoked on the server first (SettingsDav.cpp);
@@ -4092,7 +4092,7 @@ QStringList SettingsWindow::draftEdits()const{
 }
 void SettingsWindow::reloadFromFile(){
  const auto edits=draftEdits();
- const QString text="Reload settings from the configuration file?\n\n"+(edits.isEmpty()?QString("No unsaved changes will be lost."):"These unsaved changes will be discarded:\n• "+edits.join("\n• "));
+ const QString text=edits.isEmpty()?QString("Reload settings from the configuration file?"):"Reload settings from the configuration file?\n\nThese unsaved changes will be discarded:\n• "+edits.join("\n• ");
  if(!Ui::confirm(this,"Reload settings from file — put.gd",text,"Reload from file",!edits.isEmpty()))return;
  resetDraft(true);
 }

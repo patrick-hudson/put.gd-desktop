@@ -335,7 +335,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("uiDensity","compact");remove_->setIcon(Ui::icon("remove"));remove_->setProperty("uiIconBase",QSize(20,20));remove_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));remove_->setFixedSize(Ui::scaled(28),Ui::scaled(28));remove_->setToolTip("Remove selected mark (Delete)");Ui::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("uiFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Ui::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new KeyboardHelp(panel);keyboardText->setObjectName("editorKeyboardHelpText");
- const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Shift+drag","Square, circle, 45° line"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"},{"Ctrl+Shift+C","Copy image"}};
+ const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Alt+arrows","Pan canvas"},{"Alt+Shift+arrows","Pan canvas farther"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Shift+drag","Square, circle, 45° line"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"},{"Ctrl+Shift+C","Copy image"}};
  QStringList keyboardSummary;
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Ui::setMono(key);Ui::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);Ui::role(meaning,"secondary");keyboardText->addShortcut(key,meaning);keyboardSummary.append(keys+": "+description);}
  keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
@@ -1124,7 +1124,7 @@ void EditorWindow::requestCancel(){
  if(busy_||savingCopy_||copying_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- const auto text=lastSave_.value("status")=="saved"?QStringLiteral("Discard edits and close?\nYour marks and crop will be lost. Copies you saved stay."):QStringLiteral("Discard edits and close?\nYour marks and crop will be lost.");
+ const auto text=lastSave_.value("status")=="saved"?QStringLiteral("Discard edits and close?\nYour unsaved edits will be lost. Copies you saved stay."):QStringLiteral("Discard edits and close?\nYour unsaved edits will be lost.");
  auto* box=Ui::confirm(this,"Discard edits — put.gd",text,"Discard edits",QStringLiteral("Keep editing"),true);
  auto* keep=box->button(QMessageBox::Cancel);keep->setObjectName("keepEditingConfirm");
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);

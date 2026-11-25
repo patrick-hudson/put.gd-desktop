@@ -175,8 +175,8 @@ QString formatHint(const QString& format, const QString& codec) {
     if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux can't play H.265 links (Safari and Edge can). Use MP4 (H.264) for wider browser support.");
     if (format == "mp4") return QStringLiteral("Recommended for browser sharing.");
     if (format == "webm") return QStringLiteral("VP9 with Opus audio. Plays in most browsers except older Safari.");
-    if (format == "gif") return QStringLiteral("Silent animation, up to 60 s and 1280 px.");
-    return QStringLiteral("Silent animated WebP, up to 60 s and 1280 px.");
+    if (format == "gif") return QStringLiteral("Silent animation, up to 60 s and 1280 px");
+    return QStringLiteral("Silent animated WebP, up to 60 s and 1280 px");
 }
 QString formatLabel(const QString& format, const QString& codec) {
     if (format == "mp4") return codec == "h265" ? QStringLiteral("Smaller video — MP4 (H.265)") : QStringLiteral("Compatible video — MP4 (H.264) · Recommended");

@@ -180,9 +180,9 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  firstRow_=new QHBoxLayout;firstRow_->setContentsMargins(0,0,0,0);firstRow_->setSpacing(space(Space::s));secondRow_=new QHBoxLayout;secondRow_->setContentsMargins(0,0,0,0);secondRow_->setSpacing(space(Space::s));
  divider_=Ui::rule(band_,Qt::Vertical);divider_->setObjectName("commandBandDivider");divider_->setFixedHeight(Ui::scaled(20));
  bandBox_->addLayout(firstRow_);bandBox_->addWidget(divider_,0,Qt::AlignVCenter);bandBox_->addLayout(secondRow_,1);
- const QHash<QString,QString> explanations{{"region","Drag to select a screen region (Esc to cancel). Open its menu for Repeat last region."},{"window","Capture the active app window, including its frame where supported."},{"monitor","Capture the monitor the pointer is on, at its native size."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a screen region to redact, blur, crop, or annotate before uploading. Open its menu, or drop a PNG or JPEG here, to edit an existing image."},{"scroll","Select a scrollable area. Capture stops at the bottom, at the height limit, or when you select Done."},{"record","Select a screen region to record. Stopping opens the review window before uploading."},{"text","Select a screen region and copy the text in it"}};
+ const QHash<QString,QString> explanations{{"region","Drag to select a screen region (Esc to cancel). Open its menu for Repeat last region."},{"window","Capture the active app window, including its frame where supported."},{"monitor","Capture the monitor the pointer is on, at its native size."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a screen region to redact, blur, crop, or annotate before uploading. Open its menu, or drop a PNG or JPEG here, to edit an existing image."},{"scroll","Select a scrollable area. Auto-scroll stops at the bottom. Select Done to finish manually."},{"record","Select a screen region to record. Stopping opens the review window before uploading."},{"text","Select a screen region and copy the text in it"}};
  explanations_=explanations;
- const auto actionHelp=[&]{QStringList help;for(const auto& command:Settings::actionTable())if(!command.barLabel.isEmpty())help<<command.label+": "+explanations.value(command.action);return help.join("\n\n");}();
+ const auto actionHelp=[&]{QStringList help;for(const auto& command:Settings::actionTable())if(!command.barLabel.isEmpty())help<<command.label+": "+explanations.value(command.action);help<<QStringList{"• Each button saves finished Settings edits, then starts its action.","• Screen captures hide this window. Clipboard uploads keep it open.","• Store or clear unfinished credentials before a screen capture.","• Capture delay in the status bar applies to every capture except scrolling capture and recording.","• Settings → Capture sets the destination and Keep a local copy. With neither on, capture actions are unavailable.","• Shared uploads copy a link. Private uploads create none.","• Select the output summary in the status bar to see where each action goes. Results and recovery steps are in History."}.join("\n");return help.join("\n\n");}();
  int group=0;
  for(const auto& command:Settings::actionTable()){
   if(command.barLabel.isEmpty())continue;const auto action=command.action;
@@ -417,8 +417,8 @@ void MainWindow::refreshCommands(){
   if(action==Settings::recordingActionName()&&!phase.isEmpty())description+="\n"+phase;
   button->setAccessibleDescription(description);
   QStringList tip{button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key)};
-  // Copy text has no output line: its tooltip says what it does instead.
-  if(!routed)tip<<explanations_.value(action);else tip<<summary.detail.value(action);
+  // Copy text has no output line: its tooltip says what it does instead. Record screen says what it does above its output line.
+  if(!routed)tip<<explanations_.value(action);else{if(action==Settings::recordingActionName())tip<<explanations_.value(action);tip<<summary.detail.value(action);}
   if(!output.isEmpty())tip<<output;if(!source.isEmpty())tip<<source;
   if(delay>0&&Settings::delayableAction(action))tip<<commandtext::delayTooltip(delay);
   if(action==Settings::recordingActionName()&&!phase.isEmpty())tip<<phase;
