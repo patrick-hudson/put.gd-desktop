@@ -661,7 +661,8 @@ void testMeasureAfterAnUnmeasuredStep() {
     const std::string wrong = c.restless ? std::string() : h.exact(doc.img, 0);
     // 24 steps without the stall: one notch measures, then 4 a step.
     report(fmt("%s on a stream of changes only: measured, and in a few steps", c.what),
-           h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch && h.stats.steps <= 32,
+           h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && h.stats.bottom - h.stats.top == doc.img.h &&
+               std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch && h.stats.steps <= 32,
            (wrong.empty() ? counts(h) : wrong) + fmt(", %lld ms", (long long)h.stats.elapsedMs));
   }
 }
