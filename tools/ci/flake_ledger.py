@@ -22,9 +22,9 @@ import argparse
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 
 LABEL = 'flaky-test'
@@ -129,9 +129,11 @@ class GitHub:
                 return None
         return None
 
-    def lacks_fix(self, issue, sha):
+    def lacks_fix(self, issue, sha, git=None):
         """True when commit `sha` does not contain the fix for closed `issue`: the commit that
-        closed it, or else the default branch's head when it closed. Any doubt is False."""
+        closed it, or else the default branch's head when it closed, read from the first-parent
+        history of the job's full checkout. Any doubt is False."""
+        git = git or (lambda *args: subprocess.run(['git', *args], capture_output=True, text=True, timeout=60))
         try:
             fix = None
             for page in range(1, 11):
@@ -146,14 +148,13 @@ class GitHub:
                 if not closed:
                     return False
                 branch = self.call('GET', f'/repos/{self.repo}')['default_branch']
-                heads = self.call('GET', f'/repos/{self.repo}/commits?' +
-                                  urllib.parse.urlencode({'sha': branch, 'until': closed, 'per_page': 1}))
-                if not heads:
+                head = git('rev-list', '--first-parent', '-1', f'--before={closed}', f'refs/remotes/origin/{branch}')
+                fix = head.stdout.strip() if head.returncode == 0 else ''
+                if not fix:
                     return False
-                fix = heads[0]['sha']
-            status = self.call('GET', f'/repos/{self.repo}/compare/{fix}...{sha}')['status']
-            return status in ('behind', 'diverged')
-        except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, IndexError):
+            # 0: sha contains fix; 1: it does not; anything else (an unknown commit) is doubt.
+            return git('merge-base', '--is-ancestor', fix, sha).returncode == 1
+        except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
             return False  # a missed real flake costs more than a false reopen
 
     def ensure_label(self):

@@ -285,34 +285,35 @@ class Tracker(unittest.TestCase):
         self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), calls)
 
     # A closed issue stays closed when the run's commit lacks the fix it was closed with (#1845:
-    # a branch cut before the fix reopened it); when GitHub can't answer, it reopens as before.
-    def track_closed(self, compare):
+    # a branch cut before the fix reopened it); when the fix can't be resolved, it reopens as before.
+    def track_closed(self, ancestor=1, commit_id=None, timeline=None):
         issue = {'number': 7, 'state': 'closed', 'html_url': 'u', 'closed_at': '2026-11-24T03:22:39Z',
                  'body': '<!-- flake-ledger: gui_flaky -->'}
         github = self.FakeGitHub([issue])
-        plain = github.call
+        plain, self.git_calls = github.call, []
 
         def call(method, path, body=None):
             if method == 'GET' and '/timeline' in path:
-                github.calls.append((method, path, body))
-                return [{'event': 'closed', 'commit_id': None}]
+                if timeline:
+                    timeline()
+                return [{'event': 'closed', 'commit_id': commit_id}]
             if method == 'GET' and path == '/repos/o/r':
                 return {'default_branch': 'nightly'}
-            if method == 'GET' and '/commits?' in path:
-                self.assertIn('until=2026-11-24T03%3A22%3A39Z', path)
-                return [{'sha': 'f1x'}]
-            if method == 'GET' and '/compare/' in path:
-                self.assertEqual(path, '/repos/o/r/compare/f1x...abcdef1234567890')
-                return compare()
             return plain(method, path, body)
+
+        def git(*args):
+            self.git_calls.append(args)
+            out = 'f1x\n' if args[0] == 'rev-list' else ''
+            return subprocess.CompletedProcess(args, ancestor if args[0] == 'merge-base' else 0, out, '')
         github.call = call
+        github.git = git
         return self.track_with(github)
 
     def track_with(self, github):
         original = ledger_tool.GitHub
         ledger_tool.GitHub = lambda repo, token: (setattr(github, 'repo', repo), github)[1]
         github.find_issue = lambda name: original.find_issue(github, name)
-        github.lacks_fix = lambda issue, sha: original.lacks_fix(github, issue, sha)
+        github.lacks_fix = lambda issue, sha: original.lacks_fix(github, issue, sha, getattr(github, 'git', None))
         github.ensure_label = lambda: None
         try:
             ledger_tool.issues(self.flaky_ledger(), 'o/r', 'token')
@@ -321,16 +322,27 @@ class Tracker(unittest.TestCase):
         return github.calls
 
     def test_a_run_without_the_fix_comments_but_does_not_reopen(self):
-        calls = self.track_closed(lambda: {'status': 'behind'})
+        calls = self.track_closed(ancestor=1)
         self.assertNotIn('PATCH', [m for m, _, _ in calls])
         comment = [b for m, p, b in calls if p == '/repos/o/r/issues/7/comments'][0]['body']
         self.assertIn('Not reopened: commit `abcdef123456` does not contain the fix', comment)
+        # The branch head at the close comes from first-parent history, not a commit-date search
+        # that can land on a side branch merged later.
+        self.assertEqual(self.git_calls, [('rev-list', '--first-parent', '-1', '--before=2026-11-24T03:22:39Z',
+                                           'refs/remotes/origin/nightly'),
+                                          ('merge-base', '--is-ancestor', 'f1x', 'abcdef1234567890')])
 
-    def test_a_failed_fix_lookup_reopens_as_before(self):
+    def test_a_run_with_the_fix_reopens(self):
+        calls = self.track_closed(ancestor=0, commit_id='c105e')
+        self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), calls)
+        self.assertEqual(self.git_calls, [('merge-base', '--is-ancestor', 'c105e', 'abcdef1234567890')])
+
+    def test_a_fix_that_cannot_be_resolved_reopens_as_before(self):
         def broken():
             raise ledger_tool.urllib.error.URLError('down')
-        calls = self.track_closed(broken)
-        self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), calls)
+        self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), self.track_closed(timeline=broken))
+        # An unknown commit (git exit 128) is doubt, not "lacks the fix".
+        self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), self.track_closed(ancestor=128))
 
     def test_missing_token_warns_and_succeeds(self):
         self.assertEqual(ledger_tool.issues(self.flaky_ledger(), 'o/r', ''), 0)
