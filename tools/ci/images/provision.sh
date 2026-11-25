@@ -50,10 +50,11 @@ case "$profile" in
     useradd --create-home --shell /bin/bash putgd-ci
     ;;
   sanitizers)
-    # The GStreamer plugins too: nightly.yml runs the recording and scroll-capture tests here (#2065).
+    # nightly.yml runs every test here (#2065): the GStreamer plugins for the recording and
+    # scroll-capture tests, and labwc for budgie_labwc_integration, which skips without it.
     bash "$install" "${test_packages[@]}" clang libclang-rt-dev llvm curl liblayershellqtinterface-dev \
       gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire \
-      gstreamer1.0-libav
+      gstreamer1.0-libav labwc wl-clipboard wlr-randr
     useradd --create-home --shell /bin/bash putgd-ci
     ;;
   native-*)

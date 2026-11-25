@@ -61,7 +61,7 @@ class Selection(unittest.TestCase):
         for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'src/ipc/UiControl.cpp', 'tests/unit/test_settings.cpp',
                      'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h', 'tests/fuzz/corpus/s3wire/upload',
                      'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
-                     'tools/ci/sdk_cache.py', '.github/actions/sanitizers/action.yml'):
+                     'tools/ci/sdk_cache.py', '.github/actions/sanitizers/action.yml', 'tests/sanitizer/lsan.supp'):
             with self.subTest(path=path):
                 self.assertTrue(changes.select([path])['sanitizers'])
         for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings_appearance.cpp',

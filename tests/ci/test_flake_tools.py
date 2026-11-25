@@ -408,8 +408,16 @@ class SanitizerTracker(unittest.TestCase):
                 'tests': {'steady': {'labels': ['unit'], 'outcome': 'passed',
                                      'attempts': [{'outcome': 'passed', 'details': []}]}, **tests}}
 
+    class FakeSearch(Tracker.FakeGitHub):
+        # The issue lookup is a title search: GitHub answers {'items': [...]}.
+        def call(self, method, path, body=None):
+            if method == 'GET':
+                self.calls.append((method, path, body))
+                return {'items': self.issues}
+            return super().call(method, path, body)
+
     def file(self, ledger, existing=()):
-        github = Tracker.FakeGitHub(list(existing))
+        github = self.FakeSearch(list(existing))
         original = ledger_tool.GitHub
         ledger_tool.GitHub = lambda repo, token: github
         try:
@@ -447,6 +455,10 @@ class SanitizerTracker(unittest.TestCase):
         code, calls, _ = self.file(self.ledger(a=failed), existing)
         self.assertEqual(code, 1)
         self.assertEqual([(m, p) for m, p, _ in calls if m != 'GET'], [('POST', '/repos/o/r/issues/7/comments')])
+        # Found by its exact title among open issues, not by a label someone may remove.
+        search = [p for m, p, _ in calls if m == 'GET'][0]
+        self.assertTrue(search.startswith('/search/issues?q='), search)
+        self.assertNotIn('label', search)
 
     def test_a_sanitizer_report_its_retry_hid_still_fails(self):
         hidden = {'labels': ['integration'], 'outcome': 'passed_on_retry', 'attempts': [
@@ -473,6 +485,17 @@ class SanitizerTracker(unittest.TestCase):
 
     def test_without_a_token_it_still_fails_the_step(self):
         self.assertEqual(ledger_tool.failures(None, self.TITLE, 'job', 'o/r', ''), 1)
+
+    def test_a_sanitizer_report_after_many_failure_lines_is_still_seen(self):
+        output = ''.join(f'FAIL!  : T::case{i}() x\n' for i in range(40)) + '==7==ERROR: AddressSanitizer: heap-use-after-free\n'
+        with tempfile.TemporaryDirectory() as directory:
+            junit = Path(directory) / 'r.xml'
+            junit.write_text('<?xml version="1.0"?><testsuite><testcase name="gui_x" status="fail"><failure message="Failed"/>'
+                             f'<system-out>{output}</system-out></testcase></testsuite>')
+            attempt = retry.junit_results(junit)['gui_x']
+        self.assertEqual(len(attempt['details']), 24)
+        self.assertNotIn('AddressSanitizer', ''.join(attempt['details']))
+        self.assertEqual(ledger_tool.sanitizer_report(attempt), ['==7==ERROR: AddressSanitizer: heap-use-after-free'])
 
     def test_ctest_retry_keeps_ubsan_runtime_error_lines(self):
         line = '/src/core/History.cpp:41:12: runtime error: load of value 7, which is not a valid value'

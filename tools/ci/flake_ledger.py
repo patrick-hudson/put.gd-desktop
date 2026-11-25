@@ -257,7 +257,9 @@ def issues(ledger, repo, token):
 
 
 def sanitizer_report(attempt):
-    return [line for line in attempt.get('details') or [] if any(mark in line for mark in SANITIZER_REPORT)]
+    # ctest_retry.py keeps the report lines in `sanitizer`; older ledgers only in `details`.
+    return attempt.get('sanitizer') or [line for line in attempt.get('details') or []
+                                         if any(mark in line for mark in SANITIZER_REPORT)]
 
 
 def run_failures(ledger):
@@ -311,13 +313,10 @@ def failures(ledger, title, job, repo, token, output=None):
         return 1
     github = GitHub(repo, token)
     try:
-        issue = None
-        label = urllib.parse.quote(FAILURE_LABEL)
-        for page in range(1, 11):
-            listed = github.call('GET', f'/repos/{repo}/issues?labels={label}&state=open&per_page=100&page={page}')
-            issue = next((item for item in listed if 'pull_request' not in item and item.get('title') == title), None)
-            if issue or len(listed) < 100:
-                break
+        # By exact title among open issues, whatever their labels.
+        query = urllib.parse.quote(f'repo:{repo} is:issue is:open in:title "{title}"')
+        found_items = github.call('GET', f'/search/issues?q={query}&per_page=100').get('items', [])
+        issue = next((item for item in found_items if item.get('title') == title), None)
         if issue is None:
             body = (f"The nightly workflow's daily run of every test under clang ASan/UBSan (#2065) failed. "
                     "Each failed run adds a comment here with the failed tests and their first report lines.\n\n"

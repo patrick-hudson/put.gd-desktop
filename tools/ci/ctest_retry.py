@@ -28,6 +28,8 @@ import xml.etree.ElementTree as ElementTree
 
 RETRY_LABEL = 'integration'
 FAILURE_LINE = re.compile(r'^(FAIL!|XPASS|QFATAL|   Actual|   Expected|   Loc:|putgd wait:|.*Sanitizer|.*: runtime error:).*$', re.M)
+# A sanitizer's own report lines, kept apart so a long failure can't push them out of `details`.
+SANITIZER_LINE = re.compile(r'^(.*Sanitizer|.*: runtime error:).*$', re.M)
 
 
 def registered(ctest_args, cwd=None):
@@ -63,8 +65,9 @@ def junit_results(path):
         output = case.findtext('system-out') or ''
         details = [match.group(0).rstrip() for match in FAILURE_LINE.finditer(output)][:24] if outcome == 'failed' else []
         message = failure.get('message', '') if failure is not None else ''
+        sanitizer = [match.group(0).rstrip() for match in SANITIZER_LINE.finditer(output)][:8] if outcome == 'failed' else []
         results[name] = {'outcome': outcome, 'seconds': float(case.get('time') or 0),
-                         'message': message, 'details': details}
+                         'message': message, 'details': details, 'sanitizer': sanitizer}
     return results
 
 
