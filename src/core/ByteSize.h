@@ -3,6 +3,7 @@
 #include <QString>
 #include <QLocale>
 #include <cmath>
+#include <limits>
 
 namespace putgd::ByteSize {
 inline constexpr qint64 MiB = 1024 * 1024;
@@ -80,16 +81,32 @@ inline QString summary(qint64 bytes) {
 }
 
 // Traditional display labels, with the same 1024-based arithmetic everywhere.
+// Sizes below 1 KB are KB too, never a raw byte count: 0 KB, <0.1 KB, 0.5 KB.
 inline QString fileSummary(qint64 bytes) {
-    if (bytes < 1024) return QString("%1 B").arg(bytes);
+    if (bytes <= 0) return QStringLiteral("0 KB");
+    if (bytes <= 102) return QStringLiteral("<0.1 KB");
     if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
     return summary(bytes);
 }
 
+// The locale's digits with put.gd's own unit labels: Qt's traditional format writes "kB",
+// raw bytes below 1 KB, and translated units ("ko") in some locales.
 inline QString localized(qint64 bytes, int precision = 1, const QLocale& locale = QLocale()) {
-    return locale.formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat);
+    if (bytes <= 0) return QStringLiteral("0 KB");
+    if (bytes <= 102) return QStringLiteral("<0.1 KB");
+    static const char* const units[] = {"KB", "MB", "GB", "TB", "PB", "EB"};
+    // The unit comes from whole powers of 1024; qint64 tops out below 8 EB.
+    int unit = 0;
+    for (qint64 scale = MiB; unit < 5 && bytes >= scale; scale *= 1024) {
+        ++unit;
+        if (scale > std::numeric_limits<qint64>::max() / 1024) break;
+    }
+    const double value = double(bytes) / std::pow(1024.0, unit + 1);
+    return locale.toString(value, 'f', precision) + ' ' + QLatin1String(units[unit]);
 }
 inline QString admissionLimit(qint64 bytes) {
+    // Rounded up for space requirements, but no space is still none.
+    if (bytes <= 0) return QStringLiteral("0 MB");
     constexpr double mib = 1024.0 * 1024, gib = mib * 1024, tib = gib * 1024;
     if (bytes >= tib) return QString::number(bytes / tib, 'f', 1) + " TB";
     if (bytes >= gib) return QString::number(bytes / gib, 'f', 1) + " GB";

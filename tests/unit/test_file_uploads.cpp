@@ -1,5 +1,6 @@
 #include "app/FileUploads.h"
 #include "core/ArtifactStore.h"
+#include "core/ByteSize.h"
 #include "app/UploadClient.h"
 #include "app/FileManagerIntegration.h"
 #include "app/HistoryService.h"
@@ -57,6 +58,17 @@ class FileUploadsContract final:public QObject {
   return operation;
  }
 private slots:
+ // Sizes are KB, MB and GB with 1024 math, never a raw byte count or Qt's "kB" (#2028).
+ void sizesAreKilobytesNotBytes(){
+  QCOMPARE(ByteSize::fileSummary(0),QString("0 KB"));QCOMPARE(ByteSize::fileSummary(7),QString("<0.1 KB"));QCOMPARE(ByteSize::fileSummary(512),QString("0.5 KB"));
+  QCOMPARE(ByteSize::fileSummary(1536),QString("1.5 KB"));QCOMPARE(ByteSize::fileSummary(20*1024),QString("20 KB"));QCOMPARE(ByteSize::fileSummary(3*1024*1024),QString("3 MB"));
+  QCOMPARE(ByteSize::fileSummary(102),QString("<0.1 KB"));QCOMPARE(ByteSize::fileSummary(1023),QString("1.0 KB"));
+  for(const auto& locale:{QLocale::c(),QLocale(QLocale::French,QLocale::France)}){
+   QCOMPARE(ByteSize::localized(0,1,locale),QString("0 KB"));QCOMPARE(ByteSize::localized(7,1,locale),QString("<0.1 KB"));
+   QCOMPARE(ByteSize::localized(512,1,locale),locale.toString(0.5,'f',1)+" KB");QCOMPARE(ByteSize::localized(1023,1,locale),locale.toString(1.0,'f',1)+" KB");
+   QCOMPARE(ByteSize::localized(1536,1,locale),locale.toString(1.5,'f',1)+" KB");QCOMPARE(ByteSize::localized(5*1024*1024,1,locale),locale.toString(5.0,'f',1)+" MB");}
+  QCOMPARE(ByteSize::admissionLimit(0),QString("0 MB"));QCOMPARE(ByteSize::localized(qint64(1)<<50,1,QLocale::c()),QString("1.0 PB"));QCOMPARE(ByteSize::localized(qint64(1)<<60,1,QLocale::c()),QString("1.0 EB"));
+ }
  void initTestCase() {
   QVERIFY(dir_.isValid());logging::open(dir_.filePath("state/logs"));
   registry_=std::make_unique<ProviderRegistry>();registry_->add("opaque",provider_);
@@ -110,11 +122,11 @@ private slots:
   ArtifactStore::DiskBudget disk;disk.freeBytes=700*1024*1024;disk.reserveBytes=1024*1024*1024;
   selection=FileUploads::select({good},settings,"files",0,disk);QCOMPARE(selection.error.code,QString("disk_space_insufficient"));
   const auto needs=QFileInfo(good).size();QVERIFY(needs<1024);
-  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space. This upload needs %1 B. The disk with put.gd's data folder has 700 MB free, and put.gd reserves 1 GB for the system. Free up at least 325 MB and try again.").arg(needs));
+  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space. This upload needs %1. The disk with put.gd's data folder has 700 MB free, and put.gd reserves 1 GB for the system. Free up at least 325 MB and try again.").arg(ByteSize::fileSummary(needs)));
   // Bytes other uploads hold aren't the system's, and the advice rounds up, so it is always enough.
   disk.reservedBytes=20*1024*1024;
   selection=FileUploads::select({good},settings,"files",0,disk);
-  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space. This upload needs %1 B. The disk with put.gd's data folder has 700 MB free, and put.gd reserves 1 GB for the system and 20 MB for uploads in progress. Free up at least 345 MB and try again.").arg(needs));
+  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space. This upload needs %1. The disk with put.gd's data folder has 700 MB free, and put.gd reserves 1 GB for the system and 20 MB for uploads in progress. Free up at least 345 MB and try again.").arg(ByteSize::fileSummary(needs)));
   QCOMPARE(selection.error.details["requiredBytes"].toInteger(),needs);QCOMPARE(selection.error.details["availableBytes"].toInteger(),0LL);
   // Spaces, quotes, Unicode and a leading '-' upload.
   for(const auto& name:{QStringLiteral("a b.txt"),QStringLiteral("it's \"q\".txt"),QStringLiteral("é ü.txt"),QStringLiteral("-rf.txt"),QStringLiteral("${USER}.txt")}){
