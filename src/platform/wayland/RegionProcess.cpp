@@ -64,7 +64,7 @@ void WaylandRegionProcess::closeFrozen() { if(frozenFd_>=0) ::close(frozenFd_); 
 void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome,const QList<CaptureFrame>& pixels,QJsonObject appearance) {
  if(closing_) { callback({},unavailable("cancelled")); return; }
  if(busy()) { callback({},unavailable("busy_selecting")); return; }
- if(cleanupRequired_) { callback({},{"capture_cleanup_pending","The region helper exited before clearing its overlay. Restart put.gd before capturing again.",{}}); return; }
+ if(cleanupRequired_) { callback({},{"capture_cleanup_pending","The region helper exited without confirming overlay removal. Restart put.gd before capturing again.",{}}); return; }
  Error error; const auto layout=waylandRegionLayout(frames,error);
  if(error) { callback({},std::move(error)); return; }
  WaylandFrozenFrames frozen;

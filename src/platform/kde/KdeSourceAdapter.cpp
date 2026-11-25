@@ -18,7 +18,7 @@ namespace putgd {
 namespace {
 QList<CaptureFrame> graphicalLayout(){QList<CaptureFrame> out;for(auto* s:QGuiApplication::screens()){CaptureFrame frame;frame.identity=s->name();frame.logicalRect=s->geometry();frame.density=s->devicePixelRatio();frame.rotation=s->angleBetween(s->nativeOrientation(),s->orientation());frame.nativeRect=QRect(QPoint(qRound(s->geometry().x()*frame.density),qRound(s->geometry().y()*frame.density)),QSize(qRound(s->geometry().width()*frame.density),qRound(s->geometry().height()*frame.density)));out.append(frame);}return out;}
 
-const QString cleanupMessage="The region helper exited before clearing its overlay. Restart put.gd before capturing again.";
+const QString cleanupMessage="The region helper exited without confirming overlay removal. Restart put.gd before capturing again.";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){if(error)return {{},error};if(image.isNull())return {{},{"capture_failed","KWin provided no image",{}}};if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds the image size limit.",{}}};ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};}
 }

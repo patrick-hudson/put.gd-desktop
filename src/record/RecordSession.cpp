@@ -178,7 +178,7 @@ void RecordSession::endCapture(const QString& reason) {
         guard->bounds_.hideAll();
         if (guard->bar_) guard->bar_->hide();
         guard->releaseAcquisition();
-        if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "The recording captured no frames.", {}};
+        if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "No usable recording was saved.", {}};
         if (error) { error.details["stopReason"] = reason; guard->enterPhase(HelperPhase::Failed); emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
         guard->durationUs_ = durationUs;
         guard->enterPhase(HelperPhase::Recorded);
@@ -491,7 +491,7 @@ void RecordSession::select(Reply reply) {
     QPointer<RecordSession> guard(this);
     auto cancelled = [guard, reply](const Error& error) {
         if (!guard) return;
-        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled. Nothing was recorded.", {}} : error, {});
+        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled before recording started.", {}} : error, {});
     };
     const auto mode = surfaceMode();
     if (mode == SurfaceMode::X11) {
@@ -548,7 +548,7 @@ void RecordSession::select(Reply reply) {
     // GNOME's selector lives in the Shell extension: the resident asks it for the
     // rectangle before the helper starts, and says itself why it cannot (#131).
     // Without one there is no honest region.
-    reply({"region_unavailable", "This desktop has no region selector for recordings.", {}}, {});
+    reply({"region_unavailable", "This desktop has no region selector for recordings. Specify the region with target.rect.", {}}, {});
 }
 void RecordSession::completeSelection(const QJsonObject& params, Reply reply) {
     const auto r = params["rect"].toArray();
@@ -924,7 +924,7 @@ void RecordSession::stop(Reply reply) {
         guard->releaseAcquisition();
         // A second Stop refused while the first drains leaves the capture running.
         if (error) { if (!guard->pipeline_.running()) guard->enterPhase(HelperPhase::Failed); reply(error, {}); return; }
-        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { guard->enterPhase(HelperPhase::Failed); reply({"recording_failed", "The recording captured no frames.", {}}, {}); return; }
+        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { guard->enterPhase(HelperPhase::Failed); reply({"recording_failed", "No usable recording was saved.", {}}, {}); return; }
         guard->durationUs_ = durationUs;
         guard->enterPhase(HelperPhase::Recorded);
         guard->noteCaptured();

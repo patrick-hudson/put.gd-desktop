@@ -72,7 +72,7 @@ void X11SourceAdapter::acquire(const QString& action,const ResourceLimits& limit
 void X11SourceAdapter::acquireFrozen(const X11Target& target,const ResourceLimits& limits,std::function<void(PayloadResult)> callback){capture(target,limits,std::move(callback));}
 void X11SourceAdapter::capture(const X11Target& target,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
  if(overlay_){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
- qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count>limits.imagePixels-pixels){cb({{},{"image_limit","Captured monitor exceeds the image pixel limit.",{}}});return;}pixels+=count;}
+ qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count>limits.imagePixels-pixels){cb({{},{"image_limit","The combined monitor layout exceeds the image pixel limit.",{}}});return;}pixels+=count;}
  Error error;if(!capture_.unchanged(target,error)){cb({{},error});return;}
  if(target.action=="repeat"){acquireRepeatFrozen(target,limits,std::move(cb));return;}
  if(target.action!="region"){auto frames=capture_.frames(target,error);if(error){cb({{},error});return;}compose(std::move(frames),target.logicalSelection,limits,std::move(cb));return;}
@@ -123,7 +123,7 @@ void X11SourceAdapter::sessionLocked(std::function<void(bool)> reply){querySessi
 void X11SourceAdapter::selectRegionFrozen(const X11Target& target,const ResourceLimits& limits,std::function<void(RegionSelectionResult)> cb){
  if(target.action!="region"){cb({{},0,{"capture_target","Region selection requires a region target",{}}});return;}
  if(overlay_){cb({{},0,{"busy_selecting","Region selection is already active",{}}});return;}
- qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},0,{"image_limit","Captured monitor exceeds the image pixel limit.",{}}});return;}pixels+=count;}
+ qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},0,{"image_limit","The combined monitor layout exceeds the image pixel limit.",{}}});return;}pixels+=count;}
  Error error;if(!capture_.unchanged(target,error)){cb({{},0,error});return;}
  // A fresh selection invalidates older geometry. A live selection reads no
  // pixels; Screenshot first reads every monitor once, before the selector maps.
@@ -192,7 +192,7 @@ void X11SourceAdapter::acquireSelectedRegionFrozen(const X11Target& target,const
  auto frozen=std::move(frozenFrames_);
  selectedGeneration_=0;selectedTarget_={};frozenFrames_.clear();
  if(!matchingTarget){cb({{},{"capture_target","Region selection target changed",{}}});return;}
- qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},{"image_limit","Captured monitor exceeds the image pixel limit.",{}}});return;}pixels+=count;}
+ qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},{"image_limit","The combined monitor layout exceeds the image pixel limit.",{}}});return;}pixels+=count;}
  const auto error=selectionError(target,selection.rectangle,limits);if(error){cb({{},error});return;}
  // Repeat last region (#1363) remembers a region that was captured, here in memory only.
  cb=[this,target,rectangle=selection.rectangle,cb=std::move(cb)](PayloadResult result)mutable{

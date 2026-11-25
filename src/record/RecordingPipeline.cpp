@@ -935,7 +935,7 @@ void RecordingPipeline::poll() {
         // failure plus low free space does not establish ENOSPC. Keep its diagnosis.
         if (e && e->domain == GST_RESOURCE_ERROR && e->code == GST_RESOURCE_ERROR_NO_SPACE_LEFT) {
             const auto cause = error.toJson();
-            error = {"recording_disk_full", "The disk filled up before the recording could finish saving. No clip was saved, and the upload didn't start. Free up space and try again.", disk.toJson()};
+            error = {"recording_disk_full", "The disk filled up before the recording could finish saving. No reviewable recording was saved. Free up space and try again.", disk.toJson()};
             error.details["reason"] = "disk_space";
             error.details["finalized"] = false;
             error.details["cause"] = cause;

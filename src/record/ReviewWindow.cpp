@@ -2497,7 +2497,7 @@ void ReviewWindow::cancelUpload(const QString& why) {
     uploadWaiting_ = false;
     uploadWait_.stop();
     // Its own status line, kept when the awaited answer arrives.
-    uploadNotice_ = {QStringLiteral("Upload cancelled because %1. Select Upload again.").arg(why.isEmpty() ? QStringLiteral("you changed the clip") : why), QStringLiteral("warning"), {}};
+    uploadNotice_ = {QStringLiteral("The upload didn't start because %1. Select Upload again.").arg(why.isEmpty() ? QStringLiteral("the clip changed") : why), QStringLiteral("warning"), {}};
     refreshAll();
 }
 void ReviewWindow::emitConfig() {
@@ -3543,12 +3543,12 @@ void ReviewWindow::showFrameError(qint64 at, const QString& message) {
     debugLog("review: preview failed " + message);
     QString reason;
     const QFileInfo clip(options_.workingClip);
-    if (!clip.exists()) reason = QStringLiteral("The frame at %1 couldn't be decoded because the private recording file is missing.");
-    else if (!clip.isReadable()) reason = QStringLiteral("The frame at %1 couldn't be decoded because the private recording file isn't readable. Check its permissions.");
-    else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("The frame at %1 couldn't be decoded because the private recording file couldn't be read. Check that it is intact.");
-    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("The frame at %1 couldn't be decoded because the private recording has no readable video track.");
-    else if (message.startsWith("No frame")) reason = QStringLiteral("No video frame is available at %1. Try a nearby frame.");
-    else reason = QStringLiteral("The frame at %1 couldn't be decoded. Try a nearby frame or select Retry preview.");
+    if (!clip.exists()) reason = QStringLiteral("Couldn't show the frame at %1. The recording file is missing.");
+    else if (!clip.isReadable()) reason = QStringLiteral("Couldn't read the recording at %1. Check file permissions.");
+    else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("Couldn't read the recording at %1. The file may be damaged.");
+    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("Couldn't show the frame at %1. The recording has no video track.");
+    else if (message.startsWith("No frame")) reason = QStringLiteral("No frame at %1. Try a nearby frame.");
+    else reason = QStringLiteral("Couldn't decode the frame at %1. Select Retry preview.");
     // A retry asks again even for the same time.
     frameAsked_.reset();
     view_->setPreviewError(reason.arg(durationText(at)));

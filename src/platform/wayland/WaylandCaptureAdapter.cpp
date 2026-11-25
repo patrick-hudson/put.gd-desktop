@@ -11,7 +11,7 @@ PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error
  ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};
 }
 }
-QString WaylandCaptureAdapter::cleanupMessage(){return QStringLiteral("The region helper exited before clearing its overlay. Restart put.gd before capturing again.");}
+QString WaylandCaptureAdapter::cleanupMessage(){return QStringLiteral("The region helper exited without confirming overlay removal. Restart put.gd before capturing again.");}
 WaylandCaptureAdapter::WaylandCaptureAdapter(QObject* parent):QObject(parent){
  connect(&outputs_,&WaylandOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});
  connect(&capture_,&ImageCopyCapture::changed,this,&WaylandCaptureAdapter::capabilitiesChanged);

@@ -1481,7 +1481,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                     outcome->descriptor["topReached"] = false;
                     if (reason == "top_not_reached" && !stats.toTopGaveUp.empty()) outcome->descriptor["note"] = QString::fromStdString(stats.toTopGaveUp);
                 }
-            } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The captured image exceeded the image size limit. Lower the height limit and try again." : "Couldn't write the captured PNG. Check free disk space and try again.", {{"stage", "encode"}, {"check", "png"}}};
+            } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The encoded PNG exceeded its size limit." : "Couldn't write the captured PNG. Check free disk space and try again.", {{"stage", "encode"}, {"check", "png"}}};
         }
     }
     canvas.close();

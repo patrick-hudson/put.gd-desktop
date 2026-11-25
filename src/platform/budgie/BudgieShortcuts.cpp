@@ -63,7 +63,7 @@ void BudgieShortcuts::probed(bool bridge,const QString& reason){
 void BudgieShortcuts::portalProbed(bool portal,const QString& reason,const QString& portalReason){
  choosing_=false;chosen_=true;
  if(portal){use(new PortalGlobalShortcuts(this));backend_->bind(requested_);if(recording_)backend_->setPaused(true,{});}
- else backendError_="No hotkey backend available. "+reason+". "+portalReason+".";
+ else backendError_="Hotkeys are unavailable. "+reason+". "+portalReason+".";
  emit changed();
 }
 void BudgieShortcuts::bind(const QHash<QString,QString>& desired){

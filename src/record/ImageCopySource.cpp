@@ -518,7 +518,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   QList<WaylandToplevel> ext,wlr;for(auto* w:std::as_const(d_->extWindows))if(w->done)ext.append(w->current);for(auto* w:std::as_const(d_->wlrWindows))if(w->done)wlr.append(w->current);
   WaylandToplevel chosen;
   if(target.identity.isEmpty()){Error error;const auto active=matchActiveToplevel(ext,wlr,error);if(!active)return {"recording_target",error.message,error.details};chosen=*active;}
-  else{bool found=false;for(const auto& w:std::as_const(ext))if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window matches this identity.",{}};}
+  else{bool found=false;for(const auto& w:std::as_const(ext))if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window matches this identity. List windows with recording.windows.",{}};}
   if(putgdAppId(chosen.appId))return {"recording_target","put.gd does not record its own windows",{}};
   for(auto* w:std::as_const(d_->extWindows))if(w->done&&w->current.identifier==chosen.identifier)d_->source=ext_foreign_toplevel_image_capture_source_manager_v1_create_source(d_->windowSources,static_cast<ext_foreign_toplevel_handle_v1*>(w->native));
   if(identity)*identity=chosen.identifier;if(appId)*appId=chosen.appId;

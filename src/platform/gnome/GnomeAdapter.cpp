@@ -216,7 +216,7 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  // Monitor and repeat exist only in capture version 2; a repeat needs its region.
  else if((action=="monitor"||action=="repeat")&&captureVersionError()){error=captureVersionError();if(hotkey)release(id);}
  else if(action=="repeat"&&!lastRegion_){error=noLastRegion();if(hotkey)release(id);}
- else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid request ID.",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
+ else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid capture request reply.",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  // Show a live selection at the press; Acquire waits for the journal and takes
  // up its geometry. Screenshot first freezes the stage only after both saves.
@@ -248,7 +248,7 @@ void GnomeAdapter::countdown(int seconds,std::function<void(Error)> reply){
  call("Countdown",{id,json({{"seconds",seconds},{"appearance",captureAppearance_}})},[this,id,generation,reply=std::move(reply)](Error error,QJsonObject result){
   if(countdownId_==id)countdownId_.clear();
   if(!error&&generation!=generation_)error={"cancelled","Capture countdown cancelled",{}};
-  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid countdown ID.",{}};
+  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid countdown reply.",{}};
   lockAware(std::move(error),reply);
  },(seconds+15)*1000);
 }
@@ -302,7 +302,7 @@ void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,con
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);
-  if(!error&&(metadata["version"].toInt()!=gnome::protocolVersion||metadata["requestId"].toString()!=transfer->id||bytes<0||bytes>bound||bytes!=std::floor(bytes)))error={"bridge_protocol","The put.gd GNOME Shell extension transfer exceeded size limits or returned an invalid ID.",{}};
+  if(!error&&(metadata["version"].toInt()!=gnome::protocolVersion||metadata["requestId"].toString()!=transfer->id||bytes<0||bytes>bound||bytes!=std::floor(bytes)))error={"bridge_protocol","The put.gd GNOME Shell extension returned invalid or out-of-bounds transfer metadata.",{}};
   if(error){transfers_.remove(transfer->id);release(transfer->id);auto reply=std::move(transfer->reply);reply({{},error});return;}
   transfer->metadata=metadata;read(transfer);
  },125000);
